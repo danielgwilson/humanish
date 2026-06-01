@@ -16,10 +16,13 @@ coverage/
 artifacts/proof/
 proof/
 .e2b/
+*.tgz
 
 # env and secrets
 .env*
 !.env.example
+.npmrc
+!.npmrc.example
 
 # local worktrees if someone creates them inside the repo by mistake
 .worktrees/

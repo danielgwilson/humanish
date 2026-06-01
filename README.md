@@ -37,6 +37,21 @@ pnpm check
 pnpm mimetic -- --help
 ```
 
+## Target App Quickstart
+
+The package is still marked `private: true` until Daniel chooses the public
+license and approves publication. Once released, target repos should use:
+
+```bash
+npm i -D mimetic-cli
+npx mimetic init --dry-run --json
+npx mimetic init --yes --json
+npx mimetic run --dry-run --json
+npx mimetic verify --run latest --json
+npx mimetic watch --run latest --no-open --json
+npx mimetic feedback issue --run latest --repo example/app --format markdown
+```
+
 The current CLI implements safe `init`, synthetic dry-run bundles, verification,
 static observer rendering, and public-safe feedback issue drafts. Live browser
 execution, provider-backed actors, and GitHub mutation remain intentionally
@@ -54,6 +69,7 @@ unimplemented.
 - [Agent skill entrypoint](docs/skill/mimetic-cli/SKILL.md)
 - [Project layout contract](docs/architecture/project-layout.md)
 - [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
+- [Open-source release readiness](docs/release/open-source-readiness.md)
 - [Mimetic CLI open-source v0 goal](docs/goals/mimetic-cli-open-source-v0/goal.md)
 
 ## Status
