@@ -12,12 +12,14 @@ export interface RunOptions {
   cwd: string;
   dryRun?: boolean;
   runId?: string;
+  simCount?: number;
 }
 
 export interface RunBundle {
   schema: typeof RUN_BUNDLE_SCHEMA;
   runId: string;
   mode: "dry-run";
+  simCount: number;
   createdAt: string;
   cwd: string;
   artifactRoot: string;
@@ -47,6 +49,14 @@ export interface RunBundle {
     event: string;
     message: string;
   }>;
+  simulations: Array<{
+    id: string;
+    index: number;
+    personaId: string;
+    scenarioId: string;
+    status: "contract_proof_only";
+    summary: string;
+  }>;
   redaction: {
     status: "passed";
     notes: string;
@@ -72,6 +82,7 @@ export interface RunResult {
   ok: boolean;
   runId?: string;
   mode?: "dry-run";
+  simCount?: number;
   cwd: string;
   artifactRoot?: string;
   bundlePath?: string;
@@ -79,7 +90,7 @@ export interface RunResult {
   latestPath?: string;
   warnings: string[];
   error?: {
-    code: "MIMETIC_LIVE_RUN_UNIMPLEMENTED" | "MIMETIC_INVALID_CWD";
+    code: "MIMETIC_LIVE_RUN_UNIMPLEMENTED" | "MIMETIC_INVALID_CWD" | "MIMETIC_INVALID_SIM_COUNT";
     message: string;
   };
 }
@@ -181,6 +192,20 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     };
   }
 
+  const simCount = normalizeSimCount(options.simCount);
+  if (simCount === null) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_INVALID_SIM_COUNT",
+        message: "--sims must be an integer between 1 and 64."
+      }
+    };
+  }
+
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
@@ -199,6 +224,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     schema: RUN_BUNDLE_SCHEMA,
     runId,
     mode: "dry-run",
+    simCount,
     createdAt,
     cwd,
     artifactRoot,
@@ -216,7 +242,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
       {
         at: createdAt,
         event: "run.created",
-        message: "Synthetic dry-run contract bundle created."
+        message: `Synthetic dry-run contract bundle created with ${simCount} sim${simCount === 1 ? "" : "s"}.`
       },
       {
         at: createdAt,
@@ -234,6 +260,14 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
         message: "Created review skeleton without claiming product proof."
       }
     ],
+    simulations: Array.from({ length: simCount }, (_, index) => ({
+      id: `sim-${String(index + 1).padStart(2, "0")}`,
+      index: index + 1,
+      personaId: selection.persona.id,
+      scenarioId: selection.scenario.id,
+      status: "contract_proof_only",
+      summary: "Synthetic contract proof only; no live actor was launched."
+    })),
     redaction: {
       status: "passed",
       notes: "Dry-run bundle contains synthetic contract proof only."
@@ -263,6 +297,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     ok: true,
     runId,
     mode: "dry-run",
+    simCount,
     cwd,
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
@@ -270,6 +305,18 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     latestPath: path.join(".mimetic", "runs", "latest.json"),
     warnings
   };
+}
+
+function normalizeSimCount(value: number | undefined): number | null {
+  if (value === undefined) {
+    return 1;
+  }
+
+  if (!Number.isInteger(value) || value < 1 || value > 64) {
+    return null;
+  }
+
+  return value;
 }
 
 export async function verifyRun(cwdInput: string, runInput: string): Promise<VerifyResult> {

@@ -125,11 +125,14 @@ export const plannedCommands: PlannedCommand[] = [
   },
   {
     name: "watch",
-    description: "Open or render the local observer for a run bundle.",
+    description: "Run sims, open the observer, and optionally keep the shell attached.",
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/10",
     docs: commonDocs,
     options: [
       { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" },
+      { flags: "--sims <count>", description: "Start a fresh synthetic run with this many sims before rendering." },
+      { flags: "--open", description: "Open the observer in the default browser." },
+      { flags: "--follow", description: "Keep the shell attached after rendering." },
       { flags: "--no-open", description: "Render without opening a browser." }
     ]
   },
@@ -287,24 +290,68 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerWatchCommand(parent: Command, io: CliIo): void {
   parent
     .command("watch")
-    .description("Open or render the local observer for a run bundle.")
+    .description("Run sims, open the observer, and optionally keep the shell attached.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--sims <count>", "Start a fresh synthetic run with this many sims before rendering.")
+    .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
+    .option("--follow", "Keep the shell attached after rendering.")
     .option("--json", "Print a machine-readable JSON response.")
-    .action(async (options: { cwd: string; json?: boolean; open?: boolean; run: string }, command) => {
-      const result = await renderObserver(options.cwd, options.run);
-      const resultWithOpenWarning = options.open === false
-        ? result
-        : {
-            ...result,
-            warnings: [
-              ...result.warnings,
-              "Automatic browser open is not implemented yet; use observerPath."
-            ]
-          };
-      writeResult(command, io, resultWithOpenWarning, formatObserverHuman);
+    .action(async (options: {
+      cwd: string;
+      follow?: boolean;
+      json?: boolean;
+      open?: boolean;
+      run: string;
+      runId?: string;
+      sims?: string;
+    }, command) => {
+      const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+      if (options.sims !== undefined && simCount === null) {
+        const result: RunResult = {
+          schema: "mimetic.run-result.v1",
+          ok: false,
+          cwd: options.cwd,
+          warnings: [],
+          error: {
+            code: "MIMETIC_INVALID_SIM_COUNT",
+            message: "--sims must be an integer between 1 and 64."
+          }
+        };
+        writeResult(command, io, result, formatRunHuman);
+        io.setExitCode(2);
+        return;
+      }
+      const requestedSimCount = simCount;
+
+      let runInput = options.run;
+      if (requestedSimCount !== undefined && requestedSimCount !== null) {
+        const runResult = await runDryRun({
+          cwd: options.cwd,
+          dryRun: true,
+          simCount: requestedSimCount,
+          ...(options.runId === undefined ? {} : { runId: options.runId })
+        });
+
+        if (!runResult.ok || !runResult.runId) {
+          writeResult(command, io, runResult, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        runInput = runResult.runId;
+      }
+
+      const shouldOpen = options.open !== false && options.open === true;
+      const result = await renderObserver(options.cwd, runInput, { open: shouldOpen });
+      writeResult(command, io, result, formatObserverHuman);
       io.setExitCode(result.ok ? 0 : 2);
+
+      if (result.ok && options.follow === true && !wantsJson(command)) {
+        await followObserver(io, result);
+      }
     });
 }
 
@@ -421,6 +468,7 @@ function formatRunHuman(result: RunResult): string {
   return [
     `mimetic run ${result.mode}`,
     `run: ${result.runId}`,
+    ...(result.simCount === undefined ? [] : [`sims: ${result.simCount}`]),
     `bundle: ${result.bundlePath}`,
     `review: ${result.reviewPath}`,
     ...result.warnings.map((warning) => `warning: ${warning}`)
@@ -455,9 +503,35 @@ function formatObserverHuman(result: ObserverResult): string {
     "mimetic observer rendered",
     `run: ${result.run}`,
     `observer: ${result.observerPath}`,
+    ...(result.observerUrl ? [`url: ${result.observerUrl}`] : []),
+    ...(result.opened === undefined ? [] : [`opened: ${result.opened ? "yes" : "no"}`]),
     `bundle: ${result.bundlePath}`,
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
+}
+
+function parsePositiveInteger(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return parsed >= 1 && parsed <= 64 ? parsed : null;
+}
+
+async function followObserver(io: CliIo, result: ObserverResult): Promise<void> {
+  io.writeOut("watching: press Ctrl-C to stop\n");
+  await new Promise<void>((resolve) => {
+    const interval = setInterval(() => {
+      io.writeOut(`watching: ${result.observerPath}\n`);
+    }, 5000);
+
+    process.once("SIGINT", () => {
+      clearInterval(interval);
+      io.writeOut("watch stopped\n");
+      resolve();
+    });
+  });
 }
 
 function formatFeedbackHuman(result: FeedbackResult): string {

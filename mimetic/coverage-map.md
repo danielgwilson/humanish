@@ -8,7 +8,9 @@ This map keeps Mimetic honest as its own first target app.
 - Safe `init` preview and applied layout.
 - `doctor` readiness over committed `mimetic/` source.
 - Synthetic dry-run bundle generation from committed dogfood files.
-- `verify`, `review`, `runs`, and static `watch` output.
+- `watch --sims 4 --open --follow` one-command self-run, Observer render,
+  browser open, and shell watch.
+- `verify`, `review`, and `runs` output.
 - Public-safe `feedback issue` Markdown.
 - Release and publish gates.
 
@@ -16,5 +18,5 @@ This map keeps Mimetic honest as its own first target app.
 
 - Real Codex TUI actor execution.
 - 4x persona fanout.
-- Live observer server or browser auto-open.
+- Live observer streaming while real actors are running.
 - OpenAI, E2B, GitHub mutation, provider spend, or production data.

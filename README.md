@@ -15,8 +15,16 @@ private product artifacts. Use synthetic or redacted examples only.
 The intended shape is adapter-first: core packages provide the durable simulation machinery, while product adapters define app topology, routes, personas, scenarios, milestones, runtime commands, and review vocabulary.
 
 This repo dogfoods Mimetic through committed [`mimetic/`](mimetic/) source
-files. Current self-runs are dry-run contract proof only; real Codex TUI actors,
-4x fanout, and live observer streaming are the next capability ladder.
+files. The local operator path is one command:
+
+```bash
+pnpm mimetic:watch
+```
+
+That starts a 4-sim synthetic self-run, renders Observer, opens it in the
+browser, and keeps the shell attached. Current self-runs are still contract
+proof only; real Codex TUI actors and live observer streaming are the next
+capability ladder.
 
 ## Local Layout
 
@@ -50,16 +58,14 @@ license and approves publication. Once released, target repos should use:
 npm i -D mimetic-cli
 npx mimetic init --dry-run --json
 npx mimetic init --yes --json
-npx mimetic run --dry-run --json
-npx mimetic verify --run latest --json
-npx mimetic watch --run latest --no-open --json
+npx mimetic watch --sims 4 --open --follow
 npx mimetic feedback issue --run latest --repo example/app --format markdown
 ```
 
 The current CLI implements safe `init`, synthetic dry-run bundles, verification,
-static observer rendering, and public-safe feedback issue drafts. Live browser
-execution, provider-backed actors, and GitHub mutation remain intentionally
-unimplemented.
+static observer rendering with browser open, shell follow mode, and public-safe
+feedback issue drafts. Live browser execution, provider-backed actors, and
+GitHub mutation remain intentionally unimplemented.
 
 ## Current Design Notes
 
@@ -80,6 +86,7 @@ unimplemented.
 
 Package scaffold, safe `mimetic init` layout work, a minimal synthetic target
 app fixture, synthetic dry-run bundle verification, static observer rendering,
-public-safe feedback issue drafts, and repo self-dogfood config are implemented
-for the dry-run v0 slice. Implementation should continue from source comparison
-and contract design, not a from-scratch rewrite.
+browser-open watch mode, public-safe feedback issue drafts, and repo
+self-dogfood config are implemented for the dry-run v0 slice. Implementation
+should continue from source comparison and contract design, not a from-scratch
+rewrite.

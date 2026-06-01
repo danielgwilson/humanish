@@ -60,8 +60,10 @@ describe("dry-run bundles", () => {
 
       const bundle = JSON.parse(
         await readFile(path.join(cwd, ".mimetic/runs/dryrun-test/run.json"), "utf8")
-      ) as { schema: string; review: { verdict: string } };
+      ) as { schema: string; review: { verdict: string }; simCount: number; simulations: unknown[] };
       expect(bundle.schema).toBe(RUN_BUNDLE_SCHEMA);
+      expect(bundle.simCount).toBe(1);
+      expect(bundle.simulations).toHaveLength(1);
       expect(bundle.review.verdict).toBe("contract_proof_only");
 
       await expect(stat(path.join(cwd, ".mimetic/runs/latest.json"))).resolves.toBeTruthy();

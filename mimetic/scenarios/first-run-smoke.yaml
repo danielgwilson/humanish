@@ -2,16 +2,16 @@ schema: mimetic.scenario.v1
 id: first-run-smoke
 title: Mimetic CLI first-run smoke
 persona: synthetic-new-user
-goal: Prove that Mimetic can explain, initialize, dry-run, verify, observe, and draft feedback for itself without private data.
+goal: Prove that Mimetic can explain, initialize, run 4 synthetic sims, open Observer, verify, and draft feedback for itself without private data.
 mode: dry-run
 steps:
   - name: Inspect help
     expectation: Commander help lists setup, run, verify, watch, and feedback commands.
   - name: Check dogfood readiness
     expectation: Doctor sees committed mimetic/ source and ignored .mimetic/ runtime state.
-  - name: Produce dry-run bundle
-    expectation: The bundle uses committed dogfood persona and scenario files rather than built-in fallback defaults.
-  - name: Render observer
-    expectation: Static observer HTML points to the latest synthetic run bundle.
+  - name: Watch with sims
+    expectation: One command creates a fresh 4-sim bundle from committed dogfood persona and scenario files.
+  - name: Open observer
+    expectation: Observer HTML is rendered, opened in a browser when requested, and can keep the shell attached.
   - name: Draft feedback
     expectation: Feedback Markdown says GitHub mutation was not performed and dry-run proof is not product proof.

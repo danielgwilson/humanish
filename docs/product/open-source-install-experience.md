@@ -16,10 +16,10 @@ open-source-safe package shape:
 ```bash
 npm i -D mimetic-cli
 npx mimetic init
-npm run mimetic doctor
-npm run mimetic run -- --dry-run
-npm run mimetic watch
-npm run mimetic feedback issue -- --run latest
+npm run mimetic:doctor
+npm run mimetic:watch
+npm run mimetic:verify
+npx mimetic feedback issue --run latest --repo example/app --format markdown
 ```
 
 ## Two-Part Distribution
@@ -56,7 +56,8 @@ The skill should teach the user's coding agent how to:
 - create synthetic personas and scenarios;
 - configure local app targets;
 - document E2B and OpenAI env var names without storing values;
-- run `doctor`, `run --dry-run`, `watch`, `verify`, and `feedback issue`;
+- run `doctor`, `watch --sims 4 --open --follow`, `verify`, and
+  `feedback issue`;
 - avoid PII, PHI, secrets, real customer data, and private artifacts.
 
 The skill should not hide critical behavior in chat memory. It should point to
@@ -94,8 +95,9 @@ Suggested scripts:
   "scripts": {
     "mimetic": "mimetic",
     "mimetic:doctor": "mimetic doctor",
-    "mimetic:run": "mimetic run",
-    "mimetic:watch": "mimetic watch",
+    "mimetic:run": "mimetic run --dry-run",
+    "mimetic:watch": "mimetic watch --sims 4 --open --follow",
+    "mimetic:watch:ci": "mimetic watch --sims 4 --no-open --json",
     "mimetic:verify": "mimetic verify"
   }
 }
@@ -110,7 +112,7 @@ Suggested scripts:
 | `mimetic run --dry-run` | Prove contract without app/browser/keys | Write synthetic run bundle |
 | `mimetic verify` | Validate bundle and public-safety gates | Fail closed on schema/evidence/redaction errors |
 | `mimetic review` | Build review packet from evidence | Summarize verdicts without inventing product proof |
-| `mimetic watch` | Open observer over bundle | Render static local observer |
+| `mimetic watch --sims <n> --open --follow` | Run sims and watch the observer | Create a fresh bundle, render Observer, open it, and keep the shell attached |
 | `mimetic feedback issue` | Produce public-safe issue draft | Print Markdown or prefilled issue URL, no GitHub API mutation |
 
 ## Live Capability Ladder

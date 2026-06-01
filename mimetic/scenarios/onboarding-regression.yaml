@@ -2,11 +2,13 @@ schema: mimetic.scenario.v1
 id: onboarding-regression
 title: Dogfood readiness regression
 persona: skeptical-power-user
-goal: Confirm Mimetic's self-harness remains explicit about unsupported live actors, observer limits, credentials, and release gates.
+goal: Confirm Mimetic's self-harness has a one-command watch path while remaining explicit about unsupported live actors, credentials, and release gates.
 mode: dry-run
 steps:
   - name: Attempt live run boundary
     expectation: Non-dry-run execution fails closed until live actor support exists.
+  - name: Inspect watch ergonomics
+    expectation: Watch can create sims, render Observer, open the browser, and keep the shell attached from one command.
   - name: Inspect generated issue draft
     expectation: Public issue body contains only synthetic artifact pointers and explicit no-mutation notes.
   - name: Inspect release gate

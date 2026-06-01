@@ -79,4 +79,44 @@ describe("observer rendering", () => {
       expect(envelope.observerPath).toBe(".mimetic/runs/observer-proof/observer/index.html");
     });
   });
+
+  it("can start a fresh multi-sim run and render the observer in one command", async () => {
+    await withRunBundle(async (cwd) => {
+      const result = await runCli([
+        "watch",
+        "--sims",
+        "4",
+        "--run-id",
+        "watch-sims-proof",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--json"
+      ]);
+
+      expect(result.exitCode).toBe(0);
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        opened: boolean;
+        observerPath: string;
+        observerUrl: string;
+        run: string;
+      };
+      expect(envelope.ok).toBe(true);
+      expect(envelope.run).toBe("watch-sims-proof");
+      expect(envelope.opened).toBe(false);
+      expect(envelope.observerPath).toBe(".mimetic/runs/watch-sims-proof/observer/index.html");
+      expect(envelope.observerUrl).toMatch(/^file:/);
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/watch-sims-proof/run.json"), "utf8")
+      ) as {
+        simCount: number;
+        simulations: Array<{ id: string; status: string }>;
+      };
+      expect(bundle.simCount).toBe(4);
+      expect(bundle.simulations).toHaveLength(4);
+      expect(bundle.simulations.map((sim) => sim.id)).toEqual(["sim-01", "sim-02", "sim-03", "sim-04"]);
+    });
+  });
 });

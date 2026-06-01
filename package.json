@@ -42,7 +42,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "mimetic:doctor": "pnpm mimetic -- doctor",
     "mimetic:run": "pnpm mimetic -- run --dry-run",
-    "mimetic:watch": "pnpm mimetic -- watch --no-open",
+    "mimetic:watch": "pnpm mimetic -- watch --sims 4 --open --follow",
+    "mimetic:watch:ci": "pnpm mimetic -- watch --sims 4 --no-open --json",
+    "mimetic:dogfood": "pnpm mimetic -- watch --sims 4 --open --follow",
     "mimetic:verify": "pnpm mimetic -- verify",
     "mimetic:feedback": "pnpm mimetic -- feedback issue --repo danielgwilson/mimetic-cli"
   },

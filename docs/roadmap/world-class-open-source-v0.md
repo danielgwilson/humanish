@@ -122,7 +122,7 @@ Implement static observer over the bundle:
 Proof:
 
 ```bash
-pnpm mimetic -- watch --run latest --no-open
+pnpm mimetic -- watch --sims 4 --open --follow
 ```
 
 If browser verification is added, use screenshots of the observer as proof.
@@ -200,6 +200,14 @@ dry-run bundles read and digest `mimetic/personas/synthetic-new-user.yaml` and
 `mimetic/scenarios/first-run-smoke.yaml`, and keeps the live Codex TUI actor gap
 explicit. The live 1x/4x Codex TUI dogfood path is tracked in
 [#28](https://github.com/danielgwilson/mimetic-cli/issues/28).
+
+## Stage 6.8: One-Command Watch UX
+
+Status: implemented for synthetic contract-proof sims.
+
+`mimetic watch --sims <n> --open --follow` now creates a fresh synthetic run,
+renders Observer, opens it in the browser, and keeps the shell attached. The
+CI-safe form is `mimetic watch --sims <n> --no-open`.
 
 ## Stage 7: Local Browser And First Real Adapter
 

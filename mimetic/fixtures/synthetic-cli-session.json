@@ -4,9 +4,8 @@
   "commands": [
     "mimetic --help",
     "mimetic doctor",
-    "mimetic run --dry-run",
+    "mimetic watch --sims 4 --open --follow",
     "mimetic verify --run latest",
-    "mimetic watch --run latest --no-open",
     "mimetic feedback issue --run latest --repo danielgwilson/mimetic-cli --format markdown"
   ],
   "notes": [

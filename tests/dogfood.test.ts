@@ -30,7 +30,8 @@ describe("mimetic dogfood config", () => {
     expect(config).toContain('startCommand: "pnpm mimetic -- --help"');
     expect(adapter).toContain('id: "mimetic-cli"');
     expect(adapter).toContain("mimetic feedback issue --run latest");
-    expect(scenario).toContain("Prove that Mimetic can explain, initialize, dry-run, verify, observe, and draft feedback for itself");
+    expect(adapter).toContain("mimetic watch --sims 4 --open --follow");
+    expect(scenario).toContain("run 4 synthetic sims, open Observer, verify");
     expect(`${config}\n${adapter}\n${scenario}`).not.toContain("synthetic-app");
   });
 
@@ -42,10 +43,12 @@ describe("mimetic dogfood config", () => {
     const readme = await readFile("mimetic/README.md", "utf8");
 
     expect(packageJson.scripts["mimetic:run"]).toBe("pnpm mimetic -- run --dry-run");
-    expect(packageJson.scripts["mimetic:watch"]).toBe("pnpm mimetic -- watch --no-open");
+    expect(packageJson.scripts["mimetic:watch"]).toBe("pnpm mimetic -- watch --sims 4 --open --follow");
+    expect(packageJson.scripts["mimetic:watch:ci"]).toBe("pnpm mimetic -- watch --sims 4 --no-open --json");
+    expect(packageJson.scripts["mimetic:dogfood"]).toBe("pnpm mimetic -- watch --sims 4 --open --follow");
     expect(packageJson.scripts["mimetic:feedback"]).toBe("pnpm mimetic -- feedback issue --repo danielgwilson/mimetic-cli");
     expect(coverage).toContain("live run fails closed until actor support exists");
-    expect(readme).toContain("no real Codex TUI actor yet");
+    expect(readme).toContain("watch --sims 4 --open --follow");
     expect(readme).toContain("Generated run bundles");
   });
 
@@ -73,7 +76,7 @@ describe("mimetic dogfood config", () => {
         title: "Mimetic CLI first-run smoke",
         source: "mimetic/scenarios/first-run-smoke.yaml"
       });
-      expect(bundle.scenario.goal).toContain("Mimetic can explain, initialize, dry-run");
+      expect(bundle.scenario.goal).toContain("run 4 synthetic sims, open Observer");
       expect(bundle.persona.sourceDigest).toMatch(/^[a-f0-9]{12}$/);
       expect(bundle.scenario.sourceDigest).toMatch(/^[a-f0-9]{12}$/);
     });

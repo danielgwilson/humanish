@@ -256,7 +256,8 @@ export const runtimeDirectories: RuntimeDirectory[] = [
 export const mimeticScripts: Record<string, string> = {
   mimetic: "mimetic",
   "mimetic:doctor": "mimetic doctor",
-  "mimetic:run": "mimetic run",
-  "mimetic:watch": "mimetic watch",
+  "mimetic:run": "mimetic run --dry-run",
+  "mimetic:watch": "mimetic watch --sims 4 --open --follow",
+  "mimetic:watch:ci": "mimetic watch --sims 4 --no-open --json",
   "mimetic:verify": "mimetic verify"
 };

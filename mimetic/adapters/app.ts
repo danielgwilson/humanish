@@ -20,8 +20,8 @@ export const appAdapter = {
     },
     {
       id: "observer",
-      path: "mimetic watch --run latest --no-open --json",
-      description: "Static observer rendering over the latest run bundle."
+      path: "mimetic watch --sims 4 --open --follow",
+      description: "One-command self-run, Observer render, browser open, and shell watch."
     },
     {
       id: "feedback",

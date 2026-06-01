@@ -191,7 +191,7 @@ describe("mimetic CLI scaffold", () => {
         scripts: Record<string, string>;
       };
       expect(packageJson.scripts.mimetic).toBe("custom command");
-      expect(packageJson.scripts["mimetic:run"]).toBe("mimetic run");
+      expect(packageJson.scripts["mimetic:run"]).toBe("mimetic run --dry-run");
     });
   });
 

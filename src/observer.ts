@@ -1,5 +1,7 @@
+import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { loadRunBundle, verifyRun } from "./run.js";
 import type { RunBundle } from "./run.js";
@@ -12,7 +14,10 @@ export interface ObserverResult {
   cwd: string;
   run: string;
   observerPath?: string;
+  observerUrl?: string;
   bundlePath?: string;
+  opened?: boolean;
+  openCommand?: string;
   warnings: string[];
   error?: {
     code: "MIMETIC_RUN_NOT_FOUND" | "MIMETIC_INVALID_RUN_BUNDLE";
@@ -20,7 +25,15 @@ export interface ObserverResult {
   };
 }
 
-export async function renderObserver(cwdInput: string, runInput: string): Promise<ObserverResult> {
+export interface ObserverOptions {
+  open?: boolean;
+}
+
+export async function renderObserver(
+  cwdInput: string,
+  runInput: string,
+  options: ObserverOptions = {}
+): Promise<ObserverResult> {
   const cwd = path.resolve(cwdInput);
   const verified = await verifyRun(cwd, runInput);
 
@@ -58,18 +71,26 @@ export async function renderObserver(cwdInput: string, runInput: string): Promis
   const observerPath = path.join(observerDir, "index.html");
   await mkdir(observerDir, { recursive: true });
   await writeFile(observerPath, renderObserverHtml(loaded.bundle), "utf8");
+  const relativeObserverPath = path.relative(cwd, observerPath);
+  const observerUrl = pathToFileURL(observerPath).href;
+  const openResult = options.open === true ? openFile(observerPath) : { opened: false };
+  const warnings = [
+    "Static observer is generated from bundle evidence only.",
+    "Dry-run observer does not claim product behavior proof.",
+    ...(openResult.warning ? [openResult.warning] : [])
+  ];
 
   return {
     schema: OBSERVER_SCHEMA,
     ok: true,
     cwd,
     run: runInput,
-    observerPath: path.relative(cwd, observerPath),
+    observerPath: relativeObserverPath,
+    observerUrl,
     bundlePath: loaded.bundlePath,
-    warnings: [
-      "Static observer is generated from bundle evidence only.",
-      "Dry-run observer does not claim product behavior proof."
-    ]
+    opened: openResult.opened,
+    ...(openResult.command ? { openCommand: openResult.command } : {}),
+    warnings
   };
 }
 
@@ -81,6 +102,10 @@ function renderObserverHtml(bundle: RunBundle): string {
   const feedback = bundle.feedbackCandidates.length === 0
     ? "<p>No feedback candidates in this dry-run bundle.</p>"
     : `<pre>${escapeHtml(JSON.stringify(bundle.feedbackCandidates, null, 2))}</pre>`;
+  const simulations = bundle.simulations ?? [];
+  const simulationItems = simulations
+    .map((sim) => `<li><strong>${escapeHtml(sim.id)}</strong><span>${escapeHtml(sim.personaId)} / ${escapeHtml(sim.scenarioId)}</span><span>${escapeHtml(sim.status)}</span></li>`)
+    .join("\n");
 
   return `<!doctype html>
 <html lang="en">
@@ -174,6 +199,7 @@ function renderObserverHtml(bundle: RunBundle): string {
         <div class="meta">
           ${field("Run", bundle.runId)}
           ${field("Mode", bundle.mode)}
+          ${field("Sims", String(bundle.simCount ?? simulations.length))}
           ${field("Scenario", bundle.scenario.id)}
           ${field("Persona", bundle.persona.id)}
           ${field("Redaction", bundle.redaction.status)}
@@ -188,6 +214,12 @@ function renderObserverHtml(bundle: RunBundle): string {
         <h2>Lifecycle</h2>
         <ul class="timeline">
           ${lifecycle}
+        </ul>
+      </section>
+      <section>
+        <h2>Simulations</h2>
+        <ul class="timeline">
+          ${simulationItems || "<li><strong>legacy</strong><span>No simulation list in this bundle.</span><span>unknown</span></li>"}
         </ul>
       </section>
       <section>
@@ -208,6 +240,51 @@ function renderObserverHtml(bundle: RunBundle): string {
   </body>
 </html>
 `;
+}
+
+function openFile(filePath: string): { opened: boolean; command?: string; warning?: string } {
+  const command = openCommand(filePath);
+  if (!command) {
+    return {
+      opened: false,
+      warning: `Automatic browser open is not supported on ${process.platform}; use observerPath.`
+    };
+  }
+
+  try {
+    const child = spawn(command.command, command.args, {
+      detached: true,
+      stdio: "ignore"
+    });
+    child.on("error", () => undefined);
+    child.unref();
+    return {
+      opened: true,
+      command: [command.command, ...command.args].join(" ")
+    };
+  } catch (error) {
+    return {
+      opened: false,
+      command: [command.command, ...command.args].join(" "),
+      warning: `Automatic browser open failed: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
+
+function openCommand(filePath: string): { command: string; args: string[] } | null {
+  if (process.platform === "darwin") {
+    return { command: "open", args: [filePath] };
+  }
+
+  if (process.platform === "win32") {
+    return { command: "cmd", args: ["/c", "start", "", filePath] };
+  }
+
+  if (process.platform === "linux") {
+    return { command: "xdg-open", args: [filePath] };
+  }
+
+  return null;
 }
 
 function field(label: string, value: string): string {
