@@ -2,7 +2,7 @@
 
 Date: 2026-06-01
 
-Status: draft contract for future `mimetic feedback` commands.
+Status: v0 dry-run contract implemented for local issue draft generation.
 
 ## Purpose
 

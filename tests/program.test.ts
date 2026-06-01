@@ -225,7 +225,7 @@ describe("mimetic CLI scaffold", () => {
     });
   });
 
-  it("does not imply GitHub mutation for feedback issue output", async () => {
+  it("fails closed for feedback issue output when no run bundle exists", async () => {
     const result = await runCli([
       "feedback",
       "issue",
@@ -239,23 +239,22 @@ describe("mimetic CLI scaffold", () => {
     ]);
 
     const envelope = JSON.parse(result.stdout) as {
-      command: string;
-      capabilities: { githubMutation: boolean };
-      issue: string;
+      ok: boolean;
+      error: { code: string };
+      schema: string;
     };
 
     expect(result.exitCode).toBe(2);
-    expect(envelope.command).toBe("feedback issue");
-    expect(envelope.capabilities.githubMutation).toBe(false);
-    expect(envelope.issue).toBe("https://github.com/danielgwilson/mimetic-cli/issues/5");
+    expect(envelope.schema).toBe("mimetic.feedback-result.v1");
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error.code).toBe("MIMETIC_RUN_NOT_FOUND");
   });
 
-  it("writes human unsupported-command output to stderr", async () => {
+  it("keeps feedback draft fail-closed without a run bundle", async () => {
     const result = await runCli(["feedback", "draft", "--run", "latest"]);
 
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("mimetic feedback draft is planned but not implemented yet.");
-    expect(result.stderr).toContain("does not mutate GitHub");
+    expect(result.stdout).toContain("MIMETIC_RUN_NOT_FOUND");
+    expect(result.stderr).toBe("");
   });
 });

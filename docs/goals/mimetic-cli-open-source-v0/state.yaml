@@ -22,7 +22,7 @@ tasks:
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/10"
     description: "Render static observer over synthetic bundle."
   - id: feedback-issue
-    status: pending
+    status: completed
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/5"
     description: "Generate public-safe GitHub issue draft without mutation."
   - id: fixture-app
@@ -85,9 +85,21 @@ receipts:
     proof_commands:
       - "pnpm check"
       - "pnpm mimetic -- watch --run latest --no-open --json --cwd <fixture-copy>"
+  - id: feedback-issue-2026-06-01
+    task: feedback-issue
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/5"
+    branch: feedback-draft
+    summary: "Implemented bundle-local feedback draft, verification, public-safe Markdown issue body, and prefilled issue URL generation without GitHub API mutation."
+    proof_commands:
+      - "pnpm check"
+      - "pnpm mimetic -- run --dry-run --run-id feedback-proof --json --cwd <fixture-copy>"
+      - "pnpm mimetic -- feedback draft --run latest --json --cwd <fixture-copy>"
+      - "pnpm mimetic -- feedback verify --run latest --json --cwd <fixture-copy>"
+      - "pnpm mimetic -- feedback issue --run latest --repo example/app --format markdown --cwd <fixture-copy>"
+      - "pnpm mimetic -- feedback issue-url --run latest --repo example/app --json --cwd <fixture-copy>"
 verification:
   status: partial
-  last_command: "pnpm mimetic -- watch --run latest --no-open --json --cwd <fixture-copy>"
-  last_artifact: "synthetic .mimetic/runs/<run-id>/observer/index.html in temp fixture copy"
+  last_command: "pnpm mimetic -- feedback issue --run latest --repo example/app --format markdown --cwd <fixture-copy>"
+  last_artifact: "synthetic .mimetic/runs/<run-id>/feedback/{draft.json,issue.md} in temp fixture copy"
 completion_audit:
   status: pending
