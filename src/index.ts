@@ -1,6 +1,8 @@
 export { normalizeCliArgv } from "./argv.js";
 export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
 export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
+export { OBSERVER_SCHEMA, renderObserver } from "./observer.js";
+export type { ObserverResult } from "./observer.js";
 export {
   DOCTOR_SCHEMA,
   REVIEW_SCHEMA,

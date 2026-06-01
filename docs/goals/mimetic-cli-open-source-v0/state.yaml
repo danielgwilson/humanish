@@ -18,7 +18,7 @@ tasks:
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/7"
     description: "Validate bundle and build first review packet."
   - id: observer
-    status: pending
+    status: completed
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/10"
     description: "Render static observer over synthetic bundle."
   - id: feedback-issue
@@ -77,9 +77,17 @@ receipts:
       - "pnpm mimetic -- verify --run latest --json --cwd <fixture-copy>"
       - "pnpm mimetic -- review --run latest --json --cwd <fixture-copy>"
       - "pnpm mimetic -- runs --json --cwd <fixture-copy>"
+  - id: observer-2026-06-01
+    task: observer
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/10"
+    branch: observer-render
+    summary: "Implemented static observer rendering from verified dry-run bundles to .mimetic/runs/<run-id>/observer/index.html."
+    proof_commands:
+      - "pnpm check"
+      - "pnpm mimetic -- watch --run latest --no-open --json --cwd <fixture-copy>"
 verification:
   status: partial
-  last_command: "pnpm mimetic -- verify --run latest --json --cwd <fixture-copy>"
-  last_artifact: "synthetic .mimetic/runs/<run-id>/run.json, review.json, review.md, and latest.json in temp fixture copy"
+  last_command: "pnpm mimetic -- watch --run latest --no-open --json --cwd <fixture-copy>"
+  last_artifact: "synthetic .mimetic/runs/<run-id>/observer/index.html in temp fixture copy"
 completion_audit:
   status: pending

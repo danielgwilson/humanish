@@ -57,6 +57,6 @@ feedback issue drafts are tracked in the roadmap and GitHub issue queue.
 ## Status
 
 Package scaffold, safe `mimetic init` layout work, a minimal synthetic target
-app fixture, and synthetic dry-run bundle verification are in progress.
-Implementation should start from source comparison and contract design, not a
-from-scratch rewrite.
+app fixture, synthetic dry-run bundle verification, and static observer
+rendering are in progress. Implementation should start from source comparison
+and contract design, not a from-scratch rewrite.
