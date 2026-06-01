@@ -51,6 +51,7 @@ unimplemented.
 - [GitHub feedback loop architecture](docs/architecture/github-feedback-loop.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Open-source install experience](docs/product/open-source-install-experience.md)
+- [Agent skill entrypoint](docs/skill/mimetic-cli/SKILL.md)
 - [Project layout contract](docs/architecture/project-layout.md)
 - [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
 - [Mimetic CLI open-source v0 goal](docs/goals/mimetic-cli-open-source-v0/goal.md)
