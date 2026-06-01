@@ -330,6 +330,31 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
   };
 }
 
+export async function loadRunBundle(
+  cwdInput: string,
+  runInput: string
+): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
+  const cwd = path.resolve(cwdInput);
+  const resolved = await resolveRunPath(cwd, runInput);
+
+  if (!resolved) {
+    return null;
+  }
+
+  const bundlePath = path.join(resolved, "run.json");
+  const bundle = await readJsonIfExists(bundlePath);
+
+  if (!isRunBundle(bundle)) {
+    return null;
+  }
+
+  return {
+    bundle,
+    bundlePath: path.relative(cwd, bundlePath),
+    runDir: resolved
+  };
+}
+
 export async function listRuns(cwdInput: string): Promise<RunsResult> {
   const cwd = path.resolve(cwdInput);
   const runsRoot = path.join(cwd, ".mimetic", "runs");
@@ -560,6 +585,18 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 function containsSensitivePattern(text: string): boolean {
   return sensitivePatterns.some((pattern) => pattern.test(text));
+}
+
+function isRunBundle(value: unknown): value is RunBundle {
+  return isRecord(value)
+    && value.schema === RUN_BUNDLE_SCHEMA
+    && typeof value.runId === "string"
+    && value.mode === "dry-run"
+    && typeof value.createdAt === "string"
+    && isRecord(value.review)
+    && isReviewSummary(value.review)
+    && isRecord(value.redaction)
+    && value.redaction.status === "passed";
 }
 
 function isReviewSummary(value: unknown): value is ReviewSummary {

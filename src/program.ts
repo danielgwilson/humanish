@@ -2,6 +2,8 @@ import { Command } from "commander";
 
 import { runInit } from "./init.js";
 import type { InitChange, InitResult } from "./init.js";
+import { renderObserver } from "./observer.js";
+import type { ObserverResult } from "./observer.js";
 import {
   doctor,
   listRuns,
@@ -194,8 +196,9 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerVerifyCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
+  registerWatchCommand(program, cliIo);
 
-  const implementedCommands = new Set(["init", "doctor", "run", "verify", "review", "runs"]);
+  const implementedCommands = new Set(["init", "doctor", "run", "verify", "review", "runs", "watch"]);
   for (const plannedCommand of plannedCommands.filter((command) => !implementedCommands.has(command.name))) {
     registerUnsupportedCommand(program, plannedCommand, cliIo);
   }
@@ -315,6 +318,30 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
     });
 }
 
+function registerWatchCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("watch")
+    .description("Open or render the local observer for a run bundle.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--no-open", "Render without opening a browser.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; json?: boolean; open?: boolean; run: string }, command) => {
+      const result = await renderObserver(options.cwd, options.run);
+      const resultWithOpenWarning = options.open === false
+        ? result
+        : {
+            ...result,
+            warnings: [
+              ...result.warnings,
+              "Automatic browser open is not implemented yet; use observerPath."
+            ]
+          };
+      writeResult(command, io, resultWithOpenWarning, formatObserverHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
 function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
   if (wantsJson(command)) {
     io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
@@ -361,6 +388,20 @@ function formatRunsHuman(result: RunsResult): string {
   return [
     `latest: ${result.latest ?? "none"}`,
     ...result.runs.map((run) => `- ${run.runId} ${run.mode ?? "unknown"} ${run.createdAt ?? "unknown"} ${run.path}`)
+  ].join("\n") + "\n";
+}
+
+function formatObserverHuman(result: ObserverResult): string {
+  if (!result.ok) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
+  return [
+    "mimetic observer rendered",
+    `run: ${result.run}`,
+    `observer: ${result.observerPath}`,
+    `bundle: ${result.bundlePath}`,
+    ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }
 
