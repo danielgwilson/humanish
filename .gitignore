@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# build and caches
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# proof/runtime artifacts
+artifacts/proof/
+proof/
+.e2b/
+
+# env and secrets
+.env*
+!.env.example
+
+# local worktrees if someone creates them inside the repo by mistake
+.worktrees/
+worktrees/
+
+# OS/editor noise
+.DS_Store
+*.log
