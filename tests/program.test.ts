@@ -226,35 +226,45 @@ describe("mimetic CLI scaffold", () => {
   });
 
   it("fails closed for feedback issue output when no run bundle exists", async () => {
-    const result = await runCli([
-      "feedback",
-      "issue",
-      "--run",
-      "latest",
-      "--repo",
-      "example/app",
-      "--format",
-      "markdown",
-      "--json"
-    ]);
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2)
+    }, async (cwd) => {
+      const result = await runCli([
+        "feedback",
+        "issue",
+        "--run",
+        "latest",
+        "--repo",
+        "example/app",
+        "--format",
+        "markdown",
+        "--cwd",
+        cwd,
+        "--json"
+      ]);
 
-    const envelope = JSON.parse(result.stdout) as {
-      ok: boolean;
-      error: { code: string };
-      schema: string;
-    };
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        error: { code: string };
+        schema: string;
+      };
 
-    expect(result.exitCode).toBe(2);
-    expect(envelope.schema).toBe("mimetic.feedback-result.v1");
-    expect(envelope.ok).toBe(false);
-    expect(envelope.error.code).toBe("MIMETIC_RUN_NOT_FOUND");
+      expect(result.exitCode).toBe(2);
+      expect(envelope.schema).toBe("mimetic.feedback-result.v1");
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe("MIMETIC_RUN_NOT_FOUND");
+    });
   });
 
   it("keeps feedback draft fail-closed without a run bundle", async () => {
-    const result = await runCli(["feedback", "draft", "--run", "latest"]);
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2)
+    }, async (cwd) => {
+      const result = await runCli(["feedback", "draft", "--run", "latest", "--cwd", cwd]);
 
-    expect(result.exitCode).toBe(2);
-    expect(result.stdout).toContain("MIMETIC_RUN_NOT_FOUND");
-    expect(result.stderr).toBe("");
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).toContain("MIMETIC_RUN_NOT_FOUND");
+      expect(result.stderr).toBe("");
+    });
   });
 });

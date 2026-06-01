@@ -1,0 +1,13 @@
+schema: mimetic.review-vocabulary.v1
+verdicts:
+  - pass
+  - fail
+  - blocked
+  - needs_evidence
+labels:
+  friction: User-visible friction.
+  gap: Missing evidence or missing coverage.
+  public_safety: Potential privacy, secret, or public-boundary issue.
+  dogfood: Mimetic using its own CLI, observer, and feedback contracts.
+  live_actor_gap: Real Codex TUI or provider-backed actor support is not implemented yet.
+  release_gate: Publish remains blocked on explicit Daniel approval.

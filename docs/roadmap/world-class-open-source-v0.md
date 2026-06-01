@@ -190,6 +190,17 @@ Readiness lives in
 The package keeps `private: true` and `UNLICENSED` until the human license gate
 is cleared.
 
+## Stage 6.75: Self-Dogfood Config
+
+Status: implemented for dry-run contract proof.
+
+The repository now includes committed `mimetic/` source files so Mimetic can run
+against `mimetic-cli` itself. This makes `doctor` green on the repo, lets
+dry-run bundles read and digest `mimetic/personas/synthetic-new-user.yaml` and
+`mimetic/scenarios/first-run-smoke.yaml`, and keeps the live Codex TUI actor gap
+explicit. The live 1x/4x Codex TUI dogfood path is tracked in
+[#28](https://github.com/danielgwilson/mimetic-cli/issues/28).
+
 ## Stage 7: Local Browser And First Real Adapter
 
 Only after the package and dry-run path are stable:

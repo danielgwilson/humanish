@@ -14,6 +14,10 @@ private product artifacts. Use synthetic or redacted examples only.
 
 The intended shape is adapter-first: core packages provide the durable simulation machinery, while product adapters define app topology, routes, personas, scenarios, milestones, runtime commands, and review vocabulary.
 
+This repo dogfoods Mimetic through committed [`mimetic/`](mimetic/) source
+files. Current self-runs are dry-run contract proof only; real Codex TUI actors,
+4x fanout, and live observer streaming are the next capability ladder.
+
 ## Local Layout
 
 ```text
@@ -76,6 +80,6 @@ unimplemented.
 
 Package scaffold, safe `mimetic init` layout work, a minimal synthetic target
 app fixture, synthetic dry-run bundle verification, static observer rendering,
-and public-safe feedback issue drafts are implemented for the dry-run v0 slice.
-Implementation should continue from source comparison and contract design, not a
-from-scratch rewrite.
+public-safe feedback issue drafts, and repo self-dogfood config are implemented
+for the dry-run v0 slice. Implementation should continue from source comparison
+and contract design, not a from-scratch rewrite.

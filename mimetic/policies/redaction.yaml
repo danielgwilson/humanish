@@ -1,0 +1,14 @@
+schema: mimetic.redaction-policy.v1
+deny:
+  - pii
+  - phi
+  - secrets
+  - tokens
+  - raw_private_transcripts
+  - private_screenshots
+  - customer_data
+  - patient_data
+allow:
+  - synthetic_personas
+  - synthetic_fixtures
+  - env_var_names

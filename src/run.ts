@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -31,11 +31,16 @@ export interface RunBundle {
   };
   persona: {
     id: string;
+    name: string;
     source: string;
+    sourceDigest: string;
   };
   scenario: {
     id: string;
+    title: string;
+    goal: string;
     source: string;
+    sourceDigest: string;
   };
   lifecycle: Array<{
     at: string;
@@ -133,6 +138,21 @@ const sensitivePatterns = [
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
 ];
 
+const builtinPersona = {
+  id: "builtin-synthetic-new-user",
+  name: "Built-in Synthetic New User",
+  source: "builtin:synthetic-new-user",
+  sourceDigest: "builtin"
+};
+
+const builtinScenario = {
+  id: "builtin-first-run-smoke",
+  title: "Built-in First-Run Smoke",
+  goal: "Create a public-safe dry-run contract bundle from built-in defaults.",
+  source: "builtin:first-run-smoke",
+  sourceDigest: "builtin"
+};
+
 export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const cwd = path.resolve(options.cwd);
   const cwdError = await validateCwd(cwd);
@@ -168,10 +188,12 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const absoluteArtifactRoot = path.join(cwd, artifactRoot);
   const packageName = await readPackageName(cwd);
   const mimeticSource = await directoryExists(path.join(cwd, "mimetic")) ? "present" : "missing";
+  const selection = await loadDryRunSelection(cwd, mimeticSource);
 
   if (mimeticSource === "missing") {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic dry-run defaults.");
   }
+  warnings.push(...selection.warnings);
 
   const bundle: RunBundle = {
     schema: RUN_BUNDLE_SCHEMA,
@@ -188,18 +210,8 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
         note: "Source git state capture is planned for the core primitives slice."
       }
     },
-    persona: {
-      id: mimeticSource === "present" ? "synthetic-new-user" : "builtin-synthetic-new-user",
-      source: mimeticSource === "present"
-        ? "mimetic/personas/synthetic-new-user.yaml"
-        : "builtin:synthetic-new-user"
-    },
-    scenario: {
-      id: mimeticSource === "present" ? "first-run-smoke" : "builtin-first-run-smoke",
-      source: mimeticSource === "present"
-        ? "mimetic/scenarios/first-run-smoke.yaml"
-        : "builtin:first-run-smoke"
-    },
+    persona: selection.persona,
+    scenario: selection.scenario,
     lifecycle: [
       {
         at: createdAt,
@@ -460,6 +472,59 @@ function createReviewSummary(): ReviewSummary {
   };
 }
 
+async function loadDryRunSelection(
+  cwd: string,
+  mimeticSource: "present" | "missing"
+): Promise<{
+  persona: RunBundle["persona"];
+  scenario: RunBundle["scenario"];
+  warnings: string[];
+}> {
+  const warnings: string[] = [];
+
+  if (mimeticSource === "missing") {
+    return {
+      persona: builtinPersona,
+      scenario: builtinScenario,
+      warnings
+    };
+  }
+
+  const personaPath = "mimetic/personas/synthetic-new-user.yaml";
+  const scenarioPath = "mimetic/scenarios/first-run-smoke.yaml";
+  const personaText = await readTextIfExists(path.join(cwd, personaPath));
+  const scenarioText = await readTextIfExists(path.join(cwd, scenarioPath));
+
+  if (personaText === null) {
+    warnings.push(`${personaPath} was not found; using built-in persona defaults.`);
+  }
+
+  if (scenarioText === null) {
+    warnings.push(`${scenarioPath} was not found; using built-in scenario defaults.`);
+  }
+
+  return {
+    persona: personaText === null
+      ? builtinPersona
+      : {
+          id: readYamlScalar(personaText, "id") ?? "synthetic-new-user",
+          name: readYamlScalar(personaText, "name") ?? "Synthetic New User",
+          source: personaPath,
+          sourceDigest: digestText(personaText)
+        },
+    scenario: scenarioText === null
+      ? builtinScenario
+      : {
+          id: readYamlScalar(scenarioText, "id") ?? "first-run-smoke",
+          title: readYamlScalar(scenarioText, "title") ?? "First-run smoke",
+          goal: readYamlScalar(scenarioText, "goal") ?? "Run a public-safe first-run smoke scenario.",
+          source: scenarioPath,
+          sourceDigest: digestText(scenarioText)
+        },
+    warnings
+  };
+}
+
 function renderReviewMarkdown(bundle: RunBundle): string {
   return `# Mimetic Dry-Run Review
 
@@ -478,6 +543,23 @@ ${bundle.review.summary}
 
 ${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
 `;
+}
+
+function readYamlScalar(text: string, key: string): string | null {
+  const match = text.match(new RegExp(`^${escapeRegExp(key)}:\\s*(.+?)\\s*$`, "m"));
+  if (!match?.[1]) {
+    return null;
+  }
+
+  return match[1].replace(/^["']|["']$/g, "");
+}
+
+function digestText(text: string): string {
+  return createHash("sha256").update(text).digest("hex").slice(0, 12);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function resolveRunPath(cwd: string, runInput: string): Promise<string | null> {

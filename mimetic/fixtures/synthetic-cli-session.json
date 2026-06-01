@@ -1,0 +1,17 @@
+{
+  "schema": "mimetic.synthetic-fixture.v1",
+  "kind": "cli-session",
+  "commands": [
+    "mimetic --help",
+    "mimetic doctor",
+    "mimetic run --dry-run",
+    "mimetic verify --run latest",
+    "mimetic watch --run latest --no-open",
+    "mimetic feedback issue --run latest --repo danielgwilson/mimetic-cli --format markdown"
+  ],
+  "notes": [
+    "Synthetic fixture only.",
+    "Do not replace with real terminal transcripts.",
+    "Do not include real credentials or source-system artifacts."
+  ]
+}

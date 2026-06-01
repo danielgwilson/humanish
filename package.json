@@ -39,7 +39,12 @@
     "pack:dry-run": "pnpm build && npm pack --dry-run",
     "release:check": "pnpm check && npm pack --dry-run",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "mimetic:doctor": "pnpm mimetic -- doctor",
+    "mimetic:run": "pnpm mimetic -- run --dry-run",
+    "mimetic:watch": "pnpm mimetic -- watch --no-open",
+    "mimetic:verify": "pnpm mimetic -- verify",
+    "mimetic:feedback": "pnpm mimetic -- feedback issue --repo danielgwilson/mimetic-cli"
   },
   "repository": {
     "type": "git",

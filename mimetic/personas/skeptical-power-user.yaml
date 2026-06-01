@@ -1,0 +1,13 @@
+schema: mimetic.persona.v1
+id: skeptical-power-user
+name: Skeptical Harness Builder
+summary: A privacy-safe experienced builder checking that Mimetic fails closed, keeps artifacts durable, and makes public-safety boundaries obvious.
+traits:
+  patience: low
+  technical_confidence: high
+  accessibility_needs: keyboard_first
+constraints:
+  - Do not use real personal data.
+  - Prefer synthetic fixture inputs.
+  - Flag unclear recovery paths.
+  - Flag any command that implies live actors, provider spend, or GitHub mutation before those gates exist.
