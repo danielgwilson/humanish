@@ -26,7 +26,7 @@ tasks:
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/5"
     description: "Generate public-safe GitHub issue draft without mutation."
   - id: fixture-app
-    status: pending
+    status: completed
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/16"
     description: "Create a synthetic target app fixture for init/dry-run/verify/observer proof."
   - id: skill
@@ -57,9 +57,18 @@ receipts:
       - "pnpm check"
       - "pnpm mimetic -- init --dry-run --json"
       - "temporary fixture: pnpm mimetic -- init --yes --json --cwd <fixture>"
+  - id: fixture-app-2026-06-01
+    task: fixture-app
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/16"
+    branch: fixture-app
+    summary: "Added a committed synthetic minimal target app fixture plus tests proving init dry-run and temp-copy init apply behavior without committing runtime artifacts."
+    proof_commands:
+      - "pnpm test"
+      - "pnpm check"
+      - "pnpm mimetic -- init --dry-run --json --cwd fixtures/minimal-app"
 verification:
   status: partial
-  last_command: "temporary fixture: pnpm mimetic -- init --yes --json --cwd <fixture>"
-  last_artifact: "generated fixture tree and .gitignore/package.json proof"
+  last_command: "pnpm mimetic -- init --dry-run --json --cwd fixtures/minimal-app"
+  last_artifact: "fixtures/minimal-app and fixture-backed init tests"
 completion_audit:
   status: pending
