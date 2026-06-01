@@ -19,7 +19,7 @@ It should produce public-safe issue drafts and filing instructions by default.
 
 Created user project:
 
-- Title: `Mimetic Control Plane`
+- Title: `mimetic-cli`
 - URL: `https://github.com/users/danielgwilson/projects/5`
 - Linked repo: `danielgwilson/mimetic-cli`
 
@@ -97,4 +97,3 @@ verified run bundle
 Optional maintainer tooling can later consume the same schema to mutate GitHub,
 but it should remain token-explicit, dry-run first, and separate from the public
 CLI.
-
