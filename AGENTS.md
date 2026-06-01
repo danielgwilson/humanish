@@ -4,6 +4,26 @@ This repository is the incubator for `mimetic-cli`: a generalizable simulation a
 
 Read this before making repo changes.
 
+## Future-Public Boundary
+
+Assume this repository will eventually become public.
+
+Hard rule: never commit, paste, preserve, or generate PII, PHI, secrets, keys,
+tokens, raw private transcripts, private customer data, private patient data, or
+private source snippets from source products into this repo.
+
+- Use synthetic personas, synthetic emails, synthetic screenshots, and redacted
+  proof examples only.
+- Do not copy `.env*`, local credential files, hosted logs with identifiers, or
+  artifact bundles that may contain sensitive user data.
+- Do not let multi-app harness, web-app harness, terminal/product harness, private organization, or private
+  context leak into generic docs, examples, issue bodies, fixtures, tests, or
+  observer screenshots.
+- If an artifact might contain PII, PHI, credentials, or private operational
+  context, summarize the shape and keep the raw artifact outside this repo.
+- Future public usefulness beats private convenience. When in doubt, redact,
+  synthesize, or stop and ask.
+
 ## Mission
 
 - Build a reusable CLI and harness standard for self-driving product simulation.

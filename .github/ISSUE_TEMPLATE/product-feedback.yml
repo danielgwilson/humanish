@@ -1,0 +1,67 @@
+name: Product feedback
+description: Evidence-backed feedback from a Mimetic run or human review
+title: "[feedback] "
+labels:
+  - product-feedback
+  - proof-required
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include PII, PHI, secrets, keys, tokens, raw private transcripts, private screenshots, or private customer/patient data.
+        Use redacted artifact pointers and synthetic examples only.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, in one or two concrete sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: feedback-block
+    attributes:
+      label: mimetic_feedback block
+      description: Fill this from `mimetic feedback draft` when available.
+      value: |
+        ```yaml
+        mimetic_feedback:
+          schema: mimetic.feedback.v1
+          run_id:
+          adapter_id:
+          scenario_id:
+          persona_id:
+          actor:
+          substrate:
+          failure_owner:
+          source_bundle:
+          evidence: []
+          redaction:
+            status:
+            notes:
+          idempotency_key:
+          proposed_next_state: watch
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What should the persona or user have been able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What did the evidence show?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance proof
+      description: What proof would close this?
+    validations:
+      required: true
+
