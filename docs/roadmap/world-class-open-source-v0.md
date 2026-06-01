@@ -129,6 +129,8 @@ If browser verification is added, use screenshots of the observer as proof.
 
 ## Stage 5: Feedback Issue Draft
 
+Status: implemented for the synthetic dry-run bundle path.
+
 Implement:
 
 ```bash

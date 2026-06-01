@@ -1,5 +1,13 @@
 import { Command } from "commander";
 
+import {
+  draftFeedback,
+  listFeedback,
+  renderIssueMarkdown,
+  renderIssueUrl,
+  verifyFeedback
+} from "./feedback.js";
+import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
 import type { InitChange, InitResult } from "./init.js";
 import { renderObserver } from "./observer.js";
@@ -133,39 +141,6 @@ export const plannedCommands: PlannedCommand[] = [
   }
 ];
 
-const feedbackCommands: PlannedCommand[] = [
-  {
-    name: "draft",
-    description: "Generate a public-safe feedback draft from verified evidence.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/5",
-    docs: ["docs/contracts/feedback.md", "docs/architecture/github-feedback-loop.md", ...commonDocs],
-    options: [
-      { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" }
-    ]
-  },
-  {
-    name: "issue",
-    description: "Print Markdown for a public GitHub issue. Does not mutate GitHub.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/5",
-    docs: ["docs/contracts/feedback.md", "docs/architecture/github-feedback-loop.md", ...commonDocs],
-    options: [
-      { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" },
-      { flags: "--repo <owner/repo>", description: "Repository slug used in rendered filing instructions." },
-      { flags: "--format <format>", description: "Output format.", defaultValue: "markdown" }
-    ]
-  },
-  {
-    name: "issue-url",
-    description: "Print a prefilled public issue URL. Does not mutate GitHub.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/5",
-    docs: ["docs/contracts/feedback.md", "docs/architecture/github-feedback-loop.md", ...commonDocs],
-    options: [
-      { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" },
-      { flags: "--repo <owner/repo>", description: "Repository slug used in the generated URL." }
-    ]
-  }
-];
-
 export function createProgram(io: Partial<CliIo> = {}): Command {
   const cliIo: CliIo = { ...defaultIo, ...io };
   const program = new Command();
@@ -203,16 +178,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
     registerUnsupportedCommand(program, plannedCommand, cliIo);
   }
 
-  const feedback = program
-    .command("feedback")
-    .description("Create public-safe feedback drafts without GitHub API mutation.");
-
-  for (const plannedCommand of feedbackCommands) {
-    registerUnsupportedCommand(feedback, {
-      ...plannedCommand,
-      name: `feedback ${plannedCommand.name}`
-    }, cliIo, plannedCommand.name);
-  }
+  registerFeedbackCommands(program, cliIo);
 
   return program;
 }
@@ -342,6 +308,95 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     });
 }
 
+function registerFeedbackCommands(parent: Command, io: CliIo): void {
+  const feedback = parent
+    .command("feedback")
+    .description("Create public-safe feedback drafts without GitHub API mutation.");
+
+  feedback
+    .command("list")
+    .description("List feedback draft state for a run.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
+      const result = await listFeedback(options.cwd, options.run);
+      writeResult(command, io, result, formatFeedbackHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  feedback
+    .command("draft")
+    .description("Generate a public-safe feedback draft from verified evidence.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
+      const result = await draftFeedback(options.cwd, options.run);
+      writeResult(command, io, result, formatFeedbackHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  feedback
+    .command("verify")
+    .description("Verify the feedback draft for public issue eligibility.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
+      const result = await verifyFeedback(options.cwd, options.run);
+      writeResult(command, io, result, formatFeedbackHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  feedback
+    .command("issue")
+    .description("Print Markdown for a public GitHub issue. Does not mutate GitHub.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .requiredOption("--repo <owner/repo>", "Repository slug used in rendered filing instructions.")
+    .option("--format <format>", "Output format.", "markdown")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
+      const result = await renderIssueMarkdown(options.cwd, options.run, options.repo);
+
+      if (wantsJson(command)) {
+        io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+      } else if (options.format !== "markdown") {
+        io.writeErr("Only --format markdown is supported.\n");
+        io.setExitCode(2);
+        return;
+      } else if (result.ok && result.issueMarkdown) {
+        io.writeOut(result.issueMarkdown);
+      } else {
+        io.writeErr(formatFeedbackHuman(result));
+      }
+
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  feedback
+    .command("issue-url")
+    .description("Print a prefilled public issue URL. Does not mutate GitHub.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .requiredOption("--repo <owner/repo>", "Repository slug used in the generated URL.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; json?: boolean; repo: string; run: string }, command) => {
+      const result = await renderIssueUrl(options.cwd, options.run, options.repo);
+
+      if (wantsJson(command)) {
+        io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+      } else if (result.ok && result.issueUrl) {
+        io.writeOut(`${result.issueUrl}\n`);
+      } else {
+        io.writeErr(formatFeedbackHuman(result));
+      }
+
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
 function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
   if (wantsJson(command)) {
     io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
@@ -402,6 +457,19 @@ function formatObserverHuman(result: ObserverResult): string {
     `observer: ${result.observerPath}`,
     `bundle: ${result.bundlePath}`,
     ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatFeedbackHuman(result: FeedbackResult): string {
+  if (!result.ok) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
+  return [
+    "mimetic feedback ready",
+    `run: ${result.run}`,
+    ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
+    ...(result.issuePath ? [`issue: ${result.issuePath}`] : [])
   ].join("\n") + "\n";
 }
 

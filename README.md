@@ -37,9 +37,10 @@ pnpm check
 pnpm mimetic -- --help
 ```
 
-The current CLI shell intentionally registers planned commands and fails closed
-for unsupported behavior. Real `init`, dry-run bundles, observer rendering, and
-feedback issue drafts are tracked in the roadmap and GitHub issue queue.
+The current CLI implements safe `init`, synthetic dry-run bundles, verification,
+static observer rendering, and public-safe feedback issue drafts. Live browser
+execution, provider-backed actors, and GitHub mutation remain intentionally
+unimplemented.
 
 ## Current Design Notes
 
@@ -57,6 +58,7 @@ feedback issue drafts are tracked in the roadmap and GitHub issue queue.
 ## Status
 
 Package scaffold, safe `mimetic init` layout work, a minimal synthetic target
-app fixture, synthetic dry-run bundle verification, and static observer
-rendering are in progress. Implementation should start from source comparison
-and contract design, not a from-scratch rewrite.
+app fixture, synthetic dry-run bundle verification, static observer rendering,
+and public-safe feedback issue drafts are implemented for the dry-run v0 slice.
+Implementation should continue from source comparison and contract design, not a
+from-scratch rewrite.

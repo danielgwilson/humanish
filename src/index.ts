@@ -1,4 +1,14 @@
 export { normalizeCliArgv } from "./argv.js";
+export {
+  FEEDBACK_RESULT_SCHEMA,
+  FEEDBACK_SCHEMA,
+  draftFeedback,
+  listFeedback,
+  renderIssueMarkdown,
+  renderIssueUrl,
+  verifyFeedback
+} from "./feedback.js";
+export type { FeedbackDraft, FeedbackResult } from "./feedback.js";
 export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
 export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
 export { OBSERVER_SCHEMA, renderObserver } from "./observer.js";

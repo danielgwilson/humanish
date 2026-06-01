@@ -2,7 +2,8 @@
 
 Date: 2026-06-01
 
-Status: design note. No implementation exists yet.
+Status: design note. The v0 dry-run issue draft path is implemented locally;
+live GitHub mutation remains out of scope.
 
 ## Goal
 
