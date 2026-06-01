@@ -1,0 +1,46 @@
+objective: "Build the first open-source-safe mimetic-cli v0 slice."
+active_task: null
+tasks:
+  - id: package-scaffold
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/13"
+    description: "Add npm package scaffold, commander CLI, tests, and check scripts."
+  - id: init-layout
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/14"
+    description: "Implement safe init with committed mimetic/ and ignored .mimetic/."
+  - id: dry-run-bundle
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7"
+    description: "Generate synthetic dry-run bundle and history pointer."
+  - id: verify-review
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7"
+    description: "Validate bundle and build first review packet."
+  - id: observer
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/10"
+    description: "Render static observer over synthetic bundle."
+  - id: feedback-issue
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/5"
+    description: "Generate public-safe GitHub issue draft without mutation."
+  - id: fixture-app
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/16"
+    description: "Create a synthetic target app fixture for init/dry-run/verify/observer proof."
+  - id: skill
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/15"
+    description: "Create agent skill guidance for installing and configuring Mimetic."
+  - id: release-readiness
+    status: pending
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/17"
+    description: "Prepare open-source package metadata, license decision, safety scan, and publish dry-run."
+receipts: []
+verification:
+  status: pending
+  last_command: null
+  last_artifact: null
+completion_audit:
+  status: pending

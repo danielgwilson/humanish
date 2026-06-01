@@ -37,6 +37,10 @@ The intended shape is adapter-first: core packages provide the durable simulatio
 - [Self-driving harness principles](docs/principles/self-driving-harness.md)
 - [GitHub feedback loop architecture](docs/architecture/github-feedback-loop.md)
 - [Feedback contract](docs/contracts/feedback.md)
+- [Open-source install experience](docs/product/open-source-install-experience.md)
+- [Project layout contract](docs/architecture/project-layout.md)
+- [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
+- [Mimetic CLI open-source v0 goal](docs/goals/mimetic-cli-open-source-v0/goal.md)
 
 ## Status
 
