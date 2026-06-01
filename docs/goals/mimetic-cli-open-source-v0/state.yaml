@@ -34,7 +34,7 @@ tasks:
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/15"
     description: "Create agent skill guidance for installing and configuring Mimetic."
   - id: release-readiness
-    status: pending
+    status: completed
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/17"
     description: "Prepare open-source package metadata, license decision, safety scan, and publish dry-run."
 receipts:
@@ -112,9 +112,21 @@ receipts:
       - "fresh temp fixture: npx mimetic verify --run latest --json"
       - "fresh temp fixture: npx mimetic watch --run latest --no-open --json"
       - "fresh temp fixture: npx mimetic feedback issue --run latest --repo example/app --format markdown"
+  - id: release-readiness-2026-06-01
+    task: release-readiness
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/17"
+    branch: release-readiness
+    summary: "Added release readiness checklist, README quickstart, package metadata/scripts, ignore rules for npm/local artifacts, and explicit Daniel license/publish gates."
+    proof_commands:
+      - "pnpm check"
+      - "pnpm pack:dry-run"
+      - "npm pack --dry-run"
+      - "git diff --check"
+      - "ruby -ryaml -e 'ARGV.each { |f| YAML.load_file(f); puts \"ok #{f}\" }' docs/goals/mimetic-cli-open-source-v0/state.yaml"
+      - "rg -n \"(ghp_|gho_|github_pat_|sk-[A-Za-z0-9]|BEGIN (RSA|OPENSSH|PRIVATE)|password\\\\s*=|secret\\\\s*=|token\\\\s*=|api[_-]?key\\\\s*=|patient|PHI|PII|raw private|private screenshot|private transcript|customer data)\" README.md AGENTS.md docs src tests fixtures package.json pnpm-lock.yaml"
 verification:
   status: partial
-  last_command: "npx mimetic feedback issue --run latest --repo example/app --format markdown"
-  last_artifact: "docs/skill/mimetic-cli/SKILL.md plus synthetic temp fixture .mimetic/runs/skill-proof artifacts"
+  last_command: "npm pack --dry-run"
+  last_artifact: "docs/release/open-source-readiness.md"
 completion_audit:
   status: pending

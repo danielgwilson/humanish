@@ -3,6 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
+  "keywords": [
+    "agent-harness",
+    "cli",
+    "persona-simulation",
+    "ui-testing",
+    "ux-research"
+  ],
   "type": "module",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.26.2",
@@ -29,6 +36,8 @@
     "build": "tsc -p tsconfig.build.json && node --eval \"import('node:fs').then(({ chmodSync }) => chmodSync('dist/cli.js', 0o755))\"",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "mimetic": "tsx src/cli.ts",
+    "pack:dry-run": "pnpm build && npm pack --dry-run",
+    "release:check": "pnpm check && npm pack --dry-run",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -36,6 +45,10 @@
     "type": "git",
     "url": "https://github.com/danielgwilson/mimetic-cli.git"
   },
+  "bugs": {
+    "url": "https://github.com/danielgwilson/mimetic-cli/issues"
+  },
+  "homepage": "https://github.com/danielgwilson/mimetic-cli#readme",
   "dependencies": {
     "commander": "^14.0.3"
   },
