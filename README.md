@@ -29,6 +29,18 @@ The intended shape is adapter-first: core packages provide the durable simulatio
 - Port NoBG as the first adapter proof.
 - Port Image Skill or Northstar as a second adapter proof before treating the abstraction as stable.
 
+## Development
+
+```bash
+pnpm install
+pnpm check
+pnpm mimetic -- --help
+```
+
+The current CLI shell intentionally registers planned commands and fails closed
+for unsupported behavior. Real `init`, dry-run bundles, observer rendering, and
+feedback issue drafts are tracked in the roadmap and GitHub issue queue.
+
 ## Current Design Notes
 
 - [Sim systems context dump](docs/ramp/2026-05-31-sim-systems-context-dump.md)
@@ -44,4 +56,5 @@ The intended shape is adapter-first: core packages provide the durable simulatio
 
 ## Status
 
-Repository chassis only. Implementation should start from source comparison and contract design, not a from-scratch rewrite.
+Package scaffold in progress. Implementation should start from source
+comparison and contract design, not a from-scratch rewrite.

@@ -1,0 +1,48 @@
+{
+  "name": "mimetic-cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.26.2",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "mimetic": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node --eval \"import('node:fs').then(({ chmodSync }) => chmodSync('dist/cli.js', 0o755))\"",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "mimetic": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielgwilson/mimetic-cli.git"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  }
+}

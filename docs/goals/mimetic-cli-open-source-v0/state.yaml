@@ -2,7 +2,7 @@ objective: "Build the first open-source-safe mimetic-cli v0 slice."
 active_task: null
 tasks:
   - id: package-scaffold
-    status: pending
+    status: completed
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/13"
     description: "Add npm package scaffold, commander CLI, tests, and check scripts."
   - id: init-layout
@@ -37,10 +37,19 @@ tasks:
     status: pending
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/17"
     description: "Prepare open-source package metadata, license decision, safety scan, and publish dry-run."
-receipts: []
+receipts:
+  - id: package-scaffold-2026-06-01
+    task: package-scaffold
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/13"
+    branch: package-scaffold
+    summary: "Added npm package scaffold, Commander mimetic binary shell, fail-closed planned commands, JSON error envelope, tests, and check scripts."
+    proof_commands:
+      - "pnpm install"
+      - "pnpm check"
+      - "pnpm mimetic -- --help"
 verification:
-  status: pending
-  last_command: null
-  last_artifact: null
+  status: partial
+  last_command: "pnpm mimetic -- --help"
+  last_artifact: "package scaffold command output"
 completion_audit:
   status: pending
