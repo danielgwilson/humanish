@@ -181,6 +181,15 @@ Proof:
 - skill package validates;
 - fresh-agent fixture follows the skill and reaches dry-run + issue draft.
 
+## Stage 6.5: Release Readiness
+
+Status: dry-run ready, blocked on Daniel's license and publish approval.
+
+Readiness lives in
+[`docs/release/open-source-readiness.md`](../release/open-source-readiness.md).
+The package keeps `private: true` and `UNLICENSED` until the human license gate
+is cleared.
+
 ## Stage 7: Local Browser And First Real Adapter
 
 Only after the package and dry-run path are stable:
