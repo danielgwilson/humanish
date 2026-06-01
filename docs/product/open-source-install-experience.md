@@ -46,6 +46,8 @@ The agent skill owns installation guidance and repo adaptation:
 npx skills add danielgwilson/mimetic-cli
 ```
 
+Current repo-owned draft: [`docs/skill/mimetic-cli/SKILL.md`](../skill/mimetic-cli/SKILL.md).
+
 The skill should teach the user's coding agent how to:
 
 - install `mimetic-cli`;
@@ -126,4 +128,3 @@ Live execution should be staged after the dry-run path is boring:
 
 Do not make E2B, OpenAI, or GitHub credentials part of the first successful
 run.
-

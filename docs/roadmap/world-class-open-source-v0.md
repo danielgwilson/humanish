@@ -156,6 +156,11 @@ pnpm mimetic -- feedback issue --run latest --repo example/app --format markdown
 
 ## Stage 6: Agent Skill
 
+Status: implemented as a repo-owned draft skill under
+`docs/skill/mimetic-cli/SKILL.md`. Future packaging can promote it to the
+repository root or another installer-visible location after that path is
+explicitly authorized.
+
 Create a shareable skill package that teaches agents to install and configure
 Mimetic in target repos.
 

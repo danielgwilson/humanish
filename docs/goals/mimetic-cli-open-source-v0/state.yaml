@@ -30,7 +30,7 @@ tasks:
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/16"
     description: "Create a synthetic target app fixture for init/dry-run/verify/observer proof."
   - id: skill
-    status: pending
+    status: completed
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/15"
     description: "Create agent skill guidance for installing and configuring Mimetic."
   - id: release-readiness
@@ -97,9 +97,24 @@ receipts:
       - "pnpm mimetic -- feedback verify --run latest --json --cwd <fixture-copy>"
       - "pnpm mimetic -- feedback issue --run latest --repo example/app --format markdown --cwd <fixture-copy>"
       - "pnpm mimetic -- feedback issue-url --run latest --repo example/app --json --cwd <fixture-copy>"
+  - id: skill-2026-06-01
+    task: skill
+    issue: "https://github.com/danielgwilson/mimetic-cli/issues/15"
+    branch: skill-guidance
+    summary: "Added a valid repo-owned Mimetic agent skill entrypoint with setup workflow, hard public-safety rules, synthetic authoring guidance, and dry-run-to-feedback proof commands."
+    proof_commands:
+      - "python3 /Users/danielgwilson/.codex/skills/.system/skill-creator/scripts/quick_validate.py docs/skill/mimetic-cli"
+      - "pnpm check"
+      - "fresh temp fixture: npm i -D <local-package>; npx mimetic init --dry-run --json"
+      - "fresh temp fixture: npx mimetic init --yes --json"
+      - "fresh temp fixture: npx mimetic doctor --json"
+      - "fresh temp fixture: npx mimetic run --dry-run --run-id skill-proof --json"
+      - "fresh temp fixture: npx mimetic verify --run latest --json"
+      - "fresh temp fixture: npx mimetic watch --run latest --no-open --json"
+      - "fresh temp fixture: npx mimetic feedback issue --run latest --repo example/app --format markdown"
 verification:
   status: partial
-  last_command: "pnpm mimetic -- feedback issue --run latest --repo example/app --format markdown --cwd <fixture-copy>"
-  last_artifact: "synthetic .mimetic/runs/<run-id>/feedback/{draft.json,issue.md} in temp fixture copy"
+  last_command: "npx mimetic feedback issue --run latest --repo example/app --format markdown"
+  last_artifact: "docs/skill/mimetic-cli/SKILL.md plus synthetic temp fixture .mimetic/runs/skill-proof artifacts"
 completion_audit:
   status: pending
