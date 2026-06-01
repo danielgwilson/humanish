@@ -1,0 +1,69 @@
+name: Agent-ready work
+description: Narrow work item with explicit autonomous-readiness boundaries
+title: "[agent] "
+labels:
+  - agent-candidate
+  - proof-required
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repo is intended to become public. Do not include PII, PHI, secrets, keys, tokens, raw private transcripts, private screenshots, or private customer/patient data.
+        Intake is permissive, but autonomous execution is rigorous. Missing readiness fields mean `needs-spec`, not silent agent pickup.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should change?
+    validations:
+      required: true
+  - type: textarea
+    id: readiness-block
+    attributes:
+      label: mimetic_swarm block
+      description: Required before autonomous mutation.
+      value: |
+        ```yaml
+        mimetic_swarm:
+          schema: mimetic.swarm-readiness.v1
+          status: needs_spec
+          authority: draft_spec
+          blocked_by: []
+          can_parallel_with: []
+          exclusive_files: []
+          allowed_write_paths:
+            - docs/**
+          denied_write_paths:
+            - .env*
+            - .github/workflows/**
+            - infra/**
+          artifact_schema_version: mimetic.run-bundle.v1
+          credential_manifest: []
+          network_policy: no_network
+          spend_policy: no_spend
+          idempotency_key:
+          proof_commands: []
+          telemetry_expectations:
+            - none yet
+          stop_conditions:
+            - required field missing
+            - changed files outside allowed_write_paths
+            - proof command fails
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Required proof
+      description: Commands, artifacts, or review evidence required before closure.
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: What should an agent explicitly not do?
+    validations:
+      required: true
+

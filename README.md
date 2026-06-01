@@ -2,6 +2,10 @@
 
 Private incubator for a generalizable product simulation CLI and proof harness.
 
+Important: this repository is expected to become public. Do not commit PII,
+PHI, secrets, keys, tokens, raw private transcripts, private screenshots, or
+private product artifacts. Use synthetic or redacted examples only.
+
 `mimetic-cli` is intended to extract the reusable substrate behind:
 
 - Northstar `ui-sim`
@@ -24,6 +28,15 @@ The intended shape is adapter-first: core packages provide the durable simulatio
 - Extract shared artifact, manifest, observer, actor, and run-review primitives.
 - Port NoBG as the first adapter proof.
 - Port Image Skill or Northstar as a second adapter proof before treating the abstraction as stable.
+
+## Current Design Notes
+
+- [Sim systems context dump](docs/ramp/2026-05-31-sim-systems-context-dump.md)
+- [Self-driving feedback ramp](docs/ramp/2026-06-01-self-driving-feedback-ramp.md)
+- [GitHub control plane setup](docs/ramp/2026-06-01-github-control-plane-setup.md)
+- [Self-driving harness principles](docs/principles/self-driving-harness.md)
+- [GitHub feedback loop architecture](docs/architecture/github-feedback-loop.md)
+- [Feedback contract](docs/contracts/feedback.md)
 
 ## Status
 

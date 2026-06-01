@@ -1,0 +1,117 @@
+- name: product-feedback
+  color: "0E8A16"
+  description: Evidence-backed feedback from a persona, sim run, or review.
+- name: agent-candidate
+  color: "C5DEF5"
+  description: May become eligible for autonomous pickup after readiness validation.
+- name: agent-ready
+  color: "0E8A16"
+  description: Has a valid readiness block and narrow declared authority.
+- name: agent-blocked
+  color: "B60205"
+  description: Explicitly not eligible for autonomous pickup.
+- name: needs-spec
+  color: "1D76DB"
+  description: Accepted work needs a spec or split before implementation.
+- name: proof-required
+  color: "FBCA04"
+  description: Cannot close without command, artifact, review, or run-bundle proof.
+- name: privacy-boundary
+  color: "B60205"
+  description: PII, PHI, secret, token, or future-public safety boundary.
+- name: feedback-loop
+  color: "5319E7"
+  description: Feedback, issue-draft, queue, or GitHub workflow plumbing.
+- name: area:contracts
+  color: "C5DEF5"
+  description: Schema and contract design.
+- name: area:core
+  color: "C5DEF5"
+  description: Core run, artifact, history, lifecycle, and verification primitives.
+- name: area:cli
+  color: "C5DEF5"
+  description: CLI commands, JSON envelopes, and command UX.
+- name: area:observer
+  color: "C5DEF5"
+  description: Observer, report, and mission-control surfaces.
+- name: area:actors
+  color: "C5DEF5"
+  description: Actor/runtime adapters such as scripted, terminal, Codex, and computer-use.
+- name: area:substrate-e2b
+  color: "C5DEF5"
+  description: E2B or sandbox substrate work.
+- name: area:adapters
+  color: "C5DEF5"
+  description: Product adapter contracts and implementations.
+- name: area:github-feedback
+  color: "C5DEF5"
+  description: GitHub Issues, labels, templates, and feedback issue drafts.
+- name: area:docs
+  color: "C5DEF5"
+  description: Documentation and repo-operating notes.
+- name: adapter:nobg
+  color: "BFD4F2"
+  description: NoBG adapter proof work.
+- name: adapter:image-skill
+  color: "BFD4F2"
+  description: Image Skill-style adapter proof work.
+- name: adapter:northstar
+  color: "BFD4F2"
+  description: Northstar adapter proof work.
+- name: authority:observe
+  color: "EDEDED"
+  description: Agent authority is read/report only.
+- name: authority:draft_spec
+  color: "C5DEF5"
+  description: Agent authority is limited to docs/spec clarification.
+- name: authority:draft_pr_docs_harness
+  color: "1D76DB"
+  description: Agent authority is limited to path-scoped docs, harness, tests, or fixtures.
+- name: authority:draft_pr_product_code
+  color: "D93F0B"
+  description: Agent authority may include product code within exact declared scope.
+- name: authority:blocked
+  color: "B60205"
+  description: No autonomous mutation authority.
+- name: risk:low
+  color: "C2E0C6"
+  description: Low-risk work.
+- name: risk:medium
+  color: "FBCA04"
+  description: Medium-risk work.
+- name: risk:high
+  color: "D93F0B"
+  description: High-risk work.
+- name: risk:github-mutation
+  color: "D93F0B"
+  description: Optional maintainer tooling touches GitHub mutation or automation.
+- name: risk:credential-boundary
+  color: "B60205"
+  description: Work touches credential, auth, secret, network, or spend boundaries.
+- name: proof:contract-fixture
+  color: "FEF2C0"
+  description: Requires schema fixture proof.
+- name: proof:dry-run-artifact
+  color: "FEF2C0"
+  description: Requires dry-run artifact proof.
+- name: proof:live-e2b
+  color: "FEF2C0"
+  description: Requires live E2B or sandbox proof.
+- name: proof:observer
+  color: "FEF2C0"
+  description: Requires observer or report artifact proof.
+- name: proof:feedback-loop
+  color: "FEF2C0"
+  description: Requires feedback-to-queue proof.
+- name: next:spec
+  color: "1D76DB"
+  description: Next step is spec or split.
+- name: next:implement
+  color: "0E8A16"
+  description: Next step is implementation.
+- name: next:verify
+  color: "FBCA04"
+  description: Next step is verification or proof.
+- name: next:park
+  color: "EDEDED"
+  description: Parked until later.
