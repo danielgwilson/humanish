@@ -909,7 +909,8 @@ function formatOssMetaLabHuman(result: OssMetaLabResult): string {
     ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Mimetic Observer`),
     ...result.sandboxes.map((sandbox) => {
       const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
-      return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${sandboxLabel}`;
+      const bootstrapLabel = sandbox.bootstrapStatus ? ` bootstrap=${sandbox.bootstrapStatus}` : "";
+      return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${sandboxLabel}`;
     }),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";

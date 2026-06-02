@@ -225,13 +225,17 @@ existing evidence.
 
 ## Stage 6.9: OSS Meta-Lab
 
-Status: implemented as an experimental Observer-of-Observers contract with a
-retained disposable smoke harness.
+Status: implemented as an experimental live Observer-of-Observers bootstrap
+with a retained disposable smoke harness.
 
 `mimetic lab oss` opens the top-level Observer for public OSS meta-sims. Each
 lane is assigned a public GitHub `owner/repo` slug from `--repos` or repeated
 `--repo` values and carries the headed E2B desktop + Codex TUI bootstrap prompt
 for setting up Mimetic inside that repo and keeping the nested Observer visible.
+When live keys are present, Mimetic launches E2B desktops, uploads the locally
+packed Mimetic package, starts visible bootstrap terminals, clones each assigned
+repo inside the desktop, runs nested Mimetic setup/proof commands, attempts a
+Codex TUI pass, and opens the nested Observer in the sandbox browser.
 
 `mimetic lab oss-smoke` keeps the earlier clone/discard proof loop: shallow
 clone lightweight public GitHub repositories into ignored `.mimetic/tmp`, apply
@@ -247,9 +251,10 @@ pnpm mimetic -- lab oss --dry-run --json --no-open --repos developit/mitt,lukeed
 pnpm mimetic -- lab oss-smoke --limit 1 --json
 ```
 
-Next substrate work: inject Codex TUI into each live E2B desktop, run the
-nested Mimetic setup inside each disposable OSS repo, and keep each nested
-Observer visible inside the desktop stream.
+Next substrate work: poll the remote bootstrap logs and nested Observer health
+back into the top-level bundle so the Observer can graduate each lane from
+`running` to explicit `passed` or `failed` without relying on a human watching
+the E2B stream.
 
 ## Stage 7: Local Browser And First Real Adapter
 

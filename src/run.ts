@@ -65,7 +65,7 @@ export interface RunStream {
   terminal?: {
     title: string;
     format: "ansi" | "plain";
-    stdin: "disabled" | "planned";
+    stdin: "disabled" | "planned" | "sent";
     tail: string;
   };
   ui?: {

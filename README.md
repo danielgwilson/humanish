@@ -58,11 +58,11 @@ pnpm mimetic:lab:oss
 ```
 
 That starts the top-level OSS meta-lab Observer: four headed desktop lanes,
-each assigned a public GitHub repo and a Codex TUI bootstrap prompt. The
-intended live substrate is E2B desktop fanout where each Codex actor clones its
-repo, gets it running locally, installs Mimetic, authors plausible
-personas/scenarios, runs a nested Mimetic sim, and keeps that nested Observer
-visible in the E2B browser. Pick repos with:
+each assigned a public GitHub repo. With `E2B_API_KEY` and `OPENAI_API_KEY`
+present, Mimetic launches live E2B desktops, raises a visible bootstrap terminal
+in each desktop, installs the locally packed Mimetic package inside a disposable
+clone, runs nested Mimetic proof commands, attempts a Codex TUI pass, and opens
+the nested Observer inside the E2B browser. Pick repos with:
 
 ```bash
 pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
@@ -97,9 +97,11 @@ npx mimetic feedback issue --run latest --repo example/app --format markdown
 
 The current CLI implements safe `init`, synthetic dry-run bundles, verification,
 a mission-control Observer with stream contracts, localhost watch mode with
-browser open, terminal/TUI panes, and public-safe feedback issue
-drafts. Live browser execution, provider-backed actors, native Codex app-server
-adapters, and GitHub mutation remain intentionally unimplemented.
+browser open, terminal/TUI panes, public-safe feedback issue drafts, and an
+experimental E2B OSS meta-lab with visible bootstrap terminals. General live
+browser execution, provider-backed target-app actors, native Codex app-server
+adapters, remote completion polling, and GitHub mutation remain intentionally
+unimplemented.
 
 ## Observer
 

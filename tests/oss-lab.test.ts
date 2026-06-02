@@ -149,4 +149,62 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic init --yes");
     expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/developit/mitt");
   });
+
+  it("fails live launch closed into waiting lanes when keys are absent", async () => {
+    const previousE2b = process.env.E2B_API_KEY;
+    const previousOpenai = process.env.OPENAI_API_KEY;
+    delete process.env.E2B_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    try {
+      const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-waiting-"));
+      const result = await runCli([
+        "lab",
+        "oss",
+        "--json",
+        "--no-open",
+        "--detach",
+        "--cwd",
+        cwd,
+        "--run-id",
+        "oss-meta-waiting-test",
+        "--repos",
+        "developit/mitt",
+        "--count",
+        "1"
+      ]);
+
+      expect(result.exitCode).toBe(0);
+      const json = JSON.parse(result.stdout) as {
+        sandboxes: Array<{ bootstrapStatus?: string; urlPresent: boolean }>;
+        warnings: string[];
+      };
+      expect(json.sandboxes).toEqual([]);
+      expect(json.warnings.join("\n")).toContain("waiting on env vars");
+
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-waiting-test", "run.json"), "utf8")) as {
+        simulations: Array<{ currentStep: string; status: string }>;
+        streams: Array<{ embed: { kind: string }; status: string }>;
+      };
+      expect(bundle.simulations[0]).toMatchObject({
+        status: "blocked",
+        currentStep: "Waiting for E2B_API_KEY, OPENAI_API_KEY before launching developit/mitt."
+      });
+      expect(bundle.streams[0]).toMatchObject({
+        status: "blocked",
+        embed: { kind: "placeholder" }
+      });
+    } finally {
+      if (previousE2b === undefined) {
+        delete process.env.E2B_API_KEY;
+      } else {
+        process.env.E2B_API_KEY = previousE2b;
+      }
+      if (previousOpenai === undefined) {
+        delete process.env.OPENAI_API_KEY;
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenai;
+      }
+    }
+  });
 });

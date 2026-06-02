@@ -15,8 +15,8 @@ Observer-of-Observers: each lane represents a headed E2B desktop that will run
 Codex TUI against a different lightweight public GitHub repository. Inside each
 desktop, Codex should clone the repo, get it into local dev mode where feasible,
 install and initialize Mimetic, author plausible public-safe personas/scenarios,
-run a nested real Mimetic simulation, and leave that nested Observer visible in
-the E2B browser.
+run nested Mimetic proof commands, attempt a Codex TUI pass, and leave that
+nested Observer visible in the E2B browser.
 
 The previous clone/discard proof loop remains useful, but it is now explicitly
 named `mimetic lab oss-smoke`.
@@ -93,9 +93,15 @@ Each stream lane records:
 
 The current implementation launches live E2B desktop streams when
 `E2B_API_KEY` and `OPENAI_API_KEY` are present, embeds those streams into the
-top-level Observer, and marks missing key or launch failures in-lane. Codex TUI
-injection and nested Mimetic execution remain the next substrate slice behind
-the stable command and artifact contract.
+top-level Observer, and marks missing key or launch failures in-lane. It also
+packs the local Mimetic package, uploads it into each sandbox, raises a visible
+bootstrap terminal, clones the assigned public repo, runs nested Mimetic setup
+and proof commands, attempts a Codex TUI pass, and opens the nested Observer in
+the sandbox browser.
+
+Remaining substrate work: poll remote bootstrap completion and nested Observer
+health back into the top-level bundle instead of leaving completion review to
+the live desktop stream.
 
 ## Smoke Harness Runtime
 
@@ -138,8 +144,11 @@ ignored `.mimetic/lab/oss/<run-id>/`.
 ## What This Proves
 
 The meta-lab proves the operator control surface and artifact contract for
-watching multiple Codex/E2B OSS setup attempts at once. It also establishes the
-public CLI shape before the live substrate is wired in.
+watching multiple Codex/E2B OSS setup attempts at once. The live path now proves
+E2B desktop fanout, visible bootstrap terminals, local-package upload, disposable
+public-repo setup, nested Mimetic proof generation, and nested Observer opening.
+It does not yet prove remote completion polling or a general provider-backed
+target-app persona runtime.
 
 The smoke harness proves first-run Mimetic package compatibility against
 arbitrary public JavaScript repositories:
