@@ -15,6 +15,7 @@ context.
 - Repository: `https://github.com/danielgwilson/mimetic-cli`
 - npm access: public via `publishConfig.access`
 - npm contents: compiled `dist`, `README.md`, `LICENSE`, and `package.json`
+- GitHub Actions publish workflow: `.github/workflows/publish.yml`
 
 `prepack` runs the TypeScript build so a clean checkout can produce a usable
 tarball with `npm pack` or `npm publish`.
@@ -84,7 +85,7 @@ Run these before any public release candidate:
 pnpm install --frozen-lockfile
 pnpm check
 pnpm public-surface:scan
-DISABLE_TELEMETRY=1 npx skills add . --list
+pnpm skill:check
 pnpm pack:dry-run
 git diff --check
 ```
@@ -112,8 +113,39 @@ or local runtime caches.
 Only after maintainer approval:
 
 ```bash
-npm publish --access public
+pnpm release:check && npm publish --access public
 ```
 
 No agent should run that command without explicit human approval in the current
 thread. That approval must come from the maintainer responsible for the release.
+
+## Trusted Publishing Setup
+
+The first manual publish creates the npm package page. After that, configure npm
+Trusted Publishing for GitHub Actions:
+
+- provider: GitHub Actions
+- repository owner: `danielgwilson`
+- repository name: `mimetic-cli`
+- workflow filename: `publish.yml`
+- environment: blank
+- registry: npm public registry
+
+The workflow uses:
+
+- `permissions.id-token: write` for OIDC;
+- `permissions.contents: read`;
+- `actions/checkout@v6`;
+- `actions/setup-node@v6` with Node 24 and npm registry URL;
+- `npm publish --access public`;
+- no long-lived npm token secret.
+
+Future automated release flow after trusted publishing is configured:
+
+```bash
+pnpm release:check
+npm version patch -m "Release %s"
+git push origin main --tags
+```
+
+The publish job is tag-gated and only publishes when running on a `v*` tag.

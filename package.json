@@ -28,6 +28,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "README.md",
     "LICENSE"
   ],
@@ -41,7 +42,8 @@
     "pack:dry-run": "npm pack --dry-run",
     "prepack": "pnpm build",
     "public-surface:scan": "node scripts/public-surface-scan.mjs",
-    "release:check": "pnpm check && pnpm public-surface:scan && npm pack --dry-run",
+    "release:check": "pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
+    "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "mimetic:doctor": "pnpm mimetic -- doctor",
