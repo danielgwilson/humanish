@@ -45,6 +45,25 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   };
 }
 
+async function waitForFile(filePath: string, timeoutMs = 2_000): Promise<void> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      await stat(filePath);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+
+  throw new Error(`Timed out waiting for ${filePath}`);
+}
+
 describe("dry-run bundles", () => {
   it("writes and verifies a synthetic run bundle", async () => {
     await withFixtureCopy(async (cwd) => {
@@ -380,6 +399,81 @@ describe("dry-run bundles", () => {
         expect(transcript).not.toContain(`sk-${"fanoutsecretvalue"}`);
         await expect(stat(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test", tracePath ?? ""))).resolves.toBeTruthy();
       }
+
+      const verify = await verifyRun(cwd, "latest");
+      expect(verify.ok).toBe(true);
+    });
+  });
+
+  it("publishes running Observer data while local Codex exec actors are active", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeActor = path.join(cwd, "fake-codex-exec-slow-actor.mjs");
+      const runRoot = path.join(cwd, ".mimetic/runs/codex-exec-live-follow-test");
+      await writeFile(
+        fakeActor,
+        [
+          "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
+          "process.stdout.write('slow exec actor started\\n');",
+          "await new Promise((resolve) => setTimeout(resolve, 750));",
+          "process.stdout.write('slow exec actor finished\\n');",
+          "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
+        ].join("\n"),
+        "utf8"
+      );
+
+      const runPromise = runDryRun({
+        cwd,
+        actor: "codex-exec",
+        actorCommand: [process.execPath, fakeActor],
+        runId: "codex-exec-live-follow-test",
+        simCount: 2,
+        timeoutMs: 5_000
+      });
+
+      await waitForFile(path.join(runRoot, "observer/observer-data.json"));
+      const runningBundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as {
+        lifecycle: Array<{ event: string }>;
+        review: { summary: string; verdict: string };
+        simulations: Array<{ status: string }>;
+        streams: Array<{ artifacts: Array<{ path: string }>; status: string }>;
+      };
+      const runningObserverData = JSON.parse(
+        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")
+      ) as {
+        events: Array<{ type: string }>;
+        run: { status: string };
+        summary: { active: number };
+        streams: Array<{ status: string }>;
+      };
+
+      expect(runningBundle.review.verdict).toBe("contract_proof_only");
+      expect(runningBundle.review.summary).toContain("in-progress Observer snapshot");
+      expect(runningBundle.lifecycle.map((entry) => entry.event)).toContain("actor.running");
+      expect(runningBundle.simulations.map((simulation) => simulation.status)).toEqual(["running", "running"]);
+      expect(runningBundle.streams.map((stream) => stream.status)).toEqual(["running", "running"]);
+      expect(runningBundle.streams.every((stream) => stream.artifacts.every((artifact) => !artifact.path.includes("transcripts/")))).toBe(true);
+      expect(runningObserverData.run.status).toBe("contract_proof_only");
+      expect(runningObserverData.summary.active).toBe(2);
+      expect(runningObserverData.streams.map((stream) => stream.status)).toEqual(["running", "running"]);
+      expect(runningObserverData.events.filter((event) => event.type === "actor.running")).toHaveLength(2);
+
+      const result = await runPromise;
+      expect(result.ok).toBe(true);
+
+      const finalObserverData = JSON.parse(
+        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")
+      ) as {
+        events: Array<{ type: string }>;
+        run: { status: string };
+        summary: { active: number };
+        streams: Array<{ artifacts: Array<{ path: string }>; status: string }>;
+      };
+
+      expect(finalObserverData.run.status).toBe("pass");
+      expect(finalObserverData.summary.active).toBe(0);
+      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual(["passed", "passed"]);
+      expect(finalObserverData.events.filter((event) => event.type === "actor.verdict")).toHaveLength(2);
+      expect(finalObserverData.streams.every((stream) => stream.artifacts.some((artifact) => artifact.path.includes("transcripts/")))).toBe(true);
 
       const verify = await verifyRun(cwd, "latest");
       expect(verify.ok).toBe(true);

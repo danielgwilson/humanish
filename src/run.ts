@@ -4,6 +4,8 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { buildObserverData } from "./observer-data.js";
+
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
 export const REVIEW_SCHEMA = "mimetic.review.v1";
 export const VERIFY_SCHEMA = "mimetic.verify-result.v1";
@@ -750,6 +752,118 @@ async function runLocalCodexTui(options: RunOptions & {
   };
 }
 
+interface LocalCodexExecLaneBundleInput {
+  completion?: RunStreamCompletion;
+  currentStep: string;
+  focus: LocalCodexExecFocus;
+  progress: number;
+  simId: string;
+  status: RunSimulationStatus;
+  streamId: string;
+  summary: string;
+  terminalTail: string;
+  tracePath?: string;
+  transcriptPath?: string;
+  updatedAt: string;
+}
+
+function buildLocalCodexExecBundle(args: {
+  artifactRoot: string;
+  createdAt: string;
+  cwd: string;
+  events: RunEvent[];
+  lanes: LocalCodexExecLaneBundleInput[];
+  lifecycle: RunBundle["lifecycle"];
+  mimeticSource: RunBundle["source"]["mimeticSource"];
+  packageName: string | null;
+  review: ReviewSummary;
+  runId: string;
+  scenario: RunBundle["scenario"];
+  persona: RunBundle["persona"];
+  simCount: number;
+}): RunBundle {
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: "live",
+    simCount: args.simCount,
+    createdAt: args.createdAt,
+    cwd: args.cwd,
+    artifactRoot: args.artifactRoot,
+    source: {
+      packageName: args.packageName,
+      mimeticSource: args.mimeticSource,
+      git: {
+        status: "not_captured",
+        note: "Source git state capture is planned for the core primitives slice."
+      }
+    },
+    persona: args.persona,
+    scenario: args.scenario,
+    lifecycle: args.lifecycle,
+    simulations: args.lanes.map((lane, index): RunSimulation => ({
+      id: lane.simId,
+      index: index + 1,
+      personaId: `codex-exec-${lane.focus.id}`,
+      scenarioId: args.scenario.id,
+      status: lane.status,
+      streamKind: "terminal",
+      mode: "cli-sim",
+      progress: lane.progress,
+      currentStep: lane.currentStep,
+      summary: lane.summary,
+      streamIds: [lane.streamId],
+      startedAt: args.createdAt,
+      updatedAt: lane.updatedAt
+    })),
+    streams: args.lanes.map((lane): RunStream => {
+      const artifacts: RunStream["artifacts"] = [
+        { label: "run bundle", path: "run.json", kind: "bundle" },
+        { label: "review", path: "review.md", kind: "review" },
+        { label: "event log", path: "events.ndjson", kind: "events" },
+        ...(lane.transcriptPath ? [{ label: "sanitized transcript", path: lane.transcriptPath, kind: "log" as const }] : []),
+        ...(lane.tracePath ? [{ label: "actor trace", path: lane.tracePath, kind: "trace" as const }] : [])
+      ];
+
+      return {
+        id: lane.streamId,
+        simId: lane.simId,
+        kind: "terminal",
+        label: `Local Codex exec - ${lane.focus.label}`,
+        status: lane.status,
+        transport: "snapshot",
+        updatedAt: lane.updatedAt,
+        embed: {
+          kind: "terminal",
+          title: `Local Codex exec - ${lane.focus.label}`
+        },
+        terminal: {
+          title: `Local Codex exec - ${lane.focus.label}`,
+          format: "plain",
+          stdin: "sent",
+          tail: lane.terminalTail
+        },
+        ...(lane.completion ? { completion: lane.completion } : {}),
+        artifacts
+      };
+    }),
+    events: args.events,
+    redaction: {
+      status: "passed",
+      notes: "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log."
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson"
+    },
+    review: args.review,
+    feedbackCandidates: []
+  };
+}
+
 async function runLocalCodexExec(options: RunOptions & {
   actor: "codex-exec";
   cwd: string;
@@ -818,6 +932,7 @@ async function runLocalCodexExec(options: RunOptions & {
 
   await mkdir(path.join(absoluteArtifactRoot, "transcripts"), { recursive: true });
   await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
+  await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
   await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
     schema: "mimetic.latest-run.v1",
     runId,
@@ -866,7 +981,68 @@ async function runLocalCodexExec(options: RunOptions & {
     return { command, focus, promptDigest, simId, streamId };
   });
 
+  for (const lane of lanes) {
+    pushEvent(
+      "actor.running",
+      "Published local Codex exec running snapshot for Observer polling.",
+      "info",
+      lane.simId,
+      lane.streamId
+    );
+  }
   await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+
+  const baseLifecycle: RunBundle["lifecycle"] = [
+    {
+      at: createdAt,
+      event: "run.created",
+      message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"}.`
+    },
+    {
+      at: createdAt,
+      event: "actor.selected",
+      message: "Selected local codex-exec actor."
+    }
+  ];
+  const runningAt = new Date().toISOString();
+  const runningBundle = buildLocalCodexExecBundle({
+    runId,
+    simCount: options.simCount,
+    createdAt,
+    cwd: options.cwd,
+    artifactRoot,
+    packageName,
+    mimeticSource,
+    persona: selection.persona,
+    scenario: selection.scenario,
+    lifecycle: [
+      ...baseLifecycle,
+      {
+        at: runningAt,
+        event: "actor.running",
+        message: "Local Codex exec actor lanes are running; Observer data will refresh as sanitized evidence arrives."
+      }
+    ],
+    lanes: lanes.map((lane): LocalCodexExecLaneBundleInput => ({
+      focus: lane.focus,
+      simId: lane.simId,
+      streamId: lane.streamId,
+      status: "running",
+      progress: 35,
+      currentStep: "Local Codex exec actor running",
+      summary: `Local Codex exec actor ${lane.focus.label} is running.`,
+      terminalTail: "Codex exec actor is running; sanitized transcript evidence will be linked after completion.",
+      updatedAt: runningAt,
+      completion: {
+        checkedAt: runningAt,
+        reason: "actor process is still running",
+        status: "running"
+      }
+    })),
+    events,
+    review: createLocalActorRunningReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout")
+  });
+  await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
 
   const laneResults = await Promise.all(lanes.map(async (lane): Promise<ExecLaneResult> => {
     const actor = await executeLocalActorCommand(lane.command, {
@@ -954,108 +1130,49 @@ async function runLocalCodexExec(options: RunOptions & {
   }
   await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
-  const bundle: RunBundle = {
-    schema: RUN_BUNDLE_SCHEMA,
+  const bundle = buildLocalCodexExecBundle({
     runId,
-    mode: "live",
     simCount: options.simCount,
     createdAt,
     cwd: options.cwd,
     artifactRoot,
-    source: {
-      packageName,
-      mimeticSource,
-      git: {
-        status: "not_captured",
-        note: "Source git state capture is planned for the core primitives slice."
-      }
-    },
+    packageName,
+    mimeticSource,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
-      {
-        at: createdAt,
-        event: "run.created",
-        message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"}.`
-      },
-      {
-        at: createdAt,
-        event: "actor.selected",
-        message: "Selected local codex-exec actor."
-      },
+      ...baseLifecycle,
       {
         at: completedAt,
         event: "review.skeleton.created",
         message: "Created review skeleton from sanitized actor lifecycle evidence."
       }
     ],
-    simulations: laneResults.map((result, index) => ({
-      id: result.simId,
-      index: index + 1,
-      personaId: `codex-exec-${result.focus.id}`,
-      scenarioId: selection.scenario.id,
+    lanes: laneResults.map((result): LocalCodexExecLaneBundleInput => ({
+      focus: result.focus,
+      simId: result.simId,
+      streamId: result.streamId,
       status: result.actor.status,
-      streamKind: "terminal",
-      mode: "cli-sim",
       progress: 100,
       currentStep: result.actor.status === "passed" ? "Local Codex exec actor completed" : "Local Codex exec actor needs review",
       summary: `Local Codex exec actor ${result.focus.label} ${result.actor.status}: ${result.actor.reason}`,
-      streamIds: [result.streamId],
-      startedAt: createdAt,
-      updatedAt: completedAt
-    })),
-    streams: laneResults.map((result) => ({
-      id: result.streamId,
-      simId: result.simId,
-      kind: "terminal",
-      label: `Local Codex exec - ${result.focus.label}`,
-      status: result.actor.status,
-      transport: "snapshot",
+      terminalTail: result.tail,
       updatedAt: completedAt,
-      embed: {
-        kind: "terminal",
-        title: `Local Codex exec - ${result.focus.label}`
-      },
-      terminal: {
-        title: `Local Codex exec - ${result.focus.label}`,
-        format: "plain",
-        stdin: "sent",
-        tail: result.tail
-      },
+      transcriptPath: result.transcriptPath,
+      tracePath: result.tracePath,
       completion: {
         checkedAt: completedAt,
         ...(result.actor.exitCode === undefined ? {} : { exitCode: result.actor.exitCode }),
         logTail: result.tail,
         reason: result.actor.reason,
         status: result.actor.status
-      },
-      artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" },
-        { label: "review", path: "review.md", kind: "review" },
-        { label: "event log", path: "events.ndjson", kind: "events" },
-        { label: "sanitized transcript", path: result.transcriptPath, kind: "log" },
-        { label: "actor trace", path: result.tracePath, kind: "trace" }
-      ]
+      }
     })),
     events,
-    redaction: {
-      status: "passed",
-      notes: "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log."
-    },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson"
-    },
-    review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout", status, verdictReason),
-    feedbackCandidates: []
-  };
+    review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout", status, verdictReason)
+  });
 
-  await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
-  await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
+  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
 
   return {
     schema: "mimetic.run-result.v1",
@@ -1949,6 +2066,19 @@ function createReviewSummary(): ReviewSummary {
   };
 }
 
+function createLocalActorRunningReviewSummary(actorLabel: string): ReviewSummary {
+  return {
+    schema: REVIEW_SCHEMA,
+    verdict: "contract_proof_only",
+    summary: `Live local ${actorLabel} actor is running. This is an in-progress Observer snapshot; final verdict will be written after sanitized actor evidence is captured.`,
+    gaps: [
+      "Final actor verdict and transcript artifacts are not available until the run completes.",
+      "Live Observer follow depends on polling observer/observer-data.json while this run is active.",
+      "No GitHub mutation, target OSS mutation, E2B substrate, or production data is used by this local actor contract."
+    ]
+  };
+}
+
 function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTerminalStatus, reason: string): ReviewSummary {
   const verdict = status === "passed"
     ? "pass"
@@ -2119,6 +2249,14 @@ async function readTextIfExists(filePath: string): Promise<string | null> {
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function writeRunBundleArtifacts(absoluteArtifactRoot: string, bundle: RunBundle): Promise<void> {
+  await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
+  await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
+  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
+  await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
+  await writeJson(path.join(absoluteArtifactRoot, "observer", "observer-data.json"), buildObserverData(bundle));
 }
 
 async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {

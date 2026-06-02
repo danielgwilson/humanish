@@ -2,7 +2,8 @@
 
 Date: 2026-06-01
 
-Status: implemented for synthetic stream contracts; live actor adapters next.
+Status: implemented for synthetic stream contracts and local `codex-exec`
+active-run Observer snapshots; broader live actor adapters next.
 
 ## Decision
 
@@ -58,6 +59,12 @@ The browser polls `observer-data.json` with `no-store` caching. Static
 operator path. Agents and CI should use `mimetic watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
 
+Local `codex-exec` actor runs now publish an initial running `run.json` and
+`observer/observer-data.json` before actor completion, then refresh both after
+sanitized transcripts, traces, and verdict events are available. This gives a
+served Observer a truthful active state to poll while noninteractive local
+actors are still running.
+
 ## UI Shape
 
 The Observer shell has:
@@ -90,12 +97,13 @@ session contract instead of failing the lane.
 
 ## Current Gaps
 
-This slice implements the Observer substrate and synthetic stream contracts.
-The following are intentionally still adapter work:
+This slice implements the Observer substrate, synthetic stream contracts, and
+active-run Observer snapshots for local `codex-exec`. The following are
+intentionally still adapter work:
 
 - real Playwright/browser actor execution;
 - E2B or local PTY capture;
-- incremental event append during live runs;
+- Codex TUI live follow after workspace trust bootstrap;
 - native Codex app-server session adapter;
 - screenshot and trace galleries;
 - reviewer acceptance gates over real product behavior.
