@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("release readiness", () => {
@@ -19,7 +19,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.1.1");
+    expect(packageJson.version).toBe("0.1.2");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
@@ -28,7 +28,7 @@ describe("release readiness", () => {
     expect(packageJson.homepage).toBe("https://github.com/danielgwilson/mimetic-cli#readme");
     expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/mimetic-cli/issues");
     expect(packageJson.keywords).toContain("persona-simulation");
-    expect(packageJson.files).toEqual(["dist", "skills", "README.md", "LICENSE"]);
+    expect(packageJson.files).toEqual(["dist", "docs/assets", "skills", "README.md", "LICENSE"]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
     expect(packageJson.scripts["skill:check"]).toBe("DISABLE_TELEMETRY=1 npx skills add . --list");
@@ -53,6 +53,14 @@ describe("release readiness", () => {
     expect(readiness).toContain("No agent should run that command without explicit human approval");
     expect(readiness).toContain("`.mimetic/`");
     expect(readiness).toContain("`.npmrc`");
+  });
+
+  it("ships the npm README screenshot asset", async () => {
+    const readme = await readFile("README.md", "utf8");
+    const screenshot = await stat("docs/assets/mimetic-oss-lab-observer.png");
+
+    expect(readme).toContain("https://unpkg.com/mimetic-cli@0.1.2/docs/assets/mimetic-oss-lab-observer.png");
+    expect(screenshot.size).toBeGreaterThan(50_000);
   });
 
   it("defines tag-gated npm trusted publishing", async () => {

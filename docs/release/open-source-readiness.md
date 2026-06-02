@@ -9,13 +9,13 @@ context.
 ## Package State
 
 - Package name: `mimetic-cli`
-- Version: `0.1.1`
+- Version: `0.1.2`
 - Binary: `mimetic`
 - License: MIT
 - Repository: `https://github.com/danielgwilson/mimetic-cli`
 - npm access: public via `publishConfig.access`
-- npm contents: compiled `dist`, `skills/`, `README.md`, `LICENSE`, and
-  `package.json`
+- npm contents: compiled `dist`, `docs/assets/`, `skills/`, `README.md`,
+  `LICENSE`, and `package.json`
 - GitHub Actions publish workflow: `.github/workflows/publish.yml`
 - optional live E2B peer: `@e2b/desktop`
 
