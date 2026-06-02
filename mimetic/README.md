@@ -8,12 +8,15 @@ Current scope:
 - public-safe synthetic CLI personas;
 - one-command `watch` contract proof over the package, command tree, observer,
   and feedback issue path;
-- no real Codex TUI actor yet;
-- no OpenAI, E2B, GitHub mutation, provider spend, production data, or private
-  artifacts.
+- one explicit 1x `codex-exec` local actor proof path;
+- one explicit 1x Codex TUI actor path with fail-fast workspace-trust
+  preflight;
+- no 4x live actor fanout yet;
+- no E2B, GitHub mutation, production data, or private artifacts in local
+  dogfood runs.
 
 Generated run bundles, observer HTML, review packets, logs, and local overrides
 belong in ignored `.mimetic/`.
 
-When live Codex TUI actor support exists, this config should become the first
-4x persona harness target.
+When Codex TUI trust bootstrap and fanout exist, this config should become the
+first 4x persona harness target.

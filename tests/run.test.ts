@@ -218,6 +218,134 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("runs one explicit local Codex exec actor with sanitized lifecycle evidence", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeActor = path.join(cwd, "fake-codex-exec-actor.mjs");
+      await writeFile(
+        fakeActor,
+        [
+          "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
+          "process.stdout.write('exec actor inspected mimetic/config.ts\\n');",
+          "process.stdout.write('secret-like value ' + 'sk-' + 'execsecretvalue1234567890' + '\\n');",
+          "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
+        ].join("\n"),
+        "utf8"
+      );
+
+      const result = await runDryRun({
+        cwd,
+        actor: "codex-exec",
+        actorCommand: [process.execPath, fakeActor],
+        runId: "codex-exec-test",
+        simCount: 1,
+        timeoutMs: 5_000
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.mode).toBe("live");
+      expect(result.runId).toBe("codex-exec-test");
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-test/run.json"), "utf8")
+      ) as {
+        events: Array<{ type: string; message: string }>;
+        mode: string;
+        review: { verdict: string };
+        simulations: Array<{ status: string; streamKind: string }>;
+        streams: Array<{
+          completion: { status: string };
+          kind: string;
+          terminal: { tail: string };
+          transport: string;
+        }>;
+      };
+
+      expect(bundle.mode).toBe("live");
+      expect(bundle.review.verdict).toBe("pass");
+      expect(bundle.simulations).toEqual([expect.objectContaining({ status: "passed", streamKind: "terminal" })]);
+      expect(bundle.streams).toEqual([
+        expect.objectContaining({
+          completion: expect.objectContaining({ status: "passed" }),
+          kind: "terminal",
+          transport: "snapshot"
+        })
+      ]);
+      expect(bundle.streams[0]?.terminal.tail).toContain("exec actor inspected mimetic/config.ts");
+      expect(bundle.streams[0]?.terminal.tail).toContain("[REDACTED_SECRET]");
+      expect(bundle.streams[0]?.terminal.tail).not.toContain(`sk-${"execsecretvalue"}`);
+      expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");
+      expect(bundle.events.map((event) => event.type)).toContain("actor.prompt.submitted");
+      expect(bundle.events.map((event) => event.type)).toContain("actor.verdict");
+      expect(bundle.events.some((event) => event.message.includes(`sk-${"execsecretvalue"}`))).toBe(false);
+
+      const transcript = await readFile(
+        path.join(cwd, ".mimetic/runs/codex-exec-test/transcripts/codex-exec-sanitized.jsonl"),
+        "utf8"
+      );
+      expect(transcript).toContain("[REDACTED_SECRET]");
+      expect(transcript).not.toContain(`sk-${"execsecretvalue"}`);
+
+      const verify = await verifyRun(cwd, "latest");
+      expect(verify.ok).toBe(true);
+    });
+  });
+
+  it("exposes explicit local Codex exec actor runs through the Commander CLI", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeActor = path.join(cwd, "fake-codex-exec-cli.mjs");
+      const previousCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      await writeFile(
+        fakeActor,
+        "process.stdout.write('cli exec fixture actor passed\\n');\n",
+        "utf8"
+      );
+      process.env.MIMETIC_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
+
+      try {
+        const result = await runCli([
+          "run",
+          "--actor",
+          "codex-exec",
+          "--sims",
+          "1",
+          "--timeout-ms",
+          "5000",
+          "--run-id",
+          "codex-exec-cli",
+          "--cwd",
+          cwd,
+          "--json"
+        ]);
+        expect(result.exitCode).toBe(0);
+        const envelope = JSON.parse(result.stdout) as { mode: string; ok: boolean; runId: string };
+        expect(envelope.ok).toBe(true);
+        expect(envelope.mode).toBe("live");
+        expect(envelope.runId).toBe("codex-exec-cli");
+
+        const watch = await runCli([
+          "watch",
+          "--run",
+          "codex-exec-cli",
+          "--detach",
+          "--no-open",
+          "--cwd",
+          cwd,
+          "--json"
+        ]);
+        expect(watch.exitCode).toBe(0);
+        const observer = JSON.parse(watch.stdout) as { ok: boolean; observerPath: string };
+        expect(observer.ok).toBe(true);
+        expect(observer.observerPath).toBe(".mimetic/runs/codex-exec-cli/observer/index.html");
+      } finally {
+        if (previousCommand === undefined) {
+          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+        } else {
+          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousCommand;
+        }
+      }
+    });
+  });
+
   it("blocks the default Codex TUI actor before spawn when workspace trust is missing", async () => {
     await withFixtureCopy(async (cwd) => {
       const codexHome = path.join(cwd, ".codex-home");

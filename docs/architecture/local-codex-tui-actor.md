@@ -2,10 +2,11 @@
 
 Date: 2026-06-02
 
-Status: first implementation slice on issue #28. The repo now supports one
-explicit local actor with sanitized lifecycle evidence and fail-fast Codex
-workspace-trust preflight; four-lane fanout and trust bootstrap remain
-follow-up work.
+Status: incremental implementation on issue #28. The repo supports one explicit
+local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
+workspace-trust preflight. It also supports one explicit noninteractive
+`codex-exec` actor for autonomous local dogfood proof. Four-lane fanout and TUI
+trust bootstrap remain follow-up work.
 
 ## Goal
 
@@ -35,10 +36,22 @@ Suggested gate:
 mimetic run --actor codex-tui --sims 1 --timeout-ms 120000
 ```
 
+or, for noninteractive local autonomy:
+
+```bash
+mimetic run --actor codex-exec --sims 1 --timeout-ms 120000
+```
+
 or:
 
 ```bash
 MIMETIC_ENABLE_LOCAL_CODEX_TUI=1 mimetic run --sims 1
+```
+
+or:
+
+```bash
+MIMETIC_ENABLE_LOCAL_CODEX_EXEC=1 mimetic run --sims 1
 ```
 
 Provider spend, E2B, GitHub mutation, and external network calls remain off
@@ -47,6 +60,10 @@ unless separately and explicitly requested.
 For deterministic tests or local substrate debugging, `MIMETIC_CODEX_ACTOR_COMMAND`
 can point at a safe fixture command. Real Codex TUI launch uses a Linux
 `script` PTY wrapper when available because the Codex TUI requires a terminal.
+Real Codex exec launch uses `codex exec --skip-git-repo-check --ignore-rules
+--ephemeral --sandbox read-only --json` so it can complete without an
+interactive TUI trust prompt while still running with read-only local command
+permissions.
 
 ## Lifecycle Events
 
@@ -79,6 +96,7 @@ All generated state stays under ignored `.mimetic/`:
   events.ndjson
   actor.json
   transcripts/codex-tui-sanitized.txt
+  transcripts/codex-exec-sanitized.jsonl
   observer/
     index.html
     observer-data.json
@@ -124,17 +142,21 @@ The actor must stop and mark the lane `blocked` or `failed` if:
 ## Known First-Slice Boundary
 
 The first real local TUI proof in this environment reached Codex's workspace
-trust prompt. The current implementation now detects that state before spawn
+trust prompt. The current TUI implementation detects that state before spawn
 and writes a `blocked` run bundle instead of waiting for the TUI timeout. The
 resulting bundle is still verifiable and Observer-renderable, but it does not
-prove autonomous actor completion until the trust root is explicitly approved.
+prove autonomous TUI completion until the trust root is explicitly approved.
+
+The noninteractive `codex-exec` mode is a separate actor contract for autonomous
+local completion. It does not replace the TUI contract because it does not prove
+PTY rendering, keyboard focus, or visible live TUI observation.
 
 The next implementation slice should add an explicit, public-safe trust
 bootstrap before spawning the TUI. Acceptable fixes include:
 
 - allow an explicit operator-approved trust bootstrap for this repository only;
-- or add a non-TUI `codex exec` actor mode as a separate contract while keeping
-  the TUI actor honest about needing a PTY and trust.
+- add 4x fanout after both the TUI blocked state and exec completion state are
+  deterministic.
 
 ## Acceptance For First Slice
 
@@ -143,6 +165,7 @@ The implementation slice for this spec should prove:
 ```bash
 pnpm mimetic:doctor
 pnpm mimetic -- run --actor codex-tui --sims 1 --timeout-ms 120000 --json
+pnpm mimetic -- run --actor codex-exec --sims 1 --timeout-ms 120000 --json
 pnpm mimetic -- watch --run latest --detach --json --no-open
 pnpm mimetic -- verify --run latest --json
 pnpm check
