@@ -17,7 +17,8 @@ Read these in order:
 5. [`docs/roadmap/world-class-open-source-v0.md`](../roadmap/world-class-open-source-v0.md) for staged delivery history and remaining work.
 6. [`docs/architecture/observer.md`](../architecture/observer.md) for Observer architecture.
 7. [`docs/contracts/run-bundle.md`](../contracts/run-bundle.md) and [`docs/contracts/policy.md`](../contracts/policy.md) for proof contracts.
-8. [`docs/release/open-source-readiness.md`](../release/open-source-readiness.md) before touching public packaging or repository visibility.
+8. [`docs/release/public-readiness-standard.md`](../release/public-readiness-standard.md) before deciding what must be scrubbed.
+9. [`docs/release/open-source-readiness.md`](../release/open-source-readiness.md) before touching public packaging or repository visibility.
 
 ## Mental Model
 
