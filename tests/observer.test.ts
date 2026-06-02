@@ -60,14 +60,16 @@ describe("observer rendering", () => {
       await expect(stat(path.join(cwd, observerPath))).resolves.toBeTruthy();
 
       const html = await readFile(path.join(cwd, observerPath), "utf8");
+      // Title + brand of the redesigned mission-control shell.
       expect(html).toContain("Mimetic Observer");
+      // Embedded observer-data carries the lane status verbatim.
       expect(html).toContain("contract_proof_only");
-      expect(html).toContain("Mimetic - Observer");
-      expect(html).toContain("tile-grid");
+      expect(html).toContain('id="observer-data"');
+      // Structural markers of the redesigned surfaces (rendered by the client).
       expect(html).toContain("focus-rail");
-      expect(html).toContain("history-panel");
-      expect(html).toContain("live-waiting-surface");
-      expect(html).toContain("terminal-surface");
+      expect(html).toContain("statusbar");
+      expect(html).toContain("Run console");
+      expect(html).toContain("tile-surface");
 
       const data = JSON.parse(
         await readFile(path.join(cwd, ".mimetic/runs/observer-proof/observer/observer-data.json"), "utf8")
@@ -89,8 +91,8 @@ describe("observer rendering", () => {
       try {
         expect(server.url).toMatch(/^http:\/\/127\.0\.0\.1:/);
         const html = await (await fetch(server.url)).text();
-        expect(html).toContain("Mimetic - Observer");
-        expect(html).toContain("tile-grid");
+        expect(html).toContain("Mimetic Observer");
+        expect(html).toContain("statusbar");
 
         const dataUrl = new URL("observer-data.json", server.url);
         const data = await (await fetch(dataUrl)).json() as { schema: string };

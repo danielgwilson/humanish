@@ -175,74 +175,21 @@ export async function serveObserver(
 
 function renderObserverHtml(data: ObserverData): string {
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mimetic Observer - ${escapeHtml(data.run.runId)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>${observerCss()}</style>
 </head>
 <body>
-<div class="app" id="app">
-  <header class="rp" id="rp">
-    <div class="rp-bar">
-      <div class="rp-brand">
-        <span class="rp-brand-mark" aria-hidden="true"></span>
-        <span class="rp-brand-text">Mimetic - Observer</span>
-      </div>
-      <span class="rp-divider"></span>
-      <div class="rp-current">
-        <span class="pulse-dot" id="rp-current-pulse"></span>
-        <span class="rp-current-label" id="rp-current-label">Initializing</span>
-        <span class="rp-current-step" id="rp-current-step">- step 0/0</span>
-      </div>
-      <div class="rp-progress" id="rp-progress"><span></span></div>
-      <span class="rp-meta" id="rp-meta"></span>
-      <div class="rp-chips" id="rp-chips"></div>
-      <button type="button" class="rp-toggle" id="rp-toggle" aria-expanded="false">Phases</button>
-    </div>
-    <div class="rp-stepper" id="rp-stepper" hidden></div>
-  </header>
-
-  <div class="sub-bar" id="sub-bar">
-    <span class="obs-eyebrow" id="sub-mode">Watch grid</span>
-    <span class="sub-count"><strong id="sub-count">0</strong> streams</span>
-    <span class="sub-divider"></span>
-    <div class="sub-filters" id="sub-filters"></div>
-    <span class="sub-divider"></span>
-    <div class="sub-kind-filters" id="sub-kind-filters"></div>
-    <div class="sub-spacer">
-      <button class="sub-action" id="history-toggle" aria-expanded="false" hidden>Runs</button>
-      <span class="sub-divider" id="history-divider" hidden></span>
-      <span class="obs-eyebrow">Scale</span>
-      <button class="sub-density-btn" data-density="2" aria-pressed="false">2x</button>
-      <button class="sub-density-btn" data-density="3" aria-pressed="false">3x</button>
-      <button class="sub-density-btn" data-density="4" aria-pressed="true">4x</button>
-      <button class="sub-density-btn" data-density="5" aria-pressed="false">5x</button>
-      <span class="sub-divider"></span>
-      <button class="sub-action" id="media-toggle" data-mode-toggle="true" aria-pressed="false">Live</button>
-      <button class="sub-action" id="focus-mode" aria-pressed="false">Focus</button>
-      <button class="sub-action" id="grid-mode" aria-pressed="true">Grid</button>
-    </div>
-  </div>
-
-  <main class="grid-shell" id="grid-shell">
-    <div class="tile-grid" id="streams" data-density="4" data-stream-count="${data.streams.length}" aria-label="${data.streams.length} watchable streams"></div>
-  </main>
-
-  <section class="focus" id="focus" hidden aria-live="polite"></section>
-  <aside class="history-panel" id="history-panel" hidden aria-label="Run history">
-    <header class="history-head">
-      <div>
-        <span class="obs-eyebrow">Run history</span>
-        <h2>Past Mimetic runs</h2>
-      </div>
-      <button type="button" class="history-close" id="history-close" aria-label="Close run history">x</button>
-    </header>
-    <div class="history-current" id="history-current"></div>
-    <div class="history-list" id="history-list"></div>
-  </aside>
+<div class="app" id="app" aria-label="Mimetic Observer mission control">
+  <div class="boot" id="boot" aria-hidden="true"></div>
 </div>
+<noscript>This Observer renders local run evidence with JavaScript. Inspect the run bundle directly at <code>../run.json</code>.</noscript>
 <script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>
 <script>${observerClientJs()}</script>
 </body>
