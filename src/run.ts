@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
@@ -10,9 +12,12 @@ export const DOCTOR_SCHEMA = "mimetic.doctor-result.v1";
 
 export interface RunOptions {
   cwd: string;
+  actor?: string;
+  actorCommand?: string[];
   dryRun?: boolean;
   runId?: string;
   simCount?: number;
+  timeoutMs?: number;
 }
 
 export type RunStreamKind = "ui" | "browser" | "terminal" | "tui" | "codex-ui" | "artifact" | "summary";
@@ -21,10 +26,22 @@ export type RunSimulationStatus =
   | "queued"
   | "preparing"
   | "running"
+  | "passed"
   | "complete"
   | "blocked"
+  | "timed_out"
   | "failed"
   | "contract_proof_only";
+
+export interface RunStreamCompletion {
+  checkedAt: string;
+  exitCode?: number;
+  logTail?: string;
+  nestedObserverPresent?: boolean;
+  nestedVerifyPassed?: boolean;
+  reason: string;
+  status: "running" | "passed" | "failed" | "blocked" | "timed_out";
+}
 
 export interface RunSimulation {
   id: string;
@@ -80,6 +97,7 @@ export interface RunStream {
     state: "not_connected" | "connecting" | "watching";
     contract: string;
   };
+  completion?: RunStreamCompletion;
   artifacts: Array<{
     label: string;
     path: string;
@@ -100,7 +118,7 @@ export interface RunEvent {
 export interface RunBundle {
   schema: typeof RUN_BUNDLE_SCHEMA;
   runId: string;
-  mode: "dry-run";
+  mode: "dry-run" | "live";
   simCount: number;
   createdAt: string;
   cwd: string;
@@ -151,7 +169,7 @@ export interface RunBundle {
 
 export interface ReviewSummary {
   schema: typeof REVIEW_SCHEMA;
-  verdict: "contract_proof_only";
+  verdict: "contract_proof_only" | "pass" | "fail" | "blocked" | "timed_out";
   summary: string;
   gaps: string[];
 }
@@ -160,7 +178,7 @@ export interface RunResult {
   schema: "mimetic.run-result.v1";
   ok: boolean;
   runId?: string;
-  mode?: "dry-run";
+  mode?: "dry-run" | "live";
   simCount?: number;
   cwd: string;
   artifactRoot?: string;
@@ -170,10 +188,14 @@ export interface RunResult {
   warnings: string[];
   error?: {
     code:
+      | "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED"
       | "MIMETIC_LIVE_RUN_UNIMPLEMENTED"
+      | "MIMETIC_LOCAL_CODEX_TUI_FAILED"
       | "MIMETIC_INVALID_CWD"
       | "MIMETIC_INVALID_SIM_COUNT"
+      | "MIMETIC_INVALID_TIMEOUT"
       | "MIMETIC_INVALID_PORT"
+      | "MIMETIC_UNSUPPORTED_ACTOR"
       | "MIMETIC_WATCH_OPTION_CONFLICT";
     message: string;
   };
@@ -233,6 +255,10 @@ const sensitivePatterns = [
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
 ];
 
+const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 120_000;
+const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 600_000;
+const LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS = 80_000;
+
 const builtinPersona = {
   id: "builtin-synthetic-new-user",
   name: "Built-in Synthetic New User",
@@ -263,15 +289,15 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     };
   }
 
-  if (!options.dryRun) {
+  if (options.actor !== undefined && options.actor !== "codex-tui") {
     return {
       schema: "mimetic.run-result.v1",
       ok: false,
       cwd,
       warnings,
       error: {
-        code: "MIMETIC_LIVE_RUN_UNIMPLEMENTED",
-        message: "Only run --dry-run is implemented in this open-source-safe slice."
+        code: "MIMETIC_UNSUPPORTED_ACTOR",
+        message: `Unsupported actor: ${options.actor}`
       }
     };
   }
@@ -286,6 +312,24 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
       error: {
         code: "MIMETIC_INVALID_SIM_COUNT",
         message: "--sims must be an integer between 1 and 64."
+      }
+    };
+  }
+
+  if (!options.dryRun) {
+    const actor = options.actor ?? (process.env.MIMETIC_ENABLE_LOCAL_CODEX_TUI === "1" ? "codex-tui" : undefined);
+    if (actor === "codex-tui") {
+      return runLocalCodexTui({ ...options, actor, cwd, simCount });
+    }
+
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_LIVE_RUN_UNIMPLEMENTED",
+        message: "Only run --dry-run is implemented unless --actor codex-tui or MIMETIC_ENABLE_LOCAL_CODEX_TUI=1 is set."
       }
     };
   }
@@ -393,6 +437,290 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     reviewPath: path.join(artifactRoot, "review.md"),
     latestPath: path.join(".mimetic", "runs", "latest.json"),
     warnings
+  };
+}
+
+async function runLocalCodexTui(options: RunOptions & {
+  actor: "codex-tui";
+  cwd: string;
+  simCount: number;
+}): Promise<RunResult> {
+  const warnings: string[] = [];
+
+  if (options.simCount !== 1) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED",
+        message: "Local Codex TUI actor support is intentionally limited to --sims 1 in this slice. Split 4x fanout after the 1x lifecycle is deterministic."
+      }
+    };
+  }
+
+  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("MIMETIC_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  if (timeoutMs === null) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_INVALID_TIMEOUT",
+        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
+      }
+    };
+  }
+
+  const now = new Date();
+  const createdAt = now.toISOString();
+  const runId = options.runId ?? `codex-tui-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const artifactRoot = path.join(".mimetic", "runs", runId);
+  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
+  const transcriptPath = path.join(absoluteArtifactRoot, "transcripts", "codex-tui-sanitized.txt");
+  const actorTracePath = path.join(absoluteArtifactRoot, "actor.json");
+  const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
+  const packageName = await readPackageName(options.cwd);
+  const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const selection = await loadDryRunSelection(options.cwd, mimeticSource);
+  if (mimeticSource === "missing") {
+    warnings.push("Committed mimetic/ source was not found; using built-in synthetic local actor defaults.");
+  }
+  warnings.push(...selection.warnings);
+  const prompt = buildLocalCodexTuiPrompt(selection);
+  const promptDigest = digestText(prompt);
+  const command = resolveLocalCodexTuiCommand(options.cwd, prompt, options.actorCommand);
+  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.MIMETIC_CODEX_ACTOR_COMMAND === undefined;
+  const simId = "sim-01";
+  const streamId = "sim-01-codex-tui";
+  const events: RunEvent[] = [];
+  const appendEvent = async (
+    type: string,
+    message: string,
+    level: RunEvent["level"] = "info"
+  ): Promise<void> => {
+    events.push({
+      id: `event-${String(events.length + 1).padStart(3, "0")}`,
+      at: new Date().toISOString(),
+      level,
+      type,
+      message,
+      simId,
+      streamId
+    });
+    await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  };
+
+  await mkdir(path.dirname(transcriptPath), { recursive: true });
+  await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
+    schema: "mimetic.latest-run.v1",
+    runId,
+    path: artifactRoot,
+    updatedAt: createdAt
+  } satisfies RunPointer);
+
+  let actor: LocalActorCommandResult;
+  const trustPreflight = usesDefaultCodexCommand ? await checkCodexWorkspaceTrust(options.cwd) : { ok: true as const };
+  if (!trustPreflight.ok) {
+    actor = {
+      durationMs: 0,
+      reason: trustPreflight.message,
+      status: "blocked",
+      transcript: `${trustPreflight.message}\nRecovery: ${trustPreflight.recoveryCommand}\n`,
+      transcriptBytes: Buffer.byteLength(trustPreflight.message)
+    };
+    await appendEvent("actor.preflight.blocked", trustPreflight.message, "warn");
+  } else {
+    await appendEvent(
+      "actor.spawned",
+      `Spawned local Codex TUI actor command ${command.name} in explicit opt-in mode.`
+    );
+    await appendEvent(
+      "actor.prompt.submitted",
+      `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`
+    );
+
+    actor = await executeLocalActorCommand(command, {
+      cwd: options.cwd,
+      timeoutMs
+    });
+  }
+  const completedAt = new Date().toISOString();
+  const redactedTranscript = redactSensitiveText(actor.transcript);
+  const tail = tailText(redactedTranscript, 6_000);
+  const status = actor.status;
+  const verdictReason = actor.reason;
+
+  await writeFile(transcriptPath, redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n", "utf8");
+  await writeJson(actorTracePath, {
+    schema: "mimetic.local-codex-tui-actor.v1",
+    actor: "codex-tui",
+    commandName: command.name,
+    promptDigest,
+    startedAt: createdAt,
+    completedAt,
+    durationMs: actor.durationMs,
+    exitCode: actor.exitCode,
+    signal: actor.signal,
+    status,
+    timeoutMs,
+    transcriptBytes: actor.transcriptBytes,
+    transcriptPath: "transcripts/codex-tui-sanitized.txt",
+    redaction: "passed"
+  });
+
+  await appendEvent(
+    "actor.observation",
+    `Captured ${actor.transcriptBytes} output byte${actor.transcriptBytes === 1 ? "" : "s"}; sanitized transcript tail recorded with redaction=passed.`
+  );
+  await appendEvent(
+    "actor.artifact",
+    "Wrote sanitized Codex TUI transcript and actor trace artifacts under the ignored run directory."
+  );
+  await appendEvent(
+    "actor.verdict",
+    `Local Codex TUI actor verdict ${status}: ${verdictReason}`,
+    status === "passed" ? "info" : status === "timed_out" ? "warn" : "error"
+  );
+  await appendEvent(
+    status === "timed_out" ? "actor.timeout" : status === "blocked" && !trustPreflight.ok ? "actor.blocked" : "actor.exited",
+    status === "timed_out"
+      ? `Actor timed out after ${timeoutMs}ms; last safe observation retained.`
+      : status === "blocked" && !trustPreflight.ok
+        ? "Actor launch was blocked by preflight before spawn."
+        : `Actor exited with code ${actor.exitCode ?? "null"}${actor.signal ? ` and signal ${actor.signal}` : ""}.`,
+    status === "passed" ? "info" : "warn"
+  );
+
+  const bundle: RunBundle = {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId,
+    mode: "live",
+    simCount: 1,
+    createdAt,
+    cwd: options.cwd,
+    artifactRoot,
+    source: {
+      packageName,
+      mimeticSource,
+      git: {
+        status: "not_captured",
+        note: "Source git state capture is planned for the core primitives slice."
+      }
+    },
+    persona: selection.persona,
+    scenario: selection.scenario,
+    lifecycle: [
+      {
+        at: createdAt,
+        event: "run.created",
+        message: "Live local Codex TUI run created with one explicit opt-in actor."
+      },
+      {
+        at: createdAt,
+        event: "actor.selected",
+        message: "Selected local codex-tui actor."
+      },
+      {
+        at: completedAt,
+        event: "review.skeleton.created",
+        message: "Created review skeleton from sanitized actor lifecycle evidence."
+      }
+    ],
+    simulations: [
+      {
+        id: simId,
+        index: 1,
+        personaId: selection.persona.id,
+        scenarioId: selection.scenario.id,
+        status,
+        streamKind: "tui",
+        mode: "tui-sim",
+        progress: 100,
+        currentStep: status === "passed" ? "Local Codex TUI actor completed" : "Local Codex TUI actor needs review",
+        summary: `Local Codex TUI actor ${status}: ${verdictReason}`,
+        streamIds: [streamId],
+        startedAt: createdAt,
+        updatedAt: completedAt
+      }
+    ],
+    streams: [
+      {
+        id: streamId,
+        simId,
+        kind: "tui",
+        label: "Local Codex TUI actor",
+        status,
+        transport: "pty",
+        updatedAt: completedAt,
+        embed: {
+          kind: "terminal",
+          title: "Local Codex TUI actor"
+        },
+        terminal: {
+          title: "Local Codex TUI actor",
+          format: "ansi",
+          stdin: "sent",
+          tail
+        },
+        completion: {
+          checkedAt: completedAt,
+          ...(actor.exitCode === undefined ? {} : { exitCode: actor.exitCode }),
+          logTail: tail,
+          reason: verdictReason,
+          status
+        },
+        artifacts: [
+          { label: "run bundle", path: "run.json", kind: "bundle" },
+          { label: "review", path: "review.md", kind: "review" },
+          { label: "event log", path: "events.ndjson", kind: "events" },
+          { label: "sanitized transcript", path: "transcripts/codex-tui-sanitized.txt", kind: "log" },
+          { label: "actor trace", path: "actor.json", kind: "trace" }
+        ]
+      }
+    ],
+    events,
+    redaction: {
+      status: "passed",
+      notes: "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log."
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson"
+    },
+    review: createLocalActorReviewSummary(status, verdictReason),
+    feedbackCandidates: []
+  };
+
+  await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
+  await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
+  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
+
+  return {
+    schema: "mimetic.run-result.v1",
+    ok: status === "passed",
+    runId,
+    mode: "live",
+    simCount: 1,
+    cwd: options.cwd,
+    artifactRoot,
+    bundlePath: path.join(artifactRoot, "run.json"),
+    reviewPath: path.join(artifactRoot, "review.md"),
+    latestPath: path.join(".mimetic", "runs", "latest.json"),
+    warnings,
+    ...(status === "passed"
+      ? {}
+      : {
+          error: {
+            code: "MIMETIC_LOCAL_CODEX_TUI_FAILED" as const,
+            message: `Local Codex TUI actor ${status}: ${verdictReason}`
+          }
+        })
   };
 }
 
@@ -556,6 +884,352 @@ function streamTransport(kind: RunStreamKind): RunStream["transport"] {
   if (kind === "codex-ui") return "app-server";
   if (kind === "ui" || kind === "browser") return "polling";
   return "snapshot";
+}
+
+interface LocalActorCommand {
+  args: string[];
+  command: string;
+  name: string;
+}
+
+interface LocalActorCommandResult {
+  durationMs: number;
+  exitCode?: number;
+  reason: string;
+  signal?: NodeJS.Signals;
+  status: Extract<RunSimulationStatus, "passed" | "failed" | "blocked" | "timed_out">;
+  transcript: string;
+  transcriptBytes: number;
+}
+
+type CodexTrustPreflight =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+      recoveryCommand: string;
+      trustRoot: string;
+    };
+
+function resolveLocalCodexTuiCommand(
+  cwd: string,
+  prompt: string,
+  overrideCommand: string[] | undefined
+): LocalActorCommand {
+  const envCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+  const commandParts = overrideCommand && overrideCommand.length > 0
+    ? overrideCommand
+    : envCommand
+      ? parseCommandLine(envCommand)
+      : defaultLocalCodexTuiCommand(cwd, prompt);
+  const [command, ...args] = commandParts;
+
+  if (!command) {
+    const [fallbackCommand, ...fallbackArgs] = defaultLocalCodexTuiCommand(cwd, prompt);
+    return {
+      command: fallbackCommand ?? "codex",
+      args: fallbackArgs,
+      name: fallbackCommand ? path.basename(fallbackCommand) : "codex"
+    };
+  }
+
+  return {
+    command,
+    args,
+    name: path.basename(command)
+  };
+}
+
+function defaultLocalCodexTuiCommand(cwd: string, prompt: string): string[] {
+  const codexParts = [
+    "codex",
+    "--no-alt-screen",
+    "-C",
+    cwd,
+    "--sandbox",
+    "read-only",
+    "--ask-for-approval",
+    "never",
+    prompt
+  ];
+
+  if (process.platform === "linux") {
+    return ["script", "-qfec", shellJoin(codexParts), "/dev/null"];
+  }
+
+  return codexParts;
+}
+
+function executeLocalActorCommand(
+  command: LocalActorCommand,
+  options: {
+    cwd: string;
+    timeoutMs: number;
+  }
+): Promise<LocalActorCommandResult> {
+  const startedAt = Date.now();
+  let transcript = "";
+  let transcriptBytes = 0;
+  let timedOut = false;
+  let settled = false;
+  let timer: NodeJS.Timeout;
+
+  return new Promise((resolve) => {
+    const finish = (result: Omit<LocalActorCommandResult, "durationMs" | "transcript" | "transcriptBytes">): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        ...result,
+        durationMs: Date.now() - startedAt,
+        transcript: redactSensitiveText(transcript),
+        transcriptBytes
+      });
+    };
+
+    const child = spawn(command.command, command.args, {
+      cwd: options.cwd,
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+
+    timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      setTimeout(() => {
+        if (timedOut) {
+          child.kill("SIGKILL");
+        }
+      }, 2_000).unref();
+    }, options.timeoutMs);
+    timer.unref();
+
+    const capture = (chunk: Buffer): void => {
+      transcriptBytes += chunk.byteLength;
+      transcript = limitTranscript(redactSensitiveText(transcript + chunk.toString("utf8")));
+    };
+
+    child.stdout?.on("data", capture);
+    child.stderr?.on("data", capture);
+    child.once("error", (error) => {
+      finish({
+        status: "blocked",
+        reason: `actor command could not start: ${error.message}`
+      });
+    });
+    child.once("close", (code, signal) => {
+      if (timedOut || (Date.now() - startedAt >= options.timeoutMs && code === null)) {
+        timedOut = false;
+        finish({
+          status: "timed_out",
+          reason: `actor exceeded ${options.timeoutMs}ms timeout`,
+          ...(signal === null ? {} : { signal })
+        });
+        return;
+      }
+
+      finish({
+        status: code === 0 ? "passed" : "failed",
+        reason: code === 0 ? "actor process exited successfully" : `actor process exited with code ${code ?? "null"}`,
+        ...(code === null ? {} : { exitCode: code }),
+        ...(signal === null ? {} : { signal })
+      });
+    });
+  });
+}
+
+async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPreflight> {
+  if (process.env.MIMETIC_SKIP_CODEX_TRUST_PREFLIGHT === "1") {
+    return { ok: true };
+  }
+
+  const trustRoot = await detectCodexTrustRoot(cwd);
+  if (!trustRoot) {
+    return { ok: true };
+  }
+
+  const configPath = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), "config.toml");
+  const configText = await readTextIfExists(configPath);
+
+  if (configText && codexConfigTrustsProject(configText, trustRoot)) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    trustRoot,
+    message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted: ${trustRoot}`,
+    recoveryCommand: `codex --no-alt-screen -C ${shellQuote(trustRoot)}`
+  };
+}
+
+async function detectCodexTrustRoot(cwd: string): Promise<string | null> {
+  const worktreeRoot = await findGitWorktreeRoot(cwd);
+  if (!worktreeRoot) {
+    return null;
+  }
+
+  const dotGitPath = path.join(worktreeRoot, ".git");
+  if (await directoryExists(dotGitPath)) {
+    return worktreeRoot;
+  }
+
+  const gitFile = await readTextIfExists(dotGitPath);
+  if (!gitFile?.startsWith("gitdir:")) {
+    return worktreeRoot;
+  }
+
+  const gitDir = gitFile.slice("gitdir:".length).trim();
+  const absoluteGitDir = path.isAbsolute(gitDir) ? gitDir : path.resolve(worktreeRoot, gitDir);
+  const commonDirText = await readTextIfExists(path.join(absoluteGitDir, "commondir"));
+  if (!commonDirText) {
+    return worktreeRoot;
+  }
+
+  const commonDir = commonDirText.trim();
+  const absoluteCommonDir = path.resolve(absoluteGitDir, commonDir);
+  return path.basename(absoluteCommonDir) === ".git" ? path.dirname(absoluteCommonDir) : worktreeRoot;
+}
+
+async function findGitWorktreeRoot(cwd: string): Promise<string | null> {
+  let current = path.resolve(cwd);
+
+  while (true) {
+    if (await fileExists(path.join(current, ".git")) || await directoryExists(path.join(current, ".git"))) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+}
+
+function codexConfigTrustsProject(configText: string, trustRoot: string): boolean {
+  const escapedRoot = escapeRegExp(trustRoot);
+  const sectionPattern = new RegExp(`^\\[projects\\."${escapedRoot}"\\]\\s*$`, "m");
+  const sectionMatch = sectionPattern.exec(configText);
+  if (!sectionMatch) {
+    return false;
+  }
+
+  const afterSection = configText.slice(sectionMatch.index + sectionMatch[0].length);
+  const nextSectionIndex = afterSection.search(/^\[/m);
+  const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
+  return /^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody);
+}
+
+function normalizeActorTimeout(value: number | undefined): number | null {
+  if (!Number.isInteger(value) || value === undefined || value < 1 || value > LOCAL_CODEX_TUI_MAX_TIMEOUT_MS) {
+    return null;
+  }
+
+  return value;
+}
+
+function readEnvInteger(name: string): number | undefined {
+  const value = process.env[name];
+  if (value === undefined || value.trim() === "") {
+    return undefined;
+  }
+
+  return /^\d+$/.test(value) ? Number.parseInt(value, 10) : Number.NaN;
+}
+
+function buildLocalCodexTuiPrompt(selection: {
+  persona: RunBundle["persona"];
+  scenario: RunBundle["scenario"];
+}): string {
+  return [
+    "You are a Mimetic local Codex TUI dogfood actor.",
+    `Persona: ${selection.persona.name}.`,
+    `Scenario: ${selection.scenario.title}.`,
+    "Inspect this public repository's Mimetic setup, run evidence, and Observer affordances.",
+    "Do not print secrets, do not commit, do not push, do not open GitHub issues, and do not use private data.",
+    "Finish by summarizing one public-safe harness improvement and whether the run is passed, blocked, or failed."
+  ].join(" ");
+}
+
+function parseCommandLine(input: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: "\"" | "'" | null = null;
+  let escaping = false;
+
+  for (const char of input.trim()) {
+    if (escaping) {
+      current += char;
+      escaping = false;
+      continue;
+    }
+
+    if (char === "\\" && quote !== "'") {
+      escaping = true;
+      continue;
+    }
+
+    if (quote) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current !== "") {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current !== "") {
+    tokens.push(current);
+  }
+
+  return quote ? [] : tokens;
+}
+
+function shellJoin(parts: string[]): string {
+  return parts.map(shellQuote).join(" ");
+}
+
+function shellQuote(value: string): string {
+  if (/^[A-Za-z0-9_/:=.,@%+-]+$/.test(value)) {
+    return value;
+  }
+
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function limitTranscript(value: string): string {
+  if (value.length <= LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS) {
+    return value;
+  }
+
+  return `[...sanitized transcript truncated to last ${LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS} characters...]\n${value.slice(-LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS)}`;
+}
+
+function tailText(value: string, maxChars: number): string {
+  if (value.length <= maxChars) {
+    return value;
+  }
+
+  return value.slice(-maxChars);
 }
 
 function normalizeSimCount(value: number | undefined): number | null {
@@ -770,6 +1444,27 @@ function createReviewSummary(): ReviewSummary {
   };
 }
 
+function createLocalActorReviewSummary(status: RunSimulationStatus, reason: string): ReviewSummary {
+  const verdict = status === "passed"
+    ? "pass"
+    : status === "timed_out"
+      ? "timed_out"
+      : status === "blocked"
+        ? "blocked"
+        : "fail";
+
+  return {
+    schema: REVIEW_SCHEMA,
+    verdict,
+    summary: `Live local Codex TUI actor ${status}: ${reason}. This proves the local actor lifecycle and sanitized evidence path, not 4x fanout or target product behavior.`,
+    gaps: [
+      "Only one local Codex TUI actor is supported in this slice.",
+      "Live Observer follow while the actor is running remains a follow-up hardening step.",
+      "No GitHub mutation, target OSS mutation, E2B substrate, or production data was used by this local actor contract."
+    ]
+  };
+}
+
 async function loadDryRunSelection(
   cwd: string,
   mimeticSource: "present" | "missing"
@@ -824,9 +1519,11 @@ async function loadDryRunSelection(
 }
 
 function renderReviewMarkdown(bundle: RunBundle): string {
-  return `# Mimetic Dry-Run Review
+  return `# Mimetic Run Review
 
 Run: ${bundle.runId}
+
+Mode: ${bundle.mode}
 
 Verdict: ${bundle.review.verdict}
 
@@ -967,11 +1664,18 @@ function containsSensitivePattern(text: string): boolean {
   return sensitivePatterns.some((pattern) => pattern.test(text));
 }
 
+function redactSensitiveText(text: string): string {
+  return sensitivePatterns.reduce((current, pattern) => {
+    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+    return current.replace(new RegExp(pattern.source, flags), "[REDACTED_SECRET]");
+  }, text);
+}
+
 function isRunBundle(value: unknown): value is RunBundle {
   return isRecord(value)
     && value.schema === RUN_BUNDLE_SCHEMA
     && typeof value.runId === "string"
-    && value.mode === "dry-run"
+    && (value.mode === "dry-run" || value.mode === "live")
     && typeof value.createdAt === "string"
     && isRecord(value.review)
     && isReviewSummary(value.review)
@@ -982,7 +1686,13 @@ function isRunBundle(value: unknown): value is RunBundle {
 function isReviewSummary(value: unknown): value is ReviewSummary {
   return isRecord(value)
     && value.schema === REVIEW_SCHEMA
-    && value.verdict === "contract_proof_only"
+    && (
+      value.verdict === "contract_proof_only"
+      || value.verdict === "pass"
+      || value.verdict === "fail"
+      || value.verdict === "blocked"
+      || value.verdict === "timed_out"
+    )
     && typeof value.summary === "string"
     && Array.isArray(value.gaps)
     && value.gaps.every((gap) => typeof gap === "string");
