@@ -736,9 +736,9 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       writeResult(command, io, output, formatOssMetaLabHuman);
       io.setExitCode(output.ok ? 0 : 2);
 
-      if (output.ok && options.detach === true && output.sandboxes.some((sandbox) => sandbox.urlPresent)) {
+      if (shouldForceExitAfterOssMetaLab(output, { detach: options.detach === true, wantsMachine })) {
         // The E2B SDK keeps local handles open after stream URL creation. Detach should
-        // return the user's shell while the remote desktops continue on E2B.
+        // return the user's shell, and JSON mode should exit after printing the result.
         setTimeout(() => process.exit(0), 50);
       }
 
@@ -1065,6 +1065,16 @@ function emitUnsupported(plannedCommand: PlannedCommand, command: Command, io: C
   }
 
   io.setExitCode(2);
+}
+
+export function shouldForceExitAfterOssMetaLab(
+  output: OssMetaLabResult,
+  options: { detach: boolean; wantsMachine: boolean }
+): boolean {
+  return output.ok
+    && output.liveRequested === true
+    && (options.detach || options.wantsMachine)
+    && output.sandboxes.some((sandbox) => sandbox.urlPresent);
 }
 
 function wantsJson(command: Command): boolean {

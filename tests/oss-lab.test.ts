@@ -15,7 +15,8 @@ import {
   buildOssMetaBundleFixture,
   buildOssRepoAssignments
 } from "../src/oss-meta-lab.js";
-import { createProgram } from "../src/program.js";
+import type { OssMetaLabResult } from "../src/oss-meta-lab.js";
+import { createProgram, shouldForceExitAfterOssMetaLab } from "../src/program.js";
 
 async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
@@ -59,6 +60,54 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
 }
 
 describe("OSS lab command", () => {
+  function liveMetaResult(overrides: Partial<OssMetaLabResult> = {}): OssMetaLabResult {
+    return {
+      schema: "mimetic.oss-meta-lab-result.v1",
+      ok: true,
+      assignments: [],
+      count: 1,
+      cwd: "/tmp/mimetic",
+      dryRun: false,
+      liveRequested: true,
+      repos: ["developit/mitt"],
+      runId: "oss-live-fixture",
+      sandboxes: [
+        {
+          bootstrapStatus: "started",
+          completionStatus: "passed",
+          repo: "developit/mitt",
+          streamId: "oss-01-desktop",
+          urlPresent: true
+        }
+      ],
+      warnings: [],
+      ...overrides
+    };
+  }
+
+  it("force-exits successful live OSS meta-lab JSON and detach modes after output", () => {
+    const result = liveMetaResult();
+
+    expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: true })).toBe(true);
+    expect(shouldForceExitAfterOssMetaLab(result, { detach: true, wantsMachine: false })).toBe(true);
+    expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: false })).toBe(false);
+  });
+
+  it("does not force-exit OSS meta-lab runs without successful live stream handles", () => {
+    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ dryRun: true, liveRequested: false }), {
+      detach: false,
+      wantsMachine: true
+    })).toBe(false);
+    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ ok: false }), {
+      detach: false,
+      wantsMachine: true
+    })).toBe(false);
+    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ sandboxes: [{ repo: "developit/mitt", streamId: "oss-01-desktop", urlPresent: false }] }), {
+      detach: false,
+      wantsMachine: true
+    })).toBe(false);
+  });
+
   it("keeps default repo selection lightweight and public", () => {
     expect(normalizeOssRepoSlugs(undefined)).toEqual([...DEFAULT_OSS_REPOS]);
     expect(normalizeOssRepoSlugs([" developit/mitt ", "developit/mitt", "lukeed/clsx"])).toEqual([
