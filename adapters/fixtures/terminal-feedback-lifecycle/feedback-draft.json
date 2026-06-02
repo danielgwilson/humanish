@@ -1,0 +1,45 @@
+{
+  "schema": "mimetic.feedback.v1",
+  "run_id": "terminal-feedback-lifecycle-fixture",
+  "adapter_id": "terminal-feedback-lifecycle",
+  "scenario_id": "terminal-feedback-lifecycle",
+  "persona_id": "synthetic-terminal-maintainer",
+  "actor": "synthetic-dry-run",
+  "substrate": "local-filesystem",
+  "failure_owner": "harness",
+  "summary": "Synthetic terminal run needs public-safe feedback lifecycle proof.",
+  "expected": "Terminal adapters can produce sanitized transcript evidence and issue-draft artifacts without browser-only assumptions.",
+  "actual": "This contract fixture produced sanitized terminal and feedback pointers only; live product behavior was not exercised.",
+  "source_bundle": "run-bundle.json",
+  "evidence": [
+    {
+      "path": "run-bundle.json",
+      "kind": "state",
+      "note": "Synthetic run bundle."
+    },
+    {
+      "path": "transcripts/sanitized-terminal.txt",
+      "kind": "terminal",
+      "note": "Sanitized transcript pointer; raw transcript is intentionally absent."
+    },
+    {
+      "path": "policy.json",
+      "kind": "trace",
+      "note": "No-spend, no-network, no-mutation policy."
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Synthetic fixture only."
+  },
+  "idempotency_key": "terminal-feedback-lifecycle:dry-run-contract-proof",
+  "proposed_next_state": "watch",
+  "acceptance_proof": [
+    "pnpm test tests/adapter-fixtures.test.ts",
+    "pnpm public-surface:scan"
+  ],
+  "github": {
+    "mutation": "not_requested",
+    "requires_token": false
+  }
+}

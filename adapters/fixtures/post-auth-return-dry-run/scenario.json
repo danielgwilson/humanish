@@ -1,0 +1,25 @@
+{
+  "schema": "mimetic.scenario.v1",
+  "id": "post-auth-return-dry-run",
+  "title": "Post-auth return dry-run",
+  "persona": "synthetic-returning-creator",
+  "goal": "Prove upload, studio, and auth-return route ownership through a public-safe dry-run bundle.",
+  "mode": "dry-run",
+  "steps": [
+    {
+      "name": "Prepare synthetic upload",
+      "route": "upload",
+      "expectation": "The fixture exposes synthetic input without private files."
+    },
+    {
+      "name": "Review studio state",
+      "route": "studio",
+      "expectation": "The fixture names a stable review surface."
+    },
+    {
+      "name": "Return from authentication",
+      "route": "auth-return",
+      "expectation": "The fixture records only a synthetic state id."
+    }
+  ]
+}

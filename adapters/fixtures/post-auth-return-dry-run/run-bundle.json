@@ -1,0 +1,186 @@
+{
+  "schema": "mimetic.run-bundle.v1",
+  "runId": "post-auth-return-dry-run-fixture",
+  "mode": "dry-run",
+  "simCount": 1,
+  "createdAt": "2026-06-02T10:20:00.000Z",
+  "cwd": "adapters/fixtures/post-auth-return-dry-run",
+  "artifactRoot": ".mimetic/runs/post-auth-return-dry-run-fixture",
+  "source": {
+    "packageName": "fixture-upload-studio",
+    "mimeticSource": "present",
+    "git": {
+      "schema": "mimetic.git-state.v1",
+      "status": "clean",
+      "capturedAt": "2026-06-02T10:20:00.000Z",
+      "head": {
+        "shortSha": null,
+        "refState": "unknown"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
+      },
+      "note": "public-safe synthetic fixture"
+    }
+  },
+  "persona": {
+    "id": "synthetic-returning-creator",
+    "name": "Synthetic Returning Creator",
+    "source": "persona.json",
+    "sourceDigest": "synthetic"
+  },
+  "scenario": {
+    "id": "post-auth-return-dry-run",
+    "title": "Post-auth return dry-run",
+    "goal": "Prove upload, studio, and auth-return route ownership through a public-safe dry-run bundle.",
+    "source": "scenario.json",
+    "sourceDigest": "synthetic"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-06-02T10:20:00.000Z",
+      "event": "run.created",
+      "message": "Synthetic adapter dry-run fixture created."
+    },
+    {
+      "at": "2026-06-02T10:20:01.000Z",
+      "event": "milestone.reached",
+      "message": "upload-ready"
+    },
+    {
+      "at": "2026-06-02T10:20:02.000Z",
+      "event": "milestone.reached",
+      "message": "studio-ready"
+    },
+    {
+      "at": "2026-06-02T10:20:03.000Z",
+      "event": "milestone.reached",
+      "message": "auth-return-complete"
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-01",
+      "index": 1,
+      "personaId": "synthetic-returning-creator",
+      "scenarioId": "post-auth-return-dry-run",
+      "status": "complete",
+      "streamKind": "ui",
+      "mode": "ui-sim",
+      "progress": 100,
+      "currentStep": "Synthetic auth return completed",
+      "summary": "Dry-run route and milestone fixture completed.",
+      "streamIds": [
+        "sim-01-upload",
+        "sim-01-studio",
+        "sim-01-auth-return"
+      ],
+      "startedAt": "2026-06-02T10:20:00.000Z",
+      "updatedAt": "2026-06-02T10:20:03.000Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "sim-01-upload",
+      "simId": "sim-01",
+      "kind": "ui",
+      "label": "Upload route",
+      "status": "complete",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-02T10:20:01.000Z",
+      "ui": {
+        "route": "/upload",
+        "intent": "Synthetic input is visible.",
+        "state": "upload-ready"
+      },
+      "artifacts": [
+        {
+          "label": "milestone manifest",
+          "path": "milestones.json",
+          "kind": "trace"
+        }
+      ]
+    },
+    {
+      "id": "sim-01-studio",
+      "simId": "sim-01",
+      "kind": "ui",
+      "label": "Studio route",
+      "status": "complete",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-02T10:20:02.000Z",
+      "ui": {
+        "route": "/studio",
+        "intent": "Synthetic studio review state is visible.",
+        "state": "studio-ready"
+      },
+      "artifacts": [
+        {
+          "label": "milestone manifest",
+          "path": "milestones.json",
+          "kind": "trace"
+        }
+      ]
+    },
+    {
+      "id": "sim-01-auth-return",
+      "simId": "sim-01",
+      "kind": "ui",
+      "label": "Auth return route",
+      "status": "complete",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-02T10:20:03.000Z",
+      "ui": {
+        "route": "/auth/return",
+        "intent": "Synthetic state id accepted after return.",
+        "state": "auth-return-complete"
+      },
+      "artifacts": [
+        {
+          "label": "milestone manifest",
+          "path": "milestones.json",
+          "kind": "trace"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-001",
+      "at": "2026-06-02T10:20:00.000Z",
+      "level": "info",
+      "type": "fixture.started",
+      "message": "Started public-safe adapter fixture."
+    },
+    {
+      "id": "event-002",
+      "at": "2026-06-02T10:20:03.000Z",
+      "level": "info",
+      "type": "fixture.completed",
+      "message": "Completed public-safe adapter fixture."
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Synthetic fixture only; no private files, credentials, or hosted artifact URLs."
+  },
+  "artifacts": {
+    "run": "run-bundle.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "mimetic.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Synthetic adapter dry-run fixture proves route, persona, scenario, and milestone ownership.",
+    "gaps": [
+      "Live browser behavior was not exercised."
+    ]
+  },
+  "feedbackCandidates": []
+}

@@ -1,0 +1,167 @@
+{
+  "schema": "mimetic.run-bundle.v1",
+  "runId": "terminal-feedback-lifecycle-fixture",
+  "mode": "dry-run",
+  "simCount": 1,
+  "createdAt": "2026-06-02T10:30:00.000Z",
+  "cwd": "adapters/fixtures/terminal-feedback-lifecycle",
+  "artifactRoot": ".mimetic/runs/terminal-feedback-lifecycle-fixture",
+  "source": {
+    "packageName": "fixture-terminal-product",
+    "mimeticSource": "present",
+    "git": {
+      "schema": "mimetic.git-state.v1",
+      "status": "clean",
+      "capturedAt": "2026-06-02T10:30:00.000Z",
+      "head": {
+        "shortSha": null,
+        "refState": "unknown"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
+      },
+      "note": "public-safe synthetic fixture"
+    }
+  },
+  "persona": {
+    "id": "synthetic-terminal-maintainer",
+    "name": "Synthetic Terminal Maintainer",
+    "source": "builtin:synthetic-terminal-maintainer",
+    "sourceDigest": "synthetic"
+  },
+  "scenario": {
+    "id": "terminal-feedback-lifecycle",
+    "title": "Terminal feedback lifecycle",
+    "goal": "Prove sanitized terminal evidence and public-safe feedback draft lifecycle without browser assumptions.",
+    "source": "adapter.json",
+    "sourceDigest": "synthetic"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-06-02T10:30:00.000Z",
+      "event": "run.created",
+      "message": "Synthetic terminal feedback fixture created."
+    },
+    {
+      "at": "2026-06-02T10:30:01.000Z",
+      "event": "terminal.transcript.sanitized",
+      "message": "Sanitized transcript pointer persisted."
+    },
+    {
+      "at": "2026-06-02T10:30:02.000Z",
+      "event": "feedback.draft.created",
+      "message": "Public-safe issue draft artifact created without GitHub mutation."
+    },
+    {
+      "at": "2026-06-02T10:30:03.000Z",
+      "event": "policy.checked",
+      "message": "Cost, redaction, and mutation policy passed."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-01",
+      "index": 1,
+      "personaId": "synthetic-terminal-maintainer",
+      "scenarioId": "terminal-feedback-lifecycle",
+      "status": "complete",
+      "streamKind": "terminal",
+      "mode": "cli-sim",
+      "progress": 100,
+      "currentStep": "Feedback draft ready",
+      "summary": "Terminal evidence fixture completed with sanitized transcript and issue draft pointers.",
+      "streamIds": [
+        "sim-01-terminal"
+      ],
+      "startedAt": "2026-06-02T10:30:00.000Z",
+      "updatedAt": "2026-06-02T10:30:03.000Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "sim-01-terminal",
+      "simId": "sim-01",
+      "kind": "terminal",
+      "label": "Terminal feedback lifecycle",
+      "status": "complete",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-02T10:30:03.000Z",
+      "terminal": {
+        "title": "Synthetic terminal proof",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "fixture command completed\nredaction: passed\nspend policy: no_spend\nissue draft: ready"
+      },
+      "completion": {
+        "checkedAt": "2026-06-02T10:30:03.000Z",
+        "exitCode": 0,
+        "reason": "Synthetic terminal fixture completed.",
+        "status": "passed"
+      },
+      "artifacts": [
+        {
+          "label": "sanitized transcript",
+          "path": "transcripts/sanitized-terminal.txt",
+          "kind": "log"
+        },
+        {
+          "label": "feedback draft",
+          "path": "feedback-draft.json",
+          "kind": "review"
+        },
+        {
+          "label": "cost and redaction policy",
+          "path": "policy.json",
+          "kind": "trace"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-001",
+      "at": "2026-06-02T10:30:01.000Z",
+      "level": "info",
+      "type": "terminal.transcript.sanitized",
+      "message": "Sanitized transcript pointer ready."
+    },
+    {
+      "id": "event-002",
+      "at": "2026-06-02T10:30:02.000Z",
+      "level": "info",
+      "type": "feedback.draft.created",
+      "message": "Feedback draft created without GitHub mutation."
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Terminal fixture stores sanitized transcript pointers only."
+  },
+  "artifacts": {
+    "run": "run-bundle.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "mimetic.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Synthetic terminal fixture proves feedback lifecycle and redaction policy shape.",
+    "gaps": [
+      "Live terminal product behavior was not exercised."
+    ]
+  },
+  "feedbackCandidates": [
+    {
+      "schema": "mimetic.feedback-candidate.v1",
+      "id": "terminal-feedback-lifecycle-candidate",
+      "artifact": "feedback-draft.json",
+      "mutation": "not_requested",
+      "requiresGithubToken": false
+    }
+  ]
+}

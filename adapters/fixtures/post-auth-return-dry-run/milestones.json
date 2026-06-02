@@ -1,0 +1,20 @@
+{
+  "schema": "mimetic.milestones.v1",
+  "milestones": [
+    {
+      "id": "upload-ready",
+      "route": "upload",
+      "description": "Synthetic upload input is ready."
+    },
+    {
+      "id": "studio-ready",
+      "route": "studio",
+      "description": "Synthetic studio state is reviewable."
+    },
+    {
+      "id": "auth-return-complete",
+      "route": "auth-return",
+      "description": "Synthetic auth return state completed."
+    }
+  ]
+}

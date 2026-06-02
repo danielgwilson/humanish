@@ -1,0 +1,5 @@
+fixture command completed
+redaction: passed
+spend policy: no_spend
+issue draft: ready
+notes: synthetic sanitized transcript only

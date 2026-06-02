@@ -1,0 +1,34 @@
+{
+  "schema": "mimetic.verify-result.v1",
+  "ok": true,
+  "cwd": "adapters/fixtures/terminal-feedback-lifecycle",
+  "run": "terminal-feedback-lifecycle-fixture",
+  "bundlePath": "run-bundle.json",
+  "checks": [
+    {
+      "name": "run bundle exists",
+      "ok": true,
+      "message": "run-bundle.json present"
+    },
+    {
+      "name": "redaction passed",
+      "ok": true,
+      "message": "redaction status is passed"
+    },
+    {
+      "name": "sanitized transcript pointer exists",
+      "ok": true,
+      "message": "transcripts/sanitized-terminal.txt present"
+    },
+    {
+      "name": "feedback draft exists",
+      "ok": true,
+      "message": "feedback-draft.json present"
+    },
+    {
+      "name": "raw transcript not required",
+      "ok": true,
+      "message": "verification uses sanitized artifact pointers only"
+    }
+  ]
+}

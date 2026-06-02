@@ -1,0 +1,28 @@
+{
+  "schema": "mimetic.adapter.v1",
+  "id": "post-auth-return-web-app",
+  "name": "Post-Auth Return Web App Fixture",
+  "authority": {
+    "mode": "contract_fixture",
+    "network_policy": "no_network",
+    "spend_policy": "no_spend",
+    "github_mutation": "not_requested"
+  },
+  "routes": [
+    {
+      "id": "upload",
+      "path": "/upload",
+      "description": "Synthetic upload entry point and validation state."
+    },
+    {
+      "id": "studio",
+      "path": "/studio",
+      "description": "Synthetic workspace where generated output can be reviewed."
+    },
+    {
+      "id": "auth-return",
+      "path": "/auth/return?state=synthetic-state-id",
+      "description": "Synthetic post-authentication return route."
+    }
+  ]
+}

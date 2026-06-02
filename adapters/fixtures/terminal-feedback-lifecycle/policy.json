@@ -1,0 +1,32 @@
+{
+  "schema": "mimetic.policy.v1",
+  "kind": "terminal-feedback-fixture",
+  "network_policy": "no_network",
+  "spend_policy": "no_spend",
+  "credential_manifest": [],
+  "hosted_product_memory": {
+    "required": false,
+    "notes": "Fixture is self-contained and uses no hosted product memory."
+  },
+  "github": {
+    "requires_token": false,
+    "mutation": "not_requested"
+  },
+  "redaction": {
+    "status": "passed",
+    "deny": [
+      "pii",
+      "phi",
+      "secrets",
+      "tokens",
+      "raw_private_transcripts",
+      "private_screenshots"
+    ],
+    "allow": [
+      "synthetic_personas",
+      "synthetic_fixtures",
+      "env_var_names",
+      "sanitized_transcript_pointers"
+    ]
+  }
+}

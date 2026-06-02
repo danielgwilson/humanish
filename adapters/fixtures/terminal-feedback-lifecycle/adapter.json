@@ -1,0 +1,24 @@
+{
+  "schema": "mimetic.adapter.v1",
+  "id": "terminal-feedback-lifecycle",
+  "name": "Terminal Feedback Lifecycle Fixture",
+  "authority": {
+    "mode": "contract_fixture",
+    "network_policy": "no_network",
+    "spend_policy": "no_spend",
+    "github_mutation": "not_requested",
+    "hosted_product_memory_required": false
+  },
+  "commands": [
+    {
+      "id": "start",
+      "command": "fixture-product start --dry-run",
+      "description": "Synthetic command startup."
+    },
+    {
+      "id": "feedback-draft",
+      "command": "fixture-product feedback draft --json",
+      "description": "Synthetic issue draft generation without mutation."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "mimetic.persona.v1",
+  "id": "synthetic-returning-creator",
+  "name": "Synthetic Returning Creator",
+  "summary": "A privacy-safe user returning from authentication to finish a local fixture workflow.",
+  "traits": {
+    "patience": "medium",
+    "technical_confidence": "medium",
+    "accessibility_needs": "clear_status_text"
+  },
+  "constraints": [
+    "Use synthetic fixture input only.",
+    "Do not use production accounts.",
+    "Treat auth state as a synthetic fixture id."
+  ]
+}
