@@ -9,6 +9,7 @@ build/
 coverage/
 .turbo/
 .cache/
+.firecrawl/
 *.tsbuildinfo
 
 # proof/runtime artifacts
