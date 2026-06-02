@@ -62,11 +62,13 @@ describe("release readiness", () => {
     expect(publish).toContain("id-token: write");
     expect(publish).toContain("actions/checkout@v6");
     expect(publish).toContain("actions/setup-node@v6");
+    expect(publish).toContain("pnpm/action-setup@v6");
     expect(publish).toContain("registry-url: \"https://registry.npmjs.org\"");
     expect(publish).toContain("package-manager-cache: false");
     expect(publish).toContain("if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')");
     expect(publish).toContain("pnpm release:check");
     expect(publish).toContain("npm publish --access public");
+    expect(ci).toContain("pnpm/action-setup@v6");
     expect(ci).toContain("pnpm release:check");
   });
 });
