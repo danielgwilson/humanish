@@ -9,6 +9,8 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
+![Mimetic OSS Lab Observer showing four headed E2B desktops, each with a nested Mimetic Observer open](https://unpkg.com/mimetic-cli@0.1.2/docs/assets/mimetic-oss-lab-observer.png)
+
 ## Install
 
 ```bash
