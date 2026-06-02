@@ -10,7 +10,9 @@ import {
   normalizeOssRepoSlugs,
   validateOssRepoSlug
 } from "../src/oss-lab.js";
+import { buildObserverData } from "../src/observer-data.js";
 import {
+  buildOssMetaBundleFixture,
   buildOssRepoAssignments
 } from "../src/oss-meta-lab.js";
 import { createProgram } from "../src/program.js";
@@ -206,5 +208,101 @@ describe("OSS lab command", () => {
         process.env.OPENAI_API_KEY = previousOpenai;
       }
     }
+  });
+
+  it("renders public-safe terminal completion states without live provider spend", () => {
+    const assignments = buildOssRepoAssignments(["developit/mitt", "lukeed/clsx"], 2);
+    const createdAt = "2026-06-02T08:30:00.000Z";
+    const bundle = buildOssMetaBundleFixture({
+      assignments,
+      createdAt,
+      cwd: "/tmp/mimetic-oss-meta-fixture",
+      dryRun: false,
+      lanes: [
+        {
+          bootstrap: {
+            codexMode: "tui-attempted",
+            completionPath: "/remote/developit-mitt/completion.json",
+            logPath: "/remote/developit-mitt/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/developit-mitt/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "bootstrap started"
+          },
+          completion: {
+            checkedAt: "2026-06-02T08:31:00.000Z",
+            exitCode: 0,
+            logTail: "nested verify passed\n== bootstrap complete ==",
+            nestedObserverPresent: true,
+            nestedVerifyPassed: true,
+            reason: "Nested Mimetic proof completed and nested Observer path was checked.",
+            status: "passed"
+          },
+          repo: "developit/mitt",
+          screenshot: {
+            capturedAt: "2026-06-02T08:31:05.000Z",
+            observerUrl: "../screenshots/oss-01-desktop.png",
+            path: "screenshots/oss-01-desktop.png"
+          },
+          simId: assignments[0]?.simId ?? "oss-01",
+          streamId: assignments[0]?.streamId ?? "oss-01-desktop",
+          url: "https://stream.example/developit-mitt"
+        },
+        {
+          bootstrap: {
+            codexMode: "tui-attempted",
+            completionPath: "/remote/lukeed-clsx/completion.json",
+            logPath: "/remote/lukeed-clsx/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/lukeed-clsx/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "bootstrap started"
+          },
+          completion: {
+            checkedAt: "2026-06-02T08:31:10.000Z",
+            exitCode: 1,
+            logTail: "npx mimetic verify --run latest\nverification failed",
+            nestedObserverPresent: false,
+            nestedVerifyPassed: false,
+            reason: "Bootstrap exited before nested Mimetic proof completed.",
+            status: "failed"
+          },
+          repo: "lukeed/clsx",
+          simId: assignments[1]?.simId ?? "oss-02",
+          streamId: assignments[1]?.streamId ?? "oss-02-desktop",
+          url: "https://stream.example/lukeed-clsx"
+        }
+      ],
+      liveRequested: true,
+      missingKeys: [],
+      runId: "oss-meta-completion-fixture"
+    });
+
+    expect(bundle.simulations.map((sim) => sim.status)).toEqual(["passed", "failed"]);
+    expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
+    expect(bundle.streams[0]?.completion).toMatchObject({
+      nestedObserverPresent: true,
+      nestedVerifyPassed: true,
+      status: "passed"
+    });
+    expect(bundle.streams[0]).toMatchObject({
+      transport: "snapshot",
+      embed: { kind: "screenshot" },
+      ui: { screenshotUrl: "../screenshots/oss-01-desktop.png" }
+    });
+    expect(bundle.streams[0]?.url).toBeUndefined();
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "desktop screenshot",
+      path: "screenshots/oss-01-desktop.png",
+      kind: "screenshot"
+    });
+    expect(bundle.streams[1]?.terminal?.tail).toContain("verification failed");
+    expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.passed");
+    expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.failed");
+
+    const observerData = buildObserverData(bundle, "2026-06-02T08:32:00.000Z");
+    expect(observerData.summary.active).toBe(0);
+    expect(observerData.summary.blocked).toBe(1);
+    expect(observerData.streams.map((stream) => stream.statusLabel)).toEqual(["Passed", "Failed"]);
   });
 });

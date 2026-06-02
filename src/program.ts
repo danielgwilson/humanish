@@ -111,6 +111,8 @@ export const plannedCommands: PlannedCommand[] = [
     docs: commonDocs,
     options: [
       { flags: "--dry-run", description: "Generate contract proof without browser, keys, or provider spend." },
+      { flags: "--actor codex-tui", description: "Explicitly opt into one local Codex TUI actor." },
+      { flags: "--sims <count>", description: "Simulation count. Local Codex TUI supports 1x in this slice." },
       { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
     ]
   },
@@ -251,14 +253,61 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .command("run")
     .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
+    .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui"]))
+    .option("--sims <count>", "Simulation count. Local Codex TUI supports 1x in this slice.")
+    .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(120_000))
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--json", "Print a machine-readable JSON response.")
-    .action(async (options: { cwd: string; dryRun?: boolean; json?: boolean; runId?: string }, command) => {
+    .action(async (options: {
+      actor?: string;
+      cwd: string;
+      dryRun?: boolean;
+      json?: boolean;
+      runId?: string;
+      sims?: string;
+      timeoutMs?: string;
+    }, command) => {
+      const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+      const timeoutMs = options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
+      if (options.sims !== undefined && simCount === null) {
+        const result: RunResult = {
+          schema: "mimetic.run-result.v1",
+          ok: false,
+          cwd: options.cwd,
+          warnings: [],
+          error: {
+            code: "MIMETIC_INVALID_SIM_COUNT",
+            message: "--sims must be an integer between 1 and 64."
+          }
+        };
+        writeResult(command, io, result, formatRunHuman);
+        io.setExitCode(2);
+        return;
+      }
+      if (options.timeoutMs !== undefined && timeoutMs === null) {
+        const result: RunResult = {
+          schema: "mimetic.run-result.v1",
+          ok: false,
+          cwd: options.cwd,
+          warnings: [],
+          error: {
+            code: "MIMETIC_INVALID_TIMEOUT",
+            message: "--timeout-ms must be an integer between 1 and 600000."
+          }
+        };
+        writeResult(command, io, result, formatRunHuman);
+        io.setExitCode(2);
+        return;
+      }
+
       const result = await runDryRun({
         cwd: options.cwd,
+        ...(options.actor === undefined ? {} : { actor: options.actor }),
         ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.runId === undefined ? {} : { runId: options.runId })
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(simCount === undefined || simCount === null ? {} : { simCount }),
+        ...(timeoutMs === undefined || timeoutMs === null ? {} : { timeoutMs })
       });
       writeResult(command, io, result, formatRunHuman);
       io.setExitCode(result.ok ? 0 : 2);
@@ -835,6 +884,15 @@ function parsePositiveInteger(value: string): number | null {
   return parsed >= 1 && parsed <= 64 ? parsed : null;
 }
 
+function parseTimeoutMs(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return parsed >= 1 && parsed <= 600_000 ? parsed : null;
+}
+
 function parseObserverPort(value: string): number | null {
   if (!/^\d+$/.test(value)) {
     return null;
@@ -910,7 +968,9 @@ function formatOssMetaLabHuman(result: OssMetaLabResult): string {
     ...result.sandboxes.map((sandbox) => {
       const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
       const bootstrapLabel = sandbox.bootstrapStatus ? ` bootstrap=${sandbox.bootstrapStatus}` : "";
-      return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${sandboxLabel}`;
+      const completionLabel = sandbox.completionStatus ? ` completion=${sandbox.completionStatus}` : "";
+      const screenshotLabel = sandbox.screenshotPresent ? " screenshot=yes" : "";
+      return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${completionLabel}${screenshotLabel}${sandboxLabel}`;
     }),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";

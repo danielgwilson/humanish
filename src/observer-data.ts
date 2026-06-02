@@ -15,7 +15,7 @@ export interface ObserverData {
   run: {
     runId: string;
     mode: RunBundle["mode"];
-    status: "contract_proof_only" | "running" | "complete" | "failed";
+    status: RunBundle["review"]["verdict"];
     title: string;
     createdAt: string;
     simCount: number;
@@ -74,7 +74,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
   });
 
   const warnings = events.filter((event) => event.level === "warn").length;
-  const blocked = streams.filter((stream) => stream.status === "blocked" || stream.status === "failed").length;
+  const blocked = streams.filter((stream) => stream.status === "blocked" || stream.status === "failed" || stream.status === "timed_out").length;
   const active = streams.filter((stream) => stream.status === "running" || stream.status === "preparing").length;
 
   return {
@@ -175,10 +175,14 @@ function statusLabel(status: RunStream["status"]): string {
       return "Queued";
     case "running":
       return "Running";
+    case "passed":
+      return "Passed";
     case "complete":
       return "Complete";
     case "blocked":
       return "Blocked";
+    case "timed_out":
+      return "Timed out";
     case "failed":
       return "Failed";
   }

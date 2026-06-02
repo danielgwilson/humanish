@@ -952,18 +952,22 @@ a { color: inherit; }
   background: var(--obs-blue);
 }
 
-.tile-cap[data-status="failed"] .tile-cap-bar > span,
-.tile-cap[data-status="blocked"] .tile-cap-bar > span { background: var(--obs-red); }
+.tile-cap[data-status="failed"] .tile-cap-bar > span { background: var(--obs-red); }
+.tile-cap[data-status="blocked"] .tile-cap-bar > span,
+.tile-cap[data-status="timed_out"] .tile-cap-bar > span { background: var(--obs-amber); }
 
+.tile-cap[data-status="passed"] .tile-cap-bar > span,
 .tile-cap[data-status="complete"] .tile-cap-bar > span,
 .tile-cap[data-status="contract_proof_only"] .tile-cap-bar > span { background: var(--obs-green); }
 
 .pip[data-status="queued"] { color: var(--obs-fg-4); }
 .pip[data-status="preparing"] { color: var(--obs-sky); }
 .pip[data-status="running"] { color: var(--obs-blue); }
+.pip[data-status="passed"] { color: var(--obs-green); }
 .pip[data-status="complete"] { color: var(--obs-green); }
 .pip[data-status="contract_proof_only"] { color: var(--obs-green); }
 .pip[data-status="blocked"] { color: var(--obs-amber); }
+.pip[data-status="timed_out"] { color: var(--obs-amber); }
 .pip[data-status="failed"] { color: var(--obs-red); }
 
 .focus {
@@ -1081,7 +1085,8 @@ a { color: inherit; }
   color: #8aa9ff;
 }
 
-.focus-status-badge[data-status="blocked"] {
+.focus-status-badge[data-status="blocked"],
+.focus-status-badge[data-status="timed_out"] {
   background: var(--obs-amber-soft);
   color: #e9b04b;
 }
@@ -1091,6 +1096,7 @@ a { color: inherit; }
   color: #ee8a7e;
 }
 
+.focus-status-badge[data-status="passed"],
 .focus-status-badge[data-status="complete"],
 .focus-status-badge[data-status="contract_proof_only"] {
   background: var(--obs-green-soft);
@@ -1619,7 +1625,7 @@ export function observerClientJs(): string {
     var surface = document.createElement("div");
     surface.className = "media-surface";
 
-    if (preferScreenshots && stream.ui && stream.ui.screenshotUrl) {
+    if (stream.ui && stream.ui.screenshotUrl && (preferScreenshots || (stream.embed && stream.embed.kind === "screenshot"))) {
       var img = document.createElement("img");
       img.src = stream.ui.screenshotUrl;
       img.alt = "Screenshot for " + stream.id;
@@ -1690,7 +1696,15 @@ export function observerClientJs(): string {
     spinner.setAttribute("aria-hidden", "true");
     var title = document.createElement("div");
     title.className = "live-waiting-title";
-    title.textContent = stream.status === "contract_proof_only" ? "Contract proof only" : "Waiting for live desktop";
+    title.textContent = stream.status === "contract_proof_only"
+      ? "Contract proof only"
+      : stream.status === "failed"
+        ? "Live desktop failed"
+        : stream.status === "timed_out"
+          ? "Live desktop timed out"
+          : stream.status === "blocked"
+            ? "Live desktop blocked"
+            : "Waiting for live desktop";
     var url = document.createElement("div");
     url.className = "live-waiting-url";
     url.textContent = stream.ui && stream.ui.route ? stream.ui.route : stream.label;
@@ -2071,8 +2085,8 @@ export function observerClientJs(): string {
       }
       if (activeStatus === "all") return true;
       if (activeStatus === "running") return stream.status === "running" || stream.status === "preparing";
-      if (activeStatus === "blocked") return stream.status === "blocked" || stream.status === "failed";
-      if (activeStatus === "complete") return stream.status === "complete";
+      if (activeStatus === "blocked") return stream.status === "blocked" || stream.status === "failed" || stream.status === "timed_out";
+      if (activeStatus === "complete") return stream.status === "complete" || stream.status === "passed";
       if (activeStatus === "proof") return stream.status === "contract_proof_only";
       return true;
     });
@@ -2081,9 +2095,9 @@ export function observerClientJs(): string {
   function countStatuses(streams) {
     return streams.reduce(function (acc, stream) {
       if (stream.status === "running" || stream.status === "preparing") acc.running += 1;
-      else if (stream.status === "blocked") acc.blocked += 1;
+      else if (stream.status === "blocked" || stream.status === "timed_out") acc.blocked += 1;
       else if (stream.status === "failed") acc.failed += 1;
-      else if (stream.status === "complete") acc.complete += 1;
+      else if (stream.status === "complete" || stream.status === "passed") acc.complete += 1;
       else if (stream.status === "contract_proof_only") acc.proof += 1;
       else acc.queued += 1;
       return acc;
