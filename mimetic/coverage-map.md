@@ -12,14 +12,13 @@ This map keeps Mimetic honest as its own first target app.
   watch.
 - `verify`, `review`, and `runs` output.
 - Public-safe `feedback issue` Markdown.
-- Explicit 1x `codex-exec` local actor completion.
+- Explicit 1-4 lane `codex-exec` local actor completion.
 - Explicit 1x Codex TUI trust-preflight blocked state.
 - Release and publish gates.
 
 ## Explicitly Deferred
 
 - Codex TUI autonomous completion after workspace trust bootstrap.
-- 4x persona fanout.
 - Live observer streaming while real actors are running.
 - E2B, GitHub mutation, production data, and private artifacts in local dogfood
   runs.
