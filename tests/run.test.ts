@@ -150,7 +150,7 @@ describe("dry-run bundles", () => {
         events: Array<{ type: string; message: string }>;
         mode: string;
         review: { verdict: string };
-        simulations: Array<{ status: string; streamKind: string }>;
+        simulations: Array<{ mode: string; status: string; streamKind: string }>;
         streams: Array<{
           completion: { status: string };
           kind: string;
@@ -161,7 +161,11 @@ describe("dry-run bundles", () => {
 
       expect(bundle.mode).toBe("live");
       expect(bundle.review.verdict).toBe("pass");
-      expect(bundle.simulations).toEqual([expect.objectContaining({ status: "passed", streamKind: "tui" })]);
+      expect(bundle.simulations).toEqual([
+        expect.objectContaining({ mode: "tui-sim", status: "passed", streamKind: "tui" })
+      ]);
+      const corruptedMode = ["tbrowser", "sim"].join("-");
+      expect(JSON.stringify(bundle)).not.toContain(corruptedMode);
       expect(bundle.streams).toEqual([
         expect.objectContaining({
           completion: expect.objectContaining({ status: "passed" }),

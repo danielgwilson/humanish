@@ -69,6 +69,8 @@ from a fresh clone:
 - no stale release tags point at pre-cleanup source;
 - history scans have no private upstream names, absolute maintainer paths,
   secret patterns, or generated runtime bundles;
+- reachable commit author and committer emails are GitHub noreply-style
+  addresses;
 - GitHub issues, PRs, labels, and project fields have been scanned or rewritten
   for public-safe language.
 
@@ -97,7 +99,8 @@ git diff --check
 ```
 
 `pnpm public-surface:scan` fails on common secret tokens, absolute local user
-paths, local workspace paths, and known private upstream names.
+paths, local workspace paths, non-noreply commit email metadata, and known
+private upstream names.
 
 ## Tarball Inspection
 
@@ -111,8 +114,8 @@ pnpm pack:dry-run
 `dist`.
 
 The tarball must not include `.env*`, `.mimetic/`, generated run bundles,
-private screenshots, raw transcripts, `.npmrc`, tests, fixtures,
-`docs/release/`, `docs/release/`, or local runtime caches.
+private screenshots, raw transcripts, `.npmrc`, tests, fixtures, internal
+operations/ramp notes, or local runtime caches.
 
 ## Publish Procedure
 

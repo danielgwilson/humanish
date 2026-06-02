@@ -43,6 +43,15 @@ function trackedFiles() {
   return raw.toString("utf8").split("\0").filter(Boolean);
 }
 
+function reachableCommitEmails() {
+  try {
+    const raw = execFileSync("git", ["log", "--all", "--format=%ae%n%ce"], { encoding: "utf8" });
+    return [...new Set(raw.split("\n").map((line) => line.trim()).filter(Boolean))];
+  } catch {
+    return [];
+  }
+}
+
 function shouldSkip(file) {
   if (skippedPaths.has(file)) return true;
   const lower = file.toLowerCase();
@@ -58,6 +67,18 @@ function lineNumberFor(text, index) {
 }
 
 const findings = [];
+
+const githubNoreplyEmail = /^(?:noreply@github\.com|(?:github-actions\[bot\]|\d+\+[A-Za-z0-9-]+)@users\.noreply\.github\.com)$/;
+for (const email of reachableCommitEmails()) {
+  if (!githubNoreplyEmail.test(email)) {
+    findings.push({
+      file: "<git-history>",
+      line: 0,
+      name: "non_noreply_commit_email",
+      value: email
+    });
+  }
+}
 
 for (const file of trackedFiles()) {
   if (shouldSkip(file)) continue;

@@ -59,6 +59,7 @@ describe("release readiness", () => {
     expect(readiness).toContain("GitHub Visibility Gate");
     expect(readiness).toContain("from a fresh clone");
     expect(readiness).toContain("residual platform-cache risk");
+    expect(readiness).toContain("reachable commit author and committer emails are GitHub noreply-style");
     expect(readiness).toContain("skills/mimetic-cli/SKILL.md");
     expect(readiness).toContain("pnpm skill:check");
     expect(readiness).toContain("pnpm release:check && npm publish --access public");
@@ -68,7 +69,9 @@ describe("release readiness", () => {
     expect(readiness).toContain("No agent should run that command without explicit human approval");
     expect(readiness).toContain("`.mimetic/`");
     expect(readiness).toContain("`.npmrc`");
-    expect(readiness).toContain("`docs/release/`");
+    expect(readiness).toContain("non-noreply commit email metadata");
+    expect(readiness).toContain("internal");
+    expect(readiness).toContain("operations/ramp notes");
   });
 
   it("ships the npm README screenshot asset", async () => {
