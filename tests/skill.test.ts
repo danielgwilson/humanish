@@ -9,8 +9,8 @@ describe("agent skill guidance", () => {
     expect(skill).toContain("npm i -D mimetic-cli");
     expect(skill).toContain("npx mimetic init --dry-run --json");
     expect(skill).toContain("npx mimetic init --yes --json");
-    expect(skill).toContain("npx mimetic watch --sims 4 --open --follow");
-    expect(skill).toContain("npx mimetic watch --sims 4 --no-open --json");
+    expect(skill).toContain("npx mimetic watch");
+    expect(skill).toContain("npx mimetic watch --json --no-open");
     expect(skill).toContain("npx mimetic feedback issue --run latest --repo example/app --format markdown");
     expect(skill).toContain("commit `mimetic/`");
     expect(skill).toContain("ignore `.mimetic/`");

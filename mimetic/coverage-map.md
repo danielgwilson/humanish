@@ -8,8 +8,8 @@ This map keeps Mimetic honest as its own first target app.
 - Safe `init` preview and applied layout.
 - `doctor` readiness over committed `mimetic/` source.
 - Synthetic dry-run bundle generation from committed dogfood files.
-- `watch --sims 4 --open --follow` one-command self-run, Observer render,
-  browser open, and shell watch.
+- `watch` one-command self-run, Observer render, browser open, and shell
+  watch.
 - `verify`, `review`, and `runs` output.
 - Public-safe `feedback issue` Markdown.
 - Release and publish gates.

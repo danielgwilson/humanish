@@ -56,8 +56,7 @@ The skill should teach the user's coding agent how to:
 - create synthetic personas and scenarios;
 - configure local app targets;
 - document E2B and OpenAI env var names without storing values;
-- run `doctor`, `watch --sims 4 --open --follow`, `verify`, and
-  `feedback issue`;
+- run `doctor`, `watch`, `verify`, and `feedback issue`;
 - avoid PII, PHI, secrets, real customer data, and private artifacts.
 
 The skill should not hide critical behavior in chat memory. It should point to
@@ -96,8 +95,8 @@ Suggested scripts:
     "mimetic": "mimetic",
     "mimetic:doctor": "mimetic doctor",
     "mimetic:run": "mimetic run --dry-run",
-    "mimetic:watch": "mimetic watch --sims 4 --open --follow",
-    "mimetic:watch:ci": "mimetic watch --sims 4 --no-open --json",
+    "mimetic:watch": "mimetic watch",
+    "mimetic:watch:ci": "mimetic watch --json --no-open",
     "mimetic:verify": "mimetic verify"
   }
 }
@@ -112,7 +111,10 @@ Suggested scripts:
 | `mimetic run --dry-run` | Prove contract without app/browser/keys | Write synthetic run bundle |
 | `mimetic verify` | Validate bundle and public-safety gates | Fail closed on schema/evidence/redaction errors |
 | `mimetic review` | Build review packet from evidence | Summarize verdicts without inventing product proof |
-| `mimetic watch --sims <n> --open --follow` | Run sims and watch the observer | Create a fresh bundle, render Observer, open it, and keep the shell attached |
+| `mimetic watch` | Run sims and watch the observer | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached |
+| `mimetic watch --json --no-open` | Agent/CI proof path | Create the same bundle and Observer artifacts without browser open or attached watch server |
+| `mimetic lab oss` | Watch public OSS meta-sims | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos` |
+| `mimetic lab oss-smoke` | Try Mimetic on disposable public OSS clones | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
 | `mimetic feedback issue` | Produce public-safe issue draft | Print Markdown or prefilled issue URL, no GitHub API mutation |
 
 ## Live Capability Ladder

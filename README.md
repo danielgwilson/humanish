@@ -22,9 +22,9 @@ pnpm mimetic:watch
 ```
 
 That starts a 4-sim synthetic self-run, renders Observer, opens it in the
-browser, and keeps the shell attached. Current self-runs are still contract
-proof only; real Codex TUI actors and live observer streaming are the next
-capability ladder.
+browser through a localhost watch server, and keeps the shell attached. Current
+self-runs are still contract proof only; real Codex TUI actors, browser
+execution, and app-server adapters are the next capability ladder.
 
 ## Local Layout
 
@@ -49,6 +49,38 @@ pnpm check
 pnpm mimetic -- --help
 ```
 
+## OSS Lab POC
+
+The outside-world dogfood loop is:
+
+```bash
+pnpm mimetic:lab:oss
+```
+
+That starts the top-level OSS meta-lab Observer: four headed desktop lanes,
+each assigned a public GitHub repo. With `E2B_API_KEY` and `OPENAI_API_KEY`
+present, Mimetic launches live E2B desktops, raises a visible bootstrap terminal
+in each desktop, installs the locally packed Mimetic package inside a disposable
+clone, runs nested Mimetic proof commands, attempts a Codex TUI pass, and opens
+the nested Observer inside the E2B browser. Pick repos with:
+
+```bash
+pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
+```
+
+Agent/CI contract proof:
+
+```bash
+pnpm mimetic:lab:oss:ci
+```
+
+The older disposable clone/discard proof loop remains available as:
+
+```bash
+pnpm mimetic:lab:oss:smoke
+pnpm mimetic -- lab oss-smoke --limit 1 --keep
+```
+
 ## Target App Quickstart
 
 The package is still marked `private: true` until Daniel chooses the public
@@ -58,14 +90,43 @@ license and approves publication. Once released, target repos should use:
 npm i -D mimetic-cli
 npx mimetic init --dry-run --json
 npx mimetic init --yes --json
-npx mimetic watch --sims 4 --open --follow
+npx mimetic watch
+npx mimetic watch --json --no-open
 npx mimetic feedback issue --run latest --repo example/app --format markdown
 ```
 
 The current CLI implements safe `init`, synthetic dry-run bundles, verification,
-static observer rendering with browser open, shell follow mode, and public-safe
-feedback issue drafts. Live browser execution, provider-backed actors, and
-GitHub mutation remain intentionally unimplemented.
+a mission-control Observer with stream contracts, localhost watch mode with
+browser open, terminal/TUI panes, public-safe feedback issue drafts, and an
+experimental E2B OSS meta-lab with visible bootstrap terminals. General live
+browser execution, provider-backed target-app actors, native Codex app-server
+adapters, remote completion polling, and GitHub mutation remain intentionally
+unimplemented.
+
+## Observer
+
+`mimetic watch` starts a fresh four-lane synthetic run, opens the localhost
+Observer, and keeps the shell attached. `mimetic watch --json --no-open` is the
+agent/CI-safe equivalent: same fresh run and Observer artifacts, no browser
+open, no long-running shell.
+
+Observer writes:
+
+```text
+.mimetic/runs/<run-id>/
+  run.json
+  review.json
+  review.md
+  events.ndjson
+  observer/
+    index.html
+    observer-data.json
+```
+
+The Observer serves `observer/index.html` over localhost in follow mode and
+polls `observer-data.json`. Stream lanes are first-class: UI, CLI, TUI, and
+Codex UI are rendered as distinct watchable sims. See
+[Observer architecture](docs/architecture/observer.md).
 
 ## Current Design Notes
 
@@ -78,6 +139,7 @@ GitHub mutation remain intentionally unimplemented.
 - [Open-source install experience](docs/product/open-source-install-experience.md)
 - [Agent skill entrypoint](docs/skill/mimetic-cli/SKILL.md)
 - [Project layout contract](docs/architecture/project-layout.md)
+- [OSS lab POC](docs/architecture/oss-lab-poc.md)
 - [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
 - [Open-source release readiness](docs/release/open-source-readiness.md)
 - [Mimetic CLI open-source v0 goal](docs/goals/mimetic-cli-open-source-v0/goal.md)

@@ -257,7 +257,7 @@ export const mimeticScripts: Record<string, string> = {
   mimetic: "mimetic",
   "mimetic:doctor": "mimetic doctor",
   "mimetic:run": "mimetic run --dry-run",
-  "mimetic:watch": "mimetic watch --sims 4 --open --follow",
-  "mimetic:watch:ci": "mimetic watch --sims 4 --no-open --json",
+  "mimetic:watch": "mimetic watch",
+  "mimetic:watch:ci": "mimetic watch --json --no-open",
   "mimetic:verify": "mimetic verify"
 };

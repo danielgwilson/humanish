@@ -6,8 +6,8 @@ Mimetic itself.
 Current scope:
 
 - public-safe synthetic CLI personas;
-- one-command `watch --sims 4 --open --follow` contract proof over the package,
-  command tree, observer, and feedback issue path;
+- one-command `watch` contract proof over the package, command tree, observer,
+  and feedback issue path;
 - no real Codex TUI actor yet;
 - no OpenAI, E2B, GitHub mutation, provider spend, production data, or private
   artifacts.

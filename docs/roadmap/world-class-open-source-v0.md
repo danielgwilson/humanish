@@ -109,20 +109,32 @@ pnpm mimetic -- verify --run latest --json
 
 ## Stage 4: Observer
 
-Implement static observer over the bundle:
+Status: upgraded from static report to mission-control substrate for synthetic
+stream contracts.
 
-- summary;
-- scenario/persona cards;
-- lifecycle;
-- evidence placeholders;
-- feedback candidates;
-- gaps and warnings;
-- no mutation of source evidence.
+Implemented:
+
+- normalized `observer/observer-data.json` view model;
+- `events.ndjson` event stream contract;
+- stream-shaped sim lanes for UI, CLI, TUI, and Codex UI;
+- localhost watch server with no-store polling;
+- mission-control grid and focus mode;
+- terminal/TUI transcript stage;
+- evidence rail for events, artifacts, and gaps;
+- public-safe Codex UI stream contract with no raw provider payloads.
+
+Still next:
+
+- real browser actor adapter;
+- real PTY capture;
+- native Codex app-server adapter;
+- screenshot/trace gallery from real products;
+- reviewer acceptance gates over live product behavior.
 
 Proof:
 
 ```bash
-pnpm mimetic -- watch --sims 4 --open --follow
+pnpm mimetic -- watch
 ```
 
 If browser verification is added, use screenshots of the observer as proof.
@@ -203,11 +215,46 @@ explicit. The live 1x/4x Codex TUI dogfood path is tracked in
 
 ## Stage 6.8: One-Command Watch UX
 
-Status: implemented for synthetic contract-proof sims.
+Status: implemented for synthetic contract-proof stream lanes.
 
-`mimetic watch --sims <n> --open --follow` now creates a fresh synthetic run,
-renders Observer, opens it in the browser, and keeps the shell attached. The
-CI-safe form is `mimetic watch --sims <n> --no-open`.
+`mimetic watch` now creates a fresh four-lane synthetic run, renders Observer,
+starts a localhost watch server, opens the served Observer in the browser, and
+keeps the shell attached. The CI-safe form is `mimetic watch --json --no-open`.
+`--sims <n>` remains the explicit scale control, and `--run <id>` watches
+existing evidence.
+
+## Stage 6.9: OSS Meta-Lab
+
+Status: implemented as an experimental live Observer-of-Observers bootstrap
+with a retained disposable smoke harness.
+
+`mimetic lab oss` opens the top-level Observer for public OSS meta-sims. Each
+lane is assigned a public GitHub `owner/repo` slug from `--repos` or repeated
+`--repo` values and carries the headed E2B desktop + Codex TUI bootstrap prompt
+for setting up Mimetic inside that repo and keeping the nested Observer visible.
+When live keys are present, Mimetic launches E2B desktops, uploads the locally
+packed Mimetic package, starts visible bootstrap terminals, clones each assigned
+repo inside the desktop, runs nested Mimetic setup/proof commands, attempts a
+Codex TUI pass, and opens the nested Observer in the sandbox browser.
+
+`mimetic lab oss-smoke` keeps the earlier clone/discard proof loop: shallow
+clone lightweight public GitHub repositories into ignored `.mimetic/tmp`, apply
+Mimetic setup in disposable clones, run the four-lane synthetic Observer proof,
+verify it, record git-status evidence, write an ignored
+`.mimetic/lab/oss/<run-id>/` report, and remove clones by default.
+
+Proof:
+
+```bash
+pnpm mimetic -- lab oss --detach --open --repos developit/mitt,lukeed/clsx
+pnpm mimetic -- lab oss --dry-run --json --no-open --repos developit/mitt,lukeed/clsx
+pnpm mimetic -- lab oss-smoke --limit 1 --json
+```
+
+Next substrate work: poll the remote bootstrap logs and nested Observer health
+back into the top-level bundle so the Observer can graduate each lane from
+`running` to explicit `passed` or `failed` without relying on a human watching
+the E2B stream.
 
 ## Stage 7: Local Browser And First Real Adapter
 

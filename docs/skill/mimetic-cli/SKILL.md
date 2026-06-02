@@ -66,7 +66,7 @@ Run the no-credentials path first:
 
 ```bash
 npx mimetic doctor
-npx mimetic watch --sims 4 --open --follow
+npx mimetic watch
 npx mimetic verify --run latest --json
 npx mimetic feedback issue --run latest --repo example/app --format markdown
 ```
@@ -74,7 +74,7 @@ npx mimetic feedback issue --run latest --repo example/app --format markdown
 For CI or non-interactive proof, use:
 
 ```bash
-npx mimetic watch --sims 4 --no-open --json
+npx mimetic watch --json --no-open
 ```
 
 The feedback command prints a public-safe Markdown draft. It must not call the
