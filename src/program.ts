@@ -18,6 +18,10 @@ import {
 } from "./oss-lab.js";
 import type { OssLabResult } from "./oss-lab.js";
 import {
+  runOssMetaLab
+} from "./oss-meta-lab.js";
+import type { OssMetaLabResult } from "./oss-meta-lab.js";
+import {
   doctor,
   listRuns,
   readReview,
@@ -172,7 +176,8 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
         "  mimetic watch",
         "  mimetic watch --run latest --detach",
         "  mimetic watch --json --no-open",
-        "  mimetic lab oss --limit 1",
+        "  mimetic lab oss --repos developit/mitt,lukeed/clsx",
+        "  mimetic lab oss-smoke --limit 1 --keep",
         "  mimetic verify --run latest --json",
         "",
         "Public-safety boundary:",
@@ -552,7 +557,144 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
   lab
     .command("oss")
+    .description("Watch headed Codex/E2B OSS meta-sims setting up Mimetic inside public repos.")
+    .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
+    .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
+    .option("--count <count>", "Number of headed desktop sims to assign.", String(DEFAULT_OSS_REPOS.length))
+    .option("--sims <count>", "Alias for --count.")
+    .option("--run-id <id>", "Explicit lab run id.")
+    .option("--cwd <path>", "Host directory for ignored .mimetic lab report.", ".")
+    .option("--dry-run", "Render the Observer-of-Observers contract without provider spend or live E2B launch.")
+    .option("--open", "Open the observer in the default browser.")
+    .option("--no-open", "Render without opening a browser.")
+    .option("--detach", "Render/open once and exit without attached watch server.")
+    .option("--port <port>", "Local observer server port when following.", "0")
+    .option("--smoke", "Run the disposable local clone smoke harness instead of headed meta-sims.")
+    .option("--limit <count>", "Smoke mode only: number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
+    .option("--keep", "Smoke mode only: keep disposable clone sandbox for debugging.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .addHelpText(
+      "after",
+      [
+        "",
+        "Happy path:",
+        "  mimetic lab oss",
+        "",
+        "Repo selection:",
+        "  mimetic lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid",
+        "  mimetic lab oss --repo developit/mitt --repo lukeed/clsx --count 4",
+        "",
+        "Agent/CI path:",
+        "  mimetic lab oss --dry-run --json --no-open",
+        "",
+        "Disposable clone smoke:",
+        "  mimetic lab oss-smoke --limit 1 --keep",
+        "  mimetic lab oss --smoke --limit 1 --keep",
+        "",
+        "Shape:",
+        "  The top-level Observer shows headed E2B desktop lanes. Each desktop is intended",
+        "  to run Codex TUI, clone its assigned public OSS repo, set up Mimetic, and keep",
+        "  that repo's nested Mimetic Observer visible in the E2B browser.",
+        "",
+        "Safety:",
+        "  Only public GitHub owner/repo slugs are accepted. No keys or private artifacts",
+        "  are written into committed Mimetic source."
+      ].join("\n")
+    )
+    .action(async (options: {
+      count: string;
+      cwd: string;
+      detach?: boolean;
+      dryRun?: boolean;
+      json?: boolean;
+      keep?: boolean;
+      limit: string;
+      open?: boolean;
+      port: string;
+      repo: string[];
+      repos?: string;
+      runId?: string;
+      sims?: string;
+      smoke?: boolean;
+    }, command) => {
+      if (options.smoke) {
+        await runOssSmokeAction({ command, io, options });
+        return;
+      }
+
+      const countInput = options.sims ?? options.count;
+      const count = parsePositiveInteger(countInput);
+      const port = parseObserverPort(options.port);
+      if (port === null) {
+        const result: OssMetaLabResult = {
+          schema: "mimetic.oss-meta-lab-result.v1",
+          ok: false,
+          assignments: [],
+          cwd: options.cwd,
+          dryRun: options.dryRun === true,
+          error: {
+            code: "MIMETIC_META_RUN_FAILED",
+            message: "--port must be an integer between 0 and 65535."
+          },
+          liveRequested: options.dryRun !== true,
+          repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
+          warnings: []
+        };
+        writeResult(command, io, result, formatOssMetaLabHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      const wantsMachine = wantsJson(command);
+      const shouldOpen = options.open === false ? false : wantsMachine ? options.open === true : true;
+      const wantsFollow = !wantsMachine && options.detach !== true && options.dryRun !== true;
+      const result = await runOssMetaLab({
+        cwd: options.cwd,
+        open: wantsFollow ? false : shouldOpen,
+        repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
+        ...(count === null ? { count: Number.NaN } : { count }),
+        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+        ...(options.runId === undefined ? {} : { runId: options.runId })
+      });
+
+      let server: ObserverServer | null = null;
+      let output = result;
+      if (result.ok && wantsFollow && result.observer?.ok) {
+        server = await serveObserver(result.observer, { open: shouldOpen, port });
+        output = {
+          ...result,
+          observer: {
+            ...result.observer,
+            observerUrl: server.url,
+            serverUrl: server.url,
+            opened: server.opened,
+            ...(server.openCommand ? { openCommand: server.openCommand } : {}),
+            warnings: [
+              ...result.observer.warnings,
+              "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
+              ...(server.warning ? [server.warning] : [])
+            ]
+          },
+          warnings: [
+            ...result.warnings,
+            "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
+            ...(server.warning ? [server.warning] : [])
+          ]
+        };
+      }
+
+      writeResult(command, io, output, formatOssMetaLabHuman);
+      io.setExitCode(output.ok ? 0 : 2);
+
+      if (output.ok && server && output.observer?.ok) {
+        await followObserver(io, output.observer, server);
+      }
+    });
+
+  lab
+    .command("oss-smoke")
     .description("Clone lightweight public OSS repos, try Mimetic setup/proof, then discard clones.")
+    .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
     .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
     .option("--limit <count>", "Number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
     .option("--run-id <id>", "Explicit lab run id.")
@@ -564,9 +706,9 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  mimetic lab oss",
-        "  mimetic lab oss --repo developit/mitt --repo lukeed/clsx",
-        "  mimetic lab oss --limit 1 --keep --json",
+        "  mimetic lab oss-smoke",
+        "  mimetic lab oss-smoke --repos developit/mitt,lukeed/clsx",
+        "  mimetic lab oss-smoke --limit 1 --keep --json",
         "",
         "Safety:",
         "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .mimetic/",
@@ -579,20 +721,36 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       keep?: boolean;
       limit: string;
       repo: string[];
+      repos?: string;
       runId?: string;
     }, command) => {
-      const limit = parsePositiveInteger(options.limit);
-      const labOptions = {
-        cwd: options.cwd,
-        limit: limit ?? Number.NaN,
-        repos: options.repo,
-        ...(options.keep === undefined ? {} : { keep: options.keep }),
-        ...(options.runId === undefined ? {} : { runId: options.runId })
-      };
-      const result = await runOssLab(labOptions);
-      writeResult(command, io, result, formatOssLabHuman);
-      io.setExitCode(result.ok ? 0 : 2);
+      await runOssSmokeAction({ command, io, options });
     });
+}
+
+async function runOssSmokeAction(args: {
+  command: Command;
+  io: CliIo;
+  options: {
+    cwd: string;
+    keep?: boolean;
+    limit: string;
+    repo: string[];
+    repos?: string;
+    runId?: string;
+  };
+}): Promise<void> {
+  const limit = parsePositiveInteger(args.options.limit);
+  const labOptions = {
+    cwd: args.options.cwd,
+    limit: limit ?? Number.NaN,
+    repos: [...args.options.repo, ...(args.options.repos ? [args.options.repos] : [])],
+    ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  };
+  const result = await runOssLab(labOptions);
+  writeResult(args.command, args.io, result, formatOssLabHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
 }
 
 function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
@@ -715,7 +873,7 @@ function formatOssLabHuman(result: OssLabResult): string {
   }
 
   return [
-    `mimetic lab oss ${result.ok ? "passed" : "failed"}`,
+    `mimetic lab oss-smoke ${result.ok ? "passed" : "failed"}`,
     `run: ${result.runId}`,
     ...(result.reportMarkdownPath ? [`report: ${result.reportMarkdownPath}`] : []),
     `sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
@@ -723,6 +881,25 @@ function formatOssLabHuman(result: OssLabResult): string {
       const passed = repo.steps.filter((step) => step.ok).length;
       return `- ${repo.ok ? "ok" : "fail"} ${repo.repo}: ${passed}/${repo.steps.length} steps, ${repo.changedFiles.length} changed files in disposable clone`;
     }),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatOssMetaLabHuman(result: OssMetaLabResult): string {
+  if (!result.ok && result.error) {
+    return `${result.error.code}: ${result.error.message}\n`;
+  }
+
+  return [
+    `mimetic lab oss ${result.dryRun ? "dry-run" : "watch"}`,
+    `run: ${result.runId ?? "not-created"}`,
+    `repos: ${result.repos.join(", ")}`,
+    ...(result.count === undefined ? [] : [`desktops: ${result.count}`]),
+    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+    ...(result.observer?.observerUrl ? [`url: ${result.observer.observerUrl}`] : []),
+    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+    ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
+    ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Mimetic Observer`),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }

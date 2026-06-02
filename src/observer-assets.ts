@@ -1685,13 +1685,13 @@ export function observerClientJs(): string {
     chrome.append(dot(), dot(), dot());
     var url = document.createElement("span");
     url.className = "browser-url";
-    url.textContent = stream.ui && stream.ui.route ? "local.app" + stream.ui.route : "local.app/first-run";
+    url.textContent = stream.ui && stream.ui.route ? stream.ui.route : "local.app/first-run";
     chrome.append(url);
     var page = document.createElement("div");
     page.className = "browser-page";
     var kicker = document.createElement("div");
     kicker.className = "page-kicker";
-    kicker.textContent = "synthetic viewport";
+    kicker.textContent = stream.ui && stream.ui.state ? stream.ui.state : "synthetic viewport";
     var head = document.createElement("div");
     head.className = "page-head";
     head.textContent = stream.label;

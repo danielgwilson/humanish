@@ -113,7 +113,8 @@ Suggested scripts:
 | `mimetic review` | Build review packet from evidence | Summarize verdicts without inventing product proof |
 | `mimetic watch` | Run sims and watch the observer | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached |
 | `mimetic watch --json --no-open` | Agent/CI proof path | Create the same bundle and Observer artifacts without browser open or attached watch server |
-| `mimetic lab oss` | Try Mimetic on disposable public OSS clones | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
+| `mimetic lab oss` | Watch public OSS meta-sims | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos` |
+| `mimetic lab oss-smoke` | Try Mimetic on disposable public OSS clones | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
 | `mimetic feedback issue` | Produce public-safe issue draft | Print Markdown or prefilled issue URL, no GitHub API mutation |
 
 ## Live Capability Ladder

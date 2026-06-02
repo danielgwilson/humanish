@@ -47,7 +47,9 @@
     "mimetic:dogfood": "pnpm mimetic -- watch",
     "mimetic:verify": "pnpm mimetic -- verify",
     "mimetic:feedback": "pnpm mimetic -- feedback issue --repo danielgwilson/mimetic-cli",
-    "mimetic:lab:oss": "pnpm mimetic -- lab oss"
+    "mimetic:lab:oss": "pnpm mimetic -- lab oss",
+    "mimetic:lab:oss:ci": "pnpm mimetic -- lab oss --dry-run --json --no-open",
+    "mimetic:lab:oss:smoke": "pnpm mimetic -- lab oss-smoke"
   },
   "repository": {
     "type": "git",

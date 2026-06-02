@@ -1,4 +1,8 @@
 import { CommanderError } from "commander";
+import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { mkdtemp } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +10,9 @@ import {
   normalizeOssRepoSlugs,
   validateOssRepoSlug
 } from "../src/oss-lab.js";
+import {
+  buildOssRepoAssignments
+} from "../src/oss-meta-lab.js";
 import { createProgram } from "../src/program.js";
 
 async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -56,6 +63,10 @@ describe("OSS lab command", () => {
       "developit/mitt",
       "lukeed/clsx"
     ]);
+    expect(normalizeOssRepoSlugs(["developit/mitt,lukeed/clsx"])).toEqual([
+      "developit/mitt",
+      "lukeed/clsx"
+    ]);
   });
 
   it("accepts only GitHub owner/repo slugs", () => {
@@ -66,13 +77,76 @@ describe("OSS lab command", () => {
     expect(validateOssRepoSlug("../private/repo")).toBe(false);
   });
 
-  it("exposes lab oss help with disposable-clone safety", async () => {
+  it("assigns repos across requested headed desktop lanes", () => {
+    expect(buildOssRepoAssignments(["developit/mitt", "lukeed/clsx"], 4).map((assignment) => assignment.repo)).toEqual([
+      "developit/mitt",
+      "lukeed/clsx",
+      "developit/mitt",
+      "lukeed/clsx"
+    ]);
+  });
+
+  it("exposes lab oss help as the Observer-of-Observers meta-lab", async () => {
     const result = await runCli(["lab", "oss", "--help"]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Usage: mimetic lab oss");
+    expect(result.stdout).toContain("Watch headed Codex/E2B OSS meta-sims");
+    expect(result.stdout).toContain("--repos");
+    expect(result.stdout).toContain("Observer-of-Observers");
+    expect(result.stdout).toContain("mimetic lab oss-smoke");
+  });
+
+  it("keeps disposable-clone safety on lab oss-smoke", async () => {
+    const result = await runCli(["lab", "oss-smoke", "--help"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Usage: mimetic lab oss-smoke");
     expect(result.stdout).toContain("Clone lightweight public OSS repos");
     expect(result.stdout).toContain("--keep");
     expect(result.stdout).toContain("removed by default");
+  });
+
+  it("renders a no-network OSS meta-lab contract from --repos", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-"));
+    const result = await runCli([
+      "lab",
+      "oss",
+      "--dry-run",
+      "--json",
+      "--no-open",
+      "--cwd",
+      cwd,
+      "--run-id",
+      "oss-meta-test",
+      "--repos",
+      "developit/mitt,lukeed/clsx",
+      "--count",
+      "4"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const json = JSON.parse(result.stdout) as {
+      assignments: Array<{ repo: string }>;
+      observer: { observerPath: string };
+      schema: string;
+    };
+    expect(json.schema).toBe("mimetic.oss-meta-lab-result.v1");
+    expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
+      "developit/mitt",
+      "lukeed/clsx",
+      "developit/mitt",
+      "lukeed/clsx"
+    ]);
+    expect(json.observer.observerPath).toBe(".mimetic/runs/oss-meta-test/observer/index.html");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-test", "run.json"), "utf8")) as {
+      streams: Array<{
+        terminal: { tail: string };
+        ui: { route: string };
+      }>;
+    };
+    expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic init --yes");
+    expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/developit/mitt");
   });
 });

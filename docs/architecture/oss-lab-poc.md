@@ -2,33 +2,58 @@
 
 Date: 2026-06-01
 
-Status: implemented as an experimental lab command.
+Status: implemented as an experimental meta-lab command plus a retained smoke
+harness.
 
 ## Decision
 
-`mimetic lab oss` is the disposable outside-world proof loop for Mimetic.
+`mimetic lab oss` is the public-OSS meta-simulation loop.
 
-It shallow clones lightweight public GitHub repositories, applies Mimetic setup
-inside those throwaway clones, runs the synthetic four-lane proof path, verifies
-the generated bundle, records git-status evidence, writes an ignored report, and
-removes the cloned repos by default.
+The command should feel like `mimetic watch`: it opens the Observer and, for
+human output, keeps the shell attached. Its top-level Observer is an
+Observer-of-Observers: each lane represents a headed E2B desktop that will run
+Codex TUI against a different lightweight public GitHub repository. Inside each
+desktop, Codex should clone the repo, get it into local dev mode where feasible,
+install and initialize Mimetic, author plausible public-safe personas/scenarios,
+run a nested real Mimetic simulation, and leave that nested Observer visible in
+the E2B browser.
 
-## Command
+The previous clone/discard proof loop remains useful, but it is now explicitly
+named `mimetic lab oss-smoke`.
+
+## Commands
+
+Main operator path:
 
 ```bash
 mimetic lab oss
-mimetic lab oss --limit 1
-mimetic lab oss --repo developit/mitt --repo lukeed/clsx --json
-mimetic lab oss --limit 1 --keep
+mimetic lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
+mimetic lab oss --repo developit/mitt --repo lukeed/clsx --count 4
 ```
 
-Local dogfood shortcut:
+Agent/CI contract path:
+
+```bash
+mimetic lab oss --dry-run --json --no-open
+```
+
+Disposable clone smoke path:
+
+```bash
+mimetic lab oss-smoke
+mimetic lab oss-smoke --limit 1 --keep
+mimetic lab oss --smoke --limit 1 --keep
+```
+
+Local dogfood shortcuts:
 
 ```bash
 pnpm mimetic:lab:oss
+pnpm mimetic:lab:oss:ci
+pnpm mimetic:lab:oss:smoke
 ```
 
-## Default Targets
+## Repo Selection
 
 The default public targets are intentionally small JavaScript packages:
 
@@ -37,12 +62,47 @@ The default public targets are intentionally small JavaScript packages:
 - `sindresorhus/is-plain-obj`
 - `ai/nanoid`
 
-The command accepts repeated `--repo owner/repo` values. It does not accept
-arbitrary URLs, local paths, tokens, SSH remotes, or private GitHub references.
+`--repos` accepts a comma-separated list. Repeated `--repo` is also supported.
+If `--count` is larger than the repo list, assignments cycle through the repo
+pool. Inputs must be public GitHub `owner/repo` slugs. Arbitrary URLs, local
+paths, tokens, SSH remotes, and private GitHub references are rejected.
 
-## Runtime Layout
+## Runtime Shape
 
-The lab writes only ignored runtime state:
+The meta-lab writes ignored local Observer evidence:
+
+```text
+.mimetic/
+  runs/<oss-meta-run-id>/
+    run.json
+    review.json
+    review.md
+    events.ndjson
+    observer/
+      index.html
+      observer-data.json
+```
+
+Each stream lane records:
+
+- assigned repo slug;
+- headed desktop viewport contract;
+- Codex TUI bootstrap prompt;
+- current live-readiness state;
+- public-safe gaps and events.
+
+The current implementation renders the Observer contract and marks missing
+live substrate truth in-lane. The E2B desktop launcher and Codex TUI injection
+adapter are the next substrate slice behind the stable command and artifact
+contract.
+
+## Smoke Harness Runtime
+
+`mimetic lab oss-smoke` shallow clones lightweight public GitHub repos into
+ignored runtime state, applies Mimetic setup inside each throwaway clone, runs
+the synthetic four-lane proof path, verifies the generated bundle, records
+git-status evidence, writes an ignored report, and removes cloned repos by
+default.
 
 ```text
 .mimetic/
@@ -67,17 +127,21 @@ ignored `.mimetic/lab/oss/<run-id>/`.
 ## Safety Rules
 
 - Public GitHub `owner/repo` slugs only.
-- No credential prompts; `GIT_TERMINAL_PROMPT=0` is set for clone calls.
-- No package install in target repos.
-- No commits, pushes, branches, tags, GitHub API mutation, provider spend,
-  deploys, or issue filing.
-- No real user data, PII, PHI, raw private transcripts, secrets, or private
-  screenshots.
+- No credential prompts; smoke clone calls set `GIT_TERMINAL_PROMPT=0`.
+- No commits, pushes, branches, tags, GitHub API mutation, deploys, or issue
+  filing.
+- Do not write key values into committed `mimetic/` source.
+- Do not emit PII, PHI, raw private transcripts, private screenshots, secrets,
+  keys, or private source-system artifacts.
 
 ## What This Proves
 
-The lab proves the first-run Mimetic package contract against arbitrary public
-JavaScript repositories:
+The meta-lab proves the operator control surface and artifact contract for
+watching multiple Codex/E2B OSS setup attempts at once. It also establishes the
+public CLI shape before the live substrate is wired in.
+
+The smoke harness proves first-run Mimetic package compatibility against
+arbitrary public JavaScript repositories:
 
 - setup can patch real package.json files without committing;
 - generated `mimetic/` source can coexist with external repo layout;
@@ -85,6 +149,5 @@ JavaScript repositories:
 - the Observer can render from those disposable proofs;
 - verification passes before the clone is discarded.
 
-It does not prove live product behavior yet. Live browser actors, app-specific
-scenario synthesis, OpenAI/E2B actors, and Codex TUI/App Server sessions remain
-future capabilities.
+Neither path may claim private product behavior proof without live, redacted,
+public-safe evidence.

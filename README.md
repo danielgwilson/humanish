@@ -51,17 +51,35 @@ pnpm mimetic -- --help
 
 ## OSS Lab POC
 
-The disposable outside-world proof loop is:
+The outside-world dogfood loop is:
 
 ```bash
 pnpm mimetic:lab:oss
 ```
 
-That shallow clones a small set of public GitHub JavaScript repos into ignored
-`.mimetic/tmp`, applies Mimetic setup inside the throwaway clones, runs the
-four-lane synthetic Observer proof, verifies it, writes an ignored report under
-`.mimetic/lab/oss`, and removes the clones by default. Use
-`pnpm mimetic -- lab oss --limit 1 --keep` when debugging a single clone.
+That starts the top-level OSS meta-lab Observer: four headed desktop lanes,
+each assigned a public GitHub repo and a Codex TUI bootstrap prompt. The
+intended live substrate is E2B desktop fanout where each Codex actor clones its
+repo, gets it running locally, installs Mimetic, authors plausible
+personas/scenarios, runs a nested Mimetic sim, and keeps that nested Observer
+visible in the E2B browser. Pick repos with:
+
+```bash
+pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
+```
+
+Agent/CI contract proof:
+
+```bash
+pnpm mimetic:lab:oss:ci
+```
+
+The older disposable clone/discard proof loop remains available as:
+
+```bash
+pnpm mimetic:lab:oss:smoke
+pnpm mimetic -- lab oss-smoke --limit 1 --keep
+```
 
 ## Target App Quickstart
 

@@ -92,12 +92,14 @@ export function normalizeOssRepoSlugs(input: string[] | undefined): string[] {
   const repos: string[] = [];
 
   for (const value of values) {
-    const slug = value.trim();
-    if (slug.length === 0 || seen.has(slug)) {
-      continue;
+    for (const part of value.split(",")) {
+      const slug = part.trim();
+      if (slug.length === 0 || seen.has(slug)) {
+        continue;
+      }
+      seen.add(slug);
+      repos.push(slug);
     }
-    seen.add(slug);
-    repos.push(slug);
   }
 
   return repos;

@@ -223,22 +223,31 @@ keeps the shell attached. The CI-safe form is `mimetic watch --json --no-open`.
 `--sims <n>` remains the explicit scale control, and `--run <id>` watches
 existing evidence.
 
-## Stage 6.9: Disposable OSS Lab
+## Stage 6.9: OSS Meta-Lab
 
-Status: implemented as an experimental public-repo proof loop.
+Status: implemented as an experimental Observer-of-Observers contract with a
+retained disposable smoke harness.
 
-`mimetic lab oss` shallow clones lightweight public GitHub repositories into
-ignored `.mimetic/tmp`, applies Mimetic setup in disposable clones, runs the
-four-lane synthetic Observer proof, verifies it, records git-status evidence,
-writes an ignored `.mimetic/lab/oss/<run-id>/` report, and removes the clones by
-default. It accepts only public `owner/repo` slugs and performs no installs,
-commits, pushes, provider calls, or GitHub mutation.
+`mimetic lab oss` opens the top-level Observer for public OSS meta-sims. Each
+lane is assigned a public GitHub `owner/repo` slug from `--repos` or repeated
+`--repo` values and carries the headed E2B desktop + Codex TUI bootstrap prompt
+for setting up Mimetic inside that repo and keeping the nested Observer visible.
+
+`mimetic lab oss-smoke` keeps the earlier clone/discard proof loop: shallow
+clone lightweight public GitHub repositories into ignored `.mimetic/tmp`, apply
+Mimetic setup in disposable clones, run the four-lane synthetic Observer proof,
+verify it, record git-status evidence, write an ignored
+`.mimetic/lab/oss/<run-id>/` report, and remove clones by default.
 
 Proof:
 
 ```bash
-pnpm mimetic -- lab oss --limit 1 --json
+pnpm mimetic -- lab oss --dry-run --json --no-open --repos developit/mitt,lukeed/clsx
+pnpm mimetic -- lab oss-smoke --limit 1 --json
 ```
+
+Next substrate work: replace the meta-lab lane contract with actual E2B desktop
+fanout and Codex TUI injection while preserving this CLI shape.
 
 ## Stage 7: Local Browser And First Real Adapter
 
