@@ -47,6 +47,8 @@ private patient data, or private source snippets.
 
 - Keep `main` clean. Use scoped branches or worktrees for feature work.
 - Make small commits with explicit scope.
+- Before substantial work, read [`docs/ramp/README.md`](docs/ramp/README.md)
+  and [`docs/goals/current.md`](docs/goals/current.md).
 - Do not commit generated proof artifacts, local env files, E2B/runtime caches,
   `.npmrc`, packed tarballs, or provider credentials.
 - Before extracting from any source project, classify the code as core, CLI

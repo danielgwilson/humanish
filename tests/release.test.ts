@@ -33,8 +33,10 @@ describe("release readiness", () => {
       "docs/architecture",
       "docs/assets",
       "docs/contracts",
+      "docs/goals",
       "docs/principles",
       "docs/product",
+      "docs/ramp",
       "docs/release",
       "docs/roadmap",
       "skills",
@@ -71,7 +73,30 @@ describe("release readiness", () => {
     expect(readiness).toContain("`.npmrc`");
     expect(readiness).toContain("non-noreply commit email metadata");
     expect(readiness).toContain("internal");
-    expect(readiness).toContain("operations/ramp notes");
+    expect(readiness).toContain("operations notes");
+    expect(readiness).toContain("Public");
+    expect(readiness).toContain("`docs/ramp/`");
+    expect(readiness).toContain("`docs/goals/`");
+  });
+
+  it("keeps future-agent ramp and goal docs public-safe and packaged", async () => {
+    const readme = await readFile("README.md", "utf8");
+    const ramp = await readFile("docs/ramp/README.md", "utf8");
+    const goals = await readFile("docs/goals/current.md", "utf8");
+
+    expect(readme).toContain("docs/ramp/README.md");
+    expect(readme).toContain("docs/goals/current.md");
+    expect(ramp).toContain("Future agents should be able to continue from the repo");
+    expect(goals).toContain("Best Next Work");
+    const forbidden = [
+      ["", "Users", ""].join("/"),
+      ["local", "git"].join("_"),
+      ["env", ".env.local"].join("/"),
+      ["private", "factory"].join("-")
+    ];
+    for (const term of forbidden) {
+      expect(`${ramp}\n${goals}`).not.toContain(term);
+    }
   });
 
   it("ships the npm README screenshot asset", async () => {

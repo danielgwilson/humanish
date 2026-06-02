@@ -29,7 +29,7 @@ const secretPatterns = [
   ["jwt_like_token", /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g]
 ];
 
-const staleInternalDocDirs = ["goals", "operations", "ramp"];
+const staleInternalDocDirs = ["operations"];
 const staleInternalContextNames = [
   ["agent", "product"].join("-"),
   ["private", "factory"].join("-"),

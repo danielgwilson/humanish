@@ -123,6 +123,8 @@ pnpm mimetic:feedback
 
 ## Docs
 
+- [Ramp for future contributors and agents](docs/ramp/README.md)
+- [Current goals](docs/goals/current.md)
 - [Project layout](docs/architecture/project-layout.md)
 - [Observer architecture](docs/architecture/observer.md)
 - [OSS lab POC](docs/architecture/oss-lab-poc.md)
