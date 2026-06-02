@@ -28,7 +28,7 @@ describe("release readiness", () => {
     expect(packageJson.homepage).toBe("https://github.com/danielgwilson/mimetic-cli#readme");
     expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/mimetic-cli/issues");
     expect(packageJson.keywords).toContain("persona-simulation");
-    expect(packageJson.files).toEqual(["dist", "docs/assets", "skills", "README.md", "LICENSE"]);
+    expect(packageJson.files).toEqual(["dist", "docs", "skills", "README.md", "LICENSE"]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
     expect(packageJson.scripts["skill:check"]).toBe("DISABLE_TELEMETRY=1 npx skills add . --list");

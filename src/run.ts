@@ -1325,7 +1325,7 @@ function buildSyntheticObserverFixtures(args: {
       mode: "browser-sim" as const,
       label: "UI journey",
       currentStep: "Route and viewport contract captured",
-      summary: "UI sim lane reserved for browser/VNC playback, screenshots, route state, and interaction trace.",
+      summary: "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
       tail: "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
       viewport: { width: 1440, height: 960, deviceScaleFactor: 1 }
     },

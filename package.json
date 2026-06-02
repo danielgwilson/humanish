@@ -28,7 +28,7 @@
   },
   "files": [
     "dist",
-    "docs/assets",
+    "docs",
     "skills",
     "README.md",
     "LICENSE"

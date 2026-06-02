@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { Command, Option } from "commander";
 
 import {
@@ -36,6 +40,14 @@ import type {
 } from "./run.js";
 
 export const CLI_RESPONSE_SCHEMA = "mimetic.cli-response.v1";
+
+function readCliVersion(): string {
+  const packageJsonPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: unknown };
+  return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "0.0.0";
+}
+
+const CLI_VERSION = readCliVersion();
 
 export interface CliIo {
   writeOut(text: string): void;
@@ -163,7 +175,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   program
     .name("mimetic")
     .description("Open-source-safe persona simulation CLI and proof harness.")
-    .version("0.1.2")
+    .version(CLI_VERSION)
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({

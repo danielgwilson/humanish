@@ -14,7 +14,7 @@ without explicit approval in the current context.
 - License: MIT
 - Repository: `https://github.com/danielgwilson/mimetic-cli`
 - npm access: public via `publishConfig.access`
-- npm contents: compiled `dist`, `docs/assets/`, `skills/`, `README.md`,
+- npm contents: compiled `dist`, public `docs/`, `skills/`, `README.md`,
   `LICENSE`, and `package.json`
 - GitHub Actions publish workflow: `.github/workflows/publish.yml`
 - optional live E2B peer: `@e2b/desktop`
@@ -110,8 +110,8 @@ pnpm pack:dry-run
 `dist`.
 
 The tarball must not include `.env*`, `.mimetic/`, generated run bundles,
-private screenshots, raw transcripts, `.npmrc`, source docs, tests, fixtures,
-or local runtime caches.
+private screenshots, raw transcripts, `.npmrc`, tests, fixtures, or local
+runtime caches.
 
 ## Publish Procedure
 

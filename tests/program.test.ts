@@ -29,7 +29,10 @@ async function runCli(args: string[]): Promise<CliResult> {
   try {
     await program.parseAsync(["node", "mimetic", ...args], { from: "node" });
   } catch (error) {
-    if (error instanceof CommanderError && error.code === "commander.helpDisplayed") {
+    if (
+      error instanceof CommanderError &&
+      (error.code === "commander.helpDisplayed" || error.code === "commander.version")
+    ) {
       return {
         exitCode: 0,
         stderr: stderr.join(""),
@@ -80,6 +83,15 @@ describe("mimetic CLI scaffold", () => {
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("feedback");
     expect(result.stdout).toContain("Public-safety boundary");
+  });
+
+  it("reports the package version", async () => {
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
+    const result = await runCli(["--version"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe(packageJson.version);
   });
 
   it("plans init changes without mutating files during JSON dry-run", async () => {
