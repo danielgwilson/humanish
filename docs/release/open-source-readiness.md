@@ -6,6 +6,11 @@ Status: public repository candidate after reviewed history cleanup. Actual
 `npm publish` remains a human release action and must not be run by an agent
 without explicit approval in the current context.
 
+Use [`docs/release/public-readiness-standard.md`](public-readiness-standard.md)
+as the public-cleanliness policy. The standard distinguishes real blockers such
+as secrets, PHI, private source, private screenshots, and raw credentials from
+acceptable public metadata such as maintainer-approved public commit email.
+
 ## Package State
 
 - Package name: `mimetic-cli`
@@ -71,7 +76,7 @@ from a fresh clone:
 - history scans have no private upstream system names, absolute maintainer paths,
   secret patterns, or generated runtime bundles;
 - reachable commit author and committer emails are GitHub noreply-style
-  addresses;
+  addresses or explicitly approved public maintainer emails;
 - GitHub issues, PRs, labels, and project fields have been scanned or rewritten
   for public-safe language.
 
@@ -101,7 +106,7 @@ git diff --check
 
 `pnpm public-surface:scan` scans tracked files plus the npm dry-run payload,
 including built `dist/` output. It fails on common secret tokens, absolute local
-user paths, local workspace paths, non-noreply durable commit email metadata,
+user paths, local workspace paths, unapproved durable commit email metadata,
 known private upstream system names, and binary public assets that are not
 explicitly allowlisted by SHA-256.
 

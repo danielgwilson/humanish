@@ -52,6 +52,13 @@ const privateResiduePatterns = [
 const approvedBinaryAssets = new Map([
   ["docs/assets/mimetic-oss-lab-observer.png", "5891e05c6aa1d74ffde63485ce3752a6e1c5206f049b5adedefa195980b8c232"]
 ]);
+const approvedPublicCommitEmails = new Set([
+  "daniel@danielgwilson.com",
+  ...(process.env.MIMETIC_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")
+    .split("\n")
+    .map((email) => email.trim())
+    .filter(Boolean)
+]);
 
 const findings = [];
 
@@ -136,11 +143,11 @@ function lineNumberFor(text, index) {
 
 const githubNoreplyEmail = /^(?:noreply@github\.com|(?:github-actions\[bot\]|\d+\+[A-Za-z0-9-]+)@users\.noreply\.github\.com)$/;
 for (const email of reachableCommitEmails()) {
-  if (!githubNoreplyEmail.test(email)) {
+  if (!githubNoreplyEmail.test(email) && !approvedPublicCommitEmails.has(email)) {
     findings.push({
       file: "<git-history>",
       line: 0,
-      name: "non_noreply_commit_email",
+      name: "unapproved_commit_email",
       value: email
     });
   }

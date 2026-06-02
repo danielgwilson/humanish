@@ -133,6 +133,7 @@ pnpm mimetic:feedback
 - [Self-driving harness principles](docs/principles/self-driving-harness.md)
 - [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
 - [Open-source release readiness](docs/release/open-source-readiness.md)
+- [Public readiness standard](docs/release/public-readiness-standard.md)
 
 ## Release Status
 

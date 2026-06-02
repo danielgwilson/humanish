@@ -55,8 +55,10 @@ describe("release readiness", () => {
 
   it("documents release gates and human publish decisions", async () => {
     const readiness = await readFile("docs/release/open-source-readiness.md", "utf8");
+    const standard = await readFile("docs/release/public-readiness-standard.md", "utf8");
 
     expect(readiness).toContain("public repository candidate after reviewed history cleanup");
+    expect(readiness).toContain("docs/release/public-readiness-standard.md");
     expect(readiness).toContain("License: MIT");
     expect(readiness).toContain("`npm publish` remains a human release action");
     expect(readiness).toContain("GitHub Visibility Gate");
@@ -74,13 +76,16 @@ describe("release readiness", () => {
     expect(readiness).toContain("No agent should run that command without explicit human approval");
     expect(readiness).toContain("`.mimetic/`");
     expect(readiness).toContain("`.npmrc`");
-    expect(readiness).toContain("non-noreply durable commit email metadata");
+    expect(readiness).toContain("unapproved durable commit email metadata");
     expect(readiness).toContain("internal");
     expect(readiness).toContain("operations notes");
     expect(readiness).toContain("Public");
     expect(readiness).toContain("`docs/ramp/`");
     expect(readiness).toContain("`docs/goals/`");
     expect(readiness).toContain("repo-local `AGENTS.md`");
+    expect(standard).toContain("A maintainer-approved public commit email");
+    expect(standard).toContain("Do not force-rewrite `main` solely because a known maintainer-approved public");
+    expect(standard).toContain("Secret/PHI/private source? Rotate/revoke first");
   });
 
   it("keeps future-agent ramp and goal docs public-safe and packaged", async () => {
