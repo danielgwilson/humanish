@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
@@ -491,6 +492,7 @@ async function runLocalCodexTui(options: RunOptions & {
   const prompt = buildLocalCodexTuiPrompt(selection);
   const promptDigest = digestText(prompt);
   const command = resolveLocalCodexTuiCommand(options.cwd, prompt, options.actorCommand);
+  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.MIMETIC_CODEX_ACTOR_COMMAND === undefined;
   const simId = "sim-01";
   const streamId = "sim-01-codex-tui";
   const events: RunEvent[] = [];
@@ -519,19 +521,32 @@ async function runLocalCodexTui(options: RunOptions & {
     updatedAt: createdAt
   } satisfies RunPointer);
 
-  await appendEvent(
-    "actor.spawned",
-    `Spawned local Codex TUI actor command ${command.name} in explicit opt-in mode.`
-  );
-  await appendEvent(
-    "actor.prompt.submitted",
-    `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`
-  );
+  let actor: LocalActorCommandResult;
+  const trustPreflight = usesDefaultCodexCommand ? await checkCodexWorkspaceTrust(options.cwd) : { ok: true as const };
+  if (!trustPreflight.ok) {
+    actor = {
+      durationMs: 0,
+      reason: trustPreflight.message,
+      status: "blocked",
+      transcript: `${trustPreflight.message}\nRecovery: ${trustPreflight.recoveryCommand}\n`,
+      transcriptBytes: Buffer.byteLength(trustPreflight.message)
+    };
+    await appendEvent("actor.preflight.blocked", trustPreflight.message, "warn");
+  } else {
+    await appendEvent(
+      "actor.spawned",
+      `Spawned local Codex TUI actor command ${command.name} in explicit opt-in mode.`
+    );
+    await appendEvent(
+      "actor.prompt.submitted",
+      `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`
+    );
 
-  const actor = await executeLocalActorCommand(command, {
-    cwd: options.cwd,
-    timeoutMs
-  });
+    actor = await executeLocalActorCommand(command, {
+      cwd: options.cwd,
+      timeoutMs
+    });
+  }
   const completedAt = new Date().toISOString();
   const redactedTranscript = redactSensitiveText(actor.transcript);
   const tail = tailText(redactedTranscript, 6_000);
@@ -570,10 +585,12 @@ async function runLocalCodexTui(options: RunOptions & {
     status === "passed" ? "info" : status === "timed_out" ? "warn" : "error"
   );
   await appendEvent(
-    status === "timed_out" ? "actor.timeout" : "actor.exited",
+    status === "timed_out" ? "actor.timeout" : status === "blocked" && !trustPreflight.ok ? "actor.blocked" : "actor.exited",
     status === "timed_out"
       ? `Actor timed out after ${timeoutMs}ms; last safe observation retained.`
-      : `Actor exited with code ${actor.exitCode ?? "null"}${actor.signal ? ` and signal ${actor.signal}` : ""}.`,
+      : status === "blocked" && !trustPreflight.ok
+        ? "Actor launch was blocked by preflight before spawn."
+        : `Actor exited with code ${actor.exitCode ?? "null"}${actor.signal ? ` and signal ${actor.signal}` : ""}.`,
     status === "passed" ? "info" : "warn"
   );
 
@@ -885,6 +902,15 @@ interface LocalActorCommandResult {
   transcriptBytes: number;
 }
 
+type CodexTrustPreflight =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+      recoveryCommand: string;
+      trustRoot: string;
+    };
+
 function resolveLocalCodexTuiCommand(
   cwd: string,
   prompt: string,
@@ -1012,6 +1038,89 @@ function executeLocalActorCommand(
       });
     });
   });
+}
+
+async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPreflight> {
+  if (process.env.MIMETIC_SKIP_CODEX_TRUST_PREFLIGHT === "1") {
+    return { ok: true };
+  }
+
+  const trustRoot = await detectCodexTrustRoot(cwd);
+  if (!trustRoot) {
+    return { ok: true };
+  }
+
+  const configPath = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), "config.toml");
+  const configText = await readTextIfExists(configPath);
+
+  if (configText && codexConfigTrustsProject(configText, trustRoot)) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    trustRoot,
+    message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted: ${trustRoot}`,
+    recoveryCommand: `codex --no-alt-screen -C ${shellQuote(trustRoot)}`
+  };
+}
+
+async function detectCodexTrustRoot(cwd: string): Promise<string | null> {
+  const worktreeRoot = await findGitWorktreeRoot(cwd);
+  if (!worktreeRoot) {
+    return null;
+  }
+
+  const dotGitPath = path.join(worktreeRoot, ".git");
+  if (await directoryExists(dotGitPath)) {
+    return worktreeRoot;
+  }
+
+  const gitFile = await readTextIfExists(dotGitPath);
+  if (!gitFile?.startsWith("gitdir:")) {
+    return worktreeRoot;
+  }
+
+  const gitDir = gitFile.slice("gitdir:".length).trim();
+  const absoluteGitDir = path.isAbsolute(gitDir) ? gitDir : path.resolve(worktreeRoot, gitDir);
+  const commonDirText = await readTextIfExists(path.join(absoluteGitDir, "commondir"));
+  if (!commonDirText) {
+    return worktreeRoot;
+  }
+
+  const commonDir = commonDirText.trim();
+  const absoluteCommonDir = path.resolve(absoluteGitDir, commonDir);
+  return path.basename(absoluteCommonDir) === ".git" ? path.dirname(absoluteCommonDir) : worktreeRoot;
+}
+
+async function findGitWorktreeRoot(cwd: string): Promise<string | null> {
+  let current = path.resolve(cwd);
+
+  while (true) {
+    if (await fileExists(path.join(current, ".git")) || await directoryExists(path.join(current, ".git"))) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+}
+
+function codexConfigTrustsProject(configText: string, trustRoot: string): boolean {
+  const escapedRoot = escapeRegExp(trustRoot);
+  const sectionPattern = new RegExp(`^\\[projects\\."${escapedRoot}"\\]\\s*$`, "m");
+  const sectionMatch = sectionPattern.exec(configText);
+  if (!sectionMatch) {
+    return false;
+  }
+
+  const afterSection = configText.slice(sectionMatch.index + sectionMatch[0].length);
+  const nextSectionIndex = afterSection.search(/^\[/m);
+  const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
+  return /^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody);
 }
 
 function normalizeActorTimeout(value: number | undefined): number | null {

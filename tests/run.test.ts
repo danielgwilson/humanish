@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -213,6 +213,60 @@ describe("dry-run bundles", () => {
           delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
         } else {
           process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousCommand;
+        }
+      }
+    });
+  });
+
+  it("blocks the default Codex TUI actor before spawn when workspace trust is missing", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const codexHome = path.join(cwd, ".codex-home");
+      const previousCodexHome = process.env.CODEX_HOME;
+      const previousActorCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      await mkdir(path.join(cwd, ".git"), { recursive: true });
+      await writeFile(path.join(cwd, ".git/HEAD"), "ref: refs/heads/main\n", "utf8");
+      await mkdir(codexHome, { recursive: true });
+      delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      process.env.CODEX_HOME = codexHome;
+
+      try {
+        const result = await runDryRun({
+          cwd,
+          actor: "codex-tui",
+          runId: "codex-trust-blocked",
+          simCount: 1,
+          timeoutMs: 5_000
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
+
+        const bundle = JSON.parse(
+          await readFile(path.join(cwd, ".mimetic/runs/codex-trust-blocked/run.json"), "utf8")
+        ) as {
+          events: Array<{ type: string }>;
+          review: { verdict: string };
+          streams: Array<{ status: string; terminal: { tail: string } }>;
+        };
+        expect(bundle.review.verdict).toBe("blocked");
+        expect(bundle.streams[0]?.status).toBe("blocked");
+        expect(bundle.streams[0]?.terminal.tail).toContain("Codex workspace trust preflight blocked");
+        expect(bundle.events.map((event) => event.type)).toContain("actor.preflight.blocked");
+        expect(bundle.events.map((event) => event.type)).toContain("actor.blocked");
+        expect(bundle.events.map((event) => event.type)).not.toContain("actor.spawned");
+
+        const verify = await verifyRun(cwd, "latest");
+        expect(verify.ok).toBe(true);
+      } finally {
+        if (previousCodexHome === undefined) {
+          delete process.env.CODEX_HOME;
+        } else {
+          process.env.CODEX_HOME = previousCodexHome;
+        }
+        if (previousActorCommand === undefined) {
+          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+        } else {
+          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousActorCommand;
         }
       }
     });

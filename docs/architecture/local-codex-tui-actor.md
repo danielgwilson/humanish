@@ -3,8 +3,9 @@
 Date: 2026-06-02
 
 Status: first implementation slice on issue #28. The repo now supports one
-explicit local actor with sanitized lifecycle evidence; four-lane fanout and
-fully autonomous Codex workspace-trust handling remain follow-up work.
+explicit local actor with sanitized lifecycle evidence and fail-fast Codex
+workspace-trust preflight; four-lane fanout and trust bootstrap remain
+follow-up work.
 
 ## Goal
 
@@ -120,18 +121,17 @@ The actor must stop and mark the lane `blocked` or `failed` if:
 - the actor touches files outside allowed runtime paths without explicit scope;
 - timeout is reached.
 
-## Known First-Slice Blocker
+## Known First-Slice Boundary
 
 The first real local TUI proof in this environment reached Codex's workspace
-trust prompt and then timed out under automation. The resulting run bundle was
-still verifiable and Observer-renderable, but it did not prove autonomous actor
-completion.
+trust prompt. The current implementation now detects that state before spawn
+and writes a `blocked` run bundle instead of waiting for the TUI timeout. The
+resulting bundle is still verifiable and Observer-renderable, but it does not
+prove autonomous actor completion until the trust root is explicitly approved.
 
 The next implementation slice should add an explicit, public-safe trust
-preflight before spawning the TUI. Acceptable fixes include:
+bootstrap before spawning the TUI. Acceptable fixes include:
 
-- detect untrusted Codex workspace state and fail fast with `blocked` plus a
-  precise recovery command;
 - allow an explicit operator-approved trust bootstrap for this repository only;
 - or add a non-TUI `codex exec` actor mode as a separate contract while keeping
   the TUI actor honest about needing a PTY and trust.
