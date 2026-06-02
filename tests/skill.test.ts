@@ -16,6 +16,7 @@ describe("agent skill guidance", () => {
     expect(skill).toContain("ignore `.mimetic/`");
     expect(skill).toContain("OPENAI_API_KEY");
     expect(skill).toContain("E2B_API_KEY");
+    expect(skill).toContain("npm i -D @e2b/desktop");
 
     for (const forbidden of [
       "Never read, copy, commit, summarize, or generate PII",

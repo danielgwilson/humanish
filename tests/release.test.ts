@@ -9,6 +9,9 @@ describe("release readiness", () => {
       homepage?: string;
       keywords?: string[];
       license: string;
+      dependencies?: Record<string, string>;
+      peerDependencies?: Record<string, string>;
+      peerDependenciesMeta?: Record<string, { optional?: boolean }>;
       private?: boolean;
       publishConfig?: { access?: string };
       scripts: Record<string, string>;
@@ -16,9 +19,12 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.1.0");
+    expect(packageJson.version).toBe("0.1.1");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
+    expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
+    expect(packageJson.peerDependencies?.["@e2b/desktop"]).toBe("^2.2.3");
+    expect(packageJson.peerDependenciesMeta?.["@e2b/desktop"]).toEqual({ optional: true });
     expect(packageJson.homepage).toBe("https://github.com/danielgwilson/mimetic-cli#readme");
     expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/mimetic-cli/issues");
     expect(packageJson.keywords).toContain("persona-simulation");

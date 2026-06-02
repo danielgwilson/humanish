@@ -161,7 +161,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   program
     .name("mimetic")
     .description("Open-source-safe persona simulation CLI and proof harness.")
-    .version("0.1.0")
+    .version("0.1.1")
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({

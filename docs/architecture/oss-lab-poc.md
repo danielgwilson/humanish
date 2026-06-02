@@ -99,6 +99,13 @@ bootstrap terminal, clones the assigned public repo, runs nested Mimetic setup
 and proof commands, attempts a Codex TUI pass, and opens the nested Observer in
 the sandbox browser.
 
+The live desktop substrate is an optional peer dependency. Install it in the
+project that runs live labs:
+
+```bash
+npm i -D @e2b/desktop
+```
+
 Remaining substrate work: poll remote bootstrap completion and nested Observer
 health back into the top-level bundle instead of leaving completion review to
 the live desktop stream.

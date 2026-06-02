@@ -90,6 +90,11 @@ With `E2B_API_KEY` and `OPENAI_API_KEY` present, Mimetic launches headed E2B
 desktop lanes, uploads the local package tarball, clones each assigned public
 repository inside the sandbox, initializes Mimetic, runs nested proof commands,
 attempts a Codex TUI pass, and opens the nested Observer in the sandbox browser.
+Install the optional desktop substrate first:
+
+```bash
+npm i -D @e2b/desktop
+```
 
 The contract-safe path for agents and CI is:
 

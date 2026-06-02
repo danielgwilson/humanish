@@ -81,6 +81,24 @@ The feedback command prints a public-safe Markdown draft. It must not call the
 GitHub API, require a token, update Projects, use provider credits, or claim
 product behavior proof from a dry run.
 
+## Optional Live E2B Lab
+
+Live headed E2B desktop lanes are optional. Add the substrate dependency only
+when the user explicitly wants live E2B execution:
+
+```bash
+npm i -D @e2b/desktop
+```
+
+Then confirm env var names are documented without values:
+
+```bash
+E2B_API_KEY
+OPENAI_API_KEY
+```
+
+Do not paste values into files, prompts, run bundles, issue drafts, or logs.
+
 ## Reporting Back
 
 Report:

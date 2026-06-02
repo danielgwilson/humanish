@@ -132,3 +132,7 @@ Live execution should be staged after the dry-run path is boring:
 
 Do not make E2B, OpenAI, or GitHub credentials part of the first successful
 run.
+
+Live E2B desktop labs are an optional advanced path. Target projects that need
+them should install `@e2b/desktop` explicitly instead of receiving that
+substrate as part of the default Mimetic package install.

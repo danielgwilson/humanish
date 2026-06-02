@@ -9,13 +9,15 @@ context.
 ## Package State
 
 - Package name: `mimetic-cli`
-- Version: `0.1.0`
+- Version: `0.1.1`
 - Binary: `mimetic`
 - License: MIT
 - Repository: `https://github.com/danielgwilson/mimetic-cli`
 - npm access: public via `publishConfig.access`
-- npm contents: compiled `dist`, `README.md`, `LICENSE`, and `package.json`
+- npm contents: compiled `dist`, `skills/`, `README.md`, `LICENSE`, and
+  `package.json`
 - GitHub Actions publish workflow: `.github/workflows/publish.yml`
+- optional live E2B peer: `@e2b/desktop`
 
 `prepack` runs the TypeScript build so a clean checkout can produce a usable
 tarball with `npm pack` or `npm publish`.
