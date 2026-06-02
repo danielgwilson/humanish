@@ -290,6 +290,119 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("runs explicit local Codex exec fanout with per-lane sanitized lifecycle evidence", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeActor = path.join(cwd, "fake-codex-exec-fanout-actor.mjs");
+      await writeFile(
+        fakeActor,
+        [
+          "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
+          "process.stdout.write('exec fanout fixture inspected mimetic dogfood docs\\n');",
+          "process.stdout.write('secret-like value ' + 'sk-' + 'fanoutsecretvalue1234567890' + '\\n');",
+          "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
+        ].join("\n"),
+        "utf8"
+      );
+
+      const result = await runDryRun({
+        cwd,
+        actor: "codex-exec",
+        actorCommand: [process.execPath, fakeActor],
+        runId: "codex-exec-fanout-test",
+        simCount: 4,
+        timeoutMs: 5_000
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.mode).toBe("live");
+      expect(result.simCount).toBe(4);
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test/run.json"), "utf8")
+      ) as {
+        events: Array<{ type: string; message: string; simId?: string; streamId?: string }>;
+        mode: string;
+        review: { verdict: string; summary: string };
+        simCount: number;
+        simulations: Array<{ personaId: string; status: string; streamIds: string[]; streamKind: string }>;
+        streams: Array<{
+          artifacts: Array<{ path: string }>;
+          completion: { status: string };
+          id: string;
+          kind: string;
+          status: string;
+          terminal: { tail: string };
+          transport: string;
+        }>;
+      };
+
+      expect(bundle.mode).toBe("live");
+      expect(bundle.simCount).toBe(4);
+      expect(bundle.review.verdict).toBe("pass");
+      expect(bundle.review.summary).toContain("fanout lanes");
+      expect(bundle.simulations).toHaveLength(4);
+      expect(bundle.streams).toHaveLength(4);
+      expect(bundle.simulations.map((simulation) => simulation.status)).toEqual([
+        "passed",
+        "passed",
+        "passed",
+        "passed"
+      ]);
+      expect(bundle.simulations.map((simulation) => simulation.streamKind)).toEqual([
+        "terminal",
+        "terminal",
+        "terminal",
+        "terminal"
+      ]);
+      expect(new Set(bundle.simulations.map((simulation) => simulation.personaId)).size).toBe(4);
+      expect(bundle.streams.map((stream) => stream.id)).toEqual([
+        "sim-01-codex-exec",
+        "sim-02-codex-exec",
+        "sim-03-codex-exec",
+        "sim-04-codex-exec"
+      ]);
+      expect(bundle.streams.every((stream) => stream.kind === "terminal")).toBe(true);
+      expect(bundle.streams.every((stream) => stream.transport === "snapshot")).toBe(true);
+      expect(bundle.streams.every((stream) => stream.completion.status === "passed")).toBe(true);
+      expect(bundle.streams.every((stream) => stream.terminal.tail.includes("[REDACTED_SECRET]"))).toBe(true);
+      expect(bundle.events.filter((event) => event.type === "actor.spawned")).toHaveLength(4);
+      expect(bundle.events.filter((event) => event.type === "actor.prompt.submitted")).toHaveLength(4);
+      expect(bundle.events.filter((event) => event.type === "actor.verdict")).toHaveLength(4);
+      expect(bundle.events.some((event) => event.message.includes(`sk-${"fanoutsecretvalue"}`))).toBe(false);
+
+      for (const stream of bundle.streams) {
+        const transcriptPath = stream.artifacts.find((artifact) => artifact.path.endsWith("-sanitized.jsonl"))?.path;
+        const tracePath = stream.artifacts.find((artifact) => artifact.path.endsWith(".json") && artifact.path.startsWith("actors/"))?.path;
+        expect(transcriptPath).toBeTruthy();
+        expect(tracePath).toBeTruthy();
+        const transcript = await readFile(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test", transcriptPath ?? ""), "utf8");
+        expect(transcript).toContain("[REDACTED_SECRET]");
+        expect(transcript).not.toContain(`sk-${"fanoutsecretvalue"}`);
+        await expect(stat(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test", tracePath ?? ""))).resolves.toBeTruthy();
+      }
+
+      const verify = await verifyRun(cwd, "latest");
+      expect(verify.ok).toBe(true);
+    });
+  });
+
+  it("caps local Codex exec fanout at four lanes", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const result = await runDryRun({
+        cwd,
+        actor: "codex-exec",
+        actorCommand: [process.execPath, "-e", "process.exit(0)"],
+        runId: "codex-exec-too-many",
+        simCount: 5,
+        timeoutMs: 5_000
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED");
+      await expect(stat(path.join(cwd, ".mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+  });
+
   it("exposes explicit local Codex exec actor runs through the Commander CLI", async () => {
     await withFixtureCopy(async (cwd) => {
       const fakeActor = path.join(cwd, "fake-codex-exec-cli.mjs");

@@ -212,7 +212,8 @@ The repository now includes committed `mimetic/` source files so Mimetic can run
 against `mimetic-cli` itself. This makes `doctor` green on the repo, lets
 dry-run bundles read and digest `mimetic/personas/synthetic-new-user.yaml` and
 `mimetic/scenarios/first-run-smoke.yaml`, and keeps the live Codex TUI actor gap
-explicit. The live 1x/4x Codex TUI dogfood path is tracked in
+explicit. The live Codex TUI dogfood path and noninteractive `codex-exec`
+fanout hardening are tracked in
 [#28](https://github.com/danielgwilson/mimetic-cli/issues/28).
 
 ## Stage 6.8: One-Command Watch UX
