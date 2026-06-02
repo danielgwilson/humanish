@@ -242,12 +242,14 @@ verify it, record git-status evidence, write an ignored
 Proof:
 
 ```bash
+pnpm mimetic -- lab oss --detach --open --repos developit/mitt,lukeed/clsx
 pnpm mimetic -- lab oss --dry-run --json --no-open --repos developit/mitt,lukeed/clsx
 pnpm mimetic -- lab oss-smoke --limit 1 --json
 ```
 
-Next substrate work: replace the meta-lab lane contract with actual E2B desktop
-fanout and Codex TUI injection while preserving this CLI shape.
+Next substrate work: inject Codex TUI into each live E2B desktop, run the
+nested Mimetic setup inside each disposable OSS repo, and keep each nested
+Observer visible inside the desktop stream.
 
 ## Stage 7: Local Browser And First Real Adapter
 

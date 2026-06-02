@@ -638,6 +638,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
           },
           liveRequested: options.dryRun !== true,
           repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
+          sandboxes: [],
           warnings: []
         };
         writeResult(command, io, result, formatOssMetaLabHuman);
@@ -685,6 +686,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       writeResult(command, io, output, formatOssMetaLabHuman);
       io.setExitCode(output.ok ? 0 : 2);
+
+      if (output.ok && options.detach === true && output.sandboxes.some((sandbox) => sandbox.urlPresent)) {
+        // The E2B SDK keeps local handles open after stream URL creation. Detach should
+        // return the user's shell while the remote desktops continue on E2B.
+        setTimeout(() => process.exit(0), 50);
+      }
 
       if (output.ok && server && output.observer?.ok) {
         await followObserver(io, output.observer, server);
@@ -900,6 +907,10 @@ function formatOssMetaLabHuman(result: OssMetaLabResult): string {
     ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
     ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
     ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Mimetic Observer`),
+    ...result.sandboxes.map((sandbox) => {
+      const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
+      return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${sandboxLabel}`;
+    }),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }

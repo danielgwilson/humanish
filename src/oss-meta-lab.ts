@@ -42,6 +42,15 @@ export interface OssMetaLabAssignment {
   streamId: string;
 }
 
+interface OssMetaLabLiveDesktop {
+  error?: string;
+  repo: string;
+  sandboxId?: string;
+  simId: string;
+  streamId: string;
+  url?: string;
+}
+
 export interface OssMetaLabResult {
   schema: typeof OSS_META_LAB_SCHEMA;
   ok: boolean;
@@ -60,6 +69,12 @@ export interface OssMetaLabResult {
   observer?: ObserverResult;
   repos: string[];
   runId?: string;
+  sandboxes: Array<{
+    repo: string;
+    sandboxId?: string;
+    streamId: string;
+    urlPresent: boolean;
+  }>;
   warnings: string[];
 }
 
@@ -101,6 +116,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       },
       liveRequested,
       repos,
+      sandboxes: [],
       warnings
     };
   }
@@ -120,6 +136,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       },
       liveRequested,
       repos,
+      sandboxes: [],
       warnings
     };
   }
@@ -127,12 +144,23 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const missingKeys = missingLiveKeys(process.env);
   if (liveRequested && missingKeys.length > 0) {
     warnings.push(`Live E2B/Codex launch is waiting on env vars: ${missingKeys.join(", ")}.`);
-  }
-  if (liveRequested) {
-    warnings.push("This command now renders the Observer-of-Observers contract; E2B desktop launch wiring is the next substrate slice.");
+    warnings.push("Observer lanes stay in the live waiting state until keys are present.");
   }
 
   const assignments = buildOssRepoAssignments(repos, count);
+  const liveDesktops = liveRequested && missingKeys.length === 0
+    ? await launchLiveDesktops(assignments)
+    : [];
+  const liveDesktopCount = liveDesktops.filter((desktop) => desktop.url).length;
+  const failedLiveDesktopCount = liveDesktops.filter((desktop) => desktop.error).length;
+  if (liveDesktops.length > 0) {
+    warnings.push(`Launched ${liveDesktopCount}/${liveDesktops.length} live E2B desktop stream${liveDesktops.length === 1 ? "" : "s"}.`);
+    warnings.push("Codex TUI injection and nested Mimetic execution remain the next substrate slice behind these live desktops.");
+  }
+  if (failedLiveDesktopCount > 0) {
+    warnings.push(`${failedLiveDesktopCount} E2B desktop launch${failedLiveDesktopCount === 1 ? "" : "es"} failed; see stream events in the Observer.`);
+  }
+
   const runId = options.runId ?? makeMetaRunId();
   const runResult: RunResult = await runDryRun({
     cwd,
@@ -155,6 +183,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       },
       liveRequested,
       repos,
+      sandboxes: liveDesktops.map(formatLiveDesktopForResult),
       warnings: [...warnings, ...runResult.warnings]
     };
   }
@@ -167,6 +196,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     createdAt,
     cwd,
     dryRun,
+    liveDesktops,
     liveRequested,
     missingKeys,
     runId
@@ -191,6 +221,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     observer,
     repos,
     runId,
+    sandboxes: liveDesktops.map(formatLiveDesktopForResult),
     warnings: [...warnings, ...observer.warnings]
   };
 }
@@ -200,11 +231,11 @@ function buildMetaBundle(args: {
   createdAt: string;
   cwd: string;
   dryRun: boolean;
+  liveDesktops: OssMetaLabLiveDesktop[];
   liveRequested: boolean;
   missingKeys: string[];
   runId: string;
 }): RunBundle {
-  const status = statusForMeta(args);
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
   const events: RunEvent[] = [
@@ -219,6 +250,8 @@ function buildMetaBundle(args: {
 
   for (const assignment of args.assignments) {
     const prompt = buildCodexBootstrapPrompt(assignment);
+    const liveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
+    const status = statusForMeta(args, liveDesktop);
     simulations.push({
       id: assignment.simId,
       index: assignment.index,
@@ -227,7 +260,7 @@ function buildMetaBundle(args: {
       status,
       streamKind: "browser",
       mode: "ui-sim",
-      progress: status === "contract_proof_only" ? 100 : status === "blocked" ? 18 : 34,
+      progress: progressForMeta(status, liveDesktop),
       currentStep: currentStepForMeta(args, assignment),
       summary: `Headed E2B desktop lane assigned to ${assignment.repo}; nested Codex TUI should set up Mimetic and open a nested Observer inside that desktop.`,
       streamIds: [assignment.streamId],
@@ -241,10 +274,12 @@ function buildMetaBundle(args: {
       kind: "browser",
       label: `E2B desktop - ${assignment.repo}`,
       status,
-      transport: status === "contract_proof_only" ? "snapshot" : "sse",
+      transport: liveDesktop?.url ? "sse" : status === "contract_proof_only" ? "snapshot" : "sse",
       updatedAt: args.createdAt,
+      ...(liveDesktop?.url ? { url: liveDesktop.url } : {}),
       embed: {
-        kind: "placeholder",
+        kind: liveDesktop?.url ? "iframe" : "placeholder",
+        ...(liveDesktop?.url ? { url: liveDesktop.url } : {}),
         title: `E2B desktop ${assignment.index}`
       },
       viewport: {
@@ -261,7 +296,7 @@ function buildMetaBundle(args: {
       ui: {
         route: `e2b://desktop/${assignment.repo}`,
         intent: "Watch the headed desktop where Codex clones the repo, sets up Mimetic, and opens the nested Observer.",
-        state: args.dryRun ? "contract desktop" : "headed E2B desktop"
+        state: liveDesktop?.url ? "live E2B desktop" : args.dryRun ? "contract desktop" : "headed E2B desktop"
       },
       artifacts: [
         { label: "run bundle", path: "run.json", kind: "bundle" },
@@ -290,6 +325,28 @@ function buildMetaBundle(args: {
         streamId: assignment.streamId
       }
     );
+
+    if (liveDesktop?.url) {
+      events.push({
+        id: `event-${String(assignment.index).padStart(3, "0")}-stream`,
+        at: args.createdAt,
+        level: "info",
+        type: "oss-meta.e2b.stream.started",
+        message: `Live E2B desktop stream started for ${assignment.repo}.`,
+        simId: assignment.simId,
+        streamId: assignment.streamId
+      });
+    } else if (liveDesktop?.error) {
+      events.push({
+        id: `event-${String(assignment.index).padStart(3, "0")}-stream-error`,
+        at: args.createdAt,
+        level: "error",
+        type: "oss-meta.e2b.stream.failed",
+        message: `E2B desktop stream failed for ${assignment.repo}: ${liveDesktop.error}`,
+        simId: assignment.simId,
+        streamId: assignment.streamId
+      });
+    }
   }
 
   if (args.liveRequested && args.missingKeys.length > 0) {
@@ -302,13 +359,24 @@ function buildMetaBundle(args: {
     });
   }
 
-  if (args.liveRequested) {
+  if (args.liveRequested && args.liveDesktops.length === 0) {
     events.push({
       id: "event-live-substrate-planned",
       at: args.createdAt,
       level: "warn",
       type: "oss-meta.live.substrate_planned",
-      message: "E2B desktop launch and Codex TUI injection are planned behind this Observer contract."
+      message: args.missingKeys.length > 0
+        ? "E2B desktop launch is waiting on required environment variables."
+        : "Codex TUI injection and nested Mimetic execution are planned behind this Observer contract."
+    });
+  }
+  if (args.liveDesktops.some((desktop) => desktop.url)) {
+    events.push({
+      id: "event-live-substrate-started",
+      at: args.createdAt,
+      level: "info",
+      type: "oss-meta.live.substrate_started",
+      message: "E2B desktop streams are connected; Codex TUI injection is still pending."
     });
   }
 
@@ -380,21 +448,40 @@ function buildMetaBundle(args: {
 
 function statusForMeta(args: {
   dryRun: boolean;
+  liveDesktops: OssMetaLabLiveDesktop[];
   liveRequested: boolean;
   missingKeys: string[];
-}): RunSimulation["status"] {
+}, liveDesktop: OssMetaLabLiveDesktop | undefined): RunSimulation["status"] {
   if (args.dryRun) return "contract_proof_only";
+  if (liveDesktop?.url) return "running";
+  if (liveDesktop?.error) return "failed";
   if (args.missingKeys.length > 0) return "blocked";
   return "preparing";
 }
 
+function progressForMeta(status: RunSimulation["status"], liveDesktop: OssMetaLabLiveDesktop | undefined): number {
+  if (status === "contract_proof_only") return 100;
+  if (status === "blocked") return 18;
+  if (status === "failed") return 8;
+  if (liveDesktop?.url) return 58;
+  return 34;
+}
+
 function currentStepForMeta(args: {
   dryRun: boolean;
+  liveDesktops: OssMetaLabLiveDesktop[];
   liveRequested: boolean;
   missingKeys: string[];
 }, assignment: OssMetaLabAssignment): string {
+  const liveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
   if (args.dryRun) {
     return `Contract ready for ${assignment.repo}; no E2B desktop launched.`;
+  }
+  if (liveDesktop?.url) {
+    return `Live E2B desktop connected for ${assignment.repo}; Codex TUI injection pending.`;
+  }
+  if (liveDesktop?.error) {
+    return `E2B desktop launch failed for ${assignment.repo}.`;
   }
   if (args.missingKeys.length > 0) {
     return `Waiting for ${args.missingKeys.join(", ")} before launching ${assignment.repo}.`;
@@ -404,11 +491,12 @@ function currentStepForMeta(args: {
 
 function createMetaReview(args: {
   dryRun: boolean;
+  liveDesktops: OssMetaLabLiveDesktop[];
   liveRequested: boolean;
   missingKeys: string[];
 }): ReviewSummary {
   const gaps = [
-    "Nested Mimetic Observer evidence is represented as a lane contract until live E2B wiring lands.",
+    "Nested Mimetic Observer evidence is represented as a lane contract until Codex TUI injection and nested Mimetic execution land.",
     "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
     "Only public GitHub owner/repo slugs are recorded."
   ];
@@ -416,13 +504,18 @@ function createMetaReview(args: {
   if (args.liveRequested && args.missingKeys.length > 0) {
     gaps.unshift(`Live launch is blocked until ${args.missingKeys.join(", ")} are available in environment.`);
   }
+  if (args.liveDesktops.some((desktop) => desktop.url)) {
+    gaps.unshift("Live E2B desktop streams are connected, but Codex TUI injection and nested Mimetic execution are not yet automated.");
+  }
 
   return {
     schema: REVIEW_SCHEMA,
     verdict: "contract_proof_only",
     summary: args.dryRun
       ? "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend."
-      : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
+      : args.liveDesktops.some((desktop) => desktop.url)
+        ? "OSS meta-lab launched live E2B desktop streams and rendered them in the top-level Observer."
+        : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
     gaps
   };
 }
@@ -475,8 +568,94 @@ ${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
 `;
 }
 
+async function launchLiveDesktops(assignments: OssMetaLabAssignment[]): Promise<OssMetaLabLiveDesktop[]> {
+  const e2bApiKey = process.env.E2B_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!e2bApiKey || !openaiApiKey) {
+    return [];
+  }
+
+  const desktopPackage = "@e2b/desktop";
+  const desktopModule = await import(desktopPackage) as unknown as E2BDesktopModule;
+  const timeoutMs = readPositiveInt(process.env.MIMETIC_E2B_TIMEOUT_MS, 60 * 60 * 1000);
+  const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+
+  return Promise.all(assignments.map(async (assignment) => {
+    try {
+      const desktop = await desktopModule.Sandbox.create({
+        apiKey: e2bApiKey,
+        requestTimeoutMs,
+        timeoutMs,
+        metadata: {
+          tool: "mimetic-cli",
+          mode: "oss-meta-lab",
+          repo: assignment.repo,
+          simId: assignment.simId
+        },
+        envs: {
+          E2B_API_KEY: e2bApiKey,
+          OPENAI_API_KEY: openaiApiKey
+        },
+        resolution: [1440, 960],
+        dpi: 96,
+        lifecycle: {
+          onTimeout: "kill"
+        }
+      });
+      await desktop.launch("google-chrome", `https://github.com/${assignment.repo}`).catch(() => undefined);
+      await desktop.wait(2000).catch(() => undefined);
+      await desktop.stream.start({ requireAuth: true });
+      const authKey = desktop.stream.getAuthKey();
+      const url = desktop.stream.getUrl({
+        authKey,
+        autoConnect: true,
+        viewOnly: true,
+        resize: "scale"
+      });
+
+      return {
+        repo: assignment.repo,
+        sandboxId: desktop.sandboxId,
+        simId: assignment.simId,
+        streamId: assignment.streamId,
+        url
+      };
+    } catch (error) {
+      return {
+        error: compactError(error),
+        repo: assignment.repo,
+        simId: assignment.simId,
+        streamId: assignment.streamId
+      };
+    }
+  }));
+}
+
+function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop): OssMetaLabResult["sandboxes"][number] {
+  return {
+    repo: desktop.repo,
+    ...(desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
+    streamId: desktop.streamId,
+    urlPresent: Boolean(desktop.url)
+  };
+}
+
 function missingLiveKeys(env: NodeJS.ProcessEnv): string[] {
   return ["E2B_API_KEY", "OPENAI_API_KEY"].filter((name) => !env[name]?.trim());
+}
+
+function readPositiveInt(value: string | undefined, fallback: number): number {
+  if (!value || !/^\d+$/.test(value)) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function compactError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/\s+/g, " ").slice(0, 240);
 }
 
 function makeMetaRunId(): string {
@@ -490,4 +669,42 @@ function repoSlugToken(repo: string): string {
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+interface E2BDesktopModule {
+  Sandbox: {
+    create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
+  };
+}
+
+interface E2BDesktopCreateOptions {
+  apiKey: string;
+  dpi?: number;
+  envs?: Record<string, string>;
+  lifecycle?: {
+    onTimeout: "kill" | "pause";
+  };
+  metadata?: Record<string, string>;
+  requestTimeoutMs?: number;
+  resolution?: [number, number];
+  timeoutMs?: number;
+}
+
+interface E2BDesktopSandbox {
+  sandboxId: string;
+  launch(application: string, uri?: string): Promise<void>;
+  wait(ms: number): Promise<void>;
+  stream: {
+    getAuthKey(): string;
+    getUrl(options?: {
+      authKey?: string;
+      autoConnect?: boolean;
+      resize?: "off" | "scale" | "remote";
+      viewOnly?: boolean;
+    }): string;
+    start(options?: {
+      requireAuth?: boolean;
+      windowId?: string;
+    }): Promise<void>;
+  };
 }

@@ -60,6 +60,7 @@
   },
   "homepage": "https://github.com/danielgwilson/mimetic-cli#readme",
   "dependencies": {
+    "@e2b/desktop": "^2.2.3",
     "commander": "^14.0.3"
   },
   "devDependencies": {

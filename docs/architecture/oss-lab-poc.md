@@ -86,15 +86,16 @@ The meta-lab writes ignored local Observer evidence:
 Each stream lane records:
 
 - assigned repo slug;
-- headed desktop viewport contract;
+- live E2B desktop stream URL when keys are present;
 - Codex TUI bootstrap prompt;
 - current live-readiness state;
 - public-safe gaps and events.
 
-The current implementation renders the Observer contract and marks missing
-live substrate truth in-lane. The E2B desktop launcher and Codex TUI injection
-adapter are the next substrate slice behind the stable command and artifact
-contract.
+The current implementation launches live E2B desktop streams when
+`E2B_API_KEY` and `OPENAI_API_KEY` are present, embeds those streams into the
+top-level Observer, and marks missing key or launch failures in-lane. Codex TUI
+injection and nested Mimetic execution remain the next substrate slice behind
+the stable command and artifact contract.
 
 ## Smoke Harness Runtime
 
