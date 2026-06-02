@@ -185,9 +185,11 @@ describe("OSS lab command", () => {
       expect(json.warnings.join("\n")).toContain("waiting on env vars");
 
       const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-waiting-test", "run.json"), "utf8")) as {
+        review: { verdict: string };
         simulations: Array<{ currentStep: string; status: string }>;
         streams: Array<{ embed: { kind: string }; status: string }>;
       };
+      expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
         currentStep: "Waiting for E2B_API_KEY, OPENAI_API_KEY before launching developit/mitt."
@@ -279,6 +281,8 @@ describe("OSS lab command", () => {
     });
 
     expect(bundle.simulations.map((sim) => sim.status)).toEqual(["passed", "failed"]);
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("failed");
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
       nestedObserverPresent: true,
@@ -304,5 +308,51 @@ describe("OSS lab command", () => {
     expect(observerData.summary.active).toBe(0);
     expect(observerData.summary.blocked).toBe(1);
     expect(observerData.streams.map((stream) => stream.statusLabel)).toEqual(["Passed", "Failed"]);
+  });
+
+  it("marks OSS meta-lab timeout completions as non-green review evidence", () => {
+    const assignments = buildOssRepoAssignments(["sindresorhus/is-plain-obj"], 1);
+    const createdAt = "2026-06-02T09:30:00.000Z";
+    const bundle = buildOssMetaBundleFixture({
+      assignments,
+      createdAt,
+      cwd: "/tmp/mimetic-oss-meta-timeout-fixture",
+      dryRun: false,
+      lanes: [
+        {
+          bootstrap: {
+            codexMode: "tui-attempted",
+            completionPath: "/remote/is-plain-obj/completion.json",
+            logPath: "/remote/is-plain-obj/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/is-plain-obj/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "bootstrap started"
+          },
+          completion: {
+            checkedAt: "2026-06-02T09:34:00.000Z",
+            reason: "Timed out waiting 240000ms for remote bootstrap completion marker.",
+            status: "timed_out"
+          },
+          repo: "sindresorhus/is-plain-obj",
+          simId: assignments[0]?.simId ?? "oss-01",
+          streamId: assignments[0]?.streamId ?? "oss-01-desktop",
+          url: "https://stream.example/is-plain-obj"
+        }
+      ],
+      liveRequested: true,
+      missingKeys: [],
+      runId: "oss-meta-timeout-fixture"
+    });
+
+    expect(bundle.review.verdict).toBe("timed_out");
+    expect(bundle.review.summary).toContain("timed out");
+    expect(bundle.simulations.map((sim) => sim.status)).toEqual(["timed_out"]);
+    expect(bundle.streams.map((stream) => stream.status)).toEqual(["timed_out"]);
+
+    const observerData = buildObserverData(bundle, "2026-06-02T09:35:00.000Z");
+    expect(observerData.summary.active).toBe(0);
+    expect(observerData.summary.blocked).toBe(1);
+    expect(observerData.streams.map((stream) => stream.statusLabel)).toEqual(["Timed out"]);
   });
 });
