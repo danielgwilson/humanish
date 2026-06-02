@@ -144,6 +144,8 @@ describe("mimetic CLI scaffold", () => {
       };
       expect(packageJson.scripts.dev).toBe("vite");
       expect(packageJson.scripts.mimetic).toBe("mimetic");
+      expect(packageJson.scripts["mimetic:watch"]).toBe("mimetic watch");
+      expect(packageJson.scripts["mimetic:watch:ci"]).toBe("mimetic watch --json --no-open");
       expect(packageJson.scripts["mimetic:verify"]).toBe("mimetic verify");
     });
   });
@@ -192,6 +194,7 @@ describe("mimetic CLI scaffold", () => {
       };
       expect(packageJson.scripts.mimetic).toBe("custom command");
       expect(packageJson.scripts["mimetic:run"]).toBe("mimetic run --dry-run");
+      expect(packageJson.scripts["mimetic:watch"]).toBe("mimetic watch");
     });
   });
 

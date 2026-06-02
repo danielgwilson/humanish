@@ -11,8 +11,18 @@ export {
 export type { FeedbackDraft, FeedbackResult } from "./feedback.js";
 export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
 export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
-export { OBSERVER_SCHEMA, renderObserver } from "./observer.js";
-export type { ObserverOptions, ObserverResult } from "./observer.js";
+export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer-data.js";
+export type { ObserverData, ObserverStream } from "./observer-data.js";
+export { OBSERVER_SCHEMA, renderObserver, serveObserver } from "./observer.js";
+export type { ObserverOptions, ObserverResult, ObserverServeOptions, ObserverServer } from "./observer.js";
+export {
+  DEFAULT_OSS_REPOS,
+  OSS_LAB_SCHEMA,
+  normalizeOssRepoSlugs,
+  runOssLab,
+  validateOssRepoSlug
+} from "./oss-lab.js";
+export type { OssLabOptions, OssLabRepoResult, OssLabResult, OssLabStep } from "./oss-lab.js";
 export {
   DOCTOR_SCHEMA,
   REVIEW_SCHEMA,
@@ -29,8 +39,12 @@ export type {
   DoctorResult,
   ReviewSummary,
   RunBundle,
+  RunEvent,
   RunOptions,
   RunResult,
+  RunSimulation,
+  RunStream,
+  RunStreamKind,
   RunsResult,
   VerifyResult
 } from "./run.js";

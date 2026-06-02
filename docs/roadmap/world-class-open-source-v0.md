@@ -109,20 +109,32 @@ pnpm mimetic -- verify --run latest --json
 
 ## Stage 4: Observer
 
-Implement static observer over the bundle:
+Status: upgraded from static report to mission-control substrate for synthetic
+stream contracts.
 
-- summary;
-- scenario/persona cards;
-- lifecycle;
-- evidence placeholders;
-- feedback candidates;
-- gaps and warnings;
-- no mutation of source evidence.
+Implemented:
+
+- normalized `observer/observer-data.json` view model;
+- `events.ndjson` event stream contract;
+- stream-shaped sim lanes for UI, CLI, TUI, and Codex UI;
+- localhost watch server with no-store polling;
+- mission-control grid and focus mode;
+- terminal/TUI transcript stage;
+- evidence rail for events, artifacts, and gaps;
+- public-safe Codex UI stream contract with no raw provider payloads.
+
+Still next:
+
+- real browser actor adapter;
+- real PTY capture;
+- native Codex app-server adapter;
+- screenshot/trace gallery from real products;
+- reviewer acceptance gates over live product behavior.
 
 Proof:
 
 ```bash
-pnpm mimetic -- watch --sims 4 --open --follow
+pnpm mimetic -- watch
 ```
 
 If browser verification is added, use screenshots of the observer as proof.
@@ -203,11 +215,30 @@ explicit. The live 1x/4x Codex TUI dogfood path is tracked in
 
 ## Stage 6.8: One-Command Watch UX
 
-Status: implemented for synthetic contract-proof sims.
+Status: implemented for synthetic contract-proof stream lanes.
 
-`mimetic watch --sims <n> --open --follow` now creates a fresh synthetic run,
-renders Observer, opens it in the browser, and keeps the shell attached. The
-CI-safe form is `mimetic watch --sims <n> --no-open`.
+`mimetic watch` now creates a fresh four-lane synthetic run, renders Observer,
+starts a localhost watch server, opens the served Observer in the browser, and
+keeps the shell attached. The CI-safe form is `mimetic watch --json --no-open`.
+`--sims <n>` remains the explicit scale control, and `--run <id>` watches
+existing evidence.
+
+## Stage 6.9: Disposable OSS Lab
+
+Status: implemented as an experimental public-repo proof loop.
+
+`mimetic lab oss` shallow clones lightweight public GitHub repositories into
+ignored `.mimetic/tmp`, applies Mimetic setup in disposable clones, runs the
+four-lane synthetic Observer proof, verifies it, records git-status evidence,
+writes an ignored `.mimetic/lab/oss/<run-id>/` report, and removes the clones by
+default. It accepts only public `owner/repo` slugs and performs no installs,
+commits, pushes, provider calls, or GitHub mutation.
+
+Proof:
+
+```bash
+pnpm mimetic -- lab oss --limit 1 --json
+```
 
 ## Stage 7: Local Browser And First Real Adapter
 
