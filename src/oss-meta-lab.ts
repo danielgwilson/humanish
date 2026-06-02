@@ -128,6 +128,12 @@ export interface OssMetaLabResult {
 const execFileAsync = promisify(execFile);
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+interface OssMetaLabOutcome {
+  ok: boolean;
+  reason: string;
+  verdict: ReviewSummary["verdict"];
+}
+
 export function buildOssRepoAssignments(repos: string[], count: number): OssMetaLabAssignment[] {
   return Array.from({ length: count }, (_, index) => {
     const repo = repos[index % repos.length];
@@ -292,14 +298,28 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const observer = await renderObserver(cwd, runId, { open: options.open === true });
+  const outcome = classifyMetaLabOutcome({
+    dryRun,
+    liveDesktops,
+    liveRequested,
+    missingKeys
+  });
 
   return {
     schema: OSS_META_LAB_SCHEMA,
-    ok: observer.ok,
+    ok: observer.ok && outcome.ok,
     assignments,
     count,
     cwd,
     dryRun,
+    ...(observer.ok && outcome.ok
+      ? {}
+      : {
+          error: {
+            code: "MIMETIC_META_RUN_FAILED" as const,
+            message: observer.ok ? outcome.reason : observer.error?.message ?? "OSS meta-lab Observer failed."
+          }
+        }),
     liveRequested,
     observer,
     repos,
@@ -680,6 +700,7 @@ function createMetaReview(args: {
 }): ReviewSummary {
   const started = args.liveDesktops.filter((desktop) => desktop.bootstrap?.status === "started");
   const terminalCompletions = args.liveDesktops.filter((desktop) => isTerminalCompletion(desktop.completion));
+  const outcome = classifyMetaLabOutcome(args);
   const gaps = [
     started.length > 0 && terminalCompletions.length === started.length
       ? "OSS lane terminal states are classified from public-safe remote bootstrap evidence; this still proves nested Mimetic setup rather than target product behavior."
@@ -699,8 +720,10 @@ function createMetaReview(args: {
 
   return {
     schema: REVIEW_SCHEMA,
-    verdict: "contract_proof_only",
-    summary: args.dryRun
+    verdict: outcome.verdict,
+    summary: outcome.verdict === "fail" || outcome.verdict === "timed_out" || outcome.verdict === "blocked"
+      ? outcome.reason
+      : args.dryRun
       ? "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend."
       : terminalCompletions.length > 0
         ? `OSS meta-lab launched live E2B desktop streams and classified ${terminalCompletions.length}/${started.length || terminalCompletions.length} bootstrap terminal state${terminalCompletions.length === 1 ? "" : "s"} from public-safe remote evidence.`
@@ -710,6 +733,79 @@ function createMetaReview(args: {
           ? "OSS meta-lab launched live E2B desktop streams and rendered them in the top-level Observer."
         : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
     gaps
+  };
+}
+
+function classifyMetaLabOutcome(args: {
+  dryRun: boolean;
+  liveDesktops: OssMetaLabLiveDesktop[];
+  liveRequested: boolean;
+  missingKeys: string[];
+}): OssMetaLabOutcome {
+  if (args.dryRun) {
+    return {
+      ok: true,
+      reason: "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend.",
+      verdict: "contract_proof_only"
+    };
+  }
+
+  if (args.liveRequested && args.missingKeys.length > 0) {
+    return {
+      ok: true,
+      reason: `Live launch is blocked until ${args.missingKeys.join(", ")} are available in environment.`,
+      verdict: "blocked"
+    };
+  }
+
+  const launchFailures = args.liveDesktops.filter((desktop) => desktop.error || desktop.bootstrap?.status === "failed");
+  if (launchFailures.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab failed ${launchFailures.length}/${args.liveDesktops.length} live desktop or bootstrap launch${launchFailures.length === 1 ? "" : "es"}.`,
+      verdict: "fail"
+    };
+  }
+
+  const failedCompletions = args.liveDesktops.filter((desktop) => desktop.completion?.status === "failed");
+  if (failedCompletions.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab classified ${failedCompletions.length}/${args.liveDesktops.length} bootstrap terminal state${failedCompletions.length === 1 ? "" : "s"} as failed from public-safe remote evidence.`,
+      verdict: "fail"
+    };
+  }
+
+  const timedOutCompletions = args.liveDesktops.filter((desktop) => desktop.completion?.status === "timed_out");
+  if (timedOutCompletions.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab timed out waiting for ${timedOutCompletions.length}/${args.liveDesktops.length} bootstrap completion marker${timedOutCompletions.length === 1 ? "" : "s"}.`,
+      verdict: "timed_out"
+    };
+  }
+
+  const blockedCompletions = args.liveDesktops.filter((desktop) => desktop.completion?.status === "blocked");
+  if (blockedCompletions.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab classified ${blockedCompletions.length}/${args.liveDesktops.length} bootstrap terminal state${blockedCompletions.length === 1 ? "" : "s"} as blocked from public-safe remote evidence.`,
+      verdict: "blocked"
+    };
+  }
+
+  if (args.liveDesktops.length > 0 && args.liveDesktops.every((desktop) => desktop.completion?.status === "passed")) {
+    return {
+      ok: true,
+      reason: `OSS meta-lab passed ${args.liveDesktops.length}/${args.liveDesktops.length} bootstrap terminal states from public-safe remote evidence.`,
+      verdict: "pass"
+    };
+  }
+
+  return {
+    ok: true,
+    reason: "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
+    verdict: "contract_proof_only"
   };
 }
 
