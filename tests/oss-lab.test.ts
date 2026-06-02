@@ -16,7 +16,11 @@ import {
   buildOssRepoAssignments
 } from "../src/oss-meta-lab.js";
 import type { OssMetaLabResult } from "../src/oss-meta-lab.js";
-import { createProgram, shouldForceExitAfterOssMetaLab } from "../src/program.js";
+import {
+  createProgram,
+  exitCodeForOssMetaLab,
+  shouldForceExitAfterOssMetaLab
+} from "../src/program.js";
 
 async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
@@ -118,6 +122,17 @@ describe("OSS lab command", () => {
         }
       ]
     }), { detach: false, wantsMachine: true })).toBe(true);
+  });
+
+  it("preserves failed live OSS meta-lab exit codes through the force-exit path", () => {
+    expect(exitCodeForOssMetaLab(liveMetaResult())).toBe(0);
+    expect(exitCodeForOssMetaLab(liveMetaResult({
+      ok: false,
+      error: {
+        code: "MIMETIC_META_RUN_FAILED",
+        message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
+      }
+    }))).toBe(2);
   });
 
   it("does not force-exit OSS meta-lab runs without live stream handles or machine/detach mode", () => {

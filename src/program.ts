@@ -733,13 +733,14 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         };
       }
 
+      const exitCode = exitCodeForOssMetaLab(output);
       writeResult(command, io, output, formatOssMetaLabHuman);
-      io.setExitCode(output.ok ? 0 : 2);
+      io.setExitCode(exitCode);
 
       if (shouldForceExitAfterOssMetaLab(output, { detach: options.detach === true, wantsMachine })) {
         // The E2B SDK keeps local handles open after stream URL creation. Detach should
         // return the user's shell, and JSON mode should exit after printing the result.
-        setTimeout(() => process.exit(0), 50);
+        setTimeout(() => process.exit(exitCode), 50);
       }
 
       if (output.ok && server && output.observer?.ok) {
@@ -1074,6 +1075,10 @@ export function shouldForceExitAfterOssMetaLab(
   return output.liveRequested === true
     && (options.detach || options.wantsMachine)
     && output.sandboxes.some((sandbox) => sandbox.urlPresent);
+}
+
+export function exitCodeForOssMetaLab(output: OssMetaLabResult): number {
+  return output.ok ? 0 : 2;
 }
 
 function wantsJson(command: Command): boolean {
