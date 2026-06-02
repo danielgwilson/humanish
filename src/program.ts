@@ -1071,8 +1071,7 @@ export function shouldForceExitAfterOssMetaLab(
   output: OssMetaLabResult,
   options: { detach: boolean; wantsMachine: boolean }
 ): boolean {
-  return output.ok
-    && output.liveRequested === true
+  return output.liveRequested === true
     && (options.detach || options.wantsMachine)
     && output.sandboxes.some((sandbox) => sandbox.urlPresent);
 }
