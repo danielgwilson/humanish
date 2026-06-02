@@ -41,9 +41,10 @@ describe("release readiness", () => {
 
     expect(readiness).toContain("public repository candidate after reviewed history cleanup");
     expect(readiness).toContain("License: MIT");
-    expect(readiness).toContain("Actual `npm publish` remains a human release");
+    expect(readiness).toContain("`npm publish` remains a human release action");
     expect(readiness).toContain("GitHub Visibility Gate");
-    expect(readiness).toContain("Do not make the existing repository public with full history");
+    expect(readiness).toContain("from a fresh clone");
+    expect(readiness).toContain("residual platform-cache risk");
     expect(readiness).toContain("skills/mimetic-cli/SKILL.md");
     expect(readiness).toContain("pnpm skill:check");
     expect(readiness).toContain("pnpm release:check && npm publish --access public");
