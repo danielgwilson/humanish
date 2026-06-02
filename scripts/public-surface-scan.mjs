@@ -32,6 +32,8 @@ const secretPatterns = [
 const privateResiduePatterns = [
   ["absolute_local_user_path", /\/Users\/[A-Za-z0-9._-]+\//g],
   ["local_git_path", /\blocal_git\b/g],
+  ["stale_internal_docs_path", /\bdocs\/(?:goals|operations|ramp)\b/g],
+  ["stale_internal_context_name", /\b(?:terminal-product|private hosted feedback|upstream|tui-sim)\b/gi],
   ...((process.env.MIMETIC_PUBLIC_DENYLIST_PATTERN ?? "")
     .split("\n")
     .map((pattern, index) => pattern.trim() ? [`custom_private_residue_${index + 1}`, new RegExp(pattern, "g")] : null)

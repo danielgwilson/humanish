@@ -67,7 +67,7 @@ from a fresh clone:
 
 - only the intended `main` branch is reachable;
 - no stale release tags point at pre-cleanup source;
-- history scans have no private upstream names, absolute maintainer paths,
+- history scans have no private upstream system names, absolute maintainer paths,
   secret patterns, or generated runtime bundles;
 - reachable commit author and committer emails are GitHub noreply-style
   addresses;
@@ -100,7 +100,7 @@ git diff --check
 
 `pnpm public-surface:scan` fails on common secret tokens, absolute local user
 paths, local workspace paths, non-noreply commit email metadata, and known
-private upstream names.
+private upstream system names.
 
 ## Tarball Inspection
 

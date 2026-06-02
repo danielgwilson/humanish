@@ -54,7 +54,7 @@
   description: Browser/web app adapter proof work.
 - name: adapter:terminal-product
   color: "BFD4F2"
-  description: Agent-facing product adapter proof work.
+  description: Terminal/product adapter proof work.
 - name: adapter:multi-app
   color: "BFD4F2"
   description: Multi-app adapter proof work.
