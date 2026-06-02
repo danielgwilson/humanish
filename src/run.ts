@@ -564,6 +564,117 @@ async function runLocalCodexTui(options: RunOptions & {
       "actor.prompt.submitted",
       `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`
     );
+    await appendEvent(
+      "actor.running",
+      "Published local Codex TUI running snapshot for Observer polling."
+    );
+
+    const runningAt = new Date().toISOString();
+    const runningBundle: RunBundle = {
+      schema: RUN_BUNDLE_SCHEMA,
+      runId,
+      mode: "live",
+      simCount: 1,
+      createdAt,
+      cwd: options.cwd,
+      artifactRoot,
+      source: {
+        packageName,
+        mimeticSource,
+        git: {
+          status: "not_captured",
+          note: "Source git state capture is planned for the core primitives slice."
+        }
+      },
+      persona: selection.persona,
+      scenario: selection.scenario,
+      lifecycle: [
+        {
+          at: createdAt,
+          event: "run.created",
+          message: "Live local Codex TUI run created with one explicit opt-in actor."
+        },
+        {
+          at: createdAt,
+          event: "actor.selected",
+          message: "Selected local codex-tui actor."
+        },
+        {
+          at: runningAt,
+          event: "actor.running",
+          message: "Local Codex TUI actor is running; Observer data will refresh with sanitized evidence after completion."
+        }
+      ],
+      simulations: [
+        {
+          id: simId,
+          index: 1,
+          personaId: selection.persona.id,
+          scenarioId: selection.scenario.id,
+          status: "running",
+          streamKind: "tui",
+          mode: "tui-sim",
+          progress: 35,
+          currentStep: "Local Codex TUI actor running",
+          summary: "Local Codex TUI actor is running.",
+          streamIds: [streamId],
+          startedAt: createdAt,
+          updatedAt: runningAt
+        }
+      ],
+      streams: [
+        {
+          id: streamId,
+          simId,
+          kind: "tui",
+          label: "Local Codex TUI actor",
+          status: "running",
+          transport: "pty",
+          updatedAt: runningAt,
+          embed: {
+            kind: "terminal",
+            title: "Local Codex TUI actor"
+          },
+          terminal: {
+            title: "Local Codex TUI actor",
+            format: "ansi",
+            stdin: "sent",
+            tail: "Codex TUI actor is running; sanitized transcript evidence will be linked after completion."
+          },
+          completion: {
+            checkedAt: runningAt,
+            reason: "actor process is still running",
+            status: "running"
+          },
+          artifacts: [
+            { label: "run bundle", path: "run.json", kind: "bundle" },
+            { label: "review", path: "review.md", kind: "review" },
+            { label: "event log", path: "events.ndjson", kind: "events" }
+          ]
+        }
+      ],
+      events,
+      redaction: {
+        status: "passed",
+        notes: "Running TUI bundle contains no raw transcript yet; final actor output will be redacted before persistence."
+      },
+      artifacts: {
+        run: "run.json",
+        reviewJson: "review.json",
+        reviewMarkdown: "review.md",
+        observerData: "observer/observer-data.json",
+        events: "events.ndjson"
+      },
+      review: createLocalActorRunningReviewSummary("Codex TUI"),
+      feedbackCandidates: []
+    };
+    await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
+    await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
+      schema: "mimetic.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: runningAt
+    } satisfies RunPointer);
 
     actor = await executeLocalActorCommand(command, {
       cwd: options.cwd,
@@ -722,9 +833,7 @@ async function runLocalCodexTui(options: RunOptions & {
     feedbackCandidates: []
   };
 
-  await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
-  await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
+  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
   await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
     schema: "mimetic.latest-run.v1",
     runId,
@@ -1804,6 +1913,7 @@ function buildLocalCodexTuiPrompt(selection: {
     "Run at most two read-only inspection commands; prefer file reads, `node dist/cli.js --help`, or `pnpm typecheck` when available.",
     "Do not run commands that write runtime artifacts or temp config, including `pnpm mimetic`, `mimetic watch`, `mimetic feedback`, `mimetic init`, tests, builds, installs, or commands that write `.mimetic/`.",
     "If the strongest proof would require writes in this read-only sandbox, inspect existing artifacts instead and name the write-required proof as a follow-up.",
+    "Use passed when read-only inspection confirms the committed harness and existing evidence contract; write-required follow-ups alone are not blockers.",
     "Do not print secrets, do not commit, do not push, do not open GitHub issues, and do not use private data.",
     "Finish by summarizing one public-safe harness improvement.",
     `Then print exactly one final machine-readable line in this format: MIMETIC_ACTOR_VERDICT=<status> MIMETIC_ACTOR_NONCE=${verdictNonce}.`,
@@ -2228,7 +2338,7 @@ function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTer
       isTui
         ? "Only one local Codex TUI actor is supported in this slice."
         : "Codex TUI trust bootstrap, PTY rendering, and keyboard-focus proof remain separate from the noninteractive exec actor.",
-      "Live Observer follow while the actor is running remains a follow-up hardening step.",
+      "Live follow uses polling Observer snapshots; raw interactive terminal streaming remains a follow-up hardening step.",
       "No GitHub mutation, target OSS mutation, E2B substrate, or production data was used by this local actor contract."
     ]
   };
