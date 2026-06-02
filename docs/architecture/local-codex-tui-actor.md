@@ -94,9 +94,9 @@ The Observer should be able to render a live terminal stream from those events
 while the actor is active, then render the final transcript and artifacts after
 exit.
 
-For `codex-exec`, the run writes a provisional running bundle and
+For local Codex actors, the run writes a provisional running bundle and
 `observer/observer-data.json` before awaiting actor completion, then refreshes
-those files with final lane verdicts and artifact links. This lets an existing
+those files with final verdicts and artifact links. This lets an existing
 served Observer poll the same local evidence path during the run.
 
 ## Runtime State
@@ -122,10 +122,10 @@ All generated state stays under ignored `.mimetic/`:
 No raw terminal output is public by default. The transcript artifact must be
 sanitized before it is linked from the bundle.
 
-For TUI runs, `.mimetic/runs/latest.json` is published only after `run.json`,
-`review.json`, and `review.md` exist. This keeps `mimetic verify --run latest`
-from pointing at an active or incomplete TUI run while the actor is still
-working.
+For TUI runs, `.mimetic/runs/latest.json` is published only after a valid
+running bundle, review, and Observer data exist, then refreshed after final
+artifacts exist. This keeps `mimetic verify --run latest` from pointing at an
+incomplete TUI run while still allowing live Observer follow on the active run.
 
 ## Redaction Rules
 
@@ -148,6 +148,8 @@ The first actor prompt should be bounded to public-safe dogfood work:
   builds, installs, and commands that write `.mimetic/`;
 - inspect existing artifacts and explain the strongest write-required proof as a
   follow-up when the TUI actor is running in a read-only sandbox;
+- use `passed` when read-only inspection confirms the committed harness and
+  existing evidence contract; write-required follow-ups alone are not blockers;
 - do not commit, push, publish, file issues, or print secrets;
 - summarize blockers using public-safe evidence paths;
 - finish with exactly one final
@@ -189,11 +191,9 @@ focuses across install readability, public safety, Observer evidence, and
 verification/release gates. It does not replace the TUI contract because it does
 not prove PTY rendering, keyboard focus, or visible live TUI observation.
 
-The next implementation slice should make the trusted TUI path easier to follow
-live in Observer. Acceptable fixes include:
-
-- keep the existing `codex-exec` 4x fanout path as the autonomous fallback while
-  broader TUI live-follow affordances remain in progress.
+The next implementation slice should decide whether TUI-specific fanout is
+needed beyond the current 1x TUI proof plus 1-4 lane noninteractive
+`codex-exec` fanout split.
 
 ## Acceptance For First Slice
 

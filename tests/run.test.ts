@@ -226,9 +226,11 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("does not repoint latest to a local Codex TUI run before final artifacts exist", async () => {
+  it("publishes running Observer data while a local Codex TUI actor is active", async () => {
     await withFixtureCopy(async (cwd) => {
-      const fakeActor = path.join(cwd, "fake-codex-latest-actor.cjs");
+      const runId = "codex-tui-live-follow-test";
+      const runRoot = path.join(cwd, ".mimetic/runs", runId);
+      const fakeActor = path.join(cwd, "fake-codex-live-follow-actor.cjs");
       const startedFile = path.join(cwd, "actor-started");
       const releaseFile = path.join(cwd, "actor-release");
       await writeFile(
@@ -249,13 +251,40 @@ describe("dry-run bundles", () => {
         cwd,
         actor: "codex-tui",
         actorCommand: [process.execPath, fakeActor],
-        runId: "codex-tui-latest-after-final",
+        runId,
         simCount: 1,
         timeoutMs: 5_000
       });
 
       await waitForFile(startedFile);
-      await expect(stat(path.join(cwd, ".mimetic/runs/latest.json"))).rejects.toMatchObject({ code: "ENOENT" });
+      await waitForFile(path.join(runRoot, "observer/observer-data.json"));
+
+      const runningBundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as {
+        events: Array<{ type: string }>;
+        lifecycle: Array<{ event: string }>;
+        review: { verdict: string };
+        streams: Array<{ artifacts: Array<{ path: string }>; status: string; completion: { status: string } }>;
+      };
+      expect(runningBundle.review.verdict).toBe("contract_proof_only");
+      expect(runningBundle.lifecycle.map((entry) => entry.event)).toContain("actor.running");
+      expect(runningBundle.events.map((event) => event.type)).toContain("actor.running");
+      expect(runningBundle.streams[0]?.status).toBe("running");
+      expect(runningBundle.streams[0]?.completion.status).toBe("running");
+      expect(runningBundle.streams[0]?.artifacts.every((artifact) => !artifact.path.includes("transcripts/"))).toBe(true);
+
+      const runningObserverData = JSON.parse(await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")) as {
+        events: Array<{ type: string }>;
+        streams: Array<{ status: string }>;
+      };
+      expect(runningObserverData.events.map((event) => event.type)).toContain("actor.running");
+      expect(runningObserverData.streams[0]?.status).toBe("running");
+
+      const runningLatest = JSON.parse(await readFile(path.join(cwd, ".mimetic/runs/latest.json"), "utf8")) as {
+        runId: string;
+        path: string;
+      };
+      expect(runningLatest.runId).toBe(runId);
+      await expect(stat(path.join(cwd, runningLatest.path, "review.md"))).resolves.toBeTruthy();
 
       await writeFile(releaseFile, "go", "utf8");
       const result = await runPromise;
@@ -265,9 +294,17 @@ describe("dry-run bundles", () => {
         runId: string;
         path: string;
       };
-      expect(latest.runId).toBe("codex-tui-latest-after-final");
+      expect(latest.runId).toBe(runId);
       await expect(stat(path.join(cwd, latest.path, "run.json"))).resolves.toBeTruthy();
       await expect(stat(path.join(cwd, latest.path, "review.md"))).resolves.toBeTruthy();
+
+      const finalObserverData = JSON.parse(await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")) as {
+        events: Array<{ type: string }>;
+        streams: Array<{ artifacts: Array<{ path: string }>; status: string }>;
+      };
+      expect(finalObserverData.events.map((event) => event.type)).toContain("actor.verdict");
+      expect(finalObserverData.streams[0]?.status).toBe("passed");
+      expect(finalObserverData.streams[0]?.artifacts.some((artifact) => artifact.path.includes("transcripts/"))).toBe(true);
     });
   });
 

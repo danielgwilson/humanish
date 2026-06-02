@@ -16,10 +16,12 @@ This map keeps Mimetic honest as its own first target app.
 - Active-run Observer data refresh for local `codex-exec` lanes.
 - Explicit 1x Codex TUI exact-trust preflight, terminal startup response, and
   sanitized verdict-marker completion.
+- Active-run Observer data refresh for the 1x Codex TUI actor.
 - Release and publish gates.
 
 ## Explicitly Deferred
 
-- Codex TUI live observer streaming while the TUI actor is running.
+- TUI-specific fanout beyond the current 1x TUI proof plus 1-4 lane
+  noninteractive `codex-exec` fanout split.
 - E2B, GitHub mutation, production data, and private artifacts in local dogfood
   runs.
