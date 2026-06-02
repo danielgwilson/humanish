@@ -6,7 +6,8 @@ Status: incremental implementation on issue #28. The repo supports one explicit
 local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
 workspace-trust preflight. It also supports explicit noninteractive
 `codex-exec` actor fanout from one to four lanes for autonomous local dogfood
-proof. TUI trust bootstrap and live Observer follow remain follow-up work.
+proof, including active-run Observer data refresh while exec lanes are running.
+TUI trust bootstrap and TUI live Observer follow remain follow-up work.
 
 ## Goal
 
@@ -73,6 +74,7 @@ The actor should append deterministic events to `events.ndjson`:
 | --- | --- |
 | `actor.spawned` | `simId`, `streamId`, command name, cwd, startedAt |
 | `actor.prompt.submitted` | prompt digest, prompt class, no raw prompt if unsafe |
+| `actor.running` | running snapshot available in `run.json` and `observer/observer-data.json` |
 | `actor.observation` | sanitized transcript tail, byte count, redaction status |
 | `actor.artifact` | relative artifact path, kind, digest |
 | `actor.verdict` | `passed`, `failed`, `blocked`, or `timed_out`; reason |
@@ -83,6 +85,11 @@ The actor should append deterministic events to `events.ndjson`:
 The Observer should be able to render a live terminal stream from those events
 while the actor is active, then render the final transcript and artifacts after
 exit.
+
+For `codex-exec`, the run writes a provisional running bundle and
+`observer/observer-data.json` before awaiting actor completion, then refreshes
+those files with final lane verdicts and artifact links. This lets an existing
+served Observer poll the same local evidence path during the run.
 
 ## Runtime State
 
