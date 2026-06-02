@@ -757,7 +757,7 @@ async function runLocalCodexExec(options: RunOptions & {
 }): Promise<RunResult> {
   const warnings: string[] = [];
 
-  if (options.simCount !== 1) {
+  if (options.simCount > 4) {
     return {
       schema: "mimetic.run-result.v1",
       ok: false,
@@ -765,7 +765,7 @@ async function runLocalCodexExec(options: RunOptions & {
       warnings,
       error: {
         code: "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED",
-        message: "Local Codex exec actor support is intentionally limited to --sims 1 in this slice. Split fanout after the 1x lifecycle is deterministic."
+        message: "Local Codex exec actor fanout is intentionally limited to --sims 4 in this slice."
       }
     };
   }
@@ -789,8 +789,6 @@ async function runLocalCodexExec(options: RunOptions & {
   const runId = options.runId ?? `codex-exec-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
   const artifactRoot = path.join(".mimetic", "runs", runId);
   const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
-  const transcriptPath = path.join(absoluteArtifactRoot, "transcripts", "codex-exec-sanitized.jsonl");
-  const actorTracePath = path.join(absoluteArtifactRoot, "actor.json");
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
   const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
@@ -799,30 +797,27 @@ async function runLocalCodexExec(options: RunOptions & {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic local actor defaults.");
   }
   warnings.push(...selection.warnings);
-  const prompt = buildLocalCodexExecPrompt(selection);
-  const promptDigest = digestText(prompt);
-  const command = resolveLocalCodexExecCommand(options.cwd, prompt, options.actorCommand);
-  const simId = "sim-01";
-  const streamId = "sim-01-codex-exec";
   const events: RunEvent[] = [];
-  const appendEvent = async (
+  const pushEvent = (
     type: string,
     message: string,
-    level: RunEvent["level"] = "info"
-  ): Promise<void> => {
+    level: RunEvent["level"] = "info",
+    simId?: string,
+    streamId?: string
+  ): void => {
     events.push({
       id: `event-${String(events.length + 1).padStart(3, "0")}`,
       at: new Date().toISOString(),
       level,
       type,
       message,
-      simId,
-      streamId
+      ...(simId === undefined ? {} : { simId }),
+      ...(streamId === undefined ? {} : { streamId })
     });
-    await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   };
 
-  await mkdir(path.dirname(transcriptPath), { recursive: true });
+  await mkdir(path.join(absoluteArtifactRoot, "transcripts"), { recursive: true });
+  await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
   await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
     schema: "mimetic.latest-run.v1",
     runId,
@@ -830,69 +825,140 @@ async function runLocalCodexExec(options: RunOptions & {
     updatedAt: createdAt
   } satisfies RunPointer);
 
-  await appendEvent(
-    "actor.spawned",
-    `Spawned local Codex exec actor command ${command.name} in explicit opt-in mode.`
-  );
-  await appendEvent(
-    "actor.prompt.submitted",
-    `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`
-  );
+  interface ExecLaneResult {
+    actor: LocalActorCommandResult;
+    command: LocalActorCommand;
+    focus: LocalCodexExecFocus;
+    promptDigest: string;
+    simId: string;
+    streamId: string;
+    tail: string;
+    tracePath: string;
+    transcriptPath: string;
+  }
 
-  const actor = await executeLocalActorCommand(command, {
-    cwd: options.cwd,
-    timeoutMs
+  const lanes = Array.from({ length: options.simCount }, (_, index) => {
+    const focus = localCodexExecFocus(index);
+    const simId = `sim-${String(index + 1).padStart(2, "0")}`;
+    const streamId = `${simId}-codex-exec`;
+    const prompt = buildLocalCodexExecPrompt(selection, {
+      focus,
+      index: index + 1,
+      total: options.simCount
+    });
+    const promptDigest = digestText(prompt);
+    const command = resolveLocalCodexExecCommand(options.cwd, prompt, options.actorCommand);
+    pushEvent(
+      "actor.spawned",
+      `Spawned local Codex exec actor lane ${index + 1}/${options.simCount} (${focus.label}) command ${command.name} in explicit opt-in mode.`,
+      "info",
+      simId,
+      streamId
+    );
+    pushEvent(
+      "actor.prompt.submitted",
+      `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`,
+      "info",
+      simId,
+      streamId
+    );
+
+    return { command, focus, promptDigest, simId, streamId };
   });
+
+  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+
+  const laneResults = await Promise.all(lanes.map(async (lane): Promise<ExecLaneResult> => {
+    const actor = await executeLocalActorCommand(lane.command, {
+      cwd: options.cwd,
+      timeoutMs
+    });
+    const redactedTranscript = redactSensitiveText(actor.transcript);
+    const tail = tailText(redactedTranscript, 6_000);
+    const transcriptPath = options.simCount === 1
+      ? "transcripts/codex-exec-sanitized.jsonl"
+      : `transcripts/${lane.streamId}-sanitized.jsonl`;
+    const tracePath = options.simCount === 1 ? "actor.json" : `actors/${lane.streamId}.json`;
+    await writeFile(
+      path.join(absoluteArtifactRoot, transcriptPath),
+      redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n",
+      "utf8"
+    );
+    await writeJson(path.join(absoluteArtifactRoot, tracePath), {
+      schema: "mimetic.local-codex-exec-actor.v1",
+      actor: "codex-exec",
+      commandName: lane.command.name,
+      focusId: lane.focus.id,
+      promptDigest: lane.promptDigest,
+      startedAt: createdAt,
+      completedAt: new Date().toISOString(),
+      durationMs: actor.durationMs,
+      exitCode: actor.exitCode,
+      signal: actor.signal,
+      status: actor.status,
+      timeoutMs,
+      transcriptBytes: actor.transcriptBytes,
+      transcriptPath,
+      redaction: "passed"
+    });
+    return {
+      actor,
+      command: lane.command,
+      focus: lane.focus,
+      promptDigest: lane.promptDigest,
+      simId: lane.simId,
+      streamId: lane.streamId,
+      tail,
+      tracePath,
+      transcriptPath
+    };
+  }));
+
   const completedAt = new Date().toISOString();
-  const redactedTranscript = redactSensitiveText(actor.transcript);
-  const tail = tailText(redactedTranscript, 6_000);
-  const status = actor.status;
-  const verdictReason = actor.reason;
-
-  await writeFile(transcriptPath, redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n", "utf8");
-  await writeJson(actorTracePath, {
-    schema: "mimetic.local-codex-exec-actor.v1",
-    actor: "codex-exec",
-    commandName: command.name,
-    promptDigest,
-    startedAt: createdAt,
-    completedAt,
-    durationMs: actor.durationMs,
-    exitCode: actor.exitCode,
-    signal: actor.signal,
-    status,
-    timeoutMs,
-    transcriptBytes: actor.transcriptBytes,
-    transcriptPath: "transcripts/codex-exec-sanitized.jsonl",
-    redaction: "passed"
-  });
-
-  await appendEvent(
-    "actor.observation",
-    `Captured ${actor.transcriptBytes} output byte${actor.transcriptBytes === 1 ? "" : "s"}; sanitized transcript tail recorded with redaction=passed.`
-  );
-  await appendEvent(
-    "actor.artifact",
-    "Wrote sanitized Codex exec transcript and actor trace artifacts under the ignored run directory."
-  );
-  await appendEvent(
-    "actor.verdict",
-    `Local Codex exec actor verdict ${status}: ${verdictReason}`,
-    status === "passed" ? "info" : status === "timed_out" ? "warn" : "error"
-  );
-  await appendEvent(
-    status === "timed_out" ? "actor.timeout" : "actor.exited",
-    status === "timed_out"
-      ? `Actor timed out after ${timeoutMs}ms; last safe observation retained.`
-      : `Actor exited with code ${actor.exitCode ?? "null"}${actor.signal ? ` and signal ${actor.signal}` : ""}.`,
-    status === "passed" ? "info" : "warn"
-  );
+  const laneStatuses = laneResults.map((result) => result.actor.status);
+  const status = aggregateActorStatus(laneStatuses);
+  const verdictReason = options.simCount === 1
+    ? laneResults[0]?.actor.reason ?? "actor did not return a result"
+    : summarizeExecFanout(laneStatuses);
+  for (const result of laneResults) {
+    pushEvent(
+      "actor.observation",
+      `Captured ${result.actor.transcriptBytes} output byte${result.actor.transcriptBytes === 1 ? "" : "s"}; sanitized transcript tail recorded with redaction=passed.`,
+      "info",
+      result.simId,
+      result.streamId
+    );
+    pushEvent(
+      "actor.artifact",
+      "Wrote sanitized Codex exec transcript and actor trace artifacts under the ignored run directory.",
+      "info",
+      result.simId,
+      result.streamId
+    );
+    pushEvent(
+      "actor.verdict",
+      `Local Codex exec actor lane ${result.focus.label} verdict ${result.actor.status}: ${result.actor.reason}`,
+      result.actor.status === "passed" ? "info" : result.actor.status === "timed_out" ? "warn" : "error",
+      result.simId,
+      result.streamId
+    );
+    pushEvent(
+      result.actor.status === "timed_out" ? "actor.timeout" : "actor.exited",
+      result.actor.status === "timed_out"
+        ? `Actor timed out after ${timeoutMs}ms; last safe observation retained.`
+        : `Actor exited with code ${result.actor.exitCode ?? "null"}${result.actor.signal ? ` and signal ${result.actor.signal}` : ""}.`,
+      result.actor.status === "passed" ? "info" : "warn",
+      result.simId,
+      result.streamId
+    );
+  }
+  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const bundle: RunBundle = {
     schema: RUN_BUNDLE_SCHEMA,
     runId,
     mode: "live",
-    simCount: 1,
+    simCount: options.simCount,
     createdAt,
     cwd: options.cwd,
     artifactRoot,
@@ -910,7 +976,7 @@ async function runLocalCodexExec(options: RunOptions & {
       {
         at: createdAt,
         event: "run.created",
-        message: "Live local Codex exec run created with one explicit opt-in actor."
+        message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"}.`
       },
       {
         at: createdAt,
@@ -923,58 +989,54 @@ async function runLocalCodexExec(options: RunOptions & {
         message: "Created review skeleton from sanitized actor lifecycle evidence."
       }
     ],
-    simulations: [
-      {
-        id: simId,
-        index: 1,
-        personaId: selection.persona.id,
-        scenarioId: selection.scenario.id,
-        status,
-        streamKind: "terminal",
-        mode: "cli-sim",
-        progress: 100,
-        currentStep: status === "passed" ? "Local Codex exec actor completed" : "Local Codex exec actor needs review",
-        summary: `Local Codex exec actor ${status}: ${verdictReason}`,
-        streamIds: [streamId],
-        startedAt: createdAt,
-        updatedAt: completedAt
-      }
-    ],
-    streams: [
-      {
-        id: streamId,
-        simId,
+    simulations: laneResults.map((result, index) => ({
+      id: result.simId,
+      index: index + 1,
+      personaId: `codex-exec-${result.focus.id}`,
+      scenarioId: selection.scenario.id,
+      status: result.actor.status,
+      streamKind: "terminal",
+      mode: "cli-sim",
+      progress: 100,
+      currentStep: result.actor.status === "passed" ? "Local Codex exec actor completed" : "Local Codex exec actor needs review",
+      summary: `Local Codex exec actor ${result.focus.label} ${result.actor.status}: ${result.actor.reason}`,
+      streamIds: [result.streamId],
+      startedAt: createdAt,
+      updatedAt: completedAt
+    })),
+    streams: laneResults.map((result) => ({
+      id: result.streamId,
+      simId: result.simId,
+      kind: "terminal",
+      label: `Local Codex exec - ${result.focus.label}`,
+      status: result.actor.status,
+      transport: "snapshot",
+      updatedAt: completedAt,
+      embed: {
         kind: "terminal",
-        label: "Local Codex exec actor",
-        status,
-        transport: "snapshot",
-        updatedAt: completedAt,
-        embed: {
-          kind: "terminal",
-          title: "Local Codex exec actor"
-        },
-        terminal: {
-          title: "Local Codex exec actor",
-          format: "plain",
-          stdin: "sent",
-          tail
-        },
-        completion: {
-          checkedAt: completedAt,
-          ...(actor.exitCode === undefined ? {} : { exitCode: actor.exitCode }),
-          logTail: tail,
-          reason: verdictReason,
-          status
-        },
-        artifacts: [
-          { label: "run bundle", path: "run.json", kind: "bundle" },
-          { label: "review", path: "review.md", kind: "review" },
-          { label: "event log", path: "events.ndjson", kind: "events" },
-          { label: "sanitized transcript", path: "transcripts/codex-exec-sanitized.jsonl", kind: "log" },
-          { label: "actor trace", path: "actor.json", kind: "trace" }
-        ]
-      }
-    ],
+        title: `Local Codex exec - ${result.focus.label}`
+      },
+      terminal: {
+        title: `Local Codex exec - ${result.focus.label}`,
+        format: "plain",
+        stdin: "sent",
+        tail: result.tail
+      },
+      completion: {
+        checkedAt: completedAt,
+        ...(result.actor.exitCode === undefined ? {} : { exitCode: result.actor.exitCode }),
+        logTail: result.tail,
+        reason: result.actor.reason,
+        status: result.actor.status
+      },
+      artifacts: [
+        { label: "run bundle", path: "run.json", kind: "bundle" },
+        { label: "review", path: "review.md", kind: "review" },
+        { label: "event log", path: "events.ndjson", kind: "events" },
+        { label: "sanitized transcript", path: result.transcriptPath, kind: "log" },
+        { label: "actor trace", path: result.tracePath, kind: "trace" }
+      ]
+    })),
     events,
     redaction: {
       status: "passed",
@@ -987,7 +1049,7 @@ async function runLocalCodexExec(options: RunOptions & {
       observerData: "observer/observer-data.json",
       events: "events.ndjson"
     },
-    review: createLocalActorReviewSummary("Codex exec", status, verdictReason),
+    review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout", status, verdictReason),
     feedbackCandidates: []
   };
 
@@ -1000,7 +1062,7 @@ async function runLocalCodexExec(options: RunOptions & {
     ok: status === "passed",
     runId,
     mode: "live",
-    simCount: 1,
+    simCount: options.simCount,
     cwd: options.cwd,
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
@@ -1191,9 +1253,18 @@ interface LocalActorCommandResult {
   exitCode?: number;
   reason: string;
   signal?: NodeJS.Signals;
-  status: Extract<RunSimulationStatus, "passed" | "failed" | "blocked" | "timed_out">;
+  status: LocalActorTerminalStatus;
   transcript: string;
   transcriptBytes: number;
+}
+
+type LocalActorTerminalStatus = Extract<RunSimulationStatus, "passed" | "failed" | "blocked" | "timed_out">;
+
+interface LocalCodexExecFocus {
+  id: string;
+  label: string;
+  instruction: string;
+  suggestedCommands: [string, string];
 }
 
 type CodexTrustPreflight =
@@ -1493,16 +1564,95 @@ function buildLocalCodexTuiPrompt(selection: {
   ].join(" ");
 }
 
+function localCodexExecFocus(index: number): LocalCodexExecFocus {
+  const focuses = [
+    {
+      id: "install-readability",
+      label: "install/readability",
+      instruction: "audit whether a new user can understand the committed Mimetic dogfood setup quickly",
+      suggestedCommands: [
+        "test -r mimetic/README.md && sed -n '1,40p' mimetic/README.md",
+        "test -r mimetic/config.ts && wc -l mimetic/config.ts"
+      ]
+    },
+    {
+      id: "public-safety-trust",
+      label: "public-safety/trust",
+      instruction: "check the local actor boundaries, public-safety claims, and trust-bootstrap language",
+      suggestedCommands: [
+        "test -r mimetic/coverage-map.md && sed -n '1,80p' mimetic/coverage-map.md",
+        "test -r docs/architecture/local-codex-tui-actor.md && sed -n '1,80p' docs/architecture/local-codex-tui-actor.md"
+      ]
+    },
+    {
+      id: "observer-evidence",
+      label: "Observer/evidence",
+      instruction: "inspect whether run evidence and Observer expectations are easy to verify",
+      suggestedCommands: [
+        "test -r mimetic/coverage-matrix.md && sed -n '1,80p' mimetic/coverage-matrix.md",
+        "test -r mimetic/scenarios/onboarding-regression.yaml && sed -n '1,120p' mimetic/scenarios/onboarding-regression.yaml"
+      ]
+    },
+    {
+      id: "verification-release",
+      label: "verification/release",
+      instruction: "inspect the verification and release-gate promises exposed to local dogfood actors",
+      suggestedCommands: [
+        "test -r package.json && node -e \"const p=require('./package.json'); console.log(p.scripts.check); console.log(p.scripts['public-surface:scan']);\"",
+        "test -r mimetic/README.md && sed -n '1,80p' mimetic/README.md"
+      ]
+    }
+  ] satisfies [LocalCodexExecFocus, LocalCodexExecFocus, LocalCodexExecFocus, LocalCodexExecFocus];
+
+  return focuses[index % focuses.length] ?? focuses[0];
+}
+
+function aggregateActorStatus(statuses: LocalActorTerminalStatus[]): LocalActorTerminalStatus {
+  if (statuses.includes("failed")) return "failed";
+  if (statuses.includes("timed_out")) return "timed_out";
+  if (statuses.includes("blocked")) return "blocked";
+  return statuses.length > 0 && statuses.every((status) => status === "passed") ? "passed" : "failed";
+}
+
+function summarizeExecFanout(statuses: LocalActorTerminalStatus[]): string {
+  if (statuses.length === 1) {
+    return statuses[0] === "passed" ? "actor process exited successfully" : `actor lane ${statuses[0]}`;
+  }
+
+  const counts = statuses.reduce<Record<LocalActorTerminalStatus, number>>(
+    (current, status) => ({ ...current, [status]: current[status] + 1 }),
+    { passed: 0, failed: 0, blocked: 0, timed_out: 0 }
+  );
+  const summary = (Object.keys(counts) as LocalActorTerminalStatus[])
+    .filter((status) => counts[status] > 0)
+    .map((status) => `${counts[status]} ${status}`)
+    .join(", ");
+
+  return statuses.every((status) => status === "passed")
+    ? `all ${statuses.length} Codex exec lanes passed`
+    : `${statuses.length} Codex exec lanes completed with ${summary}`;
+}
+
 function buildLocalCodexExecPrompt(selection: {
   persona: RunBundle["persona"];
   scenario: RunBundle["scenario"];
+}, lane?: {
+  focus: LocalCodexExecFocus;
+  index: number;
+  total: number;
 }): string {
+  const suggestedCommands: [string, string] = lane?.focus.suggestedCommands ?? [
+    "test -r mimetic/config.ts && wc -l mimetic/config.ts",
+    "test -r mimetic/README.md && sed -n '1,40p' mimetic/README.md"
+  ];
+
   return [
     "You are a Mimetic local Codex exec dogfood actor running noninteractively.",
     `Persona: ${selection.persona.name}.`,
     `Scenario: ${selection.scenario.title}.`,
+    ...(lane ? [`Fanout lane ${lane.index}/${lane.total}. Focus: ${lane.focus.instruction}.`] : []),
     "Run at most two read-only local inspection commands.",
-    "Suggested commands: `test -r mimetic/config.ts && wc -l mimetic/config.ts` and `test -r mimetic/README.md && sed -n '1,40p' mimetic/README.md`.",
+    `Suggested commands: \`${suggestedCommands[0]}\` and \`${suggestedCommands[1]}\`.`,
     "Do not edit files, do not run network commands, do not commit, do not push, do not open GitHub issues, and do not print secrets.",
     "Do not inspect additional files unless one suggested command fails.",
     "Finish within three sentences with exactly one public-safe verdict line using passed, blocked, or failed."
@@ -1799,7 +1949,7 @@ function createReviewSummary(): ReviewSummary {
   };
 }
 
-function createLocalActorReviewSummary(actorLabel: string, status: RunSimulationStatus, reason: string): ReviewSummary {
+function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTerminalStatus, reason: string): ReviewSummary {
   const verdict = status === "passed"
     ? "pass"
     : status === "timed_out"
@@ -1807,13 +1957,17 @@ function createLocalActorReviewSummary(actorLabel: string, status: RunSimulation
       : status === "blocked"
         ? "blocked"
         : "fail";
+  const isTui = actorLabel.toLowerCase().includes("tui");
+  const isFanout = actorLabel.toLowerCase().includes("fanout");
 
   return {
     schema: REVIEW_SCHEMA,
     verdict,
-    summary: `Live local ${actorLabel} actor ${status}: ${reason}. This proves the local actor lifecycle and sanitized evidence path, not 4x fanout or target product behavior.`,
+    summary: `Live local ${actorLabel} actor ${status}: ${reason}. This proves the local actor lifecycle and sanitized evidence path${isFanout ? " across requested fanout lanes" : ""}, not target product behavior.`,
     gaps: [
-      "Only one local Codex TUI actor is supported in this slice.",
+      isTui
+        ? "Only one local Codex TUI actor is supported in this slice."
+        : "Codex TUI trust bootstrap, PTY rendering, and keyboard-focus proof remain separate from the noninteractive exec actor.",
       "Live Observer follow while the actor is running remains a follow-up hardening step.",
       "No GitHub mutation, target OSS mutation, E2B substrate, or production data was used by this local actor contract."
     ]

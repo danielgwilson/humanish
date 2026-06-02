@@ -4,9 +4,9 @@ Date: 2026-06-02
 
 Status: incremental implementation on issue #28. The repo supports one explicit
 local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
-workspace-trust preflight. It also supports one explicit noninteractive
-`codex-exec` actor for autonomous local dogfood proof. Four-lane fanout and TUI
-trust bootstrap remain follow-up work.
+workspace-trust preflight. It also supports explicit noninteractive
+`codex-exec` actor fanout from one to four lanes for autonomous local dogfood
+proof. TUI trust bootstrap and live Observer follow remain follow-up work.
 
 ## Goal
 
@@ -39,7 +39,7 @@ mimetic run --actor codex-tui --sims 1 --timeout-ms 120000
 or, for noninteractive local autonomy:
 
 ```bash
-mimetic run --actor codex-exec --sims 1 --timeout-ms 120000
+mimetic run --actor codex-exec --sims 4 --timeout-ms 120000
 ```
 
 or:
@@ -95,8 +95,10 @@ All generated state stays under ignored `.mimetic/`:
   review.md
   events.ndjson
   actor.json
+  actors/sim-02-codex-exec.json
   transcripts/codex-tui-sanitized.txt
   transcripts/codex-exec-sanitized.jsonl
+  transcripts/sim-02-codex-exec-sanitized.jsonl
   observer/
     index.html
     observer-data.json
@@ -148,15 +150,17 @@ resulting bundle is still verifiable and Observer-renderable, but it does not
 prove autonomous TUI completion until the trust root is explicitly approved.
 
 The noninteractive `codex-exec` mode is a separate actor contract for autonomous
-local completion. It does not replace the TUI contract because it does not prove
-PTY rendering, keyboard focus, or visible live TUI observation.
+local completion. It can run up to four bounded read-only lanes with distinct
+focuses across install readability, public safety, Observer evidence, and
+verification/release gates. It does not replace the TUI contract because it does
+not prove PTY rendering, keyboard focus, or visible live TUI observation.
 
 The next implementation slice should add an explicit, public-safe trust
 bootstrap before spawning the TUI. Acceptable fixes include:
 
 - allow an explicit operator-approved trust bootstrap for this repository only;
-- add 4x fanout after both the TUI blocked state and exec completion state are
-  deterministic.
+- keep the existing `codex-exec` 4x fanout path as the autonomous fallback while
+  TUI trust remains blocked.
 
 ## Acceptance For First Slice
 
@@ -166,10 +170,8 @@ The implementation slice for this spec should prove:
 pnpm mimetic:doctor
 pnpm mimetic -- run --actor codex-tui --sims 1 --timeout-ms 120000 --json
 pnpm mimetic -- run --actor codex-exec --sims 1 --timeout-ms 120000 --json
+pnpm mimetic -- run --actor codex-exec --sims 4 --timeout-ms 120000 --json
 pnpm mimetic -- watch --run latest --detach --json --no-open
 pnpm mimetic -- verify --run latest --json
 pnpm check
 ```
-
-If the 1x actor works, split or follow with a 4x fanout issue. Do not start with
-4x fanout before the single actor lifecycle is deterministic.

@@ -111,8 +111,8 @@ export const plannedCommands: PlannedCommand[] = [
     docs: commonDocs,
     options: [
       { flags: "--dry-run", description: "Generate contract proof without browser, keys, or provider spend." },
-      { flags: "--actor codex-tui|codex-exec", description: "Explicitly opt into one local Codex actor." },
-      { flags: "--sims <count>", description: "Simulation count. Local Codex actors support 1x in this slice." },
+      { flags: "--actor codex-tui|codex-exec", description: "Explicitly opt into a local Codex actor." },
+      { flags: "--sims <count>", description: "Simulation count. Codex exec supports 1-4 lanes; Codex TUI supports 1." },
       { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
     ]
   },
@@ -254,7 +254,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
     .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec"]))
-    .option("--sims <count>", "Simulation count. Local Codex actors support 1x in this slice.")
+    .option("--sims <count>", "Simulation count. Codex exec supports 1-4 lanes; Codex TUI supports 1.")
     .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(120_000))
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
