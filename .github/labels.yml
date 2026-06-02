@@ -49,15 +49,15 @@
 - name: area:docs
   color: "C5DEF5"
   description: Documentation and repo-operating notes.
-- name: adapter:nobg
+- name: adapter:web-app
   color: "BFD4F2"
-  description: NoBG adapter proof work.
-- name: adapter:image-skill
+  description: Browser/web app adapter proof work.
+- name: adapter:agent-product
   color: "BFD4F2"
-  description: Image Skill-style adapter proof work.
-- name: adapter:northstar
+  description: Agent-facing product adapter proof work.
+- name: adapter:multi-app
   color: "BFD4F2"
-  description: Northstar adapter proof work.
+  description: Multi-app adapter proof work.
 - name: authority:observe
   color: "EDEDED"
   description: Agent authority is read/report only.

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Mimetic CLI"
+  short_description: "Set up public-safe persona simulation"
+  default_prompt: "Use $mimetic-cli to install Mimetic in this repo, scaffold synthetic personas and scenarios, run the safe Observer proof, and report the public-safe artifacts."
+
+policy:
+  allow_implicit_invocation: true

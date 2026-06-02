@@ -83,7 +83,7 @@ const defaultIo: CliIo = {
 const commonDocs = [
   "docs/product/open-source-install-experience.md",
   "docs/roadmap/world-class-open-source-v0.md",
-  "docs/goals/mimetic-cli-open-source-v0/goal.md"
+  "docs/release/open-source-readiness.md"
 ];
 
 export const plannedCommands: PlannedCommand[] = [
@@ -161,7 +161,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   program
     .name("mimetic")
     .description("Open-source-safe persona simulation CLI and proof harness.")
-    .version("0.0.0")
+    .version("0.1.1")
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({

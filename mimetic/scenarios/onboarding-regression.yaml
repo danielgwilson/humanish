@@ -12,4 +12,4 @@ steps:
   - name: Inspect generated issue draft
     expectation: Public issue body contains only synthetic artifact pointers and explicit no-mutation notes.
   - name: Inspect release gate
-    expectation: Release docs still block npm publish on Daniel's license and publish approval.
+    expectation: Release docs allow package dry-runs but still block npm publish without explicit maintainer approval.

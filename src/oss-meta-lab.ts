@@ -182,9 +182,20 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       warnings.push(`Local mimetic-cli package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`);
     }
   }
-  const liveDesktops = liveRequested && missingKeys.length === 0
-    ? await launchLiveDesktops(assignments, localPackage ? { localPackage } : {})
-    : [];
+  let liveDesktops: OssMetaLabLiveDesktop[] = [];
+  if (liveRequested && missingKeys.length === 0) {
+    try {
+      liveDesktops = await launchLiveDesktops(assignments, localPackage ? { localPackage } : {});
+    } catch (error) {
+      warnings.push(compactError(error));
+      liveDesktops = assignments.map((assignment) => ({
+        error: compactError(error),
+        repo: assignment.repo,
+        simId: assignment.simId,
+        streamId: assignment.streamId
+      }));
+    }
+  }
   const liveDesktopCount = liveDesktops.filter((desktop) => desktop.url).length;
   const failedLiveDesktopCount = liveDesktops.filter((desktop) => desktop.error).length;
   const startedBootstrapCount = liveDesktops.filter((desktop) => desktop.bootstrap?.status === "started").length;
@@ -657,8 +668,7 @@ async function launchLiveDesktops(
     return [];
   }
 
-  const desktopPackage = "@e2b/desktop";
-  const desktopModule = await import(desktopPackage) as unknown as E2BDesktopModule;
+  const desktopModule = await loadE2BDesktopModule();
   const timeoutMs = readPositiveInt(process.env.MIMETIC_E2B_TIMEOUT_MS, 60 * 60 * 1000);
   const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
 
@@ -712,6 +722,25 @@ async function launchLiveDesktops(
       };
     }
   }));
+}
+
+async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
+  try {
+    return await import("@e2b/desktop") as unknown as E2BDesktopModule;
+  } catch (error) {
+    if (isMissingE2BDesktopDependency(error)) {
+      throw new Error(
+        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `mimetic lab oss --dry-run`."
+      );
+    }
+
+    throw error;
+  }
+}
+
+function isMissingE2BDesktopDependency(error: unknown): boolean {
+  const value = error as { code?: string; message?: string };
+  return value.code === "ERR_MODULE_NOT_FOUND" && value.message?.includes("@e2b/desktop") === true;
 }
 
 async function startOssBootstrap(

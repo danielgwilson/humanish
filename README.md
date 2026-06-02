@@ -1,154 +1,137 @@
 # mimetic-cli
 
-Private incubator for a generalizable product simulation CLI and proof harness.
+Open-source-safe persona simulation for apps, CLIs, and agent-facing product
+flows.
 
-Important: this repository is expected to become public. Do not commit PII,
-PHI, secrets, keys, tokens, raw private transcripts, private screenshots, or
-private product artifacts. Use synthetic or redacted examples only.
+Mimetic gives a project a repeatable way to ask: what happens when realistic
+synthetic users, with different goals and tolerances, try to use this thing?
+It creates committed simulation source under `mimetic/`, ignored run evidence
+under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
+feedback drafts.
 
-`mimetic-cli` is intended to extract the reusable substrate behind:
-
-- Northstar `ui-sim`
-- NoBG `ui-sim`
-- Image Skill simulation / self-driving product harness work
-
-The intended shape is adapter-first: core packages provide the durable simulation machinery, while product adapters define app topology, routes, personas, scenarios, milestones, runtime commands, and review vocabulary.
-
-This repo dogfoods Mimetic through committed [`mimetic/`](mimetic/) source
-files. The local operator path is one command:
+## Install
 
 ```bash
-pnpm mimetic:watch
+npm i -D mimetic-cli
+npx mimetic init --yes
+npx mimetic watch
 ```
 
-That starts a 4-sim synthetic self-run, renders Observer, opens it in the
-browser through a localhost watch server, and keeps the shell attached. Current
-self-runs are still contract proof only; real Codex TUI actors, browser
-execution, and app-server adapters are the next capability ladder.
+For coding agents, install the repo skill first:
 
-## Local Layout
+```bash
+npx skills add danielgwilson/mimetic-cli --skill mimetic-cli
+```
+
+The skill lives at [`skills/mimetic-cli/SKILL.md`](skills/mimetic-cli/SKILL.md)
+for skills.sh discovery.
+
+## Public-Safety Boundary
+
+Mimetic is designed for public repositories and public issue queues.
+
+Do not commit, emit, paste, preserve, or generate PII, PHI, secrets, keys,
+tokens, raw private transcripts, private screenshots, private customer data,
+private patient data, or private source snippets.
+
+Use synthetic personas, synthetic examples, redacted evidence pointers, and
+env var names without values. Generated run bundles belong under ignored
+`.mimetic/`.
+
+## How It Works
 
 ```text
-~/local_git/mimetic-cli-repo/
-  mimetic-cli/   # canonical checkout
-  worktrees/     # sibling feature worktrees
+mimetic/      committed source plane: personas, scenarios, policy, adapters
+.mimetic/    ignored runtime plane: runs, Observer output, reviews, local state
 ```
 
-## Initial Scope
+The first-run path does not require credentials:
 
-- Define the adapter contract.
-- Extract shared artifact, manifest, observer, actor, and run-review primitives.
-- Port NoBG as the first adapter proof.
-- Port Image Skill or Northstar as a second adapter proof before treating the abstraction as stable.
+```bash
+npx mimetic doctor
+npx mimetic watch
+npx mimetic verify --run latest --json
+npx mimetic feedback issue --run latest --repo owner/repo --format markdown
+```
+
+`mimetic watch` starts a fresh four-lane synthetic run, renders the Observer,
+opens it in the browser, serves it over localhost, and keeps the shell attached.
+The CI-safe equivalent is:
+
+```bash
+npx mimetic watch --json --no-open
+```
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `mimetic init` | Scaffold committed `mimetic/` source and ignored `.mimetic/` runtime state. |
+| `mimetic doctor` | Explain readiness and missing setup. |
+| `mimetic run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
+| `mimetic watch` | Run sims, open Observer, and keep watching. |
+| `mimetic verify` | Validate a run bundle and public-safety gates. |
+| `mimetic review` | Read review evidence for a run. |
+| `mimetic runs` | List local runs and latest pointers. |
+| `mimetic feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
+| `mimetic lab oss` | Experimental Observer-of-Observers for headed public-OSS setup attempts. |
+| `mimetic lab oss-smoke` | Disposable clone smoke test against public OSS repos. |
+
+## OSS Lab
+
+The experimental public-OSS dogfood loop is:
+
+```bash
+pnpm mimetic -- lab oss
+pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
+```
+
+With `E2B_API_KEY` and `OPENAI_API_KEY` present, Mimetic launches headed E2B
+desktop lanes, uploads the local package tarball, clones each assigned public
+repository inside the sandbox, initializes Mimetic, runs nested proof commands,
+attempts a Codex TUI pass, and opens the nested Observer in the sandbox browser.
+Install the optional desktop substrate first:
+
+```bash
+npm i -D @e2b/desktop
+```
+
+The contract-safe path for agents and CI is:
+
+```bash
+pnpm mimetic -- lab oss --dry-run --json --no-open
+```
 
 ## Development
 
 ```bash
 pnpm install
 pnpm check
-pnpm mimetic -- --help
+pnpm public-surface:scan
+pnpm pack:dry-run
 ```
 
-## OSS Lab POC
-
-The outside-world dogfood loop is:
+Local dogfood:
 
 ```bash
-pnpm mimetic:lab:oss
+pnpm mimetic:watch
+pnpm mimetic:verify
+pnpm mimetic:feedback
 ```
 
-That starts the top-level OSS meta-lab Observer: four headed desktop lanes,
-each assigned a public GitHub repo. With `E2B_API_KEY` and `OPENAI_API_KEY`
-present, Mimetic launches live E2B desktops, raises a visible bootstrap terminal
-in each desktop, installs the locally packed Mimetic package inside a disposable
-clone, runs nested Mimetic proof commands, attempts a Codex TUI pass, and opens
-the nested Observer inside the E2B browser. Pick repos with:
+## Docs
 
-```bash
-pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
-```
-
-Agent/CI contract proof:
-
-```bash
-pnpm mimetic:lab:oss:ci
-```
-
-The older disposable clone/discard proof loop remains available as:
-
-```bash
-pnpm mimetic:lab:oss:smoke
-pnpm mimetic -- lab oss-smoke --limit 1 --keep
-```
-
-## Target App Quickstart
-
-The package is still marked `private: true` until Daniel chooses the public
-license and approves publication. Once released, target repos should use:
-
-```bash
-npm i -D mimetic-cli
-npx mimetic init --dry-run --json
-npx mimetic init --yes --json
-npx mimetic watch
-npx mimetic watch --json --no-open
-npx mimetic feedback issue --run latest --repo example/app --format markdown
-```
-
-The current CLI implements safe `init`, synthetic dry-run bundles, verification,
-a mission-control Observer with stream contracts, localhost watch mode with
-browser open, terminal/TUI panes, public-safe feedback issue drafts, and an
-experimental E2B OSS meta-lab with visible bootstrap terminals. General live
-browser execution, provider-backed target-app actors, native Codex app-server
-adapters, remote completion polling, and GitHub mutation remain intentionally
-unimplemented.
-
-## Observer
-
-`mimetic watch` starts a fresh four-lane synthetic run, opens the localhost
-Observer, and keeps the shell attached. `mimetic watch --json --no-open` is the
-agent/CI-safe equivalent: same fresh run and Observer artifacts, no browser
-open, no long-running shell.
-
-Observer writes:
-
-```text
-.mimetic/runs/<run-id>/
-  run.json
-  review.json
-  review.md
-  events.ndjson
-  observer/
-    index.html
-    observer-data.json
-```
-
-The Observer serves `observer/index.html` over localhost in follow mode and
-polls `observer-data.json`. Stream lanes are first-class: UI, CLI, TUI, and
-Codex UI are rendered as distinct watchable sims. See
-[Observer architecture](docs/architecture/observer.md).
-
-## Current Design Notes
-
-- [Sim systems context dump](docs/ramp/2026-05-31-sim-systems-context-dump.md)
-- [Self-driving feedback ramp](docs/ramp/2026-06-01-self-driving-feedback-ramp.md)
-- [GitHub control plane setup](docs/ramp/2026-06-01-github-control-plane-setup.md)
-- [Self-driving harness principles](docs/principles/self-driving-harness.md)
-- [GitHub feedback loop architecture](docs/architecture/github-feedback-loop.md)
+- [Project layout](docs/architecture/project-layout.md)
+- [Observer architecture](docs/architecture/observer.md)
+- [OSS lab POC](docs/architecture/oss-lab-poc.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Open-source install experience](docs/product/open-source-install-experience.md)
-- [Agent skill entrypoint](docs/skill/mimetic-cli/SKILL.md)
-- [Project layout contract](docs/architecture/project-layout.md)
-- [OSS lab POC](docs/architecture/oss-lab-poc.md)
+- [Self-driving harness principles](docs/principles/self-driving-harness.md)
 - [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
 - [Open-source release readiness](docs/release/open-source-readiness.md)
-- [Mimetic CLI open-source v0 goal](docs/goals/mimetic-cli-open-source-v0/goal.md)
 
-## Status
+## Release Status
 
-Package scaffold, safe `mimetic init` layout work, a minimal synthetic target
-app fixture, synthetic dry-run bundle verification, static observer rendering,
-browser-open watch mode, public-safe feedback issue drafts, and repo
-self-dogfood config are implemented for the dry-run v0 slice. Implementation
-should continue from source comparison and contract design, not a from-scratch
-rewrite.
+This package is prepared for public npm packaging, but publication is still a
+human release action. Do not run `npm publish` unless the maintainer explicitly
+approves it in the current context.

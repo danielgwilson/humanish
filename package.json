@@ -1,7 +1,6 @@
 {
   "name": "mimetic-cli",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.1",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "keywords": [
     "agent-harness",
@@ -11,7 +10,7 @@
     "ux-research"
   ],
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "packageManager": "pnpm@10.26.2",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,15 +28,22 @@
   },
   "files": [
     "dist",
-    "templates",
-    "README.md"
+    "skills",
+    "README.md",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node --eval \"import('node:fs').then(({ chmodSync }) => chmodSync('dist/cli.js', 0o755))\"",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "mimetic": "tsx src/cli.ts",
-    "pack:dry-run": "pnpm build && npm pack --dry-run",
-    "release:check": "pnpm check && npm pack --dry-run",
+    "pack:dry-run": "npm pack --dry-run",
+    "prepack": "pnpm build",
+    "public-surface:scan": "node scripts/public-surface-scan.mjs",
+    "release:check": "pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
+    "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "mimetic:doctor": "pnpm mimetic -- doctor",
@@ -60,10 +66,18 @@
   },
   "homepage": "https://github.com/danielgwilson/mimetic-cli#readme",
   "dependencies": {
-    "@e2b/desktop": "^2.2.3",
     "commander": "^14.0.3"
   },
+  "peerDependencies": {
+    "@e2b/desktop": "^2.2.3"
+  },
+  "peerDependenciesMeta": {
+    "@e2b/desktop": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@e2b/desktop": "^2.2.3",
     "@types/node": "^20.19.41",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",

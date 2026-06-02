@@ -168,10 +168,8 @@ pnpm mimetic -- feedback issue --run latest --repo example/app --format markdown
 
 ## Stage 6: Agent Skill
 
-Status: implemented as a repo-owned draft skill under
-`docs/skill/mimetic-cli/SKILL.md`. Future packaging can promote it to the
-repository root or another installer-visible location after that path is
-explicitly authorized.
+Status: implemented as an installer-visible skills.sh skill under
+`skills/mimetic-cli/SKILL.md`.
 
 Create a shareable skill package that teaches agents to install and configure
 Mimetic in target repos.
@@ -190,17 +188,21 @@ It should cover:
 
 Proof:
 
-- skill package validates;
-- fresh-agent fixture follows the skill and reaches dry-run + issue draft.
+```bash
+DISABLE_TELEMETRY=1 npx skills add . --list
+```
+
+Future proof: fresh-agent fixture follows the skill and reaches dry-run +
+issue draft.
 
 ## Stage 6.5: Release Readiness
 
-Status: dry-run ready, blocked on Daniel's license and publish approval.
+Status: public package candidate, blocked only on explicit publish approval.
 
 Readiness lives in
 [`docs/release/open-source-readiness.md`](../release/open-source-readiness.md).
-The package keeps `private: true` and `UNLICENSED` until the human license gate
-is cleared.
+The package has MIT metadata and public npm package shape. `npm publish`
+remains a human release action.
 
 ## Stage 6.75: Self-Dogfood Config
 
@@ -263,7 +265,7 @@ Only after the package and dry-run path are stable:
 - local app target detection;
 - Playwright/browser substrate;
 - first scripted browser scenario;
-- NoBG-style adapter fixture.
+- browser-app adapter fixture.
 
 Proof:
 
@@ -280,4 +282,4 @@ Proof:
 - provider spend;
 - production deploys;
 - real user/persona data;
-- Northstar/NoBG/Image Skill private artifacts.
+- private source-system artifacts.

@@ -1,12 +1,12 @@
 ---
 name: mimetic-cli
-description: Install and configure Mimetic CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add mimetic-cli, run safe first setup, create synthetic personas or scenarios, configure env var names without values, run dry-run verification and observer commands, or draft public-safe feedback issues without GitHub mutation.
+description: Install and configure Mimetic CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add mimetic-cli, run safe first setup, create synthetic personas or scenarios, configure env var names without values, run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
 ---
 
 # Mimetic CLI
 
 Use this skill to add Mimetic to a target app without relying on chat memory or
-private artifacts. Keep every example synthetic and future-public-safe.
+private artifacts. Keep every example synthetic and public-safe.
 
 ## Hard Boundary
 
@@ -15,27 +15,27 @@ tokens, raw private transcripts, private screenshots, raw customer data, raw
 patient data, or private source-system artifacts.
 
 Do not edit `.env` or secret files. Do not paste credential values. Use env var
-names only, usually `OPENAI_API_KEY` and `E2B_API_KEY`, and stop before any live
-provider spend or hosted execution.
+names only, usually `OPENAI_API_KEY` and `E2B_API_KEY`. Stop before live
+provider spend, hosted execution, deploys, public tunnels, or GitHub mutation
+unless the user explicitly approves that exact action.
 
 ## Setup Workflow
 
-1. Inspect the target repo's public files only: `package.json`, existing docs,
-   route/app structure, test scripts, and `.gitignore`.
-2. Install the package as a dev dependency:
+1. Inspect public target-repo files only: `package.json`, docs, route/app
+   structure, test scripts, and `.gitignore`.
+2. Install Mimetic with the repo's package manager:
 
    ```bash
    npm i -D mimetic-cli
    ```
 
-   Use the repo's package manager equivalent when it is clearly established.
 3. Preview setup:
 
    ```bash
    npx mimetic init --dry-run --json
    ```
 
-4. Apply setup only after the planned changes are understood:
+4. Apply setup after the planned changes are understood:
 
    ```bash
    npx mimetic init --yes --json
@@ -51,10 +51,10 @@ provider spend or hosted execution.
 
 Create or edit only synthetic files under `mimetic/`.
 
-Personas should describe public-safe motivations, accessibility needs,
-experience level, device assumptions, and risk tolerance. Avoid names, emails,
-addresses, accounts, screenshots, logs, tickets, transcripts, analytics rows,
-or anything copied from a real user.
+Personas should describe motivations, accessibility needs, experience level,
+device assumptions, and risk tolerance. Avoid names, emails, addresses,
+accounts, screenshots, logs, tickets, transcripts, analytics rows, or anything
+copied from a real user.
 
 Scenarios should define the target app surface, start URL, task intent,
 success signals, and failure signals. Keep app-specific truth in the target
@@ -71,7 +71,7 @@ npx mimetic verify --run latest --json
 npx mimetic feedback issue --run latest --repo example/app --format markdown
 ```
 
-For CI or non-interactive proof, use:
+For CI or non-interactive proof:
 
 ```bash
 npx mimetic watch --json --no-open
@@ -80,6 +80,24 @@ npx mimetic watch --json --no-open
 The feedback command prints a public-safe Markdown draft. It must not call the
 GitHub API, require a token, update Projects, use provider credits, or claim
 product behavior proof from a dry run.
+
+## Optional Live E2B Lab
+
+Live headed E2B desktop lanes are optional. Add the substrate dependency only
+when the user explicitly wants live E2B execution:
+
+```bash
+npm i -D @e2b/desktop
+```
+
+Then confirm env var names are documented without values:
+
+```bash
+E2B_API_KEY
+OPENAI_API_KEY
+```
+
+Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 
 ## Reporting Back
 
@@ -90,6 +108,3 @@ Report:
 - generated local artifact paths under `.mimetic/`;
 - whether redaction passed;
 - what remains blocked before live browser, OpenAI, E2B, or GitHub mutation.
-
-Stop and ask before using real credentials, real user data, production data,
-provider spend, public tunnels, deploys, or live GitHub mutation.

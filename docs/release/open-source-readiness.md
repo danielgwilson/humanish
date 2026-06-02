@@ -1,78 +1,153 @@
 # Open-Source Release Readiness
 
-Date: 2026-06-01
+Date: 2026-06-02
 
-Status: dry-run ready. Actual public release is blocked on Daniel choosing the
-license and explicitly approving npm publication.
+Status: public package candidate. Actual `npm publish` remains a human release
+action and must not be run by an agent without explicit approval in the current
+context.
 
-## Current Package State
+## Package State
 
 - Package name: `mimetic-cli`
+- Version: `0.1.1`
 - Binary: `mimetic`
+- License: MIT
 - Repository: `https://github.com/danielgwilson/mimetic-cli`
-- Package is intentionally `private: true`
-- License is intentionally `UNLICENSED`
-- No npm publication is authorized yet
+- npm access: public via `publishConfig.access`
+- npm contents: compiled `dist`, `skills/`, `README.md`, `LICENSE`, and
+  `package.json`
+- GitHub Actions publish workflow: `.github/workflows/publish.yml`
+- optional live E2B peer: `@e2b/desktop`
 
-Do not remove `private: true`, change `license`, add a `LICENSE` file, or run
-`npm publish` until Daniel confirms the license and publish timing.
+`prepack` runs the TypeScript build so a clean checkout can produce a usable
+tarball with `npm pack` or `npm publish`.
+
+## Skill State
+
+The installable agent skill lives at:
+
+```text
+skills/mimetic-cli/SKILL.md
+```
+
+This matches skills.sh discovery for `skills/<name>/SKILL.md`. The required
+frontmatter fields are present:
+
+```yaml
+name: mimetic-cli
+description: ...
+```
+
+Verification command:
+
+```bash
+DISABLE_TELEMETRY=1 npx skills add . --list
+```
+
+Expected install command after the repository is public:
+
+```bash
+npx skills add danielgwilson/mimetic-cli --skill mimetic-cli
+```
 
 ## Public Boundary
 
-This repository is expected to become public. Release work must not include PII,
-PHI, secrets, keys, tokens, raw private transcripts, private screenshots, raw
-customer data, raw patient data, private source snippets, or generated run
-bundles.
+Release work must not include PII, PHI, secrets, keys, tokens, raw private
+transcripts, private screenshots, raw customer data, raw patient data, private
+source snippets, or generated run bundles.
 
 Allowed examples are synthetic or redacted only.
+
+## GitHub Visibility Gate
+
+The current tree is the public surface being hardened here. Existing Git
+history still contains internal ramp/source-context commits from before this
+cleanup. Do not make the existing repository public with full history until one
+of these is done:
+
+- create a fresh public repository from a clean `git archive` or squash export;
+- or perform an explicit, reviewed history rewrite and force-update all
+  protected refs.
+
+The npm tarball is not affected by Git history because it is built from the
+current package file allowlist. GitHub visibility is a separate release gate.
+
+History-check shape used during this audit:
+
+```bash
+git rev-list --all | xargs -n 32 git grep -n -I -i -e '<private-source-name>' -e '<absolute-local-path-marker>' -e '<workspace-path-marker>'
+git rev-list --all | xargs -n 32 git grep -n -I -E 'sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|BEGIN [A-Z ]*PRIVATE KEY|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}'
+```
 
 ## Required Gates
 
 Run these before any public release candidate:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm check
-npm pack --dry-run
+pnpm public-surface:scan
+pnpm skill:check
+pnpm pack:dry-run
 git diff --check
-rg -n "(ghp_|gho_|github_pat_|sk-[A-Za-z0-9]|BEGIN (RSA|OPENSSH|PRIVATE)|password\\s*=|secret\\s*=|token\\s*=|api[_-]?key\\s*=|patient|PHI|PII|raw private|private screenshot|private transcript|customer data)" README.md AGENTS.md docs src tests fixtures package.json pnpm-lock.yaml
 ```
 
-Expected safety-scan matches are public-boundary policy language and historical
-ramp summaries. Any credential-looking token, real user data, raw private
-artifact, or unexplained private-source detail blocks release.
+`pnpm public-surface:scan` fails on common secret tokens, absolute local user
+paths, local workspace paths, and known private source-system names.
 
-## Dry-Run Publish Procedure
+## Tarball Inspection
 
-Use dry-run packaging only:
+Use:
 
 ```bash
 pnpm pack:dry-run
 ```
 
-Inspect the tarball list. The package should include compiled `dist`, package
-metadata, and README only. It should not include `.env*`, `.mimetic/`, generated
-run bundles, private screenshots, raw transcripts, or local npm credentials.
+`pnpm pack:dry-run` delegates to `npm pack --dry-run` after `prepack` builds
+`dist`.
 
-The `.gitignore` blocks `.mimetic/`, proof/runtime artifacts, `.e2b/`, `.env*`,
-`.npmrc`, and packed `*.tgz` files.
+The tarball must not include `.env*`, `.mimetic/`, generated run bundles,
+private screenshots, raw transcripts, `.npmrc`, source docs, tests, fixtures,
+or local runtime caches.
 
-## Human Decisions Before Publish
+## Publish Procedure
 
-Daniel must decide:
-
-- open-source license;
-- whether to remove `private: true`;
-- initial version number;
-- npm organization/package ownership;
-- publish timing.
-
-After those decisions, a release PR should add `LICENSE`, update
-`package.json`, rerun all gates, and only then run:
+Only after maintainer approval:
 
 ```bash
-npm publish --access public
+pnpm release:check && npm publish --access public
 ```
 
 No agent should run that command without explicit human approval in the current
-thread.
+thread. That approval must come from the maintainer responsible for the release.
+
+## Trusted Publishing Setup
+
+The first manual publish creates the npm package page. After that, configure npm
+Trusted Publishing for GitHub Actions:
+
+- provider: GitHub Actions
+- repository owner: `danielgwilson`
+- repository name: `mimetic-cli`
+- workflow filename: `publish.yml`
+- environment: blank
+- registry: npm public registry
+
+The workflow uses:
+
+- `permissions.id-token: write` for OIDC;
+- `permissions.contents: read`;
+- `actions/checkout@v6`;
+- `actions/setup-node@v6` with Node 24 and npm registry URL;
+- `npm publish --access public`;
+- no long-lived npm token secret.
+
+Future automated release flow after trusted publishing is configured:
+
+```bash
+pnpm release:check
+npm version patch -m "Release %s"
+git push origin main --tags
+```
+
+The publish job is tag-gated and only publishes when running on a `v*` tag.

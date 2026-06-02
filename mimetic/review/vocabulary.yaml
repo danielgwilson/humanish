@@ -10,4 +10,4 @@ labels:
   public_safety: Potential privacy, secret, or public-boundary issue.
   dogfood: Mimetic using its own CLI, observer, and feedback contracts.
   live_actor_gap: Real Codex TUI or provider-backed actor support is not implemented yet.
-  release_gate: Publish remains blocked on explicit Daniel approval.
+  release_gate: Publish remains blocked on explicit maintainer approval.

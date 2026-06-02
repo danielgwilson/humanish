@@ -7,4 +7,4 @@
 | Run bundle | synthetic-new-user | watch creates a fresh 4-sim dry-run from `mimetic/` persona/scenario sources | live run fails closed until actor support exists | covered by watch contract |
 | Observer | skeptical-power-user | observer renders, opens in browser, and shell can follow | live streaming is deferred until live actors exist | partial |
 | Feedback issue | skeptical-power-user | issue draft is public-safe and mutation-free | any redaction ambiguity blocks issue drafting | covered by feedback contract |
-| Release gate | skeptical-power-user | pack dry-run is inspectable | publish remains blocked on Daniel approval | covered by release readiness |
+| Release gate | skeptical-power-user | pack dry-run is inspectable | publish remains blocked without maintainer approval | covered by release readiness |
