@@ -85,20 +85,43 @@ describe("OSS lab command", () => {
     };
   }
 
-  it("force-exits successful live OSS meta-lab JSON and detach modes after output", () => {
+  it("force-exits live OSS meta-lab JSON and detach modes after stream handles are created", () => {
     const result = liveMetaResult();
 
     expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: true })).toBe(true);
     expect(shouldForceExitAfterOssMetaLab(result, { detach: true, wantsMachine: false })).toBe(true);
     expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: false })).toBe(false);
+
+    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({
+      ok: false,
+      error: {
+        code: "MIMETIC_META_RUN_FAILED",
+        message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
+      },
+      sandboxes: [
+        {
+          completionStatus: "passed",
+          repo: "developit/mitt",
+          streamId: "oss-01-desktop",
+          urlPresent: true
+        },
+        {
+          repo: "lukeed/clsx",
+          streamId: "oss-02-desktop",
+          urlPresent: false
+        },
+        {
+          completionStatus: "timed_out",
+          repo: "ai/nanoid",
+          streamId: "oss-04-desktop",
+          urlPresent: true
+        }
+      ]
+    }), { detach: false, wantsMachine: true })).toBe(true);
   });
 
-  it("does not force-exit OSS meta-lab runs without successful live stream handles", () => {
+  it("does not force-exit OSS meta-lab runs without live stream handles or machine/detach mode", () => {
     expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ dryRun: true, liveRequested: false }), {
-      detach: false,
-      wantsMachine: true
-    })).toBe(false);
-    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ ok: false }), {
       detach: false,
       wantsMachine: true
     })).toBe(false);
