@@ -1587,7 +1587,7 @@ async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPrefligh
   return {
     ok: false,
     trustRoot,
-    message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted: ${trustRoot}`,
+    message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted by project or trusted ancestor: ${trustRoot}`,
     recoveryCommand: `codex --no-alt-screen -C ${shellQuote(trustRoot)}`
   };
 }
@@ -1637,17 +1637,32 @@ async function findGitWorktreeRoot(cwd: string): Promise<string | null> {
 }
 
 function codexConfigTrustsProject(configText: string, trustRoot: string): boolean {
-  const escapedRoot = escapeRegExp(trustRoot);
-  const sectionPattern = new RegExp(`^\\[projects\\."${escapedRoot}"\\]\\s*$`, "m");
-  const sectionMatch = sectionPattern.exec(configText);
-  if (!sectionMatch) {
-    return false;
+  const sectionPattern = /^\[projects\."((?:\\.|[^"\\])*)"\]\s*$/gm;
+  let sectionMatch: RegExpExecArray | null;
+
+  while ((sectionMatch = sectionPattern.exec(configText)) !== null) {
+    const projectPath = unescapeTomlString(sectionMatch[1] ?? "");
+    const afterSection = configText.slice(sectionMatch.index + sectionMatch[0].length);
+    const nextSectionIndex = afterSection.search(/^\[/m);
+    const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
+
+    if (/^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) && isSameOrAncestorPath(projectPath, trustRoot)) {
+      return true;
+    }
   }
 
-  const afterSection = configText.slice(sectionMatch.index + sectionMatch[0].length);
-  const nextSectionIndex = afterSection.search(/^\[/m);
-  const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
-  return /^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody);
+  return false;
+}
+
+function unescapeTomlString(value: string): string {
+  return value.replace(/\\(["\\])/g, "$1");
+}
+
+function isSameOrAncestorPath(candidateAncestor: string, targetPath: string): boolean {
+  const ancestor = path.resolve(candidateAncestor);
+  const target = path.resolve(targetPath);
+  const relative = path.relative(ancestor, target);
+  return relative === "" || (relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function normalizeActorTimeout(value: number | undefined): number | null {

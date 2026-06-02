@@ -7,7 +7,7 @@ local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
 workspace-trust preflight. It also supports explicit noninteractive
 `codex-exec` actor fanout from one to four lanes for autonomous local dogfood
 proof, including active-run Observer data refresh while exec lanes are running.
-TUI trust bootstrap and TUI live Observer follow remain follow-up work.
+TUI autonomous completion and TUI live Observer follow remain follow-up work.
 
 ## Goal
 
@@ -151,10 +151,12 @@ The actor must stop and mark the lane `blocked` or `failed` if:
 ## Known First-Slice Boundary
 
 The first real local TUI proof in this environment reached Codex's workspace
-trust prompt. The current TUI implementation detects that state before spawn
+trust prompt. The current TUI implementation detects missing trust before spawn
 and writes a `blocked` run bundle instead of waiting for the TUI timeout. The
-resulting bundle is still verifiable and Observer-renderable, but it does not
-prove autonomous TUI completion until the trust root is explicitly approved.
+preflight now accepts either an exact trusted project entry or an explicit
+trusted ancestor project entry in Codex config. With ancestor trust present, the
+TUI launches and produces verifiable timeout evidence rather than a preflight
+block, but it still does not prove autonomous TUI completion.
 
 The noninteractive `codex-exec` mode is a separate actor contract for autonomous
 local completion. It can run up to four bounded read-only lanes with distinct
@@ -162,12 +164,13 @@ focuses across install readability, public safety, Observer evidence, and
 verification/release gates. It does not replace the TUI contract because it does
 not prove PTY rendering, keyboard focus, or visible live TUI observation.
 
-The next implementation slice should add an explicit, public-safe trust
-bootstrap before spawning the TUI. Acceptable fixes include:
+The next implementation slice should make the trusted TUI path complete
+autonomously. Acceptable fixes include:
 
-- allow an explicit operator-approved trust bootstrap for this repository only;
+- add bounded prompt/exit handling that lets the TUI produce a final verdict
+  instead of timing out;
 - keep the existing `codex-exec` 4x fanout path as the autonomous fallback while
-  TUI trust remains blocked.
+  TUI completion remains blocked.
 
 ## Acceptance For First Slice
 
