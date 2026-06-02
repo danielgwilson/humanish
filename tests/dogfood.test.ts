@@ -47,8 +47,10 @@ describe("mimetic dogfood config", () => {
     expect(packageJson.scripts["mimetic:watch:ci"]).toBe("pnpm mimetic -- watch --json --no-open");
     expect(packageJson.scripts["mimetic:dogfood"]).toBe("pnpm mimetic -- watch");
     expect(packageJson.scripts["mimetic:feedback"]).toBe("pnpm mimetic -- feedback issue --repo danielgwilson/mimetic-cli");
-    expect(coverage).toContain("live run fails closed until actor support exists");
+    expect(coverage).toContain("codex-exec");
+    expect(coverage).toContain("workspace trust is missing");
     expect(readme).toContain("one-command `watch`");
+    expect(readme).toContain("codex-exec");
     expect(readme).toContain("Generated run bundles");
   });
 

@@ -9,5 +9,5 @@ labels:
   gap: Missing evidence or missing coverage.
   public_safety: Potential privacy, secret, or public-boundary issue.
   dogfood: Mimetic using its own CLI, observer, and feedback contracts.
-  live_actor_gap: Real Codex TUI or provider-backed actor support is not implemented yet.
+  live_actor_gap: 4x fanout, Codex TUI trust bootstrap, or still-running live Observer support remains incomplete.
   release_gate: Publish remains blocked on explicit maintainer approval.

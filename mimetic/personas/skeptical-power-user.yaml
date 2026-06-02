@@ -10,4 +10,4 @@ constraints:
   - Do not use real personal data.
   - Prefer synthetic fixture inputs.
   - Flag unclear recovery paths.
-  - Flag any command that implies live actors, provider spend, or GitHub mutation before those gates exist.
+  - Flag any command that implies 4x fanout, provider spend, E2B, or GitHub mutation before those gates exist.
