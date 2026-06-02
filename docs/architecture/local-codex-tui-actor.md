@@ -34,13 +34,13 @@ without opt-in should continue to fail closed.
 Suggested gate:
 
 ```bash
-mimetic run --actor codex-tui --sims 1 --timeout-ms 120000
+mimetic run --actor codex-tui --sims 1 --timeout-ms 240000
 ```
 
 or, for noninteractive local autonomy:
 
 ```bash
-mimetic run --actor codex-exec --sims 4 --timeout-ms 120000
+mimetic run --actor codex-exec --sims 4 --timeout-ms 240000
 ```
 
 or:
@@ -61,6 +61,14 @@ unless separately and explicitly requested.
 For deterministic tests or local substrate debugging, `MIMETIC_CODEX_ACTOR_COMMAND`
 can point at a safe fixture command. Real Codex TUI launch uses a Linux
 `script` PTY wrapper when available because the Codex TUI requires a terminal.
+Mimetic answers the minimal terminal cursor/color queries needed for headless
+TUI startup and normalizes terminal control sequences before classifying the
+final actor transcript. Once a final
+`MIMETIC_ACTOR_VERDICT=* MIMETIC_ACTOR_NONCE=<run-nonce>` marker appears,
+Mimetic terminates the local actor process and records the marker verdict rather
+than waiting for the TUI session to stay open until timeout. The nonce prevents
+the classifier from accepting an echoed prompt or inspected docs as a final
+actor verdict.
 Real Codex exec launch uses `codex exec --skip-git-repo-check --ignore-rules
 --ephemeral --sandbox read-only --json` so it can complete without an
 interactive TUI trust prompt while still running with read-only local command
@@ -114,6 +122,11 @@ All generated state stays under ignored `.mimetic/`:
 No raw terminal output is public by default. The transcript artifact must be
 sanitized before it is linked from the bundle.
 
+For TUI runs, `.mimetic/runs/latest.json` is published only after `run.json`,
+`review.json`, and `review.md` exist. This keeps `mimetic verify --run latest`
+from pointing at an active or incomplete TUI run while the actor is still
+working.
+
 ## Redaction Rules
 
 Before any transcript tail or event payload is written:
@@ -129,10 +142,17 @@ Before any transcript tail or event payload is written:
 The first actor prompt should be bounded to public-safe dogfood work:
 
 - inspect `mimetic/` dogfood config;
-- run `pnpm mimetic -- doctor`;
-- run or explain the strongest safe Mimetic proof command available;
+- run at most two read-only inspection commands;
+- avoid commands that write runtime artifacts or temp config, including
+  `pnpm mimetic`, `mimetic watch`, `mimetic feedback`, `mimetic init`, tests,
+  builds, installs, and commands that write `.mimetic/`;
+- inspect existing artifacts and explain the strongest write-required proof as a
+  follow-up when the TUI actor is running in a read-only sandbox;
 - do not commit, push, publish, file issues, or print secrets;
-- summarize blockers using public-safe evidence paths.
+- summarize blockers using public-safe evidence paths;
+- finish with exactly one final
+  `MIMETIC_ACTOR_VERDICT=<status> MIMETIC_ACTOR_NONCE=<run-nonce>` line, where
+  `<status>` is `passed`, `blocked`, or `failed`.
 
 The raw prompt can live in source only if it contains no private context and no
 credential values.
@@ -151,12 +171,17 @@ The actor must stop and mark the lane `blocked` or `failed` if:
 ## Known First-Slice Boundary
 
 The first real local TUI proof in this environment reached Codex's workspace
-trust prompt. The current TUI implementation detects missing trust before spawn
-and writes a `blocked` run bundle instead of waiting for the TUI timeout. The
-preflight now accepts either an exact trusted project entry or an explicit
-trusted ancestor project entry in Codex config. With ancestor trust present, the
-TUI launches and produces verifiable timeout evidence rather than a preflight
-block, but it still does not prove autonomous TUI completion.
+trust prompt. The current TUI implementation detects missing exact project-root
+trust before spawn and writes a `blocked` run bundle instead of waiting for the
+TUI timeout. A follow-up PTY probe showed that the Codex TUI still prompts when
+only a trusted ancestor is configured, so Mimetic only treats the exact trust
+root as sufficient for autonomous launch.
+
+With exact trust present, Mimetic answers Codex's terminal startup query, strips
+TUI control sequences from the captured transcript, and terminates/classifies on
+an explicit nonce-bearing `MIMETIC_ACTOR_VERDICT=*` marker when present. If
+Codex exits cleanly without a marker, the run is still considered process-passed
+but the transcript remains available for review.
 
 The noninteractive `codex-exec` mode is a separate actor contract for autonomous
 local completion. It can run up to four bounded read-only lanes with distinct
@@ -164,13 +189,11 @@ focuses across install readability, public safety, Observer evidence, and
 verification/release gates. It does not replace the TUI contract because it does
 not prove PTY rendering, keyboard focus, or visible live TUI observation.
 
-The next implementation slice should make the trusted TUI path complete
-autonomously. Acceptable fixes include:
+The next implementation slice should make the trusted TUI path easier to follow
+live in Observer. Acceptable fixes include:
 
-- add bounded prompt/exit handling that lets the TUI produce a final verdict
-  instead of timing out;
 - keep the existing `codex-exec` 4x fanout path as the autonomous fallback while
-  TUI completion remains blocked.
+  broader TUI live-follow affordances remain in progress.
 
 ## Acceptance For First Slice
 
@@ -178,9 +201,9 @@ The implementation slice for this spec should prove:
 
 ```bash
 pnpm mimetic:doctor
-pnpm mimetic -- run --actor codex-tui --sims 1 --timeout-ms 120000 --json
-pnpm mimetic -- run --actor codex-exec --sims 1 --timeout-ms 120000 --json
-pnpm mimetic -- run --actor codex-exec --sims 4 --timeout-ms 120000 --json
+pnpm mimetic -- run --actor codex-tui --sims 1 --timeout-ms 240000 --json
+pnpm mimetic -- run --actor codex-exec --sims 1 --timeout-ms 240000 --json
+pnpm mimetic -- run --actor codex-exec --sims 4 --timeout-ms 240000 --json
 pnpm mimetic -- watch --run latest --detach --json --no-open
 pnpm mimetic -- verify --run latest --json
 pnpm check
