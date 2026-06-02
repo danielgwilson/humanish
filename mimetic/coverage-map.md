@@ -19,7 +19,7 @@ This map keeps Mimetic honest as its own first target app.
 
 ## Explicitly Deferred
 
-- Codex TUI autonomous completion after workspace trust bootstrap.
+- Codex TUI autonomous completion after trusted launch.
 - Codex TUI live observer streaming while the TUI actor is running.
 - E2B, GitHub mutation, production data, and private artifacts in local dogfood
   runs.
