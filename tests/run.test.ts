@@ -117,8 +117,16 @@ describe("dry-run bundles", () => {
         fakeActor,
         [
           "process.stdout.write('codex fixture actor started\\n');",
-          "process.stdout.write('secret-like value ' + 'sk-' + 'testsecretvalue1234567890' + '\\n');",
-          "process.stdout.write('MIMETIC_ACTOR_VERDICT=passed\\n');"
+          "process.stdout.write('\\u001b[6n');",
+          "process.stdin.setEncoding('latin1');",
+          "const timeout = setTimeout(() => { process.stdout.write('terminal response missing\\n'); process.exit(1); }, 1000);",
+          "process.stdin.on('data', (data) => {",
+          "  if (!data.includes('\\u001b[24;120R')) return;",
+          "  clearTimeout(timeout);",
+          "  process.stdout.write('secret-like value ' + 'sk-' + 'testsecretvalue1234567890' + '\\n');",
+          "  process.stdout.write(('MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE).split('').join('\\u001b7\\u001b8') + '\\n');",
+          "  process.exit(0);",
+          "});"
         ].join("\n"),
         "utf8"
       );
@@ -173,11 +181,93 @@ describe("dry-run bundles", () => {
         path.join(cwd, ".mimetic/runs/codex-tui-test/transcripts/codex-tui-sanitized.txt"),
         "utf8"
       );
+      expect(transcript).toContain("MIMETIC_ACTOR_VERDICT=passed");
+      expect(transcript).toContain("MIMETIC_ACTOR_NONCE=");
       expect(transcript).toContain("[REDACTED_SECRET]");
       expect(transcript).not.toContain(`sk-${"testsecretvalue"}`);
 
       const verify = await verifyRun(cwd, "latest");
       expect(verify.ok).toBe(true);
+    });
+  });
+
+  it("honors a blocked local Codex TUI verdict marker even when the process exits cleanly", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeActor = path.join(cwd, "fake-codex-blocked-actor.mjs");
+      await writeFile(
+        fakeActor,
+        "process.stdout.write('MIMETIC_ACTOR_VERDICT=blocked MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
+        "utf8"
+      );
+
+      const result = await runDryRun({
+        cwd,
+        actor: "codex-tui",
+        actorCommand: [process.execPath, fakeActor],
+        runId: "codex-tui-blocked-marker",
+        simCount: 1,
+        timeoutMs: 5_000
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/codex-tui-blocked-marker/run.json"), "utf8")
+      ) as {
+        events: Array<{ type: string; message: string }>;
+        review: { verdict: string };
+        streams: Array<{ status: string; completion: { reason: string; status: string } }>;
+      };
+      expect(bundle.review.verdict).toBe("blocked");
+      expect(bundle.streams[0]?.status).toBe("blocked");
+      expect(bundle.streams[0]?.completion.reason).toContain("blocked verdict marker");
+      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain("blocked");
+    });
+  });
+
+  it("does not repoint latest to a local Codex TUI run before final artifacts exist", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeActor = path.join(cwd, "fake-codex-latest-actor.cjs");
+      const startedFile = path.join(cwd, "actor-started");
+      const releaseFile = path.join(cwd, "actor-release");
+      await writeFile(
+        fakeActor,
+        [
+          "const fs = require('node:fs');",
+          `fs.writeFileSync(${JSON.stringify(startedFile)}, 'started');`,
+          "const timer = setInterval(() => {",
+          `  if (!fs.existsSync(${JSON.stringify(releaseFile)})) return;`,
+          "  clearInterval(timer);",
+          "  process.stdout.write('MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE + '\\n');",
+          "}, 25);"
+        ].join("\n"),
+        "utf8"
+      );
+
+      const runPromise = runDryRun({
+        cwd,
+        actor: "codex-tui",
+        actorCommand: [process.execPath, fakeActor],
+        runId: "codex-tui-latest-after-final",
+        simCount: 1,
+        timeoutMs: 5_000
+      });
+
+      await waitForFile(startedFile);
+      await expect(stat(path.join(cwd, ".mimetic/runs/latest.json"))).rejects.toMatchObject({ code: "ENOENT" });
+
+      await writeFile(releaseFile, "go", "utf8");
+      const result = await runPromise;
+      expect(result.ok).toBe(true);
+
+      const latest = JSON.parse(await readFile(path.join(cwd, ".mimetic/runs/latest.json"), "utf8")) as {
+        runId: string;
+        path: string;
+      };
+      expect(latest.runId).toBe("codex-tui-latest-after-final");
+      await expect(stat(path.join(cwd, latest.path, "run.json"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, latest.path, "review.md"))).resolves.toBeTruthy();
     });
   });
 
@@ -607,11 +697,12 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("allows the default Codex TUI actor when a trusted ancestor project is configured", async () => {
+  it("blocks the default Codex TUI actor when only a trusted ancestor project is configured", async () => {
     await withFixtureCopy(async (cwd) => {
       const codexHome = path.join(cwd, ".codex-home");
       const fakeBin = path.join(cwd, "fake-bin");
       const fakeCodex = path.join(fakeBin, "codex");
+      const spawnedSentinel = path.join(cwd, "fake-codex-spawned");
       const previousCodexHome = process.env.CODEX_HOME;
       const previousActorCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
       const previousPath = process.env.PATH;
@@ -627,7 +718,7 @@ describe("dry-run bundles", () => {
       );
       await writeFile(
         fakeCodex,
-        "#!/usr/bin/env sh\nprintf 'fake trusted codex tui started\\n'\nprintf 'MIMETIC_ACTOR_VERDICT=passed\\n'\n",
+        `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'fake trusted codex tui started\\n'\nprintf 'MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=%s\\n' "$MIMETIC_ACTOR_VERDICT_NONCE"\n`,
         "utf8"
       );
       await chmod(fakeCodex, 0o755);
@@ -644,7 +735,8 @@ describe("dry-run bundles", () => {
           timeoutMs: 5_000
         });
 
-        expect(result.ok).toBe(true);
+        expect(result.ok).toBe(false);
+        expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
 
         const bundle = JSON.parse(
           await readFile(path.join(cwd, ".mimetic/runs/codex-trusted-ancestor/run.json"), "utf8")
@@ -653,14 +745,85 @@ describe("dry-run bundles", () => {
           review: { verdict: string };
           streams: Array<{ status: string; terminal: { tail: string } }>;
         };
-        expect(bundle.review.verdict).toBe("pass");
-        expect(bundle.streams[0]?.status).toBe("passed");
-        expect(bundle.streams[0]?.terminal.tail).toContain("fake trusted codex tui started");
-        expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");
-        expect(bundle.events.map((event) => event.type)).not.toContain("actor.preflight.blocked");
+        expect(bundle.review.verdict).toBe("blocked");
+        expect(bundle.streams[0]?.status).toBe("blocked");
+        expect(bundle.streams[0]?.terminal.tail).toContain("exact Codex project root");
+        expect(bundle.events.map((event) => event.type)).toContain("actor.preflight.blocked");
+        expect(bundle.events.map((event) => event.type)).not.toContain("actor.spawned");
+        await expect(stat(spawnedSentinel)).rejects.toMatchObject({ code: "ENOENT" });
 
         const verify = await verifyRun(cwd, "latest");
         expect(verify.ok).toBe(true);
+      } finally {
+        if (previousCodexHome === undefined) {
+          delete process.env.CODEX_HOME;
+        } else {
+          process.env.CODEX_HOME = previousCodexHome;
+        }
+        if (previousActorCommand === undefined) {
+          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+        } else {
+          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousActorCommand;
+        }
+        if (previousPath === undefined) {
+          delete process.env.PATH;
+        } else {
+          process.env.PATH = previousPath;
+        }
+      }
+    });
+  });
+
+  it("allows the default Codex TUI actor when the exact project root is trusted", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const codexHome = path.join(cwd, ".codex-home");
+      const fakeBin = path.join(cwd, "fake-bin");
+      const fakeCodex = path.join(fakeBin, "codex");
+      const previousCodexHome = process.env.CODEX_HOME;
+      const previousActorCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      const previousPath = process.env.PATH;
+      await mkdir(path.join(cwd, ".git"), { recursive: true });
+      await writeFile(path.join(cwd, ".git/HEAD"), "ref: refs/heads/main\n", "utf8");
+      await mkdir(codexHome, { recursive: true });
+      await mkdir(fakeBin, { recursive: true });
+      await writeFile(
+        path.join(codexHome, "config.toml"),
+        `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
+        "utf8"
+      );
+      await writeFile(
+        fakeCodex,
+        "#!/usr/bin/env sh\nprintf 'fake exact trusted codex tui started\\n'\nprintf 'MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=%s\\n' \"$MIMETIC_ACTOR_VERDICT_NONCE\"\n",
+        "utf8"
+      );
+      await chmod(fakeCodex, 0o755);
+      delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      process.env.CODEX_HOME = codexHome;
+      process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
+
+      try {
+        const result = await runDryRun({
+          cwd,
+          actor: "codex-tui",
+          runId: "codex-exact-trusted-root",
+          simCount: 1,
+          timeoutMs: 5_000
+        });
+
+        expect(result.ok).toBe(true);
+
+        const bundle = JSON.parse(
+          await readFile(path.join(cwd, ".mimetic/runs/codex-exact-trusted-root/run.json"), "utf8")
+        ) as {
+          events: Array<{ type: string }>;
+          review: { verdict: string };
+          streams: Array<{ status: string; terminal: { tail: string } }>;
+        };
+        expect(bundle.review.verdict).toBe("pass");
+        expect(bundle.streams[0]?.status).toBe("passed");
+        expect(bundle.streams[0]?.terminal.tail).toContain("fake exact trusted codex tui started");
+        expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");
+        expect(bundle.events.map((event) => event.type)).not.toContain("actor.preflight.blocked");
       } finally {
         if (previousCodexHome === undefined) {
           delete process.env.CODEX_HOME;

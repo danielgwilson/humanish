@@ -258,7 +258,7 @@ const sensitivePatterns = [
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
 ];
 
-const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 120_000;
+const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 240_000;
 const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 600_000;
 const LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS = 80_000;
 
@@ -517,7 +517,8 @@ async function runLocalCodexTui(options: RunOptions & {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic local actor defaults.");
   }
   warnings.push(...selection.warnings);
-  const prompt = buildLocalCodexTuiPrompt(selection);
+  const verdictNonce = randomUUID().slice(0, 12);
+  const prompt = buildLocalCodexTuiPrompt(selection, verdictNonce);
   const promptDigest = digestText(prompt);
   const command = resolveLocalCodexTuiCommand(options.cwd, prompt, options.actorCommand);
   const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.MIMETIC_CODEX_ACTOR_COMMAND === undefined;
@@ -542,12 +543,6 @@ async function runLocalCodexTui(options: RunOptions & {
   };
 
   await mkdir(path.dirname(transcriptPath), { recursive: true });
-  await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
-    schema: "mimetic.latest-run.v1",
-    runId,
-    path: artifactRoot,
-    updatedAt: createdAt
-  } satisfies RunPointer);
 
   let actor: LocalActorCommandResult;
   const trustPreflight = usesDefaultCodexCommand ? await checkCodexWorkspaceTrust(options.cwd) : { ok: true as const };
@@ -572,7 +567,8 @@ async function runLocalCodexTui(options: RunOptions & {
 
     actor = await executeLocalActorCommand(command, {
       cwd: options.cwd,
-      timeoutMs
+      timeoutMs,
+      verdictNonce
     });
   }
   const completedAt = new Date().toISOString();
@@ -587,6 +583,7 @@ async function runLocalCodexTui(options: RunOptions & {
     actor: "codex-tui",
     commandName: command.name,
     promptDigest,
+    verdictNonce,
     startedAt: createdAt,
     completedAt,
     durationMs: actor.durationMs,
@@ -728,6 +725,12 @@ async function runLocalCodexTui(options: RunOptions & {
   await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
   await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
   await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
+  await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
+    schema: "mimetic.latest-run.v1",
+    runId,
+    path: artifactRoot,
+    updatedAt: completedAt
+  } satisfies RunPointer);
 
   return {
     schema: "mimetic.run-result.v1",
@@ -1492,14 +1495,19 @@ function executeLocalActorCommand(
   options: {
     cwd: string;
     timeoutMs: number;
+    verdictNonce?: string;
   }
 ): Promise<LocalActorCommandResult> {
   const startedAt = Date.now();
   let transcript = "";
   let transcriptBytes = 0;
+  let terminalQueryBuffer = "";
+  let observedMarkerStatus: LocalActorTerminalStatus | null = null;
+  let stoppingAfterMarker = false;
   let timedOut = false;
   let settled = false;
   let timer: NodeJS.Timeout;
+  let markerKillTimer: NodeJS.Timeout | undefined;
 
   return new Promise((resolve) => {
     const finish = (result: Omit<LocalActorCommandResult, "durationMs" | "transcript" | "transcriptBytes">): void => {
@@ -1508,18 +1516,26 @@ function executeLocalActorCommand(
       }
       settled = true;
       clearTimeout(timer);
+      clearTimeout(markerKillTimer);
+      const normalizedTranscript = normalizeLocalActorTranscript(transcript);
       resolve({
         ...result,
         durationMs: Date.now() - startedAt,
-        transcript: redactSensitiveText(transcript),
+        transcript: redactSensitiveText(normalizedTranscript),
         transcriptBytes
       });
     };
 
     const child = spawn(command.command, command.args, {
       cwd: options.cwd,
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"]
+      env: {
+        ...process.env,
+        TERM: process.env.TERM ?? "xterm-256color",
+        COLUMNS: process.env.COLUMNS ?? "120",
+        LINES: process.env.LINES ?? "40",
+        ...(options.verdictNonce ? { MIMETIC_ACTOR_VERDICT_NONCE: options.verdictNonce } : {})
+      },
+      stdio: ["pipe", "pipe", "pipe"]
     });
 
     timer = setTimeout(() => {
@@ -1535,7 +1551,21 @@ function executeLocalActorCommand(
 
     const capture = (chunk: Buffer): void => {
       transcriptBytes += chunk.byteLength;
-      transcript = limitTranscript(redactSensitiveText(transcript + chunk.toString("utf8")));
+      transcript = limitTranscript(transcript + chunk.toString("utf8"));
+      terminalQueryBuffer = respondToTerminalQueries(terminalQueryBuffer, chunk, child.stdin);
+      const markerStatus = observedMarkerStatus ?? extractLocalActorVerdict(
+        normalizeLocalActorTranscript(transcript),
+        options.verdictNonce
+      );
+      if (markerStatus && !observedMarkerStatus) {
+        observedMarkerStatus = markerStatus;
+        stoppingAfterMarker = true;
+        child.kill("SIGTERM");
+        markerKillTimer = setTimeout(() => {
+          child.kill("SIGKILL");
+        }, 2_000);
+        markerKillTimer.unref();
+      }
     };
 
     child.stdout?.on("data", capture);
@@ -1557,14 +1587,95 @@ function executeLocalActorCommand(
         return;
       }
 
+      const markerStatus = observedMarkerStatus ?? extractLocalActorVerdict(
+        normalizeLocalActorTranscript(transcript),
+        options.verdictNonce
+      );
+      const processFailed = code !== 0 && !(stoppingAfterMarker && markerStatus);
+      const status = processFailed
+        ? markerStatus === "blocked" ? "blocked" : "failed"
+        : markerStatus ?? "passed";
       finish({
-        status: code === 0 ? "passed" : "failed",
-        reason: code === 0 ? "actor process exited successfully" : `actor process exited with code ${code ?? "null"}`,
+        status,
+        reason: processFailed
+          ? markerStatus === "blocked"
+            ? `actor reported blocked verdict marker and exited with code ${code ?? "null"}`
+            : `actor process exited with code ${code ?? "null"}`
+          : markerStatus
+            ? `actor reported ${markerStatus} verdict marker`
+            : "actor process exited successfully",
         ...(code === null ? {} : { exitCode: code }),
         ...(signal === null ? {} : { signal })
       });
     });
   });
+}
+
+function respondToTerminalQueries(
+  currentBuffer: string,
+  chunk: Buffer,
+  stdin: NodeJS.WritableStream | null
+): string {
+  if (!stdin || !stdin.writable) {
+    return "";
+  }
+
+  let buffer = `${currentBuffer}${chunk.toString("latin1")}`;
+
+  while (true) {
+    const cprIndex = buffer.indexOf("\x1b[6n");
+    const oscMatch = /\x1b\](10|11|12);\?(?:\x07|\x1b\\)/.exec(buffer);
+    const oscIndex = oscMatch?.index ?? -1;
+
+    if (cprIndex === -1 && oscIndex === -1) {
+      break;
+    }
+
+    if (cprIndex !== -1 && (oscIndex === -1 || cprIndex < oscIndex)) {
+      stdin.write("\x1b[24;120R");
+      buffer = buffer.slice(cprIndex + "\x1b[6n".length);
+      continue;
+    }
+
+    const colorSlot = oscMatch?.[1] ?? "10";
+    stdin.write(terminalColorResponse(colorSlot));
+    buffer = buffer.slice((oscIndex === -1 ? 0 : oscIndex) + (oscMatch?.[0].length ?? 0));
+  }
+
+  return buffer.slice(-128);
+}
+
+function terminalColorResponse(slot: string): string {
+  if (slot === "11") {
+    return "\x1b]11;rgb:0000/0000/0000\x07";
+  }
+
+  return `\x1b]${slot};rgb:ffff/ffff/ffff\x07`;
+}
+
+function normalizeLocalActorTranscript(transcript: string): string {
+  return transcript
+    .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1b[78=>]/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
+}
+
+function extractLocalActorVerdict(transcript: string, verdictNonce?: string): LocalActorTerminalStatus | null {
+  const compactTranscript = transcript.replace(/\s+/g, "");
+  const match = verdictNonce
+    ? new RegExp(
+      `MIMETIC_ACTOR_VERDICT=(passed|blocked|failed)MIMETIC_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
+      "i"
+    ).exec(compactTranscript)
+    : /MIMETIC_ACTOR_VERDICT=(passed|blocked|failed)/i.exec(compactTranscript);
+  if (!match) {
+    return null;
+  }
+
+  return match[1]?.toLowerCase() as LocalActorTerminalStatus;
 }
 
 async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPreflight> {
@@ -1587,7 +1698,7 @@ async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPrefligh
   return {
     ok: false,
     trustRoot,
-    message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted by project or trusted ancestor: ${trustRoot}`,
+    message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted as an exact Codex project root: ${trustRoot}`,
     recoveryCommand: `codex --no-alt-screen -C ${shellQuote(trustRoot)}`
   };
 }
@@ -1646,7 +1757,7 @@ function codexConfigTrustsProject(configText: string, trustRoot: string): boolea
     const nextSectionIndex = afterSection.search(/^\[/m);
     const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
 
-    if (/^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) && isSameOrAncestorPath(projectPath, trustRoot)) {
+    if (/^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) && isSamePath(projectPath, trustRoot)) {
       return true;
     }
   }
@@ -1658,11 +1769,10 @@ function unescapeTomlString(value: string): string {
   return value.replace(/\\(["\\])/g, "$1");
 }
 
-function isSameOrAncestorPath(candidateAncestor: string, targetPath: string): boolean {
-  const ancestor = path.resolve(candidateAncestor);
+function isSamePath(candidatePath: string, targetPath: string): boolean {
+  const candidate = path.resolve(candidatePath);
   const target = path.resolve(targetPath);
-  const relative = path.relative(ancestor, target);
-  return relative === "" || (relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative));
+  return candidate === target;
 }
 
 function normalizeActorTimeout(value: number | undefined): number | null {
@@ -1685,14 +1795,19 @@ function readEnvInteger(name: string): number | undefined {
 function buildLocalCodexTuiPrompt(selection: {
   persona: RunBundle["persona"];
   scenario: RunBundle["scenario"];
-}): string {
+}, verdictNonce: string): string {
   return [
     "You are a Mimetic local Codex TUI dogfood actor.",
     `Persona: ${selection.persona.name}.`,
     `Scenario: ${selection.scenario.title}.`,
     "Inspect this public repository's Mimetic setup, run evidence, and Observer affordances.",
+    "Run at most two read-only inspection commands; prefer file reads, `node dist/cli.js --help`, or `pnpm typecheck` when available.",
+    "Do not run commands that write runtime artifacts or temp config, including `pnpm mimetic`, `mimetic watch`, `mimetic feedback`, `mimetic init`, tests, builds, installs, or commands that write `.mimetic/`.",
+    "If the strongest proof would require writes in this read-only sandbox, inspect existing artifacts instead and name the write-required proof as a follow-up.",
     "Do not print secrets, do not commit, do not push, do not open GitHub issues, and do not use private data.",
-    "Finish by summarizing one public-safe harness improvement and whether the run is passed, blocked, or failed."
+    "Finish by summarizing one public-safe harness improvement.",
+    `Then print exactly one final machine-readable line in this format: MIMETIC_ACTOR_VERDICT=<status> MIMETIC_ACTOR_NONCE=${verdictNonce}.`,
+    "Replace <status> with exactly one lowercase word: passed, blocked, or failed."
   ].join(" ");
 }
 
