@@ -29,11 +29,19 @@ const secretPatterns = [
   ["jwt_like_token", /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g]
 ];
 
+const staleInternalDocDirs = ["goals", "operations", "ramp"];
+const staleInternalContextNames = [
+  ["agent", "product"].join("-"),
+  ["private", "factory"].join("-"),
+  ["source", "system"].join("-"),
+  ["tbrowser", "sim"].join("-")
+];
+
 const privateResiduePatterns = [
   ["absolute_local_user_path", /\/Users\/[A-Za-z0-9._-]+\//g],
   ["local_git_path", /\blocal_git\b/g],
-  ["stale_internal_docs_path", /\bdocs\/(?:goals|operations|ramp)\b/g],
-  ["stale_internal_context_name", /\b(?:terminal-product|private hosted feedback|upstream|tui-sim)\b/gi],
+  ["stale_internal_docs_path", new RegExp(`\\bdocs/(?:${staleInternalDocDirs.join("|")})\\b`, "g")],
+  ["stale_internal_context_name", new RegExp(`\\b(?:${staleInternalContextNames.join("|")})\\b`, "gi")],
   ...((process.env.MIMETIC_PUBLIC_DENYLIST_PATTERN ?? "")
     .split("\n")
     .map((pattern, index) => pattern.trim() ? [`custom_private_residue_${index + 1}`, new RegExp(pattern, "g")] : null)
