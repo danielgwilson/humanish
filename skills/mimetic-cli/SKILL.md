@@ -47,6 +47,22 @@ unless the user explicitly approves that exact action.
    - keep `.env.example` commit-safe and value-free;
    - never commit generated run bundles.
 
+## Format Stack
+
+When creating or editing Mimetic files:
+
+- use `.yaml` for human-authored Mimetic source: personas, scenarios,
+  policies, labs, review vocabulary, and milestones;
+- use `.ts` for executable integration: `mimetic/config.ts`, adapters, route
+  catalogs, and app launch logic;
+- use `.json` or `.ndjson` for generated machine artifacts, Observer data, run
+  bundles, event streams, and synthetic fixtures.
+
+Do not create `.yml` files under `mimetic/`; `.yml` is for outside ecosystem
+conventions such as GitHub Actions workflows. Do not introduce TOML unless the
+target project has a concrete scalar global-config need that YAML, TypeScript,
+or JSON does not serve.
+
 ## Authoring Personas And Scenarios
 
 Create or edit only synthetic files under `mimetic/`.

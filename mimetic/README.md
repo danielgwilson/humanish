@@ -19,5 +19,14 @@ Current scope:
 Generated run bundles, observer HTML, review packets, logs, and local overrides
 belong in ignored `.mimetic/`.
 
+Format standard:
+
+- human-authored Mimetic source uses `.yaml`;
+- executable integration uses `.ts`;
+- generated artifacts, synthetic fixtures, and event streams use `.json` or
+  `.ndjson`;
+- `.yml` is reserved for outside ecosystem files such as GitHub Actions, not
+  Mimetic source.
+
 This config is the first full local TUI harness target; future slices can decide
 whether TUI-specific fanout is needed beyond the current `codex-exec` fanout.

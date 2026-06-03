@@ -49,6 +49,30 @@ mimetic/
     synthetic-login-state.json
 ```
 
+## Mimetic Format Stack
+
+Use formats based on who edits the file and how it is consumed:
+
+- `.yaml` for human-authored Mimetic source: personas, scenarios, policies,
+  labs, review vocabulary, and review milestones. Prefer `.yaml` over `.yml`
+  for Mimetic-owned source files.
+- `.ts` for executable project integration: `mimetic/config.ts`, adapters,
+  route catalogs, app launch plans, and logic that benefits from imports or
+  type checking.
+- `.json` for generated machine artifacts and fixtures: run bundles,
+  observer data, review JSON, latest/history pointers, and synthetic fixture
+  records.
+- `.ndjson` for appendable event or transcript streams.
+- `.yml` is acceptable for ecosystem files that conventionally use it, such as
+  `.github/workflows/*.yml`; do not use `.yml` for Mimetic-owned authored
+  source.
+
+Do not convert personas or scenarios to JSON because parser implementation is
+easier. Keep authored simulation intent readable, then validate it through
+schemas and CLI checks. TOML is not part of the current Mimetic stack; add it
+only if a concrete scalar global-config need appears that is better served by
+TOML than YAML, TypeScript, or JSON.
+
 Committed files must be public-safe:
 
 - synthetic personas only;
@@ -129,4 +153,3 @@ weakened personas or dropped hard paths.
 A partially tracked dotdir is possible but worse UX. Dotdirs read as local,
 editors hide them, and negated gitignore rules are easy to break. A visible
 `mimetic/` source root plus ignored `.mimetic/` runtime root is clearer.
-

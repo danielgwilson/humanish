@@ -62,6 +62,20 @@ The skill should teach the user's coding agent how to:
 The skill should not hide critical behavior in chat memory. It should point to
 repo-owned `mimetic/` files and package-owned docs.
 
+## Project File Formats
+
+New projects should get a boring, legible format stack:
+
+- `.yaml` for human-authored Mimetic source such as personas, scenarios,
+  policies, labs, and review vocabulary;
+- `.ts` for executable integration such as `mimetic/config.ts` and adapters;
+- `.json` and `.ndjson` for generated run artifacts, Observer data, review
+  output, event streams, and synthetic fixtures.
+
+Use `.yml` only where an outside ecosystem convention already expects it, for
+example GitHub Actions workflows. Do not scaffold `.yml` for Mimetic source and
+do not use TOML unless a future scalar global-config case clearly needs it.
+
 ## First-Run Principles
 
 - No keys required for the first wow moment.

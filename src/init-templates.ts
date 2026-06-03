@@ -25,6 +25,13 @@ Keep this directory public-safe:
 - no PII, PHI, secrets, raw private transcripts, private screenshots, customer data, or patient data.
 
 Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.mimetic/\`.
+
+Format standard:
+
+- human-authored Mimetic source uses .yaml;
+- executable integration uses .ts;
+- generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
+- .yml is reserved for outside ecosystem files such as GitHub Actions, not Mimetic source.
 `
   },
   {
