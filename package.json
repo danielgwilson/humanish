@@ -1,7 +1,8 @@
 {
   "name": "mimetic-cli",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
+  "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "keywords": [
     "agent-harness",
     "cli",

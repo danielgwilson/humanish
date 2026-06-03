@@ -38,3 +38,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:check
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Full-history secret scan (license-free CLI via Docker; no GITLEAKS_LICENSE needed).
+      - name: Scan full git history for secrets (gitleaks)
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --log-opts="--all" --redact --no-banner
