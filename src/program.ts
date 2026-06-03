@@ -614,13 +614,13 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
 function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("Run experimental Mimetic proof loops against disposable public targets.");
+    .description("Run experimental Mimetic proof loops against disposable authorized targets.");
 
   lab
     .command("oss")
-    .description("Watch headed Codex/E2B OSS meta-sims setting up Mimetic inside public repos.")
-    .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
-    .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
+    .description("Watch headed Codex/E2B meta-sims setting up Mimetic inside authorized repos.")
+    .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
+    .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
     .option("--count <count>", "Number of headed desktop sims to assign.", String(DEFAULT_OSS_REPOS.length))
     .option("--sims <count>", "Alias for --count.")
     .option("--run-id <id>", "Explicit lab run id.")
@@ -629,6 +629,8 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
+    .option("--redact-repos", "Redact repo labels in durable lab artifacts.")
+    .option("--no-redact-repos", "Persist repo labels in durable lab artifacts. Defaults to redacted when a GitHub token is present.")
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--smoke", "Run the disposable local clone smoke harness instead of headed meta-sims.")
     .option("--limit <count>", "Smoke mode only: number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
@@ -653,13 +655,15 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "  mimetic lab oss --smoke --limit 1 --keep",
         "",
         "Shape:",
-        "  The top-level Observer shows headed E2B desktop lanes. Each desktop is intended",
-        "  to run Codex TUI, clone its assigned public OSS repo, set up Mimetic, and keep",
-        "  that repo's nested Mimetic Observer visible in the E2B browser.",
+        "  The top-level Observer shows headed E2B desktop lanes. Each desktop clones",
+        "  its assigned authorized repo, sets up Mimetic, starts the target app where",
+        "  feasible, opens desktop/mobile app windows plus the nested Observer, and",
+        "  starts a nonblocking Codex actor attempt.",
         "",
         "Safety:",
-        "  Only public GitHub owner/repo slugs are accepted. No keys or private artifacts",
-        "  are written into committed Mimetic source."
+        "  Only GitHub owner/repo slugs are accepted. Live stream auth URLs are",
+        "  runtime-only. Repo labels are redacted by default when a GitHub token",
+        "  is present; pass --no-redact-repos only for public-safe runs."
       ].join("\n")
     )
     .action(async (options: {
@@ -672,6 +676,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       limit: string;
       open?: boolean;
       port: string;
+      redactRepos?: boolean;
       repo: string[];
       repos?: string;
       runId?: string;
@@ -713,6 +718,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const result = await runOssMetaLab({
         cwd: options.cwd,
         open: wantsFollow ? false : shouldOpen,
+        ...(options.redactRepos === undefined ? {} : { redactRepoNames: options.redactRepos }),
         repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
         ...(count === null ? { count: Number.NaN } : { count }),
         ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),

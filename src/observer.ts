@@ -48,6 +48,17 @@ export interface ObserverServer {
   close(): Promise<void>;
 }
 
+interface ObserverRuntimeStreamUrl {
+  streamId: string;
+  url: string;
+}
+
+const observerRuntimeStreamUrls = new WeakMap<ObserverResult, ObserverRuntimeStreamUrl[]>();
+
+export function attachObserverRuntimeStreamUrls(result: ObserverResult, streams: ObserverRuntimeStreamUrl[]): void {
+  observerRuntimeStreamUrls.set(result, streams.filter((stream) => stream.streamId && stream.url));
+}
+
 export async function renderObserver(
   cwdInput: string,
   runInput: string,
@@ -131,6 +142,7 @@ export async function serveObserver(
   const observerPath = path.join(cwd, result.observerPath);
   const runRoot = path.dirname(path.dirname(observerPath));
   const proofRoot = path.dirname(runRoot);
+  const runtimeStreamUrls = observerRuntimeStreamUrls.get(result) ?? [];
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
@@ -150,11 +162,11 @@ export async function serveObserver(
       const runRoute = matchRunRoute(url.pathname);
       if (runRoute) {
         const targetRoot = path.join(proofRoot, runRoute.runId);
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response);
+        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runtimeStreamUrls);
         return;
       }
 
-      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response);
+      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response, runtimeStreamUrls);
     } catch (error) {
       writeResponse(response, 500, error instanceof Error ? error.message : String(error), "text/plain; charset=utf-8");
     }
@@ -197,7 +209,12 @@ function renderObserverHtml(data: ObserverData): string {
 `;
 }
 
-async function serveRunPath(runRoot: string, relativePath: string, response: ServerResponse): Promise<void> {
+async function serveRunPath(
+  runRoot: string,
+  relativePath: string,
+  response: ServerResponse,
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[] = []
+): Promise<void> {
   const root = path.resolve(runRoot);
   const cleanedRelativePath = relativePath === "" ? "observer/index.html" : relativePath;
   const filePath = path.resolve(root, cleanedRelativePath);
@@ -208,12 +225,22 @@ async function serveRunPath(runRoot: string, relativePath: string, response: Ser
   }
 
   if (cleanedRelativePath === "observer/index.html") {
-    const observerData = await readObserverData(root);
+    const observerData = await readObserverData(root, runtimeStreamUrls);
     if (!observerData) {
       writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
       return;
     }
     writeResponse(response, 200, renderObserverHtml(observerData), "text/html; charset=utf-8");
+    return;
+  }
+
+  if (cleanedRelativePath === "observer/observer-data.json" && runtimeStreamUrls.length > 0) {
+    const observerData = await readObserverData(root, runtimeStreamUrls);
+    if (!observerData) {
+      writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
+      return;
+    }
+    writeResponse(response, 200, JSON.stringify(observerData, null, 2), "application/json; charset=utf-8");
     return;
   }
 
@@ -229,17 +256,51 @@ async function serveRunPath(runRoot: string, relativePath: string, response: Ser
   }
 }
 
-async function readObserverData(runRoot: string): Promise<ObserverData | null> {
+async function readObserverData(
+  runRoot: string,
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[] = []
+): Promise<ObserverData | null> {
   try {
-    return JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as ObserverData;
+    return withRuntimeStreamUrls(
+      JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as ObserverData,
+      runtimeStreamUrls
+    );
   } catch {}
 
   try {
     const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as Parameters<typeof buildObserverData>[0];
-    return buildObserverData(bundle);
+    return withRuntimeStreamUrls(buildObserverData(bundle), runtimeStreamUrls);
   } catch {}
 
   return null;
+}
+
+function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRuntimeStreamUrl[]): ObserverData {
+  if (runtimeStreamUrls.length === 0) {
+    return data;
+  }
+
+  const urlsByStream = new Map(runtimeStreamUrls.map((stream) => [stream.streamId, stream.url]));
+  return {
+    ...data,
+    streams: data.streams.map((stream) => {
+      const runtimeUrl = urlsByStream.get(stream.id);
+      if (!runtimeUrl) {
+        return stream;
+      }
+
+      return {
+        ...stream,
+        embed: {
+          ...(stream.embed ?? { title: stream.label }),
+          kind: "iframe",
+          url: runtimeUrl
+        },
+        transport: "sse",
+        url: runtimeUrl
+      };
+    })
+  };
 }
 
 async function buildHistoryIndex(cwd: string): Promise<{

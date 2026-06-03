@@ -1,8 +1,9 @@
 import { CommanderError } from "commander";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { mkdtemp } from "node:fs/promises";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +13,7 @@ import {
 } from "../src/oss-lab.js";
 import { buildObserverData } from "../src/observer-data.js";
 import {
+  buildOssMetaBootstrapScriptFixture,
   buildOssMetaBundleFixture,
   buildOssRepoAssignments
 } from "../src/oss-meta-lab.js";
@@ -21,6 +23,8 @@ import {
   exitCodeForOssMetaLab,
   shouldForceExitAfterOssMetaLab
 } from "../src/program.js";
+
+const execFileAsync = promisify(execFile);
 
 async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
@@ -175,12 +179,32 @@ describe("OSS lab command", () => {
     ]);
   });
 
+  it("renders a bash-valid remote bootstrap script with app surfaces before nonblocking actor attempt", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-bootstrap-script-"));
+    const scriptPath = path.join(cwd, "bootstrap.sh");
+    try {
+      const script = buildOssMetaBootstrapScriptFixture();
+      await writeFile(scriptPath, script, "utf8");
+      await execFileAsync("bash", ["-n", scriptPath]);
+
+      expect(script).toContain("start_target_app_surface");
+      expect(script).toContain('open_browser_url "$APP_URL" app-desktop');
+      expect(script).toContain("arrange_lab_windows");
+      expect(script).toContain("visualStatus");
+      expect(script).toContain("windowlower");
+      expect(script).toContain("start_actor_attempt");
+      expect(script).not.toContain("run_tui");
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
+  });
+
   it("exposes lab oss help as the Observer-of-Observers meta-lab", async () => {
     const result = await runCli(["lab", "oss", "--help"]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Usage: mimetic lab oss");
-    expect(result.stdout).toContain("Watch headed Codex/E2B OSS meta-sims");
+    expect(result.stdout).toContain("Watch headed Codex/E2B meta-sims setting up Mimetic inside authorized repos");
     expect(result.stdout).toContain("--repos");
     expect(result.stdout).toContain("Observer-of-Observers");
     expect(result.stdout).toContain("mimetic lab oss-smoke");
@@ -319,13 +343,24 @@ describe("OSS lab command", () => {
             tail: "bootstrap started"
           },
           completion: {
+            actorLogPath: "/remote/developit-mitt/actor.log",
+            actorPid: 4321,
+            actorStatus: "running",
+            appLogPath: "/remote/developit-mitt/app.log",
+            appPid: 1234,
+            appReason: "target app responded at http://127.0.0.1:5173",
+            appStatus: "running",
+            appUrl: "http://127.0.0.1:5173",
             checkedAt: "2026-06-02T08:31:00.000Z",
             exitCode: 0,
             logTail: "nested verify passed\n== bootstrap complete ==",
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
             reason: "Nested Mimetic proof completed and nested Observer path was checked.",
-            status: "passed"
+            status: "passed",
+            visualReason: "Detected 3 visible Chrome windows including nested Observer.",
+            visualStatus: "visible",
+            visualWindowCount: 3
           },
           repo: "developit/mitt",
           screenshot: {
@@ -372,16 +407,27 @@ describe("OSS lab command", () => {
     expect(bundle.review.summary).toContain("failed");
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
+      actorStatus: "running",
+      appStatus: "running",
+      appUrl: "http://127.0.0.1:5173",
       nestedObserverPresent: true,
       nestedVerifyPassed: true,
-      status: "passed"
+      status: "passed",
+      visualStatus: "visible",
+      visualWindowCount: 3
     });
     expect(bundle.streams[0]).toMatchObject({
-      transport: "snapshot",
-      embed: { kind: "screenshot" },
-      ui: { screenshotUrl: "../screenshots/oss-01-desktop.png" }
+      transport: "sse",
+      embed: { kind: "screenshot", url: "../screenshots/oss-01-desktop.png" },
+      ui: {
+        appStatus: "running",
+        appUrl: "http://127.0.0.1:5173",
+        screenshotUrl: "../screenshots/oss-01-desktop.png",
+        visualStatus: "visible"
+      }
     });
     expect(bundle.streams[0]?.url).toBeUndefined();
+    expect(JSON.stringify(bundle)).not.toContain("https://stream.example");
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "desktop screenshot",
       path: "screenshots/oss-01-desktop.png",
@@ -441,5 +487,55 @@ describe("OSS lab command", () => {
     expect(observerData.summary.active).toBe(0);
     expect(observerData.summary.blocked).toBe(1);
     expect(observerData.streams.map((stream) => stream.statusLabel)).toEqual(["Timed out"]);
+  });
+
+  it("redacts private repo labels and live stream URLs from durable OSS meta-lab bundles", () => {
+    const assignments = buildOssRepoAssignments(["maintainer/private-app"], 1);
+    const bundle = buildOssMetaBundleFixture({
+      assignments,
+      createdAt: "2026-06-02T10:30:00.000Z",
+      cwd: "/tmp/mimetic-oss-meta-private-fixture",
+      dryRun: false,
+      lanes: [
+        {
+          bootstrap: {
+            codexMode: "tui-attempted",
+            completionPath: "/remote/repo-01/completion.json",
+            logPath: "/remote/repo-01/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/repo-01/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "bootstrap started",
+            terminalTitle: "Mimetic 1 repo-01"
+          },
+          completion: {
+            appStatus: "running",
+            appUrl: "http://127.0.0.1:3000",
+            checkedAt: "2026-06-02T10:31:00.000Z",
+            nestedObserverPresent: true,
+            nestedVerifyPassed: true,
+            reason: "Target app surface, nested Mimetic proof, and nested Observer were checked.",
+            status: "passed",
+            visualStatus: "visible",
+            visualWindowCount: 3
+          },
+          repo: "repo-01",
+          simId: assignments[0]?.simId ?? "oss-01",
+          streamId: assignments[0]?.streamId ?? "oss-01-desktop",
+          url: "https://stream.example/auth-key-should-not-persist"
+        }
+      ],
+      liveRequested: true,
+      missingKeys: [],
+      redactRepoNames: true,
+      runId: "oss-meta-private-fixture"
+    });
+
+    const serialized = JSON.stringify(bundle);
+    expect(serialized).toContain("repo-01");
+    expect(serialized).not.toContain("maintainer/private-app");
+    expect(serialized).not.toContain("stream.example");
+    expect(bundle.streams[0]?.url).toBeUndefined();
+    expect(bundle.streams[0]?.label).toBe("E2B desktop - repo-01");
   });
 });

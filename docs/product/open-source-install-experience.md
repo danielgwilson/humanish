@@ -113,7 +113,7 @@ Suggested scripts:
 | `mimetic review` | Build review packet from evidence | Summarize verdicts without inventing product proof |
 | `mimetic watch` | Run sims and watch the observer | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached |
 | `mimetic watch --json --no-open` | Agent/CI proof path | Create the same bundle and Observer artifacts without browser open or attached watch server |
-| `mimetic lab oss` | Watch public OSS meta-sims | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos` |
+| `mimetic lab oss` | Watch authorized-repo meta-sims | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos`, target app windows, nested Observers, runtime-only stream URLs, and redacted durable evidence for token-backed runs |
 | `mimetic lab oss-smoke` | Try Mimetic on disposable public OSS clones | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
 | `mimetic feedback issue` | Produce public-safe issue draft | Print Markdown or prefilled issue URL, no GitHub API mutation |
 
@@ -135,4 +135,6 @@ run.
 
 Live E2B desktop labs are an optional advanced path. Target projects that need
 them should install `@e2b/desktop` explicitly instead of receiving that
-substrate as part of the default Mimetic package install.
+substrate as part of the default Mimetic package install. When a GitHub token is
+present, repo labels are redacted in durable artifacts by default; live stream
+auth URLs are used only by the attached watch server and are not persisted.

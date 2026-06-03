@@ -76,12 +76,12 @@ npx mimetic watch --json --no-open
 | `mimetic review` | Read review evidence for a run. |
 | `mimetic runs` | List local runs and latest pointers. |
 | `mimetic feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
-| `mimetic lab oss` | Experimental Observer-of-Observers for headed public-OSS setup attempts. |
+| `mimetic lab oss` | Experimental Observer-of-Observers for headed authorized-repo app setup attempts. |
 | `mimetic lab oss-smoke` | Disposable clone smoke test against public OSS repos. |
 
 ## OSS Lab
 
-The experimental public-OSS dogfood loop is:
+The experimental authorized-repo dogfood loop is:
 
 ```bash
 pnpm mimetic -- lab oss
@@ -89,9 +89,11 @@ pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain
 ```
 
 With `E2B_API_KEY` and `OPENAI_API_KEY` present, Mimetic launches headed E2B
-desktop lanes, uploads the local package tarball, clones each assigned public
+desktop lanes, uploads the local package tarball, clones each assigned
 repository inside the sandbox, initializes Mimetic, runs nested proof commands,
-attempts a Codex TUI pass, and opens the nested Observer in the sandbox browser.
+starts the target app when a runnable script is present, opens desktop/mobile
+app windows plus the nested Observer in the sandbox browser, and starts a
+nonblocking Codex actor attempt.
 Install the optional desktop substrate first:
 
 ```bash
@@ -103,6 +105,15 @@ The contract-safe path for agents and CI is:
 ```bash
 pnpm mimetic -- lab oss --dry-run --json --no-open
 ```
+
+`mimetic lab oss` accepts GitHub `owner/repo` slugs. Private repositories are
+maintainer-only and require an authorized `GH_TOKEN` or `GITHUB_TOKEN` in the
+runtime environment. When a GitHub token is present, durable run artifacts
+redact repo labels by default; pass `--no-redact-repos` only for public-safe
+repo selections. Live E2B stream URLs are runtime-only for the attached
+Observer server and are not persisted to `run.json` or `observer-data.json`.
+Local bundles remain ignored under `.mimetic/`; do not publish private
+screenshots, logs, or upstream details.
 
 ## Development
 

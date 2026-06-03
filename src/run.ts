@@ -36,6 +36,14 @@ export type RunSimulationStatus =
   | "contract_proof_only";
 
 export interface RunStreamCompletion {
+  actorLogPath?: string;
+  actorPid?: number;
+  actorStatus?: "not_started" | "running" | "passed" | "failed" | "blocked" | "timed_out" | "suspended" | "unknown";
+  appLogPath?: string;
+  appPid?: number;
+  appReason?: string;
+  appStatus?: "not_started" | "running" | "blocked" | "failed" | "missing" | "unknown";
+  appUrl?: string;
   checkedAt: string;
   exitCode?: number;
   logTail?: string;
@@ -43,6 +51,9 @@ export interface RunStreamCompletion {
   nestedVerifyPassed?: boolean;
   reason: string;
   status: "running" | "passed" | "failed" | "blocked" | "timed_out";
+  visualReason?: string;
+  visualStatus?: "not_started" | "visible" | "blocked" | "unknown";
+  visualWindowCount?: number;
 }
 
 export interface RunSimulation {
@@ -88,10 +99,16 @@ export interface RunStream {
     tail: string;
   };
   ui?: {
+    actorStatus?: string;
+    appStatus?: string;
+    appUrl?: string;
     route?: string;
     intent?: string;
+    nestedObserverPath?: string;
+    nestedObserverUrl?: string;
     screenshotUrl?: string;
     state?: string;
+    visualStatus?: string;
   };
   codex?: {
     provider: "codex-app-server";

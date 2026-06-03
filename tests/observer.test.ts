@@ -1,8 +1,10 @@
 import { cp, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
+import { observerClientJs } from "../src/observer-assets.js";
 import { createProgram } from "../src/program.js";
 import { renderObserver, serveObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
@@ -46,6 +48,73 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   };
 }
 
+function renderObserverClientForTest(data: unknown): { click: (action: string) => void; html: () => string } {
+  let html = "";
+  let clickHandler:
+    | ((event: {
+        preventDefault: () => void;
+        target: { closest: (selector: string) => { getAttribute: (name: string) => string | null; tagName: string } | null };
+      }) => void)
+    | null = null;
+
+  const app = {
+    get innerHTML(): string {
+      return html;
+    },
+    set innerHTML(value: string) {
+      html = value;
+    },
+    querySelector: () => null,
+    addEventListener: (event: string, handler: typeof clickHandler) => {
+      if (event === "click") clickHandler = handler;
+    },
+    contains: () => true
+  };
+  const location = {
+    hash: "",
+    href: "file:///tmp/mimetic/observer/index.html",
+    protocol: "file:"
+  };
+  const sandbox = {
+    document: {
+      activeElement: null,
+      addEventListener: () => {},
+      documentElement: {
+        setAttribute: () => {},
+        style: { setProperty: () => {} }
+      },
+      getElementById: (id: string) => {
+        if (id === "app") return app;
+        if (id === "observer-data") return { textContent: JSON.stringify(data) };
+        return null;
+      }
+    },
+    location,
+    window: {
+      addEventListener: () => {},
+      history: { replaceState: () => {} },
+      localStorage: { getItem: () => null, setItem: () => {} },
+      location
+    }
+  };
+
+  runInNewContext(observerClientJs(), sandbox);
+
+  return {
+    click: (action: string) => {
+      const target = {
+        getAttribute: (name: string) => (name === "data-action" ? action : null),
+        tagName: "BUTTON"
+      };
+      clickHandler?.({
+        preventDefault: () => {},
+        target: { closest: () => target }
+      });
+    },
+    html: () => html
+  };
+}
+
 describe("observer rendering", () => {
   it("renders a static observer from a verified bundle", async () => {
     await withRunBundle(async (cwd) => {
@@ -81,6 +150,93 @@ describe("observer rendering", () => {
       expect(data.streams).toHaveLength(1);
       expect(data.streams[0]).toMatchObject({ kind: "ui", kindLabel: "UI" });
     });
+  });
+
+  it("renders multi-surface browser lab metadata without hiding live and screenshot modes", () => {
+    const terminalTail = "$ npx mimetic verify\nnested observer: ready";
+    const client = renderObserverClientForTest({
+      run: {
+        createdAt: "2026-06-03T12:00:00.000Z",
+        lifecycle: [],
+        mode: "oss-meta-lab",
+        persona: { name: "Synthetic Lab Operator" },
+        runId: "multi-surface-proof",
+        scenario: { goal: "Watch nested Observer evidence.", title: "OSS Observer-of-Observers" },
+        status: "pass"
+      },
+      events: [],
+      streams: [
+        {
+          id: "lane-01",
+          simId: "sim-01",
+          kind: "browser",
+          kindLabel: "Browser",
+          label: "developit/mitt desktop",
+          status: "running",
+          statusLabel: "Running",
+          transport: "sse",
+          updatedAt: "2026-06-03T12:00:05.000Z",
+          url: "https://stream.example/developit-mitt",
+          embed: { kind: "iframe", url: "https://stream.example/developit-mitt" },
+          viewport: { width: 1440, height: 900 },
+          ui: {
+            appUrl: "https://app.example/developit-mitt",
+            nestedObserverUrl: "https://observer.example/nested/index.html",
+            route: "e2b://desktop/developit-mitt",
+            screenshotUrl: "../screenshots/oss-01-desktop.png",
+            state: "bootstrap terminal launched"
+          },
+          terminal: {
+            format: "plain",
+            stdin: "sent",
+            tail: terminalTail,
+            title: "Codex TUI bootstrap - developit/mitt"
+          },
+          terminalPlain: terminalTail,
+          completion: {
+            checkedAt: "2026-06-03T12:00:06.000Z",
+            nestedObserverPresent: true,
+            reason: "Bootstrap terminal launched.",
+            status: "running"
+          },
+          artifacts: [
+            { label: "desktop screenshot", path: "screenshots/oss-01-desktop.png", kind: "screenshot" },
+            { label: "nested observer", path: "observer/nested/index.html", kind: "observer" },
+            { label: "events", path: "events.ndjson", kind: "events" }
+          ],
+          sim: {
+            currentStep: "watching nested Observer",
+            id: "sim-01",
+            index: 1,
+            mode: "browser-sim",
+            personaId: "operator",
+            progress: 50,
+            scenarioId: "oss-meta-lab",
+            startedAt: "2026-06-03T12:00:00.000Z",
+            status: "running",
+            streamIds: ["lane-01"],
+            streamKind: "browser",
+            summary: "Headed desktop lane",
+            updatedAt: "2026-06-03T12:00:05.000Z"
+          },
+          timeline: []
+        }
+      ]
+    });
+
+    expect(client.html()).toContain('src="https://stream.example/developit-mitt"');
+    expect(client.html()).toContain('data-kind="app"');
+    expect(client.html()).toContain('data-kind="observer"');
+    expect(client.html()).toContain('data-kind="completion"');
+    expect(client.html()).toContain('data-kind="terminal"');
+    expect(client.html()).toContain('data-kind="screenshot"');
+    expect(client.html()).toContain('data-kind="artifact"');
+    expect(client.html()).toContain("nested observer: ready");
+
+    client.click("media:screenshot");
+
+    expect(client.html()).toContain('src="../screenshots/oss-01-desktop.png"');
+    expect(client.html()).toContain("viewing fallback");
   });
 
   it("serves observer artifacts over a live localhost server", async () => {
