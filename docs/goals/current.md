@@ -122,10 +122,13 @@ Observer instead of relying on a human watching the desktops.
 
 Minimum acceptance:
 
-- each lane records setup status;
-- each lane records nested Observer URL or absence;
-- each lane records nested verification status or blocker;
-- top-level Observer updates lane verdicts from evidence.
+- each lane records setup status; `done`
+- each lane records target app status/URL or blocker; `done`
+- each lane records nested Observer presence; `done`
+- each lane records nested verification status or blocker; `done`
+- top-level Observer updates lane verdicts from evidence; `done`
+- next gap: provider-backed browser personas must drive the target app instead
+  of relying on nested dry-run proof.
 
 ## Non-Goals
 

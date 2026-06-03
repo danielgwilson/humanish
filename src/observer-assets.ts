@@ -436,6 +436,35 @@ a { color: inherit; text-decoration: none; }
 .bw-viewport { flex: 1; position: relative; overflow: hidden; background: #fbfcfd; }
 .bw-app-wait { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; background: #fbfcfd; color: #5a626c; text-align: center; padding: 16px; }
 .bw-app-wait .wait-spinner { border-color: rgba(20,28,40,.12); border-top-color: var(--accent); }
+.bw-lab-dock {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 8;
+  display: flex; align-items: flex-end; gap: 5px; flex-wrap: wrap;
+  max-height: 54px; overflow: hidden; pointer-events: none;
+}
+.bw-lab-chip {
+  min-width: 0; max-width: 100%; pointer-events: auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 7px; border-radius: 6px;
+  background: rgba(8,10,13,.78); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--text-2); box-shadow: var(--shadow-1);
+}
+a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1); }
+.bw-lab-chip[data-tone="live"] { color: var(--accent-2); border-color: color-mix(in oklab, var(--accent) 35%, transparent); }
+.bw-lab-chip[data-tone="ok"] { color: var(--green); border-color: color-mix(in oklab, var(--green) 34%, transparent); }
+.bw-lab-chip[data-tone="warn"] { color: var(--amber); border-color: color-mix(in oklab, var(--amber) 34%, transparent); }
+.bw-lab-chip[data-tone="err"] { color: var(--red); border-color: color-mix(in oklab, var(--red) 34%, transparent); }
+.bw-chip-k {
+  flex: none; font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em;
+  text-transform: uppercase; color: currentColor;
+}
+.bw-chip-v {
+  min-width: 0; max-width: min(240px, 42vw);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono); font-size: 9px; color: var(--text-2);
+}
+.focus-stage-area .bw-lab-dock { max-height: 86px; }
+.focus-stage-area .bw-chip-v { max-width: min(420px, 38vw); }
 .bw-cursor {
   position: absolute; width: 16px; height: 16px; z-index: 5; pointer-events: none;
   transition: left 1.1s var(--ease), top 1.1s var(--ease);
@@ -1011,7 +1040,7 @@ export function observerClientJs(): string {
 
   // ---------------------------------------------------------------- derive (observer-data.v1 -> display)
   function laneName(s) { return s.label || (s.sim && s.sim.summary) || s.id || "lane"; }
-  function laneRoute(s) { return (s.ui && s.ui.route) || s.url || (s.terminal && s.terminal.title) || ""; }
+  function laneRoute(s) { return (s.ui && (s.ui.route || s.ui.appUrl || s.ui.nestedObserverUrl)) || s.url || (s.terminal && s.terminal.title) || ""; }
   function laneProgress(s) {
     if (s.sim && typeof s.sim.progress === "number") return Math.max(0, Math.min(100, Math.round(s.sim.progress)));
     var t = tone(s.status);
@@ -1088,6 +1117,102 @@ export function observerClientJs(): string {
     while (arr.length && arr[arr.length - 1].trim() === "") arr.pop();
     return arr.map(function (line) { return { text: line, cls: classify(line) }; });
   }
+  function clip(v, n) {
+    var s = String(v == null ? "" : v).trim();
+    if (!s) return "";
+    return s.length > n ? (s.slice(0, Math.max(0, n - 1)) + "…") : s;
+  }
+  function shortSurfaceValue(v) {
+    var s = String(v == null ? "" : v).trim();
+    if (!s) return "";
+    var cut = s.split("?")[0].split("#")[0];
+    var parts = cut.split("/");
+    var tail = parts.filter(function (p) { return !!p; }).slice(-2).join("/");
+    return clip(tail || cut || s, 48);
+  }
+  function linkHref(v, artifactPath) {
+    var raw = String(v == null ? "" : v).trim();
+    var low = raw.toLowerCase();
+    if (!raw) return "";
+    if (low.indexOf("http://") === 0 || low.indexOf("https://") === 0 || low.indexOf("file:") === 0) return raw;
+    if (raw.indexOf("://") >= 0) return "";
+    if (raw.charAt(0) === "/" || raw.indexOf("..") >= 0) return "";
+    return artifactPath ? ("../" + raw) : raw;
+  }
+  function firstArtifactKind(s, kind) {
+    var arts = laneArtifacts(s);
+    for (var i = 0; i < arts.length; i += 1) {
+      if (arts[i] && arts[i].kind === kind) return arts[i];
+    }
+    return null;
+  }
+  function artifactKinds(arts) {
+    var seen = {}, out = [];
+    arts.forEach(function (a) {
+      var k = (a && a.kind) || "file";
+      if (!seen[k]) { seen[k] = true; out.push(k); }
+    });
+    var shown = out.slice(0, 3).join("+");
+    return shown + (out.length > 3 ? "+" : "");
+  }
+  function terminalExcerpt(s) {
+    var lines = termLines(s).filter(function (ln) { return !!String(ln.text || "").trim(); });
+    if (!lines.length) return "";
+    return clip(lines[lines.length - 1].text, 88);
+  }
+  function completionTone(c) {
+    var t = tone(c && c.status);
+    return t === "running" ? "live" : t === "complete" ? "ok" : t === "blocked" ? "warn" : c && c.status === "failed" ? "err" : "info";
+  }
+  function completionText(c) {
+    if (!c) return "";
+    var bits = [statusLabel(c.status)];
+    if (typeof c.exitCode === "number") bits.push("exit " + c.exitCode);
+    if (typeof c.nestedObserverPresent === "boolean") bits.push("observer " + (c.nestedObserverPresent ? "present" : "missing"));
+    if (typeof c.nestedVerifyPassed === "boolean") bits.push("verify " + (c.nestedVerifyPassed ? "passed" : "failed"));
+    if (c.reason) bits.push(c.reason);
+    return clip(bits.join(" · "), 110);
+  }
+  function labChip(kind, label, detail, href, toneName) {
+    var title = label + (detail ? ": " + detail : "");
+    var inner = '<span class="bw-chip-k">' + esc(label) + '</span>' + (detail ? '<span class="bw-chip-v">' + esc(detail) + '</span>' : "");
+    var attrs = ' class="bw-lab-chip" data-kind="' + esc(kind) + '" data-tone="' + esc(toneName || "info") + '" title="' + esc(title) + '"';
+    if (href) return '<a' + attrs + ' href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" data-action="external">' + inner + '</a>';
+    return '<span' + attrs + '>' + inner + '</span>';
+  }
+  function browserLiveUrl(s) {
+    return (s.embed && s.embed.kind === "iframe" && s.embed.url) || s.url || "";
+  }
+  function browserShot(s) {
+    var art = firstArtifactKind(s, "screenshot");
+    return (s.ui && s.ui.screenshotUrl) || (s.embed && s.embed.kind === "screenshot" && s.embed.url) || (art && linkHref(art.path, true)) || "";
+  }
+  function browserHasLabSignals(s) {
+    var ui = s.ui || {};
+    return !!(browserLiveUrl(s) || browserShot(s) || ui.appUrl || ui.nestedObserverUrl || ui.nestedObserverPath || ui.state || s.completion || terminalExcerpt(s) || laneArtifacts(s).length);
+  }
+  function browserLabDock(s, shot) {
+    var ui = s.ui || {};
+    var chips = [];
+    var appUrl = ui.appUrl || "";
+    var nestedArt = firstArtifactKind(s, "observer");
+    var nested = ui.nestedObserverUrl || ui.nestedObserverPath || (nestedArt && nestedArt.path) || "";
+    var completion = s.completion || null;
+    var shotArt = firstArtifactKind(s, "screenshot");
+    var arts = laneArtifacts(s);
+    var tail = terminalExcerpt(s);
+
+    if (appUrl) chips.push(labChip("app", "app", shortSurfaceValue(appUrl), linkHref(appUrl, false), "live"));
+    if (nested) chips.push(labChip("observer", "observer", shortSurfaceValue(nested), linkHref(nested, !!(nestedArt && nested === nestedArt.path)), "info"));
+    else if (completion && typeof completion.nestedObserverPresent === "boolean") chips.push(labChip("observer", "observer", completion.nestedObserverPresent ? "present" : "missing", "", completion.nestedObserverPresent ? "ok" : "warn"));
+    if (completion) chips.push(labChip("completion", "status", completionText(completion), "", completionTone(completion)));
+    if (tail) chips.push(labChip("terminal", "terminal", tail, "", "info"));
+    if (shot || shotArt) chips.push(labChip("screenshot", "shot", shot ? (S.media === "screenshot" ? "viewing fallback" : "fallback ready") : "artifact", shot ? linkHref(shot, false) : linkHref(shotArt.path, true), "info"));
+    if (arts.length) chips.push(labChip("artifact", "files", arts.length + " " + artifactKinds(arts), "", "info"));
+    if (ui.state && !completion) chips.push(labChip("state", "state", clip(ui.state, 72), "", "info"));
+    if (!chips.length) return "";
+    return '<div class="bw-lab-dock" aria-label="Browser lane lab surfaces">' + chips.slice(0, 6).join("") + '</div>';
+  }
 
   function consoleLines() {
     var rows = [];
@@ -1161,16 +1286,18 @@ export function observerClientJs(): string {
   function browserSurface(s) {
     var live = tone(s.status) === "running";
     var route = laneRoute(s) || "(local)";
-    var shot = (s.ui && s.ui.screenshotUrl) || (s.embed && s.embed.kind === "screenshot" && s.embed.url);
+    var liveUrl = browserLiveUrl(s);
+    var shot = browserShot(s);
     var body;
-    if (shot) body = '<img class="surface-fill" style="object-fit:cover;object-position:top" src="' + esc(shot) + '" alt="viewport screenshot"/>';
+    if (liveUrl && S.media === "live") body = '<iframe class="surface-fill" src="' + esc(liveUrl) + '" title="' + esc(laneName(s) || "live stream") + '" allow="clipboard-read; clipboard-write; fullscreen" referrerpolicy="no-referrer"></iframe>';
+    else if (shot) body = '<img class="surface-fill" style="object-fit:cover;object-position:top" src="' + esc(shot) + '" alt="viewport screenshot"/>';
     else body = '<div class="bw-app-wait"><div class="wait-spinner" style="width:24px;height:24px"></div>'
       + '<div class="mono" style="font-size:9px">' + esc(route) + '</div>'
       + '<div style="font-size:10px">' + esc(laneStep(s)) + '</div></div>';
     return '<div class="bw">'
       + '<div class="bw-chrome"><div class="bw-dots"><i></i><i></i><i></i></div>'
       + '<div class="bw-url">' + icon("lock", 8) + '<span>' + esc(route) + '</span></div></div>'
-      + '<div class="bw-viewport">' + body + '</div>'
+      + '<div class="bw-viewport">' + body + browserLabDock(s, shot) + '</div>'
       + (live ? liveTag() : "")
       + '</div>';
   }
@@ -1212,9 +1339,9 @@ export function observerClientJs(): string {
   function streamSurface(s, focus) {
     var k = s.kind, st = s.status;
     var hasTail = !!(s.terminal && s.terminal.tail && String(s.terminal.tail).trim());
-    if ((st === "blocked" || st === "timed_out") && !hasTail) return waitSurface(s);
+    if ((st === "blocked" || st === "timed_out") && !hasTail && !((k === "ui" || k === "browser") && browserHasLabSignals(s))) return waitSurface(s);
     if (k === "ui" || k === "browser") {
-      if (st === "blocked" || st === "timed_out" || st === "failed" || st === "contract_proof_only") return waitSurface(s);
+      if ((st === "blocked" || st === "timed_out" || st === "failed" || st === "contract_proof_only") && !browserHasLabSignals(s)) return waitSurface(s);
       return browserSurface(s);
     }
     if (k === "terminal" || k === "tui") return hasTail ? terminalSurface(s, focus) : waitSurface(s);

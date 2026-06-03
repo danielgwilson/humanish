@@ -7,16 +7,16 @@ harness.
 
 ## Decision
 
-`mimetic lab oss` is the public-OSS meta-simulation loop.
+`mimetic lab oss` is the authorized-repo meta-simulation loop.
 
 The command should feel like `mimetic watch`: it opens the Observer and, for
 human output, keeps the shell attached. Its top-level Observer is an
-Observer-of-Observers: each lane represents a headed E2B desktop that will run
-Codex TUI against a different lightweight public GitHub repository. Inside each
-desktop, Codex should clone the repo, get it into local dev mode where feasible,
-install and initialize Mimetic, author plausible public-safe personas/scenarios,
-run nested Mimetic proof commands, attempt a Codex TUI pass, and leave that
-nested Observer visible in the E2B browser.
+Observer-of-Observers: each lane represents a headed E2B desktop assigned to a
+GitHub `owner/repo` slug. Inside each desktop, the bootstrap clones the repo,
+gets it into local dev mode where feasible, installs and initializes Mimetic,
+runs nested Mimetic proof commands, starts the target app when a runnable script
+is present, opens desktop/mobile app windows plus the nested Observer in the E2B
+browser, and starts a nonblocking Codex actor attempt.
 
 The previous clone/discard proof loop remains useful, but it is now explicitly
 named `mimetic lab oss-smoke`.
@@ -64,8 +64,10 @@ The default public targets are intentionally small JavaScript packages:
 
 `--repos` accepts a comma-separated list. Repeated `--repo` is also supported.
 If `--count` is larger than the repo list, assignments cycle through the repo
-pool. Inputs must be public GitHub `owner/repo` slugs. Arbitrary URLs, local
-paths, tokens, SSH remotes, and private GitHub references are rejected.
+pool. Inputs must be GitHub `owner/repo` slugs. Arbitrary URLs, local paths,
+tokens, and SSH remotes are rejected. Private repos are maintainer-only and
+require an authorized `GH_TOKEN` or `GITHUB_TOKEN` at runtime; no token value is
+written to committed source or public issue text.
 
 ## Runtime Shape
 
@@ -85,19 +87,27 @@ The meta-lab writes ignored local Observer evidence:
 
 Each stream lane records:
 
-- assigned repo slug;
-- live E2B desktop stream URL when keys are present;
-- Codex TUI bootstrap prompt;
-- current live-readiness state;
+- assigned repo slug for public runs, or a redacted lane label for token-backed
+  maintainer/private runs;
+- whether a live E2B desktop stream exists; auth-bearing stream URLs are
+  runtime-only for the attached Observer server and are not persisted;
+- target app URL/status when a runnable script becomes HTTP-ready inside the
+  sandbox;
+- nested Observer presence and nested verification status;
+- headed desktop visual-window status and browser window count;
+- nonblocking Codex actor status;
+- public-safe remote bootstrap log tail;
 - public-safe gaps and events.
 
 The current implementation launches live E2B desktop streams when
-`E2B_API_KEY` and `OPENAI_API_KEY` are present, embeds those streams into the
-top-level Observer, and marks missing key or launch failures in-lane. It also
-packs the local Mimetic package, uploads it into each sandbox, raises a visible
-bootstrap terminal, clones the assigned public repo, runs nested Mimetic setup
-and proof commands, attempts a Codex TUI pass, and opens the nested Observer in
-the sandbox browser.
+`E2B_API_KEY` and `OPENAI_API_KEY` are present, overlays those stream URLs only
+in the attached Observer server, and marks missing key or launch failures
+in-lane. It also packs the local Mimetic package, uploads it into each sandbox,
+raises a visible bootstrap terminal, clones the assigned repo, runs nested
+Mimetic setup and proof commands, starts the target app, opens desktop/mobile
+app windows, opens the nested Observer in the sandbox browser, arranges visible
+browser windows for screenshot proof, and starts the Codex actor attempt without
+blocking completion.
 
 The live desktop substrate is an optional peer dependency. Install it in the
 project that runs live labs:
@@ -106,9 +116,9 @@ project that runs live labs:
 npm i -D @e2b/desktop
 ```
 
-Remaining substrate work: poll remote bootstrap completion and nested Observer
-health back into the top-level bundle instead of leaving completion review to
-the live desktop stream.
+Remaining substrate work: replace the nested dry-run with provider-backed
+browser personas that actually drive the target app, and add richer process
+telemetry for the nonblocking Codex actor.
 
 ## Smoke Harness Runtime
 
@@ -140,7 +150,13 @@ ignored `.mimetic/lab/oss/<run-id>/`.
 
 ## Safety Rules
 
-- Public GitHub `owner/repo` slugs only.
+- GitHub `owner/repo` slugs only.
+- Private repos require an authorized runtime token. Token-backed runs redact
+  repo labels in durable artifacts by default and must not appear in committed
+  fixtures, docs examples, public issue text, or published media.
+- pnpm dependency build scripts may be allowed only inside the disposable E2B
+  lab so target app surfaces can start. Never use this as a host install
+  default.
 - No credential prompts; smoke clone calls set `GIT_TERMINAL_PROMPT=0`.
 - No commits, pushes, branches, tags, GitHub API mutation, deploys, or issue
   filing.
@@ -151,11 +167,13 @@ ignored `.mimetic/lab/oss/<run-id>/`.
 ## What This Proves
 
 The meta-lab proves the operator control surface and artifact contract for
-watching multiple Codex/E2B OSS setup attempts at once. The live path now proves
-E2B desktop fanout, visible bootstrap terminals, local-package upload, disposable
-public-repo setup, nested Mimetic proof generation, and nested Observer opening.
-It does not yet prove remote completion polling or a general provider-backed
-target-app persona runtime.
+watching multiple Codex/E2B setup attempts at once. The live path now detects
+E2B desktop fanout, visible bootstrap terminals, local-package upload,
+disposable authorized-repo setup, target app HTTP readiness when a runnable
+script is present, headed browser-window layout, nested Mimetic dry-run proof
+generation, nested Observer opening, and top-level lane completion from remote
+evidence. It does not yet prove a general provider-backed target-app persona
+runtime.
 
 The smoke harness proves first-run Mimetic package compatibility against
 arbitrary public JavaScript repositories:

@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
-import { renderObserver } from "./observer.js";
+import { attachObserverRuntimeStreamUrls, renderObserver } from "./observer.js";
 import type { ObserverResult } from "./observer.js";
 import {
   DEFAULT_OSS_REPOS,
@@ -34,6 +34,7 @@ export interface OssMetaLabOptions {
   cwd: string;
   dryRun?: boolean;
   open?: boolean;
+  redactRepoNames?: boolean;
   repos?: string[];
   runId?: string;
 }
@@ -68,11 +69,23 @@ interface OssMetaLabBootstrap {
   nestedObserverPath?: string;
   status: "started" | "failed";
   tail: string;
+  terminalTitle?: string;
 }
 
 export type OssMetaLabCompletionStatus = "running" | "passed" | "failed" | "blocked" | "timed_out";
+export type OssMetaLabAppStatus = "not_started" | "running" | "blocked" | "failed" | "missing" | "unknown";
+export type OssMetaLabActorStatus = "not_started" | "running" | "passed" | "failed" | "blocked" | "timed_out" | "suspended" | "unknown";
+export type OssMetaLabVisualStatus = "not_started" | "visible" | "blocked" | "unknown";
 
 export interface OssMetaLabCompletion {
+  actorLogPath?: string;
+  actorPid?: number;
+  actorStatus?: OssMetaLabActorStatus;
+  appLogPath?: string;
+  appPid?: number;
+  appReason?: string;
+  appStatus?: OssMetaLabAppStatus;
+  appUrl?: string;
   checkedAt: string;
   exitCode?: number;
   logTail?: string;
@@ -80,6 +93,9 @@ export interface OssMetaLabCompletion {
   nestedVerifyPassed?: boolean;
   reason: string;
   status: OssMetaLabCompletionStatus;
+  visualReason?: string;
+  visualStatus?: OssMetaLabVisualStatus;
+  visualWindowCount?: number;
 }
 
 export interface OssMetaLabScreenshot {
@@ -113,6 +129,8 @@ export interface OssMetaLabResult {
   repos: string[];
   runId?: string;
   sandboxes: Array<{
+    actorStatus?: OssMetaLabActorStatus;
+    appStatus?: OssMetaLabAppStatus;
     bootstrapStatus?: "started" | "failed";
     completionReason?: string;
     completionStatus?: OssMetaLabCompletionStatus;
@@ -121,6 +139,8 @@ export interface OssMetaLabResult {
     sandboxId?: string;
     streamId: string;
     urlPresent: boolean;
+    visualStatus?: OssMetaLabVisualStatus;
+    visualWindowCount?: number;
   }>;
   warnings: string[];
 }
@@ -188,7 +208,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       dryRun,
       error: {
         code: "MIMETIC_INVALID_OSS_REPO",
-        message: `Only public GitHub owner/repo slugs are supported: ${invalid}`
+        message: `Only GitHub owner/repo slugs are supported: ${invalid}`
       },
       liveRequested,
       repos,
@@ -198,12 +218,15 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   }
 
   const missingKeys = missingLiveKeys(process.env);
+  const redactRepoNames = options.redactRepoNames ?? (liveRequested && Boolean(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN));
   if (liveRequested && missingKeys.length > 0) {
     warnings.push(`Live E2B/Codex launch is waiting on env vars: ${missingKeys.join(", ")}.`);
     warnings.push("Observer lanes stay in the live waiting state until keys are present.");
   }
 
   const assignments = buildOssRepoAssignments(repos, count);
+  const publicAssignments = redactAssignments(assignments, redactRepoNames);
+  const publicRepos = redactRepoNames ? publicAssignments.map((assignment) => assignment.repo) : repos;
   const runId = options.runId ?? makeMetaRunId();
   let localPackage: OssMetaLabLocalPackage | undefined;
   if (liveRequested && missingKeys.length === 0) {
@@ -217,14 +240,17 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   let liveDesktops: OssMetaLabLiveDesktop[] = [];
   if (liveRequested && missingKeys.length === 0) {
     try {
-      liveDesktops = await launchLiveDesktops(assignments, localPackage ? { localPackage } : {});
+      liveDesktops = await launchLiveDesktops(assignments, {
+        ...(localPackage ? { localPackage } : {}),
+        redactRepoNames
+      });
       const completionSummary = await pollLiveDesktopCompletions(liveDesktops);
       warnings.push(...completionSummary.warnings);
     } catch (error) {
       warnings.push(compactError(error));
       liveDesktops = assignments.map((assignment) => ({
         error: compactError(error),
-        repo: assignment.repo,
+        repo: redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo,
         simId: assignment.simId,
         streamId: assignment.streamId
       }));
@@ -234,12 +260,16 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const failedLiveDesktopCount = liveDesktops.filter((desktop) => desktop.error).length;
   const startedBootstrapCount = liveDesktops.filter((desktop) => desktop.bootstrap?.status === "started").length;
   const terminalCompletionCount = liveDesktops.filter((desktop) => isTerminalCompletion(desktop.completion)).length;
+  const runningAppCount = liveDesktops.filter((desktop) => desktop.completion?.appStatus === "running").length;
+  const visibleDesktopCount = liveDesktops.filter((desktop) => desktop.completion?.visualStatus === "visible").length;
   if (liveDesktops.length > 0) {
     warnings.push(`Launched ${liveDesktopCount}/${liveDesktops.length} live E2B desktop stream${liveDesktops.length === 1 ? "" : "s"}.`);
     if (startedBootstrapCount > 0) {
-      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for Codex TUI attempt and nested Mimetic setup.`);
+      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Mimetic setup, and Codex actor attempt.`);
       if (terminalCompletionCount > 0) {
         warnings.push(`Classified ${terminalCompletionCount}/${startedBootstrapCount} bootstrap terminal state${startedBootstrapCount === 1 ? "" : "s"} from remote public-safe evidence.`);
+        warnings.push(`Detected ${runningAppCount}/${terminalCompletionCount} target app HTTP-ready surface${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
+        warnings.push(`Detected ${visibleDesktopCount}/${terminalCompletionCount} headed desktop visual layout${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
       }
     } else {
       warnings.push("Codex TUI injection and nested Mimetic execution remain the next substrate slice behind these live desktops.");
@@ -260,7 +290,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     return {
       schema: OSS_META_LAB_SCHEMA,
       ok: false,
-      assignments,
+      assignments: publicAssignments,
       count,
       cwd,
       dryRun,
@@ -269,7 +299,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
         message: runResult.error?.message ?? "Failed to create OSS meta-lab run bundle."
       },
       liveRequested,
-      repos,
+      repos: publicRepos,
       sandboxes: liveDesktops.map(formatLiveDesktopForResult),
       warnings: [...warnings, ...runResult.warnings]
     };
@@ -289,6 +319,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     liveDesktops,
     liveRequested,
     missingKeys,
+    redactRepoNames,
     runId
   });
 
@@ -298,6 +329,17 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const observer = await renderObserver(cwd, runId, { open: options.open === true });
+  if (observer.ok) {
+    attachObserverRuntimeStreamUrls(
+      observer,
+      liveDesktops
+        .filter((desktop) => desktop.url)
+        .map((desktop) => ({
+          streamId: desktop.streamId,
+          url: desktop.url as string
+        }))
+    );
+  }
   const outcome = classifyMetaLabOutcome({
     dryRun,
     liveDesktops,
@@ -308,7 +350,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   return {
     schema: OSS_META_LAB_SCHEMA,
     ok: observer.ok && outcome.ok,
-    assignments,
+    assignments: publicAssignments,
     count,
     cwd,
     dryRun,
@@ -322,7 +364,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
         }),
     liveRequested,
     observer,
-    repos,
+    repos: publicRepos,
     runId,
     sandboxes: liveDesktops.map(formatLiveDesktopForResult),
     warnings: [...warnings, ...observer.warnings]
@@ -347,6 +389,7 @@ export function buildOssMetaBundleFixture(args: {
   }>;
   liveRequested: boolean;
   missingKeys: string[];
+  redactRepoNames?: boolean;
   runId: string;
 }): RunBundle {
   return buildMetaBundle({
@@ -357,7 +400,25 @@ export function buildOssMetaBundleFixture(args: {
     liveDesktops: args.lanes,
     liveRequested: args.liveRequested,
     missingKeys: args.missingKeys,
+    redactRepoNames: args.redactRepoNames === true,
     runId: args.runId
+  });
+}
+
+export function buildOssMetaBootstrapScriptFixture(): string {
+  const [assignment] = buildOssRepoAssignments(["developit/mitt"], 1);
+  if (!assignment) {
+    throw new Error("Missing OSS meta-lab fixture assignment.");
+  }
+
+  return buildRemoteBootstrapScript({
+    assignment,
+    completionPath: "/home/user/mimetic-oss-lab/developit-mitt/completion.json",
+    displayRepo: "developit/mitt",
+    logPath: "/home/user/mimetic-oss-lab/developit-mitt/bootstrap.log",
+    nestedObserverPath: "/home/user/mimetic-oss-lab/developit-mitt/repo/.mimetic/runs/nested-developit-mitt/observer/index.html",
+    rootDir: "/home/user/mimetic-oss-lab/developit-mitt",
+    token: "developit-mitt"
   });
 }
 
@@ -369,6 +430,7 @@ function buildMetaBundle(args: {
   liveDesktops: OssMetaLabLiveDesktop[];
   liveRequested: boolean;
   missingKeys: string[];
+  redactRepoNames: boolean;
   runId: string;
 }): RunBundle {
   const simulations: RunSimulation[] = [];
@@ -384,27 +446,30 @@ function buildMetaBundle(args: {
   ];
 
   for (const assignment of args.assignments) {
-    const prompt = buildCodexBootstrapPrompt(assignment);
+    const prompt = buildCodexBootstrapPrompt(assignment, args.redactRepoNames);
     const liveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
+    const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
+    const scenarioId = args.redactRepoNames ? `oss-meta-${repoLabel}` : assignment.scenarioId;
     const status = statusForMeta(args, liveDesktop);
     const completion = liveDesktop?.completion;
     const screenshot = liveDesktop?.screenshot;
     const terminalTail = terminalTailForMeta(prompt, liveDesktop);
+    const liveStreamPresent = Boolean(liveDesktop?.url);
     simulations.push({
       id: assignment.simId,
       index: assignment.index,
       personaId: `codex-oss-operator-${String(assignment.index).padStart(2, "0")}`,
-      scenarioId: assignment.scenarioId,
+      scenarioId,
       status,
       streamKind: "browser",
       mode: "browser-sim",
       progress: progressForMeta(status, liveDesktop),
       currentStep: currentStepForMeta(args, assignment),
       summary: completion
-        ? `Headed E2B desktop lane assigned to ${assignment.repo}; ${completion.reason}`
+        ? `Headed E2B desktop lane assigned to ${repoLabel}; ${completion.reason}`
         : liveDesktop?.bootstrap?.status === "started"
-        ? `Headed E2B desktop lane assigned to ${assignment.repo}; bootstrap terminal launched to set up Mimetic and open the nested Observer.`
-        : `Headed E2B desktop lane assigned to ${assignment.repo}; nested Codex TUI should set up Mimetic and open a nested Observer inside that desktop.`,
+        ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Mimetic and open the nested Observer.`
+        : `Headed E2B desktop lane assigned to ${repoLabel}; nested Codex TUI should set up Mimetic and open a nested Observer inside that desktop.`,
       streamIds: [assignment.streamId],
       startedAt: args.createdAt,
       updatedAt: args.createdAt
@@ -414,14 +479,13 @@ function buildMetaBundle(args: {
       id: assignment.streamId,
       simId: assignment.simId,
       kind: "browser",
-      label: `E2B desktop - ${assignment.repo}`,
+      label: `E2B desktop - ${repoLabel}`,
       status,
-      transport: screenshot ? "snapshot" : liveDesktop?.url ? "sse" : status === "contract_proof_only" ? "snapshot" : "sse",
+      transport: liveStreamPresent ? "sse" : screenshot ? "snapshot" : status === "contract_proof_only" ? "snapshot" : "sse",
       updatedAt: args.createdAt,
-      ...(liveDesktop?.url && !screenshot ? { url: liveDesktop.url } : {}),
       embed: {
-        kind: screenshot ? "screenshot" : liveDesktop?.url ? "iframe" : "placeholder",
-        ...(liveDesktop?.url && !screenshot ? { url: liveDesktop.url } : {}),
+        kind: screenshot ? "screenshot" : "placeholder",
+        ...(screenshot ? { url: screenshot.observerUrl } : {}),
         title: `E2B desktop ${assignment.index}`
       },
       viewport: {
@@ -430,26 +494,38 @@ function buildMetaBundle(args: {
         deviceScaleFactor: 1
       },
       terminal: {
-        title: `Codex TUI bootstrap - ${assignment.repo}`,
+        title: `Codex TUI bootstrap - ${repoLabel}`,
         format: "plain",
         stdin: liveDesktop?.bootstrap ? "sent" : "planned",
         tail: terminalTail
       },
       ui: {
-        route: `e2b://desktop/${assignment.repo}`,
-        intent: "Watch the headed desktop where Codex clones the repo, sets up Mimetic, and opens the nested Observer.",
+        route: completion?.appUrl ?? `e2b://desktop/${repoLabel}`,
+        intent: "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+        ...(completion?.actorStatus ? { actorStatus: completion.actorStatus } : {}),
+        ...(completion?.appStatus ? { appStatus: completion.appStatus } : {}),
+        ...(completion?.appUrl ? { appUrl: completion.appUrl } : {}),
+        ...(liveDesktop?.bootstrap?.nestedObserverPath ? { nestedObserverPath: liveDesktop.bootstrap.nestedObserverPath } : {}),
         ...(screenshot ? { screenshotUrl: screenshot.observerUrl } : {}),
+        ...(completion?.visualStatus ? { visualStatus: completion.visualStatus } : {}),
         state: completion
-          ? completion.reason
+          ? [
+              completion.reason,
+              completion.appStatus ? `app=${completion.appStatus}` : "",
+              completion.actorStatus ? `actor=${completion.actorStatus}` : "",
+              completion.visualStatus ? `visual=${completion.visualStatus}` : ""
+            ].filter(Boolean).join(" | ")
           : liveDesktop?.bootstrap?.status === "started"
-          ? "bootstrap terminal launched"
-          : liveDesktop?.url ? "live E2B desktop" : args.dryRun ? "contract desktop" : "headed E2B desktop"
+          ? "bootstrap terminal launched; target app and nested Observer setup running"
+          : liveStreamPresent ? "live E2B desktop stream present; stream URL is runtime-only" : args.dryRun ? "contract desktop" : "headed E2B desktop"
       },
       ...(completion ? { completion: completionForStream(completion) } : {}),
       artifacts: [
         { label: "run bundle", path: "run.json", kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
         { label: "events", path: "events.ndjson", kind: "events" },
+        ...(completion?.appLogPath ? [{ label: "remote app log", path: completion.appLogPath, kind: "log" as const }] : []),
+        ...(completion?.actorLogPath ? [{ label: "remote actor log", path: completion.actorLogPath, kind: "log" as const }] : []),
         ...(liveDesktop?.bootstrap?.logPath ? [{ label: "remote bootstrap log", path: liveDesktop.bootstrap.logPath, kind: "log" as const }] : []),
         ...(liveDesktop?.bootstrap?.nestedObserverPath ? [{ label: "nested observer path", path: liveDesktop.bootstrap.nestedObserverPath, kind: "observer" as const }] : []),
         ...(screenshot ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }] : [])
@@ -462,7 +538,7 @@ function buildMetaBundle(args: {
         at: args.createdAt,
         level: "info",
         type: "oss-meta.repo.assigned",
-        message: `Assigned ${assignment.repo} to Codex desktop lane ${assignment.index}.`,
+        message: `Assigned ${repoLabel} to Codex desktop lane ${assignment.index}.`,
         simId: assignment.simId,
         streamId: assignment.streamId
       },
@@ -477,13 +553,13 @@ function buildMetaBundle(args: {
       }
     );
 
-    if (liveDesktop?.url) {
+    if (liveStreamPresent && liveDesktop) {
       events.push({
         id: `event-${String(assignment.index).padStart(3, "0")}-stream`,
         at: args.createdAt,
         level: "info",
         type: "oss-meta.e2b.stream.started",
-        message: `Live E2B desktop stream started for ${assignment.repo}.`,
+        message: `Live E2B desktop stream started for ${repoLabel}; auth URL is runtime-only and not persisted in run artifacts.`,
         simId: assignment.simId,
         streamId: assignment.streamId
       });
@@ -493,7 +569,7 @@ function buildMetaBundle(args: {
           at: args.createdAt,
           level: "info",
           type: "oss-meta.bootstrap.started",
-          message: `Visible bootstrap terminal launched for ${assignment.repo}.`,
+          message: `Visible bootstrap terminal launched for ${repoLabel}.`,
           simId: assignment.simId,
           streamId: assignment.streamId
         });
@@ -503,7 +579,7 @@ function buildMetaBundle(args: {
             at: completion.checkedAt,
             level: eventLevelForCompletion(completion.status),
             type: `oss-meta.bootstrap.${completion.status}`,
-            message: `${assignment.repo}: ${completion.reason}`,
+            message: `${repoLabel}: ${completion.reason}`,
             simId: assignment.simId,
             streamId: assignment.streamId
           });
@@ -514,7 +590,7 @@ function buildMetaBundle(args: {
           at: args.createdAt,
           level: "error",
           type: "oss-meta.bootstrap.failed",
-          message: `Bootstrap launcher failed for ${assignment.repo}.`,
+          message: `Bootstrap launcher failed for ${repoLabel}.`,
           simId: assignment.simId,
           streamId: assignment.streamId
         });
@@ -525,7 +601,7 @@ function buildMetaBundle(args: {
         at: args.createdAt,
         level: "error",
         type: "oss-meta.e2b.stream.failed",
-        message: `E2B desktop stream failed for ${assignment.repo}: ${liveDesktop.error}`,
+        message: `E2B desktop stream failed for ${repoLabel}: ${liveDesktop.error}`,
         simId: assignment.simId,
         streamId: assignment.streamId
       });
@@ -591,7 +667,7 @@ function buildMetaBundle(args: {
     scenario: {
       id: "oss-meta-observer-of-observers",
       title: "OSS Observer-of-Observers Meta-Lab",
-      goal: "Launch headed E2B desktops where Codex agents clone public OSS repos, set up Mimetic, run nested Mimetic proof commands, attempt Codex TUI, and keep each nested Observer visible.",
+      goal: "Launch headed E2B desktops where Codex agents clone authorized GitHub repos, set up Mimetic, run nested Mimetic proof commands, attempt Codex TUI, and keep each nested Observer visible.",
       source: "lab:oss:meta",
       sourceDigest: "public-safe"
     },
@@ -604,7 +680,7 @@ function buildMetaBundle(args: {
       {
         at: args.createdAt,
         event: "oss-meta.repos.assigned",
-        message: `Assigned repos: ${args.assignments.map((assignment) => assignment.repo).join(", ")}.`
+        message: `Assigned repos: ${args.assignments.map((assignment) => args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo).join(", ")}.`
       },
       {
         at: args.createdAt,
@@ -617,7 +693,7 @@ function buildMetaBundle(args: {
     events,
     redaction: {
       status: "passed",
-      notes: "OSS meta-lab artifacts contain public GitHub slugs and synthetic bootstrap prompts only."
+      notes: "OSS meta-lab artifacts contain GitHub slugs and redacted/synthetic bootstrap evidence only."
     },
     artifacts: {
       run: "run.json",
@@ -638,6 +714,8 @@ function statusForMeta(args: {
   missingKeys: string[];
 }, liveDesktop: OssMetaLabLiveDesktop | undefined): RunSimulation["status"] {
   if (args.dryRun) return "contract_proof_only";
+  if (liveDesktop?.completion?.status === "passed" && liveDesktop.completion.appStatus !== "running") return "blocked";
+  if (liveDesktop?.completion?.status === "passed" && liveDesktop.completion.visualStatus !== "visible") return "blocked";
   if (liveDesktop?.completion?.status === "passed") return "passed";
   if (liveDesktop?.completion?.status === "failed") return "failed";
   if (liveDesktop?.completion?.status === "blocked") return "blocked";
@@ -656,6 +734,7 @@ function progressForMeta(status: RunSimulation["status"], liveDesktop: OssMetaLa
   if (status === "failed" && liveDesktop?.completion) return 100;
   if (status === "blocked") return 18;
   if (status === "failed") return 8;
+  if (liveDesktop?.completion?.appStatus === "running") return 86;
   if (liveDesktop?.bootstrap?.status === "started") return 74;
   if (liveDesktop?.url) return 58;
   return 34;
@@ -666,30 +745,32 @@ function currentStepForMeta(args: {
   liveDesktops: OssMetaLabLiveDesktop[];
   liveRequested: boolean;
   missingKeys: string[];
+  redactRepoNames?: boolean;
 }, assignment: OssMetaLabAssignment): string {
   const liveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
+  const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
   if (args.dryRun) {
-    return `Contract ready for ${assignment.repo}; no E2B desktop launched.`;
+    return `Contract ready for ${repoLabel}; no E2B desktop launched.`;
   }
   if (liveDesktop?.completion) {
     return liveDesktop.completion.reason;
   }
   if (liveDesktop?.bootstrap?.status === "started") {
-    return `Bootstrap terminal launched for ${assignment.repo}; Codex TUI attempt, Mimetic setup, and nested Observer run inside the desktop.`;
+    return `Bootstrap terminal launched for ${repoLabel}; Codex TUI attempt, Mimetic setup, and nested Observer run inside the desktop.`;
   }
   if (liveDesktop?.bootstrap?.status === "failed") {
-    return `Bootstrap launcher failed for ${assignment.repo}.`;
+    return `Bootstrap launcher failed for ${repoLabel}.`;
   }
   if (liveDesktop?.url) {
-    return `Live E2B desktop connected for ${assignment.repo}; Codex TUI injection pending.`;
+    return `Live E2B desktop connected for ${repoLabel}; Codex TUI injection pending.`;
   }
   if (liveDesktop?.error) {
-    return `E2B desktop launch failed for ${assignment.repo}.`;
+    return `E2B desktop launch failed for ${repoLabel}.`;
   }
   if (args.missingKeys.length > 0) {
-    return `Waiting for ${args.missingKeys.join(", ")} before launching ${assignment.repo}.`;
+    return `Waiting for ${args.missingKeys.join(", ")} before launching ${repoLabel}.`;
   }
-  return `Ready to launch E2B desktop and inject Codex TUI for ${assignment.repo}.`;
+  return `Ready to launch E2B desktop and inject Codex TUI for ${repoLabel}.`;
 }
 
 function createMetaReview(args: {
@@ -700,15 +781,22 @@ function createMetaReview(args: {
 }): ReviewSummary {
   const started = args.liveDesktops.filter((desktop) => desktop.bootstrap?.status === "started");
   const terminalCompletions = args.liveDesktops.filter((desktop) => isTerminalCompletion(desktop.completion));
+  const appRunning = args.liveDesktops.filter((desktop) => desktop.completion?.appStatus === "running");
+  const visualVisible = args.liveDesktops.filter((desktop) => desktop.completion?.visualStatus === "visible");
   const outcome = classifyMetaLabOutcome(args);
   const gaps = [
-    started.length > 0 && terminalCompletions.length === started.length
-      ? "OSS lane terminal states are classified from public-safe remote bootstrap evidence; this still proves nested Mimetic setup rather than target product behavior."
+    appRunning.length > 0 && visualVisible.length > 0
+      ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; real Mimetic browser personas driving those apps are still the next adapter slice."
+      : appRunning.length > 0
+      ? "Target app surfaces responded over HTTP, but headed desktop browser-window visibility was not detected for every lane."
+      : started.length > 0 && terminalCompletions.length === started.length
+      ? "OSS lane terminal states are classified from public-safe remote bootstrap evidence, but target app HTTP readiness was not detected."
       : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
-      ? "Visible E2B bootstrap terminals are launched and run nested Mimetic setup; completion is watched in the desktop stream rather than polled back into the top-level bundle yet."
+      ? "Visible E2B bootstrap terminals are launched and run nested Mimetic setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
       : "Nested Mimetic Observer evidence is represented as a lane contract until Codex TUI injection and nested Mimetic execution land.",
+    "The nested Mimetic proof path is still a public-safe dry-run until live browser adapters can drive the target app with generated personas.",
     "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
-    "Only public GitHub owner/repo slugs are recorded."
+    "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default."
   ];
 
   if (args.liveRequested && args.missingKeys.length > 0) {
@@ -726,9 +814,9 @@ function createMetaReview(args: {
       : args.dryRun
       ? "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend."
       : terminalCompletions.length > 0
-        ? `OSS meta-lab launched live E2B desktop streams and classified ${terminalCompletions.length}/${started.length || terminalCompletions.length} bootstrap terminal state${terminalCompletions.length === 1 ? "" : "s"} from public-safe remote evidence.`
+        ? `OSS meta-lab launched live E2B desktop streams, classified ${terminalCompletions.length}/${started.length || terminalCompletions.length} bootstrap terminal state${terminalCompletions.length === 1 ? "" : "s"} from public-safe remote evidence, detected ${appRunning.length}/${terminalCompletions.length} target app HTTP-ready surface${terminalCompletions.length === 1 ? "" : "s"}, and detected ${visualVisible.length}/${terminalCompletions.length} headed desktop visual layout${terminalCompletions.length === 1 ? "" : "s"}.`
       : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
-        ? "OSS meta-lab launched live E2B desktop streams, injected visible bootstrap terminals, and started nested Mimetic setup inside each desktop."
+        ? "OSS meta-lab launched live E2B desktop streams, injected visible bootstrap terminals, and started target app plus nested Mimetic setup inside each desktop."
         : args.liveDesktops.some((desktop) => desktop.url)
           ? "OSS meta-lab launched live E2B desktop streams and rendered them in the top-level Observer."
         : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
@@ -794,10 +882,34 @@ function classifyMetaLabOutcome(args: {
     };
   }
 
+  const completedWithMissingApp = args.liveDesktops.filter((desktop) =>
+    desktop.completion?.status === "passed"
+    && desktop.completion.appStatus !== "running"
+  );
+  if (completedWithMissingApp.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab completed nested Mimetic setup but did not detect ${completedWithMissingApp.length}/${args.liveDesktops.length} target app HTTP-ready surface${completedWithMissingApp.length === 1 ? "" : "s"}.`,
+      verdict: "blocked"
+    };
+  }
+
+  const completedWithMissingVisual = args.liveDesktops.filter((desktop) =>
+    desktop.completion?.status === "passed"
+    && desktop.completion.visualStatus !== "visible"
+  );
+  if (completedWithMissingVisual.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab completed nested Mimetic setup but did not detect ${completedWithMissingVisual.length}/${args.liveDesktops.length} headed desktop visual layout${completedWithMissingVisual.length === 1 ? "" : "s"}.`,
+      verdict: "blocked"
+    };
+  }
+
   if (args.liveDesktops.length > 0 && args.liveDesktops.every((desktop) => desktop.completion?.status === "passed")) {
     return {
       ok: true,
-      reason: `OSS meta-lab passed ${args.liveDesktops.length}/${args.liveDesktops.length} bootstrap terminal states from public-safe remote evidence.`,
+      reason: `OSS meta-lab passed ${args.liveDesktops.length}/${args.liveDesktops.length} bootstrap terminal states with target app HTTP readiness and headed desktop visual layout detected from public-safe remote evidence.`,
       verdict: "pass"
     };
   }
@@ -817,9 +929,16 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
   const lines = [
     `Remote bootstrap ${liveDesktop.completion.status}: ${liveDesktop.completion.reason}`,
     `checked_at: ${liveDesktop.completion.checkedAt}`,
+    ...(liveDesktop.completion.appStatus === undefined ? [] : [`app_status: ${liveDesktop.completion.appStatus}`]),
+    ...(liveDesktop.completion.appUrl === undefined ? [] : [`app_url: ${liveDesktop.completion.appUrl}`]),
+    ...(liveDesktop.completion.appReason === undefined ? [] : [`app_reason: ${liveDesktop.completion.appReason}`]),
+    ...(liveDesktop.completion.actorStatus === undefined ? [] : [`actor_status: ${liveDesktop.completion.actorStatus}`]),
     ...(liveDesktop.completion.exitCode === undefined ? [] : [`exit_code: ${liveDesktop.completion.exitCode}`]),
     ...(liveDesktop.completion.nestedVerifyPassed === undefined ? [] : [`nested_verify_passed: ${liveDesktop.completion.nestedVerifyPassed ? "true" : "false"}`]),
     ...(liveDesktop.completion.nestedObserverPresent === undefined ? [] : [`nested_observer_present: ${liveDesktop.completion.nestedObserverPresent ? "true" : "false"}`]),
+    ...(liveDesktop.completion.visualStatus === undefined ? [] : [`visual_status: ${liveDesktop.completion.visualStatus}`]),
+    ...(liveDesktop.completion.visualWindowCount === undefined ? [] : [`visual_window_count: ${liveDesktop.completion.visualWindowCount}`]),
+    ...(liveDesktop.completion.visualReason === undefined ? [] : [`visual_reason: ${liveDesktop.completion.visualReason}`]),
     "",
     "public-safe log tail:",
     liveDesktop.completion.logTail?.trim() || "(no log tail captured)"
@@ -830,13 +949,24 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
 
 function completionForStream(completion: OssMetaLabCompletion): RunStreamCompletion {
   return {
+    ...(completion.actorLogPath === undefined ? {} : { actorLogPath: completion.actorLogPath }),
+    ...(completion.actorPid === undefined ? {} : { actorPid: completion.actorPid }),
+    ...(completion.actorStatus === undefined ? {} : { actorStatus: completion.actorStatus }),
+    ...(completion.appLogPath === undefined ? {} : { appLogPath: completion.appLogPath }),
+    ...(completion.appPid === undefined ? {} : { appPid: completion.appPid }),
+    ...(completion.appReason === undefined ? {} : { appReason: completion.appReason }),
+    ...(completion.appStatus === undefined ? {} : { appStatus: completion.appStatus }),
+    ...(completion.appUrl === undefined ? {} : { appUrl: completion.appUrl }),
     checkedAt: completion.checkedAt,
     ...(completion.exitCode === undefined ? {} : { exitCode: completion.exitCode }),
     ...(completion.logTail === undefined ? {} : { logTail: completion.logTail }),
     ...(completion.nestedObserverPresent === undefined ? {} : { nestedObserverPresent: completion.nestedObserverPresent }),
     ...(completion.nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed: completion.nestedVerifyPassed }),
     reason: completion.reason,
-    status: completion.status
+    status: completion.status,
+    ...(completion.visualReason === undefined ? {} : { visualReason: completion.visualReason }),
+    ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus }),
+    ...(completion.visualWindowCount === undefined ? {} : { visualWindowCount: completion.visualWindowCount })
   };
 }
 
@@ -851,25 +981,27 @@ function isTerminalCompletion(completion: OssMetaLabCompletion | undefined): boo
   return completion !== undefined && completion.status !== "running";
 }
 
-function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment): string {
+function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoName = false): string {
+  const repoLabel = redactRepoName ? "[redacted-authorized-repo]" : `https://github.com/${assignment.repo}.git`;
   return [
     `# Mimetic OSS Meta-Lab Actor ${assignment.index}`,
     "",
     "You are running inside a disposable headed E2B desktop with a visible terminal and browser.",
-    "Public-safety hard rails: use only public repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.",
+    "Public-safety hard rails: use only authorized repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.",
     "",
-    `Target repo: https://github.com/${assignment.repo}.git`,
+    `Target repo: ${repoLabel}`,
     "",
     "Mission:",
     "1. Clone the target repo into a clean disposable workspace.",
     "2. Inspect the package manager, dev scripts, README, and app shape.",
     "3. Get the repo into a local runnable dev mode if feasible.",
-    "4. Install Mimetic as a dev dependency with the package manager the repo already uses.",
-    "5. Run `npx mimetic init --yes` or the package-manager equivalent.",
-    "6. Author plausible public-safe Mimetic personas and scenarios for this repo.",
-    "7. Run the strongest Mimetic proof path the installed package supports, using provided OPENAI_API_KEY and E2B_API_KEY where live substrate is implemented.",
-    "8. Open the nested Mimetic Observer in the E2B browser and keep it visible.",
-    "9. Record public-safe blockers and evidence paths only.",
+    "4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.",
+    "5. Install Mimetic as a dev dependency with the package manager the repo already uses.",
+    "6. Run `npx mimetic init --yes` or the package-manager equivalent.",
+    "7. Author plausible public-safe Mimetic personas and desktop/mobile browser scenarios for this repo if feasible.",
+    "8. Run the strongest Mimetic proof path the installed package supports, using provided OPENAI_API_KEY and E2B_API_KEY where live substrate is implemented.",
+    "9. Open the nested Mimetic Observer in the E2B browser and keep it visible.",
+    "10. Record public-safe blockers and evidence paths only.",
     "",
     "Expected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
   ].join("\n");
@@ -901,10 +1033,11 @@ ${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
 
 async function launchLiveDesktops(
   assignments: OssMetaLabAssignment[],
-  options: { localPackage?: OssMetaLabLocalPackage } = {}
+  options: { localPackage?: OssMetaLabLocalPackage; redactRepoNames?: boolean } = {}
 ): Promise<OssMetaLabLiveDesktop[]> {
   const e2bApiKey = process.env.E2B_API_KEY;
   const openaiApiKey = process.env.OPENAI_API_KEY;
+  const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
   if (!e2bApiKey || !openaiApiKey) {
     return [];
   }
@@ -914,6 +1047,7 @@ async function launchLiveDesktops(
   const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
 
   return Promise.all(assignments.map(async (assignment) => {
+    const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
     try {
       const desktop = await desktopModule.Sandbox.create({
         apiKey: e2bApiKey,
@@ -922,11 +1056,12 @@ async function launchLiveDesktops(
         metadata: {
           tool: "mimetic-cli",
           mode: "oss-meta-lab",
-          repo: assignment.repo,
+          repo: repoLabel,
           simId: assignment.simId
         },
         envs: {
           E2B_API_KEY: e2bApiKey,
+          ...(githubToken ? { GH_TOKEN: githubToken, GITHUB_TOKEN: githubToken } : {}),
           OPENAI_API_KEY: openaiApiKey
         },
         resolution: [1440, 960],
@@ -935,7 +1070,10 @@ async function launchLiveDesktops(
           onTimeout: "kill"
         }
       });
-      const bootstrap = await startOssBootstrap(desktop, assignment, options.localPackage, requestTimeoutMs);
+      const bootstrap = await startOssBootstrap(desktop, assignment, options.localPackage, requestTimeoutMs, {
+        repoLabel,
+        token: options.redactRepoNames ? repoLabel : repoSlugToken(assignment.repo)
+      });
       await desktop.wait(750).catch(() => undefined);
       await desktop.stream.start({ requireAuth: true });
       const authKey = desktop.stream.getAuthKey();
@@ -949,7 +1087,7 @@ async function launchLiveDesktops(
       return {
         bootstrap,
         desktop,
-        repo: assignment.repo,
+        repo: repoLabel,
         sandboxId: desktop.sandboxId,
         simId: assignment.simId,
         streamId: assignment.streamId,
@@ -958,7 +1096,7 @@ async function launchLiveDesktops(
     } catch (error) {
       return {
         error: compactError(error),
-        repo: assignment.repo,
+        repo: repoLabel,
         simId: assignment.simId,
         streamId: assignment.streamId
       };
@@ -1081,6 +1219,12 @@ async function captureLiveDesktopScreenshots(
     }
 
     try {
+      await arrangeLiveDesktopForScreenshot(
+        desktop.desktop,
+        desktop.bootstrap?.terminalTitle,
+        readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000)
+      );
+      await desktop.desktop.wait(readPositiveInt(process.env.MIMETIC_OSS_META_SCREENSHOT_SETTLE_MS, 2_500)).catch(() => undefined);
       const bytes = await desktop.desktop.screenshot("bytes");
       const fileName = `${safeArtifactToken(desktop.streamId)}.png`;
       const screenshotPath = path.join(screenshotRoot, fileName);
@@ -1103,9 +1247,29 @@ async function captureLiveDesktopScreenshots(
   return { warnings };
 }
 
+async function arrangeLiveDesktopForScreenshot(
+  desktop: E2BDesktopSandbox,
+  terminalTitle: string | undefined,
+  requestTimeoutMs: number
+): Promise<void> {
+  const command = buildRemoteScreenshotArrangeCommand(terminalTitle);
+  await desktop.commands.run(`bash -lc ${shellQuote(command)}`, {
+    requestTimeoutMs,
+    timeoutMs: 15_000
+  }).catch(() => undefined);
+}
+
 function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
   try {
     const parsed = JSON.parse(payload) as {
+      actorLogPath?: unknown;
+      actorPid?: unknown;
+      actorStatus?: unknown;
+      appLogPath?: unknown;
+      appPid?: unknown;
+      appReason?: unknown;
+      appStatus?: unknown;
+      appUrl?: unknown;
       completedAt?: unknown;
       exitCode?: unknown;
       logTail?: unknown;
@@ -1113,6 +1277,9 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       nestedVerifyStatus?: unknown;
       reason?: unknown;
       status?: unknown;
+      visualReason?: unknown;
+      visualStatus?: unknown;
+      visualWindowCount?: unknown;
     };
     const status = normalizeCompletionStatus(parsed.status);
     if (!status) {
@@ -1122,8 +1289,19 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
     const nestedVerifyPassed = parsed.nestedVerifyStatus === "passed"
       ? true
       : parsed.nestedVerifyStatus === "failed" ? false : undefined;
+    const appStatus = normalizeAppStatus(parsed.appStatus);
+    const actorStatus = normalizeActorStatus(parsed.actorStatus);
+    const visualStatus = normalizeVisualStatus(parsed.visualStatus);
 
     return {
+      ...(typeof parsed.actorLogPath === "string" && parsed.actorLogPath.trim() ? { actorLogPath: sanitizeRemoteLog(parsed.actorLogPath) } : {}),
+      ...(typeof parsed.actorPid === "number" && Number.isFinite(parsed.actorPid) ? { actorPid: parsed.actorPid } : {}),
+      ...(actorStatus ? { actorStatus } : {}),
+      ...(typeof parsed.appLogPath === "string" && parsed.appLogPath.trim() ? { appLogPath: sanitizeRemoteLog(parsed.appLogPath) } : {}),
+      ...(typeof parsed.appPid === "number" && Number.isFinite(parsed.appPid) ? { appPid: parsed.appPid } : {}),
+      ...(typeof parsed.appReason === "string" && parsed.appReason.trim() ? { appReason: sanitizeRemoteLog(parsed.appReason).replace(/\s+/g, " ").slice(0, 240) } : {}),
+      ...(appStatus ? { appStatus } : {}),
+      ...(typeof parsed.appUrl === "string" && parsed.appUrl.trim() ? { appUrl: sanitizeRemoteLog(parsed.appUrl).replace(/\s+/g, " ").slice(0, 240) } : {}),
       checkedAt: typeof parsed.completedAt === "string" ? parsed.completedAt : new Date().toISOString(),
       ...(typeof parsed.exitCode === "number" ? { exitCode: parsed.exitCode } : {}),
       ...(typeof parsed.logTail === "string" ? { logTail: sanitizeRemoteLog(parsed.logTail) } : {}),
@@ -1132,11 +1310,47 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       reason: typeof parsed.reason === "string" && parsed.reason.trim()
         ? sanitizeRemoteLog(parsed.reason).replace(/\s+/g, " ").slice(0, 240)
         : defaultReasonForCompletion(status),
-      status
+      status,
+      ...(typeof parsed.visualReason === "string" && parsed.visualReason.trim() ? { visualReason: sanitizeRemoteLog(parsed.visualReason).replace(/\s+/g, " ").slice(0, 240) } : {}),
+      ...(visualStatus ? { visualStatus } : {}),
+      ...(typeof parsed.visualWindowCount === "number" && Number.isFinite(parsed.visualWindowCount) ? { visualWindowCount: parsed.visualWindowCount } : {})
     };
   } catch {
     return null;
   }
+}
+
+function normalizeAppStatus(value: unknown): OssMetaLabAppStatus | null {
+  return value === "not_started"
+    || value === "running"
+    || value === "blocked"
+    || value === "failed"
+    || value === "missing"
+    || value === "unknown"
+    ? value
+    : null;
+}
+
+function normalizeVisualStatus(value: unknown): OssMetaLabVisualStatus | null {
+  return value === "not_started"
+    || value === "visible"
+    || value === "blocked"
+    || value === "unknown"
+    ? value
+    : null;
+}
+
+function normalizeActorStatus(value: unknown): OssMetaLabActorStatus | null {
+  return value === "not_started"
+    || value === "running"
+    || value === "passed"
+    || value === "failed"
+    || value === "blocked"
+    || value === "timed_out"
+    || value === "suspended"
+    || value === "unknown"
+    ? value
+    : null;
 }
 
 function normalizeCompletionStatus(value: unknown): OssMetaLabCompletionStatus | null {
@@ -1199,9 +1413,13 @@ async function startOssBootstrap(
   desktop: E2BDesktopSandbox,
   assignment: OssMetaLabAssignment,
   localPackage: OssMetaLabLocalPackage | undefined,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
+  display: { repoLabel: string; token: string } = {
+    repoLabel: assignment.repo,
+    token: repoSlugToken(assignment.repo)
+  }
 ): Promise<OssMetaLabBootstrap> {
-  const token = repoSlugToken(assignment.repo);
+  const token = display.token;
   const rootDir = `/home/user/mimetic-oss-lab/${token}`;
   const remotePackagePath = `/tmp/${localPackage?.fileName ?? "mimetic-cli.tgz"}`;
   const bootstrapPath = `${rootDir}/bootstrap.sh`;
@@ -1209,9 +1427,9 @@ async function startOssBootstrap(
   const logPath = `${rootDir}/bootstrap.log`;
   const completionPath = `${rootDir}/completion.json`;
   const nestedObserverPath = `${rootDir}/repo/.mimetic/runs/nested-${token}/observer/index.html`;
-  const title = `Mimetic ${assignment.index} ${assignment.repo}`;
+  const title = `Mimetic ${assignment.index} ${display.repoLabel}`;
   const baseTail = [
-    `repo: ${assignment.repo}`,
+    `repo: ${display.repoLabel}`,
     `sandbox: ${desktop.sandboxId}`,
     `remote package: ${localPackage ? remotePackagePath : "npm:mimetic-cli fallback"}`,
     `bootstrap: ${bootstrapPath}`,
@@ -1237,6 +1455,7 @@ async function startOssBootstrap(
     const bootstrapScript = buildRemoteBootstrapScript({
       assignment,
       completionPath,
+      displayRepo: display.repoLabel,
       logPath,
       nestedObserverPath,
       rootDir,
@@ -1276,9 +1495,10 @@ async function startOssBootstrap(
       status: "started",
       tail: [
         "Visible E2B bootstrap terminal launched.",
-        "The terminal clones the public repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
+        "The terminal clones the authorized repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
         baseTail
-      ].join("\n")
+      ].join("\n"),
+      terminalTitle: title
     };
   } catch (error) {
     return {
@@ -1293,7 +1513,8 @@ async function startOssBootstrap(
         "Bootstrap launcher failed before the remote terminal could start.",
         baseTail,
         `error: ${compactError(error)}`
-      ].join("\n")
+      ].join("\n"),
+      terminalTitle: title
     };
   }
 }
@@ -1301,6 +1522,7 @@ async function startOssBootstrap(
 function buildRemoteBootstrapScript(args: {
   assignment: OssMetaLabAssignment;
   completionPath: string;
+  displayRepo: string;
   logPath: string;
   nestedObserverPath: string;
   remotePackagePath?: string;
@@ -1319,10 +1541,22 @@ LOG_PATH=${shellQuote(args.logPath)}
 COMPLETION_PATH=${shellQuote(args.completionPath)}
 NESTED_OBSERVER=${shellQuote(args.nestedObserverPath)}
 REMOTE_PACKAGE=${args.remotePackagePath ? shellQuote(args.remotePackagePath) : "''"}
+APP_LOG_PATH="$ROOT_DIR/app.log"
+ACTOR_LOG_PATH="$ROOT_DIR/actor.log"
+TERMINAL_TITLE=${shellQuote(`Mimetic ${args.assignment.index} ${args.displayRepo}`)}
 mkdir -p "$ROOT_DIR"
 touch "$LOG_PATH"
 exec > >(tee -a "$LOG_PATH") 2>&1
 NESTED_VERIFY_STATUS=not_run
+APP_STATUS=not_started
+APP_REASON="Target app startup has not started."
+APP_URL=""
+APP_PID=""
+ACTOR_STATUS=not_started
+ACTOR_PID=""
+VISUAL_STATUS=not_started
+VISUAL_REASON="Browser windows have not been arranged."
+VISUAL_WINDOW_COUNT=0
 
 write_completion() {
   local status="$1"
@@ -1333,7 +1567,7 @@ write_completion() {
     nested_observer_present=true
   fi
 
-  node - "$COMPLETION_PATH" "$LOG_PATH" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" <<'NODE' || true
+  node - "$COMPLETION_PATH" "$LOG_PATH" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" <<'NODE' || true
 const fs = require("node:fs");
 const [
   completionPath,
@@ -1342,7 +1576,18 @@ const [
   reason,
   exitCode,
   nestedObserverPresent,
-  nestedVerifyStatus
+  nestedVerifyStatus,
+  appStatus,
+  appReason,
+  appUrl,
+  appPid,
+  appLogPath,
+  actorStatus,
+  actorPid,
+  actorLogPath,
+  visualStatus,
+  visualReason,
+  visualWindowCount
 ] = process.argv.slice(2);
 const rawTail = fs.existsSync(logPath)
   ? fs.readFileSync(logPath, "utf8").split(/\\r?\\n/).slice(-80).join("\\n")
@@ -1351,13 +1596,32 @@ const redactedTail = rawTail
   .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted-openai-key]")
   .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
   .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]");
+const numberOrNull = (value) => /^\\d+$/.test(String(value || "")) ? Number(value) : null;
+const cleanText = (value) => String(value || "")
+  .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted-openai-key]")
+  .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
+  .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+  .replace(/\\s+/g, " ")
+  .trim()
+  .slice(0, 240);
 fs.writeFileSync(completionPath, JSON.stringify({
   schema: "mimetic.oss-meta-bootstrap-completion.v1",
   status,
   reason,
   exitCode: Number(exitCode),
+  appStatus,
+  appReason: cleanText(appReason),
+  appUrl: cleanText(appUrl),
+  appPid: numberOrNull(appPid),
+  appLogPath: cleanText(appLogPath),
+  actorStatus,
+  actorPid: numberOrNull(actorPid),
+  actorLogPath: cleanText(actorLogPath),
   nestedObserverPresent: nestedObserverPresent === "true",
   nestedVerifyStatus,
+  visualStatus,
+  visualReason: cleanText(visualReason),
+  visualWindowCount: numberOrNull(visualWindowCount),
   logTail: redactedTail,
   completedAt: new Date().toISOString()
 }, null, 2) + "\\n");
@@ -1367,19 +1631,26 @@ NODE
 finish() {
   local exit_code="$?"
   trap - EXIT
-  if [[ "$exit_code" -eq 0 ]]; then
-    write_completion "passed" "Nested Mimetic proof completed and nested Observer path was checked." "$exit_code"
-  else
+  if [[ "$exit_code" -ne 0 ]]; then
     write_completion "failed" "Bootstrap exited before nested Mimetic proof completed." "$exit_code"
+  elif [[ "$NESTED_VERIFY_STATUS" != "passed" ]]; then
+    write_completion "failed" "Nested Mimetic verification did not pass." "$exit_code"
+  elif [[ "$APP_STATUS" != "running" ]]; then
+    write_completion "blocked" "Nested Mimetic proof completed, but the target app surface was not proven running." "$exit_code"
+  elif [[ "$VISUAL_STATUS" != "visible" ]]; then
+    write_completion "blocked" "Nested Mimetic proof completed, but headed desktop visual layout was not proven visible." "$exit_code"
+  else
+    write_completion "passed" "Target app surface, nested Mimetic proof, and nested Observer were checked." "$exit_code"
   fi
   exit "$exit_code"
 }
 trap finish EXIT
 
 echo "== mimetic oss meta-lab bootstrap =="
-echo "repo=${args.assignment.repo}"
+echo "repo=${args.displayRepo}"
 echo "public_safe=1"
 echo "E2B_API_KEY=$([[ -n "\${E2B_API_KEY:-}" ]] && echo present || echo missing)"
+echo "GH_TOKEN=$([[ -n "\${GH_TOKEN:-}\${GITHUB_TOKEN:-}" ]] && echo present || echo missing)"
 echo "OPENAI_API_KEY=$([[ -n "\${OPENAI_API_KEY:-}" ]] && echo present || echo missing)"
 echo
 
@@ -1415,18 +1686,359 @@ ensure_node
 need node
 need npm
 
-run_tui() {
-  local status=0
-  if [[ -r /dev/tty && -w /dev/tty ]]; then
-    timeout 90s "$@" </dev/tty >/dev/tty 2>&1 || status=$?
+wait_for_http() {
+  local url="$1"
+  local timeout_ms="$2"
+  local interval_ms="$3"
+  node - "$url" "$timeout_ms" "$interval_ms" <<'NODE'
+const [url, timeoutArg, intervalArg] = process.argv.slice(2);
+const timeoutMs = Number(timeoutArg);
+const intervalMs = Number(intervalArg);
+const startedAt = Date.now();
+
+async function probe() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.min(intervalMs, 5_000));
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response.status < 500;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+while (Date.now() - startedAt <= timeoutMs) {
+  if (await probe()) process.exit(0);
+  await new Promise((resolve) => setTimeout(resolve, intervalMs));
+}
+process.exit(1);
+NODE
+}
+
+open_browser_url() {
+  local url="$1"
+  local profile="$2"
+  local x="$3"
+  local y="$4"
+  local width="$5"
+  local height="$6"
+  if command -v google-chrome >/dev/null 2>&1; then
+    nohup google-chrome --new-window --no-first-run --no-default-browser-check --disable-default-apps --user-data-dir="$ROOT_DIR/chrome-$profile" --window-position="$x,$y" --window-size="$width,$height" "$url" >/dev/null 2>&1 &
+  elif command -v firefox >/dev/null 2>&1; then
+    nohup firefox --width "$width" --height "$height" "$url" >/dev/null 2>&1 &
   else
-    timeout 90s "$@" || status=$?
+    echo "browser_open=skipped profile=$profile url=$url"
   fi
-  echo "codex_tui_exit=$status"
-  return 0
+}
+
+open_nested_observer() {
+  local label="$1"
+  echo
+  echo "== $label =="
+  if [[ -f "$NESTED_OBSERVER" ]]; then
+    open_browser_url "file://$NESTED_OBSERVER" nested-observer 760 0 680 940
+  else
+    echo "Nested observer missing: $NESTED_OBSERVER"
+  fi
+}
+
+arrange_lab_windows() {
+  echo
+  echo "== visual desktop layout =="
+  VISUAL_STATUS=unknown
+  VISUAL_REASON="Window manager proof was not collected."
+  VISUAL_WINDOW_COUNT=0
+  if ! command -v xdotool >/dev/null 2>&1; then
+    VISUAL_STATUS=unknown
+    VISUAL_REASON="xdotool is unavailable; cannot prove headed browser window visibility."
+    echo "visual_status=$VISUAL_STATUS reason=$VISUAL_REASON"
+    return 0
+  fi
+
+  local chrome_windows=()
+  local observer_window=""
+  for attempt in $(seq 1 40); do
+    mapfile -t chrome_windows < <(xdotool search --onlyvisible --class google-chrome 2>/dev/null || true)
+    observer_window="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
+    VISUAL_WINDOW_COUNT="\${#chrome_windows[@]}"
+    if [[ "$VISUAL_WINDOW_COUNT" -ge 2 && -n "$observer_window" ]]; then
+      break
+    fi
+    sleep 0.25
+  done
+
+  if [[ -n "$observer_window" ]]; then
+    xdotool windowsize "$observer_window" 680 933 >/dev/null 2>&1 || true
+    xdotool windowmove "$observer_window" 760 27 >/dev/null 2>&1 || true
+  fi
+
+  local slot=0
+  local win
+  for win in "\${chrome_windows[@]}"; do
+    if [[ -n "$observer_window" && "$win" == "$observer_window" ]]; then
+      continue
+    fi
+    if [[ "$slot" -eq 0 ]]; then
+      xdotool windowsize "$win" 760 493 >/dev/null 2>&1 || true
+      xdotool windowmove "$win" 0 27 >/dev/null 2>&1 || true
+    elif [[ "$slot" -eq 1 ]]; then
+      xdotool windowsize "$win" 430 420 >/dev/null 2>&1 || true
+      xdotool windowmove "$win" 0 520 >/dev/null 2>&1 || true
+    else
+      xdotool windowsize "$win" 330 420 >/dev/null 2>&1 || true
+      xdotool windowmove "$win" 430 520 >/dev/null 2>&1 || true
+    fi
+    slot=$((slot + 1))
+  done
+
+  local terminal_window
+  terminal_window="$(xdotool search --onlyvisible --name "$TERMINAL_TITLE" 2>/dev/null | head -n 1 || true)"
+  if [[ -n "$terminal_window" ]]; then
+    xdotool windowlower "$terminal_window" >/dev/null 2>&1 || xdotool windowminimize "$terminal_window" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$observer_window" ]]; then
+    xdotool windowactivate "$observer_window" >/dev/null 2>&1 || true
+  fi
+
+  mapfile -t chrome_windows < <(xdotool search --onlyvisible --class google-chrome 2>/dev/null || true)
+  VISUAL_WINDOW_COUNT="\${#chrome_windows[@]}"
+  if [[ "$VISUAL_WINDOW_COUNT" -ge 2 && -n "$observer_window" ]]; then
+    VISUAL_STATUS=visible
+    VISUAL_REASON="Detected $VISUAL_WINDOW_COUNT visible Chrome windows including nested Observer; app and Observer windows arranged for screenshot."
+  else
+    VISUAL_STATUS=blocked
+    VISUAL_REASON="Expected app and nested Observer browser windows, detected $VISUAL_WINDOW_COUNT visible Chrome window(s)."
+  fi
+  echo "visual_status=$VISUAL_STATUS window_count=$VISUAL_WINDOW_COUNT reason=$VISUAL_REASON"
+}
+
+detect_app_plan() {
+  node <<'NODE'
+const fs = require("node:fs");
+const shell = (value) => "'" + String(value).replace(/'/g, "'\\"'\\"'") + "'";
+const emit = (key, value) => console.log(key + "=" + shell(value));
+
+if (!fs.existsSync("package.json")) {
+  console.log("APP_PLAN_OK='0'");
+  emit("APP_PLAN_REASON", "package.json not found");
+  process.exit(0);
+}
+
+let pkg;
+try {
+  pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+} catch {
+  console.log("APP_PLAN_OK='0'");
+  emit("APP_PLAN_REASON", "package.json could not be parsed");
+  process.exit(0);
+}
+
+const scripts = pkg.scripts && typeof pkg.scripts === "object" ? pkg.scripts : {};
+const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+const names = ["dev", "start", "serve", "preview"];
+const entries = names
+  .map((name) => ({ name, command: typeof scripts[name] === "string" ? scripts[name].trim() : "" }))
+  .filter((entry) => entry.command && /^[A-Za-z0-9:_-]+$/.test(entry.name));
+
+if (!entries.length) {
+  console.log("APP_PLAN_OK='0'");
+  emit("APP_PLAN_REASON", "no dev/start/serve/preview script found");
+  process.exit(0);
+}
+
+const lockfiles = fs.readdirSync(".").filter((name) => /^(pnpm-lock\\.yaml|yarn\\.lock|bun\\.lockb?|package-lock\\.json|npm-shrinkwrap\\.json)$/.test(name));
+const packageManagerHint = typeof pkg.packageManager === "string" ? pkg.packageManager : "";
+let pm = "npm";
+if (packageManagerHint.startsWith("pnpm@") || lockfiles.includes("pnpm-lock.yaml")) pm = "pnpm";
+else if (packageManagerHint.startsWith("yarn@") || lockfiles.includes("yarn.lock")) pm = "yarn";
+else if (packageManagerHint.startsWith("bun@") || lockfiles.includes("bun.lock") || lockfiles.includes("bun.lockb")) pm = "bun";
+
+const pickByCommand = (pattern) => entries.find((entry) => pattern.test(entry.command));
+let picked = null;
+let framework = "generic";
+if ((picked = pickByCommand(/\\bnext\\s+(dev|start)\\b/)) || deps.next) framework = "next";
+if (!picked && (picked = pickByCommand(/\\bvite(\\s|$)/))) framework = "vite";
+if (!picked && deps.vite) { picked = entries.find((entry) => entry.name === "dev") || entries[0]; framework = "vite"; }
+if (!picked && deps.next) picked = entries.find((entry) => entry.name === "dev" || entry.name === "start") || entries[0];
+if (!picked && (picked = pickByCommand(/\\bastro\\s+dev\\b/))) framework = "vite";
+if (!picked) picked = entries.find((entry) => entry.name === "dev") || entries.find((entry) => entry.name === "start") || entries[0];
+
+const command = picked.command;
+const portFromCommand = /(?:^|\\s)(?:--port|-p)\\s+([0-9]{2,5})(?:\\s|$)/.exec(command)?.[1]
+  || /(?:^|\\s)PORT=([0-9]{2,5})(?:\\s|$)/.exec(command)?.[1];
+const defaultPort = framework === "vite" ? "5173" : "3000";
+
+console.log("APP_PLAN_OK='1'");
+emit("APP_PM", pm);
+emit("APP_SCRIPT", picked.name);
+emit("APP_FRAMEWORK", framework);
+emit("APP_PORT", portFromCommand || defaultPort);
+emit("APP_PLAN_REASON", "selected " + picked.name + " script for " + framework + " app startup");
+NODE
+}
+
+ensure_package_manager() {
+  local pm="$1"
+  mkdir -p "$ROOT_DIR/npm-global"
+  export NPM_CONFIG_PREFIX="$ROOT_DIR/npm-global"
+  export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
+  if command -v "$pm" >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v corepack >/dev/null 2>&1; then
+    corepack enable >/dev/null 2>&1 || true
+    if [[ "$pm" == "pnpm" ]]; then
+      corepack prepare pnpm@latest --activate >/dev/null 2>&1 || true
+    elif [[ "$pm" == "yarn" ]]; then
+      corepack prepare yarn@stable --activate >/dev/null 2>&1 || true
+    fi
+  fi
+  if command -v "$pm" >/dev/null 2>&1; then
+    return 0
+  fi
+  case "$pm" in
+    pnpm) npm i -g pnpm --no-audit --no-fund --prefix "$NPM_CONFIG_PREFIX" ;;
+    yarn) npm i -g yarn --no-audit --no-fund --prefix "$NPM_CONFIG_PREFIX" ;;
+    bun) npm i -g bun --no-audit --no-fund --prefix "$NPM_CONFIG_PREFIX" ;;
+    npm) command -v npm >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+
+install_project_dependencies() {
+  local pm="$1"
+  if [[ "$pm" == "pnpm" ]]; then
+    pnpm config set verify-deps-before-run false --location project >/dev/null 2>&1 || true
+    pnpm config set dangerously-allow-all-builds true --location project >/dev/null 2>&1 || true
+  fi
+  if [[ -d node_modules ]]; then
+    echo "dependencies=present"
+    return 0
+  fi
+  echo "dependencies=installing manager=$pm"
+  case "$pm" in
+    pnpm)
+      echo "pnpm_build_scripts=allowed disposable_e2b_lab=1"
+      if [[ -f pnpm-lock.yaml ]]; then pnpm install --frozen-lockfile --dangerously-allow-all-builds || pnpm install --dangerously-allow-all-builds; else pnpm install --dangerously-allow-all-builds; fi
+      ;;
+    yarn)
+      if [[ -f yarn.lock ]]; then yarn install --frozen-lockfile --ignore-scripts || yarn install --ignore-scripts; else yarn install --ignore-scripts; fi
+      ;;
+    bun)
+      bun install
+      ;;
+    npm)
+      if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then npm ci --ignore-scripts --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund; else npm install --ignore-scripts --no-audit --no-fund; fi
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+start_target_app_surface() {
+  echo
+  echo "== target app surface =="
+  local plan_output
+  plan_output="$(detect_app_plan)"
+  eval "$plan_output"
+  if [[ "\${APP_PLAN_OK:-0}" != "1" ]]; then
+    APP_STATUS=missing
+    APP_REASON="\${APP_PLAN_REASON:-no runnable app script detected}"
+    echo "app_status=$APP_STATUS reason=$APP_REASON"
+    return 0
+  fi
+
+  if ! ensure_package_manager "$APP_PM"; then
+    APP_STATUS=blocked
+    APP_REASON="package manager $APP_PM is unavailable"
+    echo "app_status=$APP_STATUS reason=$APP_REASON"
+    return 0
+  fi
+
+  if ! install_project_dependencies "$APP_PM"; then
+    APP_STATUS=blocked
+    APP_REASON="dependency install failed before app startup"
+    echo "app_status=$APP_STATUS reason=$APP_REASON"
+    return 0
+  fi
+
+  APP_URL="http://127.0.0.1:$APP_PORT"
+  local start_command
+  local command_prefix="HOST=0.0.0.0 PORT=$APP_PORT"
+  local script_arg_separator="--"
+  if [[ "$APP_PM" == "pnpm" ]]; then
+    command_prefix="PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false $command_prefix"
+    script_arg_separator=""
+  fi
+  case "$APP_FRAMEWORK" in
+    next)
+      start_command="$command_prefix $APP_PM run $APP_SCRIPT $script_arg_separator --hostname 0.0.0.0 --port $APP_PORT"
+      ;;
+    vite)
+      start_command="$command_prefix $APP_PM run $APP_SCRIPT $script_arg_separator --host 0.0.0.0 --port $APP_PORT"
+      ;;
+    *)
+      start_command="$command_prefix $APP_PM run $APP_SCRIPT"
+      ;;
+  esac
+
+  echo "app_plan=$APP_PLAN_REASON"
+  echo "app_url=$APP_URL"
+  echo "app_command=$start_command"
+  nohup bash -lc "$start_command" > "$APP_LOG_PATH" 2>&1 &
+  APP_PID=$!
+
+  if wait_for_http "$APP_URL" 120000 1000; then
+    APP_STATUS=running
+    APP_REASON="target app responded at $APP_URL"
+    open_browser_url "$APP_URL" app-desktop 0 0 760 520
+    open_browser_url "$APP_URL" app-compact 0 520 430 420
+  else
+    APP_STATUS=blocked
+    APP_REASON="target app did not become HTTP-ready at $APP_URL"
+    tail -n 40 "$APP_LOG_PATH" || true
+  fi
+  echo "app_status=$APP_STATUS reason=$APP_REASON pid=$APP_PID"
+}
+
+start_actor_attempt() {
+  echo
+  echo "== optional codex actor attempt =="
+  local actor_script="$ROOT_DIR/actor-run.sh"
+  cat > "$actor_script" <<ACTOR
+#!/usr/bin/env bash
+set +e
+APP_DIR="$APP_DIR"
+PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Do not print secrets, do not commit, do not push, and do not file issues.'
+if command -v codex >/dev/null 2>&1; then
+  timeout 240s codex --no-alt-screen -C "\\$APP_DIR" --sandbox danger-full-access --ask-for-approval never "\\$PROMPT"
+else
+  timeout 240s npx -y @openai/codex@latest --no-alt-screen -C "\\$APP_DIR" --sandbox danger-full-access --ask-for-approval never "\\$PROMPT"
+fi
+code=\\$?
+echo "actor_exit=\\$code"
+ACTOR
+  chmod +x "$actor_script"
+  nohup bash "$actor_script" > "$ACTOR_LOG_PATH" 2>&1 &
+  ACTOR_PID=$!
+  ACTOR_STATUS=running
+  echo "actor_status=$ACTOR_STATUS pid=$ACTOR_PID log=$ACTOR_LOG_PATH"
 }
 
 rm -rf "$APP_DIR"
+ASKPASS="$ROOT_DIR/git-askpass.sh"
+cat > "$ASKPASS" <<'ASKPASS'
+#!/usr/bin/env bash
+case "$1" in
+  *Username*) echo "x-access-token" ;;
+  *Password*) echo "\${GH_TOKEN:-\${GITHUB_TOKEN:-}}" ;;
+  *) echo "" ;;
+esac
+ASKPASS
+chmod 700 "$ASKPASS"
+export GIT_ASKPASS="$ASKPASS"
+export GIT_TERMINAL_PROMPT=0
 git clone --depth=1 ${shellQuote(repoUrl)} "$APP_DIR"
 cd "$APP_DIR"
 echo
@@ -1434,6 +2046,17 @@ echo "== repo fingerprint =="
 git rev-parse --short HEAD || true
 node --version || true
 npm --version || true
+
+echo
+echo "== mimetic skill discovery =="
+if npx -y skills add danielgwilson/mimetic-cli --skill mimetic-cli --list >/tmp/mimetic-skill-list.txt 2>&1; then
+  echo "skill_discovery=listed"
+elif npx -y skills add danielgwilson/mimetic-cli --skill mimetic-cli >/tmp/mimetic-skill-install.txt 2>&1; then
+  echo "skill_install=attempted"
+else
+  echo "skill_install=blocked"
+  tail -n 20 /tmp/mimetic-skill-list.txt /tmp/mimetic-skill-install.txt 2>/dev/null || true
+fi
 
 echo
 echo "== installing mimetic-cli =="
@@ -1457,31 +2080,16 @@ else
   exit 1
 fi
 npx mimetic watch --run latest --detach --no-open
-
-echo
-echo "== optional codex tui attempt =="
-if command -v codex >/dev/null 2>&1; then
-  run_tui codex --no-alt-screen -C "$APP_DIR" --sandbox danger-full-access --ask-for-approval never "You are a Mimetic OSS meta-lab actor. Inspect this public repo, inspect the Mimetic artifacts already generated here, and explain the best next persona/scenario work. Do not print secrets, do not commit, do not push, and do not file issues."
-else
-  run_tui npx -y @openai/codex@latest --no-alt-screen -C "$APP_DIR" --sandbox danger-full-access --ask-for-approval never "You are a Mimetic OSS meta-lab actor. Inspect this public repo, inspect the Mimetic artifacts already generated here, and explain the best next persona/scenario work. Do not print secrets, do not commit, do not push, and do not file issues."
-fi
-
-echo
-echo "== opening nested observer =="
-if [[ -f "$NESTED_OBSERVER" ]]; then
-  if command -v google-chrome >/dev/null 2>&1; then
-    nohup google-chrome --no-first-run --no-default-browser-check --disable-default-apps --user-data-dir="$ROOT_DIR/chrome-profile" "file://$NESTED_OBSERVER" >/dev/null 2>&1 &
-  elif command -v firefox >/dev/null 2>&1; then
-    nohup firefox "file://$NESTED_OBSERVER" >/dev/null 2>&1 &
-  else
-    echo "No browser command found. Nested observer is at: $NESTED_OBSERVER"
-  fi
-else
-  echo "Nested observer missing: $NESTED_OBSERVER"
-fi
+start_target_app_surface
+open_nested_observer "opening nested observer"
+arrange_lab_windows
+start_actor_attempt
 
 echo
 echo "== bootstrap complete =="
+echo "app_status=$APP_STATUS"
+echo "app_url=$APP_URL"
+echo "actor_status=$ACTOR_STATUS"
 echo "nested_observer=$NESTED_OBSERVER"
 `;
 }
@@ -1524,6 +2132,54 @@ for attempt in $(seq 1 20); do
   fi
   sleep 0.25
 done
+exit 0`;
+}
+
+function buildRemoteScreenshotArrangeCommand(terminalTitle: string | undefined): string {
+  return `TERMINAL_TITLE=${shellQuote(terminalTitle ?? "")}
+if ! command -v xdotool >/dev/null 2>&1; then
+  exit 0
+fi
+for attempt in $(seq 1 24); do
+  CHROME_COUNT="$(xdotool search --onlyvisible --class google-chrome 2>/dev/null | wc -l | tr -d ' ')"
+  OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
+  if [[ "$CHROME_COUNT" -ge 2 && -n "$OBSERVER_WINDOW" ]]; then
+    break
+  fi
+  sleep 0.25
+done
+OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
+if [[ -n "$OBSERVER_WINDOW" ]]; then
+  xdotool windowsize "$OBSERVER_WINDOW" 680 933 >/dev/null 2>&1 || true
+  xdotool windowmove "$OBSERVER_WINDOW" 760 27 >/dev/null 2>&1 || true
+fi
+slot=0
+while IFS= read -r win; do
+  [[ -z "$win" ]] && continue
+  if [[ -n "$OBSERVER_WINDOW" && "$win" == "$OBSERVER_WINDOW" ]]; then
+    continue
+  fi
+  if [[ "$slot" -eq 0 ]]; then
+    xdotool windowsize "$win" 760 493 >/dev/null 2>&1 || true
+    xdotool windowmove "$win" 0 27 >/dev/null 2>&1 || true
+  elif [[ "$slot" -eq 1 ]]; then
+    xdotool windowsize "$win" 430 420 >/dev/null 2>&1 || true
+    xdotool windowmove "$win" 0 520 >/dev/null 2>&1 || true
+  else
+    xdotool windowsize "$win" 330 420 >/dev/null 2>&1 || true
+    xdotool windowmove "$win" 430 520 >/dev/null 2>&1 || true
+  fi
+  slot=$((slot + 1))
+done < <(xdotool search --onlyvisible --class google-chrome 2>/dev/null || true)
+if [[ -n "$TERMINAL_TITLE" ]]; then
+  TERMINAL_WINDOW="$(xdotool search --onlyvisible --name "$TERMINAL_TITLE" 2>/dev/null | head -n 1 || true)"
+  if [[ -n "$TERMINAL_WINDOW" ]]; then
+    xdotool windowlower "$TERMINAL_WINDOW" >/dev/null 2>&1 || xdotool windowminimize "$TERMINAL_WINDOW" >/dev/null 2>&1 || true
+  fi
+fi
+if [[ -n "$OBSERVER_WINDOW" ]]; then
+  xdotool windowactivate "$OBSERVER_WINDOW" >/dev/null 2>&1 || true
+fi
 exit 0`;
 }
 
@@ -1586,13 +2242,17 @@ function shellQuote(value: string): string {
 
 function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop): OssMetaLabResult["sandboxes"][number] {
   return {
+    ...(desktop.completion?.actorStatus ? { actorStatus: desktop.completion.actorStatus } : {}),
+    ...(desktop.completion?.appStatus ? { appStatus: desktop.completion.appStatus } : {}),
     ...(desktop.bootstrap ? { bootstrapStatus: desktop.bootstrap.status } : {}),
     ...(desktop.completion ? { completionReason: desktop.completion.reason, completionStatus: desktop.completion.status } : {}),
     repo: desktop.repo,
     ...(desktop.screenshot ? { screenshotPresent: true } : {}),
     ...(desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
     streamId: desktop.streamId,
-    urlPresent: Boolean(desktop.url)
+    urlPresent: Boolean(desktop.url),
+    ...(desktop.completion?.visualStatus ? { visualStatus: desktop.completion.visualStatus } : {}),
+    ...(desktop.completion?.visualWindowCount === undefined ? {} : { visualWindowCount: desktop.completion.visualWindowCount })
   };
 }
 
@@ -1638,6 +2298,22 @@ function makeMetaRunId(): string {
 
 function repoSlugToken(repo: string): string {
   return repo.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function repoArtifactLabel(assignment: OssMetaLabAssignment): string {
+  return `repo-${String(assignment.index).padStart(2, "0")}`;
+}
+
+function redactAssignments(assignments: OssMetaLabAssignment[], redactRepoNames: boolean): OssMetaLabAssignment[] {
+  if (!redactRepoNames) {
+    return assignments;
+  }
+
+  return assignments.map((assignment) => ({
+    ...assignment,
+    repo: repoArtifactLabel(assignment),
+    scenarioId: `oss-meta-${repoArtifactLabel(assignment)}`
+  }));
 }
 
 function safeArtifactToken(value: string): string {
