@@ -12,6 +12,7 @@ import {
   normalizeOssRepoSlugs,
   validateOssRepoSlug
 } from "./oss-lab.js";
+import { redactOssRemoteTelemetryText } from "./oss-remote-telemetry.js";
 import {
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
@@ -48,6 +49,7 @@ export interface OssMetaLabAssignment {
 }
 
 interface OssMetaLabLiveDesktop {
+  actorEvidence?: OssMetaLabActorEvidenceArtifacts;
   bootstrap?: OssMetaLabBootstrap;
   completion?: OssMetaLabCompletion;
   desktop?: E2BDesktopSandbox;
@@ -60,6 +62,11 @@ interface OssMetaLabLiveDesktop {
   simId: string;
   streamId: string;
   url?: string;
+}
+
+interface OssMetaLabActorEvidenceArtifacts {
+  actorLastMessageTailPath?: string;
+  actorLogTailPath?: string;
 }
 
 interface OssMetaLabBootstrap {
@@ -81,6 +88,8 @@ export type OssMetaLabVisualStatus = "not_started" | "visible" | "blocked" | "un
 
 export interface OssMetaLabCompletion {
   actorLogPath?: string;
+  actorLogTail?: string;
+  actorLastMessageTail?: string;
   actorPid?: number;
   actorStatus?: OssMetaLabActorStatus;
   appLogPath?: string;
@@ -939,6 +948,8 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   await mkdir(artifactRoot, { recursive: true });
   const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops);
   warnings.push(...screenshotSummary.warnings);
+  const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops);
+  warnings.push(...actorEvidenceSummary.warnings);
   const bundle = buildMetaBundle({
     assignments,
     createdAt,
@@ -1013,6 +1024,7 @@ export function buildOssMetaBundleFixture(args: {
   cwd: string;
   dryRun: boolean;
   lanes: Array<{
+    actorEvidence?: OssMetaLabActorEvidenceArtifacts;
     bootstrap?: OssMetaLabBootstrap;
     completion?: OssMetaLabCompletion;
     error?: string;
@@ -1044,20 +1056,20 @@ export function buildOssMetaBundleFixture(args: {
 }
 
 export function buildOssMetaBootstrapScriptFixture(): string {
-  const [assignment] = buildOssRepoAssignments(["developit/mitt"], 1);
+  const [assignment] = buildOssRepoAssignments(["maciekt07/TodoApp"], 1);
   if (!assignment) {
     throw new Error("Missing OSS meta-lab fixture assignment.");
   }
 
   return buildRemoteBootstrapScript({
     assignment,
-    completionPath: "/home/user/mimetic-oss-lab/developit-mitt/completion.json",
-    displayRepo: "developit/mitt",
-    logPath: "/home/user/mimetic-oss-lab/developit-mitt/bootstrap.log",
-    nestedObserverPath: "/home/user/mimetic-oss-lab/developit-mitt/repo/.mimetic/runs/nested-developit-mitt/observer/index.html",
-    remoteHostActorPlanPath: "/home/user/mimetic-oss-lab/developit-mitt/host-actor-plan.json",
-    rootDir: "/home/user/mimetic-oss-lab/developit-mitt",
-    token: "developit-mitt"
+    completionPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/completion.json",
+    displayRepo: "maciekt07/TodoApp",
+    logPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/bootstrap.log",
+    nestedObserverPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/repo/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html",
+    remoteHostActorPlanPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/host-actor-plan.json",
+    rootDir: "/home/user/mimetic-oss-lab/maciekt07-todoapp",
+    token: "maciekt07-todoapp"
   });
 }
 
@@ -1165,6 +1177,8 @@ function buildMetaBundle(args: {
         { label: "events", path: "events.ndjson", kind: "events" },
         ...(completion?.appLogPath ? [{ label: "remote app log", path: completion.appLogPath, kind: "log" as const }] : []),
         ...(completion?.actorLogPath ? [{ label: "remote actor log", path: completion.actorLogPath, kind: "log" as const }] : []),
+        ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath ? [{ label: "actor last-message tail", path: liveDesktop.actorEvidence.actorLastMessageTailPath, kind: "log" as const }] : []),
+        ...(liveDesktop?.actorEvidence?.actorLogTailPath ? [{ label: "actor log tail", path: liveDesktop.actorEvidence.actorLogTailPath, kind: "log" as const }] : []),
         ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
         ...(liveDesktop?.bootstrap?.logPath ? [{ label: "remote bootstrap log", path: liveDesktop.bootstrap.logPath, kind: "log" as const }] : []),
         ...(liveDesktop?.bootstrap?.nestedObserverPath ? [{ label: "nested observer path", path: liveDesktop.bootstrap.nestedObserverPath, kind: "observer" as const }] : []),
@@ -1429,7 +1443,9 @@ function createMetaReview(args: {
   );
   const outcome = classifyMetaLabOutcome(args);
   const gaps = [
-    appRunning.length > 0 && visualVisible.length > 0
+    nestedLiveProof && appRunning.length > 0 && visualVisible.length > 0
+      ? "Target app browser surfaces, nested Observer windows, and nested Mimetic live app-url proof are visible inside headed desktops."
+      : appRunning.length > 0 && visualVisible.length > 0
       ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; real Mimetic browser personas driving those apps are still the next adapter slice."
       : appRunning.length > 0
       ? "Target app surfaces responded over HTTP, but headed desktop browser-window visibility was not detected for every lane."
@@ -1586,7 +1602,13 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
     ...(liveDesktop.completion.visualWindowCount === undefined ? [] : [`visual_window_count: ${liveDesktop.completion.visualWindowCount}`]),
     ...(liveDesktop.completion.visualReason === undefined ? [] : [`visual_reason: ${liveDesktop.completion.visualReason}`]),
     "",
-    "public-safe log tail:",
+    "public-safe actor last message tail:",
+    liveDesktop.completion.actorLastMessageTail?.trim() || "(no actor last-message captured)",
+    "",
+    "public-safe actor log tail:",
+    liveDesktop.completion.actorLogTail?.trim() || "(no actor log tail captured)",
+    "",
+    "public-safe bootstrap log tail:",
     liveDesktop.completion.logTail?.trim() || "(no log tail captured)"
   ];
 
@@ -1596,6 +1618,8 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
 function completionForStream(completion: OssMetaLabCompletion): RunStreamCompletion {
   return {
     ...(completion.actorLogPath === undefined ? {} : { actorLogPath: completion.actorLogPath }),
+    ...(completion.actorLogTail === undefined ? {} : { actorLogTail: completion.actorLogTail }),
+    ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: completion.actorLastMessageTail }),
     ...(completion.actorPid === undefined ? {} : { actorPid: completion.actorPid }),
     ...(completion.actorStatus === undefined ? {} : { actorStatus: completion.actorStatus }),
     ...(completion.appLogPath === undefined ? {} : { appLogPath: completion.appLogPath }),
@@ -1934,6 +1958,69 @@ async function captureLiveDesktopScreenshots(
   return { warnings };
 }
 
+async function writeActorEvidenceArtifacts(
+  artifactRoot: string,
+  liveDesktops: OssMetaLabLiveDesktop[]
+): Promise<{ warnings: string[] }> {
+  const candidates = liveDesktops.filter((desktop) =>
+    desktop.completion?.actorLastMessageTail || desktop.completion?.actorLogTail
+  );
+  if (candidates.length === 0) {
+    return { warnings: [] };
+  }
+
+  const actorEvidenceRoot = path.join(artifactRoot, "actor-evidence");
+  await mkdir(actorEvidenceRoot, { recursive: true });
+  let written = 0;
+
+  for (const desktop of candidates) {
+    const baseName = safeArtifactToken(desktop.streamId);
+    const actorEvidence: OssMetaLabActorEvidenceArtifacts = {};
+
+    if (desktop.completion?.actorLastMessageTail) {
+      const relativePath = path.join("actor-evidence", `${baseName}-actor-last-message-tail.txt`);
+      await writeFile(
+        path.join(artifactRoot, relativePath),
+        renderPublicSafeActorEvidenceText("actor-last-message", desktop.streamId, desktop.completion.actorLastMessageTail),
+        "utf8"
+      );
+      actorEvidence.actorLastMessageTailPath = relativePath;
+      written += 1;
+    }
+
+    if (desktop.completion?.actorLogTail) {
+      const relativePath = path.join("actor-evidence", `${baseName}-actor-log-tail.txt`);
+      await writeFile(
+        path.join(artifactRoot, relativePath),
+        renderPublicSafeActorEvidenceText("actor-log", desktop.streamId, desktop.completion.actorLogTail),
+        "utf8"
+      );
+      actorEvidence.actorLogTailPath = relativePath;
+      written += 1;
+    }
+
+    desktop.actorEvidence = actorEvidence;
+  }
+
+  return {
+    warnings: [
+      `Persisted ${written} public-safe local actor evidence artifact${written === 1 ? "" : "s"}.`
+    ]
+  };
+}
+
+function renderPublicSafeActorEvidenceText(kind: string, streamId: string, text: string): string {
+  const sanitized = sanitizeRemoteLog(text);
+  return [
+    `schema: mimetic.oss-meta-actor-evidence.v1`,
+    `kind: ${kind}`,
+    `stream: ${streamId}`,
+    `redaction: passed`,
+    "",
+    sanitized || "(no actor evidence captured)"
+  ].join("\n").trimEnd() + "\n";
+}
+
 async function arrangeLiveDesktopForScreenshot(
   desktop: E2BDesktopSandbox,
   terminalTitle: string | undefined,
@@ -1950,6 +2037,8 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
   try {
     const parsed = JSON.parse(payload) as {
       actorLogPath?: unknown;
+      actorLogTail?: unknown;
+      actorLastMessageTail?: unknown;
       actorPid?: unknown;
       actorStatus?: unknown;
       appLogPath?: unknown;
@@ -1982,6 +2071,8 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
 
     return {
       ...(typeof parsed.actorLogPath === "string" && parsed.actorLogPath.trim() ? { actorLogPath: sanitizeRemoteLog(parsed.actorLogPath) } : {}),
+      ...(typeof parsed.actorLogTail === "string" && parsed.actorLogTail.trim() ? { actorLogTail: sanitizeRemoteLog(parsed.actorLogTail) } : {}),
+      ...(typeof parsed.actorLastMessageTail === "string" && parsed.actorLastMessageTail.trim() ? { actorLastMessageTail: sanitizeRemoteLog(parsed.actorLastMessageTail) } : {}),
       ...(typeof parsed.actorPid === "number" && Number.isFinite(parsed.actorPid) ? { actorPid: parsed.actorPid } : {}),
       ...(actorStatus ? { actorStatus } : {}),
       ...(typeof parsed.appLogPath === "string" && parsed.appLogPath.trim() ? { appLogPath: sanitizeRemoteLog(parsed.appLogPath) } : {}),
@@ -2066,11 +2157,7 @@ function defaultReasonForCompletion(status: OssMetaLabCompletionStatus): string 
 }
 
 function sanitizeRemoteLog(value: string): string {
-  return value
-    .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
-    .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
-    .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
-    .replace(/https?:\/\/[^/\s]*e2b[^)\s]+/gi, "[redacted-e2b-url]")
+  return redactOssRemoteTelemetryText(value)
     .split(/\r?\n/)
     .slice(-80)
     .join("\n")
@@ -2244,6 +2331,7 @@ REMOTE_PACKAGE=${args.remotePackagePath ? shellQuote(args.remotePackagePath) : "
 HOST_ACTOR_PLAN=${args.remoteHostActorPlanPath ? shellQuote(args.remoteHostActorPlanPath) : "''"}
 APP_LOG_PATH="$ROOT_DIR/app.log"
 ACTOR_LOG_PATH="$ROOT_DIR/actor.log"
+ACTOR_LAST_MESSAGE_PATH="$ROOT_DIR/actor-last-message.txt"
 TERMINAL_TITLE=${shellQuote(`Mimetic ${args.assignment.index} ${args.displayRepo}`)}
 mkdir -p "$ROOT_DIR"
 touch "$LOG_PATH"
@@ -2268,7 +2356,7 @@ write_completion() {
     nested_observer_present=true
   fi
 
-  node - "$COMPLETION_PATH" "$LOG_PATH" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" <<'NODE' || true
+  node - "$COMPLETION_PATH" "$LOG_PATH" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" <<'NODE' || true
 const fs = require("node:fs");
 const [
   completionPath,
@@ -2286,22 +2374,25 @@ const [
   actorStatus,
   actorPid,
   actorLogPath,
+  actorLastMessagePath,
   visualStatus,
   visualReason,
   visualWindowCount
 ] = process.argv.slice(2);
-const rawTail = fs.existsSync(logPath)
-  ? fs.readFileSync(logPath, "utf8").split(/\\r?\\n/).slice(-80).join("\\n")
+const tailFile = (filePath, lines = 80) => fs.existsSync(filePath)
+  ? fs.readFileSync(filePath, "utf8").split(/\\r?\\n/).slice(-lines).join("\\n")
   : "";
-const redactedTail = rawTail
-  .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
+const redactText = (value) => String(value || "")
+  .replace(/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
   .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
-  .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]");
+  .replace(/(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,})/g, "[redacted-github-token]")
+  .replace(/\\bBearer\\s+[A-Za-z0-9._~+/=-]{12,}\\b/gi, "Bearer [redacted-token]")
+  .replace(/https?:\\/\\/[^/\\s]*e2b[^)\\s]+/gi, "[redacted-e2b-url]");
+const redactedTail = redactText(tailFile(logPath, 80));
+const actorLogTail = redactText(tailFile(actorLogPath, 80));
+const actorLastMessageTail = redactText(tailFile(actorLastMessagePath, 40));
 const numberOrNull = (value) => /^\\d+$/.test(String(value || "")) ? Number(value) : null;
-const cleanText = (value) => String(value || "")
-  .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
-  .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
-  .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+const cleanText = (value) => redactText(value)
   .replace(/\\s+/g, " ")
   .trim()
   .slice(0, 240);
@@ -2318,6 +2409,8 @@ fs.writeFileSync(completionPath, JSON.stringify({
   actorStatus,
   actorPid: numberOrNull(actorPid),
   actorLogPath: cleanText(actorLogPath),
+  actorLogTail,
+  actorLastMessageTail,
   nestedObserverPresent: nestedObserverPresent === "true",
   nestedVerifyStatus,
   visualStatus,
@@ -2877,24 +2970,26 @@ start_actor_attempt() {
 set +e
 APP_DIR="$APP_DIR"
 if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
-  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Inspect package.json, README, scripts, and the app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Start the local app if feasible, then run the strongest Mimetic proof available; prefer npx mimetic run --app-url <loopback-url> --sims 2 when the app is running. Render or open the nested Mimetic Observer if feasible. Do not print secrets, do not commit, do not push, and do not file issues.'
+  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Inspect package.json, README, scripts, and the app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Start the local app if feasible, then run the strongest Mimetic proof available; prefer npx mimetic run --app-url <loopback-url> --sims 2 when the app is running. Render or open the nested Mimetic Observer if feasible. Once the nested Observer proof is rendered or blocked with evidence, write a concise final summary and exit successfully. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
 else
-  PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Do not print secrets, do not commit, do not push, and do not file issues.'
+  PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Once the draft is written, exit successfully. Do not wait on long-running watchers. Do not print secrets, do not commit, do not push, and do not file issues.'
 fi
 printf -v app_dir_q '%q' "\\$APP_DIR"
 printf -v prompt_q '%q' "\\$PROMPT"
-printf -v actor_message_q '%q' "$ROOT_DIR/actor-last-message.txt"
+printf -v actor_message_q '%q' "$ACTOR_LAST_MESSAGE_PATH"
 ACTOR_MODEL="\${MIMETIC_OSS_META_ACTOR_MODEL:-gpt-5.4-mini}"
+ACTOR_TIMEOUT_MS="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+ACTOR_TIMEOUT_SECONDS=\\$(( (ACTOR_TIMEOUT_MS + 999) / 1000 ))
 printf -v actor_model_q '%q' "\\$ACTOR_MODEL"
 CODEX_COMMAND="npx -y @openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check -m \\$actor_model_q -C \\$app_dir_q --dangerously-bypass-approvals-and-sandbox --output-last-message \\$actor_message_q \\$prompt_q"
 if [[ -n "\${MIMETIC_PRIVATE_CODEX_API_KEY:-}" && -n "\${MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
-  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout 240s bash -lc "\\$CODEX_COMMAND"
+  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
 elif [[ -n "\${MIMETIC_PRIVATE_CODEX_API_KEY:-}" ]]; then
-  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" timeout 240s bash -lc "\\$CODEX_COMMAND"
+  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
 elif [[ -n "\${MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
-  CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout 240s bash -lc "\\$CODEX_COMMAND"
+  CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
 else
-  timeout 240s bash -lc "\\$CODEX_COMMAND"
+  timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
 fi
 code=\\$?
 echo "actor_exit=\\$code"

@@ -13,13 +13,13 @@ tasks:
     summary: "Remote E2B bootstrap now runs nested app URL proof when the target app is running."
   - id: "live-proof"
     status: "completed"
-    summary: "Ran bounded headed public OSS lab against reduxjs/redux-essentials-example-app with one desktop lane in the final proof run."
+    summary: "Ran bounded headed public OSS lab against maciekt07/TodoApp with one desktop lane in the final app-target proof run."
   - id: "independent-audit"
     status: "completed"
     summary: "Independent audit found real recursive proof evidence and surfaced package/profile/verifier/provider-cleanup/mode-label issues; each issue was fixed or reclassified under the corrected spend policy."
   - id: "agent-authored-proof"
     status: "completed"
-    summary: "Actor-required resumed live run proved remote coding-agent actorStatus passed while app/nested Observer proof also passed."
+    summary: "Actor-required app-target live run proved remote coding-agent actorStatus passed, persisted actor evidence artifacts, and passed app/nested Observer proof."
 receipts:
   - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/implementation-proof.md"
     status: "completed"
@@ -33,10 +33,12 @@ receipts:
     status: "completed"
   - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
     status: "completed"
+  - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-evidence-app-target-success.md"
+    status: "completed"
 verification:
   status: "goal_proven"
-  last_command: "pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json"
-  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
+  last_command: "pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json"
+  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-evidence-app-target-success.md"
 evidence:
   environment_state:
     - "Focused tests for run --app-url and OSS meta-lab bootstrap must pass."
@@ -82,6 +84,10 @@ evidence:
     - "pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json passed schema, redaction, review-artifact, public-safety, and local-evidence checks."
     - "Visual screenshot inspection confirmed headed Redux Essentials app windows plus nested Mimetic Observer showing desktop/mobile browser lanes."
     - "Provider cleanup killed sandbox i39ry62lz2j5a1h12nkx1 and read back zero running Mimetic OSS meta-lab sandboxes."
+    - "App-target live run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z passed against maciekt07/TodoApp: actorStatus passed, appStatus running, nestedVerifyPassed true, nestedObserverPresent true, visualStatus visible, visualWindowCount 3, and screenshotPresent true."
+    - "The app-target run persisted two public-safe actor evidence logs under actor-evidence/ and verify checked those local log artifacts exist."
+    - "Visual screenshot inspection confirmed headed Todo app desktop/mobile windows plus nested Mimetic Observer showing desktop/mobile browser lanes."
+    - "Provider cleanup killed sandbox iw1at2jb0bh3b5bdkvq35 and read back zero running Mimetic OSS meta-lab sandboxes."
   screenshots_or_traces:
     - ".mimetic/runs/local-browser-app-proof-clean/screenshots/desktop.png"
     - ".mimetic/runs/local-browser-app-proof-clean/screenshots/mobile.png"
@@ -91,13 +97,19 @@ evidence:
     - ".mimetic/runs/oss-meta-2026-06-04T08-33-55-996Z-8854989a/observer/index.html"
     - ".mimetic/runs/oss-meta-actor-required-resume-2026-06-04T11-03Z/screenshots/oss-01-desktop.png"
     - ".mimetic/runs/oss-meta-actor-required-resume-2026-06-04T11-03Z/observer/index.html"
+    - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/screenshots/oss-01-desktop.png"
+    - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/observer/index.html"
+    - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/actor-evidence/oss-01-desktop-actor-last-message-tail.txt"
+    - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/actor-evidence/oss-01-desktop-actor-log-tail.txt"
   usage_receipts:
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/live-run.md"
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
+    - "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-evidence-app-target-success.md"
   missing:
     - "Exact provider dollar usage was not available from the CLI; receipt records bounded commands and observed launch attempts."
     - "Historical debug attempts exceeded the old arbitrary total run-count cap; this is no longer treated as a completion blocker because the corrected policy uses dollar budget, wall-clock budget, max-concurrent running desktops, and provider cleanup/readback."
+    - "The published npm 0.1.4 path used by the remote actor did not yet expose the branch app-url proof path; the actor used public npm watch while deterministic bootstrap used the locally packed branch package for nested live app-url proof."
     - "This proves one public-safe recursive critical-point lane; broader platform readiness, repeated-run reliability, and multi-step autonomous persona navigation remain future adapter slices."
 completion_audit:
   status: "complete"
-  note: "One public-safe headed OSS lab lane now maps every active success invariant to current command, disk, browser, Observer, verifier, screenshot, and cleanup evidence."
+  note: "One public-safe headed OSS lab lane against a user-facing app/tool target now maps every active success invariant to current command, disk, browser, Observer, verifier, screenshot, actor-evidence, and cleanup evidence."

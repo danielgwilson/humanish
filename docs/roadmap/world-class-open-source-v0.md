@@ -236,6 +236,9 @@ Each lane is assigned a GitHub `owner/repo` slug from `--repos` or repeated
 `--repo` values and carries a headed E2B desktop for setting up Mimetic inside
 that repo, starting the target app where feasible, and keeping the nested
 Observer visible.
+Default public targets should be apps, CLIs, or agent-facing tools with
+observable user surfaces. Frameworks, starters, and utility libraries are
+acceptable only when the explicit scenario is developer-experience testing.
 When live keys are present, Mimetic launches E2B desktops, uploads the locally
 packed Mimetic package, starts visible bootstrap terminals, clones each assigned
 repo inside the desktop, runs nested Mimetic setup/proof commands, opens
@@ -254,14 +257,14 @@ verify it, record git-status evidence, write an ignored
 Proof:
 
 ```bash
-pnpm mimetic -- lab oss --detach --open --repos developit/mitt,lukeed/clsx
-pnpm mimetic -- lab oss --dry-run --json --no-open --repos developit/mitt,lukeed/clsx
+pnpm mimetic -- lab oss --detach --open --repos CorentinTh/it-tools,drawdb-io/drawdb
+pnpm mimetic -- lab oss --dry-run --json --no-open --repos CorentinTh/it-tools,drawdb-io/drawdb
 pnpm mimetic -- lab oss-smoke --limit 1 --json
 ```
 
-Next substrate work: replace nested dry-runs with provider-backed browser
-personas that drive the target app and add richer process telemetry for
-nonblocking Codex actor health.
+Next substrate work: upgrade nested app-url render proof into provider-backed
+browser personas that drive the target app and add richer process/filesystem
+telemetry for Codex actor health.
 
 ## Stage 7: Local Browser And First Real Adapter
 

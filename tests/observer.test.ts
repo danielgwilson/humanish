@@ -171,18 +171,18 @@ describe("observer rendering", () => {
           simId: "sim-01",
           kind: "browser",
           kindLabel: "Browser",
-          label: "developit/mitt desktop",
+          label: "CorentinTh/it-tools desktop",
           status: "running",
           statusLabel: "Running",
           transport: "sse",
           updatedAt: "2026-06-03T12:00:05.000Z",
-          url: "https://stream.example/developit-mitt",
-          embed: { kind: "iframe", url: "https://stream.example/developit-mitt" },
+          url: "https://stream.example/it-tools",
+          embed: { kind: "iframe", url: "https://stream.example/it-tools" },
           viewport: { width: 1440, height: 900 },
           ui: {
-            appUrl: "https://app.example/developit-mitt",
+            appUrl: "https://app.example/it-tools",
             nestedObserverUrl: "https://observer.example/nested/index.html",
-            route: "e2b://desktop/developit-mitt",
+            route: "e2b://desktop/it-tools",
             screenshotUrl: "../screenshots/oss-01-desktop.png",
             state: "bootstrap terminal launched"
           },
@@ -190,7 +190,7 @@ describe("observer rendering", () => {
             format: "plain",
             stdin: "sent",
             tail: terminalTail,
-            title: "Codex TUI bootstrap - developit/mitt"
+            title: "Codex TUI bootstrap - CorentinTh/it-tools"
           },
           terminalPlain: terminalTail,
           completion: {
@@ -224,7 +224,7 @@ describe("observer rendering", () => {
       ]
     });
 
-    expect(client.html()).toContain('src="https://stream.example/developit-mitt"');
+    expect(client.html()).toContain('src="https://stream.example/it-tools"');
     expect(client.html()).toContain('data-kind="app"');
     expect(client.html()).toContain('data-kind="observer"');
     expect(client.html()).toContain('data-kind="completion"');

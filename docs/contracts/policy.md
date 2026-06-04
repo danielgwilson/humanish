@@ -73,6 +73,7 @@ for credentials.
 | `no_network` | No external network calls. | contract docs, local unit tests |
 | `local_only` | Localhost and loopback only. | Observer, local fixtures |
 | `public_oss` | Public GitHub clone/fetch of owner/repo slugs only. | disposable OSS smoke |
+| `authorized_private` | Token-backed clone/fetch of repos the maintainer is already authorized to access, with repo labels redacted by default. | local maintainer dogfood only |
 | `provider_substrate` | Explicit provider substrate such as hosted desktop streams. | live OSS lab with keys |
 | `custom_allowlist` | Adapter-declared public hosts. | target-specific adapters |
 
@@ -85,13 +86,19 @@ mode: public_oss
 allowedHosts:
   - github.com
 allowedRepoSlugs:
-  - developit/mitt
+  - CorentinTh/it-tools
+  - drawdb-io/drawdb
 denied:
   - private remotes
   - SSH remotes
   - auth-bearing URLs
   - target repo mutation
 ```
+
+Private maintainer dogfood must use `authorized_private` plus a redaction gate.
+The repo name, screenshots, logs, source snippets, branch names, issue names,
+and stream URLs remain local-only. Public receipts may include only redacted
+labels, ignored artifact paths, and verifier status.
 
 ## Spend Policy
 

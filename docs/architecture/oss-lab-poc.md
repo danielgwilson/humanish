@@ -27,8 +27,8 @@ Main operator path:
 
 ```bash
 mimetic lab oss
-mimetic lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
-mimetic lab oss --repo developit/mitt --repo lukeed/clsx --count 4
+mimetic lab oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+mimetic lab oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4
 ```
 
 Agent/CI contract path:
@@ -55,12 +55,20 @@ pnpm mimetic:lab:oss:smoke
 
 ## Repo Selection
 
-The default public targets are intentionally small JavaScript packages:
+The default public targets are product-like, locally runnable apps/tools:
 
-- `developit/mitt`
-- `lukeed/clsx`
-- `sindresorhus/is-plain-obj`
-- `ai/nanoid`
+- `CorentinTh/it-tools`
+- `drawdb-io/drawdb`
+- `maciekt07/TodoApp`
+- `lissy93/dashy`
+
+Target selection should minimize distance from a real user-facing journey.
+Good defaults expose an app, CLI, or agent-facing tool that can be tried out of
+the box, preferably with a local dev script and no account setup. Libraries,
+frameworks, starters, and infrastructure packages belong only in scenarios that
+explicitly test developer experience. They are poor defaults for proving
+Mimetic as a user-simulation harness because they add another abstract setup
+layer before any product behavior is visible.
 
 `--repos` accepts a comma-separated list. Repeated `--repo` is also supported.
 If `--count` is larger than the repo list, assignments cycle through the repo
@@ -68,6 +76,26 @@ pool. Inputs must be GitHub `owner/repo` slugs. Arbitrary URLs, local paths,
 tokens, and SSH remotes are rejected. Private repos are maintainer-only and
 require an authorized `GH_TOKEN` or `GITHUB_TOKEN` at runtime; no token value is
 written to committed source or public issue text.
+
+## Private Product Labs
+
+Private products can be used for local maintainer dogfood, but they must stay
+out of the public package surface. Do not commit private repo names as defaults,
+fixtures, screenshots, README examples, npm assets, skill examples, or issue
+draft text.
+
+The safe local shape is:
+
+```bash
+mimetic lab oss --repo owner/private-app --count 1
+```
+
+with an authorized runtime GitHub token and default repo redaction enabled. Do
+not pass `--no-redact-repos` for a private target. Public receipts for those
+runs should say `authorized private app target` and point only to ignored local
+artifact paths, redacted statuses, and verifier results. Never publish private
+screenshots, logs, app URLs, source snippets, branch names, issue names, stream
+URLs, or operational details.
 
 ## Runtime Shape
 

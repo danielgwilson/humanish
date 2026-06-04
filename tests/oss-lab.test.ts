@@ -83,13 +83,13 @@ describe("OSS lab command", () => {
       cwd: "/tmp/mimetic",
       dryRun: false,
       liveRequested: true,
-      repos: ["developit/mitt"],
+      repos: ["CorentinTh/it-tools"],
       runId: "oss-live-fixture",
       sandboxes: [
         {
           bootstrapStatus: "started",
           completionStatus: "passed",
-          repo: "developit/mitt",
+          repo: "CorentinTh/it-tools",
           streamId: "oss-01-desktop",
           urlPresent: true
         }
@@ -115,18 +115,18 @@ describe("OSS lab command", () => {
       sandboxes: [
         {
           completionStatus: "passed",
-          repo: "developit/mitt",
+          repo: "CorentinTh/it-tools",
           streamId: "oss-01-desktop",
           urlPresent: true
         },
         {
-          repo: "lukeed/clsx",
+          repo: "maciekt07/TodoApp",
           streamId: "oss-02-desktop",
           urlPresent: false
         },
         {
           completionStatus: "timed_out",
-          repo: "ai/nanoid",
+          repo: "lissy93/dashy",
           streamId: "oss-04-desktop",
           urlPresent: true
         }
@@ -235,7 +235,7 @@ describe("OSS lab command", () => {
       detach: false,
       wantsMachine: true
     })).toBe(false);
-    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ sandboxes: [{ repo: "developit/mitt", streamId: "oss-01-desktop", urlPresent: false }] }), {
+    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ sandboxes: [{ repo: "CorentinTh/it-tools", streamId: "oss-01-desktop", urlPresent: false }] }), {
       detach: false,
       wantsMachine: true
     })).toBe(false);
@@ -243,30 +243,30 @@ describe("OSS lab command", () => {
 
   it("keeps default repo selection lightweight and public", () => {
     expect(normalizeOssRepoSlugs(undefined)).toEqual([...DEFAULT_OSS_REPOS]);
-    expect(normalizeOssRepoSlugs([" developit/mitt ", "developit/mitt", "lukeed/clsx"])).toEqual([
-      "developit/mitt",
-      "lukeed/clsx"
+    expect(normalizeOssRepoSlugs([" CorentinTh/it-tools ", "CorentinTh/it-tools", "drawdb-io/drawdb"])).toEqual([
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb"
     ]);
-    expect(normalizeOssRepoSlugs(["developit/mitt,lukeed/clsx"])).toEqual([
-      "developit/mitt",
-      "lukeed/clsx"
+    expect(normalizeOssRepoSlugs(["CorentinTh/it-tools,drawdb-io/drawdb"])).toEqual([
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb"
     ]);
   });
 
   it("accepts only GitHub owner/repo slugs", () => {
-    expect(validateOssRepoSlug("developit/mitt")).toBe(true);
-    expect(validateOssRepoSlug("sindresorhus/is-plain-obj")).toBe(true);
-    expect(validateOssRepoSlug("https://github.com/developit/mitt")).toBe(false);
-    expect(validateOssRepoSlug("git@github.com:developit/mitt.git")).toBe(false);
+    expect(validateOssRepoSlug("CorentinTh/it-tools")).toBe(true);
+    expect(validateOssRepoSlug("maciekt07/TodoApp")).toBe(true);
+    expect(validateOssRepoSlug("https://github.com/CorentinTh/it-tools")).toBe(false);
+    expect(validateOssRepoSlug("git@github.com:CorentinTh/it-tools.git")).toBe(false);
     expect(validateOssRepoSlug("../private/repo")).toBe(false);
   });
 
   it("assigns repos across requested headed desktop lanes", () => {
-    expect(buildOssRepoAssignments(["developit/mitt", "lukeed/clsx"], 4).map((assignment) => assignment.repo)).toEqual([
-      "developit/mitt",
-      "lukeed/clsx",
-      "developit/mitt",
-      "lukeed/clsx"
+    expect(buildOssRepoAssignments(["CorentinTh/it-tools", "drawdb-io/drawdb"], 4).map((assignment) => assignment.repo)).toEqual([
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb",
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb"
     ]);
   });
 
@@ -278,7 +278,7 @@ describe("OSS lab command", () => {
         cwd,
         dryRun: true,
         open: false,
-        repos: ["developit/mitt", "lukeed/clsx"],
+        repos: ["CorentinTh/it-tools", "drawdb-io/drawdb"],
         runId: "oss-meta-count-65"
       });
 
@@ -326,8 +326,13 @@ describe("OSS lab command", () => {
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_FIRST");
       expect(script).toContain("MIMETIC_OSS_META_REQUIRE_ACTOR");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_TIMEOUT_MS");
+      expect(script).toContain("ACTOR_TIMEOUT_SECONDS");
+      expect(script).toContain("Do not wait on long-running watchers");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_MODEL");
       expect(script).toContain("actor_log_tail_begin");
+      expect(script).toContain("ACTOR_LAST_MESSAGE_PATH");
+      expect(script).toContain("actorLogTail");
+      expect(script).toContain("actorLastMessageTail");
       expect(script).toContain("@openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check");
       expect(script).toContain("-m \\$actor_model_q");
       expect(script).toContain("--dangerously-bypass-approvals-and-sandbox");
@@ -335,8 +340,8 @@ describe("OSS lab command", () => {
       expect(script).toContain("CODEX_COMMAND=");
       expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="${MIMETIC_CODEX_API_KEY:-}"');
       expect(script).toContain("unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN");
-      expect(script).toContain('CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" timeout 240s bash -lc "\\$CODEX_COMMAND"');
-      expect(script).toContain('CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout 240s bash -lc "\\$CODEX_COMMAND"');
+      expect(script).toContain('CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
+      expect(script).toContain('CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
       expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="$MIMETIC_PRIVATE_CODEX_API_KEY" MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"');
       expect(script).toContain('MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git clone');
       expect(script).not.toContain("command -v codex");
@@ -383,7 +388,7 @@ describe("OSS lab command", () => {
       "--run-id",
       "oss-meta-test",
       "--repos",
-      "developit/mitt,lukeed/clsx",
+      "CorentinTh/it-tools,drawdb-io/drawdb",
       "--count",
       "4"
     ]);
@@ -396,10 +401,10 @@ describe("OSS lab command", () => {
     };
     expect(json.schema).toBe("mimetic.oss-meta-lab-result.v1");
     expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
-      "developit/mitt",
-      "lukeed/clsx",
-      "developit/mitt",
-      "lukeed/clsx"
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb",
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb"
     ]);
     expect(json.observer.observerPath).toBe(".mimetic/runs/oss-meta-test/observer/index.html");
 
@@ -413,7 +418,7 @@ describe("OSS lab command", () => {
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic init --yes");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic run --app-url");
-    expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/developit/mitt");
+    expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/CorentinTh/it-tools");
   });
 
   it("fails live launch closed into waiting lanes when E2B is absent", async () => {
@@ -435,7 +440,7 @@ describe("OSS lab command", () => {
         "--run-id",
         "oss-meta-waiting-test",
         "--repos",
-        "developit/mitt",
+        "CorentinTh/it-tools",
         "--count",
         "1"
       ]);
@@ -458,7 +463,7 @@ describe("OSS lab command", () => {
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
-        currentStep: "Waiting for E2B_API_KEY before launching developit/mitt."
+        currentStep: "Waiting for E2B_API_KEY before launching CorentinTh/it-tools."
       });
       expect(bundle.streams[0]).toMatchObject({
         status: "blocked",
@@ -505,7 +510,7 @@ describe("OSS lab command", () => {
         "--run-id",
         "oss-meta-actor-auth-waiting-test",
         "--repos",
-        "developit/mitt",
+        "CorentinTh/it-tools",
         "--count",
         "1"
       ]);
@@ -519,7 +524,7 @@ describe("OSS lab command", () => {
       };
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
-        currentStep: "Waiting for CODEX_API_KEY or CODEX_ACCESS_TOKEN before launching developit/mitt."
+        currentStep: "Waiting for CODEX_API_KEY or CODEX_ACCESS_TOKEN before launching CorentinTh/it-tools."
       });
     } finally {
       if (previousE2b === undefined) delete process.env.E2B_API_KEY;
@@ -572,7 +577,7 @@ describe("OSS lab command", () => {
         "--run-id",
         "oss-meta-actor-preflight-test",
         "--repos",
-        "developit/mitt",
+        "CorentinTh/it-tools",
         "--count",
         "1"
       ]);
@@ -591,7 +596,7 @@ describe("OSS lab command", () => {
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
-        currentStep: "Waiting for Codex actor API quota/auth preflight before launching developit/mitt."
+        currentStep: "Waiting for Codex actor API quota/auth preflight before launching CorentinTh/it-tools."
       });
       await rm(cwd, { recursive: true, force: true });
     } finally {
@@ -612,7 +617,7 @@ describe("OSS lab command", () => {
   });
 
   it("surfaces host actor plan artifacts even when provider launch fails", () => {
-    const assignments = buildOssRepoAssignments(["reduxjs/redux-essentials-example-app"], 1);
+    const assignments = buildOssRepoAssignments(["maciekt07/TodoApp"], 1);
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt: "2026-06-04T10:00:00.000Z",
@@ -633,7 +638,7 @@ describe("OSS lab command", () => {
               }
             ],
             recommendedProof: "Start the app, then run mimetic run --app-url http://127.0.0.1:5173 --sims 2.",
-            repo: "reduxjs/redux-essentials-example-app",
+            repo: "maciekt07/TodoApp",
             scenarios: [
               {
                 id: "desktop-smoke",
@@ -646,8 +651,8 @@ describe("OSS lab command", () => {
             status: "passed",
             summary: "Host actor authored a public-safe plan."
           },
-          hostActorPlanPath: "host-actors/redux/actor-plan.json",
-          repo: "reduxjs/redux-essentials-example-app",
+          hostActorPlanPath: "host-actors/todoapp/actor-plan.json",
+          repo: "maciekt07/TodoApp",
           simId: "oss-01",
           streamId: "oss-01-desktop"
         }
@@ -660,13 +665,13 @@ describe("OSS lab command", () => {
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "host Codex actor plan",
-      path: "host-actors/redux/actor-plan.json",
+      path: "host-actors/todoapp/actor-plan.json",
       kind: "trace"
     });
   });
 
   it("renders public-safe terminal completion states without live provider spend", () => {
-    const assignments = buildOssRepoAssignments(["developit/mitt", "lukeed/clsx"], 2);
+    const assignments = buildOssRepoAssignments(["CorentinTh/it-tools", "maciekt07/TodoApp"], 2);
     const createdAt = "2026-06-02T08:30:00.000Z";
     const bundle = buildOssMetaBundleFixture({
       assignments,
@@ -675,20 +680,26 @@ describe("OSS lab command", () => {
       dryRun: false,
       lanes: [
         {
+          actorEvidence: {
+            actorLastMessageTailPath: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
+            actorLogTailPath: "actor-evidence/oss-01-desktop-actor-log-tail.txt"
+          },
           bootstrap: {
             codexMode: "tui-attempted",
-            completionPath: "/remote/developit-mitt/completion.json",
-            logPath: "/remote/developit-mitt/bootstrap.log",
+            completionPath: "/remote/it-tools/completion.json",
+            logPath: "/remote/it-tools/bootstrap.log",
             mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/developit-mitt/repo/.mimetic/runs/nested/observer/index.html",
+            nestedObserverPath: "/remote/it-tools/repo/.mimetic/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started"
           },
           completion: {
-            actorLogPath: "/remote/developit-mitt/actor.log",
+            actorLogPath: "/remote/it-tools/actor.log",
+            actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
+            actorLastMessageTail: "Set up Mimetic and ran npx mimetic run --app-url http://127.0.0.1:5173 --sims 2.",
             actorPid: 4321,
             actorStatus: "running",
-            appLogPath: "/remote/developit-mitt/app.log",
+            appLogPath: "/remote/it-tools/app.log",
             appPid: 1234,
             appReason: "target app responded at http://127.0.0.1:5173",
             appStatus: "running",
@@ -704,7 +715,7 @@ describe("OSS lab command", () => {
             visualStatus: "visible",
             visualWindowCount: 3
           },
-          repo: "developit/mitt",
+          repo: "CorentinTh/it-tools",
           screenshot: {
             capturedAt: "2026-06-02T08:31:05.000Z",
             observerUrl: "../screenshots/oss-01-desktop.png",
@@ -712,15 +723,15 @@ describe("OSS lab command", () => {
           },
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/developit-mitt"
+          url: "https://stream.example/it-tools"
         },
         {
           bootstrap: {
             codexMode: "tui-attempted",
-            completionPath: "/remote/lukeed-clsx/completion.json",
-            logPath: "/remote/lukeed-clsx/bootstrap.log",
+            completionPath: "/remote/todoapp/completion.json",
+            logPath: "/remote/todoapp/bootstrap.log",
             mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/lukeed-clsx/repo/.mimetic/runs/nested/observer/index.html",
+            nestedObserverPath: "/remote/todoapp/repo/.mimetic/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started"
           },
@@ -733,10 +744,10 @@ describe("OSS lab command", () => {
             reason: "Bootstrap exited before nested Mimetic proof completed.",
             status: "failed"
           },
-          repo: "lukeed/clsx",
+          repo: "maciekt07/TodoApp",
           simId: assignments[1]?.simId ?? "oss-02",
           streamId: assignments[1]?.streamId ?? "oss-02-desktop",
-          url: "https://stream.example/lukeed-clsx"
+          url: "https://stream.example/todoapp"
         }
       ],
       liveRequested: true,
@@ -750,6 +761,8 @@ describe("OSS lab command", () => {
     expect(bundle.review.summary).toContain("failed");
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
+      actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
+      actorLastMessageTail: "Set up Mimetic and ran npx mimetic run --app-url http://127.0.0.1:5173 --sims 2.",
       actorStatus: "running",
       appStatus: "running",
       appUrl: "http://127.0.0.1:5173",
@@ -759,6 +772,9 @@ describe("OSS lab command", () => {
       visualStatus: "visible",
       visualWindowCount: 3
     });
+    expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor last message tail:");
+    expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor log tail:");
+    expect(bundle.streams[0]?.terminal?.tail).toContain("npx mimetic init --yes");
     expect(bundle.streams[0]).toMatchObject({
       transport: "sse",
       embed: { kind: "screenshot", url: "../screenshots/oss-01-desktop.png" },
@@ -776,6 +792,16 @@ describe("OSS lab command", () => {
       path: "screenshots/oss-01-desktop.png",
       kind: "screenshot"
     });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "actor last-message tail",
+      path: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
+      kind: "log"
+    });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "actor log tail",
+      path: "actor-evidence/oss-01-desktop-actor-log-tail.txt",
+      kind: "log"
+    });
     expect(bundle.streams[1]?.terminal?.tail).toContain("verification failed");
     expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.passed");
     expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.failed");
@@ -787,7 +813,7 @@ describe("OSS lab command", () => {
   });
 
   it("marks OSS meta-lab timeout completions as non-green review evidence", () => {
-    const assignments = buildOssRepoAssignments(["sindresorhus/is-plain-obj"], 1);
+    const assignments = buildOssRepoAssignments(["drawdb-io/drawdb"], 1);
     const createdAt = "2026-06-02T09:30:00.000Z";
     const bundle = buildOssMetaBundleFixture({
       assignments,
@@ -798,10 +824,10 @@ describe("OSS lab command", () => {
         {
           bootstrap: {
             codexMode: "tui-attempted",
-            completionPath: "/remote/is-plain-obj/completion.json",
-            logPath: "/remote/is-plain-obj/bootstrap.log",
+            completionPath: "/remote/drawdb/completion.json",
+            logPath: "/remote/drawdb/bootstrap.log",
             mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/is-plain-obj/repo/.mimetic/runs/nested/observer/index.html",
+            nestedObserverPath: "/remote/drawdb/repo/.mimetic/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started"
           },
@@ -810,10 +836,10 @@ describe("OSS lab command", () => {
             reason: "Timed out waiting 240000ms for remote bootstrap completion marker.",
             status: "timed_out"
           },
-          repo: "sindresorhus/is-plain-obj",
+          repo: "drawdb-io/drawdb",
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/is-plain-obj"
+          url: "https://stream.example/drawdb"
         }
       ],
       liveRequested: true,

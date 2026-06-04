@@ -39,6 +39,8 @@ export type RunSimulationStatus =
 
 export interface RunStreamCompletion {
   actorLogPath?: string;
+  actorLogTail?: string;
+  actorLastMessageTail?: string;
   actorPid?: number;
   actorStatus?: "not_started" | "running" | "passed" | "failed" | "blocked" | "timed_out" | "suspended" | "unknown";
   appLogPath?: string;
@@ -3187,7 +3189,7 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
   const requiredPaths = new Set<string>();
   for (const stream of bundle.streams) {
     for (const artifact of stream.artifacts) {
-      if ((artifact.kind === "screenshot" || artifact.kind === "trace") && isLocalEvidenceArtifactPath(artifact.path)) {
+      if ((artifact.kind === "screenshot" || artifact.kind === "trace" || artifact.kind === "log") && isLocalEvidenceArtifactPath(artifact.path)) {
         requiredPaths.add(artifact.path);
       }
     }
