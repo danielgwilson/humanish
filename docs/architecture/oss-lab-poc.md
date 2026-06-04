@@ -95,7 +95,9 @@ Each stream lane records:
   sandbox;
 - nested Observer presence and nested verification status;
 - headed desktop visual-window status and browser window count;
-- nonblocking Codex actor status;
+- Codex actor status, optionally moved before deterministic setup with
+  `MIMETIC_OSS_META_ACTOR_FIRST=1` and required through
+  `MIMETIC_OSS_META_REQUIRE_ACTOR=1`;
 - public-safe remote bootstrap log tail;
 - public-safe gaps and events.
 
@@ -106,8 +108,12 @@ in-lane. It also packs the local Mimetic package, uploads it into each sandbox,
 raises a visible bootstrap terminal, clones the assigned repo, runs nested
 Mimetic setup and proof commands, starts the target app, opens desktop/mobile
 app windows, opens the nested Observer in the sandbox browser, arranges visible
-browser windows for screenshot proof, and starts the Codex actor attempt without
-blocking completion.
+browser windows for screenshot proof, and starts the Codex actor attempt. By
+default the actor remains nonblocking and runs after deterministic readback; with
+`MIMETIC_OSS_META_ACTOR_FIRST=1`, the actor attempts setup/use before
+deterministic validation; with `MIMETIC_OSS_META_REQUIRE_ACTOR=1`, the bootstrap
+waits up to `MIMETIC_OSS_META_ACTOR_TIMEOUT_MS` for terminal actor readback and
+will not mark the lane passed unless the actor exits cleanly.
 
 The live desktop substrate is an optional peer dependency. Install it in the
 project that runs live labs:
@@ -116,9 +122,9 @@ project that runs live labs:
 npm i -D @e2b/desktop
 ```
 
-Remaining substrate work: replace the nested dry-run with provider-backed
-browser personas that actually drive the target app, and add richer process
-telemetry for the nonblocking Codex actor.
+Remaining substrate work: upgrade the nested `--app-url` browser proof into
+provider-backed personas that actually drive multi-step target-app journeys,
+and live-prove actor-first setup/use, not only deterministic bootstrap readback.
 
 ## Smoke Harness Runtime
 
@@ -170,10 +176,10 @@ The meta-lab proves the operator control surface and artifact contract for
 watching multiple Codex/E2B setup attempts at once. The live path now detects
 E2B desktop fanout, visible bootstrap terminals, local-package upload,
 disposable authorized-repo setup, target app HTTP readiness when a runnable
-script is present, headed browser-window layout, nested Mimetic dry-run proof
-generation, nested Observer opening, and top-level lane completion from remote
-evidence. It does not yet prove a general provider-backed target-app persona
-runtime.
+script is present, headed browser-window layout, nested live `--app-url`
+desktop/mobile browser proof when the target app runs, nested Observer opening,
+and top-level lane completion from remote evidence. It does not yet prove a
+general provider-backed multi-step target-app persona runtime.
 
 The smoke harness proves first-run Mimetic package compatibility against
 arbitrary public JavaScript repositories:

@@ -123,8 +123,9 @@ export const plannedCommands: PlannedCommand[] = [
     docs: commonDocs,
     options: [
       { flags: "--dry-run", description: "Generate contract proof without browser, keys, or provider spend." },
+      { flags: "--app-url <url>", description: "Capture live desktop/mobile browser evidence against a running loopback app URL." },
       { flags: "--actor codex-tui|codex-exec", description: "Explicitly opt into a local Codex actor." },
-      { flags: "--sims <count>", description: "Simulation count. Codex exec supports 1-4 lanes; Codex TUI supports 1." },
+      { flags: "--sims <count>", description: "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1." },
       { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
     ]
   },
@@ -265,14 +266,16 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .command("run")
     .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
+    .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
     .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec"]))
-    .option("--sims <count>", "Simulation count. Codex exec supports 1-4 lanes; Codex TUI supports 1.")
+    .option("--sims <count>", "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.")
     .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(240_000))
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--json", "Print a machine-readable JSON response.")
     .action(async (options: {
       actor?: string;
+      appUrl?: string;
       cwd: string;
       dryRun?: boolean;
       json?: boolean;
@@ -290,7 +293,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
           warnings: [],
           error: {
             code: "MIMETIC_INVALID_SIM_COUNT",
-            message: "--sims must be an integer between 1 and 64."
+            message: "--sims must be a positive integer."
           }
         };
         writeResult(command, io, result, formatRunHuman);
@@ -316,6 +319,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       const result = await runDryRun({
         cwd: options.cwd,
         ...(options.actor === undefined ? {} : { actor: options.actor }),
+        ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
         ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(simCount === undefined || simCount === null ? {} : { simCount }),
@@ -420,7 +424,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
           warnings: [],
           error: {
             code: "MIMETIC_INVALID_SIM_COUNT",
-            message: "--sims must be an integer between 1 and 64."
+            message: "--sims must be a positive integer."
           }
         };
         writeResult(command, io, result, formatRunHuman);
@@ -900,7 +904,7 @@ function parsePositiveInteger(value: string): number | null {
   }
 
   const parsed = Number.parseInt(value, 10);
-  return parsed >= 1 && parsed <= 64 ? parsed : null;
+  return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : null;
 }
 
 function parseTimeoutMs(value: string): number | null {

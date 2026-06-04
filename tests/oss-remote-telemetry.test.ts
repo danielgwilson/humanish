@@ -168,4 +168,9 @@ describe("OSS remote telemetry", () => {
     expect(redactOssRemoteTelemetryText(`E2B_API_KEY=${fakeE2bKey}`)).toContain("[redacted-e2b-key]");
     expect(sanitizeOssRemoteTelemetryUrl(streamUrl)).toContain("authKey=[redacted-url-param]");
   });
+
+  it("does not redact Codex approval flags as provider tokens", () => {
+    const text = "codex exec --ask-for-approval never";
+    expect(redactOssRemoteTelemetryText(text)).toBe(text);
+  });
 });

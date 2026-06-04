@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -52,6 +52,8 @@ interface OssMetaLabLiveDesktop {
   completion?: OssMetaLabCompletion;
   desktop?: E2BDesktopSandbox;
   error?: string;
+  hostActorPlan?: OssMetaLabHostActorPlan;
+  hostActorPlanPath?: string;
   repo: string;
   screenshot?: OssMetaLabScreenshot;
   sandboxId?: string;
@@ -96,6 +98,52 @@ export interface OssMetaLabCompletion {
   visualReason?: string;
   visualStatus?: OssMetaLabVisualStatus;
   visualWindowCount?: number;
+}
+
+export interface OssMetaLabHostActorPlan {
+  schema: "mimetic.oss-host-actor-plan.v1";
+  generatedAt: string;
+  personas: Array<{
+    id: string;
+    name: string;
+    intent: string;
+    traits: string[];
+  }>;
+  recommendedProof: string;
+  repo: string;
+  scenarios: Array<{
+    id: string;
+    title: string;
+    goal: string;
+    steps: string[];
+  }>;
+  source: "local-codex-exec";
+  status: "passed" | "failed" | "blocked";
+  summary: string;
+}
+
+interface OssMetaLabHostActorPlanResult {
+  artifactPath: string;
+  error?: string;
+  plan?: OssMetaLabHostActorPlan;
+  planPath: string;
+  repo: string;
+  streamId: string;
+  worktreePath: string;
+}
+
+export interface OssMetaLabProviderCapacity {
+  cap: number;
+  ok: boolean;
+  reason: string;
+  requested: number;
+  running: number;
+}
+
+export interface OssMetaLabActorAuthPreflight {
+  ok: boolean;
+  reason: string;
+  status?: number;
 }
 
 export interface OssMetaLabScreenshot {
@@ -147,6 +195,20 @@ export interface OssMetaLabResult {
 
 const execFileAsync = promisify(execFile);
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const OSS_META_LAB_PROVIDER_METADATA = {
+  mode: "oss-meta-lab",
+  tool: "mimetic-cli"
+} as const;
+const OSS_META_LAB_REMOTE_ENV_NAMES = [
+  "MIMETIC_OSS_META_ACTOR_FIRST",
+  "MIMETIC_OSS_META_ACTOR_MODEL",
+  "MIMETIC_OSS_META_HOST_CODEX_ACTOR",
+  "MIMETIC_OSS_META_ACTOR_TIMEOUT_MS",
+  "MIMETIC_OSS_META_REQUIRE_ACTOR"
+] as const;
+const OSS_META_LAB_ACTOR_AUTH_PLACEHOLDER = "CODEX_API_KEY or CODEX_ACCESS_TOKEN";
+const OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER = "Codex actor API quota/auth preflight";
+const OSS_META_LAB_HOST_ACTOR_PLACEHOLDER = "host Codex actor plan";
 
 interface OssMetaLabOutcome {
   ok: boolean;
@@ -171,6 +233,525 @@ export function buildOssRepoAssignments(repos: string[], count: number): OssMeta
   });
 }
 
+export function assessOssMetaLabProviderCapacity(args: {
+  cap: number;
+  requested: number;
+  running: number;
+}): OssMetaLabProviderCapacity {
+  const cap = Number.isSafeInteger(args.cap) && args.cap > 0 ? args.cap : 4;
+  const running = Math.max(0, Math.trunc(args.running));
+  const requested = Math.max(0, Math.trunc(args.requested));
+  const projected = running + requested;
+  const ok = projected <= cap;
+  return {
+    cap,
+    ok,
+    reason: ok
+      ? `Provider launch capacity ok: ${running} running + ${requested} requested <= cap ${cap}.`
+      : `Provider launch cap exceeded: ${running} running + ${requested} requested > cap ${cap}. Clean up existing Mimetic OSS meta-lab sandboxes or raise MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS intentionally.`,
+    requested,
+    running
+  };
+}
+
+export function collectOssMetaLabRemoteEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const name of OSS_META_LAB_REMOTE_ENV_NAMES) {
+    const value = env[name]?.trim();
+    if (value) {
+      result[name] = value;
+    }
+  }
+  return result;
+}
+
+export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const result: Record<string, string> = {};
+  const codexApiKey = env.CODEX_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
+  const codexAccessToken = env.CODEX_ACCESS_TOKEN?.trim();
+  const githubToken = env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim();
+
+  if (codexApiKey) {
+    result.MIMETIC_CODEX_API_KEY = codexApiKey;
+  }
+  if (codexAccessToken) {
+    result.MIMETIC_CODEX_ACCESS_TOKEN = codexAccessToken;
+  }
+  if (githubToken) {
+    result.MIMETIC_GITHUB_TOKEN = githubToken;
+  }
+
+  return result;
+}
+
+export async function preflightOssMetaActorApiKey(args: {
+  env: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<OssMetaLabActorAuthPreflight> {
+  const apiKey = args.env.CODEX_API_KEY?.trim() || args.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      ok: true,
+      reason: "No API-key actor auth present; preflight skipped."
+    };
+  }
+
+  const fetchImpl = args.fetchImpl ?? fetch;
+  const model = args.env.MIMETIC_OSS_META_ACTOR_PREFLIGHT_MODEL?.trim() || "gpt-4.1-mini";
+  try {
+    const response = await fetchImpl("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        input: "Return a JSON object exactly like {\"status\":\"passed\"}. This is an actor auth preflight.",
+        max_output_tokens: 32,
+        model,
+        text: {
+          format: {
+            type: "json_object"
+          }
+        }
+      })
+    });
+    if (response.ok) {
+      return {
+        ok: true,
+        reason: `OpenAI actor API-key preflight passed for ${model}.`,
+        status: response.status
+      };
+    }
+
+    const body = await response.text().catch(() => "");
+    return {
+      ok: false,
+      reason: compactError(`OpenAI actor API-key preflight failed with HTTP ${response.status}: ${body}`),
+      status: response.status
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: compactError(error)
+    };
+  }
+}
+
+function hostCodexActorRequested(env: NodeJS.ProcessEnv): boolean {
+  return env.MIMETIC_OSS_META_HOST_CODEX_ACTOR === "1";
+}
+
+function remoteActorAuthRequested(env: NodeJS.ProcessEnv): boolean {
+  return env.MIMETIC_OSS_META_ACTOR_FIRST === "1" || env.MIMETIC_OSS_META_REQUIRE_ACTOR === "1";
+}
+
+function actorRequired(env: NodeJS.ProcessEnv): boolean {
+  return env.MIMETIC_OSS_META_REQUIRE_ACTOR === "1";
+}
+
+async function createHostActorPlans(args: {
+  assignments: OssMetaLabAssignment[];
+  cwd: string;
+  redactRepoNames: boolean;
+  runId: string;
+}): Promise<OssMetaLabHostActorPlanResult[]> {
+  return Promise.all(args.assignments.map((assignment) =>
+    createHostActorPlan({
+      assignment,
+      cwd: args.cwd,
+      redactRepoNames: args.redactRepoNames,
+      runId: args.runId
+    })
+  ));
+}
+
+async function createHostActorPlan(args: {
+  assignment: OssMetaLabAssignment;
+  cwd: string;
+  redactRepoNames: boolean;
+  runId: string;
+}): Promise<OssMetaLabHostActorPlanResult> {
+  const token = repoSlugToken(args.assignment.repo);
+  const actorRoot = path.join(args.cwd, ".mimetic", "runs", args.runId, "host-actors", token);
+  const artifactPath = path.join("host-actors", token, "actor-plan.json");
+  const tmpRoot = path.join(args.cwd, ".mimetic", "tmp", "host-actors", args.runId, token);
+  const repoDir = path.join(tmpRoot, "repo");
+  const planPath = path.join(actorRoot, "actor-plan.json");
+  const schemaPath = path.join(tmpRoot, "actor-plan.schema.json");
+  await mkdir(actorRoot, { recursive: true });
+
+  if (args.redactRepoNames) {
+    const plan = failedHostActorPlan({
+      repo: "[redacted-authorized-repo]",
+      status: "blocked",
+      summary: "Host Codex actor plans are public-safe artifacts and require non-redacted public repo labels."
+    });
+    await writeJson(planPath, plan);
+    return {
+      artifactPath,
+      error: plan.summary,
+      plan,
+      planPath,
+      repo: args.assignment.repo,
+      streamId: args.assignment.streamId,
+      worktreePath: repoDir
+    };
+  }
+
+  try {
+    await mkdir(tmpRoot, { recursive: true });
+    await execFileAsync("git", ["clone", "--depth=1", `https://github.com/${args.assignment.repo}.git`, repoDir], {
+      cwd: tmpRoot,
+      env: process.env,
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: readPositiveInt(process.env.MIMETIC_OSS_META_HOST_CLONE_TIMEOUT_MS, 90_000)
+    });
+    await writeJson(schemaPath, hostActorPlanJsonSchema());
+
+    const repoContext = await readHostActorRepoContext(repoDir);
+    const outputPath = path.join(tmpRoot, "codex-last-message.json");
+    const codexEnv = hostCodexEnv(process.env);
+    const codexCommand = [
+      "codex exec",
+      "--ephemeral",
+      "--ignore-user-config",
+      "--skip-git-repo-check",
+      "--dangerously-bypass-approvals-and-sandbox",
+      "-C",
+      shellQuote(repoDir),
+      "--output-schema",
+      shellQuote(schemaPath),
+      "--output-last-message",
+      shellQuote(outputPath),
+      shellQuote(buildHostActorPrompt(args.assignment.repo, repoContext)),
+      "< /dev/null"
+    ].join(" ");
+    const codexResult = await execFileAsync("bash", ["-lc", codexCommand], {
+      cwd: repoDir,
+      env: codexEnv,
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: readPositiveInt(process.env.MIMETIC_OSS_META_HOST_ACTOR_TIMEOUT_MS, 240_000)
+    });
+
+    const rawPlan = await readFile(outputPath, "utf8").catch(() => {
+      const stdout = typeof codexResult.stdout === "string" ? codexResult.stdout : "";
+      const stderr = typeof codexResult.stderr === "string" ? codexResult.stderr : "";
+      return [stdout, stderr].filter((value) => value.trim()).join("\n");
+    });
+    await writeFile(path.join(actorRoot, "codex-output.txt"), `${sanitizeRemoteLog(rawPlan)}\n`, "utf8");
+    const plan = normalizeHostActorPlan(rawPlan, args.assignment.repo);
+    await writeJson(planPath, plan);
+    return {
+      artifactPath,
+      ...(plan.status === "passed" ? {} : { error: plan.summary }),
+      plan,
+      planPath,
+      repo: args.assignment.repo,
+      streamId: args.assignment.streamId,
+      worktreePath: repoDir
+    };
+  } catch (error) {
+    const plan = failedHostActorPlan({
+      repo: args.assignment.repo,
+      status: "failed",
+      summary: compactError(error)
+    });
+    await writeJson(planPath, plan);
+    return {
+      artifactPath,
+      error: plan.summary,
+      plan,
+      planPath,
+      repo: args.assignment.repo,
+      streamId: args.assignment.streamId,
+      worktreePath: repoDir
+    };
+  } finally {
+    await rm(tmpRoot, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+function hostCodexEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const allowed = [
+    "CODEX_HOME",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "LOGNAME",
+    "PATH",
+    "SHELL",
+    "TERM",
+    "TMP",
+    "TMPDIR",
+    "TEMP",
+    "USER",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME"
+  ];
+  return Object.fromEntries(allowed.flatMap((name) => {
+    const value = env[name];
+    return value === undefined ? [] : [[name, value]];
+  }));
+}
+
+async function readHostActorRepoContext(repoDir: string): Promise<string> {
+  const packageText = await readFile(path.join(repoDir, "package.json"), "utf8").catch(() => "");
+  const readmeText = await readFile(path.join(repoDir, "README.md"), "utf8").catch(() => "");
+  const indexText = await readFile(path.join(repoDir, "index.html"), "utf8").catch(() => "");
+  let packageSummary = "package.json missing";
+  try {
+    const pkg = JSON.parse(packageText) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      name?: string;
+      packageManager?: string;
+      scripts?: Record<string, string>;
+    };
+    packageSummary = JSON.stringify({
+      name: pkg.name,
+      packageManager: pkg.packageManager,
+      scripts: pkg.scripts ?? {},
+      dependencies: Object.keys(pkg.dependencies ?? {}).slice(0, 20),
+      devDependencies: Object.keys(pkg.devDependencies ?? {}).slice(0, 20)
+    }, null, 2);
+  } catch {}
+
+  return [
+    "package_summary:",
+    packageSummary.slice(0, 2_500),
+    "",
+    "readme_excerpt:",
+    readmeText.replace(/\s+/g, " ").trim().slice(0, 2_000) || "(missing)",
+    "",
+    "index_excerpt:",
+    indexText.replace(/\s+/g, " ").trim().slice(0, 800) || "(missing)"
+  ].join("\n");
+}
+
+function buildHostActorPrompt(repo: string, repoContext: string): string {
+  return [
+    "You are a public-safe Mimetic host actor.",
+    "Use the bounded public repository context below to author a compact Mimetic setup plan.",
+    "Do not print secrets, environment values, private data, or long source snippets.",
+    "Do not commit, push, file issues, or mutate remotes.",
+    "Return only JSON matching the supplied schema.",
+    "",
+    `Repository: ${repo}`,
+    "",
+    "Plan requirements:",
+    "- status must be passed if you can infer useful public-safe personas/scenarios.",
+    "- Include exactly 1 or 2 synthetic personas.",
+    "- Include exactly 1 or 2 desktop/mobile browser scenarios.",
+    "- Scenario steps must be concise and public-safe.",
+    "- recommendedProof should name the strongest Mimetic command shape for this repo.",
+    "- Current Mimetic supports `mimetic run --app-url <loopback-url> --sims 2`; do not invent --browser, --viewport, --persona, or --scenario flags.",
+    "",
+    "Bounded public repo context:",
+    repoContext
+  ].join("\n");
+}
+
+function hostActorPlanJsonSchema(): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["status", "summary", "personas", "scenarios", "recommendedProof"],
+    properties: {
+      status: { type: "string", enum: ["passed", "blocked", "failed"] },
+      summary: { type: "string" },
+      personas: {
+        type: "array",
+        minItems: 1,
+        maxItems: 2,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "name", "intent", "traits"],
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            intent: { type: "string" },
+            traits: {
+              type: "array",
+              minItems: 1,
+              maxItems: 5,
+              items: { type: "string" }
+            }
+          }
+        }
+      },
+      recommendedProof: { type: "string" },
+      scenarios: {
+        type: "array",
+        minItems: 1,
+        maxItems: 2,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "title", "goal", "steps"],
+          properties: {
+            id: { type: "string" },
+            title: { type: "string" },
+            goal: { type: "string" },
+            steps: {
+              type: "array",
+              minItems: 2,
+              maxItems: 8,
+              items: { type: "string" }
+            }
+          }
+        }
+      }
+    }
+  };
+}
+
+function normalizeHostActorPlan(raw: string, repo: string): OssMetaLabHostActorPlan {
+  const parsed = parseJsonObject(raw);
+  if (!parsed) {
+    return failedHostActorPlan({
+      repo,
+      status: "failed",
+      summary: "Host Codex actor did not return parseable JSON."
+    });
+  }
+
+  const personas = Array.isArray(parsed.personas)
+    ? parsed.personas.map(normalizeHostActorPersona).filter((persona): persona is OssMetaLabHostActorPlan["personas"][number] => persona !== null).slice(0, 2)
+    : [];
+  const scenarios = Array.isArray(parsed.scenarios)
+    ? parsed.scenarios.map(normalizeHostActorScenario).filter((scenario): scenario is OssMetaLabHostActorPlan["scenarios"][number] => scenario !== null).slice(0, 2)
+    : [];
+  const status = parsed.status === "blocked" || parsed.status === "failed" ? parsed.status : "passed";
+  if (status === "passed" && (personas.length === 0 || scenarios.length === 0)) {
+    return failedHostActorPlan({
+      repo,
+      status: "failed",
+      summary: "Host Codex actor plan lacked usable personas or scenarios."
+    });
+  }
+
+  return {
+    schema: "mimetic.oss-host-actor-plan.v1",
+    generatedAt: new Date().toISOString(),
+    personas,
+    recommendedProof: normalizeHostActorRecommendedProof(parsed.recommendedProof),
+    repo,
+    scenarios,
+    source: "local-codex-exec",
+    status,
+    summary: cleanHostActorText(parsed.summary, status === "passed" ? "Host Codex actor authored a public-safe Mimetic plan." : "Host Codex actor could not author a complete plan.")
+  };
+}
+
+function normalizeHostActorPersona(value: unknown): OssMetaLabHostActorPlan["personas"][number] | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  const id = safeArtifactToken(cleanHostActorText(candidate.id, "host-actor-persona")).slice(0, 80) || "host-actor-persona";
+  const traits = Array.isArray(candidate.traits)
+    ? candidate.traits.map((trait) => cleanHostActorText(trait, "")).filter(Boolean).slice(0, 5)
+    : [];
+  return {
+    id,
+    name: cleanHostActorText(candidate.name, "Host Actor Persona"),
+    intent: cleanHostActorText(candidate.intent, "Evaluate the app with a public-safe synthetic goal."),
+    traits: traits.length > 0 ? traits : ["public_safe", "synthetic_user"]
+  };
+}
+
+function normalizeHostActorScenario(value: unknown): OssMetaLabHostActorPlan["scenarios"][number] | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  const steps = Array.isArray(candidate.steps)
+    ? candidate.steps.map((step) => cleanHostActorText(step, "")).filter(Boolean).slice(0, 8)
+    : [];
+  if (steps.length === 0) return null;
+  return {
+    id: safeArtifactToken(cleanHostActorText(candidate.id, "host-actor-scenario")).slice(0, 80) || "host-actor-scenario",
+    title: cleanHostActorText(candidate.title, "Host Actor Scenario"),
+    goal: cleanHostActorText(candidate.goal, "Exercise the primary public-safe app workflow."),
+    steps
+  };
+}
+
+export function normalizeHostActorRecommendedProof(value: unknown): string {
+  const proof = cleanHostActorText(value, "");
+  if (!/\bmimetic\s+run\b/.test(proof)) {
+    return "Start the target app on a loopback URL, then run `mimetic run --app-url http://127.0.0.1:<port> --sims 2`.";
+  }
+
+  if (/\s--(?:browser|viewport|persona|scenario)\b/.test(proof)) {
+    return "Start the target app on a loopback URL, then run `mimetic run --app-url http://127.0.0.1:<port> --sims 2`.";
+  }
+
+  return proof;
+}
+
+function failedHostActorPlan(args: {
+  repo: string;
+  status: "failed" | "blocked";
+  summary: string;
+}): OssMetaLabHostActorPlan {
+  return {
+    schema: "mimetic.oss-host-actor-plan.v1",
+    generatedAt: new Date().toISOString(),
+    personas: [],
+    recommendedProof: "Host actor plan was not available.",
+    repo: args.repo,
+    scenarios: [],
+    source: "local-codex-exec",
+    status: args.status,
+    summary: cleanHostActorText(args.summary, "Host Codex actor plan failed.")
+  };
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  for (const line of raw.split(/\r?\n/).map((value) => value.trim()).filter(Boolean).reverse()) {
+    if (line.startsWith("{") && line.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(line) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+      } catch {}
+    }
+  }
+
+  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
+  if (fence?.[1]) {
+    try {
+      const parsed = JSON.parse(fence[1].trim()) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    } catch {}
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    const lastClose = raw.lastIndexOf("}");
+    if (lastClose === -1) return null;
+    for (let start = raw.lastIndexOf("{", lastClose); start >= 0; start = raw.lastIndexOf("{", start - 1)) {
+      try {
+        const parsed = JSON.parse(raw.slice(start, lastClose + 1)) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+      } catch {}
+    }
+    return null;
+  }
+}
+
+function cleanHostActorText(value: unknown, fallback: string): string {
+  const text = String(typeof value === "string" ? value : fallback)
+    .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
+    .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
+    .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 500);
+  return text || fallback;
+}
+
 export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMetaLabResult> {
   const cwd = path.resolve(options.cwd);
   const dryRun = options.dryRun === true;
@@ -179,7 +760,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const repos = normalizeOssRepoSlugs(options.repos);
   const count = options.count ?? DEFAULT_OSS_REPOS.length;
 
-  if (!Number.isInteger(count) || count < 1 || count > 16) {
+  if (!Number.isInteger(count) || count < 1) {
     return {
       schema: OSS_META_LAB_SCHEMA,
       ok: false,
@@ -188,7 +769,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       dryRun,
       error: {
         code: "MIMETIC_INVALID_OSS_COUNT",
-        message: "--count must be an integer between 1 and 16."
+        message: "--count must be a positive integer."
       },
       liveRequested,
       repos,
@@ -217,8 +798,9 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     };
   }
 
-  const missingKeys = missingLiveKeys(process.env);
   const redactRepoNames = options.redactRepoNames ?? (liveRequested && Boolean(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN));
+  const hostActorMode = liveRequested && hostCodexActorRequested(process.env);
+  const missingKeys = missingLiveKeys(process.env);
   if (liveRequested && missingKeys.length > 0) {
     warnings.push(`Live E2B/Codex launch is waiting on env vars: ${missingKeys.join(", ")}.`);
     warnings.push("Observer lanes stay in the live waiting state until keys are present.");
@@ -228,8 +810,43 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const publicAssignments = redactAssignments(assignments, redactRepoNames);
   const publicRepos = redactRepoNames ? publicAssignments.map((assignment) => assignment.repo) : repos;
   const runId = options.runId ?? makeMetaRunId();
+  const hostActorPlanResults = hostActorMode && missingKeys.length === 0
+    ? await createHostActorPlans({
+        assignments,
+        cwd,
+        redactRepoNames,
+        runId
+      })
+    : [];
+  const hostActorPlansByStream = new Map(hostActorPlanResults.flatMap((result) =>
+    result.plan?.status === "passed" ? [[result.streamId, result] as const] : []
+  ));
+  if (hostActorPlanResults.length > 0) {
+    const passed = hostActorPlanResults.filter((result) => result.plan?.status === "passed").length;
+    warnings.push(`Host Codex actor authored ${passed}/${hostActorPlanResults.length} public-safe Mimetic plan${hostActorPlanResults.length === 1 ? "" : "s"}.`);
+    for (const failed of hostActorPlanResults.filter((result) => result.plan?.status !== "passed")) {
+      warnings.push(`Host Codex actor plan failed for ${redactRepoNames ? "[redacted-authorized-repo]" : failed.repo}: ${failed.error ?? failed.plan?.summary ?? "unknown failure"}`);
+    }
+  }
+  const hostActorPlanBlocked = hostActorMode
+    && actorRequired(process.env)
+    && hostActorPlanResults.length > 0
+    && hostActorPlanResults.some((result) => result.plan?.status !== "passed");
+  const actorAuthPreflight = liveRequested
+    && missingKeys.length === 0
+    && !hostActorMode
+    && actorRequired(process.env)
+    && process.env.MIMETIC_OSS_META_SKIP_ACTOR_PREFLIGHT !== "1"
+    ? await preflightOssMetaActorApiKey({ env: process.env })
+    : undefined;
+  const actorAuthPreflightBlocked = actorAuthPreflight !== undefined && !actorAuthPreflight.ok;
+  if (actorAuthPreflight) {
+    warnings.push(actorAuthPreflight.ok
+      ? actorAuthPreflight.reason
+      : `Remote Codex actor API-key preflight blocked live launch: ${actorAuthPreflight.reason}`);
+  }
   let localPackage: OssMetaLabLocalPackage | undefined;
-  if (liveRequested && missingKeys.length === 0) {
+  if (liveRequested && missingKeys.length === 0 && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
       localPackage = await packLocalMimeticPackage(cwd, runId);
       warnings.push(`Packed local mimetic-cli package for sandbox install (${localPackage.fileName}).`);
@@ -238,9 +855,11 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     }
   }
   let liveDesktops: OssMetaLabLiveDesktop[] = [];
-  if (liveRequested && missingKeys.length === 0) {
+  if (liveRequested && missingKeys.length === 0 && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
       liveDesktops = await launchLiveDesktops(assignments, {
+        cwd,
+        hostActorPlansByStream,
         ...(localPackage ? { localPackage } : {}),
         redactRepoNames
       });
@@ -248,13 +867,22 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       warnings.push(...completionSummary.warnings);
     } catch (error) {
       warnings.push(compactError(error));
-      liveDesktops = assignments.map((assignment) => ({
-        error: compactError(error),
-        repo: redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo,
-        simId: assignment.simId,
-        streamId: assignment.streamId
-      }));
+      liveDesktops = assignments.map((assignment) => {
+        const hostActorPlanResult = hostActorPlanResults.find((result) => result.streamId === assignment.streamId);
+        return {
+          error: compactError(error),
+          ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
+          ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
+          repo: redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo,
+          simId: assignment.simId,
+          streamId: assignment.streamId
+        };
+      });
     }
+  } else if (hostActorPlanBlocked) {
+    warnings.push("Live E2B launch skipped because required host Codex actor plan evidence did not pass preflight.");
+  } else if (actorAuthPreflightBlocked) {
+    warnings.push("Live E2B launch skipped because required Codex actor API-key quota/auth preflight failed.");
   }
   const liveDesktopCount = liveDesktops.filter((desktop) => desktop.url).length;
   const failedLiveDesktopCount = liveDesktops.filter((desktop) => desktop.error).length;
@@ -318,7 +946,11 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     dryRun,
     liveDesktops,
     liveRequested,
-    missingKeys,
+    missingKeys: [
+      ...missingKeys,
+      ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
+      ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
+    ],
     redactRepoNames,
     runId
   });
@@ -344,7 +976,11 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     dryRun,
     liveDesktops,
     liveRequested,
-    missingKeys
+    missingKeys: [
+      ...missingKeys,
+      ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
+      ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
+    ]
   });
 
   return {
@@ -380,6 +1016,8 @@ export function buildOssMetaBundleFixture(args: {
     bootstrap?: OssMetaLabBootstrap;
     completion?: OssMetaLabCompletion;
     error?: string;
+    hostActorPlan?: OssMetaLabHostActorPlan;
+    hostActorPlanPath?: string;
     repo: string;
     screenshot?: OssMetaLabScreenshot;
     sandboxId?: string;
@@ -417,6 +1055,7 @@ export function buildOssMetaBootstrapScriptFixture(): string {
     displayRepo: "developit/mitt",
     logPath: "/home/user/mimetic-oss-lab/developit-mitt/bootstrap.log",
     nestedObserverPath: "/home/user/mimetic-oss-lab/developit-mitt/repo/.mimetic/runs/nested-developit-mitt/observer/index.html",
+    remoteHostActorPlanPath: "/home/user/mimetic-oss-lab/developit-mitt/host-actor-plan.json",
     rootDir: "/home/user/mimetic-oss-lab/developit-mitt",
     token: "developit-mitt"
   });
@@ -526,6 +1165,7 @@ function buildMetaBundle(args: {
         { label: "events", path: "events.ndjson", kind: "events" },
         ...(completion?.appLogPath ? [{ label: "remote app log", path: completion.appLogPath, kind: "log" as const }] : []),
         ...(completion?.actorLogPath ? [{ label: "remote actor log", path: completion.actorLogPath, kind: "log" as const }] : []),
+        ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
         ...(liveDesktop?.bootstrap?.logPath ? [{ label: "remote bootstrap log", path: liveDesktop.bootstrap.logPath, kind: "log" as const }] : []),
         ...(liveDesktop?.bootstrap?.nestedObserverPath ? [{ label: "nested observer path", path: liveDesktop.bootstrap.nestedObserverPath, kind: "observer" as const }] : []),
         ...(screenshot ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }] : [])
@@ -645,7 +1285,7 @@ function buildMetaBundle(args: {
   return {
     schema: RUN_BUNDLE_SCHEMA,
     runId: args.runId,
-    mode: "dry-run",
+    mode: args.dryRun ? "dry-run" : "live",
     simCount: args.assignments.length,
     createdAt: args.createdAt,
     cwd: args.cwd,
@@ -783,6 +1423,10 @@ function createMetaReview(args: {
   const terminalCompletions = args.liveDesktops.filter((desktop) => isTerminalCompletion(desktop.completion));
   const appRunning = args.liveDesktops.filter((desktop) => desktop.completion?.appStatus === "running");
   const visualVisible = args.liveDesktops.filter((desktop) => desktop.completion?.visualStatus === "visible");
+  const nestedLiveProof = args.liveDesktops.some((desktop) =>
+    desktop.completion?.nestedVerifyPassed === true
+    && /\bmimetic run live\b/.test(desktop.completion.logTail ?? "")
+  );
   const outcome = classifyMetaLabOutcome(args);
   const gaps = [
     appRunning.length > 0 && visualVisible.length > 0
@@ -794,7 +1438,9 @@ function createMetaReview(args: {
       : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
       ? "Visible E2B bootstrap terminals are launched and run nested Mimetic setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
       : "Nested Mimetic Observer evidence is represented as a lane contract until Codex TUI injection and nested Mimetic execution land.",
-    "The nested Mimetic proof path is still a public-safe dry-run until live browser adapters can drive the target app with generated personas.",
+    nestedLiveProof
+      ? "Nested Mimetic proof reached live app-url mode with desktop/mobile browser evidence; autonomous multi-step persona navigation is still the next adapter slice."
+      : "Nested Mimetic proof did not reach live app-url mode; target app startup or browser evidence is still missing.",
     "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
     "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default."
   ];
@@ -999,7 +1645,7 @@ function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoN
     "5. Install Mimetic as a dev dependency with the package manager the repo already uses.",
     "6. Run `npx mimetic init --yes` or the package-manager equivalent.",
     "7. Author plausible public-safe Mimetic personas and desktop/mobile browser scenarios for this repo if feasible.",
-    "8. Run the strongest Mimetic proof path the installed package supports, using provided OPENAI_API_KEY and E2B_API_KEY where live substrate is implemented.",
+    "8. Run the strongest Mimetic proof path the installed package supports. If the app is running locally, prefer `npx mimetic run --app-url <loopback-url> --sims 2` so the nested Observer contains desktop/mobile browser evidence.",
     "9. Open the nested Mimetic Observer in the E2B browser and keep it visible.",
     "10. Record public-safe blockers and evidence paths only.",
     "",
@@ -1033,36 +1679,42 @@ ${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
 
 async function launchLiveDesktops(
   assignments: OssMetaLabAssignment[],
-  options: { localPackage?: OssMetaLabLocalPackage; redactRepoNames?: boolean } = {}
+  options: {
+    cwd?: string;
+    hostActorPlansByStream?: Map<string, OssMetaLabHostActorPlanResult>;
+    localPackage?: OssMetaLabLocalPackage;
+    redactRepoNames?: boolean;
+  } = {}
 ): Promise<OssMetaLabLiveDesktop[]> {
   const e2bApiKey = process.env.E2B_API_KEY;
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-  const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
-  if (!e2bApiKey || !openaiApiKey) {
+  if (!e2bApiKey) {
     return [];
   }
 
   const desktopModule = await loadE2BDesktopModule();
   const timeoutMs = readPositiveInt(process.env.MIMETIC_E2B_TIMEOUT_MS, 60 * 60 * 1000);
   const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const capacity = await checkOssMetaLabProviderCapacity(desktopModule, assignments.length, requestTimeoutMs);
+  if (!capacity.ok) {
+    throw new Error(capacity.reason);
+  }
 
   return Promise.all(assignments.map(async (assignment) => {
     const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
+    const hostActorPlanResult = options.hostActorPlansByStream?.get(assignment.streamId);
     try {
       const desktop = await desktopModule.Sandbox.create({
         apiKey: e2bApiKey,
         requestTimeoutMs,
         timeoutMs,
         metadata: {
-          tool: "mimetic-cli",
-          mode: "oss-meta-lab",
+          ...OSS_META_LAB_PROVIDER_METADATA,
           repo: repoLabel,
           simId: assignment.simId
         },
         envs: {
-          E2B_API_KEY: e2bApiKey,
-          ...(githubToken ? { GH_TOKEN: githubToken, GITHUB_TOKEN: githubToken } : {}),
-          OPENAI_API_KEY: openaiApiKey
+          ...collectOssMetaLabRemoteEnv(process.env),
+          ...collectOssMetaLabPrivateEnv(process.env)
         },
         resolution: [1440, 960],
         dpi: 96,
@@ -1071,6 +1723,7 @@ async function launchLiveDesktops(
         }
       });
       const bootstrap = await startOssBootstrap(desktop, assignment, options.localPackage, requestTimeoutMs, {
+        ...(hostActorPlanResult === undefined ? {} : { hostActorPlanResult }),
         repoLabel,
         token: options.redactRepoNames ? repoLabel : repoSlugToken(assignment.repo)
       });
@@ -1087,6 +1740,8 @@ async function launchLiveDesktops(
       return {
         bootstrap,
         desktop,
+        ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
+        ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
         repo: repoLabel,
         sandboxId: desktop.sandboxId,
         simId: assignment.simId,
@@ -1096,12 +1751,44 @@ async function launchLiveDesktops(
     } catch (error) {
       return {
         error: compactError(error),
+        ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
+        ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
         repo: repoLabel,
         simId: assignment.simId,
         streamId: assignment.streamId
       };
     }
   }));
+}
+
+async function checkOssMetaLabProviderCapacity(
+  desktopModule: E2BDesktopModule,
+  requested: number,
+  requestTimeoutMs: number
+): Promise<OssMetaLabProviderCapacity> {
+  const cap = readPositiveInt(process.env.MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS, 4);
+  const running = await countRunningOssMetaLabSandboxes(desktopModule, requestTimeoutMs);
+  return assessOssMetaLabProviderCapacity({ cap, requested, running });
+}
+
+async function countRunningOssMetaLabSandboxes(
+  desktopModule: E2BDesktopModule,
+  requestTimeoutMs: number
+): Promise<number> {
+  if (!desktopModule.Sandbox.list) {
+    return 0;
+  }
+
+  const paginator = desktopModule.Sandbox.list({
+    metadata: OSS_META_LAB_PROVIDER_METADATA,
+    requestTimeoutMs
+  });
+  let count = 0;
+  while (paginator.hasNext) {
+    const page = await paginator.nextItems({ requestTimeoutMs });
+    count += page.length;
+  }
+  return count;
 }
 
 async function pollLiveDesktopCompletions(liveDesktops: OssMetaLabLiveDesktop[]): Promise<{ warnings: string[] }> {
@@ -1380,7 +2067,7 @@ function defaultReasonForCompletion(status: OssMetaLabCompletionStatus): string 
 
 function sanitizeRemoteLog(value: string): string {
   return value
-    .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted-openai-key]")
+    .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
     .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
     .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
     .replace(/https?:\/\/[^/\s]*e2b[^)\s]+/gi, "[redacted-e2b-url]")
@@ -1414,7 +2101,7 @@ async function startOssBootstrap(
   assignment: OssMetaLabAssignment,
   localPackage: OssMetaLabLocalPackage | undefined,
   requestTimeoutMs: number,
-  display: { repoLabel: string; token: string } = {
+  display: { hostActorPlanResult?: OssMetaLabHostActorPlanResult; repoLabel: string; token: string } = {
     repoLabel: assignment.repo,
     token: repoSlugToken(assignment.repo)
   }
@@ -1422,6 +2109,7 @@ async function startOssBootstrap(
   const token = display.token;
   const rootDir = `/home/user/mimetic-oss-lab/${token}`;
   const remotePackagePath = `/tmp/${localPackage?.fileName ?? "mimetic-cli.tgz"}`;
+  const remoteHostActorPlanPath = `${rootDir}/host-actor-plan.json`;
   const bootstrapPath = `${rootDir}/bootstrap.sh`;
   const launcherPath = `${rootDir}/launch-terminal.sh`;
   const logPath = `${rootDir}/bootstrap.log`;
@@ -1451,6 +2139,11 @@ async function startOssBootstrap(
         useOctetStream: true
       });
     }
+    if (display.hostActorPlanResult?.plan) {
+      await desktop.files.write(remoteHostActorPlanPath, `${JSON.stringify(display.hostActorPlanResult.plan, null, 2)}\n`, {
+        requestTimeoutMs
+      });
+    }
 
     const bootstrapScript = buildRemoteBootstrapScript({
       assignment,
@@ -1458,6 +2151,7 @@ async function startOssBootstrap(
       displayRepo: display.repoLabel,
       logPath,
       nestedObserverPath,
+      ...(display.hostActorPlanResult?.plan ? { remoteHostActorPlanPath } : {}),
       rootDir,
       token,
       ...(localPackage ? { remotePackagePath } : {})
@@ -1525,6 +2219,7 @@ function buildRemoteBootstrapScript(args: {
   displayRepo: string;
   logPath: string;
   nestedObserverPath: string;
+  remoteHostActorPlanPath?: string;
   remotePackagePath?: string;
   rootDir: string;
   token: string;
@@ -1535,12 +2230,18 @@ function buildRemoteBootstrapScript(args: {
 set -Eeuo pipefail
 export TERM=xterm-256color
 export MIMETIC_PUBLIC_SAFE=1
+MIMETIC_PRIVATE_CODEX_API_KEY="\${MIMETIC_CODEX_API_KEY:-}"
+MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="\${MIMETIC_CODEX_ACCESS_TOKEN:-}"
+MIMETIC_PRIVATE_GITHUB_TOKEN="\${MIMETIC_GITHUB_TOKEN:-}"
+unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_GITHUB_TOKEN
+unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN
 ROOT_DIR=${shellQuote(args.rootDir)}
 APP_DIR="$ROOT_DIR/repo"
 LOG_PATH=${shellQuote(args.logPath)}
 COMPLETION_PATH=${shellQuote(args.completionPath)}
 NESTED_OBSERVER=${shellQuote(args.nestedObserverPath)}
 REMOTE_PACKAGE=${args.remotePackagePath ? shellQuote(args.remotePackagePath) : "''"}
+HOST_ACTOR_PLAN=${args.remoteHostActorPlanPath ? shellQuote(args.remoteHostActorPlanPath) : "''"}
 APP_LOG_PATH="$ROOT_DIR/app.log"
 ACTOR_LOG_PATH="$ROOT_DIR/actor.log"
 TERMINAL_TITLE=${shellQuote(`Mimetic ${args.assignment.index} ${args.displayRepo}`)}
@@ -1593,12 +2294,12 @@ const rawTail = fs.existsSync(logPath)
   ? fs.readFileSync(logPath, "utf8").split(/\\r?\\n/).slice(-80).join("\\n")
   : "";
 const redactedTail = rawTail
-  .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted-openai-key]")
+  .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
   .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
   .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]");
 const numberOrNull = (value) => /^\\d+$/.test(String(value || "")) ? Number(value) : null;
 const cleanText = (value) => String(value || "")
-  .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted-openai-key]")
+  .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
   .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
   .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
   .replace(/\\s+/g, " ")
@@ -1639,6 +2340,8 @@ finish() {
     write_completion "blocked" "Nested Mimetic proof completed, but the target app surface was not proven running." "$exit_code"
   elif [[ "$VISUAL_STATUS" != "visible" ]]; then
     write_completion "blocked" "Nested Mimetic proof completed, but headed desktop visual layout was not proven visible." "$exit_code"
+  elif [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
+    write_completion "blocked" "Required Codex actor evidence did not reach a passed terminal status." "$exit_code"
   else
     write_completion "passed" "Target app surface, nested Mimetic proof, and nested Observer were checked." "$exit_code"
   fi
@@ -1649,9 +2352,10 @@ trap finish EXIT
 echo "== mimetic oss meta-lab bootstrap =="
 echo "repo=${args.displayRepo}"
 echo "public_safe=1"
-echo "E2B_API_KEY=$([[ -n "\${E2B_API_KEY:-}" ]] && echo present || echo missing)"
-echo "GH_TOKEN=$([[ -n "\${GH_TOKEN:-}\${GITHUB_TOKEN:-}" ]] && echo present || echo missing)"
-echo "OPENAI_API_KEY=$([[ -n "\${OPENAI_API_KEY:-}" ]] && echo present || echo missing)"
+echo "provider_secrets=isolated"
+echo "github_token=$([[ -n "$MIMETIC_PRIVATE_GITHUB_TOKEN" ]] && echo available-for-clone || echo absent)"
+echo "codex_actor_auth=$([[ -n "$MIMETIC_PRIVATE_CODEX_API_KEY$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" ]] && echo available-for-actor || echo absent)"
+echo "host_actor_plan=$([[ -f "$HOST_ACTOR_PLAN" ]] && echo available || echo absent)"
 echo
 
 need() {
@@ -1711,6 +2415,42 @@ async function probe() {
 
 while (Date.now() - startedAt <= timeoutMs) {
   if (await probe()) process.exit(0);
+  await new Promise((resolve) => setTimeout(resolve, intervalMs));
+}
+process.exit(1);
+NODE
+}
+
+wait_for_any_http() {
+  local timeout_ms="$1"
+  local interval_ms="$2"
+  shift 2
+  node - "$timeout_ms" "$interval_ms" "$@" <<'NODE'
+const [timeoutArg, intervalArg, ...urls] = process.argv.slice(2);
+const timeoutMs = Number(timeoutArg);
+const intervalMs = Number(intervalArg);
+const startedAt = Date.now();
+
+async function probe(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.min(intervalMs, 5_000));
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response.status < 500;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+while (Date.now() - startedAt <= timeoutMs) {
+  for (const url of urls) {
+    if (await probe(url)) {
+      console.log(url);
+      process.exit(0);
+    }
+  }
   await new Promise((resolve) => setTimeout(resolve, intervalMs));
 }
 process.exit(1);
@@ -1822,6 +2562,7 @@ const emit = (key, value) => console.log(key + "=" + shell(value));
 
 if (!fs.existsSync("package.json")) {
   console.log("APP_PLAN_OK='0'");
+  emit("APP_PM", "npm");
   emit("APP_PLAN_REASON", "package.json not found");
   process.exit(0);
 }
@@ -1831,12 +2572,20 @@ try {
   pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 } catch {
   console.log("APP_PLAN_OK='0'");
+  emit("APP_PM", "npm");
   emit("APP_PLAN_REASON", "package.json could not be parsed");
   process.exit(0);
 }
 
 const scripts = pkg.scripts && typeof pkg.scripts === "object" ? pkg.scripts : {};
 const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+const lockfiles = fs.readdirSync(".").filter((name) => /^(pnpm-lock\\.yaml|yarn\\.lock|bun\\.lockb?|package-lock\\.json|npm-shrinkwrap\\.json)$/.test(name));
+const packageManagerHint = typeof pkg.packageManager === "string" ? pkg.packageManager : "";
+let pm = "npm";
+if (packageManagerHint.startsWith("pnpm@") || lockfiles.includes("pnpm-lock.yaml")) pm = "pnpm";
+else if (packageManagerHint.startsWith("yarn@") || lockfiles.includes("yarn.lock")) pm = "yarn";
+else if (packageManagerHint.startsWith("bun@") || lockfiles.includes("bun.lock") || lockfiles.includes("bun.lockb")) pm = "bun";
+
 const names = ["dev", "start", "serve", "preview"];
 const entries = names
   .map((name) => ({ name, command: typeof scripts[name] === "string" ? scripts[name].trim() : "" }))
@@ -1844,16 +2593,10 @@ const entries = names
 
 if (!entries.length) {
   console.log("APP_PLAN_OK='0'");
+  emit("APP_PM", pm);
   emit("APP_PLAN_REASON", "no dev/start/serve/preview script found");
   process.exit(0);
 }
-
-const lockfiles = fs.readdirSync(".").filter((name) => /^(pnpm-lock\\.yaml|yarn\\.lock|bun\\.lockb?|package-lock\\.json|npm-shrinkwrap\\.json)$/.test(name));
-const packageManagerHint = typeof pkg.packageManager === "string" ? pkg.packageManager : "";
-let pm = "npm";
-if (packageManagerHint.startsWith("pnpm@") || lockfiles.includes("pnpm-lock.yaml")) pm = "pnpm";
-else if (packageManagerHint.startsWith("yarn@") || lockfiles.includes("yarn.lock")) pm = "yarn";
-else if (packageManagerHint.startsWith("bun@") || lockfiles.includes("bun.lock") || lockfiles.includes("bun.lockb")) pm = "bun";
 
 const pickByCommand = (pattern) => entries.find((entry) => pattern.test(entry.command));
 let picked = null;
@@ -1936,6 +2679,126 @@ install_project_dependencies() {
   esac
 }
 
+install_mimetic_cli() {
+  echo
+  echo "== installing mimetic-cli =="
+  local plan_output
+  plan_output="$(detect_app_plan)"
+  eval "$plan_output"
+  local pm="\${APP_PM:-npm}"
+  if ! ensure_package_manager "$pm"; then
+    echo "mimetic_install=blocked package_manager=$pm"
+    return 1
+  fi
+  local spec="mimetic-cli"
+  if [[ -n "$REMOTE_PACKAGE" && -f "$REMOTE_PACKAGE" ]]; then
+    spec="$REMOTE_PACKAGE"
+  fi
+
+  case "$pm" in
+    pnpm)
+      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false pnpm add -D "$spec" --ignore-scripts
+      ;;
+    yarn)
+      YARN_ENABLE_SCRIPTS=0 yarn add -D "$spec"
+      ;;
+    bun)
+      bun add -d "$spec"
+      ;;
+    npm)
+      npm i -D "$spec" --ignore-scripts --no-audit --no-fund
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+apply_host_actor_plan() {
+  if [[ "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+    return 0
+  fi
+
+  echo
+  echo "== host codex actor plan =="
+  if [[ ! -f "$HOST_ACTOR_PLAN" ]]; then
+    ACTOR_STATUS=blocked
+    echo "host_actor_plan=missing"
+    return 1
+  fi
+
+  node - "$HOST_ACTOR_PLAN" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const [planPath] = process.argv.slice(2);
+const plan = JSON.parse(fs.readFileSync(planPath, "utf8"));
+if (plan.schema !== "mimetic.oss-host-actor-plan.v1" || plan.status !== "passed") {
+  throw new Error("host actor plan is not passed");
+}
+const clean = (value, fallback) => String(value || fallback)
+  .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
+  .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
+  .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+  .replace(/\\s+/g, " ")
+  .trim()
+  .slice(0, 300);
+const token = (value, fallback) => clean(value, fallback).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || fallback;
+const yamlScalar = (value) => clean(value, "").replace(/"/g, "\\\\\"");
+const yamlList = (values) => (Array.isArray(values) && values.length ? values : ["public_safe"]).map((value) => "  - " + yamlScalar(value)).join("\\n");
+fs.mkdirSync("mimetic/personas", { recursive: true });
+fs.mkdirSync("mimetic/scenarios", { recursive: true });
+const personas = Array.isArray(plan.personas) ? plan.personas.slice(0, 2) : [];
+const scenarios = Array.isArray(plan.scenarios) ? plan.scenarios.slice(0, 2) : [];
+if (!personas.length || !scenarios.length) {
+  throw new Error("host actor plan lacks personas or scenarios");
+}
+for (const persona of personas) {
+  const id = token(persona.id, "host-codex-persona");
+  fs.writeFileSync(path.join("mimetic/personas", id + ".yaml"), [
+    "schema: mimetic.persona.v1",
+    "id: " + id,
+    "name: " + yamlScalar(persona.name || "Host Codex Persona"),
+    "summary: " + yamlScalar(persona.intent || "Public-safe host Codex actor persona."),
+    "traits:",
+    yamlList(persona.traits),
+    "constraints:",
+    "  - Do not use real personal data.",
+    "  - Do not use production accounts.",
+    "  - Treat all credentials as env var names only.",
+    "  - Source: local Codex host actor plan applied inside disposable E2B."
+  ].join("\\n") + "\\n");
+}
+for (const scenario of scenarios) {
+  const id = token(scenario.id, "host-codex-scenario");
+  const personaId = token(personas[0].id, "host-codex-persona");
+  fs.writeFileSync(path.join("mimetic/scenarios", id + ".yaml"), [
+    "schema: mimetic.scenario.v1",
+    "id: " + id,
+    "title: " + yamlScalar(scenario.title || "Host Codex Scenario"),
+    "persona: " + personaId,
+    "goal: " + yamlScalar(scenario.goal || "Exercise the app through a public-safe browser flow."),
+    "mode: browser",
+    "steps:",
+    ...(Array.isArray(scenario.steps) && scenario.steps.length ? scenario.steps : ["Open the app", "Reach a meaningful state"]).slice(0, 8).map((step, index) => [
+      "  - name: Step " + String(index + 1),
+      "    expectation: " + yamlScalar(step)
+    ].join("\\n"))
+  ].join("\\n") + "\\n");
+}
+console.log("host_actor_plan=applied personas=" + personas.length + " scenarios=" + scenarios.length);
+console.log("host_actor_recommended_proof=" + clean(plan.recommendedProof, "mimetic run --app-url <loopback-url> --sims 2"));
+NODE
+  local apply_exit=$?
+  if [[ "$apply_exit" -eq 0 ]]; then
+    ACTOR_STATUS=blocked
+    echo "actor_status=$ACTOR_STATUS source=host-codex-plan reason=remote-actor-not-run"
+  else
+    ACTOR_STATUS=failed
+    echo "actor_status=$ACTOR_STATUS source=host-codex-plan exit=$apply_exit"
+  fi
+  return "$apply_exit"
+}
+
 start_target_app_surface() {
   echo
   echo "== target app surface =="
@@ -1963,7 +2826,8 @@ start_target_app_surface() {
     return 0
   fi
 
-  APP_URL="http://127.0.0.1:$APP_PORT"
+  local app_url_candidates=("http://localhost:$APP_PORT" "http://127.0.0.1:$APP_PORT" "http://[::1]:$APP_PORT")
+  APP_URL="\${app_url_candidates[0]}"
   local start_command
   local command_prefix="HOST=0.0.0.0 PORT=$APP_PORT"
   local script_arg_separator="--"
@@ -1984,12 +2848,14 @@ start_target_app_surface() {
   esac
 
   echo "app_plan=$APP_PLAN_REASON"
-  echo "app_url=$APP_URL"
+  echo "app_url_candidates=\${app_url_candidates[*]}"
   echo "app_command=$start_command"
   nohup bash -lc "$start_command" > "$APP_LOG_PATH" 2>&1 &
   APP_PID=$!
 
-  if wait_for_http "$APP_URL" 120000 1000; then
+  local ready_url=""
+  if ready_url="$(wait_for_any_http 120000 1000 "\${app_url_candidates[@]}")"; then
+    APP_URL="$ready_url"
     APP_STATUS=running
     APP_REASON="target app responded at $APP_URL"
     open_browser_url "$APP_URL" app-desktop 0 0 760 520
@@ -2004,26 +2870,83 @@ start_target_app_surface() {
 
 start_actor_attempt() {
   echo
-  echo "== optional codex actor attempt =="
+  echo "== codex actor attempt =="
   local actor_script="$ROOT_DIR/actor-run.sh"
   cat > "$actor_script" <<ACTOR
 #!/usr/bin/env bash
 set +e
 APP_DIR="$APP_DIR"
-PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Do not print secrets, do not commit, do not push, and do not file issues.'
-if command -v codex >/dev/null 2>&1; then
-  timeout 240s codex --no-alt-screen -C "\\$APP_DIR" --sandbox danger-full-access --ask-for-approval never "\\$PROMPT"
+if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
+  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Inspect package.json, README, scripts, and the app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Start the local app if feasible, then run the strongest Mimetic proof available; prefer npx mimetic run --app-url <loopback-url> --sims 2 when the app is running. Render or open the nested Mimetic Observer if feasible. Do not print secrets, do not commit, do not push, and do not file issues.'
 else
-  timeout 240s npx -y @openai/codex@latest --no-alt-screen -C "\\$APP_DIR" --sandbox danger-full-access --ask-for-approval never "\\$PROMPT"
+  PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Do not print secrets, do not commit, do not push, and do not file issues.'
+fi
+printf -v app_dir_q '%q' "\\$APP_DIR"
+printf -v prompt_q '%q' "\\$PROMPT"
+printf -v actor_message_q '%q' "$ROOT_DIR/actor-last-message.txt"
+ACTOR_MODEL="\${MIMETIC_OSS_META_ACTOR_MODEL:-gpt-5.4-mini}"
+printf -v actor_model_q '%q' "\\$ACTOR_MODEL"
+CODEX_COMMAND="npx -y @openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check -m \\$actor_model_q -C \\$app_dir_q --dangerously-bypass-approvals-and-sandbox --output-last-message \\$actor_message_q \\$prompt_q"
+if [[ -n "\${MIMETIC_PRIVATE_CODEX_API_KEY:-}" && -n "\${MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
+  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout 240s bash -lc "\\$CODEX_COMMAND"
+elif [[ -n "\${MIMETIC_PRIVATE_CODEX_API_KEY:-}" ]]; then
+  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" timeout 240s bash -lc "\\$CODEX_COMMAND"
+elif [[ -n "\${MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
+  CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout 240s bash -lc "\\$CODEX_COMMAND"
+else
+  timeout 240s bash -lc "\\$CODEX_COMMAND"
 fi
 code=\\$?
 echo "actor_exit=\\$code"
+exit "\\$code"
 ACTOR
   chmod +x "$actor_script"
-  nohup bash "$actor_script" > "$ACTOR_LOG_PATH" 2>&1 &
+  MIMETIC_PRIVATE_CODEX_API_KEY="$MIMETIC_PRIVATE_CODEX_API_KEY" MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script" > "$ACTOR_LOG_PATH" 2>&1 &
   ACTOR_PID=$!
   ACTOR_STATUS=running
   echo "actor_status=$ACTOR_STATUS pid=$ACTOR_PID log=$ACTOR_LOG_PATH"
+}
+
+wait_for_actor_attempt_if_required() {
+  if [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" != "1" ]]; then
+    return 0
+  fi
+
+  echo
+  echo "== required codex actor readback =="
+  if [[ -z "$ACTOR_PID" ]]; then
+    ACTOR_STATUS=blocked
+    echo "actor_status=$ACTOR_STATUS reason=no actor process was started"
+    return 1
+  fi
+
+  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+  local started_ms
+  started_ms="$(date +%s%3N)"
+  while kill -0 "$ACTOR_PID" >/dev/null 2>&1; do
+    local now_ms
+    now_ms="$(date +%s%3N)"
+    if [[ $((now_ms - started_ms)) -ge "$timeout_ms" ]]; then
+      ACTOR_STATUS=timed_out
+      kill "$ACTOR_PID" >/dev/null 2>&1 || true
+      echo "actor_status=$ACTOR_STATUS timeout_ms=$timeout_ms log=$ACTOR_LOG_PATH"
+      return 1
+    fi
+    sleep 1
+  done
+
+  local actor_exit=0
+  wait "$ACTOR_PID" || actor_exit=$?
+  if [[ "$actor_exit" -eq 0 ]]; then
+    ACTOR_STATUS=passed
+  else
+    ACTOR_STATUS=failed
+  fi
+  echo "actor_status=$ACTOR_STATUS exit=$actor_exit log=$ACTOR_LOG_PATH"
+  echo "actor_log_tail_begin"
+  tail -n 80 "$ACTOR_LOG_PATH" || true
+  echo "actor_log_tail_end"
+  [[ "$actor_exit" -eq 0 ]]
 }
 
 rm -rf "$APP_DIR"
@@ -2032,14 +2955,12 @@ cat > "$ASKPASS" <<'ASKPASS'
 #!/usr/bin/env bash
 case "$1" in
   *Username*) echo "x-access-token" ;;
-  *Password*) echo "\${GH_TOKEN:-\${GITHUB_TOKEN:-}}" ;;
+  *Password*) echo "\${MIMETIC_GITHUB_TOKEN_RUNTIME:-}" ;;
   *) echo "" ;;
 esac
 ASKPASS
 chmod 700 "$ASKPASS"
-export GIT_ASKPASS="$ASKPASS"
-export GIT_TERMINAL_PROMPT=0
-git clone --depth=1 ${shellQuote(repoUrl)} "$APP_DIR"
+GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git clone --depth=1 ${shellQuote(repoUrl)} "$APP_DIR"
 cd "$APP_DIR"
 echo
 echo "== repo fingerprint =="
@@ -2059,20 +2980,29 @@ else
 fi
 
 echo
-echo "== installing mimetic-cli =="
-if [[ -n "$REMOTE_PACKAGE" && -f "$REMOTE_PACKAGE" ]]; then
-  npm i -D "$REMOTE_PACKAGE" --ignore-scripts --no-audit --no-fund
-else
-  npm i -D mimetic-cli --ignore-scripts --no-audit --no-fund
+if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+  start_actor_attempt
+  wait_for_actor_attempt_if_required || true
 fi
+
+echo
+install_mimetic_cli
 
 echo
 echo "== mimetic init =="
 npx mimetic init --yes
+apply_host_actor_plan || true
+
+start_target_app_surface
 
 echo
 echo "== nested mimetic proof =="
-npx mimetic run --dry-run --run-id ${shellQuote(runId)}
+if [[ "$APP_STATUS" == "running" && -n "$APP_URL" ]]; then
+  npx mimetic run --app-url "$APP_URL" --sims 2 --run-id ${shellQuote(runId)}
+else
+  echo "app_not_running_for_browser_proof=$APP_REASON"
+  npx mimetic run --dry-run --run-id ${shellQuote(runId)}
+fi
 if npx mimetic verify --run latest; then
   NESTED_VERIFY_STATUS=passed
 else
@@ -2080,10 +3010,12 @@ else
   exit 1
 fi
 npx mimetic watch --run latest --detach --no-open
-start_target_app_surface
 open_nested_observer "opening nested observer"
 arrange_lab_windows
-start_actor_attempt
+if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" != "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+  start_actor_attempt
+  wait_for_actor_attempt_if_required || true
+fi
 
 echo
 echo "== bootstrap complete =="
@@ -2257,7 +3189,13 @@ function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop): OssMetaLabR
 }
 
 function missingLiveKeys(env: NodeJS.ProcessEnv): string[] {
-  return ["E2B_API_KEY", "OPENAI_API_KEY"].filter((name) => !env[name]?.trim());
+  const missing = ["E2B_API_KEY"].filter((name) => !env[name]?.trim());
+  const actorAuthRequested = remoteActorAuthRequested(env);
+  const actorAuthPresent = Boolean(env.CODEX_API_KEY?.trim() || env.CODEX_ACCESS_TOKEN?.trim() || env.OPENAI_API_KEY?.trim());
+  if (actorAuthRequested && !hostCodexActorRequested(env) && !actorAuthPresent) {
+    missing.push(OSS_META_LAB_ACTOR_AUTH_PLACEHOLDER);
+  }
+  return missing;
 }
 
 function readPositiveInt(value: string | undefined, fallback: number): number {
@@ -2288,7 +3226,13 @@ async function wait(ms: number): Promise<void> {
 
 function compactError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/\s+/g, " ").slice(0, 240);
+  return message
+    .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
+    .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
+    .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+    .replace(/https?:\/\/[^/\s]*e2b[^)\s]+/gi, "[redacted-e2b-url]")
+    .replace(/\s+/g, " ")
+    .slice(0, 240);
 }
 
 function makeMetaRunId(): string {
@@ -2328,7 +3272,24 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 interface E2BDesktopModule {
   Sandbox: {
     create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
+    list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
   };
+}
+
+interface E2BSandboxListOptions {
+  metadata?: Record<string, string>;
+  requestTimeoutMs?: number;
+}
+
+interface E2BSandboxInfo {
+  metadata?: Record<string, string>;
+  sandboxId?: string;
+  state?: string;
+}
+
+interface E2BSandboxPaginator {
+  hasNext: boolean;
+  nextItems(options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo[]>;
 }
 
 interface E2BDesktopCreateOptions {

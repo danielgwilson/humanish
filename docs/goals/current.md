@@ -127,8 +127,8 @@ Minimum acceptance:
 - each lane records nested Observer presence; `done`
 - each lane records nested verification status or blocker; `done`
 - top-level Observer updates lane verdicts from evidence; `done`
-- next gap: provider-backed browser personas must drive the target app instead
-  of relying on nested dry-run proof.
+- next gap: provider-backed browser personas must drive multi-step target-app
+  journeys instead of relying on nested app-url render proof.
 
 ## Non-Goals
 
@@ -160,7 +160,8 @@ Stop and correct course if:
 ## Best Next Work
 
 The next most useful engineering slice is fresh-agent install proof against a
-disposable public app fixture, followed by the first real browser adapter.
+disposable public app fixture, followed by the first provider-backed multi-step
+browser persona adapter.
 
 That sequence keeps the package honest: first prove a new maintainer can start,
 then prove Mimetic can observe real product behavior.

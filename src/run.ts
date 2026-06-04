@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { buildObserverData } from "./observer-data.js";
 
@@ -16,6 +17,7 @@ export interface RunOptions {
   cwd: string;
   actor?: string;
   actorCommand?: string[];
+  appUrl?: string;
   dryRun?: boolean;
   runId?: string;
   simCount?: number;
@@ -208,9 +210,13 @@ export interface RunResult {
   error?: {
     code:
       | "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED"
+      | "MIMETIC_APP_URL_OPTION_CONFLICT"
+      | "MIMETIC_BROWSER_APP_CAPTURE_FAILED"
       | "MIMETIC_LIVE_RUN_UNIMPLEMENTED"
       | "MIMETIC_LOCAL_CODEX_EXEC_FAILED"
       | "MIMETIC_LOCAL_CODEX_TUI_FAILED"
+      | "MIMETIC_INVALID_APP_URL"
+      | "MIMETIC_INVALID_ACTOR_CONCURRENCY"
       | "MIMETIC_INVALID_CWD"
       | "MIMETIC_INVALID_SIM_COUNT"
       | "MIMETIC_INVALID_TIMEOUT"
@@ -270,14 +276,20 @@ interface RunPointer {
 }
 
 const sensitivePatterns = [
-  /sk-[a-z0-9_-]{12,}/i,
-  /gho_[a-z0-9_]{12,}/i,
+  /sk-[a-z0-9_-]{20,}/i,
+  /e2b_[a-z0-9_-]{12,}/i,
+  /gh[pousr]_[a-z0-9_]{12,}/i,
+  /https?:\/\/[^/\s]*e2b[^)\s]+/i,
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
 ];
 
 const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 240_000;
 const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 600_000;
 const LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS = 80_000;
+const LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY = 4;
+const BROWSER_APP_DEFAULT_TIMEOUT_MS = 60_000;
+
+const execFileAsync = promisify(execFile);
 
 type LocalCodexActor = "codex-tui" | "codex-exec";
 
@@ -324,7 +336,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     };
   }
 
-  const simCount = normalizeSimCount(options.simCount);
+  const simCount = normalizeSimCount(options.appUrl ? options.simCount ?? 2 : options.simCount);
   if (simCount === null) {
     return {
       schema: "mimetic.run-result.v1",
@@ -333,9 +345,39 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
       warnings,
       error: {
         code: "MIMETIC_INVALID_SIM_COUNT",
-        message: "--sims must be an integer between 1 and 64."
+        message: "--sims must be a positive integer."
       }
     };
+  }
+
+  if (options.appUrl !== undefined) {
+    if (options.dryRun) {
+      return {
+        schema: "mimetic.run-result.v1",
+        ok: false,
+        cwd,
+        warnings,
+        error: {
+          code: "MIMETIC_APP_URL_OPTION_CONFLICT",
+          message: "Use --app-url for a live browser app proof; remove --dry-run."
+        }
+      };
+    }
+
+    if (simCount > 2) {
+      return {
+        schema: "mimetic.run-result.v1",
+        ok: false,
+        cwd,
+        warnings,
+        error: {
+          code: "MIMETIC_INVALID_SIM_COUNT",
+          message: "--sims must be 1 or 2 when --app-url is used."
+        }
+      };
+    }
+
+    return runBrowserAppProof({ ...options, appUrl: options.appUrl, cwd, simCount });
   }
 
   if (!options.dryRun) {
@@ -465,6 +507,579 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   };
 }
 
+interface BrowserSurface {
+  id: "desktop" | "mobile";
+  label: string;
+  viewport: {
+    width: number;
+    height: number;
+    deviceScaleFactor: number;
+    isMobile: boolean;
+  };
+}
+
+interface BrowserSurfaceCapture {
+  capturedAt: string;
+  durationMs: number;
+  httpStatus?: number;
+  ok: boolean;
+  reason: string;
+  screenshotPath: string;
+  surface: BrowserSurface;
+  tracePath: string;
+}
+
+const browserSurfaces: BrowserSurface[] = [
+  {
+    id: "desktop",
+    label: "Desktop browser surface",
+    viewport: {
+      width: 1440,
+      height: 960,
+      deviceScaleFactor: 1,
+      isMobile: false
+    }
+  },
+  {
+    id: "mobile",
+    label: "Mobile browser surface",
+    viewport: {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 2,
+      isMobile: true
+    }
+  }
+];
+
+async function runBrowserAppProof(options: RunOptions & {
+  appUrl: string;
+  cwd: string;
+  simCount: number;
+}): Promise<RunResult> {
+  const warnings: string[] = [];
+  const appUrl = normalizeLocalAppUrl(options.appUrl);
+  if (!appUrl) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_INVALID_APP_URL",
+        message: "--app-url must be an http(s) loopback URL such as http://127.0.0.1:5173."
+      }
+    };
+  }
+
+  const browserCommand = await resolveBrowserCommand();
+  if (!browserCommand) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_BROWSER_APP_CAPTURE_FAILED",
+        message: "No Chrome/Chromium browser command was found. Set MIMETIC_BROWSER_COMMAND to a browser binary that supports --headless and --screenshot."
+      }
+    };
+  }
+
+  const now = new Date();
+  const createdAt = now.toISOString();
+  const runId = options.runId ?? `browser-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const artifactRoot = path.join(".mimetic", "runs", runId);
+  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
+  const packageName = await readPackageName(options.cwd);
+  const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const selection = await loadDryRunSelection(options.cwd, mimeticSource);
+  if (mimeticSource === "missing") {
+    warnings.push("Committed mimetic/ source was not found; using built-in synthetic browser-app defaults.");
+  }
+  warnings.push(...selection.warnings);
+
+  await mkdir(path.join(absoluteArtifactRoot, "screenshots"), { recursive: true });
+  await mkdir(path.join(absoluteArtifactRoot, "traces"), { recursive: true });
+
+  const surfaces = browserSurfaces.slice(0, options.simCount);
+  const captures = await Promise.all(surfaces.map((surface) => captureBrowserSurface({
+    absoluteArtifactRoot,
+    appUrl,
+    browserCommand,
+    surface,
+    timeoutMs: options.timeoutMs ?? BROWSER_APP_DEFAULT_TIMEOUT_MS
+  })));
+  const completedAt = new Date().toISOString();
+  const events = buildBrowserAppEvents({ appUrl, captures, createdAt });
+  const allPassed = captures.every((capture) => capture.ok);
+  const review = createBrowserAppReviewSummary({ appUrl, captures });
+  const bundle: RunBundle = {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId,
+    mode: "live",
+    simCount: captures.length,
+    createdAt,
+    cwd: options.cwd,
+    artifactRoot,
+    source: {
+      packageName,
+      mimeticSource,
+      git: {
+        status: "not_captured",
+        note: "Browser app proof records local app evidence only; host git state capture is a later primitive."
+      }
+    },
+    persona: {
+      id: selection.persona.id,
+      name: selection.persona.name,
+      source: selection.persona.source,
+      sourceDigest: selection.persona.sourceDigest
+    },
+    scenario: {
+      id: "browser-app-surface-smoke",
+      title: "Browser App Surface Smoke",
+      goal: "Capture desktop and mobile browser evidence against a running local app URL.",
+      source: "builtin:browser-app-surface-smoke",
+      sourceDigest: digestText(appUrl)
+    },
+    lifecycle: [
+      {
+        at: createdAt,
+        event: "run.created",
+        message: `Live browser app proof created for ${appUrl}.`
+      },
+      {
+        at: createdAt,
+        event: "app.url.accepted",
+        message: "Accepted public-safe loopback app URL for browser surface capture."
+      },
+      {
+        at: completedAt,
+        event: "review.created",
+        message: allPassed
+          ? "Created review from desktop/mobile browser screenshot evidence."
+          : "Created review with missing or blocked browser screenshot evidence."
+      }
+    ],
+    simulations: captures.map((capture, index) => {
+      const simId = `browser-${capture.surface.id}`;
+      const streamId = `${simId}-stream`;
+      return {
+        id: simId,
+        index: index + 1,
+        personaId: selection.persona.id,
+        scenarioId: "browser-app-surface-smoke",
+        status: capture.ok ? "passed" : "blocked",
+        streamKind: "browser",
+        mode: "browser-sim",
+        progress: 100,
+        currentStep: capture.ok
+          ? `${capture.surface.label} captured`
+          : `${capture.surface.label} blocked`,
+        summary: capture.reason,
+        streamIds: [streamId],
+        startedAt: createdAt,
+        updatedAt: capture.capturedAt
+      };
+    }),
+    streams: captures.map((capture) => {
+      const simId = `browser-${capture.surface.id}`;
+      const streamId = `${simId}-stream`;
+      const screenshotUrl = `../${capture.screenshotPath}`;
+      return {
+        id: streamId,
+        simId,
+        kind: "browser",
+        label: capture.surface.label,
+        status: capture.ok ? "passed" : "blocked",
+        transport: "snapshot",
+        updatedAt: capture.capturedAt,
+        embed: {
+          kind: "screenshot",
+          url: screenshotUrl,
+          title: capture.surface.label
+        },
+        viewport: capture.surface.viewport,
+        ui: {
+          appStatus: capture.ok ? "running" : "blocked",
+          appUrl,
+          route: appUrl,
+          intent: "Verify that the running app renders in a real browser surface for this viewport.",
+          screenshotUrl,
+          state: capture.reason,
+          visualStatus: capture.ok ? "visible" : "blocked"
+        },
+        completion: {
+          checkedAt: capture.capturedAt,
+          exitCode: capture.ok ? 0 : 1,
+          reason: capture.reason,
+          status: capture.ok ? "passed" : "blocked"
+        },
+        artifacts: [
+          { label: "run bundle", path: "run.json", kind: "bundle" },
+          { label: "review", path: "review.md", kind: "review" },
+          { label: "event log", path: "events.ndjson", kind: "events" },
+          { label: `${capture.surface.id} screenshot`, path: capture.screenshotPath, kind: "screenshot" },
+          { label: `${capture.surface.id} browser trace`, path: capture.tracePath, kind: "trace" }
+        ]
+      } satisfies RunStream;
+    }),
+    events,
+    redaction: {
+      status: "passed",
+      notes: "Browser app proof stores loopback app URLs, screenshots, and generated traces only; secret-like text is rejected by verify."
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson"
+    },
+    review,
+    feedbackCandidates: []
+  };
+
+  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
+  await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
+    schema: "mimetic.latest-run.v1",
+    runId,
+    path: artifactRoot,
+    updatedAt: completedAt
+  } satisfies RunPointer);
+
+  return {
+    schema: "mimetic.run-result.v1",
+    ok: allPassed,
+    runId,
+    mode: "live",
+    simCount: captures.length,
+    cwd: options.cwd,
+    artifactRoot,
+    bundlePath: path.join(artifactRoot, "run.json"),
+    reviewPath: path.join(artifactRoot, "review.md"),
+    latestPath: path.join(".mimetic", "runs", "latest.json"),
+    warnings,
+    ...(allPassed
+      ? {}
+      : {
+          error: {
+            code: "MIMETIC_BROWSER_APP_CAPTURE_FAILED" as const,
+            message: review.summary
+          }
+      })
+  };
+}
+
+async function captureBrowserSurface(args: {
+  absoluteArtifactRoot: string;
+  appUrl: string;
+  browserCommand: string;
+  surface: BrowserSurface;
+  timeoutMs: number;
+}): Promise<BrowserSurfaceCapture> {
+  const started = Date.now();
+  const screenshotPath = path.join("screenshots", `${args.surface.id}.png`);
+  const tracePath = path.join("traces", `${args.surface.id}.json`);
+  const absoluteScreenshotPath = path.join(args.absoluteArtifactRoot, screenshotPath);
+  const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
+  const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
+  const capturedAt = new Date().toISOString();
+  const profileDir = await mkdtemp(path.join(os.tmpdir(), "mimetic-browser-profile-"));
+
+  try {
+    await captureScreenshotWithBrowser({
+      args: [
+      "--headless=new",
+      "--disable-background-networking",
+      "--disable-default-apps",
+      "--disable-extensions",
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--hide-scrollbars",
+      `--user-data-dir=${profileDir}`,
+      `--window-size=${args.surface.viewport.width},${args.surface.viewport.height}`,
+      `--force-device-scale-factor=${args.surface.viewport.deviceScaleFactor}`,
+      `--screenshot=${absoluteScreenshotPath}`,
+      args.appUrl
+      ],
+      browserCommand: args.browserCommand,
+      screenshotPath: absoluteScreenshotPath,
+      timeoutMs: args.timeoutMs
+    });
+  } catch (error) {
+    const reason = `Browser screenshot command failed for ${args.surface.id}: ${compactBrowserError(error)}`;
+    await writeJson(absoluteTracePath, buildBrowserTrace({
+      appUrl: args.appUrl,
+      browserCommand: path.basename(args.browserCommand),
+      capturedAt,
+      durationMs: Date.now() - started,
+      ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+      ok: false,
+      reason,
+      screenshotPath,
+      surface: args.surface
+    }));
+    return {
+      capturedAt,
+      durationMs: Date.now() - started,
+      ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+      ok: false,
+      reason,
+      screenshotPath,
+      surface: args.surface,
+      tracePath
+    };
+  } finally {
+    await rm(profileDir, { force: true, recursive: true }).catch(() => undefined);
+  }
+
+  const screenshotStats = await stat(absoluteScreenshotPath).catch(() => null);
+  const ok = Boolean(screenshotStats?.isFile() && screenshotStats.size > 0 && httpProbe.ok);
+  const reason = ok
+    ? `${args.surface.label} screenshot captured from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
+    : screenshotStats?.isFile() && screenshotStats.size > 0
+      ? `${args.surface.label} screenshot exists, but app HTTP readiness was not proven: ${httpProbe.reason}.`
+      : `${args.surface.label} screenshot artifact was missing or empty.`;
+  const completedAt = new Date().toISOString();
+  const durationMs = Date.now() - started;
+
+  await writeJson(absoluteTracePath, buildBrowserTrace({
+    appUrl: args.appUrl,
+    browserCommand: path.basename(args.browserCommand),
+    capturedAt: completedAt,
+    durationMs,
+    ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+    ok,
+    reason,
+    screenshotPath,
+    surface: args.surface
+  }));
+
+  return {
+    capturedAt: completedAt,
+    durationMs,
+    ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+    ok,
+    reason,
+    screenshotPath,
+    surface: args.surface,
+    tracePath
+  };
+}
+
+function buildBrowserTrace(args: {
+  appUrl: string;
+  browserCommand: string;
+  capturedAt: string;
+  durationMs: number;
+  httpStatus?: number;
+  ok: boolean;
+  reason: string;
+  screenshotPath: string;
+  surface: BrowserSurface;
+}): Record<string, unknown> {
+  return {
+    schema: "mimetic.browser-surface-trace.v1",
+    capturedAt: args.capturedAt,
+    appUrl: args.appUrl,
+    browserCommand: args.browserCommand,
+    durationMs: args.durationMs,
+    ...(args.httpStatus === undefined ? {} : { httpStatus: args.httpStatus }),
+    ok: args.ok,
+    reason: args.reason,
+    screenshotPath: args.screenshotPath,
+    surface: args.surface,
+    redaction: "passed"
+  };
+}
+
+async function captureScreenshotWithBrowser(args: {
+  args: string[];
+  browserCommand: string;
+  screenshotPath: string;
+  timeoutMs: number;
+}): Promise<void> {
+  const child = spawn(args.browserCommand, args.args, {
+    detached: true,
+    stdio: "ignore"
+  });
+  let exitCode: number | null = null;
+  let signal: NodeJS.Signals | null = null;
+  child.once("exit", (code, childSignal) => {
+    exitCode = code;
+    signal = childSignal;
+  });
+  child.unref();
+
+  const deadline = Date.now() + args.timeoutMs;
+  while (Date.now() <= deadline) {
+    const stats = await stat(args.screenshotPath).catch(() => null);
+    if (stats?.isFile() && stats.size > 0) {
+      terminateProcessGroup(child.pid);
+      return;
+    }
+    if (exitCode !== null || signal !== null) {
+      break;
+    }
+    await wait(250);
+  }
+
+  terminateProcessGroup(child.pid, true);
+  const stats = await stat(args.screenshotPath).catch(() => null);
+  if (stats?.isFile() && stats.size > 0) {
+    return;
+  }
+
+  throw new Error(
+    exitCode !== null || signal !== null
+      ? `browser exited before screenshot was written (exit=${exitCode ?? "null"} signal=${signal ?? "null"})`
+      : `timed out after ${args.timeoutMs}ms waiting for screenshot`
+  );
+}
+
+function terminateProcessGroup(pid: number | undefined, force = false): void {
+  if (!pid) {
+    return;
+  }
+
+  try {
+    process.kill(-pid, force ? "SIGKILL" : "SIGTERM");
+    return;
+  } catch {}
+
+  try {
+    process.kill(pid, force ? "SIGKILL" : "SIGTERM");
+  } catch {}
+}
+
+async function wait(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildBrowserAppEvents(args: {
+  appUrl: string;
+  captures: BrowserSurfaceCapture[];
+  createdAt: string;
+}): RunEvent[] {
+  const events: RunEvent[] = [
+    {
+      id: "event-001",
+      at: args.createdAt,
+      level: "info",
+      type: "browser-app.run.created",
+      message: "Created live browser app proof run against a loopback URL."
+    }
+  ];
+
+  args.captures.forEach((capture) => {
+    events.push({
+      id: `event-${String(events.length + 1).padStart(3, "0")}`,
+      at: capture.capturedAt,
+      level: capture.ok ? "info" : "warn",
+      type: capture.ok ? "browser-app.screenshot.captured" : "browser-app.screenshot.blocked",
+      message: `${capture.surface.id}: ${capture.reason}`,
+      simId: `browser-${capture.surface.id}`,
+      streamId: `browser-${capture.surface.id}-stream`
+    });
+  });
+
+  return events;
+}
+
+function createBrowserAppReviewSummary(args: {
+  appUrl: string;
+  captures: BrowserSurfaceCapture[];
+}): ReviewSummary {
+  const passed = args.captures.filter((capture) => capture.ok).length;
+  const allPassed = passed === args.captures.length;
+  return {
+    schema: REVIEW_SCHEMA,
+    verdict: allPassed ? "pass" : "blocked",
+    summary: allPassed
+      ? `Captured ${passed}/${args.captures.length} live browser app surface${args.captures.length === 1 ? "" : "s"} from ${args.appUrl}.`
+      : `Captured ${passed}/${args.captures.length} live browser app surfaces from ${args.appUrl}; at least one required surface was blocked.`,
+    gaps: [
+      "This browser app proof captures render evidence and HTTP readiness; it does not yet prove autonomous persona navigation through multi-step product flows.",
+      "Only loopback app URLs are accepted so generated bundles do not preserve private external targets.",
+      ...args.captures
+        .filter((capture) => !capture.ok)
+        .map((capture) => `${capture.surface.id}: ${capture.reason}`)
+    ]
+  };
+}
+
+async function probeAppUrl(appUrl: string, timeoutMs: number): Promise<{ ok: boolean; reason: string; status?: number }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(appUrl, {
+      signal: controller.signal
+    });
+    return {
+      ok: response.status < 500,
+      reason: `HTTP ${response.status}`,
+      status: response.status
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: compactBrowserError(error)
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resolveBrowserCommand(): Promise<string | null> {
+  const candidates = [
+    process.env.MIMETIC_BROWSER_COMMAND,
+    "google-chrome",
+    "chromium",
+    "chromium-browser",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  ].filter((candidate): candidate is string => Boolean(candidate?.trim()));
+
+  for (const candidate of candidates) {
+    try {
+      await execFileAsync(candidate, ["--version"], {
+        timeout: 5_000,
+        maxBuffer: 256 * 1024
+      });
+      return candidate;
+    } catch {}
+  }
+
+  return null;
+}
+
+function normalizeLocalAppUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+    if (!["127.0.0.1", "localhost", "::1"].includes(url.hostname)) {
+      return null;
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function compactBrowserError(error: unknown): string {
+  if (error instanceof Error) {
+    return redactSensitiveText(error.message).replace(/\s+/g, " ").slice(0, 240);
+  }
+
+  return redactSensitiveText(String(error)).replace(/\s+/g, " ").slice(0, 240);
+}
+
 function isLocalCodexActor(value: string): value is LocalCodexActor {
   return value === "codex-tui" || value === "codex-exec";
 }
@@ -500,7 +1115,7 @@ async function runLocalCodexTui(options: RunOptions & {
       warnings,
       error: {
         code: "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED",
-        message: "Local Codex TUI actor support is intentionally limited to --sims 1 in this slice. Split 4x fanout after the 1x lifecycle is deterministic."
+        message: "Local Codex TUI actor support is currently single-lane because it owns one PTY/UI session. Use codex-exec for bounded-concurrency fanout."
       }
     };
   }
@@ -1000,19 +1615,6 @@ async function runLocalCodexExec(options: RunOptions & {
 }): Promise<RunResult> {
   const warnings: string[] = [];
 
-  if (options.simCount > 4) {
-    return {
-      schema: "mimetic.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings,
-      error: {
-        code: "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED",
-        message: "Local Codex exec actor fanout is intentionally limited to --sims 4 in this slice."
-      }
-    };
-  }
-
   const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("MIMETIC_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
   if (timeoutMs === null) {
     return {
@@ -1023,6 +1625,21 @@ async function runLocalCodexExec(options: RunOptions & {
       error: {
         code: "MIMETIC_INVALID_TIMEOUT",
         message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
+      }
+    };
+  }
+  const maxConcurrency = normalizePositiveInteger(
+    readEnvInteger("MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY") ?? LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY
+  );
+  if (maxConcurrency === null) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_INVALID_ACTOR_CONCURRENCY",
+        message: "MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY must be a positive integer."
       }
     };
   }
@@ -1125,7 +1742,7 @@ async function runLocalCodexExec(options: RunOptions & {
     {
       at: createdAt,
       event: "run.created",
-      message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"}.`
+      message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"} and max concurrency ${maxConcurrency}.`
     },
     {
       at: createdAt,
@@ -1146,11 +1763,11 @@ async function runLocalCodexExec(options: RunOptions & {
     scenario: selection.scenario,
     lifecycle: [
       ...baseLifecycle,
-      {
-        at: runningAt,
-        event: "actor.running",
-        message: "Local Codex exec actor lanes are running; Observer data will refresh as sanitized evidence arrives."
-      }
+    {
+      at: runningAt,
+      event: "actor.running",
+      message: `Local Codex exec actor lanes are running with max concurrency ${maxConcurrency}; Observer data will refresh as sanitized evidence arrives.`
+    }
     ],
     lanes: lanes.map((lane): LocalCodexExecLaneBundleInput => ({
       focus: lane.focus,
@@ -1173,7 +1790,7 @@ async function runLocalCodexExec(options: RunOptions & {
   });
   await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
 
-  const laneResults = await Promise.all(lanes.map(async (lane): Promise<ExecLaneResult> => {
+  const laneResults = await mapWithConcurrency(lanes, maxConcurrency, async (lane): Promise<ExecLaneResult> => {
     const actor = await executeLocalActorCommand(lane.command, {
       cwd: options.cwd,
       timeoutMs
@@ -1217,7 +1834,7 @@ async function runLocalCodexExec(options: RunOptions & {
       tracePath,
       transcriptPath
     };
-  }));
+  });
 
   const completedAt = new Date().toISOString();
   const laneStatuses = laneResults.map((result) => result.actor.status);
@@ -1902,7 +2519,15 @@ function isSamePath(candidatePath: string, targetPath: string): boolean {
 }
 
 function normalizeActorTimeout(value: number | undefined): number | null {
-  if (!Number.isInteger(value) || value === undefined || value < 1 || value > LOCAL_CODEX_TUI_MAX_TIMEOUT_MS) {
+  if (normalizePositiveInteger(value) === null || value === undefined || value > LOCAL_CODEX_TUI_MAX_TIMEOUT_MS) {
+    return null;
+  }
+
+  return value;
+}
+
+function normalizePositiveInteger(value: number | undefined): number | null {
+  if (!Number.isInteger(value) || value === undefined || value < 1) {
     return null;
   }
 
@@ -1916,6 +2541,34 @@ function readEnvInteger(name: string): number | undefined {
   }
 
   return /^\d+$/.test(value) ? Number.parseInt(value, 10) : Number.NaN;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(concurrency, items.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) {
+        return;
+      }
+
+      const item = items[index];
+      if (item === undefined) {
+        return;
+      }
+      results[index] = await mapper(item, index);
+    }
+  }));
+
+  return results;
 }
 
 function buildLocalCodexTuiPrompt(selection: {
@@ -2116,7 +2769,7 @@ function normalizeSimCount(value: number | undefined): number | null {
     return 1;
   }
 
-  if (!Number.isInteger(value) || value < 1 || value > 64) {
+  if (!Number.isSafeInteger(value) || value < 1) {
     return null;
   }
 
@@ -2167,10 +2820,23 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     ok: reviewJson !== null && reviewMarkdown !== null,
     message: "review.json and review.md must exist"
   });
+  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(resolved);
   checks.push({
     name: "public-safety scan",
-    ok: !containsSensitivePattern(JSON.stringify(bundle ?? {}) + (reviewMarkdown ?? "")),
-    message: "bundle and review text must not match known secret patterns"
+    ok: publicSafetyFindings.length === 0,
+    message: publicSafetyFindings.length === 0
+      ? "run text artifacts and public-proof paths must not match known secret or browser-profile patterns"
+      : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`
+  });
+  const missingEvidenceArtifacts = isRunBundle(bundle)
+    ? await missingLocalEvidenceArtifacts(resolved, bundle)
+    : [];
+  checks.push({
+    name: "local evidence artifacts exist",
+    ok: missingEvidenceArtifacts.length === 0,
+    message: missingEvidenceArtifacts.length === 0
+      ? "referenced local screenshot/trace artifacts are present"
+      : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
   });
 
   const ok = checks.every((check) => check.ok);
@@ -2512,8 +3178,119 @@ async function writeRunBundleArtifacts(absoluteArtifactRoot: string, bundle: Run
   await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
   await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
   await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
+  await writeFile(path.join(absoluteArtifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
   await writeJson(path.join(absoluteArtifactRoot, "observer", "observer-data.json"), buildObserverData(bundle));
+}
+
+async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle): Promise<string[]> {
+  const requiredPaths = new Set<string>();
+  for (const stream of bundle.streams) {
+    for (const artifact of stream.artifacts) {
+      if ((artifact.kind === "screenshot" || artifact.kind === "trace") && isLocalEvidenceArtifactPath(artifact.path)) {
+        requiredPaths.add(artifact.path);
+      }
+    }
+
+    const embedPath = normalizeLocalEvidenceReference(stream.embed?.kind === "screenshot" ? stream.embed.url : undefined);
+    if (embedPath) {
+      requiredPaths.add(embedPath);
+    }
+
+    const uiScreenshotPath = normalizeLocalEvidenceReference(stream.ui?.screenshotUrl);
+    if (uiScreenshotPath) {
+      requiredPaths.add(uiScreenshotPath);
+    }
+  }
+
+  const missing: string[] = [];
+  for (const artifactPath of requiredPaths) {
+    const absolutePath = path.join(runRoot, artifactPath);
+    const stats = await stat(absolutePath).catch(() => null);
+    if (!stats?.isFile() || stats.size <= 0) {
+      missing.push(artifactPath);
+    }
+  }
+
+  return missing;
+}
+
+const riskyPublicArtifactPathSegments = new Set([
+  ".git",
+  "Cookies",
+  "Login Data",
+  "Local Storage",
+  "Preferences",
+  "Secure Preferences",
+  "profiles"
+]);
+
+async function scanRunPublicSafetyArtifacts(runRoot: string): Promise<string[]> {
+  const findings: string[] = [];
+  await scanRunPublicSafetyDirectory(runRoot, runRoot, findings);
+  return findings;
+}
+
+async function scanRunPublicSafetyDirectory(root: string, current: string, findings: string[]): Promise<void> {
+  if (findings.length >= 50) {
+    return;
+  }
+
+  const entries = await readdir(current, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    const absolutePath = path.join(current, entry.name);
+    const relativePath = path.relative(root, absolutePath).replace(/\\/g, "/");
+    if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
+      findings.push(`risky artifact path ${relativePath}`);
+      if (findings.length >= 50) return;
+    }
+
+    if (entry.isDirectory()) {
+      await scanRunPublicSafetyDirectory(root, absolutePath, findings);
+      if (findings.length >= 50) return;
+      continue;
+    }
+
+    if (!entry.isFile() || !shouldScanTextArtifact(relativePath)) {
+      continue;
+    }
+
+    const text = await readFile(absolutePath, "utf8").catch(() => null);
+    if (text !== null && containsSensitivePattern(text)) {
+      findings.push(`sensitive text ${relativePath}`);
+      if (findings.length >= 50) return;
+    }
+  }
+}
+
+function isRiskyPublicArtifactPath(relativePath: string): boolean {
+  return relativePath.split(/[\\/]/).some((segment) => riskyPublicArtifactPathSegments.has(segment));
+}
+
+function shouldScanTextArtifact(relativePath: string): boolean {
+  const extension = path.extname(relativePath).toLowerCase();
+  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".tgz", ".gz", ".zip"].includes(extension);
+}
+
+function isLocalEvidenceArtifactPath(value: string): boolean {
+  return value.length > 0
+    && !path.isAbsolute(value)
+    && !value.includes("://")
+    && !value.startsWith("..")
+    && !value.split(/[\\/]/).includes("..");
+}
+
+function normalizeLocalEvidenceReference(value: string | undefined): string | null {
+  if (!value || value.includes("://") || path.isAbsolute(value)) {
+    return null;
+  }
+
+  const normalized = value.replace(/\\/g, "/");
+  if (normalized.startsWith("../")) {
+    return isLocalEvidenceArtifactPath(normalized.slice(3)) ? normalized.slice(3) : null;
+  }
+
+  return isLocalEvidenceArtifactPath(normalized) ? normalized : null;
 }
 
 async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
