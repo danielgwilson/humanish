@@ -682,7 +682,8 @@ describe("OSS lab command", () => {
         {
           actorEvidence: {
             actorLastMessageTailPath: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
-            actorLogTailPath: "actor-evidence/oss-01-desktop-actor-log-tail.txt"
+            actorLogTailPath: "actor-evidence/oss-01-desktop-actor-log-tail.txt",
+            setupQualityPath: "setup-quality/oss-01-desktop-setup-quality.json"
           },
           bootstrap: {
             codexMode: "tui-attempted",
@@ -710,6 +711,54 @@ describe("OSS lab command", () => {
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
             reason: "Nested Mimetic proof completed and nested Observer path was checked.",
+            setupQuality: {
+              schema: "mimetic.setup-quality.v1",
+              generatedAt: "2026-06-02T08:31:00.000Z",
+              redaction: {
+                status: "passed",
+                rawPreviews: "included",
+                notes: "Only allowlisted setup files are previewed."
+              },
+              summary: "1 setup-quality gap(s) need review.",
+              status: "needs_review",
+              checks: [
+                {
+                  id: "mimetic-config",
+                  label: "Mimetic config",
+                  ok: true,
+                  detail: "mimetic/config.ts exists."
+                },
+                {
+                  id: "package-script",
+                  label: "Package script",
+                  ok: false,
+                  detail: "package.json does not expose a Mimetic script."
+                }
+              ],
+              tree: [
+                { path: "package.json", type: "file", sizeBytes: 240 },
+                { path: "mimetic", type: "directory" },
+                { path: "mimetic/config.ts", type: "file", sizeBytes: 120 }
+              ],
+              previews: [
+                {
+                  path: "mimetic/config.ts",
+                  language: "typescript",
+                  truncated: false,
+                  text: "export default { run: { appUrl: 'http://127.0.0.1:5173' } };"
+                }
+              ],
+              packageScripts: {
+                dev: "vite"
+              },
+              mimetic: {
+                configPresent: true,
+                personaCount: 1,
+                scenarioCount: 1,
+                packageScriptPresent: false,
+                gitignoreContainsRuntimeIgnore: true
+              }
+            },
             status: "passed",
             visualReason: "Detected 3 visible Chrome windows including nested Observer.",
             visualStatus: "visible",
@@ -801,6 +850,23 @@ describe("OSS lab command", () => {
       label: "actor log tail",
       path: "actor-evidence/oss-01-desktop-actor-log-tail.txt",
       kind: "log"
+    });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "setup quality",
+      path: "setup-quality/oss-01-desktop-setup-quality.json",
+      kind: "filesystem"
+    });
+    expect(bundle.feedbackCandidates).toHaveLength(1);
+    expect(bundle.feedbackCandidates[0]).toMatchObject({
+      schema: "mimetic.feedback-candidate.v1",
+      failure_owner: "actor",
+      proposed_next_state: "setup-quality-review",
+      summary: "CorentinTh/it-tools Mimetic setup needs review"
+    });
+    expect(bundle.feedbackCandidates[0]?.evidence).toContainEqual({
+      path: "setup-quality/oss-01-desktop-setup-quality.json",
+      kind: "filesystem",
+      note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews."
     });
     expect(bundle.streams[1]?.terminal?.tail).toContain("verification failed");
     expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.passed");

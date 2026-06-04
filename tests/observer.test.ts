@@ -95,7 +95,8 @@ function renderObserverClientForTest(data: unknown): { click: (action: string) =
       history: { replaceState: () => {} },
       localStorage: { getItem: () => null, setItem: () => {} },
       location
-    }
+    },
+    URL
   };
 
   runInNewContext(observerClientJs(), sandbox);
@@ -202,6 +203,7 @@ describe("observer rendering", () => {
           artifacts: [
             { label: "desktop screenshot", path: "screenshots/oss-01-desktop.png", kind: "screenshot" },
             { label: "nested observer", path: "observer/nested/index.html", kind: "observer" },
+            { label: "setup quality", path: "setup-quality/oss-01-desktop-setup-quality.json", kind: "filesystem" },
             { label: "events", path: "events.ndjson", kind: "events" }
           ],
           sim: {
@@ -237,6 +239,13 @@ describe("observer rendering", () => {
 
     expect(client.html()).toContain('src="../screenshots/oss-01-desktop.png"');
     expect(client.html()).toContain("viewing fallback");
+
+    client.click("open:lane-01");
+    client.click("tab:files");
+
+    expect(client.html()).toContain("setup quality");
+    expect(client.html()).toContain("setup-quality/oss-01-desktop-setup-quality.json");
+    expect(client.html()).toContain("Static file view cannot hydrate artifacts inline");
   });
 
   it("serves observer artifacts over a live localhost server", async () => {

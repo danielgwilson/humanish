@@ -24,7 +24,7 @@ A world-class Mimetic run should eventually provide:
 - multiple synthetic personas with different goals, patience, and skill levels;
 - UI, CLI, TUI, and code-agent lanes in one mission-control Observer;
 - real evidence: screenshots, terminal transcripts, lifecycle events, traces,
-  artifacts, and verifier output;
+  filesystem setup-quality snapshots, artifacts, and verifier output;
 - clear pass, fail, blocked, and gap states;
 - public-safe feedback issue drafts that do not mutate GitHub by default;
 - adapter contracts that let projects customize behavior without forking core;
@@ -126,7 +126,10 @@ Minimum acceptance:
 - each lane records target app status/URL or blocker; `done`
 - each lane records nested Observer presence; `done`
 - each lane records nested verification status or blocker; `done`
+- each lane records setup-quality filesystem evidence and Observer can inspect
+  it; `done`
 - top-level Observer updates lane verdicts from evidence; `done`
+- feedback candidates are derived from setup-quality/actor evidence; `done`
 - next gap: provider-backed browser personas must drive multi-step target-app
   journeys instead of relying on nested app-url render proof.
 
@@ -153,15 +156,16 @@ Stop and correct course if:
 - Observer gets prettier without stronger evidence;
 - feedback drafts imply product proof from synthetic contract proof;
 - tests pass while generated artifacts are not inspectable;
+- actor setup/use trials produce findings that never become feedback candidates;
 - live labs require private infrastructure to look impressive;
 - package docs link to files that are not shipped;
 - public-safety gates become optional.
 
 ## Best Next Work
 
-The next most useful engineering slice is fresh-agent install proof against a
-disposable public app/tool fixture, followed by the first provider-backed
-multi-step browser persona adapter.
+The next most useful engineering slice is repeated fresh-agent install proof
+against disposable public app/tool fixtures, followed by the first
+provider-backed multi-step browser persona adapter.
 
 That sequence keeps the package honest: first prove a new maintainer can start,
 then prove Mimetic can observe real product behavior.

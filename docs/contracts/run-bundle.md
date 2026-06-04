@@ -50,6 +50,13 @@ artifacts:
 review:
   schema: mimetic.review.v1
   verdict: "contract_proof_only|pass|fail|blocked|timed_out"
+feedbackCandidates:
+  - schema: mimetic.feedback-candidate.v1
+    id: "<stable candidate id>"
+    failure_owner: "harness|target-app|actor|environment|unknown"
+    evidence:
+      - path: "<relative run artifact path>"
+        kind: "review|state|log|trace|screenshot|filesystem"
 ```
 
 ## Relative Artifact Layout
@@ -67,6 +74,45 @@ For run id `example-2026-06-02t10-00-00-000z-proof`, the core layout is:
 
 Absolute paths, traversal segments, remotes, hosted logs, and private artifact
 URLs are not part of the core layout.
+
+## Filesystem Evidence
+
+Filesystem setup evidence is first-class when a lane asks an actor to install
+or configure Mimetic inside another project. It is not a repo dump.
+
+The durable artifact kind is `filesystem`. The current schema is:
+
+```yaml
+schema: mimetic.setup-quality.v1
+status: "passed|needs_review|blocked"
+redaction:
+  status: "passed"
+  rawPreviews: "included|suppressed"
+checks:
+  - id: "mimetic-config"
+    ok: true
+tree:
+  - path: "mimetic/config.ts"
+    type: "file"
+previews:
+  - path: "mimetic/config.ts"
+    language: "typescript"
+packageScripts:
+  mimetic: "mimetic watch"
+mimetic:
+  configPresent: true
+  personaCount: 1
+  scenarioCount: 1
+  packageScriptPresent: true
+  gitignoreContainsRuntimeIgnore: true
+```
+
+For public OSS runs, previews may include allowlisted setup files such as
+`package.json`, `.gitignore`, `mimetic/config.ts`, and
+`mimetic/personas/*.yaml` / `mimetic/scenarios/*.yaml`. For token-backed or
+private maintainer runs, raw previews are suppressed by default. Generated
+state, `.git`, `.env*`, `.npmrc`, browser profiles, `node_modules`, `.mimetic/`,
+and arbitrary source files are excluded.
 
 ## Latest And History
 

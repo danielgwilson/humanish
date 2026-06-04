@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -87,7 +87,7 @@ describe("feedback issue drafts", () => {
       expect(rendered.issuePath).toBe(".mimetic/runs/feedback-issue/feedback/issue.md");
       expect(rendered.issueMarkdown).toContain("mimetic_feedback:");
       expect(rendered.issueMarkdown).toContain("GitHub mutation: not performed");
-      expect(rendered.issueMarkdown).toContain("It does not claim product behavior proof.");
+      expect(rendered.issueMarkdown).toContain("claim unobserved product behavior");
       expect(rendered.issueMarkdown).not.toMatch(/\bcloses?\b/i);
 
       const issueMarkdown = await readFile(
@@ -100,6 +100,75 @@ describe("feedback issue drafts", () => {
       expect(issueUrl.ok).toBe(true);
       expect(issueUrl.issueUrl).toMatch(/^https:\/\/github\.com\/example\/app\/issues\/new\?/);
       expect(decodeURIComponent(issueUrl.issueUrl ?? "")).toContain("mimetic_feedback:");
+    });
+  });
+
+  it("drafts feedback from run feedback candidates before dry-run fallback", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "feedback-candidate"
+      });
+
+      const runPath = path.join(cwd, ".mimetic/runs/feedback-candidate/run.json");
+      const setupPath = path.join(cwd, ".mimetic/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json");
+      await mkdir(path.dirname(setupPath), { recursive: true });
+      await writeFile(setupPath, JSON.stringify({ schema: "mimetic.setup-quality.v1", status: "needs_review" }, null, 2), "utf8");
+
+      const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
+        feedbackCandidates: unknown[];
+      };
+      bundle.feedbackCandidates = [
+        {
+          schema: "mimetic.feedback-candidate.v1",
+          id: "setup-quality-oss-01",
+          run_id: "feedback-candidate",
+          stream_id: "oss-01",
+          adapter_id: "oss-meta-lab",
+          scenario_id: "oss-meta-lab",
+          persona_id: "codex-oss-operator-01",
+          actor: "codex-tui",
+          substrate: "e2b-desktop",
+          failure_owner: "actor",
+          summary: "Fixture setup needs review",
+          expected: "The actor should create a complete Mimetic setup.",
+          actual: "The package script was missing.",
+          evidence: [
+            {
+              path: "setup-quality/oss-01-setup-quality.json",
+              kind: "filesystem",
+              note: "Setup-quality snapshot."
+            }
+          ],
+          redaction: {
+            status: "passed",
+            notes: "Public-safe fixture candidate."
+          },
+          idempotency_key: "mimetic:feedback-candidate:setup-quality",
+          proposed_next_state: "setup-quality-review",
+          acceptance_proof: [
+            "pnpm mimetic -- verify --run feedback-candidate --json"
+          ]
+        }
+      ];
+      await writeFile(runPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const drafted = await draftFeedback(cwd, "latest");
+      expect(drafted.ok).toBe(true);
+      expect(drafted.draft?.summary).toBe("Fixture setup needs review");
+      expect(drafted.draft?.source_candidate_id).toBe("setup-quality-oss-01");
+      expect(drafted.draft?.substrate).toBe("e2b-desktop");
+      expect(drafted.draft?.evidence).toContainEqual({
+        path: ".mimetic/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json",
+        kind: "filesystem",
+        note: "Setup-quality snapshot."
+      });
+
+      const rendered = await renderIssueMarkdown(cwd, "latest", "example/app");
+      expect(rendered.ok).toBe(true);
+      expect(rendered.issueMarkdown).toContain("source_candidate_id: setup-quality-oss-01");
+      expect(rendered.issueMarkdown).toContain("Substrate: e2b-desktop");
     });
   });
 

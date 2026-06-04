@@ -641,12 +641,47 @@ a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1);
 
 .file-row { display: flex; align-items: center; gap: 11px; padding: 11px 16px; border-bottom: 1px solid var(--line); transition: background .14s; }
 .file-row:hover { background: var(--surface-1); }
+.file-row[data-selected="true"] { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--accent); }
+.file-row > button, .file-row > a:not(.file-open) { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; text-align: left; }
 .file-ic { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--text-2); flex: none; }
 .file-ic svg { width: 14px; height: 14px; }
 .file-meta { min-width: 0; flex: 1; }
 .file-name { font-size: 12.5px; color: var(--text-1); }
 .file-path { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-kind { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); padding: 2px 7px; border-radius: 5px; background: var(--surface-2); flex: none; }
+.file-open { font-family: var(--mono); font-size: 9px; color: var(--accent-2); padding: 3px 6px; border-radius: 5px; border: 1px solid var(--line); flex: none; }
+.file-open:hover { background: var(--surface-3); }
+.file-inspector { border-bottom: 1px solid var(--line); background: var(--surface-1); }
+.fi-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.fi-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fi-title h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.fi-status { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; padding: 2px 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); }
+.fi-status[data-status="passed"] { background: var(--green-soft); color: var(--green); }
+.fi-status[data-status="needs_review"], .fi-status[data-status="blocked"] { background: var(--amber-soft); color: var(--amber); }
+.fi-summary { margin-top: 7px; color: var(--text-2); font-size: 11.5px; line-height: 1.45; }
+.fi-section { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.fi-section:last-child { border-bottom: 0; }
+.fi-section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.fi-section-title span:first-child { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.fi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.fi-stat { padding: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-0); min-width: 0; }
+.fi-stat-k { font-family: var(--mono); font-size: 8.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; }
+.fi-stat-v { margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--text-1); overflow-wrap: anywhere; }
+.fi-check { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.fi-check:first-child { border-top: 0; padding-top: 0; }
+.fi-dot { width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--text-3); }
+.fi-check[data-ok="true"] .fi-dot { color: var(--green); border-color: color-mix(in oklab, var(--green) 30%, transparent); background: var(--green-soft); }
+.fi-check[data-ok="false"] .fi-dot { color: var(--amber); border-color: color-mix(in oklab, var(--amber) 30%, transparent); background: var(--amber-soft); }
+.fi-check-name { font-size: 12px; color: var(--text-1); }
+.fi-check-detail { margin-top: 2px; font-size: 11px; color: var(--text-3); line-height: 1.4; }
+.fi-tree { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-0); padding: 7px 0; }
+.fi-tree-row { display: grid; grid-template-columns: auto 1fr auto; gap: 7px; padding: 3px 9px; font-family: var(--mono); font-size: 9.5px; color: var(--text-2); }
+.fi-tree-row[data-type="directory"] { color: var(--accent-2); }
+.fi-tree-size { color: var(--text-4); }
+.fi-pre { margin: 0; max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 10px; line-height: 1.45; background: var(--surface-0); border: 1px solid var(--line); border-radius: 7px; padding: 10px; color: var(--text-2); }
+.fi-preview + .fi-preview { margin-top: 10px; }
+.fi-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
+.fi-load { padding: 24px 16px; color: var(--text-3); text-align: center; }
 
 .tab-empty { padding: 36px 24px; text-align: center; color: var(--text-3); font-size: 12px; }
 
@@ -966,6 +1001,7 @@ export function observerClientJs(): string {
     detailsOpen: false,
     tweaksOpen: false,
     consoleOpen: false,
+    filePath: null,
     railCollapsed: !!readPref("railCollapsed", false),
     sideCollapsed: !!readPref("sideCollapsed", false),
     sheetOpen: false,
@@ -976,6 +1012,7 @@ export function observerClientJs(): string {
     statusViz: readPref("statusViz", "badges"),
     motion: readPref("motion", "full")
   };
+  var artifactCache = {};
 
   // ---------------------------------------------------------------- tone / labels
   var TONE = {
@@ -1522,6 +1559,113 @@ export function observerClientJs(): string {
     if (kind === "codex-ui") return "spark";
     return "globe";
   }
+  function artifactHref(a) {
+    return a && a.path ? linkHref(a.path, true) : "";
+  }
+  function ensureArtifactLoaded(a) {
+    if (!a || !a.path || a.kind !== "filesystem") return;
+    var key = a.path;
+    if (artifactCache[key]) return;
+    if (location.protocol === "file:") {
+      artifactCache[key] = { status: "offline", text: "", json: null };
+      return;
+    }
+    var href = artifactHref(a);
+    if (!href) {
+      artifactCache[key] = { status: "error", text: "", json: null, error: "Artifact path is not fetchable." };
+      return;
+    }
+    artifactCache[key] = { status: "loading", text: "", json: null };
+    fetch(href, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(function (text) {
+      var json = null;
+      try { json = JSON.parse(text); } catch (e) {}
+      artifactCache[key] = { status: "loaded", text: text, json: json };
+      render();
+    }).catch(function (e) {
+      artifactCache[key] = { status: "error", text: "", json: null, error: e && e.message ? e.message : "Fetch failed." };
+      render();
+    });
+  }
+  function formatBytes(n) {
+    if (typeof n !== "number" || !isFinite(n)) return "";
+    if (n < 1024) return n + "b";
+    if (n < 1024 * 1024) return Math.round(n / 102.4) / 10 + "kb";
+    return Math.round(n / 1024 / 102.4) / 10 + "mb";
+  }
+  function renderGenericArtifact(a, state) {
+    if (!state || state.status === "loading") return '<div class="fi-load"><span class="wait-spinner" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:8px"></span>Loading artifact…</div>';
+    if (state.status === "offline") return '<div class="fi-load">Static file view cannot hydrate artifacts inline. Open the artifact link directly.</div>';
+    if (state.status === "error") return '<div class="fi-load">Could not load artifact: ' + esc(state.error || "unknown error") + '</div>';
+    return '<div class="file-inspector"><div class="fi-head"><div class="fi-title"><h3>' + esc(a.label || a.path) + '</h3><span class="fi-status">artifact</span></div>'
+      + '<div class="fi-summary mono">' + esc(a.path) + '</div></div>'
+      + '<div class="fi-section"><pre class="fi-pre">' + esc(state.text || "") + '</pre></div></div>';
+  }
+  function renderSetupQualityArtifact(a, state) {
+    if (!state || state.status !== "loaded" || !state.json || state.json.schema !== "mimetic.setup-quality.v1") {
+      return renderGenericArtifact(a, state);
+    }
+    var q = state.json;
+    var checks = q.checks || [];
+    var mim = q.mimetic || {};
+    var scripts = q.packageScripts || {};
+    var tree = q.tree || [];
+    var previews = q.previews || [];
+    var scriptRows = Object.keys(scripts).sort().slice(0, 18).map(function (key) {
+      return '<div class="fi-tree-row"><span>$</span><span>' + esc(key) + '</span><span class="fi-tree-size">' + esc(scripts[key]) + '</span></div>';
+    }).join("");
+    var treeRows = tree.slice(0, 160).map(function (entry) {
+      return '<div class="fi-tree-row" data-type="' + esc(entry.type || "file") + '"><span>' + (entry.type === "directory" ? "dir" : "file") + '</span><span>' + esc(entry.path) + '</span><span class="fi-tree-size">' + esc(formatBytes(entry.sizeBytes)) + '</span></div>';
+    }).join("");
+    var previewRows = previews.length ? previews.map(function (preview) {
+      return '<div class="fi-preview"><div class="fi-preview-head"><span>' + esc(preview.path) + '</span><span>' + esc(preview.language || "text") + (preview.truncated ? " · truncated" : "") + '</span></div><pre class="fi-pre">' + esc(preview.text || "") + '</pre></div>';
+    }).join("") : '<div class="tab-empty">No raw file previews persisted for this run.</div>';
+    return '<div class="file-inspector"><div class="fi-head"><div class="fi-title"><h3>Setup quality</h3><span class="fi-status" data-status="' + esc(q.status || "unknown") + '">' + esc(q.status || "unknown") + '</span></div>'
+      + '<div class="fi-summary">' + esc(q.summary || "") + '</div><div class="fi-summary mono">' + esc(a.path) + '</div></div>'
+      + '<div class="fi-section"><div class="fi-grid">'
+      + '<div class="fi-stat"><div class="fi-stat-k">personas</div><div class="fi-stat-v">' + esc(mim.personaCount || 0) + '</div></div>'
+      + '<div class="fi-stat"><div class="fi-stat-k">scenarios</div><div class="fi-stat-v">' + esc(mim.scenarioCount || 0) + '</div></div>'
+      + '<div class="fi-stat"><div class="fi-stat-k">config</div><div class="fi-stat-v">' + (mim.configPresent ? "present" : "missing") + '</div></div>'
+      + '<div class="fi-stat"><div class="fi-stat-k">runtime ignore</div><div class="fi-stat-v">' + (mim.gitignoreContainsRuntimeIgnore ? "present" : "missing") + '</div></div>'
+      + '</div></div>'
+      + '<div class="fi-section"><div class="fi-section-title"><span>Checks</span><span class="mono">' + checks.filter(function (c) { return c.ok; }).length + ' / ' + checks.length + '</span></div>'
+      + checks.map(function (check) { return '<div class="fi-check" data-ok="' + (check.ok ? "true" : "false") + '"><span class="fi-dot">' + icon(check.ok ? "check" : "alert", 11) + '</span><div><div class="fi-check-name">' + esc(check.label) + '</div><div class="fi-check-detail">' + esc(check.detail) + '</div></div></div>'; }).join("") + '</div>'
+      + '<div class="fi-section"><div class="fi-section-title"><span>Package scripts</span><span class="mono">' + Object.keys(scripts).length + '</span></div><div class="fi-tree">' + (scriptRows || '<div class="tab-empty">No package scripts captured.</div>') + '</div></div>'
+      + '<div class="fi-section"><div class="fi-section-title"><span>Tree</span><span class="mono">' + tree.length + '</span></div><div class="fi-tree">' + (treeRows || '<div class="tab-empty">No tree entries captured.</div>') + '</div></div>'
+      + '<div class="fi-section"><div class="fi-section-title"><span>Previews</span><span class="mono">' + previews.length + '</span></div>' + previewRows + '</div></div>';
+  }
+  function buildFilesTab(s) {
+    var arts = laneArtifacts(s);
+    if (!arts.length) return '<div class="tab-empty">No evidence artifacts linked.</div>';
+    var selected = null;
+    for (var i = 0; i < arts.length; i += 1) {
+      if (arts[i].path === S.filePath) { selected = arts[i]; break; }
+    }
+    if (!selected) {
+      for (var j = 0; j < arts.length; j += 1) {
+        if (arts[j].kind === "filesystem") { selected = arts[j]; break; }
+      }
+    }
+    var inspector = "";
+    if (selected && selected.kind === "filesystem") {
+      ensureArtifactLoaded(selected);
+      inspector = renderSetupQualityArtifact(selected, artifactCache[selected.path]);
+    }
+    var rows = arts.map(function (a) {
+      var href = artifactHref(a);
+      var isSelected = selected && selected.path === a.path;
+      var inspectable = a.kind === "filesystem";
+      var main = inspectable
+        ? '<button data-action="inspect-file:' + esc(a.path) + '"><span class="file-ic">' + icon("file", 14) + '</span><span class="file-meta"><div class="file-name">' + esc(a.label) + '</div><div class="file-path mono">' + esc(a.path) + '</div></span><span class="file-kind">' + esc(a.kind) + '</span></button>'
+        : '<a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" data-action="external"><span class="file-ic">' + icon("file", 14) + '</span><span class="file-meta"><div class="file-name">' + esc(a.label) + '</div><div class="file-path mono">' + esc(a.path) + '</div></span><span class="file-kind">' + esc(a.kind) + '</span></a>';
+      return '<div class="file-row" data-selected="' + (isSelected ? "true" : "false") + '">' + main
+        + (href ? '<a class="file-open" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" data-action="external">open</a>' : "")
+        + '</div>';
+    }).join("");
+    return inspector + rows;
+  }
   function buildSideBody(s) {
     if (S.tab === "events") {
       var evs = laneEvents(s);
@@ -1533,13 +1677,7 @@ export function observerClientJs(): string {
       }).join("");
     }
     if (S.tab === "files") {
-      var arts = laneArtifacts(s);
-      if (!arts.length) return '<div class="tab-empty">No evidence artifacts linked.</div>';
-      return arts.map(function (a) {
-        return '<a class="file-row" href="../' + esc(a.path) + '"><span class="file-ic">' + icon("file", 14) + '</span>'
-          + '<span class="file-meta"><div class="file-name">' + esc(a.label) + '</div><div class="file-path mono">' + esc(a.path) + '</div></span>'
-          + '<span class="file-kind">' + esc(a.kind) + '</span></a>';
-      }).join("");
+      return buildFilesTab(s);
     }
     var lines = termLines(s);
     if (!lines.length) lines = [{ text: "No log text recorded for this lane.", cls: "dim" }];
@@ -1818,6 +1956,7 @@ export function observerClientJs(): string {
         if (arg === "status") toggleArr(S.statusSel, arg2); else toggleArr(S.kindSel, arg2);
         render(); break;
       case "toggle-console": S.consoleOpen = !S.consoleOpen; render(); break;
+      case "inspect-file": S.filePath = action.slice("inspect-file:".length); S.tab = "files"; render(); break;
       case "toggle-details": S.detailsOpen = !S.detailsOpen; S.tweaksOpen = false; render(); break;
       case "toggle-tweaks": S.tweaksOpen = !S.tweaksOpen; S.detailsOpen = false; render(); break;
       case "toggle-theme": S.theme = (S.theme === "light" ? "dark" : "light"); writePref("theme", S.theme); render(); break;

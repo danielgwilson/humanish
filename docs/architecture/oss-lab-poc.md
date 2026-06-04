@@ -126,6 +126,8 @@ Each stream lane records:
 - Codex actor status, optionally moved before deterministic setup with
   `MIMETIC_OSS_META_ACTOR_FIRST=1` and required through
   `MIMETIC_OSS_META_REQUIRE_ACTOR=1`;
+- setup-quality filesystem evidence: shallow tree, Mimetic setup checks,
+  package scripts, and allowlisted previews for public runs;
 - public-safe remote bootstrap log tail;
 - public-safe gaps and events.
 
@@ -142,6 +144,13 @@ default the actor remains nonblocking and runs after deterministic readback; wit
 deterministic validation; with `MIMETIC_OSS_META_REQUIRE_ACTOR=1`, the bootstrap
 waits up to `MIMETIC_OSS_META_ACTOR_TIMEOUT_MS` for terminal actor readback and
 will not mark the lane passed unless the actor exits cleanly.
+
+When the remote bootstrap completes, the host persists a local
+`setup-quality/<stream>-setup-quality.json` artifact. The Observer Files tab can
+render it inline from the served Observer. Static `file://` observers keep the
+artifact link openable but do not hydrate it inline. Token-backed/private runs
+suppress raw file previews by default while preserving the setup checks and
+tree shape.
 
 The live desktop substrate is an optional peer dependency. Install it in the
 project that runs live labs:
@@ -220,3 +229,7 @@ arbitrary public JavaScript repositories:
 
 Neither path may claim private product behavior proof without live, redacted,
 public-safe evidence.
+
+Feedback candidates are derived from this evidence when a lane records concrete
+setup-quality gaps or actor-reported Mimetic CLI blockers. `mimetic feedback`
+uses those candidates before falling back to generic dry-run follow-up drafts.
