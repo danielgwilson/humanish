@@ -115,6 +115,13 @@ OPENAI_API_KEY
 
 Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 
+When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a
+real observable user surface and local run path. Do not use libraries,
+frameworks, starters, or infrastructure packages as default targets unless the
+declared scenario is developer-experience testing. Private repos are allowed
+only as explicit maintainer-authorized runs with repo redaction left on; never
+publish their names, screenshots, logs, source snippets, or operational details.
+
 ## Reporting Back
 
 Report:

@@ -85,8 +85,12 @@ The experimental authorized-repo dogfood loop is:
 
 ```bash
 pnpm mimetic -- lab oss
-pnpm mimetic -- lab oss --repos developit/mitt,lukeed/clsx,sindresorhus/is-plain-obj,ai/nanoid
+pnpm mimetic -- lab oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
 ```
+
+Default lab targets are intentionally app/tool-like repos with visible,
+locally runnable user surfaces. Avoid libraries and frameworks for public
+dogfood unless the scenario is explicitly testing developer experience.
 
 With `E2B_API_KEY` and `OPENAI_API_KEY` present, Mimetic launches headed E2B
 desktop lanes, uploads the local package tarball, clones each assigned

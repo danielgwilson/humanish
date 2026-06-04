@@ -160,8 +160,8 @@ Stop and correct course if:
 ## Best Next Work
 
 The next most useful engineering slice is fresh-agent install proof against a
-disposable public app fixture, followed by the first provider-backed multi-step
-browser persona adapter.
+disposable public app/tool fixture, followed by the first provider-backed
+multi-step browser persona adapter.
 
 That sequence keeps the package honest: first prove a new maintainer can start,
 then prove Mimetic can observe real product behavior.

@@ -112,14 +112,15 @@ MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=900000 \
 MIMETIC_OSS_META_COMPLETION_INTERVAL_MS=10000 \
 MIMETIC_OSS_META_ACTOR_FIRST=1 \
 MIMETIC_OSS_META_REQUIRE_ACTOR=1 \
-MIMETIC_OSS_META_ACTOR_TIMEOUT_MS=240000 \
-pnpm mimetic -- lab oss --detach --open --count 1 --repos reduxjs/redux-essentials-example-app
-pnpm mimetic -- verify --run oss-meta-2026-06-04T08-33-55-996Z-8854989a --json
+MIMETIC_OSS_META_ACTOR_TIMEOUT_MS=480000 \
+pnpm mimetic -- lab oss --detach --open --count 1 --repos maciekt07/TodoApp
+pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json
 ```
 
-The live command may be adjusted to another lightweight public OSS app repo if
-the selected target cannot install or expose a local app within the spend and
-time caps. Record the reason in `state.yaml`.
+The live command may be adjusted to another lightweight public OSS app/tool repo
+if the selected target cannot install or expose a local app within the spend
+and time caps. Record the reason in `state.yaml`. Avoid framework/library
+targets unless the declared scenario is developer-experience testing.
 
 ## Proof Artifacts
 
@@ -150,7 +151,7 @@ time caps. Record the reason in `state.yaml`.
 
 - Work on a branch/worktree.
 - Keep commits public-safe.
-- Prefer public app repos and synthetic evidence.
+- Prefer public app/tool repos and synthetic evidence.
 - Treat missing proof as blocked/incomplete, not as success.
 - Update `state.yaml` after meaningful implementation, proof, and audit slices.
 

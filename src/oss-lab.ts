@@ -24,10 +24,10 @@ const execFileAsync = promisify(execFile);
 export const OSS_LAB_SCHEMA = "mimetic.oss-lab-result.v1";
 
 export const DEFAULT_OSS_REPOS = [
-  "developit/mitt",
-  "lukeed/clsx",
-  "sindresorhus/is-plain-obj",
-  "ai/nanoid"
+  "CorentinTh/it-tools",
+  "drawdb-io/drawdb",
+  "maciekt07/TodoApp",
+  "lissy93/dashy"
 ] as const;
 
 export interface OssLabOptions {

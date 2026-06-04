@@ -106,6 +106,16 @@ Post-audit fixes:
   nested Mimetic Observer with desktop/mobile browser lanes.
 - Provider cleanup killed sandbox `i39ry62lz2j5a1h12nkx1`; follow-up provider
   readback returned zero running Mimetic OSS meta-lab sandboxes.
+- A later app-target live run
+  `oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z` passed against
+  `maciekt07/TodoApp`, a public locally runnable app target with visible
+  desktop/mobile surfaces.
+- The app-target run persisted two public-safe actor evidence artifacts under
+  `actor-evidence/`, and verification checked those local log artifacts exist.
+- Screenshot inspection confirmed Todo app desktop/mobile browser windows and
+  a nested Mimetic Observer with desktop/mobile browser lanes.
+- Provider cleanup killed sandbox `iw1at2jb0bh3b5bdkvq35`; follow-up provider
+  readback returned zero running Mimetic OSS meta-lab sandboxes.
 
 ## Invariant Map
 
@@ -115,15 +125,15 @@ Post-audit fixes:
 | `mimetic run --app-url` captures desktop/mobile browser evidence | `src/run.ts`, `tests/run.test.ts`, `.mimetic/runs/local-browser-app-proof-clean/screenshots/*.png`, `.mimetic/runs/local-browser-app-proof-clean/traces/*.json` | passed |
 | `verify` fails when claimed screenshot/trace evidence is missing | `tests/run.test.ts` removes screenshot evidence and mutates embed URL evidence; `verifyRun` checks artifact, embed, and UI screenshot paths | passed |
 | OSS meta-lab uses nested app URL proof when target app is running | `src/oss-meta-lab.ts`; final terminal tail includes `mimetic run live`, `sims: 2`, and nested verify passed | passed |
-| Bounded live run uses public-safe OSS app target | Final actor-required run used `reduxjs/redux-essentials-example-app`, `--count 1`, and live E2B mode | passed |
+| Bounded live run uses public-safe OSS app/tool target | Final app-target run used `maciekt07/TodoApp`, `--count 1`, and live E2B mode. Earlier Redux evidence is historical, not the preferred target-selection proof. | passed |
 | Provider spend/time policy respected | No secret values were printed; exact dollar usage was unavailable from the CLI; wall-clock remained within the authorized window; all running Mimetic OSS meta-lab sandboxes were killed after proof collection | passed with usage note |
 | Future provider launch cap guarded | `src/oss-meta-lab.ts` checks running provider sandboxes before launch; `tests/oss-lab.test.ts` covers fail-closed capacity classification | passed |
 | Actor API-key quota preflight prevents wasted E2B spend | `src/oss-meta-lab.ts` preflights actor-required API-key/quota path; `oss-meta-actor-preflight-real-2026-06-04T10-44Z` launched zero sandboxes, verified blocked, and provider readback returned zero running sandboxes | passed |
-| Durable artifacts contain no secret values, runtime stream auth URLs, private repo labels, PII, PHI, or private source artifacts | `pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json`; broad run-artifact scan and public-surface scan passed | passed |
-| Top-level Observer evidence shows E2B desktop lane | `.mimetic/runs/oss-meta-actor-required-resume-2026-06-04T11-03Z/observer/index.html`; screenshot `screenshots/oss-01-desktop.png` | passed |
-| Nested Observer exists and contains desktop/mobile browser streams | Final actor-required run completion records nested Observer path, `mimetic run live`, `sims: 2`, and nested verify passed; screenshot visually shows nested desktop/mobile lanes | passed |
-| Coding-agent persona discovers, installs, and uses Mimetic | `oss-meta-actor-required-resume-2026-06-04T11-03Z` passed with `actorStatus=passed`; the bootstrap log tail records `mimetic init`, target app startup, nested live Mimetic run, nested verify, nested Observer opening, and visual layout evidence | passed |
-| Bundle and review pass schema/redaction/public-safety checks | `pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json` | passed |
+| Durable artifacts contain no secret values, runtime stream auth URLs, private repo labels, PII, PHI, or private source artifacts | `pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json`; broad run-artifact scan and public-surface scan passed | passed |
+| Top-level Observer evidence shows E2B desktop lane | `.mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/observer/index.html`; screenshot `screenshots/oss-01-desktop.png` | passed |
+| Nested Observer exists and contains desktop/mobile browser streams | Final app-target run completion records nested Observer path, `mimetic run live`, `sims: 2`, and nested verify passed; screenshot visually shows Todo app desktop/mobile windows plus nested desktop/mobile lanes | passed |
+| Coding-agent persona discovers, installs, and uses Mimetic | `oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z` passed with `actorStatus=passed`; local actor evidence artifacts record `npm i -D mimetic-cli`, `npx mimetic init --yes`, target app startup, `npx mimetic watch --sims 2`, Observer generation, and verification | passed |
+| Bundle and review pass schema/redaction/public-safety checks | `pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json` | passed |
 | Independent audit maps invariants or names gaps | This receipt plus independent audit result | passed |
 
 ## Final Commands
@@ -136,6 +146,7 @@ pnpm mimetic -- watch --run oss-meta-2026-06-04T08-33-55-996Z-8854989a --detach 
 pnpm mimetic -- verify --run oss-meta-2026-06-04T08-33-55-996Z-8854989a --json
 pnpm mimetic -- verify --run oss-meta-2026-06-04T09-14-56-290Z-3f979fc9 --json
 pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json
+pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json
 npm pack --dry-run --json --ignore-scripts
 pnpm release:check
 ```
@@ -171,12 +182,20 @@ lane. The run proves:
 top-level Mimetic Observer
 -> headed E2B desktop
 -> remote Codex actor terminal with actorStatus=passed
--> public OSS app running
+-> public OSS app/tool target running
 -> nested Mimetic live app-url run
 -> nested Observer with desktop/mobile browser evidence
+-> durable public-safe actor evidence artifacts
 -> verifier/public-safety checks
 -> provider cleanup/readback to zero running Mimetic OSS meta-lab sandboxes
 ```
+
+The final target-selection proof uses `maciekt07/TodoApp` rather than the
+earlier Redux proof because a visible app/tool surface is the correct default
+for user-simulation dogfood. A release/discovery gap remains: the remote actor's
+published `mimetic-cli@0.1.4` install path did not expose the branch app-url
+path, so the actor used the public npm watch path while deterministic bootstrap
+used the local branch package for nested live app-url proof.
 
 This is a phase-change proof, not broad platform readiness. Repeated-run
 reliability, multi-step autonomous browser-persona navigation, and richer
