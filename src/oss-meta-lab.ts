@@ -51,6 +51,12 @@ export interface OssMetaLabAssignment {
   streamId: string;
 }
 
+export interface OssMetaLabCleanupResult {
+  killed: number;
+  skipped: number;
+  errors: string[];
+}
+
 interface OssMetaLabLiveDesktop {
   actorEvidence?: OssMetaLabActorEvidenceArtifacts;
   bootstrap?: OssMetaLabBootstrap;
@@ -146,14 +152,6 @@ interface OssMetaLabHostActorPlanResult {
   worktreePath: string;
 }
 
-export interface OssMetaLabProviderCapacity {
-  cap: number;
-  ok: boolean;
-  reason: string;
-  requested: number;
-  running: number;
-}
-
 export interface OssMetaLabActorAuthPreflight {
   ok: boolean;
   reason: string;
@@ -245,27 +243,6 @@ export function buildOssRepoAssignments(repos: string[], count: number): OssMeta
       streamId: `oss-${String(index + 1).padStart(2, "0")}-desktop`
     };
   });
-}
-
-export function assessOssMetaLabProviderCapacity(args: {
-  cap: number;
-  requested: number;
-  running: number;
-}): OssMetaLabProviderCapacity {
-  const cap = Number.isSafeInteger(args.cap) && args.cap > 0 ? args.cap : 4;
-  const running = Math.max(0, Math.trunc(args.running));
-  const requested = Math.max(0, Math.trunc(args.requested));
-  const projected = running + requested;
-  const ok = projected <= cap;
-  return {
-    cap,
-    ok,
-    reason: ok
-      ? `Provider launch capacity ok: ${running} running + ${requested} requested <= cap ${cap}.`
-      : `Provider launch cap exceeded: ${running} running + ${requested} requested > cap ${cap}. Clean up existing Mimetic OSS meta-lab sandboxes or raise MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS intentionally.`,
-    requested,
-    running
-  };
 }
 
 export function collectOssMetaLabRemoteEnv(env: NodeJS.ProcessEnv): Record<string, string> {
@@ -1028,6 +1005,61 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     sandboxes: liveDesktops.map(formatLiveDesktopForResult),
     warnings: [...warnings, ...observer.warnings]
   };
+}
+
+export function sandboxIdsForOssMetaLabCleanup(result: Pick<OssMetaLabResult, "sandboxes">): string[] {
+  return [...new Set(result.sandboxes.flatMap((sandbox) => sandbox.sandboxId ? [sandbox.sandboxId] : []))];
+}
+
+export async function cleanupOssMetaLabSandboxes(
+  result: Pick<OssMetaLabResult, "sandboxes">,
+  options: {
+    killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    requestTimeoutMs?: number;
+  } = {}
+): Promise<OssMetaLabCleanupResult> {
+  const ids = sandboxIdsForOssMetaLabCleanup(result);
+  const skipped = result.sandboxes.length - ids.length;
+  if (ids.length === 0) {
+    return { killed: 0, skipped, errors: [] };
+  }
+
+  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  let killSandbox = options.killSandbox;
+  if (!killSandbox) {
+    const e2bApiKey = process.env.E2B_API_KEY;
+    if (!e2bApiKey) {
+      return {
+        killed: 0,
+        skipped: skipped + ids.length,
+        errors: ["E2B_API_KEY is not present; remote sandbox cleanup skipped."]
+      };
+    }
+
+    const desktopModule = await loadE2BDesktopModule();
+    if (!desktopModule.Sandbox.kill) {
+      return {
+        killed: 0,
+        skipped: skipped + ids.length,
+        errors: ["Installed @e2b/desktop SDK does not expose Sandbox.kill; remote sandbox cleanup skipped."]
+      };
+    }
+
+    killSandbox = async (sandboxId, timeout) => desktopModule.Sandbox.kill?.(sandboxId, { requestTimeoutMs: timeout });
+  }
+
+  let killed = 0;
+  const errors: string[] = [];
+  for (const id of ids) {
+    try {
+      await killSandbox(id, requestTimeoutMs);
+      killed += 1;
+    } catch (error) {
+      errors.push(`${id}: ${compactError(error)}`);
+    }
+  }
+
+  return { killed, skipped, errors };
 }
 
 export function buildOssMetaBundleFixture(args: {
@@ -1865,10 +1897,6 @@ async function launchLiveDesktops(
   const desktopModule = await loadE2BDesktopModule();
   const timeoutMs = readPositiveInt(process.env.MIMETIC_E2B_TIMEOUT_MS, 60 * 60 * 1000);
   const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
-  const capacity = await checkOssMetaLabProviderCapacity(desktopModule, assignments.length, requestTimeoutMs);
-  if (!capacity.ok) {
-    throw new Error(capacity.reason);
-  }
 
   return Promise.all(assignments.map(async (assignment) => {
     const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
@@ -1930,36 +1958,6 @@ async function launchLiveDesktops(
       };
     }
   }));
-}
-
-async function checkOssMetaLabProviderCapacity(
-  desktopModule: E2BDesktopModule,
-  requested: number,
-  requestTimeoutMs: number
-): Promise<OssMetaLabProviderCapacity> {
-  const cap = readPositiveInt(process.env.MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS, 4);
-  const running = await countRunningOssMetaLabSandboxes(desktopModule, requestTimeoutMs);
-  return assessOssMetaLabProviderCapacity({ cap, requested, running });
-}
-
-async function countRunningOssMetaLabSandboxes(
-  desktopModule: E2BDesktopModule,
-  requestTimeoutMs: number
-): Promise<number> {
-  if (!desktopModule.Sandbox.list) {
-    return 0;
-  }
-
-  const paginator = desktopModule.Sandbox.list({
-    metadata: OSS_META_LAB_PROVIDER_METADATA,
-    requestTimeoutMs
-  });
-  let count = 0;
-  while (paginator.hasNext) {
-    const page = await paginator.nextItems({ requestTimeoutMs });
-    count += page.length;
-  }
-  return count;
 }
 
 async function pollLiveDesktopCompletions(
@@ -3766,6 +3764,7 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 interface E2BDesktopModule {
   Sandbox: {
     create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
+    kill?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<unknown>;
     list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
   };
 }

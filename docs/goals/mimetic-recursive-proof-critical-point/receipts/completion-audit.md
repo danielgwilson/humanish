@@ -36,15 +36,13 @@ Post-audit fixes:
 - E2B provider state was queried by public-safe metadata. Seven running Mimetic
   OSS meta-lab sandboxes were found, all seven were killed, and a follow-up
   provider readback returned zero running Mimetic OSS meta-lab sandboxes.
-- `mimetic lab oss` now checks running E2B sandboxes with metadata
-  `tool=mimetic-cli&mode=oss-meta-lab` before live launch and fails closed when
-  running plus requested headed desktops would exceed
-  `MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS` (default 4).
+- `mimetic lab oss` now treats `--count` as the requested lane count rather
+  than comparing it to a hidden max-running desktop ceiling.
 - The original total run-count cap was reclassified as an arbitrary goal-design
   mistake, not a completion invariant. The corrected spend policy uses dollar
-  budget, wall-clock budget, max-concurrent paid resources, and cleanup/readback.
+  budget, wall-clock budget, provider sandbox timeout, and cleanup/readback.
 - The active goal and packet now explicitly say there is no total-attempt cap;
-  only the real spend, time, concurrent-resource, cleanup/readback, and
+  only the real spend, time, provider-timeout, cleanup/readback, and
   proof-quality gates can stop the live loop.
 - Redaction now avoids treating Codex command flags such as
   `--ask-for-approval` as OpenAI keys while still redacting real `sk-*` token
