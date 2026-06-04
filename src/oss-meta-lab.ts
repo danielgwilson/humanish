@@ -33,6 +33,7 @@ import type {
 export const OSS_META_LAB_SCHEMA = "mimetic.oss-meta-lab-result.v1";
 
 export interface OssMetaLabOptions {
+  completionTimeoutMs?: number;
   count?: number;
   cwd: string;
   dryRun?: boolean;
@@ -876,7 +877,14 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
         ...(localPackage ? { localPackage } : {}),
         redactRepoNames
       });
-      const completionSummary = await pollLiveDesktopCompletions(liveDesktops);
+      const completionSummary = await pollLiveDesktopCompletions(liveDesktops, {
+        ...(options.completionTimeoutMs === undefined
+          ? {}
+          : {
+              timeoutMs: options.completionTimeoutMs,
+              timeoutReason: "attached watch mode serves the Observer immediately after desktop streams are created"
+            })
+      });
       warnings.push(...completionSummary.warnings);
     } catch (error) {
       warnings.push(compactError(error));
@@ -1954,7 +1962,10 @@ async function countRunningOssMetaLabSandboxes(
   return count;
 }
 
-async function pollLiveDesktopCompletions(liveDesktops: OssMetaLabLiveDesktop[]): Promise<{ warnings: string[] }> {
+async function pollLiveDesktopCompletions(
+  liveDesktops: OssMetaLabLiveDesktop[],
+  options: { timeoutMs?: number; timeoutReason?: string } = {}
+): Promise<{ warnings: string[] }> {
   const pollable = liveDesktops.filter((desktop) =>
     desktop.desktop
     && desktop.bootstrap?.status === "started"
@@ -1964,13 +1975,13 @@ async function pollLiveDesktopCompletions(liveDesktops: OssMetaLabLiveDesktop[])
     return { warnings: [] };
   }
 
-  const timeoutMs = readNonNegativeInt(process.env.MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
+  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
   const intervalMs = readPositiveInt(process.env.MIMETIC_OSS_META_COMPLETION_INTERVAL_MS, 5_000);
   const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const warnings: string[] = [];
 
   if (timeoutMs === 0) {
-    warnings.push("OSS meta-lab completion polling skipped because MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=0.");
+    warnings.push(`OSS meta-lab completion polling skipped because ${options.timeoutReason ?? "MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=0"}.`);
     return { warnings };
   }
 

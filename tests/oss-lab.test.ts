@@ -27,7 +27,8 @@ import type { OssMetaLabResult } from "../src/oss-meta-lab.js";
 import {
   createProgram,
   exitCodeForOssMetaLab,
-  shouldForceExitAfterOssMetaLab
+  shouldForceExitAfterOssMetaLab,
+  shouldServeOssMetaLabObserver
 } from "../src/program.js";
 
 const execFileAsync = promisify(execFile);
@@ -228,6 +229,28 @@ describe("OSS lab command", () => {
         message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
       }
     }))).toBe(2);
+  });
+
+  it("serves the OSS meta-lab Observer when a failed live run still produced evidence", () => {
+    const failedWithObserver = liveMetaResult({
+      ok: false,
+      error: {
+        code: "MIMETIC_META_RUN_FAILED",
+        message: "OSS meta-lab failed 4/4 live desktop or bootstrap launches."
+      },
+      observer: {
+        schema: "mimetic.observer-result.v1",
+        ok: true,
+        cwd: "/tmp/mimetic",
+        run: "oss-live-fixture",
+        observerPath: ".mimetic/runs/oss-live-fixture/observer/index.html",
+        observerDataPath: ".mimetic/runs/oss-live-fixture/observer/observer-data.json",
+        warnings: []
+      }
+    });
+
+    expect(shouldServeOssMetaLabObserver(failedWithObserver, { wantsFollow: true })).toBe(true);
+    expect(shouldServeOssMetaLabObserver(failedWithObserver, { wantsFollow: false })).toBe(false);
   });
 
   it("does not force-exit OSS meta-lab runs without live stream handles or machine/detach mode", () => {

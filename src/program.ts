@@ -720,6 +720,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const shouldOpen = options.open === false ? false : wantsMachine ? options.open === true : true;
       const wantsFollow = !wantsMachine && options.detach !== true && options.dryRun !== true;
       const result = await runOssMetaLab({
+        ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
         cwd: options.cwd,
         open: wantsFollow ? false : shouldOpen,
         ...(options.redactRepos === undefined ? {} : { redactRepoNames: options.redactRepos }),
@@ -731,7 +732,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       let server: ObserverServer | null = null;
       let output = result;
-      if (result.ok && wantsFollow && result.observer?.ok) {
+      if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
         server = await serveObserver(result.observer, { open: shouldOpen, port });
         output = {
           ...result,
@@ -765,7 +766,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         setTimeout(() => process.exit(exitCode), 50);
       }
 
-      if (output.ok && server && output.observer?.ok) {
+      if (server && output.observer?.ok) {
         await followObserver(io, output.observer, server);
       }
     });
@@ -974,12 +975,9 @@ function formatOssLabHuman(result: OssLabResult): string {
 }
 
 function formatOssMetaLabHuman(result: OssMetaLabResult): string {
-  if (!result.ok && result.error) {
-    return `${result.error.code}: ${result.error.message}\n`;
-  }
-
   return [
-    `mimetic lab oss ${result.dryRun ? "dry-run" : "watch"}`,
+    `mimetic lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
+    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId ?? "not-created"}`,
     `repos: ${result.repos.join(", ")}`,
     ...(result.count === undefined ? [] : [`desktops: ${result.count}`]),
@@ -1097,6 +1095,14 @@ export function shouldForceExitAfterOssMetaLab(
   return output.liveRequested === true
     && (options.detach || options.wantsMachine)
     && output.sandboxes.some((sandbox) => sandbox.urlPresent);
+}
+
+export function shouldServeOssMetaLabObserver(
+  output: OssMetaLabResult,
+  options: { wantsFollow: boolean }
+): output is OssMetaLabResult & { observer: ObserverResult & { ok: true } } {
+  return options.wantsFollow
+    && output.observer?.ok === true;
 }
 
 export function exitCodeForOssMetaLab(output: OssMetaLabResult): number {
