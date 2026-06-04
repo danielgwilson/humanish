@@ -114,7 +114,7 @@ MIMETIC_OSS_META_ACTOR_FIRST=1 \
 MIMETIC_OSS_META_REQUIRE_ACTOR=1 \
 MIMETIC_OSS_META_ACTOR_TIMEOUT_MS=480000 \
 pnpm mimetic -- lab oss --detach --open --count 1 --repos maciekt07/TodoApp
-pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json
+pnpm mimetic -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json
 ```
 
 The live command may be adjusted to another lightweight public OSS app/tool repo

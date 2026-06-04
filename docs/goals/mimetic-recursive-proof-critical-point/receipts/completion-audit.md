@@ -116,6 +116,17 @@ Post-audit fixes:
   a nested Mimetic Observer with desktop/mobile browser lanes.
 - Provider cleanup killed sandbox `iw1at2jb0bh3b5bdkvq35`; follow-up provider
   readback returned zero running Mimetic OSS meta-lab sandboxes.
+- After PR #71 merged, canonical `main` reran the same app-target proof as
+  `oss-meta-app-target-main-2026-06-04T19-18Z`; it passed with
+  `actorStatus=passed`, `appStatus=running`, `nestedVerifyPassed=true`,
+  `nestedObserverPresent=true`, `visualStatus=visible`,
+  `visualWindowCount=3`, and `screenshotPresent=true`.
+- Verification for `oss-meta-app-target-main-2026-06-04T19-18Z` passed schema,
+  redaction, review-artifact, public-safety, and local-evidence checks.
+- Screenshot inspection confirmed Todo app desktop/mobile browser windows and
+  a nested Mimetic Observer in the E2B desktop.
+- Provider cleanup killed sandbox `ii4arg677ruf978n6pa9t`; follow-up provider
+  readback returned zero running Mimetic OSS meta-lab sandboxes.
 
 ## Invariant Map
 
@@ -129,11 +140,11 @@ Post-audit fixes:
 | Provider spend/time policy respected | No secret values were printed; exact dollar usage was unavailable from the CLI; wall-clock remained within the authorized window; all running Mimetic OSS meta-lab sandboxes were killed after proof collection | passed with usage note |
 | Future provider launch cap guarded | `src/oss-meta-lab.ts` checks running provider sandboxes before launch; `tests/oss-lab.test.ts` covers fail-closed capacity classification | passed |
 | Actor API-key quota preflight prevents wasted E2B spend | `src/oss-meta-lab.ts` preflights actor-required API-key/quota path; `oss-meta-actor-preflight-real-2026-06-04T10-44Z` launched zero sandboxes, verified blocked, and provider readback returned zero running sandboxes | passed |
-| Durable artifacts contain no secret values, runtime stream auth URLs, private repo labels, PII, PHI, or private source artifacts | `pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json`; broad run-artifact scan and public-surface scan passed | passed |
-| Top-level Observer evidence shows E2B desktop lane | `.mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/observer/index.html`; screenshot `screenshots/oss-01-desktop.png` | passed |
-| Nested Observer exists and contains desktop/mobile browser streams | Final app-target run completion records nested Observer path, `mimetic run live`, `sims: 2`, and nested verify passed; screenshot visually shows Todo app desktop/mobile windows plus nested desktop/mobile lanes | passed |
-| Coding-agent persona discovers, installs, and uses Mimetic | `oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z` passed with `actorStatus=passed`; local actor evidence artifacts record `npm i -D mimetic-cli`, `npx mimetic init --yes`, target app startup, `npx mimetic watch --sims 2`, Observer generation, and verification | passed |
-| Bundle and review pass schema/redaction/public-safety checks | `pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json` | passed |
+| Durable artifacts contain no secret values, runtime stream auth URLs, private repo labels, PII, PHI, or private source artifacts | `pnpm mimetic -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json`; broad run-artifact scan and public-surface scan passed | passed |
+| Top-level Observer evidence shows E2B desktop lane | `.mimetic/runs/oss-meta-app-target-main-2026-06-04T19-18Z/observer/index.html`; screenshot `screenshots/oss-01-desktop.png` | passed |
+| Nested Observer exists and contains desktop/mobile browser streams | Canonical app-target run completion records nested Observer path, `mimetic run live`, `sims: 2`, and nested verify passed; screenshot visually shows Todo app desktop/mobile windows plus nested desktop/mobile lanes | passed |
+| Coding-agent persona discovers, installs, and uses Mimetic | `oss-meta-app-target-main-2026-06-04T19-18Z` passed with `actorStatus=passed`; local actor evidence artifacts record `npm i -D mimetic-cli`, `npx mimetic init --yes`, target app startup, public npm watch use, Observer generation, and verification | passed |
+| Bundle and review pass schema/redaction/public-safety checks | `pnpm mimetic -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json` | passed |
 | Independent audit maps invariants or names gaps | This receipt plus independent audit result | passed |
 
 ## Final Commands
@@ -147,6 +158,7 @@ pnpm mimetic -- verify --run oss-meta-2026-06-04T08-33-55-996Z-8854989a --json
 pnpm mimetic -- verify --run oss-meta-2026-06-04T09-14-56-290Z-3f979fc9 --json
 pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json
 pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json
+pnpm mimetic -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json
 npm pack --dry-run --json --ignore-scripts
 pnpm release:check
 ```

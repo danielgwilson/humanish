@@ -35,10 +35,12 @@ receipts:
     status: "completed"
   - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-evidence-app-target-success.md"
     status: "completed"
+  - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/canonical-main-app-target-proof.md"
+    status: "completed"
 verification:
   status: "goal_proven"
-  last_command: "pnpm mimetic -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json"
-  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-evidence-app-target-success.md"
+  last_command: "pnpm mimetic -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json"
+  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/canonical-main-app-target-proof.md"
 evidence:
   environment_state:
     - "Focused tests for run --app-url and OSS meta-lab bootstrap must pass."
@@ -88,6 +90,10 @@ evidence:
     - "The app-target run persisted two public-safe actor evidence logs under actor-evidence/ and verify checked those local log artifacts exist."
     - "Visual screenshot inspection confirmed headed Todo app desktop/mobile windows plus nested Mimetic Observer showing desktop/mobile browser lanes."
     - "Provider cleanup killed sandbox iw1at2jb0bh3b5bdkvq35 and read back zero running Mimetic OSS meta-lab sandboxes."
+    - "Canonical-main app-target run oss-meta-app-target-main-2026-06-04T19-18Z passed after PR #71 was merged: actorStatus passed, appStatus running, nestedVerifyPassed true, nestedObserverPresent true, visualStatus visible, visualWindowCount 3, and screenshotPresent true."
+    - "Canonical-main verify for oss-meta-app-target-main-2026-06-04T19-18Z passed schema, redaction, review-artifact, public-safety, and local-evidence checks."
+    - "Canonical-main screenshot inspection confirmed Todo app desktop/mobile windows plus nested Mimetic Observer."
+    - "Provider cleanup killed sandbox ii4arg677ruf978n6pa9t and read back zero running Mimetic OSS meta-lab sandboxes."
   screenshots_or_traces:
     - ".mimetic/runs/local-browser-app-proof-clean/screenshots/desktop.png"
     - ".mimetic/runs/local-browser-app-proof-clean/screenshots/mobile.png"
@@ -101,10 +107,15 @@ evidence:
     - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/observer/index.html"
     - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/actor-evidence/oss-01-desktop-actor-last-message-tail.txt"
     - ".mimetic/runs/oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z/actor-evidence/oss-01-desktop-actor-log-tail.txt"
+    - ".mimetic/runs/oss-meta-app-target-main-2026-06-04T19-18Z/screenshots/oss-01-desktop.png"
+    - ".mimetic/runs/oss-meta-app-target-main-2026-06-04T19-18Z/observer/index.html"
+    - ".mimetic/runs/oss-meta-app-target-main-2026-06-04T19-18Z/actor-evidence/oss-01-desktop-actor-last-message-tail.txt"
+    - ".mimetic/runs/oss-meta-app-target-main-2026-06-04T19-18Z/actor-evidence/oss-01-desktop-actor-log-tail.txt"
   usage_receipts:
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/live-run.md"
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-evidence-app-target-success.md"
+    - "docs/goals/mimetic-recursive-proof-critical-point/receipts/canonical-main-app-target-proof.md"
   missing:
     - "Exact provider dollar usage was not available from the CLI; receipt records bounded commands and observed launch attempts."
     - "Historical debug attempts exceeded the old arbitrary total run-count cap; this is no longer treated as a completion blocker because the corrected policy uses dollar budget, wall-clock budget, max-concurrent running desktops, and provider cleanup/readback."
