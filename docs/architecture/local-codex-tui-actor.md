@@ -5,9 +5,10 @@ Date: 2026-06-02
 Status: incremental implementation on issue #28. The repo supports one explicit
 local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
 workspace-trust preflight. It also supports explicit noninteractive
-`codex-exec` actor fanout from one to four lanes for autonomous local dogfood
-proof, including active-run Observer data refresh while exec lanes are running.
-TUI autonomous completion and TUI live Observer follow remain follow-up work.
+`codex-exec` actor fanout for autonomous local dogfood proof. Requested exec
+lanes are not capped by total run count; they run through bounded concurrency
+controlled by `MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` (default 4). TUI
+autonomous completion and TUI live Observer follow remain follow-up work.
 
 ## Goal
 
@@ -56,7 +57,9 @@ MIMETIC_ENABLE_LOCAL_CODEX_EXEC=1 mimetic run --sims 1
 ```
 
 Provider spend, E2B, GitHub mutation, and external network calls remain off
-unless separately and explicitly requested.
+unless separately and explicitly requested. When real Codex exec auth is used,
+`MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` is the cost/resource rail; there is
+no arbitrary total lane cap.
 
 For deterministic tests or local substrate debugging, `MIMETIC_CODEX_ACTOR_COMMAND`
 can point at a safe fixture command. Real Codex TUI launch uses a Linux
@@ -186,13 +189,13 @@ Codex exits cleanly without a marker, the run is still considered process-passed
 but the transcript remains available for review.
 
 The noninteractive `codex-exec` mode is a separate actor contract for autonomous
-local completion. It can run up to four bounded read-only lanes with distinct
+local completion. It can run requested bounded read-only lanes with distinct
 focuses across install readability, public safety, Observer evidence, and
 verification/release gates. It does not replace the TUI contract because it does
 not prove PTY rendering, keyboard focus, or visible live TUI observation.
 
 The next implementation slice should decide whether TUI-specific fanout is
-needed beyond the current 1x TUI proof plus 1-4 lane noninteractive
+needed beyond the current 1x TUI proof plus bounded-concurrency noninteractive
 `codex-exec` fanout split.
 
 ## Acceptance For First Slice

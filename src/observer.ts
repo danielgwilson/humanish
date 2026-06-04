@@ -123,7 +123,9 @@ export async function renderObserver(
     opened: openResult.opened,
     ...(openResult.command ? { openCommand: openResult.command } : {}),
     warnings: [
-      "Observer renders local evidence only; dry-run lanes do not claim product behavior proof.",
+      loaded.bundle.mode === "live"
+        ? "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted."
+        : "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
       "Before filing public feedback, use `mimetic feedback issue` so redaction and public-safety checks gate the payload.",
       ...(openResult.warning ? [openResult.warning] : [])
     ]

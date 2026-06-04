@@ -1,8 +1,10 @@
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { renderObserver } from "../src/observer.js";
 import { createProgram } from "../src/program.js";
 import {
   RUN_BUNDLE_SCHEMA,
@@ -64,6 +66,63 @@ async function waitForFile(filePath: string, timeoutMs = 2_000): Promise<void> {
   throw new Error(`Timed out waiting for ${filePath}`);
 }
 
+async function withHttpServer<T>(callback: (url: string) => Promise<T>): Promise<T> {
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end("<!doctype html><title>Mimetic test app</title><main>browser surface proof</main>");
+  });
+  const url = await new Promise<string>((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        throw new Error("HTTP server address was not available.");
+      }
+      resolve(`http://127.0.0.1:${address.port}/`);
+    });
+  });
+
+  try {
+    return await callback(url);
+  } finally {
+    await closeServer(server);
+  }
+}
+
+async function closeServer(server: Server): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
+
+async function writeFakeBrowserCommand(cwd: string): Promise<string> {
+  const browser = path.join(cwd, "fake-browser.cjs");
+  await writeFile(
+    browser,
+    [
+      "#!/usr/bin/env node",
+      "const fs = require('node:fs');",
+      "const screenshotArg = process.argv.find((arg) => arg.startsWith('--screenshot='));",
+      "if (process.argv.includes('--version')) {",
+      "  process.stdout.write('Fake Chrome 1.0\\n');",
+      "  process.exit(0);",
+      "}",
+      "if (!screenshotArg) {",
+      "  process.stderr.write('missing screenshot arg\\n');",
+      "  process.exit(2);",
+      "}",
+      "const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c49444154789c6360f8cf000000040003027e7b040000000049454e44ae426082', 'hex');",
+      "fs.writeFileSync(screenshotArg.slice('--screenshot='.length), png);",
+      "process.exit(0);"
+    ].join("\n"),
+    "utf8"
+  );
+  await chmod(browser, 0o755);
+  return browser;
+}
+
 describe("dry-run bundles", () => {
   it("writes and verifies a synthetic run bundle", async () => {
     await withFixtureCopy(async (cwd) => {
@@ -91,12 +150,37 @@ describe("dry-run bundles", () => {
       expect(verify.ok).toBe(true);
       expect(verify.checks.every((check) => check.ok)).toBe(true);
 
+      const observer = await renderObserver(cwd, "latest");
+      expect(observer.ok).toBe(true);
+      expect(observer.warnings.join("\n")).toContain("dry-run lanes do not claim product behavior proof");
+      expect(observer.warnings.join("\n")).not.toContain("verified local evidence artifacts");
+
       const review = await readReview(cwd, "latest");
       expect("verdict" in review ? review.verdict : null).toBe("contract_proof_only");
 
       const runs = await listRuns(cwd);
       expect(runs.latest).toBe("dryrun-test");
       expect(runs.runs).toHaveLength(1);
+    });
+  });
+
+  it("allows dry-run simulation counts above old magic caps", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "dryrun-sims-65",
+        simCount: 65
+      });
+
+      expect(run.ok).toBe(true);
+      expect(run.simCount).toBe(65);
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/dryrun-sims-65/run.json"), "utf8")
+      ) as { simCount: number; simulations: unknown[] };
+      expect(bundle.simCount).toBe(65);
+      expect(bundle.simulations).toHaveLength(65);
     });
   });
 
@@ -107,6 +191,175 @@ describe("dry-run bundles", () => {
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("MIMETIC_LIVE_RUN_UNIMPLEMENTED");
       await expect(stat(path.join(cwd, ".mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+  });
+
+  it("does not treat Codex flag names as OpenAI keys", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "flag-redaction-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      await writeFile(
+        path.join(cwd, ".mimetic/runs/flag-redaction-regression/review.md"),
+        "actor command: codex exec --ask-for-approval never\n",
+        "utf8"
+      );
+
+      const verify = await verifyRun(cwd, "flag-redaction-regression");
+      expect(verify.ok).toBe(true);
+      expect(verify.checks.find((check) => check.name === "public-safety scan")?.ok).toBe(true);
+    });
+  });
+
+  it("rejects browser profile artifacts in public proof runs", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "profile-artifact-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const profileDir = path.join(cwd, ".mimetic/runs/profile-artifact-regression/profiles/desktop/Default");
+      await mkdir(profileDir, { recursive: true });
+      await writeFile(path.join(profileDir, "Preferences"), "{\"metadata_secret\":\"synthetic\"}\n", "utf8");
+
+      const verify = await verifyRun(cwd, "profile-artifact-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message)
+        .toContain("profiles");
+    });
+  });
+
+  it("scans non-bundle text artifacts for public-safety leaks", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "events-secret-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      await writeFile(
+        path.join(cwd, ".mimetic/runs/events-secret-regression/events.ndjson"),
+        `{\"message\":\"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}\"}\n`,
+        "utf8"
+      );
+
+      const verify = await verifyRun(cwd, "events-secret-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message)
+        .toContain("events.ndjson");
+    });
+  });
+
+  it("captures and verifies live browser app desktop/mobile evidence", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+
+        try {
+          const result = await runDryRun({
+            appUrl,
+            cwd,
+            runId: "browser-app-test"
+          });
+
+          expect(result.ok).toBe(true);
+          expect(result.mode).toBe("live");
+          expect(result.simCount).toBe(2);
+
+          const bundle = JSON.parse(
+            await readFile(path.join(cwd, ".mimetic/runs/browser-app-test/run.json"), "utf8")
+          ) as {
+            mode: string;
+            review: { verdict: string };
+            simulations: Array<{ mode: string; status: string; streamKind: string }>;
+            streams: Array<{
+              artifacts: Array<{ kind: string; path: string }>;
+              embed: { kind: string; url: string };
+              kind: string;
+              status: string;
+              ui: { appUrl: string; screenshotUrl: string };
+              viewport: { isMobile?: boolean; width: number };
+            }>;
+          };
+
+          expect(bundle.mode).toBe("live");
+          expect(bundle.review.verdict).toBe("pass");
+          expect(bundle.simulations).toEqual([
+            expect.objectContaining({ mode: "browser-sim", status: "passed", streamKind: "browser" }),
+            expect.objectContaining({ mode: "browser-sim", status: "passed", streamKind: "browser" })
+          ]);
+          expect(bundle.streams.map((stream) => stream.kind)).toEqual(["browser", "browser"]);
+          expect(bundle.streams.map((stream) => stream.viewport.width)).toEqual([1440, 390]);
+          expect(bundle.streams[1]?.viewport.isMobile).toBe(true);
+          expect(bundle.streams[0]?.embed.kind).toBe("screenshot");
+          expect(bundle.streams[0]?.ui.appUrl).toBe(appUrl);
+
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/desktop.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/traces/desktop.json"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/events.ndjson"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/profiles"))).rejects.toBeTruthy();
+
+          const verify = await verifyRun(cwd, "latest");
+          expect(verify.ok).toBe(true);
+          expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.ok).toBe(true);
+
+          const observer = await renderObserver(cwd, "latest");
+          expect(observer.ok).toBe(true);
+          expect(observer.warnings.join("\n")).toContain("verified local evidence artifacts");
+          expect(observer.warnings.join("\n")).not.toContain("dry-run lanes do not claim product behavior proof");
+
+          bundle.streams[0]!.embed.url = "../screenshots/missing-embed.png";
+          await writeFile(
+            path.join(cwd, ".mimetic/runs/browser-app-test/run.json"),
+            `${JSON.stringify(bundle, null, 2)}\n`,
+            "utf8"
+          );
+          const missingEmbedVerify = await verifyRun(cwd, "latest");
+          expect(missingEmbedVerify.ok).toBe(false);
+          expect(missingEmbedVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+            .toContain("screenshots/missing-embed.png");
+          bundle.streams[0]!.embed.url = "../screenshots/desktop.png";
+          await writeFile(
+            path.join(cwd, ".mimetic/runs/browser-app-test/run.json"),
+            `${JSON.stringify(bundle, null, 2)}\n`,
+            "utf8"
+          );
+
+          await rm(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile.png"));
+          const missingVerify = await verifyRun(cwd, "latest");
+          expect(missingVerify.ok).toBe(false);
+          expect(missingVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+            .toContain("screenshots/mobile.png");
+        } finally {
+          if (previousBrowserCommand === undefined) {
+            delete process.env.MIMETIC_BROWSER_COMMAND;
+          } else {
+            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+        }
+      });
+    });
+  });
+
+  it("rejects non-loopback app URLs for browser app proof", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const result = await runDryRun({
+        appUrl: "https://example.com/?token=secret",
+        cwd,
+        runId: "browser-app-invalid"
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("MIMETIC_INVALID_APP_URL");
     });
   });
 
@@ -611,20 +864,38 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("caps local Codex exec fanout at four lanes", async () => {
+  it("runs local Codex exec lane counts above the old fanout cap", async () => {
     await withFixtureCopy(async (cwd) => {
       const result = await runDryRun({
         cwd,
         actor: "codex-exec",
         actorCommand: [process.execPath, "-e", "process.exit(0)"],
-        runId: "codex-exec-too-many",
+        runId: "codex-exec-five-lanes",
         simCount: 5,
         timeoutMs: 5_000
       });
 
-      expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED");
-      await expect(stat(path.join(cwd, ".mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+      expect(result.ok).toBe(true);
+      expect(result.simCount).toBe(5);
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-five-lanes/run.json"), "utf8")
+      ) as {
+        lifecycle: Array<{ message: string }>;
+        simCount: number;
+        simulations: Array<{ status: string }>;
+        streams: Array<{ completion: { status: string } }>;
+      };
+
+      expect(bundle.simCount).toBe(5);
+      expect(bundle.lifecycle[0]?.message).toContain("max concurrency 4");
+      expect(bundle.simulations).toHaveLength(5);
+      expect(bundle.streams).toHaveLength(5);
+      expect(bundle.simulations.every((simulation) => simulation.status === "passed")).toBe(true);
+      expect(bundle.streams.every((stream) => stream.completion.status === "passed")).toBe(true);
+
+      const verify = await verifyRun(cwd, "latest");
+      expect(verify.ok).toBe(true);
     });
   });
 

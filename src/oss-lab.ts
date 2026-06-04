@@ -121,7 +121,7 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
   const repos = normalizeOssRepoSlugs(options.repos);
   const limit = options.limit ?? repos.length;
 
-  if (!Number.isInteger(limit) || limit < 1 || limit > 16) {
+  if (!Number.isInteger(limit) || limit < 1) {
     return {
       schema: OSS_LAB_SCHEMA,
       ok: false,
@@ -130,7 +130,7 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       cwd,
       error: {
         code: "MIMETIC_INVALID_OSS_LIMIT",
-        message: "--limit must be an integer between 1 and 16."
+        message: "--limit must be a positive integer."
       },
       repos: [],
       runId,

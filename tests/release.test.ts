@@ -34,7 +34,7 @@ describe("release readiness", () => {
       "docs/architecture",
       "docs/assets",
       "docs/contracts",
-      "docs/goals",
+      "docs/goals/current.md",
       "docs/principles",
       "docs/product",
       "docs/ramp",

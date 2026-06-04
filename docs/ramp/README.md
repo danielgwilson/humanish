@@ -61,11 +61,13 @@ Implemented:
 
 Still not good enough:
 
-- live browser/user-journey proof is not yet first-class;
+- live `--app-url` browser proof exists for desktop/mobile render evidence, but
+  autonomous multi-step user-journey proof is not first-class yet;
 - live PTY and Codex UI lanes need stronger completion health;
-- OSS lab lanes need automatic nested Observer health readback;
-- the package needs fresh-agent install proof on real disposable public apps;
-- Observer evidence needs real screenshots/traces once browser adapters land.
+- OSS lab lanes can report nested Observer health when a target app starts, but
+  need repeated fresh-agent trials across more disposable public apps;
+- Observer evidence has real screenshots/traces for browser app proof; broader
+  adapter-driven persona navigation remains the next gap.
 
 ## First Commands
 

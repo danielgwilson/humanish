@@ -97,7 +97,7 @@ const secretPatterns: Array<{
 }> = [
   {
     name: "openai-token",
-    pattern: /\bsk-(?:proj-)?[A-Za-z0-9_-]{12,}\b/g,
+    pattern: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g,
     replacement: "[redacted-openai-key]"
   },
   {
