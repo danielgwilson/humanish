@@ -22,8 +22,10 @@ import type {
   ReviewSummary,
   RunBundle,
   RunEvent,
+  RunFeedbackCandidate,
   RunResult,
   RunSimulation,
+  RunSetupQualitySnapshot,
   RunStream,
   RunStreamCompletion
 } from "./run.js";
@@ -67,6 +69,7 @@ interface OssMetaLabLiveDesktop {
 interface OssMetaLabActorEvidenceArtifacts {
   actorLastMessageTailPath?: string;
   actorLogTailPath?: string;
+  setupQualityPath?: string;
 }
 
 interface OssMetaLabBootstrap {
@@ -103,6 +106,7 @@ export interface OssMetaLabCompletion {
   nestedObserverPresent?: boolean;
   nestedVerifyPassed?: boolean;
   reason: string;
+  setupQuality?: RunSetupQualitySnapshot;
   status: OssMetaLabCompletionStatus;
   visualReason?: string;
   visualStatus?: OssMetaLabVisualStatus;
@@ -948,7 +952,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   await mkdir(artifactRoot, { recursive: true });
   const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops);
   warnings.push(...screenshotSummary.warnings);
-  const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops);
+  const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops, redactRepoNames);
   warnings.push(...actorEvidenceSummary.warnings);
   const bundle = buildMetaBundle({
     assignments,
@@ -1179,6 +1183,7 @@ function buildMetaBundle(args: {
         ...(completion?.actorLogPath ? [{ label: "remote actor log", path: completion.actorLogPath, kind: "log" as const }] : []),
         ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath ? [{ label: "actor last-message tail", path: liveDesktop.actorEvidence.actorLastMessageTailPath, kind: "log" as const }] : []),
         ...(liveDesktop?.actorEvidence?.actorLogTailPath ? [{ label: "actor log tail", path: liveDesktop.actorEvidence.actorLogTailPath, kind: "log" as const }] : []),
+        ...(liveDesktop?.actorEvidence?.setupQualityPath ? [{ label: "setup quality", path: liveDesktop.actorEvidence.setupQualityPath, kind: "filesystem" as const }] : []),
         ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
         ...(liveDesktop?.bootstrap?.logPath ? [{ label: "remote bootstrap log", path: liveDesktop.bootstrap.logPath, kind: "log" as const }] : []),
         ...(liveDesktop?.bootstrap?.nestedObserverPath ? [{ label: "nested observer path", path: liveDesktop.bootstrap.nestedObserverPath, kind: "observer" as const }] : []),
@@ -1296,6 +1301,12 @@ function buildMetaBundle(args: {
   }
 
   const review = createMetaReview(args);
+  const feedbackCandidates = buildMetaFeedbackCandidates({
+    assignments: args.assignments,
+    liveDesktops: args.liveDesktops,
+    redactRepoNames: args.redactRepoNames,
+    runId: args.runId
+  });
   return {
     schema: RUN_BUNDLE_SCHEMA,
     runId: args.runId,
@@ -1357,7 +1368,7 @@ function buildMetaBundle(args: {
       events: "events.ndjson"
     },
     review,
-    feedbackCandidates: []
+    feedbackCandidates
   };
 }
 
@@ -1601,6 +1612,10 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
     ...(liveDesktop.completion.visualStatus === undefined ? [] : [`visual_status: ${liveDesktop.completion.visualStatus}`]),
     ...(liveDesktop.completion.visualWindowCount === undefined ? [] : [`visual_window_count: ${liveDesktop.completion.visualWindowCount}`]),
     ...(liveDesktop.completion.visualReason === undefined ? [] : [`visual_reason: ${liveDesktop.completion.visualReason}`]),
+    ...(liveDesktop.completion.setupQuality === undefined ? [] : [
+      `setup_quality: ${liveDesktop.completion.setupQuality.status}`,
+      `setup_summary: ${liveDesktop.completion.setupQuality.summary}`
+    ]),
     "",
     "public-safe actor last message tail:",
     liveDesktop.completion.actorLastMessageTail?.trim() || "(no actor last-message captured)",
@@ -1638,6 +1653,130 @@ function completionForStream(completion: OssMetaLabCompletion): RunStreamComplet
     ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus }),
     ...(completion.visualWindowCount === undefined ? {} : { visualWindowCount: completion.visualWindowCount })
   };
+}
+
+function buildMetaFeedbackCandidates(args: {
+  assignments: OssMetaLabAssignment[];
+  liveDesktops: OssMetaLabLiveDesktop[];
+  redactRepoNames: boolean;
+  runId: string;
+}): RunFeedbackCandidate[] {
+  const candidates: RunFeedbackCandidate[] = [];
+
+  for (const assignment of args.assignments) {
+    const desktop = args.liveDesktops.find((lane) => lane.streamId === assignment.streamId);
+    if (!desktop) {
+      continue;
+    }
+
+    const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
+    const scenarioId = args.redactRepoNames ? `oss-meta-${repoLabel}` : assignment.scenarioId;
+    const baseEvidence = feedbackEvidenceForDesktop(desktop);
+    const setupQualityPath = desktop.actorEvidence?.setupQualityPath;
+    const failedSetupChecks = desktop.completion?.setupQuality?.checks.filter((check) => !check.ok) ?? [];
+
+    if (setupQualityPath && failedSetupChecks.length > 0) {
+      candidates.push({
+        schema: "mimetic.feedback-candidate.v1",
+        id: `setup-quality-${safeArtifactToken(assignment.streamId)}`,
+        run_id: args.runId,
+        stream_id: assignment.streamId,
+        adapter_id: "oss-meta-lab",
+        scenario_id: scenarioId,
+        persona_id: `codex-oss-operator-${String(assignment.index).padStart(2, "0")}`,
+        actor: "codex-tui",
+        substrate: "e2b-desktop",
+        failure_owner: "actor",
+        summary: `${repoLabel} Mimetic setup needs review`,
+        expected: "The setup actor should create committed Mimetic source files, useful personas/scenarios, a package script, and a .mimetic/ runtime ignore without preserving private state.",
+        actual: failedSetupChecks.map((check) => `${check.label}: ${check.detail}`).join(" "),
+        evidence: [
+          {
+            path: setupQualityPath,
+            kind: "filesystem",
+            note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews."
+          },
+          ...baseEvidence
+        ],
+        redaction: {
+          status: "passed",
+          notes: "Feedback candidate references local public-safe run artifacts only."
+        },
+        idempotency_key: `mimetic:${args.runId}:${assignment.streamId}:setup-quality`,
+        proposed_next_state: "setup-quality-review",
+        acceptance_proof: [
+          `pnpm mimetic -- verify --run ${args.runId} --json`,
+          `pnpm mimetic -- watch --run ${args.runId} --no-open`
+        ]
+      });
+    }
+
+    const actorText = `${desktop.completion?.actorLastMessageTail ?? ""}\n${desktop.completion?.actorLogTail ?? ""}`;
+    if (/\b(?:does not support|unknown option|unsupported)\b[\s\S]{0,120}--app-url/i.test(actorText)) {
+      candidates.push({
+        schema: "mimetic.feedback-candidate.v1",
+        id: `published-cli-app-url-${safeArtifactToken(assignment.streamId)}`,
+        run_id: args.runId,
+        stream_id: assignment.streamId,
+        adapter_id: "oss-meta-lab",
+        scenario_id: scenarioId,
+        persona_id: `codex-oss-operator-${String(assignment.index).padStart(2, "0")}`,
+        actor: "codex-tui",
+        substrate: "e2b-desktop",
+        failure_owner: "harness",
+        summary: "Published Mimetic install path blocked app-url proof",
+        expected: "A fresh npm-installed Mimetic CLI should support the app-url live proof path documented for agents.",
+        actual: "The actor evidence reports that the installed CLI did not accept or expose the app-url proof option.",
+        evidence: baseEvidence,
+        redaction: {
+          status: "passed",
+          notes: "Actor evidence was redacted before persistence."
+        },
+        idempotency_key: `mimetic:${args.runId}:${assignment.streamId}:published-cli-app-url`,
+        proposed_next_state: "adapter-hardening",
+        acceptance_proof: [
+          "npm view mimetic-cli version",
+          "npx mimetic -- run --help | grep -- --app-url",
+          `pnpm mimetic -- verify --run ${args.runId} --json`
+        ]
+      });
+    }
+  }
+
+  return candidates.slice(0, 20);
+}
+
+function feedbackEvidenceForDesktop(desktop: OssMetaLabLiveDesktop): RunFeedbackCandidate["evidence"] {
+  const evidence: RunFeedbackCandidate["evidence"] = [];
+  if (desktop.actorEvidence?.actorLastMessageTailPath) {
+    evidence.push({
+      path: desktop.actorEvidence.actorLastMessageTailPath,
+      kind: "log",
+      note: "Public-safe actor last-message tail."
+    });
+  }
+  if (desktop.actorEvidence?.actorLogTailPath) {
+    evidence.push({
+      path: desktop.actorEvidence.actorLogTailPath,
+      kind: "log",
+      note: "Public-safe actor log tail."
+    });
+  }
+  if (desktop.screenshot?.path) {
+    evidence.push({
+      path: desktop.screenshot.path,
+      kind: "screenshot",
+      note: "Headed desktop screenshot fallback."
+    });
+  }
+  if (desktop.hostActorPlanPath) {
+    evidence.push({
+      path: desktop.hostActorPlanPath,
+      kind: "trace",
+      note: "Host-authored public-safe actor plan."
+    });
+  }
+  return evidence;
 }
 
 function eventLevelForCompletion(status: OssMetaLabCompletionStatus): RunEvent["level"] {
@@ -1960,17 +2099,20 @@ async function captureLiveDesktopScreenshots(
 
 async function writeActorEvidenceArtifacts(
   artifactRoot: string,
-  liveDesktops: OssMetaLabLiveDesktop[]
+  liveDesktops: OssMetaLabLiveDesktop[],
+  redactRepoNames: boolean
 ): Promise<{ warnings: string[] }> {
   const candidates = liveDesktops.filter((desktop) =>
-    desktop.completion?.actorLastMessageTail || desktop.completion?.actorLogTail
+    desktop.completion?.actorLastMessageTail || desktop.completion?.actorLogTail || desktop.completion?.setupQuality
   );
   if (candidates.length === 0) {
     return { warnings: [] };
   }
 
   const actorEvidenceRoot = path.join(artifactRoot, "actor-evidence");
+  const setupQualityRoot = path.join(artifactRoot, "setup-quality");
   await mkdir(actorEvidenceRoot, { recursive: true });
+  await mkdir(setupQualityRoot, { recursive: true });
   let written = 0;
 
   for (const desktop of candidates) {
@@ -1999,6 +2141,16 @@ async function writeActorEvidenceArtifacts(
       written += 1;
     }
 
+    if (desktop.completion?.setupQuality) {
+      const relativePath = path.join("setup-quality", `${baseName}-setup-quality.json`);
+      const snapshot = redactRepoNames
+        ? suppressSetupQualityPreviews(desktop.completion.setupQuality)
+        : desktop.completion.setupQuality;
+      await writeJson(path.join(artifactRoot, relativePath), snapshot);
+      actorEvidence.setupQualityPath = relativePath;
+      written += 1;
+    }
+
     desktop.actorEvidence = actorEvidence;
   }
 
@@ -2006,6 +2158,24 @@ async function writeActorEvidenceArtifacts(
     warnings: [
       `Persisted ${written} public-safe local actor evidence artifact${written === 1 ? "" : "s"}.`
     ]
+  };
+}
+
+function suppressSetupQualityPreviews(snapshot: RunSetupQualitySnapshot): RunSetupQualitySnapshot {
+  return {
+    ...snapshot,
+    summary: sanitizeSetupQualityText(snapshot.summary),
+    checks: snapshot.checks.map((check) => ({
+      ...check,
+      label: sanitizeSetupQualityText(check.label),
+      detail: sanitizeSetupQualityText(check.detail)
+    })),
+    previews: [],
+    redaction: {
+      status: "passed",
+      rawPreviews: "suppressed",
+      notes: "Raw file previews are suppressed for token-backed/private OSS meta-lab runs."
+    }
   };
 }
 
@@ -2052,6 +2222,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       nestedObserverPresent?: unknown;
       nestedVerifyStatus?: unknown;
       reason?: unknown;
+      setupQuality?: unknown;
       status?: unknown;
       visualReason?: unknown;
       visualStatus?: unknown;
@@ -2088,6 +2259,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       reason: typeof parsed.reason === "string" && parsed.reason.trim()
         ? sanitizeRemoteLog(parsed.reason).replace(/\s+/g, " ").slice(0, 240)
         : defaultReasonForCompletion(status),
+      ...(isRunSetupQualitySnapshot(parsed.setupQuality) ? { setupQuality: sanitizeSetupQualitySnapshot(parsed.setupQuality) } : {}),
       status,
       ...(typeof parsed.visualReason === "string" && parsed.visualReason.trim() ? { visualReason: sanitizeRemoteLog(parsed.visualReason).replace(/\s+/g, " ").slice(0, 240) } : {}),
       ...(visualStatus ? { visualStatus } : {}),
@@ -2154,6 +2326,113 @@ function defaultReasonForCompletion(status: OssMetaLabCompletionStatus): string 
     case "running":
       return "Remote bootstrap is still running.";
   }
+}
+
+function isRunSetupQualitySnapshot(value: unknown): value is RunSetupQualitySnapshot {
+  if (!isRecord(value) || value.schema !== "mimetic.setup-quality.v1") {
+    return false;
+  }
+
+  return Array.isArray(value.checks)
+    && Array.isArray(value.tree)
+    && Array.isArray(value.previews)
+    && isRecord(value.mimetic)
+    && isRecord(value.packageScripts)
+    && typeof value.generatedAt === "string"
+    && typeof value.summary === "string"
+    && (value.status === "passed" || value.status === "needs_review" || value.status === "blocked");
+}
+
+function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSetupQualitySnapshot {
+  const safeTree = snapshot.tree
+    .filter((entry) => isSafeRepoRelativePath(entry.path) && (entry.type === "file" || entry.type === "directory"))
+    .slice(0, 240)
+    .map((entry) => ({
+      path: sanitizeSetupQualityPath(entry.path),
+      type: entry.type,
+      ...(typeof entry.sizeBytes === "number" && Number.isFinite(entry.sizeBytes) ? { sizeBytes: Math.max(0, Math.round(entry.sizeBytes)) } : {})
+    }));
+  const safePreviews = snapshot.previews
+    .filter((preview) => isSafeRepoRelativePath(preview.path))
+    .slice(0, 20)
+    .map((preview) => ({
+      path: sanitizeSetupQualityPath(preview.path),
+      language: sanitizePreviewLanguage(preview.language),
+      truncated: preview.truncated === true,
+      text: sanitizeSetupQualityText(preview.text).slice(0, 8_000)
+    }));
+  const safeScripts: Record<string, string> = {};
+  for (const [key, value] of Object.entries(snapshot.packageScripts)) {
+    const safeKey = sanitizeSetupQualityText(key).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80);
+    if (!safeKey || typeof value !== "string") {
+      continue;
+    }
+    safeScripts[safeKey] = sanitizeSetupQualityText(value).slice(0, 300);
+  }
+
+  return {
+    schema: "mimetic.setup-quality.v1",
+    generatedAt: sanitizeSetupQualityText(snapshot.generatedAt).slice(0, 80) || new Date().toISOString(),
+    redaction: {
+      status: "passed",
+      rawPreviews: snapshot.redaction?.rawPreviews === "suppressed" ? "suppressed" : "included",
+      notes: sanitizeSetupQualityText(snapshot.redaction?.notes ?? "Remote setup snapshot was redacted before persistence.").slice(0, 240)
+    },
+    summary: sanitizeSetupQualityText(snapshot.summary).slice(0, 320),
+    status: snapshot.status,
+    checks: snapshot.checks
+      .filter((check) => isRecord(check) && typeof check.id === "string" && typeof check.label === "string" && typeof check.detail === "string")
+      .slice(0, 40)
+      .map((check) => ({
+        id: sanitizeSetupQualityText(check.id).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80) || "check",
+        label: sanitizeSetupQualityText(check.label).slice(0, 140),
+        ok: check.ok === true,
+        detail: sanitizeSetupQualityText(check.detail).slice(0, 320)
+      })),
+    tree: safeTree,
+    previews: safePreviews,
+    packageScripts: safeScripts,
+    mimetic: {
+      configPresent: snapshot.mimetic.configPresent === true,
+      personaCount: typeof snapshot.mimetic.personaCount === "number" && Number.isFinite(snapshot.mimetic.personaCount) ? Math.max(0, Math.round(snapshot.mimetic.personaCount)) : 0,
+      scenarioCount: typeof snapshot.mimetic.scenarioCount === "number" && Number.isFinite(snapshot.mimetic.scenarioCount) ? Math.max(0, Math.round(snapshot.mimetic.scenarioCount)) : 0,
+      packageScriptPresent: snapshot.mimetic.packageScriptPresent === true,
+      gitignoreContainsRuntimeIgnore: snapshot.mimetic.gitignoreContainsRuntimeIgnore === true
+    }
+  };
+}
+
+function sanitizePreviewLanguage(value: unknown): RunSetupQualitySnapshot["previews"][number]["language"] {
+  return value === "json" || value === "yaml" || value === "typescript" || value === "markdown" || value === "text"
+    ? value
+    : "text";
+}
+
+function sanitizeSetupQualityPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/^\.\/+/, "").slice(0, 240);
+}
+
+function sanitizeSetupQualityText(value: unknown): string {
+  return redactOssRemoteTelemetryText(String(value ?? ""))
+    .replace(/\0/g, "")
+    .replace(/https?:\/\/[^/\s]*e2b[^)\s]+/gi, "[redacted-e2b-url]")
+    .trim();
+}
+
+function isSafeRepoRelativePath(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim()) {
+    return false;
+  }
+  const normalized = value.replace(/\\/g, "/").replace(/^\.\/+/, "");
+  return !path.isAbsolute(normalized)
+    && !normalized.includes("://")
+    && !normalized.startsWith("../")
+    && !normalized.split("/").includes("..")
+    && !normalized.split("/").some((segment) => /^(?:\.env(?:\..*)?|\.npmrc|\.git|node_modules|dist|build|\.next)$/.test(segment));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function sanitizeRemoteLog(value: string): string {
@@ -2356,11 +2635,13 @@ write_completion() {
     nested_observer_present=true
   fi
 
-  node - "$COMPLETION_PATH" "$LOG_PATH" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" <<'NODE' || true
+  node - "$COMPLETION_PATH" "$LOG_PATH" "$APP_DIR" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" <<'NODE' || true
 const fs = require("node:fs");
+const path = require("node:path");
 const [
   completionPath,
   logPath,
+  appDir,
   status,
   reason,
   exitCode,
@@ -2396,6 +2677,112 @@ const cleanText = (value) => redactText(value)
   .replace(/\\s+/g, " ")
   .trim()
   .slice(0, 240);
+const safeRel = (value) => {
+  const normalized = String(value || "").replace(/\\\\/g, "/").replace(/^\\.\\/+/, "");
+  if (!normalized || normalized.startsWith("../") || normalized.includes("://") || normalized.split("/").includes("..")) return "";
+  return normalized;
+};
+const languageFor = (rel) => {
+  if (rel.endsWith(".json")) return "json";
+  if (rel.endsWith(".yaml") || rel.endsWith(".yml")) return "yaml";
+  if (rel.endsWith(".ts") || rel.endsWith(".tsx")) return "typescript";
+  if (rel.endsWith(".md") || rel.endsWith(".markdown")) return "markdown";
+  return "text";
+};
+const shouldPreview = (rel) => rel === "package.json"
+  || rel === ".gitignore"
+  || rel === "mimetic/config.ts"
+  || rel === "mimetic/coverage-map.md"
+  || rel === "mimetic/coverage-matrix.md"
+  || rel.startsWith("mimetic/personas/")
+  || rel.startsWith("mimetic/scenarios/");
+const ignoredSegments = new Set([".git", "node_modules", ".mimetic", "dist", "build", ".next", "coverage", ".turbo", ".cache"]);
+const readTextLimited = (filePath, maxBytes = 12000) => {
+  try {
+    const buffer = fs.readFileSync(filePath);
+    return redactText(buffer.slice(0, maxBytes).toString("utf8")).replace(/\\0/g, "");
+  } catch {
+    return "";
+  }
+};
+const countFilesUnder = (root, prefix) => {
+  try {
+    return fs.readdirSync(path.join(root, prefix), { withFileTypes: true }).filter((entry) => entry.isFile()).length;
+  } catch {
+    return 0;
+  }
+};
+const buildSetupQuality = (root) => {
+  const tree = [];
+  const previews = [];
+  const walk = (dir, depth) => {
+    if (depth > 4 || tree.length >= 240) return;
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      if (tree.length >= 240) break;
+      if (ignoredSegments.has(entry.name)) continue;
+      const absolute = path.join(dir, entry.name);
+      const rel = safeRel(path.relative(root, absolute));
+      if (!rel) continue;
+      if (entry.isDirectory()) {
+        tree.push({ path: rel, type: "directory" });
+        walk(absolute, depth + 1);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const stats = fs.statSync(absolute);
+      tree.push({ path: rel, type: "file", sizeBytes: stats.size });
+      if (shouldPreview(rel) && previews.length < 20) {
+        const text = readTextLimited(absolute);
+        previews.push({ path: rel, language: languageFor(rel), truncated: stats.size > 12000 || text.length >= 8000, text: text.slice(0, 8000) });
+      }
+    }
+  };
+  const packageJsonPath = path.join(root, "package.json");
+  let packageScripts = {};
+  if (fs.existsSync(packageJsonPath)) {
+    try {
+      const parsedPackage = JSON.parse(readTextLimited(packageJsonPath, 20000));
+      if (parsedPackage && typeof parsedPackage.scripts === "object" && parsedPackage.scripts) {
+        packageScripts = Object.fromEntries(Object.entries(parsedPackage.scripts).filter(([, value]) => typeof value === "string"));
+      }
+    } catch {}
+  }
+  walk(root, 0);
+  const gitignore = readTextLimited(path.join(root, ".gitignore"), 20000);
+  const configPresent = fs.existsSync(path.join(root, "mimetic", "config.ts"));
+  const personaCount = countFilesUnder(root, path.join("mimetic", "personas"));
+  const scenarioCount = countFilesUnder(root, path.join("mimetic", "scenarios"));
+  const packageScriptPresent = Object.entries(packageScripts).some(([key, value]) => key.includes("mimetic") || String(value).includes("mimetic"));
+  const gitignoreContainsRuntimeIgnore = /(^|\\n)\\s*\\.mimetic\\/?\\s*(\\n|$)/.test(gitignore);
+  const checks = [
+    { id: "mimetic-config", label: "Mimetic config", ok: configPresent, detail: configPresent ? "mimetic/config.ts exists." : "mimetic/config.ts was not created." },
+    { id: "personas", label: "Personas", ok: personaCount > 0, detail: personaCount + " persona file(s) detected." },
+    { id: "scenarios", label: "Scenarios", ok: scenarioCount > 0, detail: scenarioCount + " scenario file(s) detected." },
+    { id: "package-script", label: "Package script", ok: packageScriptPresent, detail: packageScriptPresent ? "package.json exposes a Mimetic script." : "package.json does not expose a Mimetic script." },
+    { id: "runtime-ignore", label: "Runtime ignore", ok: gitignoreContainsRuntimeIgnore, detail: gitignoreContainsRuntimeIgnore ? ".gitignore ignores .mimetic/." : ".gitignore does not ignore .mimetic/." }
+  ];
+  const failed = checks.filter((check) => !check.ok);
+  return {
+    schema: "mimetic.setup-quality.v1",
+    generatedAt: new Date().toISOString(),
+    redaction: {
+      status: "passed",
+      rawPreviews: "included",
+      notes: "Only allowlisted setup files are previewed; generated state, browser profiles, secrets, .git, node_modules, and .mimetic are excluded."
+    },
+    summary: failed.length === 0 ? "Mimetic setup evidence looks complete." : failed.length + " setup-quality gap(s) need review.",
+    status: failed.length === 0 ? "passed" : "needs_review",
+    checks,
+    tree,
+    previews,
+    packageScripts,
+    mimetic: { configPresent, personaCount, scenarioCount, packageScriptPresent, gitignoreContainsRuntimeIgnore }
+  };
+};
+const setupQuality = buildSetupQuality(appDir);
 fs.writeFileSync(completionPath, JSON.stringify({
   schema: "mimetic.oss-meta-bootstrap-completion.v1",
   status,
@@ -2413,6 +2800,7 @@ fs.writeFileSync(completionPath, JSON.stringify({
   actorLastMessageTail,
   nestedObserverPresent: nestedObserverPresent === "true",
   nestedVerifyStatus,
+  setupQuality,
   visualStatus,
   visualReason: cleanText(visualReason),
   visualWindowCount: numberOrNull(visualWindowCount),

@@ -57,14 +57,17 @@ Implemented:
 - mission-control Observer over UI, CLI, TUI, and Codex UI stream contracts;
 - public-safe feedback issue drafts without GitHub API mutation;
 - skills.sh-compatible agent skill;
-- experimental public OSS lab and disposable OSS smoke harness.
+- experimental public OSS lab and disposable OSS smoke harness;
+- OSS lab setup-quality filesystem artifacts rendered from the Observer Files
+  tab with private-run previews suppressed by default.
 
 Still not good enough:
 
 - live `--app-url` browser proof exists for desktop/mobile render evidence, but
   autonomous multi-step user-journey proof is not first-class yet;
 - live PTY and Codex UI lanes need stronger completion health;
-- OSS lab lanes can report nested Observer health when a target app starts, but
+- OSS lab lanes can report nested Observer health, target app readiness, actor
+  evidence, and setup-quality filesystem checks when a target app starts, but
   need repeated fresh-agent trials across more disposable public apps;
 - Observer evidence has real screenshots/traces for browser app proof; broader
   adapter-driven persona navigation remains the next gap.

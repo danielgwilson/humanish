@@ -2,7 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { loadRunBundle, verifyRun } from "./run.js";
-import type { RunBundle } from "./run.js";
+import type { RunBundle, RunFeedbackCandidate } from "./run.js";
 
 export const FEEDBACK_SCHEMA = "mimetic.feedback.v1";
 export const FEEDBACK_RESULT_SCHEMA = "mimetic.feedback-result.v1";
@@ -13,16 +13,17 @@ export interface FeedbackDraft {
   adapter_id: string;
   scenario_id: string;
   persona_id: string;
-  actor: "synthetic-dry-run";
-  substrate: "local-filesystem";
-  failure_owner: "harness";
+  actor: RunFeedbackCandidate["actor"];
+  substrate: RunFeedbackCandidate["substrate"];
+  failure_owner: RunFeedbackCandidate["failure_owner"];
   summary: string;
   expected: string;
   actual: string;
+  source_candidate_id?: string;
   source_bundle: string;
   evidence: Array<{
     path: string;
-    kind: "review" | "state";
+    kind: RunFeedbackCandidate["evidence"][number]["kind"];
     note: string;
   }>;
   redaction: {
@@ -30,7 +31,7 @@ export interface FeedbackDraft {
     notes: string;
   };
   idempotency_key: string;
-  proposed_next_state: "watch";
+  proposed_next_state: RunFeedbackCandidate["proposed_next_state"];
   acceptance_proof: string[];
 }
 
@@ -197,6 +198,44 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
 }
 
 function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
+  const candidate = bundle.feedbackCandidates.find((item): item is RunFeedbackCandidate => isUsableFeedbackCandidate(item));
+  if (candidate) {
+    return {
+      schema: FEEDBACK_SCHEMA,
+      run_id: bundle.runId,
+      adapter_id: candidate.adapter_id,
+      scenario_id: candidate.scenario_id,
+      persona_id: candidate.persona_id,
+      actor: candidate.actor,
+      substrate: candidate.substrate,
+      failure_owner: candidate.failure_owner,
+      summary: candidate.summary,
+      expected: candidate.expected,
+      actual: candidate.actual,
+      source_candidate_id: candidate.id,
+      source_bundle: bundlePath,
+      evidence: [
+        {
+          path: bundlePath,
+          kind: "state",
+          note: "Source run bundle."
+        },
+        ...candidate.evidence.map((item) => ({
+          path: path.join(path.dirname(bundlePath), item.path),
+          kind: item.kind,
+          note: item.note
+        }))
+      ],
+      redaction: {
+        status: "passed",
+        notes: candidate.redaction.notes
+      },
+      idempotency_key: candidate.idempotency_key,
+      proposed_next_state: candidate.proposed_next_state,
+      acceptance_proof: candidate.acceptance_proof
+    };
+  }
+
   return {
     schema: FEEDBACK_SCHEMA,
     run_id: bundle.runId,
@@ -235,10 +274,36 @@ function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
   };
 }
 
-function renderMarkdown(draft: FeedbackDraft, repo: string): string {
-  return `This issue was drafted by Mimetic from a verified dry-run bundle.
+function isUsableFeedbackCandidate(candidate: unknown): candidate is RunFeedbackCandidate {
+  if (!isRecord(candidate)
+    || candidate.schema !== "mimetic.feedback-candidate.v1"
+    || !isRecord(candidate.redaction)
+    || candidate.redaction.status !== "passed"
+    || typeof candidate.summary !== "string"
+    || candidate.summary.trim().length === 0
+    || !Array.isArray(candidate.evidence)
+  ) {
+    return false;
+  }
 
-It contributes to public-safe simulation harness coverage. It does not claim product behavior proof.
+  return candidate.evidence.every((item) =>
+    isRecord(item)
+    && typeof item.path === "string"
+    && item.path.length > 0
+    && !path.isAbsolute(item.path)
+    && !item.path.includes("://")
+    && !item.path.includes("..")
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function renderMarkdown(draft: FeedbackDraft, repo: string): string {
+  return `This issue was drafted by Mimetic from a verified Mimetic run bundle.
+
+It contributes to public-safe simulation harness coverage. The feedback command did not mutate GitHub, commit code, or claim unobserved product behavior.
 
 ## Summary
 
@@ -260,7 +325,7 @@ ${draft.evidence.map((item) => `- ${item.kind}: \`${item.path}\` - ${item.note}`
 
 - Repository: ${repo}
 - GitHub mutation: not performed
-- Provider spend: not used
+- Substrate: ${draft.substrate}
 - Production data: not used
 
 \`\`\`yaml
@@ -273,7 +338,7 @@ mimetic_feedback:
   actor: ${draft.actor}
   substrate: ${draft.substrate}
   failure_owner: ${draft.failure_owner}
-  source_bundle: ${draft.source_bundle}
+${draft.source_candidate_id ? `  source_candidate_id: ${draft.source_candidate_id}\n` : ""}  source_bundle: ${draft.source_bundle}
   evidence:
 ${draft.evidence.map((item) => `    - path: ${item.path}\n      kind: ${item.kind}\n      note: ${item.note}`).join("\n")}
   redaction:

@@ -60,6 +60,71 @@ export interface RunStreamCompletion {
   visualWindowCount?: number;
 }
 
+export interface RunSetupQualitySnapshot {
+  schema: "mimetic.setup-quality.v1";
+  generatedAt: string;
+  redaction: {
+    status: "passed";
+    rawPreviews: "included" | "suppressed";
+    notes: string;
+  };
+  summary: string;
+  status: "passed" | "needs_review" | "blocked";
+  checks: Array<{
+    id: string;
+    label: string;
+    ok: boolean;
+    detail: string;
+  }>;
+  tree: Array<{
+    path: string;
+    type: "file" | "directory";
+    sizeBytes?: number;
+  }>;
+  previews: Array<{
+    path: string;
+    language: "json" | "yaml" | "typescript" | "markdown" | "text";
+    truncated: boolean;
+    text: string;
+  }>;
+  packageScripts: Record<string, string>;
+  mimetic: {
+    configPresent: boolean;
+    personaCount: number;
+    scenarioCount: number;
+    packageScriptPresent: boolean;
+    gitignoreContainsRuntimeIgnore: boolean;
+  };
+}
+
+export interface RunFeedbackCandidate {
+  schema: "mimetic.feedback-candidate.v1";
+  id: string;
+  run_id: string;
+  stream_id?: string;
+  adapter_id: string;
+  scenario_id: string;
+  persona_id: string;
+  actor: "codex-tui" | "codex-exec" | "synthetic-dry-run" | "unknown";
+  substrate: "e2b-desktop" | "local-filesystem" | "codex-app-server" | "unknown";
+  failure_owner: "harness" | "target-app" | "actor" | "environment" | "unknown";
+  summary: string;
+  expected: string;
+  actual: string;
+  evidence: Array<{
+    path: string;
+    kind: "review" | "state" | "log" | "trace" | "screenshot" | "filesystem";
+    note: string;
+  }>;
+  redaction: {
+    status: "passed";
+    notes: string;
+  };
+  idempotency_key: string;
+  proposed_next_state: "watch" | "adapter-hardening" | "target-app-setup" | "actor-auth" | "setup-quality-review";
+  acceptance_proof: string[];
+}
+
 export interface RunSimulation {
   id: string;
   index: number;
@@ -124,7 +189,7 @@ export interface RunStream {
   artifacts: Array<{
     label: string;
     path: string;
-    kind: "bundle" | "review" | "observer" | "events" | "screenshot" | "trace" | "log";
+    kind: "bundle" | "review" | "observer" | "events" | "screenshot" | "trace" | "log" | "filesystem";
   }>;
 }
 
@@ -187,7 +252,7 @@ export interface RunBundle {
     events: string;
   };
   review: ReviewSummary;
-  feedbackCandidates: Array<unknown>;
+  feedbackCandidates: RunFeedbackCandidate[];
 }
 
 export interface ReviewSummary {
@@ -2837,7 +2902,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     name: "local evidence artifacts exist",
     ok: missingEvidenceArtifacts.length === 0,
     message: missingEvidenceArtifacts.length === 0
-      ? "referenced local screenshot/trace artifacts are present"
+      ? "referenced local screenshot/trace/log/filesystem artifacts are present"
       : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
   });
 
@@ -3189,7 +3254,10 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
   const requiredPaths = new Set<string>();
   for (const stream of bundle.streams) {
     for (const artifact of stream.artifacts) {
-      if ((artifact.kind === "screenshot" || artifact.kind === "trace" || artifact.kind === "log") && isLocalEvidenceArtifactPath(artifact.path)) {
+      if (
+        (artifact.kind === "screenshot" || artifact.kind === "trace" || artifact.kind === "log" || artifact.kind === "filesystem")
+        && isLocalEvidenceArtifactPath(artifact.path)
+      ) {
         requiredPaths.add(artifact.path);
       }
     }
