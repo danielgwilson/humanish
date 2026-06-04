@@ -31,7 +31,7 @@ The npm package owns executable behavior:
 - binary: `mimetic`;
 - CLI framework: `commander`;
 - commands: `init`, `doctor`, `run`, `watch`, `review`, `verify`,
-  `feedback`;
+  `lab`, `feedback`;
 - schemas and validators;
 - synthetic starter templates;
 - observer static assets;
@@ -54,8 +54,13 @@ The skill should teach the user's coding agent how to:
 - run `mimetic init`;
 - inspect the target app's routes and dev command;
 - create synthetic personas and scenarios;
+- create public-safe `mimetic/labs/*.yaml` lab manifests;
+- keep private/local labs under ignored `.mimetic/labs/*.yaml` or
+  `.mimetic/local/labs/*.yaml`;
 - configure local app targets;
 - document E2B and OpenAI env var names without storing values;
+- use `--env-file <path>` for explicit local env hydration without persisting
+  values into artifacts;
 - run `doctor`, `watch`, `verify`, and `feedback issue`;
 - avoid PII, PHI, secrets, real customer data, and private artifacts.
 
@@ -87,6 +92,35 @@ do not use TOML unless a future scalar global-config case clearly needs it.
 - Safe dry-run should produce a valid synthetic run bundle and observer view.
 - The user should see what changed in git.
 
+## Lab Manifest Shape
+
+Labs are the public-safe way to name a reusable simulation run. A starter app
+gets a committed synthetic lab:
+
+```yaml
+schema: mimetic.lab.v1
+id: first-run
+kind: synthetic
+title: First-run synthetic Observer
+description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+sims: 4
+defaults:
+  dryRun: true
+  open: true
+```
+
+Resolution order:
+
+1. `mimetic/labs/<id>.yaml` for committed, reproducible labs.
+2. `.mimetic/labs/<id>.yaml` for ignored local labs.
+3. `.mimetic/local/labs/<id>.yaml` for ignored machine-specific overlays.
+4. explicit `.yaml` path, for example
+   `.mimetic/labs/local-dogfood.yaml`.
+
+Private repo targets, local env references, and maintainer dogfood variants
+belong in ignored lab manifests and should be invoked with explicit
+`--env-file`; do not make them package defaults.
+
 ## `mimetic init`
 
 `mimetic init` should:
@@ -108,10 +142,11 @@ Suggested scripts:
   "scripts": {
     "mimetic": "mimetic",
     "mimetic:doctor": "mimetic doctor",
-    "mimetic:run": "mimetic run --dry-run",
-    "mimetic:watch": "mimetic watch",
-    "mimetic:watch:ci": "mimetic watch --json --no-open",
-    "mimetic:verify": "mimetic verify"
+  "mimetic:run": "mimetic run --dry-run",
+  "mimetic:watch": "mimetic watch",
+  "mimetic:lab:list": "mimetic lab list",
+  "mimetic:watch:ci": "mimetic watch --json --no-open",
+  "mimetic:verify": "mimetic verify"
   }
 }
 ```
@@ -126,9 +161,13 @@ Suggested scripts:
 | `mimetic verify` | Validate bundle and public-safety gates | Fail closed on schema/evidence/redaction errors |
 | `mimetic review` | Build review packet from evidence | Summarize verdicts without inventing product proof |
 | `mimetic watch` | Run sims and watch the observer | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached |
+| `mimetic watch [lab]` | Run a named lab and watch it | Resolve committed or ignored `.yaml` lab manifests, then open/follow Observer |
 | `mimetic watch --json --no-open` | Agent/CI proof path | Create the same bundle and Observer artifacts without browser open or attached watch server |
-| `mimetic lab oss` | Watch authorized-repo meta-sims | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos`, target app windows, nested Observers, runtime-only stream URLs, and redacted durable evidence for token-backed runs |
-| `mimetic lab oss-smoke` | Try Mimetic on disposable public OSS clones | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
+| `mimetic lab list` | Discover available labs | List committed labs and ignored local labs with origin labels |
+| `mimetic lab inspect <lab>` | Read a lab manifest | Print lab id, kind, path, defaults, repos, and warnings without executing |
+| `mimetic lab run <lab>` | Run a lab manifest | Human or JSON execution path for synthetic, OSS meta, and smoke labs |
+| `mimetic lab run oss` | Maintainer dogfood example | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos`, target app windows, nested Observers, runtime-only stream URLs, and redacted durable evidence for token-backed runs |
+| `mimetic lab run oss-smoke` | Maintainer smoke example | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
 | `mimetic feedback issue` | Produce public-safe issue draft | Print Markdown or prefilled issue URL, no GitHub API mutation |
 
 ## Live Capability Ladder

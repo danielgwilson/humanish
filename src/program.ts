@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { Command, Option } from "commander";
 
+import { loadEnvFile } from "./env-file.js";
+import type { EnvFileLoadResult } from "./env-file.js";
 import {
   draftFeedback,
   listFeedback,
@@ -14,6 +16,17 @@ import {
 import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
 import type { InitChange, InitResult } from "./init.js";
+import {
+  inspectLabManifest,
+  listLabManifests,
+  resolveLabManifest
+} from "./labs.js";
+import type {
+  LabInspectResult,
+  LabListResult,
+  LabManifest,
+  LabResolveFailure
+} from "./labs.js";
 import { renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
 import {
@@ -85,6 +98,24 @@ export interface UnsupportedEnvelope {
   };
 }
 
+interface LabCommandOptions {
+  count?: string | undefined;
+  cwd: string;
+  detach?: boolean | undefined;
+  dryRun?: boolean | undefined;
+  envFile?: string | undefined;
+  json?: boolean | undefined;
+  keep?: boolean | undefined;
+  limit?: string | undefined;
+  open?: boolean | undefined;
+  port?: string | undefined;
+  redactRepos?: boolean | undefined;
+  repo?: string[] | undefined;
+  repos?: string | undefined;
+  runId?: string | undefined;
+  sims?: string | undefined;
+}
+
 const defaultIo: CliIo = {
   writeOut: (text) => process.stdout.write(text),
   writeErr: (text) => process.stderr.write(text),
@@ -123,10 +154,12 @@ export const plannedCommands: PlannedCommand[] = [
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/7",
     docs: commonDocs,
     options: [
+      { flags: "[lab]", description: "Optional lab id or .yaml path." },
       { flags: "--dry-run", description: "Generate contract proof without browser, keys, or provider spend." },
       { flags: "--app-url <url>", description: "Capture live desktop/mobile browser evidence against a running loopback app URL." },
       { flags: "--actor codex-tui|codex-exec", description: "Explicitly opt into a local Codex actor." },
       { flags: "--sims <count>", description: "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1." },
+      { flags: "--env-file <path>", description: "Load a local env file for this run without persisting values." },
       { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
     ]
   },
@@ -154,8 +187,11 @@ export const plannedCommands: PlannedCommand[] = [
     issue: "https://github.com/danielgwilson/mimetic-cli/issues/10",
     docs: commonDocs,
     options: [
+      { flags: "[lab]", description: "Optional lab id or .yaml path to run and observe." },
+      { flags: "--lab <id-or-path>", description: "Explicit lab id or .yaml path." },
       { flags: "--run <id>", description: "Watch an existing run id or latest pointer." },
       { flags: "--sims <count>", description: "Start a fresh synthetic run with this many sims before rendering.", defaultValue: "4 when --run is omitted" },
+      { flags: "--env-file <path>", description: "Load a local env file for this watch without persisting values." },
       { flags: "--open", description: "Open the observer in the default browser.", defaultValue: "true for human output" },
       { flags: "--detach", description: "Render/open once and exit without attached watch server." },
       { flags: "--port <port>", description: "Local observer server port when following.", defaultValue: "0" },
@@ -190,10 +226,12 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
         "",
         "Examples:",
         "  mimetic watch",
+        "  mimetic watch first-run",
+        "  mimetic watch --lab .mimetic/labs/local.yaml",
         "  mimetic watch --run latest --detach",
         "  mimetic watch --json --no-open",
-        "  mimetic lab oss --repos CorentinTh/it-tools,drawdb-io/drawdb",
-        "  mimetic lab oss-smoke --limit 1 --keep",
+        "  mimetic lab list",
+        "  mimetic lab run first-run --json --no-open",
         "  mimetic verify --run latest --json",
         "",
         "Public-safety boundary:",
@@ -265,6 +303,7 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
 function registerRunCommand(parent: Command, io: CliIo): void {
   parent
     .command("run")
+    .argument("[lab]", "Optional lab id or .yaml path.")
     .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
     .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
@@ -272,18 +311,61 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--sims <count>", "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.")
     .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(240_000))
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--env-file <path>", "Load a local env file for this run without persisting values.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--json", "Print a machine-readable JSON response.")
-    .action(async (options: {
+    .action(async (lab: string | undefined, options: {
       actor?: string;
       appUrl?: string;
       cwd: string;
       dryRun?: boolean;
+      envFile?: string;
       json?: boolean;
       runId?: string;
       sims?: string;
       timeoutMs?: string;
     }, command) => {
+      if (!await applyEnvFileOption({
+        command,
+        cwd: options.cwd,
+        envFile: options.envFile,
+        io
+      })) {
+        return;
+      }
+
+      if (lab) {
+        if (options.appUrl !== undefined || options.actor !== undefined) {
+          const result: RunResult = {
+            schema: "mimetic.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "MIMETIC_APP_URL_OPTION_CONFLICT",
+              message: "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `mimetic run`."
+            }
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        await runLabCommand({
+          command,
+          io,
+          lab,
+          mode: "run",
+          options: {
+            cwd: options.cwd,
+            ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+            ...(options.runId === undefined ? {} : { runId: options.runId }),
+            ...(options.sims === undefined ? {} : { sims: options.sims })
+          }
+        });
+        return;
+      }
+
       const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
       const timeoutMs = options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
       if (options.sims !== undefined && simCount === null) {
@@ -375,11 +457,22 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerWatchCommand(parent: Command, io: CliIo): void {
   parent
     .command("watch")
+    .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
     .description("Run sims, open the observer, and keep the shell attached.")
+    .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
     .option("--run <id>", "Watch an existing run id or latest pointer.")
+    .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
     .option("--sims <count>", "Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted.")
+    .option("--count <count>", "Lab only: override headed desktop lane count.")
+    .option("--limit <count>", "Lab only: override smoke lab repo limit.")
+    .option("--repo <owner/repo>", "Lab only: GitHub repo slug. Repeatable.", collectRepeated, [])
+    .option("--repos <owner/repo,...>", "Lab only: comma-separated GitHub repo slugs.")
+    .option("--redact-repos", "Lab only: redact repo labels in durable artifacts.")
+    .option("--no-redact-repos", "Lab only: persist repo labels. Use only for public-safe runs.")
+    .option("--keep", "Lab only: keep disposable clone sandbox for debugging.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--env-file <path>", "Load a local env file for this watch without persisting values.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .addOption(new Option("--follow", "Deprecated; human output follows by default.").hideHelp())
@@ -392,6 +485,8 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
         "",
         "Happy path:",
         "  mimetic watch",
+        "  mimetic watch first-run",
+        "  mimetic watch --lab .mimetic/labs/local.yaml",
         "",
         "Agent/CI path:",
         "  mimetic watch --json --no-open",
@@ -400,17 +495,93 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
         "  mimetic watch --run latest --detach"
       ].join("\n")
     )
-    .action(async (options: {
+    .action(async (labArg: string | undefined, options: {
       cwd: string;
+      count?: string;
       detach?: boolean;
+      dryRun?: boolean;
+      envFile?: string;
       follow?: boolean;
       json?: boolean;
+      keep?: boolean;
+      lab?: string;
+      limit?: string;
       open?: boolean;
       port: string;
+      redactRepos?: boolean;
+      repo: string[];
+      repos?: string;
       run?: string;
       runId?: string;
       sims?: string;
     }, command) => {
+      const lab = options.lab ?? labArg;
+      if (options.lab !== undefined && labArg !== undefined) {
+        const result: RunResult = {
+          schema: "mimetic.run-result.v1",
+          ok: false,
+          cwd: options.cwd,
+          warnings: [],
+          error: {
+            code: "MIMETIC_WATCH_OPTION_CONFLICT",
+            message: "Use either positional lab or --lab, not both."
+          }
+        };
+        writeResult(command, io, result, formatRunHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      if (!await applyEnvFileOption({
+        command,
+        cwd: options.cwd,
+        envFile: options.envFile,
+        io
+      })) {
+        return;
+      }
+
+      if (lab) {
+        if (options.run !== undefined) {
+          const result: RunResult = {
+            schema: "mimetic.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "MIMETIC_WATCH_OPTION_CONFLICT",
+              message: "Use either a lab to start evidence or --run to watch existing evidence, not both."
+            }
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        await runLabCommand({
+          command,
+          io,
+          lab,
+          mode: "watch",
+          options: {
+            cwd: options.cwd,
+            ...(options.count === undefined ? {} : { count: options.count }),
+            ...(options.detach === undefined ? {} : { detach: options.detach }),
+            ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+            ...(options.keep === undefined ? {} : { keep: options.keep }),
+            ...(options.limit === undefined ? {} : { limit: options.limit }),
+            ...(options.open === undefined ? {} : { open: options.open }),
+            port: options.port,
+            ...(options.redactRepos === undefined ? {} : { redactRepos: options.redactRepos }),
+            repo: options.repo,
+            ...(options.repos === undefined ? {} : { repos: options.repos }),
+            ...(options.runId === undefined ? {} : { runId: options.runId }),
+            ...(options.sims === undefined ? {} : { sims: options.sims })
+          }
+        });
+        return;
+      }
+
       const runOptionSource = typeof command.getOptionValueSource === "function"
         ? command.getOptionValueSource("run")
         : undefined;
@@ -619,11 +790,89 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
 function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("Run experimental Mimetic proof loops against disposable authorized targets.");
+    .description("List, inspect, and run Mimetic lab manifests.");
 
   lab
-    .command("oss")
-    .description("Watch headed Codex/E2B meta-sims setting up Mimetic inside authorized repos.")
+    .command("list")
+    .description("List committed and ignored Mimetic lab manifests.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: { cwd: string; json?: boolean }, command) => {
+      const result = await listLabManifests(options.cwd);
+      writeResult(command, io, result, formatLabListHuman);
+      io.setExitCode(0);
+    });
+
+  lab
+    .command("inspect")
+    .argument("<lab>", "Lab id or .yaml path.")
+    .description("Inspect a Mimetic lab manifest without running it.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
+      const result = await inspectLabManifest(options.cwd, labName);
+      writeResult(command, io, result, formatLabInspectHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  lab
+    .command("run")
+    .argument("<lab>", "Lab id or .yaml path.")
+    .description("Run a Mimetic lab manifest.")
+    .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
+    .option("--dry-run", "Render contract evidence without live provider spend.")
+    .option("--open", "Open the observer in the default browser.")
+    .option("--no-open", "Render without opening a browser.")
+    .option("--detach", "Render/open once and exit without attached watch server.")
+    .option("--port <port>", "Local observer server port when following.", "0")
+    .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
+    .option("--count <count>", "Override headed desktop lane count.")
+    .option("--limit <count>", "Override smoke lab repo limit.")
+    .option("--run-id <id>", "Explicit lab run id.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
+    .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
+    .option("--redact-repos", "Redact repo labels in durable lab artifacts.")
+    .option("--no-redact-repos", "Persist repo labels in durable lab artifacts. Use only for public-safe runs.")
+    .option("--keep", "Smoke labs only: keep disposable clone sandbox for debugging.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .addHelpText(
+      "after",
+      [
+        "",
+        "Examples:",
+        "  mimetic lab run first-run",
+        "  mimetic lab run oss --dry-run --json --no-open",
+        "  mimetic lab run .mimetic/labs/private-dogfood.yaml --env-file .mimetic/local/provider.env",
+        "",
+        "Human watch path:",
+        "  mimetic watch first-run",
+        "  mimetic watch --lab .mimetic/labs/local.yaml"
+      ].join("\n")
+    )
+    .action(async (labName: string, options: LabCommandOptions, command) => {
+      if (!await applyEnvFileOption({
+        command,
+        cwd: options.cwd,
+        envFile: options.envFile,
+        io
+      })) {
+        return;
+      }
+
+      await runLabCommand({
+        command,
+        io,
+        lab: labName,
+        mode: "run",
+        options
+      });
+    });
+
+  lab
+    .command("oss", { hidden: true })
+    .description("Alias: run the bundled OSS meta-lab manifest.")
+    .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
     .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
     .option("--count <count>", "Number of headed desktop sims to assign.", String(DEFAULT_OSS_REPOS.length))
@@ -645,19 +894,21 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       "after",
       [
         "",
-        "Happy path:",
-        "  mimetic lab oss",
+        "Preferred paths:",
+        "  mimetic watch oss",
+        "  mimetic lab run oss",
         "",
         "Repo selection:",
-        "  mimetic lab oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
-        "  mimetic lab oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
+        "  mimetic watch --lab .mimetic/labs/local-oss.yaml",
+        "  mimetic lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
+        "  mimetic lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
         "",
         "Agent/CI path:",
-        "  mimetic lab oss --dry-run --json --no-open",
+        "  mimetic lab run oss --dry-run --json --no-open",
         "",
         "Disposable clone smoke:",
+        "  mimetic lab run oss-smoke --limit 1 --keep",
         "  mimetic lab oss-smoke --limit 1 --keep",
-        "  mimetic lab oss --smoke --limit 1 --keep",
         "",
         "Shape:",
         "  The top-level Observer shows headed E2B desktop lanes. Each desktop clones",
@@ -676,6 +927,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       cwd: string;
       detach?: boolean;
       dryRun?: boolean;
+      envFile?: string;
       json?: boolean;
       keep?: boolean;
       limit: string;
@@ -688,6 +940,15 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       sims?: string;
       smoke?: boolean;
     }, command) => {
+      if (!await applyEnvFileOption({
+        command,
+        cwd: options.cwd,
+        envFile: options.envFile,
+        io
+      })) {
+        return;
+      }
+
       if (options.smoke) {
         await runOssSmokeAction({ command, io, options });
         return;
@@ -783,7 +1044,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     });
 
   lab
-    .command("oss-smoke")
+    .command("oss-smoke", { hidden: true })
     .description("Clone lightweight public OSS repos, try Mimetic setup/proof, then discard clones.")
     .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
     .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
@@ -842,6 +1103,325 @@ async function runOssSmokeAction(args: {
   const result = await runOssLab(labOptions);
   writeResult(args.command, args.io, result, formatOssLabHuman);
   args.io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function runLabCommand(args: {
+  command: Command;
+  io: CliIo;
+  lab: string;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const resolved = await resolveLabManifest(args.options.cwd, args.lab);
+  if (!resolved.ok) {
+    writeResult(args.command, args.io, resolved, formatLabResolveFailureHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+
+  switch (resolved.manifest.kind) {
+    case "synthetic":
+      await runSyntheticLabCommand({ ...args, manifest: resolved.manifest });
+      return;
+    case "oss-meta":
+      await runOssMetaLabCommand({ ...args, manifest: resolved.manifest });
+      return;
+    case "oss-smoke":
+      await runOssSmokeLabCommand({ ...args, manifest: resolved.manifest });
+      return;
+  }
+}
+
+async function runSyntheticLabCommand(args: {
+  command: Command;
+  io: CliIo;
+  lab: string;
+  manifest: LabManifest;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const simCount = parseLabCount(args.options.sims, args.manifest.sims ?? args.manifest.count ?? 4);
+  if (simCount === null) {
+    const result: RunResult = {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: args.options.cwd,
+      warnings: [],
+      error: {
+        code: "MIMETIC_INVALID_SIM_COUNT",
+        message: "--sims must be a positive integer."
+      }
+    };
+    writeResult(args.command, args.io, result, formatRunHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+
+  const runResult = await runDryRun({
+    cwd: args.options.cwd,
+    dryRun: args.options.dryRun ?? args.manifest.defaults?.dryRun ?? true,
+    simCount,
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+
+  if (args.mode === "run") {
+    writeResult(args.command, args.io, runResult, formatRunHuman);
+    args.io.setExitCode(runResult.ok ? 0 : 2);
+    return;
+  }
+
+  if (!runResult.ok || !runResult.runId) {
+    writeResult(args.command, args.io, runResult, formatRunHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+
+  const openOverride = args.options.open ?? args.manifest.defaults?.open;
+  await renderAndMaybeFollowObserver({
+    command: args.command,
+    cwd: args.options.cwd,
+    io: args.io,
+    port: args.options.port ?? "0",
+    runInput: runResult.runId,
+    ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+    ...(openOverride === undefined ? {} : { open: openOverride })
+  });
+}
+
+async function runOssSmokeLabCommand(args: {
+  command: Command;
+  io: CliIo;
+  manifest: LabManifest;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const limit = parseLabCount(args.options.limit ?? args.options.sims, args.manifest.limit ?? args.manifest.count ?? args.manifest.repos?.length ?? DEFAULT_OSS_REPOS.length);
+  if (limit === null) {
+    const result: OssLabResult = {
+      schema: "mimetic.oss-lab-result.v1",
+      ok: false,
+      cleanup: { kept: Boolean(args.options.keep), sandboxRemoved: false },
+      completedAt: new Date().toISOString(),
+      cwd: args.options.cwd,
+      error: {
+        code: "MIMETIC_INVALID_OSS_LIMIT",
+        message: "--limit must be a positive integer."
+      },
+      repos: [],
+      runId: args.options.runId ?? "not-created",
+      sandboxPath: ".mimetic/tmp/oss-lab/not-created",
+      startedAt: new Date().toISOString(),
+      warnings: []
+    };
+    writeResult(args.command, args.io, result, formatOssLabHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+
+  const result = await runOssLab({
+    cwd: args.options.cwd,
+    limit,
+    repos: labRepos(args.options, args.manifest),
+    ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+  writeResult(args.command, args.io, result, formatOssLabHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function runOssMetaLabCommand(args: {
+  command: Command;
+  io: CliIo;
+  manifest: LabManifest;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const count = parseLabCount(args.options.count ?? args.options.sims, args.manifest.count ?? args.manifest.sims ?? args.manifest.repos?.length ?? DEFAULT_OSS_REPOS.length);
+  const port = parseObserverPort(args.options.port ?? "0");
+  if (port === null) {
+    const result: OssMetaLabResult = {
+      schema: "mimetic.oss-meta-lab-result.v1",
+      ok: false,
+      assignments: [],
+      cwd: args.options.cwd,
+      dryRun: args.options.dryRun === true,
+      error: {
+        code: "MIMETIC_META_RUN_FAILED",
+        message: "--port must be an integer between 0 and 65535."
+      },
+      liveRequested: args.options.dryRun !== true,
+      repos: labRepos(args.options, args.manifest),
+      sandboxes: [],
+      warnings: []
+    };
+    writeResult(args.command, args.io, result, formatOssMetaLabHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+
+  const wantsMachine = wantsJson(args.command);
+  const dryRun = args.options.dryRun ?? args.manifest.defaults?.dryRun;
+  const shouldOpen = args.options.open === false
+    ? false
+    : wantsMachine
+      ? args.options.open === true
+      : args.options.open ?? args.manifest.defaults?.open ?? args.mode === "watch";
+  const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+  const result = await runOssMetaLab({
+    ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
+    cwd: args.options.cwd,
+    open: wantsFollow ? false : shouldOpen,
+    ...(dryRun === undefined ? {} : { dryRun }),
+    ...(args.options.redactRepos === undefined
+      ? args.manifest.defaults?.redactRepos === undefined ? {} : { redactRepoNames: args.manifest.defaults.redactRepos }
+      : { redactRepoNames: args.options.redactRepos }),
+    repos: labRepos(args.options, args.manifest),
+    ...(count === null ? { count: Number.NaN } : { count }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+
+  let server: ObserverServer | null = null;
+  let output = result;
+  if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
+    server = await serveObserver(result.observer, { open: shouldOpen, port });
+    output = withOssMetaLabServer(result, server);
+  }
+
+  const exitCode = exitCodeForOssMetaLab(output);
+  writeResult(args.command, args.io, output, formatOssMetaLabHuman);
+  args.io.setExitCode(exitCode);
+
+  if (shouldForceExitAfterOssMetaLab(output, { detach: args.options.detach === true, wantsMachine })) {
+    setTimeout(() => process.exit(exitCode), 50);
+  }
+
+  if (server && output.observer?.ok) {
+    await followObserver(args.io, output.observer, server, output.liveRequested
+      ? {
+          onStop: async () => {
+            const cleanup = await cleanupOssMetaLabSandboxes(output);
+            return [
+              `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
+              ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
+            ];
+          }
+        }
+      : {});
+  }
+}
+
+async function renderAndMaybeFollowObserver(args: {
+  command: Command;
+  cwd: string;
+  detach?: boolean | undefined;
+  io: CliIo;
+  open?: boolean | undefined;
+  port: string;
+  runInput: string;
+}): Promise<void> {
+  const port = parseObserverPort(args.port);
+  if (port === null) {
+    const result: RunResult = {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: args.cwd,
+      warnings: [],
+      error: {
+        code: "MIMETIC_INVALID_PORT",
+        message: "--port must be an integer between 0 and 65535."
+      }
+    };
+    writeResult(args.command, args.io, result, formatRunHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+
+  const wantsMachine = wantsJson(args.command);
+  const shouldOpen = args.open === false ? false : wantsMachine ? args.open === true : true;
+  const wantsFollow = !wantsMachine && args.detach !== true;
+  const rendered = await renderObserver(args.cwd, args.runInput, { open: wantsFollow ? false : shouldOpen });
+  let server: ObserverServer | null = null;
+  let result = rendered;
+  if (rendered.ok && wantsFollow) {
+    server = await serveObserver(rendered, { open: shouldOpen, port });
+    result = withObserverServer(rendered, server);
+  }
+  writeResult(args.command, args.io, result, formatObserverHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
+
+  if (result.ok && server) {
+    await followObserver(args.io, result, server);
+  }
+}
+
+async function applyEnvFileOption(args: {
+  command: Command;
+  cwd: string;
+  envFile?: string | undefined;
+  io: CliIo;
+}): Promise<boolean> {
+  if (!args.envFile) {
+    return true;
+  }
+
+  const result = await loadEnvFile(args.cwd, args.envFile);
+  if (result.ok) {
+    return true;
+  }
+
+  writeResult(args.command, args.io, result, formatEnvFileHuman);
+  args.io.setExitCode(2);
+  return false;
+}
+
+function labRepos(options: LabCommandOptions, manifest: LabManifest): string[] {
+  return [
+    ...(options.repo ?? []),
+    ...(options.repos ? [options.repos] : []),
+    ...(options.repo?.length || options.repos ? [] : manifest.repos ?? [])
+  ];
+}
+
+function parseLabCount(value: string | undefined, fallback: number): number | null {
+  return value === undefined ? fallback : parsePositiveInteger(value);
+}
+
+function withObserverServer(rendered: ObserverResult, server: ObserverServer): ObserverResult {
+  return {
+    ...rendered,
+    observerUrl: server.url,
+    serverUrl: server.url,
+    opened: server.opened,
+    ...(server.openCommand ? { openCommand: server.openCommand } : {}),
+    warnings: [
+      ...rendered.warnings,
+      "Live observer server is polling observer-data.json with no-store caching.",
+      ...(server.warning ? [server.warning] : [])
+    ]
+  };
+}
+
+function withOssMetaLabServer(result: OssMetaLabResult & { observer: ObserverResult & { ok: true } }, server: ObserverServer): OssMetaLabResult {
+  return {
+    ...result,
+    observer: {
+      ...result.observer,
+      observerUrl: server.url,
+      serverUrl: server.url,
+      opened: server.opened,
+      ...(server.openCommand ? { openCommand: server.openCommand } : {}),
+      warnings: [
+        ...result.observer.warnings,
+        "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
+        ...(server.warning ? [server.warning] : [])
+      ]
+    },
+    warnings: [
+      ...result.warnings,
+      "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
+      ...(server.warning ? [server.warning] : [])
+    ]
+  };
 }
 
 function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
@@ -906,6 +1486,63 @@ function formatObserverHuman(result: ObserverResult): string {
     ...(result.observerUrl ? [`url: ${result.observerUrl}`] : []),
     ...(result.opened === undefined ? [] : [`opened: ${result.opened ? "yes" : "no"}`]),
     `bundle: ${result.bundlePath}`,
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatEnvFileHuman(result: EnvFileLoadResult): string {
+  if (!result.ok) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
+  return [
+    "mimetic env-file loaded",
+    `env-file: ${result.envFile}`,
+    `loaded: ${result.loaded.length ? result.loaded.join(", ") : "none"}`,
+    `skipped-existing: ${result.skipped.length ? result.skipped.join(", ") : "none"}`
+  ].join("\n") + "\n";
+}
+
+function formatLabListHuman(result: LabListResult): string {
+  if (result.labs.length === 0) {
+    return [
+      `No Mimetic labs found in ${result.cwd}`,
+      "Create one under mimetic/labs/*.yaml, .mimetic/labs/*.yaml, or pass a .yaml path.",
+      ...result.warnings.map((warning) => `warning: ${warning}`)
+    ].join("\n") + "\n";
+  }
+
+  return [
+    "mimetic labs",
+    ...result.labs.map((lab) => `- ${lab.id} ${lab.kind} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatLabInspectHuman(result: LabInspectResult): string {
+  if (!result.ok || !result.manifest) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
+  return [
+    "mimetic lab",
+    `id: ${result.manifest.id}`,
+    `kind: ${result.manifest.kind}`,
+    ...(result.manifest.title ? [`title: ${result.manifest.title}`] : []),
+    ...(result.manifest.description ? [`description: ${result.manifest.description}`] : []),
+    ...(result.path ? [`path: ${result.path}`] : []),
+    ...(result.origin ? [`origin: ${result.origin}`] : []),
+    ...(result.manifest.sims === undefined ? [] : [`sims: ${result.manifest.sims}`]),
+    ...(result.manifest.count === undefined ? [] : [`count: ${result.manifest.count}`]),
+    ...(result.manifest.limit === undefined ? [] : [`limit: ${result.manifest.limit}`]),
+    ...(result.manifest.repos?.length ? [`repos: ${result.manifest.repos.join(", ")}`] : []),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatLabResolveFailureHuman(result: LabResolveFailure): string {
+  return [
+    `${result.error.code}: ${result.error.message}`,
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }

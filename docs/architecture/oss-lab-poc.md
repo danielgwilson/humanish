@@ -1,48 +1,51 @@
-# OSS Lab POC
+# Maintainer OSS Meta-Lab
 
 Date: 2026-06-01
 
-Status: implemented as an experimental meta-lab command plus a retained smoke
-harness.
+Status: implemented as an experimental repo-owned lab manifest plus
+compatibility aliases.
 
 ## Decision
 
-`mimetic lab oss` is the authorized-repo meta-simulation loop.
+`mimetic/labs/oss.yaml` is this repo's authorized-repo meta-simulation
+dogfood loop. It is intentionally a lab manifest, not the canonical consumer
+shape. Consumer projects should author their own `mimetic/labs/*.yaml` files
+and run them with `mimetic watch <lab>` or `mimetic lab run <lab>`.
 
-The command should feel like `mimetic watch`: it opens the Observer and, for
-human output, keeps the shell attached. Its top-level Observer is an
+The lab should feel like `mimetic watch`: it opens the Observer and, for human
+output, keeps the shell attached. Its top-level Observer is an
 Observer-of-Observers: each lane represents a headed E2B desktop assigned to a
 GitHub `owner/repo` slug. Inside each desktop, the bootstrap clones the repo,
 gets it into local dev mode where feasible, installs and initializes Mimetic,
-runs nested Mimetic proof commands, starts the target app when a runnable script
-is present, opens desktop/mobile app windows plus the nested Observer in the E2B
-browser, and starts a nonblocking Codex actor attempt.
+runs nested Mimetic proof commands, starts the target app when a runnable
+script is present, opens desktop/mobile app windows plus the nested Observer in
+the E2B browser, and starts a nonblocking Codex actor attempt.
 
 The previous clone/discard proof loop remains useful, but it is now explicitly
-named `mimetic lab oss-smoke`.
+named `mimetic/labs/oss-smoke.yaml`.
 
 ## Commands
 
 Main operator path:
 
 ```bash
-mimetic lab oss
-mimetic lab oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
-mimetic lab oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4
+mimetic watch oss
+mimetic lab run oss
+mimetic lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+mimetic lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4
 ```
 
 Agent/CI contract path:
 
 ```bash
-mimetic lab oss --dry-run --json --no-open
+mimetic lab run oss --dry-run --json --no-open
 ```
 
 Disposable clone smoke path:
 
 ```bash
-mimetic lab oss-smoke
-mimetic lab oss-smoke --limit 1 --keep
-mimetic lab oss --smoke --limit 1 --keep
+mimetic lab run oss-smoke
+mimetic lab run oss-smoke --limit 1 --keep
 ```
 
 Local dogfood shortcuts:
@@ -87,15 +90,15 @@ draft text.
 The safe local shape is:
 
 ```bash
-mimetic lab oss --repo owner/private-app --count 1
+mimetic watch .mimetic/labs/private-app.yaml --env-file .mimetic/local/provider.env
 ```
 
-with an authorized runtime GitHub token and default repo redaction enabled. Do
-not pass `--no-redact-repos` for a private target. Public receipts for those
-runs should say `authorized private app target` and point only to ignored local
-artifact paths, redacted statuses, and verifier results. Never publish private
-screenshots, logs, app URLs, source snippets, branch names, issue names, stream
-URLs, or operational details.
+with an authorized runtime GitHub token and default repo redaction enabled.
+Do not pass `--no-redact-repos` for a private target. Public receipts for
+those runs should say `authorized private app target` and point only to ignored
+local artifact paths, redacted statuses, and verifier results. Never publish
+private screenshots, logs, app URLs, source snippets, branch names, issue
+names, stream URLs, or operational details.
 
 ## Runtime Shape
 
@@ -165,7 +168,7 @@ and live-prove actor-first setup/use, not only deterministic bootstrap readback.
 
 ## Smoke Harness Runtime
 
-`mimetic lab oss-smoke` shallow clones lightweight public GitHub repos into
+`mimetic lab run oss-smoke` shallow clones lightweight public GitHub repos into
 ignored runtime state, applies Mimetic setup inside each throwaway clone, runs
 the synthetic four-lane proof path, verifies the generated bundle, records
 git-status evidence, writes an ignored report, and removes cloned repos by

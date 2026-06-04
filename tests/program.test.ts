@@ -143,7 +143,9 @@ describe("mimetic CLI scaffold", () => {
       expect(envelope.changes.some((change) => change.path === ".mimetic/runs" && change.action === "mkdir")).toBe(true);
 
       await expect(stat(path.join(cwd, "mimetic/personas/synthetic-new-user.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, "mimetic/labs/first-run.yaml"))).resolves.toBeTruthy();
       await expect(stat(path.join(cwd, ".mimetic/runs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".mimetic/local/labs"))).resolves.toBeTruthy();
 
       const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
       expect(gitignore).toContain(".mimetic/");
@@ -207,6 +209,119 @@ describe("mimetic CLI scaffold", () => {
       expect(packageJson.scripts.mimetic).toBe("custom command");
       expect(packageJson.scripts["mimetic:run"]).toBe("mimetic run --dry-run");
       expect(packageJson.scripts["mimetic:watch"]).toBe("mimetic watch");
+    });
+  });
+
+  it("lists and inspects lab manifests from the CLI", async () => {
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      "mimetic/labs/first-run.yaml": [
+        "schema: mimetic.lab.v1",
+        "id: first-run",
+        "kind: synthetic",
+        "title: First run",
+        "sims: 2"
+      ].join("\n")
+    }, async (cwd) => {
+      const list = await runCli(["lab", "list", "--cwd", cwd]);
+      const inspect = await runCli(["lab", "inspect", "first-run", "--cwd", cwd, "--json"]);
+
+      expect(list.exitCode).toBe(0);
+      expect(list.stdout).toContain("mimetic labs");
+      expect(list.stdout).toContain("first-run synthetic committed");
+
+      const envelope = JSON.parse(inspect.stdout) as {
+        ok: boolean;
+        manifest: { id: string; kind: string; sims: number };
+      };
+      expect(inspect.exitCode).toBe(0);
+      expect(envelope.ok).toBe(true);
+      expect(envelope.manifest).toEqual(expect.objectContaining({
+        id: "first-run",
+        kind: "synthetic",
+        sims: 2
+      }));
+    });
+  });
+
+  it("runs a synthetic lab manifest through run and watch", async () => {
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      "mimetic/labs/first-run.yaml": [
+        "schema: mimetic.lab.v1",
+        "id: first-run",
+        "kind: synthetic",
+        "sims: 2",
+        "defaults:",
+        "  dryRun: true"
+      ].join("\n")
+    }, async (cwd) => {
+      const run = await runCli([
+        "run",
+        "first-run",
+        "--cwd",
+        cwd,
+        "--run-id",
+        "lab-run-test",
+        "--json"
+      ]);
+      const watch = await runCli([
+        "watch",
+        "first-run",
+        "--cwd",
+        cwd,
+        "--run-id",
+        "lab-watch-test",
+        "--json",
+        "--no-open"
+      ]);
+
+      expect(run.exitCode).toBe(0);
+      expect(JSON.parse(run.stdout)).toEqual(expect.objectContaining({
+        ok: true,
+        runId: "lab-run-test",
+        simCount: 2
+      }));
+
+      const watchEnvelope = JSON.parse(watch.stdout) as {
+        ok: boolean;
+        run: string;
+        observerPath: string;
+      };
+      expect(watch.exitCode).toBe(0);
+      expect(watchEnvelope.ok).toBe(true);
+      expect(watchEnvelope.run).toBe("lab-watch-test");
+      expect(watchEnvelope.observerPath).toContain("observer/index.html");
+    });
+  });
+
+  it("fails closed when direct run-only options are mixed with lab manifests", async () => {
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      "mimetic/labs/first-run.yaml": [
+        "schema: mimetic.lab.v1",
+        "id: first-run",
+        "kind: synthetic"
+      ].join("\n")
+    }, async (cwd) => {
+      const result = await runCli([
+        "run",
+        "first-run",
+        "--app-url",
+        "http://127.0.0.1:3000",
+        "--cwd",
+        cwd,
+        "--json"
+      ]);
+
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        error: { code: string; message: string };
+      };
+      expect(result.exitCode).toBe(2);
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe("MIMETIC_APP_URL_OPTION_CONFLICT");
+      expect(envelope.error.message).toContain("lab-compatible options");
     });
   });
 

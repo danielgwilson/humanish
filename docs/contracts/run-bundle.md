@@ -109,10 +109,11 @@ mimetic:
 
 For public OSS runs, previews may include allowlisted setup files such as
 `package.json`, `.gitignore`, `mimetic/config.ts`, and
-`mimetic/personas/*.yaml` / `mimetic/scenarios/*.yaml`. For token-backed or
-private maintainer runs, raw previews are suppressed by default. Generated
-state, `.git`, `.env*`, `.npmrc`, browser profiles, `node_modules`, `.mimetic/`,
-and arbitrary source files are excluded.
+`mimetic/labs/*.yaml` / `mimetic/personas/*.yaml` /
+`mimetic/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
+previews are suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
+browser profiles, `node_modules`, `.mimetic/`, and arbitrary source files are
+excluded.
 
 ## Latest And History
 

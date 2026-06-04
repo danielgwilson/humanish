@@ -26,6 +26,12 @@ Keep this directory public-safe:
 
 Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.mimetic/\`.
 
+Labs:
+
+- committed reusable labs live in mimetic/labs/*.yaml;
+- private or machine-local labs live in ignored .mimetic/labs/*.yaml or .mimetic/local/labs/*.yaml;
+- run a lab with \`mimetic watch <lab>\` or \`mimetic lab run <lab>\`.
+
 Format standard:
 
 - human-authored Mimetic source uses .yaml;
@@ -119,6 +125,20 @@ steps:
     expectation: No real user data is entered.
   - name: Check recovery path
     expectation: The user can back out or retry safely.
+`
+  },
+  {
+    path: "mimetic/labs/first-run.yaml",
+    plane: "source",
+    contents: `schema: mimetic.lab.v1
+id: first-run
+kind: synthetic
+title: First-run synthetic Observer
+description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+sims: 4
+defaults:
+  dryRun: true
+  open: true
 `
   },
   {
@@ -255,6 +275,8 @@ export const runtimeDirectories: RuntimeDirectory[] = [
   { path: ".mimetic/cache", plane: "runtime" },
   { path: ".mimetic/tmp", plane: "runtime" },
   { path: ".mimetic/logs", plane: "runtime" },
+  { path: ".mimetic/labs", plane: "runtime" },
+  { path: ".mimetic/local/labs", plane: "runtime" },
   { path: ".mimetic/local/personas", plane: "runtime" },
   { path: ".mimetic/local/policies", plane: "runtime" },
   { path: ".mimetic/secrets", plane: "runtime" }

@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control: synthetic personas attempting first-run setup across browser, CLI, TUI, and Codex lanes, with blocked and failed lanes surfaced for review](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.1.4)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.1.4)
 
 ## Install
 
@@ -43,7 +43,7 @@ env var names without values. Generated run bundles belong under ignored
 ## How It Works
 
 ```text
-mimetic/      committed source plane: personas, scenarios, policy, adapters
+mimetic/      committed source plane: labs, personas, scenarios, policy, adapters
 .mimetic/    ignored runtime plane: runs, Observer output, reviews, local state
 ```
 
@@ -58,6 +58,14 @@ npx mimetic feedback issue --run latest --repo owner/repo --format markdown
 
 `mimetic watch` starts a fresh four-lane synthetic run, renders the Observer,
 opens it in the browser, serves it over localhost, and keeps the shell attached.
+After `mimetic init`, named lab manifests can be run the same way:
+
+```bash
+npx mimetic watch first-run
+npx mimetic lab list
+npx mimetic lab inspect first-run
+```
+
 The CI-safe equivalent is:
 
 ```bash
@@ -71,21 +79,47 @@ npx mimetic watch --json --no-open
 | `mimetic init` | Scaffold committed `mimetic/` source and ignored `.mimetic/` runtime state. |
 | `mimetic doctor` | Explain readiness and missing setup. |
 | `mimetic run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
-| `mimetic watch` | Run sims, open Observer, and keep watching. |
+| `mimetic watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
+| `mimetic lab list` | List committed and ignored lab manifests. |
+| `mimetic lab inspect <lab>` | Show the source manifest for a lab without running it. |
+| `mimetic lab run <lab>` | Run a lab manifest in human or JSON mode. |
 | `mimetic verify` | Validate a run bundle and public-safety gates. |
 | `mimetic review` | Read review evidence for a run. |
 | `mimetic runs` | List local runs and latest pointers. |
 | `mimetic feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
-| `mimetic lab oss` | Experimental Observer-of-Observers for headed authorized-repo app setup attempts. |
-| `mimetic lab oss-smoke` | Disposable clone smoke test against public OSS repos. |
+| `mimetic lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
+| `mimetic lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
 
-## OSS Lab
+## Lab Manifests
 
-The experimental authorized-repo dogfood loop is:
+Labs are authored as `.yaml` source:
+
+```text
+mimetic/labs/*.yaml          committed public-safe labs
+.mimetic/labs/*.yaml         ignored local labs
+.mimetic/local/labs/*.yaml   ignored private or machine-specific labs
+```
+
+Committed labs should be useful to anyone who clones the project. Private repo
+targets, token-backed provider settings, and local-only dogfood variants belong
+in ignored `.mimetic/` lab manifests and can be run explicitly:
 
 ```bash
-pnpm mimetic -- lab oss
-pnpm mimetic -- lab oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+npx mimetic watch .mimetic/labs/local-dogfood.yaml --env-file .mimetic/local/provider.env
+npx mimetic lab run .mimetic/labs/local-dogfood.yaml --json --no-open
+```
+
+`--env-file` loads values for the current process only. Mimetic reports loaded
+env var names, never values, and does not persist those values into run bundles
+or Observer data.
+
+## Maintainer OSS Meta-Lab Example
+
+This repository includes an experimental authorized-repo dogfood lab:
+
+```bash
+pnpm mimetic -- watch oss
+pnpm mimetic -- lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
 ```
 
 Default lab targets are intentionally app/tool-like repos with visible,
@@ -107,17 +141,17 @@ npm i -D @e2b/desktop
 The contract-safe path for agents and CI is:
 
 ```bash
-pnpm mimetic -- lab oss --dry-run --json --no-open
+pnpm mimetic -- lab run oss --dry-run --json --no-open
 ```
 
-`mimetic lab oss` accepts GitHub `owner/repo` slugs. Private repositories are
-maintainer-only and require an authorized `GH_TOKEN` or `GITHUB_TOKEN` in the
-runtime environment. When a GitHub token is present, durable run artifacts
-redact repo labels by default; pass `--no-redact-repos` only for public-safe
-repo selections. Live E2B stream URLs are runtime-only for the attached
-Observer server and are not persisted to `run.json` or `observer-data.json`.
-Local bundles remain ignored under `.mimetic/`; do not publish private
-screenshots, logs, or upstream details.
+The `oss` lab accepts GitHub `owner/repo` slugs. Private repositories are
+maintainer-only and should be supplied from ignored local lab manifests with an
+authorized `GH_TOKEN` or `GITHUB_TOKEN` loaded via `--env-file`. When a GitHub
+token is present, durable run artifacts redact repo labels by default; pass
+`--no-redact-repos` only for public-safe repo selections. Live E2B stream URLs
+are runtime-only for the attached Observer server and are not persisted to
+`run.json` or `observer-data.json`. Local bundles remain ignored under
+`.mimetic/`; do not publish private screenshots, logs, or upstream details.
 
 ## Development
 
@@ -134,6 +168,7 @@ Local dogfood:
 pnpm mimetic:watch
 pnpm mimetic:verify
 pnpm mimetic:feedback
+pnpm mimetic:lab:list
 ```
 
 ## Docs

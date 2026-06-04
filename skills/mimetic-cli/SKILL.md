@@ -15,9 +15,11 @@ tokens, raw private transcripts, private screenshots, raw customer data, raw
 patient data, or private upstream artifacts.
 
 Do not edit `.env` or secret files. Do not paste credential values. Use env var
-names only, usually `OPENAI_API_KEY` and `E2B_API_KEY`. Stop before live
-provider spend, hosted execution, deploys, public tunnels, or GitHub mutation
-unless the user explicitly approves that exact action.
+names only, usually `OPENAI_API_KEY` and `E2B_API_KEY`. For live local runs,
+prefer an explicit ignored env file passed with `--env-file <path>`; do not
+assume broad inherited job env is safe. Stop before live provider spend,
+hosted execution, deploys, public tunnels, or GitHub mutation unless the user
+explicitly approves that exact action.
 
 ## Setup Workflow
 
@@ -44,6 +46,9 @@ unless the user explicitly approves that exact action.
 5. Confirm the layout:
    - commit `mimetic/` source files;
    - ignore `.mimetic/` runtime artifacts;
+   - keep committed labs under `mimetic/labs/*.yaml`;
+   - keep private/local labs under ignored `.mimetic/labs/*.yaml` or
+     `.mimetic/local/labs/*.yaml`;
    - keep `.env.example` commit-safe and value-free;
    - never commit generated run bundles.
 
@@ -76,6 +81,36 @@ Scenarios should define the target app surface, start URL, task intent,
 success signals, and failure signals. Keep app-specific truth in the target
 repo's `mimetic/` files, not in the package or this skill.
 
+## Authoring Labs
+
+Create reusable simulation runs as `.yaml` lab manifests:
+
+```yaml
+schema: mimetic.lab.v1
+id: first-run
+kind: synthetic
+title: First-run synthetic Observer
+sims: 4
+defaults:
+  dryRun: true
+  open: true
+```
+
+Use committed `mimetic/labs/*.yaml` for public-safe, reproducible labs. Use
+ignored `.mimetic/labs/*.yaml` or `.mimetic/local/labs/*.yaml` for private repo
+targets, local-only dogfood, or machine-specific settings. Never commit private
+repo names, stream URLs, credential values, screenshots, logs, source snippets,
+or operational details.
+
+Useful commands:
+
+```bash
+npx mimetic lab list
+npx mimetic lab inspect first-run
+npx mimetic watch first-run
+npx mimetic lab run first-run --json --no-open
+```
+
 ## First Proof Run
 
 Run the no-credentials path first:
@@ -91,6 +126,7 @@ For CI or non-interactive proof:
 
 ```bash
 npx mimetic watch --json --no-open
+npx mimetic lab run first-run --json --no-open
 ```
 
 The feedback command prints a public-safe Markdown draft. It must not call the
@@ -114,6 +150,11 @@ OPENAI_API_KEY
 ```
 
 Do not paste values into files, prompts, run bundles, issue drafts, or logs.
+Load local values only at invocation time:
+
+```bash
+npx mimetic watch .mimetic/labs/local-live.yaml --env-file .mimetic/local/provider.env
+```
 
 When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a
 real observable user surface and local run path. Do not use libraries,

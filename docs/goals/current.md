@@ -27,6 +27,7 @@ A world-class Mimetic run should eventually provide:
   filesystem setup-quality snapshots, artifacts, and verifier output;
 - clear pass, fail, blocked, and gap states;
 - public-safe feedback issue drafts that do not mutate GitHub by default;
+- first-class `.yaml` lab manifests for reusable simulation runs;
 - adapter contracts that let projects customize behavior without forking core;
 - release gates that prevent PII, PHI, secrets, private artifacts, and stale
   internal residue from reaching the public repo or package.
@@ -39,10 +40,11 @@ Make the public package and repo credible enough that an external maintainer can
 2. install `mimetic-cli`;
 3. run `mimetic init`;
 4. run `mimetic watch`;
-5. inspect Observer evidence;
-6. verify the bundle;
-7. produce a public-safe feedback draft;
-8. understand the next live-adapter path without reading chat history.
+5. run `mimetic watch first-run` or another lab manifest;
+6. inspect Observer evidence;
+7. verify the bundle;
+8. produce a public-safe feedback draft;
+9. understand the next live-adapter path without reading chat history.
 
 ## Near-Term Goals
 
@@ -115,10 +117,27 @@ Minimum acceptance:
 - Observer polling reflects lane completion;
 - no raw private transcript or credential values.
 
-### 6. OSS Lab Health Readback
+### 6. Lab Manifest Shape
 
-Make `mimetic lab oss` report nested lane health back into the top-level
-Observer instead of relying on a human watching the desktops.
+Make reusable simulations feel like source artifacts, not hardcoded command
+branches.
+
+Minimum acceptance:
+
+- `mimetic/labs/*.yaml` is the committed lab source convention;
+- `.mimetic/labs/*.yaml` and `.mimetic/local/labs/*.yaml` are ignored local
+  overlays;
+- `mimetic watch [lab]`, `mimetic lab list`, `mimetic lab inspect <lab>`, and
+  `mimetic lab run <lab>` are supported;
+- `--env-file <path>` loads local values for the current command without
+  persisting values into artifacts;
+- maintainer dogfood labs such as `oss` are examples, not the canonical
+  consumer taxonomy.
+
+### 7. OSS Lab Health Readback
+
+Make the maintainer `oss` lab report nested lane health back into the
+top-level Observer instead of relying on a human watching the desktops.
 
 Minimum acceptance:
 

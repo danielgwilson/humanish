@@ -121,7 +121,7 @@ providerClasses:
   - model
   - desktop_substrate
 operatorIntent:
-  command: mimetic lab oss --json --no-open
+  command: mimetic lab run oss --json --no-open
   explicit: true
 budget:
   limit: unspecified

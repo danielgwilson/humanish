@@ -13,9 +13,9 @@ mimetic/   # committed source of simulation intent
 .mimetic/  # ignored runtime state, evidence, local overlays, and secrets
 ```
 
-Do not gitignore all Mimetic state. Personas, scenarios, policies, adapters,
-coverage maps, and review vocabulary are the harness. They must be versioned,
-reviewed, and reproducible from a clean clone.
+Do not gitignore all Mimetic state. Labs, personas, scenarios, policies,
+adapters, coverage maps, and review vocabulary are the harness. They must be
+versioned, reviewed, and reproducible from a clean clone.
 
 Do not commit run bundles, raw screenshots, browser traces, transcripts,
 draft issue bodies before verification, local auth, local overrides, or secrets.
@@ -34,6 +34,8 @@ mimetic/
   scenarios/
     first-run-smoke.yaml
     onboarding-regression.yaml
+  labs/
+    first-run.yaml
   policies/
     redaction.yaml
     network.yaml
@@ -59,9 +61,8 @@ Use formats based on who edits the file and how it is consumed:
 - `.ts` for executable project integration: `mimetic/config.ts`, adapters,
   route catalogs, app launch plans, and logic that benefits from imports or
   type checking.
-- `.json` for generated machine artifacts and fixtures: run bundles,
-  observer data, review JSON, latest/history pointers, and synthetic fixture
-  records.
+- `.json` for generated machine artifacts and synthetic fixtures: run bundles,
+  observer data, review JSON, latest/history pointers, and fixture records.
 - `.ndjson` for appendable event or transcript streams.
 - `.yml` is acceptable for ecosystem files that conventionally use it, such as
   `.github/workflows/*.yml`; do not use `.yml` for Mimetic-owned authored
@@ -103,7 +104,11 @@ visible in PR review.
   cache/
   tmp/
   logs/
+  labs/
   local/
+    labs/
+    personas/
+    policies/
   secrets/
 ```
 
@@ -123,11 +128,16 @@ When a team needs private local personas or credentials, use ignored overlays:
 ```text
 .mimetic/local/personas/*.yaml
 .mimetic/local/policies/*.yaml
+.mimetic/local/labs/*.yaml
+.mimetic/labs/*.yaml
 .mimetic/secrets/*
 ```
 
-The CLI should warn that local overlays cannot be used for reproducible CI or
-public issue drafts unless redacted into committed synthetic equivalents.
+Committed `mimetic/labs/*.yaml` should be useful to anyone with a clean clone.
+Ignored `.mimetic/labs/*.yaml` and `.mimetic/local/labs/*.yaml` are for
+machine-specific or private dogfood labs. The CLI should warn that local
+overlays cannot be used for reproducible CI or public issue drafts unless
+redacted into committed synthetic equivalents.
 
 ## CI And Reproducibility
 
@@ -137,6 +147,7 @@ CI should reproduce proof from committed inputs:
 - `mimetic-cli` version;
 - `mimetic/config.ts`;
 - scenario and persona catalog;
+- lab manifest;
 - policy files;
 - synthetic fixtures;
 - declared env var names.

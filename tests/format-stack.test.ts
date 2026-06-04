@@ -11,7 +11,7 @@ describe("Mimetic format stack", () => {
     expect(layout).toContain("`.yaml` for human-authored Mimetic source");
     expect(layout).toContain("Prefer `.yaml` over `.yml`");
     expect(layout).toContain("`.ts` for executable project integration");
-    expect(layout).toContain("`.json` for generated machine artifacts and fixtures");
+    expect(layout).toContain("`.json` for generated machine artifacts and synthetic fixtures");
     expect(layout).toContain("`.ndjson` for appendable event or transcript streams");
     expect(layout).toContain("`.github/workflows/*.yml`");
     expect(layout).toContain("TOML is not part of the current Mimetic stack");
@@ -21,6 +21,7 @@ describe("Mimetic format stack", () => {
     const authoredSourcePrefixes = [
       "mimetic/personas/",
       "mimetic/scenarios/",
+      "mimetic/labs/",
       "mimetic/policies/",
       "mimetic/review/"
     ];

@@ -26,7 +26,7 @@ Mimetic is a persona simulation harness for apps, CLIs, and agent-facing product
 flows.
 
 - `mimetic/` is committed source: personas, scenarios, policy, adapters, and
-  project intent.
+  lab manifests.
 - `.mimetic/` is ignored runtime state: runs, Observer output, transcripts,
   reviews, temporary clones, and local evidence.
 - Mimetic source uses `.yaml` for human-authored simulation intent, `.ts` for
@@ -57,8 +57,10 @@ Implemented:
 - mission-control Observer over UI, CLI, TUI, and Codex UI stream contracts;
 - public-safe feedback issue drafts without GitHub API mutation;
 - skills.sh-compatible agent skill;
-- experimental public OSS lab and disposable OSS smoke harness;
-- OSS lab setup-quality filesystem artifacts rendered from the Observer Files
+- first-class lab manifest resolution through `mimetic/labs/*.yaml` and
+  ignored `.mimetic/labs/*.yaml` overlays;
+- experimental maintainer OSS meta-lab and disposable OSS smoke harness;
+- OSS dogfood setup-quality filesystem artifacts rendered from the Observer Files
   tab with private-run previews suppressed by default.
 
 Still not good enough:
@@ -82,6 +84,7 @@ pnpm install --frozen-lockfile
 pnpm release:check
 pnpm mimetic -- watch --json --no-open
 pnpm mimetic -- runs --json
+pnpm mimetic -- lab list
 ```
 
 For local product feel:
@@ -93,8 +96,16 @@ pnpm mimetic -- watch
 For public OSS dogfood without credentials:
 
 ```bash
-pnpm mimetic -- lab oss --dry-run --json --no-open
-pnpm mimetic -- lab oss-smoke --limit 1 --json
+pnpm mimetic -- lab run oss --dry-run --json --no-open
+pnpm mimetic -- lab run oss-smoke --limit 1 --json
+```
+
+For private/local dogfood, author an ignored lab manifest under
+`.mimetic/labs/` or `.mimetic/local/labs/`, then invoke it explicitly with an
+ignored env file:
+
+```bash
+pnpm mimetic -- watch .mimetic/labs/local-dogfood.yaml --env-file .mimetic/local/provider.env
 ```
 
 ## How To Pick Work

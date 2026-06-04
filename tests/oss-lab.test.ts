@@ -1,6 +1,6 @@
 import { CommanderError } from "commander";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -382,9 +382,9 @@ describe("OSS lab command", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Usage: mimetic lab oss");
-    expect(result.stdout).toContain("Watch headed Codex/E2B meta-sims setting up Mimetic inside authorized repos");
+    expect(result.stdout).toContain("Alias: run the bundled OSS meta-lab manifest");
     expect(result.stdout).toContain("--repos");
-    expect(result.stdout).toContain("Observer-of-Observers");
+    expect(result.stdout).toContain("mimetic lab run oss");
     expect(result.stdout).toContain("mimetic lab oss-smoke");
   });
 
@@ -442,6 +442,48 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic init --yes");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic run --app-url");
     expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/CorentinTh/it-tools");
+  });
+
+  it("runs the bundled OSS meta-lab through the generic lab runner", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-generic-"));
+    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
+    await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
+      "schema: mimetic.lab.v1",
+      "id: oss",
+      "kind: oss-meta",
+      "count: 2",
+      "repos:",
+      "  - CorentinTh/it-tools",
+      "  - drawdb-io/drawdb",
+      "defaults:",
+      "  dryRun: true"
+    ].join("\n"), "utf8");
+
+    const result = await runCli([
+      "lab",
+      "run",
+      "oss",
+      "--json",
+      "--no-open",
+      "--cwd",
+      cwd,
+      "--run-id",
+      "oss-meta-generic-test"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const json = JSON.parse(result.stdout) as {
+      assignments: Array<{ repo: string }>;
+      dryRun: boolean;
+      schema: string;
+    };
+    expect(json.schema).toBe("mimetic.oss-meta-lab-result.v1");
+    expect(json.dryRun).toBe(true);
+    expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
+      "CorentinTh/it-tools",
+      "drawdb-io/drawdb"
+    ]);
   });
 
   it("fails live launch closed into waiting lanes when E2B is absent", async () => {

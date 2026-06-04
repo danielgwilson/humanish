@@ -1,0 +1,9 @@
+schema: mimetic.lab.v1
+id: first-run
+kind: synthetic
+title: First-run synthetic Observer
+description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+sims: 4
+defaults:
+  dryRun: true
+  open: true

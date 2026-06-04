@@ -226,12 +226,26 @@ keeps the shell attached. The CI-safe form is `mimetic watch --json --no-open`.
 `--sims <n>` remains the explicit scale control, and `--run <id>` watches
 existing evidence.
 
-## Stage 6.9: OSS Meta-Lab
+## Stage 6.8: Lab Manifests
 
-Status: implemented as an experimental live Observer-of-Observers bootstrap
-with a retained disposable smoke harness.
+Status: implemented as the generic source shape for reusable runs.
 
-`mimetic lab oss` opens the top-level Observer for authorized-repo meta-sims.
+Mimetic now resolves `.yaml` lab manifests from committed `mimetic/labs/`,
+ignored `.mimetic/labs/`, ignored `.mimetic/local/labs/`, or an explicit
+`.yaml` path. The human path is `mimetic watch <lab>`; the agent/CI path is
+`mimetic lab run <lab> --json --no-open`; discovery is `mimetic lab list` and
+`mimetic lab inspect <lab>`.
+
+Private or maintainer-only dogfood belongs in ignored lab manifests plus
+explicit `--env-file`; the public package should not hardcode private target
+names or require broad inherited job env.
+
+## Stage 6.9: Maintainer OSS Meta-Lab
+
+Status: implemented as repo-owned `mimetic/labs/oss.yaml` plus compatibility
+aliases, with a retained disposable smoke harness.
+
+`mimetic watch oss` opens the top-level Observer for authorized-repo meta-sims.
 Each lane is assigned a GitHub `owner/repo` slug from `--repos` or repeated
 `--repo` values and carries a headed E2B desktop for setting up Mimetic inside
 that repo, starting the target app where feasible, and keeping the nested
@@ -248,7 +262,7 @@ stream URLs only in memory; durable run artifacts keep screenshots/status, not
 auth-bearing URLs. Private repos are maintainer-only, require an authorized
 runtime GitHub token, and redact repo labels in durable artifacts by default.
 
-`mimetic lab oss-smoke` keeps the earlier clone/discard proof loop: shallow
+`mimetic lab run oss-smoke` keeps the earlier clone/discard proof loop: shallow
 clone lightweight public GitHub repositories into ignored `.mimetic/tmp`, apply
 Mimetic setup in disposable clones, run the four-lane synthetic Observer proof,
 verify it, record git-status evidence, write an ignored
@@ -257,9 +271,9 @@ verify it, record git-status evidence, write an ignored
 Proof:
 
 ```bash
-pnpm mimetic -- lab oss --detach --open --repos CorentinTh/it-tools,drawdb-io/drawdb
-pnpm mimetic -- lab oss --dry-run --json --no-open --repos CorentinTh/it-tools,drawdb-io/drawdb
-pnpm mimetic -- lab oss-smoke --limit 1 --json
+pnpm mimetic -- watch oss --detach --open --repos CorentinTh/it-tools,drawdb-io/drawdb
+pnpm mimetic -- lab run oss --dry-run --json --no-open --repos CorentinTh/it-tools,drawdb-io/drawdb
+pnpm mimetic -- lab run oss-smoke --limit 1 --json
 ```
 
 Next substrate work: upgrade nested app-url render proof into provider-backed

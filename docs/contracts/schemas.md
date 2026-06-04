@@ -27,6 +27,7 @@ workflow without leaking private upstream truth into core.
 | --- | --- | --- |
 | Run bundle | `mimetic.run-bundle.v1` | `synthetic-run-bundle` |
 | Adapter | `mimetic.adapter.v1` | `synthetic-cli-adapter` |
+| Lab | `mimetic.lab.v1` | `first-run` |
 | Persona | `mimetic.persona.v1` | `synthetic-maintainer` |
 | Scenario | `mimetic.scenario.v1` | `first-run-smoke` |
 | Actor | `mimetic.actor.v1` | `synthetic-dry-run-actor` |
@@ -36,6 +37,26 @@ workflow without leaking private upstream truth into core.
 | Verification | `mimetic.verify-result.v1` | `five-check-verify` |
 | Policy | `mimetic.policy.v1` | `public-safety-policy` |
 | Feedback | `mimetic.feedback.v1` | `public-safe-feedback` |
+
+## Lab Manifest
+
+Lab manifests name reusable runs. They are human-authored `.yaml` source under
+`mimetic/labs/*.yaml` for committed public-safe labs, or ignored
+`.mimetic/labs/*.yaml` / `.mimetic/local/labs/*.yaml` for private local
+dogfood.
+
+Synthetic fixture:
+
+```yaml
+schema: mimetic.lab.v1
+id: first-run
+kind: synthetic
+title: First-run synthetic Observer
+sims: 4
+defaults:
+  dryRun: true
+  open: true
+```
 
 ## Run Bundle
 

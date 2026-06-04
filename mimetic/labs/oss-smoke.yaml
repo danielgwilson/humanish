@@ -1,0 +1,11 @@
+schema: mimetic.lab.v1
+id: oss-smoke
+kind: oss-smoke
+title: Disposable public OSS clone smoke
+description: Shallow clone public app/tool repos, try Mimetic setup, verify evidence, and discard clones by default.
+limit: 4
+repos:
+  - CorentinTh/it-tools
+  - drawdb-io/drawdb
+  - maciekt07/TodoApp
+  - lissy93/dashy
