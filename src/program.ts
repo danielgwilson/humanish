@@ -22,6 +22,7 @@ import {
 } from "./oss-lab.js";
 import type { OssLabResult } from "./oss-lab.js";
 import {
+  cleanupOssMetaLabSandboxes,
   runOssMetaLab
 } from "./oss-meta-lab.js";
 import type { OssMetaLabResult } from "./oss-meta-lab.js";
@@ -767,7 +768,17 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       }
 
       if (server && output.observer?.ok) {
-        await followObserver(io, output.observer, server);
+        await followObserver(io, output.observer, server, output.liveRequested
+          ? {
+              onStop: async () => {
+                const cleanup = await cleanupOssMetaLabSandboxes(output);
+                return [
+                  `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
+                  ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
+                ];
+              }
+            }
+          : {});
       }
     });
 
@@ -926,19 +937,37 @@ function parseObserverPort(value: string): number | null {
   return parsed >= 0 && parsed <= 65535 ? parsed : null;
 }
 
-async function followObserver(io: CliIo, result: ObserverResult, server: ObserverServer): Promise<void> {
+async function followObserver(
+  io: CliIo,
+  result: ObserverResult,
+  server: ObserverServer,
+  options: { onStop?: () => Promise<string[]> } = {}
+): Promise<void> {
   io.writeOut(`watching: ${result.serverUrl ?? result.observerUrl ?? result.observerPath}\n`);
   io.writeOut("watching: press Ctrl-C to stop\n");
   await new Promise<void>((resolve) => {
     process.once("SIGINT", () => {
-      server.close()
-        .catch((error: unknown) => {
+      (async () => {
+        try {
+          await server.close();
+        } catch (error: unknown) {
           io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
-        })
-        .finally(() => {
-          io.writeOut("watch stopped\n");
-          resolve();
-        });
+        }
+
+        if (options.onStop) {
+          try {
+            const messages = await options.onStop();
+            for (const message of messages) {
+              io.writeOut(`watch cleanup: ${message}\n`);
+            }
+          } catch (error: unknown) {
+            io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+          }
+        }
+
+        io.writeOut("watch stopped\n");
+        resolve();
+      })();
     });
   });
 }

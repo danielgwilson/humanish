@@ -13,15 +13,16 @@ import {
 } from "../src/oss-lab.js";
 import { buildObserverData } from "../src/observer-data.js";
 import {
-  assessOssMetaLabProviderCapacity,
   buildOssMetaBootstrapScriptFixture,
   buildOssMetaBundleFixture,
   buildOssRepoAssignments,
+  cleanupOssMetaLabSandboxes,
   collectOssMetaLabPrivateEnv,
   collectOssMetaLabRemoteEnv,
   normalizeHostActorRecommendedProof,
   preflightOssMetaActorApiKey,
-  runOssMetaLab
+  runOssMetaLab,
+  sandboxIdsForOssMetaLabCleanup
 } from "../src/oss-meta-lab.js";
 import type { OssMetaLabResult } from "../src/oss-meta-lab.js";
 import {
@@ -135,33 +136,6 @@ describe("OSS lab command", () => {
     }), { detach: false, wantsMachine: true })).toBe(true);
   });
 
-  it("fails provider capacity closed before exceeding headed desktop caps", () => {
-    expect(assessOssMetaLabProviderCapacity({
-      cap: 4,
-      requested: 1,
-      running: 3
-    })).toMatchObject({
-      cap: 4,
-      ok: true,
-      requested: 1,
-      running: 3
-    });
-
-    const exceeded = assessOssMetaLabProviderCapacity({
-      cap: 4,
-      requested: 1,
-      running: 4
-    });
-    expect(exceeded).toMatchObject({
-      cap: 4,
-      ok: false,
-      requested: 1,
-      running: 4
-    });
-    expect(exceeded.reason).toContain("Provider launch cap exceeded");
-    expect(exceeded.reason).toContain("MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS");
-  });
-
   it("forwards only public-safe actor-control env flags into remote OSS meta-lab sandboxes", () => {
     expect(collectOssMetaLabRemoteEnv({
       CODEX_ACCESS_TOKEN: "must-not-forward-from-helper",
@@ -262,6 +236,32 @@ describe("OSS lab command", () => {
       detach: false,
       wantsMachine: true
     })).toBe(false);
+  });
+
+  it("cleans up unique OSS meta-lab sandboxes from attached watch stop", async () => {
+    const result = liveMetaResult({
+      sandboxes: [
+        { repo: "repo-01", sandboxId: "sandbox-a", streamId: "oss-01-desktop", urlPresent: true },
+        { repo: "repo-02", sandboxId: "sandbox-b", streamId: "oss-02-desktop", urlPresent: true },
+        { repo: "repo-02", sandboxId: "sandbox-b", streamId: "oss-02-desktop-retry", urlPresent: true },
+        { repo: "repo-03", streamId: "oss-03-desktop", urlPresent: false }
+      ]
+    });
+    const killed: string[] = [];
+
+    expect(sandboxIdsForOssMetaLabCleanup(result)).toEqual(["sandbox-a", "sandbox-b"]);
+
+    await expect(cleanupOssMetaLabSandboxes(result, {
+      killSandbox: async (sandboxId) => {
+        killed.push(sandboxId);
+      },
+      requestTimeoutMs: 123
+    })).resolves.toEqual({
+      killed: 2,
+      skipped: 2,
+      errors: []
+    });
+    expect(killed).toEqual(["sandbox-a", "sandbox-b"]);
   });
 
   it("keeps default repo selection lightweight and public", () => {

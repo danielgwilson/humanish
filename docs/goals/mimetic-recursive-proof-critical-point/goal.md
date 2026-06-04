@@ -105,7 +105,6 @@ pnpm release:check
 # Before paid actor-required retries, prove Codex auth can run locally without
 # printing secrets. Use CODEX_API_KEY or CODEX_ACCESS_TOKEN inline for one
 # invocation when available; do not rely on OPENAI_API_KEY as a generic job env.
-MIMETIC_OSS_META_MAX_RUNNING_DESKTOPS=4 \
 MIMETIC_E2B_REQUEST_TIMEOUT_MS=30000 \
 MIMETIC_E2B_TIMEOUT_MS=3600000 \
 MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=900000 \
@@ -160,12 +159,13 @@ targets unless the declared scenario is developer-experience testing.
 - Allowed providers: E2B desktop sandbox and OpenAI/Codex actor flows already
   used by Mimetic.
 - Dollar cap: maximum estimated $50 total for this proof.
-- Max concurrent paid resources: at most 4 running Mimetic OSS meta-lab
-  desktops by default, enforced before live launch.
+- Provider timeout: every launched E2B desktop must have a bounded
+  `MIMETIC_E2B_TIMEOUT_MS` and `lifecycle.onTimeout=kill`.
+- Provider cleanup: attached watch stop must kill the E2B desktops launched by
+  that run, and completion work must include provider cleanup/readback.
 - Total run count: no arbitrary cap. Do not stop or mark blocked because an
   old attempt count was exceeded; stop only for the dollar cap, wall-clock cap,
-  max-concurrent paid-resource cap, missing proof, or real provider/tool
-  failure.
+  provider timeout/cleanup failure, missing proof, or real provider/tool failure.
 - Wall-clock cap: maximum 2 hours.
 - Usage receipt path: `docs/goals/mimetic-recursive-proof-critical-point/receipts/`.
 - Provider cleanup/readback: after live proof, query running Mimetic OSS
