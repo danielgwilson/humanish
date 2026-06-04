@@ -1,6 +1,6 @@
 objective: "Prove one bounded public-safe recursive Mimetic lane with top-level Observer evidence and nested desktop/mobile browser app evidence."
-status: "in_progress"
-active_task: "agent-authored-proof"
+status: "completed"
+active_task: null
 tasks:
   - id: "packet"
     status: "completed"
@@ -18,8 +18,8 @@ tasks:
     status: "completed"
     summary: "Independent audit found real recursive proof evidence and surfaced package/profile/verifier/provider-cleanup/mode-label issues; each issue was fixed or reclassified under the corrected spend policy."
   - id: "agent-authored-proof"
-    status: "pending"
-    summary: "Actor-first and actor-required readback support was added, but a live run still needs to prove a coding-agent persona authored or materially drove the Mimetic setup/use path rather than deterministic bootstrap alone."
+    status: "completed"
+    summary: "Actor-required resumed live run proved remote coding-agent actorStatus passed while app/nested Observer proof also passed."
 receipts:
   - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/implementation-proof.md"
     status: "completed"
@@ -31,10 +31,12 @@ receipts:
     status: "completed"
   - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/completion-audit.md"
     status: "completed"
+  - path: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
+    status: "completed"
 verification:
-  status: "release_passed_actor_quota_blocked"
-  last_command: "pnpm release:check"
-  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/completion-audit.md"
+  status: "goal_proven"
+  last_command: "pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json"
+  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
 evidence:
   environment_state:
     - "Focused tests for run --app-url and OSS meta-lab bootstrap must pass."
@@ -76,6 +78,10 @@ evidence:
     - "Local codex-exec fanout no longer rejects lane counts above four; MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY defaults to 4 as a bounded-concurrency resource rail."
     - "Release check after actor-preflight and codex-exec bounded-concurrency changes passed: typecheck, 15 test files / 102 tests, build, public-surface scan, skill check, npm pack dry-run."
     - "Goal packet and receipts are included in the recursive-proof branch commit, closing the tracked-packet invariant for this worktree."
+    - "Resumed actor-required live run oss-meta-actor-required-resume-2026-06-04T11-03Z passed after OpenAI credits/limits were fixed: actorStatus passed, appStatus running, nestedVerifyPassed true, nestedObserverPresent true, visualStatus visible, screenshotPresent true."
+    - "pnpm mimetic -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json passed schema, redaction, review-artifact, public-safety, and local-evidence checks."
+    - "Visual screenshot inspection confirmed headed Redux Essentials app windows plus nested Mimetic Observer showing desktop/mobile browser lanes."
+    - "Provider cleanup killed sandbox i39ry62lz2j5a1h12nkx1 and read back zero running Mimetic OSS meta-lab sandboxes."
   screenshots_or_traces:
     - ".mimetic/runs/local-browser-app-proof-clean/screenshots/desktop.png"
     - ".mimetic/runs/local-browser-app-proof-clean/screenshots/mobile.png"
@@ -83,15 +89,15 @@ evidence:
     - ".mimetic/runs/local-browser-app-proof-clean/traces/mobile.json"
     - ".mimetic/runs/oss-meta-2026-06-04T08-33-55-996Z-8854989a/screenshots/oss-01-desktop.png"
     - ".mimetic/runs/oss-meta-2026-06-04T08-33-55-996Z-8854989a/observer/index.html"
+    - ".mimetic/runs/oss-meta-actor-required-resume-2026-06-04T11-03Z/screenshots/oss-01-desktop.png"
+    - ".mimetic/runs/oss-meta-actor-required-resume-2026-06-04T11-03Z/observer/index.html"
   usage_receipts:
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/live-run.md"
+    - "docs/goals/mimetic-recursive-proof-critical-point/receipts/actor-required-success.md"
   missing:
     - "Exact provider dollar usage was not available from the CLI; receipt records bounded commands and observed launch attempts."
     - "Historical debug attempts exceeded the old arbitrary total run-count cap; this is no longer treated as a completion blocker because the corrected policy uses dollar budget, wall-clock budget, max-concurrent running desktops, and provider cleanup/readback."
-    - "Actor-first required Codex evidence timed out in E2B; a supported noninteractive actor surface or better completion strategy is still required."
-    - "Codex API quota is exhausted or unavailable for the key available to this run; actor-authored proof cannot complete until a usable CODEX_API_KEY/Codex auth path is available."
-    - "No CODEX_ACCESS_TOKEN is available in the current local env; remote E2B actor proof still needs usable CODEX_API_KEY quota or an access-token auth path."
-    - "Remote E2B Codex actor proof remains blocked by quota exceeded for the available API-key path, including explicit gpt-5.4-mini."
+    - "This proves one public-safe recursive critical-point lane; broader platform readiness, repeated-run reliability, and multi-step autonomous persona navigation remain future adapter slices."
 completion_audit:
-  status: "phase_change_complete_stronger_goal_open"
-  note: "The deterministic recursive proof lane maps to evidence, but the active stronger goal still needs coding-agent-authored setup/use proof and is currently blocked on usable Codex API quota/auth."
+  status: "complete"
+  note: "One public-safe headed OSS lab lane now maps every active success invariant to current command, disk, browser, Observer, verifier, screenshot, and cleanup evidence."
