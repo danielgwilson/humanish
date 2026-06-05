@@ -416,14 +416,31 @@ export async function preflightOssMetaRepoAccess(args: {
 
     for (const assignment of args.assignments) {
       const repoUrl = `https://github.com/${assignment.repo}.git`;
-      let tokenError: unknown;
 
+      let anonymousError: unknown;
+      try {
+        await runGitRepoAccessProbe(execImpl, root, repoUrl, anonymousGitEnv, args.env);
+        results.push({
+          ok: true,
+          reason: tokenPresent
+            ? "GitHub repo clone access preflight passed with anonymous public clone access."
+            : "GitHub repo clone access preflight passed without token auth.",
+          repo: assignment.repo,
+          streamId: assignment.streamId,
+          tokenPresent
+        });
+        continue;
+      } catch (error) {
+        anonymousError = error;
+      }
+
+      let tokenError: unknown;
       if (tokenGitEnv) {
         try {
           await runGitRepoAccessProbe(execImpl, root, repoUrl, tokenGitEnv, args.env);
           results.push({
             ok: true,
-            reason: "GitHub repo clone access preflight passed with token auth.",
+            reason: "GitHub repo clone access preflight passed with token auth after anonymous clone access failed.",
             repo: assignment.repo,
             streamId: assignment.streamId,
             tokenPresent: true
@@ -434,32 +451,19 @@ export async function preflightOssMetaRepoAccess(args: {
         }
       }
 
-      try {
-        await runGitRepoAccessProbe(execImpl, root, repoUrl, anonymousGitEnv, args.env);
-        results.push({
-          ok: true,
-          reason: tokenPresent
-            ? "GitHub token auth failed, but unauthenticated public clone access passed."
-            : "GitHub repo clone access preflight passed without token auth.",
+      results.push({
+        ok: false,
+        reason: repoAccessFailureReason({
+          anonymousError,
+          redactRepoName: args.redactRepoNames === true,
           repo: assignment.repo,
-          streamId: assignment.streamId,
+          tokenError,
           tokenPresent
-        });
-      } catch (error) {
-        results.push({
-          ok: false,
-          reason: repoAccessFailureReason({
-            error: tokenError ?? error,
-            fallbackError: tokenError ? error : undefined,
-            redactRepoName: args.redactRepoNames === true,
-            repo: assignment.repo,
-            tokenPresent
-          }),
-          repo: assignment.repo,
-          streamId: assignment.streamId,
-          tokenPresent
-        });
-      }
+        }),
+        repo: assignment.repo,
+        streamId: assignment.streamId,
+        tokenPresent
+      });
     }
 
     return results;
@@ -717,20 +721,20 @@ async function readHostActorRepoContext(repoDir: string): Promise<string> {
 }
 
 function repoAccessFailureReason(args: {
-  error: unknown;
-  fallbackError?: unknown;
+  anonymousError: unknown;
   redactRepoName: boolean;
   repo: string;
+  tokenError?: unknown;
   tokenPresent: boolean;
 }): string {
-  const sanitized = sanitizeRepoAccessError(args.error, args.repo, args.redactRepoName);
-  const fallback = args.fallbackError
-    ? ` Anonymous fallback also failed: ${sanitizeRepoAccessError(args.fallbackError, args.repo, args.redactRepoName)}`
+  const anonymous = sanitizeRepoAccessError(args.anonymousError, args.repo, args.redactRepoName);
+  const token = args.tokenError
+    ? ` Token auth also failed: ${sanitizeRepoAccessError(args.tokenError, args.repo, args.redactRepoName)}`
     : "";
   const authHint = args.tokenPresent
     ? "A GitHub token was present, but `git ls-remote` could not read the repo with token or anonymous access. Check token repo access and scopes."
     : "No GitHub token was present. Public repos should pass unauthenticated; private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT with read access.";
-  return `${authHint} ${sanitized}${fallback}`.replace(/\s+/g, " ").trim().slice(0, 420);
+  return `${authHint} Anonymous access failed: ${anonymous}${token}`.replace(/\s+/g, " ").trim().slice(0, 420);
 }
 
 function sanitizeRepoAccessError(error: unknown, repo: string, redactRepoName: boolean): string {
@@ -3964,17 +3968,23 @@ ASKPASS
 chmod 700 "$ASKPASS"
 clone_repo() {
   local repo_url=${shellQuote(repoUrl)}
+  if GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ASKPASS=false SSH_ASKPASS=false GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth=1 "$repo_url" "$APP_DIR"; then
+    echo "clone_auth=anonymous"
+    return 0
+  fi
+  echo "clone_auth=anonymous_failed retry=token_clone"
+  rm -rf "$APP_DIR"
+
   if [[ -n "$MIMETIC_PRIVATE_GITHUB_TOKEN" ]]; then
     if GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone --depth=1 "$repo_url" "$APP_DIR"; then
       echo "clone_auth=token"
       return 0
     fi
-    echo "clone_auth=token_failed retry=anonymous_public_clone"
+    echo "clone_auth=token_failed"
     rm -rf "$APP_DIR"
   fi
 
-  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ASKPASS=false SSH_ASKPASS=false GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth=1 "$repo_url" "$APP_DIR"
-  echo "clone_auth=anonymous"
+  return 1
 }
 clone_repo
 cd "$APP_DIR"
