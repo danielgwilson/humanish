@@ -2232,7 +2232,7 @@ function buildMetaFeedbackCandidates(args: {
         proposed_next_state: "adapter-hardening",
         acceptance_proof: [
           "npm view mimetic-cli version",
-          "npx --package mimetic-cli mimetic run --help | grep -- --app-url",
+          "npx --yes --package mimetic-cli mimetic run --help | grep -- --app-url",
           `pnpm mimetic -- verify --run ${args.runId} --json`
         ]
       });
@@ -2338,13 +2338,13 @@ function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoN
     "2. Inspect the package manager, dev scripts, README, and app shape.",
     "3. Get the repo into a local runnable dev mode if feasible.",
     "4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.",
-    "5. Install Mimetic as a dev dependency with the package manager the repo already uses.",
-    "6. Run `npx mimetic init --yes` or the package-manager equivalent.",
+    "5. Install Mimetic as a dev dependency with the package manager the repo already uses. The package is `mimetic-cli`; the binary is `mimetic`.",
+    "6. Run `npx --no-install mimetic init --yes` or the package-manager equivalent. Do not run bare `npx mimetic` unless you have confirmed it resolves the local `mimetic-cli` binary.",
     "7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.",
     "8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.",
-    "9. Run `npx mimetic run --help` and verify `--app-url` is available.",
-    "10. If the app is running locally, run `npx mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.",
-    "11. After `run --app-url`, render or open the nested Mimetic Observer with `npx mimetic watch --run latest --detach --no-open --json` and keep it visible.",
+    "9. Run `npx --no-install mimetic run --help` and verify `--app-url` is available. If the local binary is missing, install `mimetic-cli`; one-shot fallback is `npx --yes --package mimetic-cli@latest mimetic run --help`.",
+    "10. If the app is running locally, run `npx --no-install mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.",
+    "11. After `run --app-url`, render or open the nested Mimetic Observer with `npx --no-install mimetic watch --run latest --detach --no-open --json` and keep it visible.",
     "12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.",
     "13. Record public-safe blockers and evidence paths only.",
     "",
@@ -4164,7 +4164,7 @@ start_actor_attempt() {
 set +e
 APP_DIR="$APP_DIR"
 if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
-  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Your goal is useful product-specific user-study setup, not ceremonial install proof. Inspect package.json, README, routes, scripts, and the running app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Replace starter mimetic/coverage-map.md and mimetic/coverage-matrix.md with app-aware screens, roles, states, happy paths, and at least one sad/friction path. Author at least two public-safe app-specific personas and two desktop/mobile browser scenarios; avoid generic first-run-smoke only. Start the local app if feasible. Run npx mimetic run --help and verify --app-url is available. If the app is running locally, run npx mimetic run --app-url <loopback-url> --sims 2; do not use mimetic watch --sims as app behavior proof. After run --app-url, render or open the nested Mimetic Observer with npx mimetic watch --run latest --detach --no-open --json if feasible. Final summary must include personas/scenarios created, product journeys covered, one observed friction/improvement or none observed, and evidence paths. Do not stop at install/init proof. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
+  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Your goal is useful product-specific user-study setup, not ceremonial install proof. Inspect package.json, README, routes, scripts, and the running app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed; package=mimetic-cli, binary=mimetic. Run npx --no-install mimetic init --yes if Mimetic is not initialized. Replace starter mimetic/coverage-map.md and mimetic/coverage-matrix.md with app-aware screens, roles, states, happy paths, and at least one sad/friction path. Author at least two public-safe app-specific personas and two desktop/mobile browser scenarios; avoid generic first-run-smoke only. Start the local app if feasible. Run npx --no-install mimetic run --help and verify --app-url is available. If the local binary is missing, install mimetic-cli; one-shot fallback is npx --yes --package mimetic-cli@latest mimetic run --help. If the app is running locally, run npx --no-install mimetic run --app-url <loopback-url> --sims 2; do not use mimetic watch --sims as app behavior proof. After run --app-url, render or open the nested Mimetic Observer with npx --no-install mimetic watch --run latest --detach --no-open --json if feasible. Final summary must include personas/scenarios created, product journeys covered, one observed friction/improvement or none observed, and evidence paths. Do not stop at install/init proof. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
 else
   PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Once the draft is written, exit successfully. Do not wait on long-running watchers. Do not print secrets, do not commit, do not push, and do not file issues.'
 fi
@@ -4299,7 +4299,7 @@ install_mimetic_cli
 
 echo
 echo "== mimetic init =="
-npx mimetic init --yes
+npx --no-install mimetic init --yes
 apply_host_actor_plan || true
 
 start_target_app_surface
@@ -4307,18 +4307,18 @@ start_target_app_surface
 echo
 echo "== nested mimetic proof =="
 if [[ "$APP_STATUS" == "running" && -n "$APP_URL" ]]; then
-  npx mimetic run --app-url "$APP_URL" --sims 2 --run-id ${shellQuote(runId)}
+  npx --no-install mimetic run --app-url "$APP_URL" --sims 2 --run-id ${shellQuote(runId)}
 else
   echo "app_not_running_for_browser_proof=$APP_REASON"
-  npx mimetic run --dry-run --run-id ${shellQuote(runId)}
+  npx --no-install mimetic run --dry-run --run-id ${shellQuote(runId)}
 fi
-if npx mimetic verify --run latest; then
+if npx --no-install mimetic verify --run latest; then
   NESTED_VERIFY_STATUS=passed
 else
   NESTED_VERIFY_STATUS=failed
   exit 1
 fi
-npx mimetic watch --run latest --detach --no-open
+npx --no-install mimetic watch --run latest --detach --no-open
 open_nested_observer "opening nested observer"
 arrange_lab_windows
 if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" != "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then

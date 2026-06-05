@@ -474,7 +474,7 @@ describe("OSS lab command", () => {
       await execFileAsync("bash", ["-n", scriptPath]);
 
       expect(script).toContain("start_target_app_surface");
-      expect(script).toContain('npx mimetic run --app-url "$APP_URL" --sims 2');
+      expect(script).toContain('npx --no-install mimetic run --app-url "$APP_URL" --sims 2');
       expect(script).toContain('open_browser_url "$APP_URL" app-desktop');
       expect(script).toContain("arrange_lab_windows");
       expect(script).toContain("visualStatus");
@@ -495,7 +495,7 @@ describe("OSS lab command", () => {
       expect(script).toContain("Do not wait on long-running watchers");
       expect(script).toContain("coverage-map.md");
       expect(script).toContain("Do not stop at install/init proof");
-      expect(script).toContain("Run npx mimetic run --help and verify --app-url is available");
+      expect(script).toContain("Run npx --no-install mimetic run --help and verify --app-url is available");
       expect(script).toContain("do not use mimetic watch --sims as app behavior proof");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_MODEL");
       expect(script).toContain("actor_log_tail_begin");
@@ -591,8 +591,8 @@ describe("OSS lab command", () => {
       }>;
     };
     expect(bundle.mode).toBe("dry-run");
-    expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic init --yes");
-    expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic run --app-url");
+    expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install mimetic init --yes");
+    expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install mimetic run --app-url");
     expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/repo-01");
   });
 
@@ -959,7 +959,7 @@ describe("OSS lab command", () => {
           },
           completion: {
             actorLogPath: "/remote/it-tools/actor.log",
-            actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
+            actorLogTail: "codex actor attempt\nnpx --no-install mimetic init --yes\nactor_exit=0",
             actorLastMessageTail: "Set up Mimetic, but the installed CLI does **not** expose run --app-url in the proof path.",
             actorPid: 4321,
             actorStatus: "running",
@@ -1077,7 +1077,7 @@ describe("OSS lab command", () => {
           completion: {
             checkedAt: "2026-06-02T08:31:10.000Z",
             exitCode: 1,
-            logTail: "npx mimetic verify --run latest\nverification failed",
+            logTail: "npx --no-install mimetic verify --run latest\nverification failed",
             nestedObserverPresent: false,
             nestedVerifyPassed: false,
             reason: "Bootstrap exited before nested Mimetic proof completed.",
@@ -1100,7 +1100,7 @@ describe("OSS lab command", () => {
     expect(bundle.review.summary).toContain("failed");
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
-      actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
+      actorLogTail: "codex actor attempt\nnpx --no-install mimetic init --yes\nactor_exit=0",
       actorLastMessageTail: "Set up Mimetic, but the installed CLI does **not** expose run --app-url in the proof path.",
       actorStatus: "running",
       appStatus: "running",
@@ -1114,7 +1114,7 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor last message tail:");
     expect(bundle.streams[0]?.terminal?.tail).toContain("study_quality: ceremonial");
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor log tail:");
-    expect(bundle.streams[0]?.terminal?.tail).toContain("npx mimetic init --yes");
+    expect(bundle.streams[0]?.terminal?.tail).toContain("npx --no-install mimetic init --yes");
     expect(bundle.streams[0]).toMatchObject({
       transport: "sse",
       embed: { kind: "screenshot", url: "../screenshots/oss-01-desktop.png" },
