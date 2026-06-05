@@ -1,0 +1,60 @@
+objective: "Run a bounded public-safe private-repo agent dogfood study for Mimetic and classify setup quality, meaningful use, feedback, blockers, and cleanup evidence."
+status: ready_for_goal
+active_task: null
+tasks:
+  - id: preflight
+    status: pending
+    summary: "Load ignored env names, prove GitHub private-repo access without printing values, and confirm provider rails."
+  - id: four_lane_trial
+    status: pending
+    summary: "Run a redacted four-lane headed E2B OSS meta-lab trial against the authorized private repo set."
+  - id: lane_evaluation
+    status: pending
+    summary: "Evaluate each lane for setup correctness, filesystem evidence, agent evidence, meaningful use, and feedback quality."
+  - id: mimetic_iteration
+    status: pending
+    summary: "Fix or ticket Mimetic-owned blockers discovered by the study."
+  - id: independent_audit
+    status: pending
+    summary: "Map every success invariant to evidence before any completion claim."
+receipts:
+  - path: docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md
+    summary: "Initial private-repo readiness proof: auth fixed, one-lane pass, four-lane 3/4 pass, #86 blocker filed, and sandbox cleanup killed 5/5."
+verification:
+  status: ready
+  last_command: "private redacted preflight plus one-lane and four-lane headed E2B trials; see initial receipt"
+  last_artifact: "docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md"
+evidence:
+  environment_state:
+    - "GH_TOKEN/E2B_API_KEY/OPENAI_API_KEY names loaded from ignored env file without printing values."
+    - "Credential-isolated private-repo preflight passed 4/4 assigned repos."
+  independent_checks: []
+  observer_runs:
+    - "oss-meta-2026-06-05T06-06-30-955Z-1914b164"
+    - "oss-meta-2026-06-05T06-07-41-618Z-5b4d1727"
+  setup_quality: []
+  actor_feedback: []
+  usage_receipts: []
+  cleanup_readbacks:
+    - "Killed 5/5 disposable E2B sandboxes after initial proof runs."
+  missing:
+    - "Formal actor-required four-repo evaluation receipt has not been produced yet."
+    - "Per-lane meaningful-use and feedback classification has not been produced yet."
+completion_audit:
+  status: pending
+  notes: []
+provider_spend_policy:
+  providers:
+    - E2B Desktop
+    - OpenAI/Codex
+    - GitHub read access
+  dollar_cap_usd: 30
+  wall_clock_cap_hours: 3
+  max_concurrent_e2b_desktops: 4
+  total_run_count_cap: null
+  cleanup_required: true
+public_safety:
+  committed_private_repo_labels: forbidden
+  committed_private_source_snippets: forbidden
+  committed_private_screenshots: forbidden
+  raw_private_artifacts: ignored_runtime_only
