@@ -748,16 +748,25 @@ html[data-theme="light"] .scrim { background: rgba(20,28,40,.32); }
   .lane-count .lc-label { display: none; }
 }
 @media (max-width: 860px) {
-  .focus { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .focus { display: block; height: 100%; min-height: 0; overflow-y: auto; }
   .focus-rail { display: none; }
-  .focus-side {
-    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 72;
-    max-height: 62vh; border-left: none; border-top: 1px solid var(--line-2);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: var(--shadow-pop);
-    transform: translateY(calc(100% - 52px)); transition: transform .3s var(--ease);
+  .focus-stage { min-height: auto; }
+  .focus-bar { position: sticky; top: 0; z-index: 25; }
+  .focus-stage-area {
+    display: block; min-height: min(60vh, 560px); height: auto;
+    padding: 14px; overflow: visible;
   }
-  .focus-side[data-sheet="open"] { transform: translateY(0); }
-  .sheet-grip { display: flex; }
+  .focus-frame {
+    width: 100%; height: auto; max-height: none;
+    min-height: 280px;
+  }
+  .focus-side {
+    position: relative; left: auto; right: auto; bottom: auto; top: auto; z-index: auto;
+    min-height: 360px; max-height: none; border-left: none; border-top: 1px solid var(--line-2);
+    border-radius: 0; box-shadow: none; transform: none;
+  }
+  .focus-side[data-sheet="open"], .focus-side[data-sheet="closed"] { transform: none; }
+  .sheet-grip { display: none; }
 }
 .sheet-grip { display: none; align-items: center; justify-content: center; gap: 8px; height: 40px; flex: none; border-bottom: 1px solid var(--line); cursor: grab; }
 .sheet-grip::before { content: ""; width: 36px; height: 4px; border-radius: 2px; background: var(--line-3); }
@@ -995,9 +1004,10 @@ export function observerClientJs(): string {
   }
 
   // ---------------------------------------------------------------- state
+  var initialFocusId = focusFromHash();
   var S = {
-    view: "grid",
-    focusedId: focusFromHash(),
+    view: initialFocusId ? "focus" : "grid",
+    focusedId: initialFocusId,
     statusSel: [],
     kindSel: [],
     query: "",

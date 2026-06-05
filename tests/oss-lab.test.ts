@@ -21,6 +21,7 @@ import {
   collectOssMetaLabRemoteEnv,
   normalizeHostActorRecommendedProof,
   preflightOssMetaActorApiKey,
+  preflightOssMetaRepoAccess,
   runOssMetaLab,
   sandboxIdsForOssMetaLabCleanup
 } from "../src/oss-meta-lab.js";
@@ -168,6 +169,127 @@ describe("OSS lab command", () => {
       MIMETIC_CODEX_API_KEY: "openai-token-test",
       MIMETIC_GITHUB_TOKEN: "github-token-test"
     });
+
+    expect(collectOssMetaLabPrivateEnv({
+      GITHUB_PAT: "github-pat-test"
+    })).toEqual({
+      MIMETIC_GITHUB_TOKEN: "github-pat-test"
+    });
+  });
+
+  it("preflights GitHub repo clone access with askpass-scoped token auth", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-"));
+    const [assignment] = buildOssRepoAssignments(["danielgwilson/nobg"], 1);
+    if (!assignment) {
+      throw new Error("Missing assignment.");
+    }
+    const calls: Array<{
+      args: string[];
+      env: NodeJS.ProcessEnv;
+      file: string;
+    }> = [];
+
+    try {
+      const result = await preflightOssMetaRepoAccess({
+        assignments: [assignment],
+        cwd,
+        env: {
+          GITHUB_TOKEN: "github-token-test"
+        },
+        execFileImpl: async (file, args, options) => {
+          calls.push({
+            args: args.map(String),
+            env: options?.env ?? {},
+            file
+          });
+          return { stderr: "", stdout: "" };
+        }
+      });
+
+      expect(result).toEqual([expect.objectContaining({
+        ok: true,
+        reason: "GitHub repo clone access preflight passed with token auth.",
+        tokenPresent: true
+      })]);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.file).toBe("git");
+      expect(calls[0]?.args).toEqual([
+        "ls-remote",
+        "--exit-code",
+        "https://github.com/danielgwilson/nobg.git",
+        "HEAD"
+      ]);
+      expect(calls[0]?.env.GIT_ASKPASS).toContain("git-askpass-");
+      expect(calls[0]?.env.GIT_TERMINAL_PROMPT).toBe("0");
+      expect(calls[0]?.env.MIMETIC_GITHUB_TOKEN_RUNTIME).toBe("github-token-test");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to anonymous repo access when token auth fails for a public repo", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-fallback-"));
+    const [assignment] = buildOssRepoAssignments(["danielgwilson/nobg"], 1);
+    if (!assignment) {
+      throw new Error("Missing assignment.");
+    }
+    let calls = 0;
+
+    try {
+      const result = await preflightOssMetaRepoAccess({
+        assignments: [assignment],
+        cwd,
+        env: {
+          GITHUB_TOKEN: "bad-token-test"
+        },
+        execFileImpl: async (_file, _args, options) => {
+          calls += 1;
+          if (options.env?.MIMETIC_GITHUB_TOKEN_RUNTIME) {
+            throw new Error("token auth rejected");
+          }
+          return { stderr: "", stdout: "" };
+        }
+      });
+
+      expect(calls).toBe(2);
+      expect(result).toEqual([expect.objectContaining({
+        ok: true,
+        reason: "GitHub token auth failed, but unauthenticated public clone access passed.",
+        tokenPresent: true
+      })]);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("classifies missing GitHub clone auth without leaking private repo labels when redacted", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-fail-"));
+    const [assignment] = buildOssRepoAssignments(["danielgwilson/nobg"], 1);
+    if (!assignment) {
+      throw new Error("Missing assignment.");
+    }
+
+    try {
+      const result = await preflightOssMetaRepoAccess({
+        assignments: [assignment],
+        cwd,
+        env: {},
+        redactRepoNames: true,
+        execFileImpl: async () => {
+          throw new Error("Command failed: git ls-remote https://github.com/danielgwilson/nobg.git HEAD");
+        }
+      });
+
+      expect(result).toEqual([expect.objectContaining({
+        ok: false,
+        tokenPresent: false
+      })]);
+      expect(result[0]?.reason).toContain("private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT");
+      expect(result[0]?.reason).toContain("[redacted-authorized-repo]");
+      expect(result[0]?.reason).not.toContain("danielgwilson/nobg");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("classifies actor API-key quota/auth preflight failures without leaking keys", async () => {
@@ -367,6 +489,8 @@ describe("OSS lab command", () => {
       expect(script).toContain('CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
       expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="$MIMETIC_PRIVATE_CODEX_API_KEY" MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"');
       expect(script).toContain('MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git clone');
+      expect(script).toContain("clone_auth=token_failed retry=anonymous_public_clone");
+      expect(script).toContain("clone_auth=anonymous");
       expect(script).not.toContain("command -v codex");
       expect(script).not.toContain("--ask-for-approval");
       expect(script).not.toContain('CODEX_API_KEY="\\$OPENAI_API_KEY"');
