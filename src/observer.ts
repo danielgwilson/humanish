@@ -144,7 +144,7 @@ export async function serveObserver(
   const observerPath = path.join(cwd, result.observerPath);
   const runRoot = path.dirname(path.dirname(observerPath));
   const proofRoot = path.dirname(runRoot);
-  const runtimeStreamUrls = observerRuntimeStreamUrls.get(result) ?? [];
+  const runtimeStreamUrls = () => observerRuntimeStreamUrls.get(result) ?? [];
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
@@ -164,11 +164,11 @@ export async function serveObserver(
       const runRoute = matchRunRoute(url.pathname);
       if (runRoute) {
         const targetRoot = path.join(proofRoot, runRoute.runId);
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runtimeStreamUrls);
+        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runtimeStreamUrls());
         return;
       }
 
-      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response, runtimeStreamUrls);
+      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response, runtimeStreamUrls());
     } catch (error) {
       writeResponse(response, 500, error instanceof Error ? error.message : String(error), "text/plain; charset=utf-8");
     }

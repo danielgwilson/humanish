@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { observerClientJs } from "../src/observer-assets.js";
 import { createProgram } from "../src/program.js";
-import { renderObserver, serveObserver } from "../src/observer.js";
+import { attachObserverRuntimeStreamUrls, renderObserver, serveObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
 import { runDryRun } from "../src/run.js";
 
@@ -465,6 +465,39 @@ describe("observer rendering", () => {
         const dataUrl = new URL("observer-data.json", server.url);
         const data = await (await fetch(dataUrl)).json() as { schema: string };
         expect(data.schema).toBe(OBSERVER_DATA_SCHEMA);
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it("hydrates runtime stream URLs after the observer server is already open", async () => {
+    await withRunBundle(async (cwd) => {
+      const rendered = await renderObserver(cwd, "latest");
+      const server = await serveObserver(rendered, { port: 0 });
+
+      try {
+        const dataUrl = new URL("observer-data.json", server.url);
+        const before = await (await fetch(dataUrl)).json() as {
+          streams: Array<{ embed?: { kind: string; url?: string }; id: string; url?: string }>;
+        };
+        const streamId = before.streams[0]?.id;
+        expect(streamId).toBeTruthy();
+        expect(before.streams[0]?.url).toBeUndefined();
+
+        attachObserverRuntimeStreamUrls(rendered, [{
+          streamId: streamId!,
+          url: "https://stream.example/live-desktop"
+        }]);
+
+        const after = await (await fetch(dataUrl)).json() as {
+          streams: Array<{ embed?: { kind: string; url?: string }; id: string; transport: string; url?: string }>;
+        };
+        expect(after.streams[0]).toMatchObject({
+          embed: { kind: "iframe", url: "https://stream.example/live-desktop" },
+          transport: "sse",
+          url: "https://stream.example/live-desktop"
+        });
       } finally {
         await server.close();
       }

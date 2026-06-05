@@ -37,6 +37,7 @@ export interface OssMetaLabOptions {
   count?: number;
   cwd: string;
   dryRun?: boolean;
+  onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   open?: boolean;
   redactRepoNames?: boolean;
   repos?: string[];
@@ -824,6 +825,57 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const publicAssignments = redactAssignments(assignments, redactRepoNames);
   const publicRepos = redactRepoNames ? publicAssignments.map((assignment) => assignment.repo) : repos;
   const runId = options.runId ?? makeMetaRunId();
+  const runResult: RunResult = await runDryRun({
+    cwd,
+    dryRun: true,
+    runId,
+    simCount: count
+  });
+
+  if (!runResult.ok || !runResult.runId) {
+    return {
+      schema: OSS_META_LAB_SCHEMA,
+      ok: false,
+      assignments: publicAssignments,
+      count,
+      cwd,
+      dryRun,
+      error: {
+        code: "MIMETIC_META_RUN_FAILED",
+        message: runResult.error?.message ?? "Failed to create OSS meta-lab run bundle."
+      },
+      liveRequested,
+      repos: publicRepos,
+      sandboxes: [],
+      warnings: [...warnings, ...runResult.warnings]
+    };
+  }
+
+  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
+  const createdAt = new Date().toISOString();
+  const persistScreenshots = !redactRepoNames;
+  let liveDesktops: OssMetaLabLiveDesktop[] = [];
+  let substrateMissingKeys = [...missingKeys];
+  await mkdir(artifactRoot, { recursive: true });
+
+  const initialBundle = buildMetaBundle({
+    assignments,
+    createdAt,
+    cwd,
+    dryRun,
+    liveDesktops,
+    liveRequested,
+    missingKeys: substrateMissingKeys,
+    redactRepoNames,
+    runId
+  });
+  await writeMetaBundleArtifacts(artifactRoot, initialBundle);
+
+  let observer = await renderObserver(cwd, runId, { open: false });
+  if (observer.ok && options.onObserverReady) {
+    await options.onObserverReady(observer as ObserverResult & { ok: true });
+  }
+
   const hostActorPlanResults = hostActorMode && missingKeys.length === 0
     ? await createHostActorPlans({
         assignments,
@@ -854,7 +906,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     ? await preflightOssMetaActorApiKey({ env: process.env })
     : undefined;
   const actorAuthPreflightBlocked = actorAuthPreflight !== undefined && !actorAuthPreflight.ok;
-  const substrateMissingKeys = [
+  substrateMissingKeys = [
     ...missingKeys,
     ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
     ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
@@ -873,7 +925,6 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       warnings.push(`Local mimetic-cli package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`);
     }
   }
-  let liveDesktops: OssMetaLabLiveDesktop[] = [];
   if (liveRequested && missingKeys.length === 0 && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
       liveDesktops = await launchLiveDesktops(assignments, {
@@ -933,37 +984,6 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     warnings.push(`${failedLiveDesktopCount} E2B desktop launch${failedLiveDesktopCount === 1 ? "" : "es"} failed; see stream events in the Observer.`);
   }
 
-  const runResult: RunResult = await runDryRun({
-    cwd,
-    dryRun: true,
-    runId,
-    simCount: count
-  });
-
-  if (!runResult.ok || !runResult.runId) {
-    return {
-      schema: OSS_META_LAB_SCHEMA,
-      ok: false,
-      assignments: publicAssignments,
-      count,
-      cwd,
-      dryRun,
-      error: {
-        code: "MIMETIC_META_RUN_FAILED",
-        message: runResult.error?.message ?? "Failed to create OSS meta-lab run bundle."
-      },
-      liveRequested,
-      repos: publicRepos,
-      sandboxes: liveDesktops.map(formatLiveDesktopForResult),
-      warnings: [...warnings, ...runResult.warnings]
-    };
-  }
-
-  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
-  const bundlePath = path.join(artifactRoot, "run.json");
-  const createdAt = new Date().toISOString();
-  const persistScreenshots = !redactRepoNames;
-  await mkdir(artifactRoot, { recursive: true });
   if (persistScreenshots) {
     const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops);
     warnings.push(...screenshotSummary.warnings);
@@ -984,12 +1004,10 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     runId
   });
 
-  await writeJson(bundlePath, bundle);
-  await writeJson(path.join(artifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(artifactRoot, "review.md"), renderMetaReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeMetaBundleArtifacts(artifactRoot, bundle);
 
-  const observer = await renderObserver(cwd, runId, { open: options.open === true });
+  const finalObserver = await renderObserver(cwd, runId, { open: options.open === true });
+  Object.assign(observer, finalObserver);
   if (observer.ok) {
     attachObserverRuntimeStreamUrls(
       observer,
@@ -1049,6 +1067,13 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   }
 
   return result;
+}
+
+async function writeMetaBundleArtifacts(artifactRoot: string, bundle: RunBundle): Promise<void> {
+  await writeJson(path.join(artifactRoot, "run.json"), bundle);
+  await writeJson(path.join(artifactRoot, "review.json"), bundle.review);
+  await writeFile(path.join(artifactRoot, "review.md"), renderMetaReviewMarkdown(bundle), "utf8");
+  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 }
 
 export function startOssMetaLabLiveRefresh(
@@ -2183,10 +2208,7 @@ async function refreshOssMetaLabLiveRuntime(
     redactRepoNames: runtime.redactRepoNames,
     runId: runtime.runId
   });
-  await writeJson(path.join(runtime.artifactRoot, "run.json"), bundle);
-  await writeJson(path.join(runtime.artifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(runtime.artifactRoot, "review.md"), renderMetaReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(runtime.artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeMetaBundleArtifacts(runtime.artifactRoot, bundle);
   await renderObserver(runtime.cwd, runtime.runId, { open: false });
 }
 

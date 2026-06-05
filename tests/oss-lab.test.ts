@@ -548,6 +548,52 @@ describe("OSS lab command", () => {
     }
   });
 
+  it("renders an OSS meta-lab placeholder Observer before live substrate is available", async () => {
+    const previousE2b = process.env.E2B_API_KEY;
+    const previousOpenai = process.env.OPENAI_API_KEY;
+    delete process.env.E2B_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    try {
+      const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-immediate-observer-"));
+      let readyObserverPath = "";
+      let readyObserverDataPath = "";
+      const result = await runOssMetaLab({
+        count: 1,
+        cwd,
+        onObserverReady: async (observer) => {
+          readyObserverPath = observer.observerPath ?? "";
+          readyObserverDataPath = observer.observerDataPath ?? "";
+          const observerData = JSON.parse(await readFile(path.join(cwd, readyObserverDataPath), "utf8")) as {
+            streams: Array<{ embed: { kind: string }; status: string }>;
+          };
+          expect(observerData.streams[0]).toMatchObject({
+            embed: { kind: "placeholder" },
+            status: "blocked"
+          });
+        },
+        redactRepoNames: true,
+        repos: ["CorentinTh/it-tools"],
+        runId: "oss-meta-immediate-observer-test"
+      });
+
+      expect(result.ok).toBe(true);
+      expect(readyObserverPath).toBe(".mimetic/runs/oss-meta-immediate-observer-test/observer/index.html");
+      expect(readyObserverDataPath).toBe(".mimetic/runs/oss-meta-immediate-observer-test/observer/observer-data.json");
+    } finally {
+      if (previousE2b === undefined) {
+        delete process.env.E2B_API_KEY;
+      } else {
+        process.env.E2B_API_KEY = previousE2b;
+      }
+      if (previousOpenai === undefined) {
+        delete process.env.OPENAI_API_KEY;
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenai;
+      }
+    }
+  });
+
   it("fails actor-required live launch closed when Codex auth is absent", async () => {
     const previousE2b = process.env.E2B_API_KEY;
     const previousOpenai = process.env.OPENAI_API_KEY;

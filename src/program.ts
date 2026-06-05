@@ -984,43 +984,52 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const wantsFollow = !wantsMachine && options.detach !== true && options.dryRun !== true;
       const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
       const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
-      const result = await runOssMetaLab({
-        ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
-        cwd: options.cwd,
-        open: wantsFollow ? false : shouldOpen,
-        ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
-        repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
-        ...(count === null ? { count: Number.NaN } : { count }),
-        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.runId === undefined ? {} : { runId: options.runId })
-      });
-
       let server: ObserverServer | null = null;
-      let output = result;
       let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
-      if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
+      let result: OssMetaLabResult;
+      try {
+        result = await runOssMetaLab({
+          ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
+          cwd: options.cwd,
+          ...(wantsFollow
+            ? {
+                onObserverReady: async (observer) => {
+                  if (!server) {
+                    server = await serveObserver(observer, { open: shouldOpen, port });
+                  }
+                }
+              }
+            : {}),
+          open: wantsFollow ? false : shouldOpen,
+          ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
+          repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
+          ...(count === null ? { count: Number.NaN } : { count }),
+          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+          ...(options.runId === undefined ? {} : { runId: options.runId })
+        });
+      } catch (error) {
+        const earlyServer = server as ObserverServer | null;
+        await earlyServer?.close().catch((cleanupError: unknown) => {
+          io.writeErr(`watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`);
+        });
+        server = null;
+        throw error;
+      }
+
+      let output = result;
+      if (server && shouldServeOssMetaLabObserver(result, { wantsFollow: true })) {
+        liveRefresh = startOssMetaLabLiveRefresh(result);
+        output = withOssMetaLabServer(result, server);
+      } else if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
         server = await serveObserver(result.observer, { open: shouldOpen, port });
         liveRefresh = startOssMetaLabLiveRefresh(result);
-        output = {
-          ...result,
-          observer: {
-            ...result.observer,
-            observerUrl: server.url,
-            serverUrl: server.url,
-            opened: server.opened,
-            ...(server.openCommand ? { openCommand: server.openCommand } : {}),
-            warnings: [
-              ...result.observer.warnings,
-              "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
-              ...(server.warning ? [server.warning] : [])
-            ]
-          },
-          warnings: [
-            ...result.warnings,
-            "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
-            ...(server.warning ? [server.warning] : [])
-          ]
-        };
+        output = withOssMetaLabServer(result, server);
+      } else {
+        const earlyServer = server as ObserverServer | null;
+        await earlyServer?.close().catch((error: unknown) => {
+          io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+        });
+        server = null;
       }
 
       const exitCode = exitCodeForOssMetaLab(output);
@@ -1276,24 +1285,52 @@ async function runOssMetaLabCommand(args: {
   const repoOverrideRequested = (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
   const defaultRedactRepos = repoOverrideRequested ? true : args.manifest.defaults?.redactRepos;
   const redactRepoNames = args.options.redactRepos ?? defaultRedactRepos;
-  const result = await runOssMetaLab({
-    ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
-    cwd: args.options.cwd,
-    open: wantsFollow ? false : shouldOpen,
-    ...(dryRun === undefined ? {} : { dryRun }),
-    ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
-    repos: labRepos(args.options, args.manifest),
-    ...(count === null ? { count: Number.NaN } : { count }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
-  });
-
   let server: ObserverServer | null = null;
-  let output = result;
   let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
-  if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
+  let result: OssMetaLabResult;
+  try {
+    result = await runOssMetaLab({
+      ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
+      cwd: args.options.cwd,
+      ...(wantsFollow
+        ? {
+            onObserverReady: async (observer) => {
+              if (!server) {
+                server = await serveObserver(observer, { open: shouldOpen, port });
+              }
+            }
+          }
+        : {}),
+      open: wantsFollow ? false : shouldOpen,
+      ...(dryRun === undefined ? {} : { dryRun }),
+      ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
+      repos: labRepos(args.options, args.manifest),
+      ...(count === null ? { count: Number.NaN } : { count }),
+      ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    });
+  } catch (error) {
+    const earlyServer = server as ObserverServer | null;
+    await earlyServer?.close().catch((cleanupError: unknown) => {
+      args.io.writeErr(`watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`);
+    });
+    server = null;
+    throw error;
+  }
+
+  let output = result;
+  if (server && shouldServeOssMetaLabObserver(result, { wantsFollow: true })) {
+    liveRefresh = startOssMetaLabLiveRefresh(result);
+    output = withOssMetaLabServer(result, server);
+  } else if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
     server = await serveObserver(result.observer, { open: shouldOpen, port });
     liveRefresh = startOssMetaLabLiveRefresh(result);
     output = withOssMetaLabServer(result, server);
+  } else {
+    const earlyServer = server as ObserverServer | null;
+    await earlyServer?.close().catch((error: unknown) => {
+      args.io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+    });
+    server = null;
   }
 
   const exitCode = exitCodeForOssMetaLab(output);
