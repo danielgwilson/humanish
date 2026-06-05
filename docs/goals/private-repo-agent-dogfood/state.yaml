@@ -23,6 +23,9 @@ tasks:
   - id: post_publish_binary_resolution
     status: completed
     summary: "After publishing 0.1.5, rerun the four redacted lanes, verify 3/4 app-url proof success, classify the remaining stale-binary command path, and prepare the 0.1.6 local-bin fix."
+  - id: post_016_confirmation
+    status: completed
+    summary: "After publishing 0.1.6, rerun the four redacted lanes, verify 4/4 app-url proof success, confirm zero feedback candidates, and clean up 4/4 provider desktops."
 receipts:
   - path: docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md
     summary: "Orientation receipt only: auth path was proven, one-lane pass and four-lane 3/4 pass were observed, #86 blocker was filed, and sandbox cleanup killed 5/5. Future goals must rerun current proof before completion."
@@ -34,10 +37,12 @@ receipts:
     summary: "Follow-up observe/improve/observe loop: four redacted lanes reached high-leverage app-aware setup, app-url blocker feedback was captured honestly, redaction scan passed, and provider cleanup killed 4/4."
   - path: docs/goals/private-repo-agent-dogfood/receipts/post-publish-binary-resolution-2026-06-05.md
     summary: "Post-publish 0.1.5 rerun: four lanes passed top-level health, 3/4 app-url proof succeeded, one lane exposed a bare-npx stale-binary path, cleanup killed 4/4, and the 0.1.6 branch pins local-bin execution."
+  - path: docs/goals/private-repo-agent-dogfood/receipts/post-016-confirmation-2026-06-05.md
+    summary: "Post-0.1.6 confirmation: four lanes passed top-level health, 4/4 app-url proof succeeded, feedback candidates dropped to zero, and cleanup killed 4/4."
 verification:
   status: passed
-  last_command: "pnpm mimetic -- verify --run oss-meta-2026-06-05T16-07-27-703Z-1ce7e253 --json"
-  last_artifact: "docs/goals/private-repo-agent-dogfood/receipts/post-publish-binary-resolution-2026-06-05.md"
+  last_command: "pnpm mimetic -- verify --run oss-meta-2026-06-05T16-25-58-003Z-515846ab --json"
+  last_artifact: "docs/goals/private-repo-agent-dogfood/receipts/post-016-confirmation-2026-06-05.md"
 evidence:
   environment_state:
     - "GH_TOKEN/E2B_API_KEY/OPENAI_API_KEY names loaded from ignored env file without printing values."
@@ -45,6 +50,7 @@ evidence:
     - "Formal run verified 4/4 redacted lanes with running app surfaces, nested verification, nested Observer presence, visible headed layouts, and actor evidence."
     - "Follow-up loop verified 4/4 redacted lanes with actors passed, target app surfaces running, headed layouts visible, and no provider sandbox IDs in redacted JSON."
     - "Post-publish 0.1.5 rerun verified 4/4 redacted lanes with target app surfaces running, nested verification, nested Observer presence, visible layouts, and 3/4 app-url proof success."
+    - "Post-0.1.6 confirmation verified 4/4 redacted lanes with target app surfaces running, nested verification, nested Observer presence, visible layouts, 4/4 app-url proof success, and zero feedback candidates."
   independent_checks:
     - "Private repo slug scan over tracked public surface returned no hits."
     - "Historical recursive-proof receipts had provider sandbox IDs redacted, and public-surface scan now checks sandbox-ID context."
@@ -52,21 +58,25 @@ evidence:
     - "pnpm release:check passed: typecheck, 17 test files / 120 tests, build, public-surface scan, skill check, and npm pack dry run."
     - "Ignored run artifact scan for oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
     - "Ignored run artifact scan for oss-meta-2026-06-05T16-07-27-703Z-1ce7e253 found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
+    - "Ignored run artifact scan for oss-meta-2026-06-05T16-25-58-003Z-515846ab found 0 private repo label hits, 0 stream URL hits, 0 sandboxId key hits, and 0 credential assignment hits."
   observer_runs:
     - "oss-meta-2026-06-05T06-06-30-955Z-1914b164"
     - "oss-meta-2026-06-05T06-07-41-618Z-5b4d1727"
     - "oss-meta-2026-06-05T07-02-38-522Z-ea401be2"
     - "oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb"
     - "oss-meta-2026-06-05T16-07-27-703Z-1ce7e253"
+    - "oss-meta-2026-06-05T16-25-58-003Z-515846ab"
   setup_quality:
     - "Formal run setup-quality snapshots passed 5/5 checks for all four redacted lanes."
     - "Follow-up setup-quality artifacts rated all four lanes high_leverage with app-aware coverage/persona/scenario signals and honest appUrlProofBlocked=true."
     - "Post-publish setup-quality artifacts rated all four lanes high_leverage; three lanes reached app-url proof and one lane exposed stale bare-npx command resolution."
+    - "Post-0.1.6 setup-quality artifacts rated all four lanes high_leverage with 5/5 signals and appUrlProofBlocked=false."
   actor_feedback:
     - "Manual lane classification: repo-01 ceremonial, repo-02 ceremonial, repo-03 useful, repo-04 ceremonial."
     - "Actionable Mimetic-owned proof-path confusion observed and addressed locally; issue #88 filed for cleanup receipts and meaningful-use scoring."
     - "Follow-up loop produced four feedback candidates for the published npm app-url proof blocker."
     - "Post-publish loop reduced the published-cli app-url feedback candidate to one lane and converted it into a local-bin execution fix for 0.1.6."
+    - "Post-0.1.6 confirmation produced zero feedback candidates; the stale-binary candidate disappeared."
   usage_receipts:
     - "Completion audit records meaningful-use ratings and the caveat that most lanes were setup/Observer proof rather than high-leverage product study."
   cleanup_readbacks:
@@ -74,6 +84,7 @@ evidence:
     - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after formal run; post-cleanup provider readback found 0 running."
     - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after the follow-up loop; post-cleanup provider readback found 0 running."
     - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after the post-publish rerun; post-cleanup provider readback found 0 running."
+    - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after the post-0.1.6 confirmation; post-cleanup provider readback found 0 running."
   missing: []
 completion_audit:
   status: passed
