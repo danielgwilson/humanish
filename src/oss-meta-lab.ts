@@ -43,6 +43,10 @@ export interface OssMetaLabOptions {
   runId?: string;
 }
 
+export interface OssMetaLabLiveRefreshController {
+  stop(): Promise<void>;
+}
+
 export interface OssMetaLabAssignment {
   index: number;
   repo: string;
@@ -205,8 +209,24 @@ export interface OssMetaLabResult {
   warnings: string[];
 }
 
+interface OssMetaLabRuntime {
+  artifactRoot: string;
+  assignments: OssMetaLabAssignment[];
+  createdAt: string;
+  cwd: string;
+  dryRun: boolean;
+  liveDesktops: OssMetaLabLiveDesktop[];
+  liveRequested: boolean;
+  missingKeys: string[];
+  persistScreenshots: boolean;
+  redactRepoNames: boolean;
+  runId: string;
+  startedAt: number;
+}
+
 const execFileAsync = promisify(execFile);
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const liveRuntimeByResult = new WeakMap<OssMetaLabResult, OssMetaLabRuntime>();
 const OSS_META_LAB_PROVIDER_METADATA = {
   mode: "oss-meta-lab",
   tool: "mimetic-cli"
@@ -796,6 +816,9 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     warnings.push(`Live E2B/Codex launch is waiting on env vars: ${missingKeys.join(", ")}.`);
     warnings.push("Observer lanes stay in the live waiting state until keys are present.");
   }
+  if (liveRequested && !(process.env.GH_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim())) {
+    warnings.push("No GH_TOKEN or GITHUB_TOKEN is present; public repos can clone, but private GitHub repos will fail inside E2B.");
+  }
 
   const assignments = buildOssRepoAssignments(repos, count);
   const publicAssignments = redactAssignments(assignments, redactRepoNames);
@@ -831,6 +854,11 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     ? await preflightOssMetaActorApiKey({ env: process.env })
     : undefined;
   const actorAuthPreflightBlocked = actorAuthPreflight !== undefined && !actorAuthPreflight.ok;
+  const substrateMissingKeys = [
+    ...missingKeys,
+    ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
+    ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
+  ];
   if (actorAuthPreflight) {
     warnings.push(actorAuthPreflight.ok
       ? actorAuthPreflight.reason
@@ -934,9 +962,14 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
   const bundlePath = path.join(artifactRoot, "run.json");
   const createdAt = new Date().toISOString();
+  const persistScreenshots = !redactRepoNames;
   await mkdir(artifactRoot, { recursive: true });
-  const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops);
-  warnings.push(...screenshotSummary.warnings);
+  if (persistScreenshots) {
+    const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops);
+    warnings.push(...screenshotSummary.warnings);
+  } else if (liveDesktops.some((desktop) => desktop.url)) {
+    warnings.push("Skipped persistent desktop screenshots because repo labels are redacted; live stream URLs remain runtime-only.");
+  }
   const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops, redactRepoNames);
   warnings.push(...actorEvidenceSummary.warnings);
   const bundle = buildMetaBundle({
@@ -946,11 +979,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     dryRun,
     liveDesktops,
     liveRequested,
-    missingKeys: [
-      ...missingKeys,
-      ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
-      ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
-    ],
+    missingKeys: substrateMissingKeys,
     redactRepoNames,
     runId
   });
@@ -976,14 +1005,10 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     dryRun,
     liveDesktops,
     liveRequested,
-    missingKeys: [
-      ...missingKeys,
-      ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
-      ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
-    ]
+    missingKeys: substrateMissingKeys
   });
 
-  return {
+  const result: OssMetaLabResult = {
     schema: OSS_META_LAB_SCHEMA,
     ok: observer.ok && outcome.ok,
     assignments: publicAssignments,
@@ -1004,6 +1029,115 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     runId,
     sandboxes: liveDesktops.map(formatLiveDesktopForResult),
     warnings: [...warnings, ...observer.warnings]
+  };
+
+  if (observer.ok && liveDesktops.some((desktop) => desktop.desktop && desktop.bootstrap?.status === "started")) {
+    liveRuntimeByResult.set(result, {
+      artifactRoot,
+      assignments,
+      createdAt,
+      cwd,
+      dryRun,
+      liveDesktops,
+      liveRequested,
+      missingKeys: substrateMissingKeys,
+      persistScreenshots,
+      redactRepoNames,
+      runId,
+      startedAt: Date.now()
+    });
+  }
+
+  return result;
+}
+
+export function startOssMetaLabLiveRefresh(
+  result: OssMetaLabResult,
+  options: {
+    intervalMs?: number;
+    screenshotIntervalMs?: number;
+    timeoutMs?: number;
+  } = {}
+): OssMetaLabLiveRefreshController | null {
+  const runtime = liveRuntimeByResult.get(result);
+  if (!runtime) {
+    return null;
+  }
+
+  const intervalMs = options.intervalMs ?? readPositiveInt(process.env.MIMETIC_OSS_META_WATCH_REFRESH_MS, 5_000);
+  const screenshotIntervalMs = options.screenshotIntervalMs ?? readPositiveInt(process.env.MIMETIC_OSS_META_SCREENSHOT_REFRESH_MS, 15_000);
+  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
+  const deadline = timeoutMs === 0 ? null : runtime.startedAt + timeoutMs;
+  let lastScreenshotAt = 0;
+  let timer: NodeJS.Timeout | null = null;
+  let stopped = false;
+  let running = false;
+
+  const tick = async (): Promise<void> => {
+    if (stopped || running) {
+      return;
+    }
+
+    running = true;
+    try {
+      const now = Date.now();
+      const timedOut = deadline !== null && now >= deadline;
+      const shouldCaptureScreenshot = runtime.persistScreenshots
+        && (timedOut || lastScreenshotAt === 0 || now - lastScreenshotAt >= screenshotIntervalMs);
+      await refreshOssMetaLabLiveRuntime(runtime, {
+        captureScreenshots: shouldCaptureScreenshot,
+        timedOut,
+        timeoutMs
+      });
+      result.sandboxes = runtime.liveDesktops.map(formatLiveDesktopForResult);
+      const outcome = classifyMetaLabOutcome({
+        dryRun: runtime.dryRun,
+        liveDesktops: runtime.liveDesktops,
+        liveRequested: runtime.liveRequested,
+        missingKeys: runtime.missingKeys
+      });
+      result.ok = result.observer?.ok === true && outcome.ok;
+      if (result.ok) {
+        delete result.error;
+      } else {
+        result.error = {
+          code: "MIMETIC_META_RUN_FAILED",
+          message: outcome.reason
+        };
+      }
+      if (shouldCaptureScreenshot) {
+        lastScreenshotAt = now;
+      }
+      if (runtime.liveDesktops.every((desktop) => isTerminalCompletion(desktop.completion))) {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+    } catch {
+      // Attached watch is best-effort telemetry. Keep serving the last verified
+      // bundle instead of crashing the user's observer process.
+    } finally {
+      running = false;
+    }
+  };
+
+  void tick();
+  timer = setInterval(() => {
+    void tick();
+  }, intervalMs);
+
+  return {
+    async stop(): Promise<void> {
+      stopped = true;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      while (running) {
+        await wait(100);
+      }
+    }
   };
 }
 
@@ -2018,6 +2152,76 @@ async function pollLiveDesktopCompletions(
 
   warnings.push(`Timed out waiting for ${pollable.filter((desktop) => desktop.completion?.status === "timed_out").length}/${pollable.length} OSS meta-lab bootstrap completion marker${pollable.length === 1 ? "" : "s"}.`);
   return { warnings };
+}
+
+async function refreshOssMetaLabLiveRuntime(
+  runtime: OssMetaLabRuntime,
+  options: {
+    captureScreenshots: boolean;
+    timedOut: boolean;
+    timeoutMs: number;
+  }
+): Promise<void> {
+  await refreshLiveDesktopProgress(runtime.liveDesktops, {
+    timedOut: options.timedOut,
+    timeoutMs: options.timeoutMs
+  });
+
+  if (options.captureScreenshots) {
+    await captureLiveDesktopScreenshots(runtime.artifactRoot, runtime.liveDesktops);
+  }
+  await writeActorEvidenceArtifacts(runtime.artifactRoot, runtime.liveDesktops, runtime.redactRepoNames);
+
+  const bundle = buildMetaBundle({
+    assignments: runtime.assignments,
+    createdAt: runtime.createdAt,
+    cwd: runtime.cwd,
+    dryRun: runtime.dryRun,
+    liveDesktops: runtime.liveDesktops,
+    liveRequested: runtime.liveRequested,
+    missingKeys: runtime.missingKeys,
+    redactRepoNames: runtime.redactRepoNames,
+    runId: runtime.runId
+  });
+  await writeJson(path.join(runtime.artifactRoot, "run.json"), bundle);
+  await writeJson(path.join(runtime.artifactRoot, "review.json"), bundle.review);
+  await writeFile(path.join(runtime.artifactRoot, "review.md"), renderMetaReviewMarkdown(bundle), "utf8");
+  await writeFile(path.join(runtime.artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await renderObserver(runtime.cwd, runtime.runId, { open: false });
+}
+
+async function refreshLiveDesktopProgress(
+  liveDesktops: OssMetaLabLiveDesktop[],
+  options: { timedOut: boolean; timeoutMs: number }
+): Promise<void> {
+  const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+
+  await Promise.all(liveDesktops.map(async (desktop) => {
+    if (!desktop.desktop || desktop.bootstrap?.status !== "started") {
+      return;
+    }
+    if (isTerminalCompletion(desktop.completion)) {
+      return;
+    }
+
+    const completion = await readRemoteCompletion(desktop.desktop, desktop.bootstrap, requestTimeoutMs);
+    if (completion) {
+      desktop.completion = completion;
+      return;
+    }
+
+    const logTail = await readRemoteLogTail(desktop.desktop, desktop.bootstrap, requestTimeoutMs);
+    desktop.completion = {
+      checkedAt: new Date().toISOString(),
+      logTail,
+      reason: options.timedOut
+        ? `Timed out waiting ${options.timeoutMs}ms for remote bootstrap completion marker.`
+        : logTail
+          ? "Remote bootstrap is running; latest public-safe log tail is available."
+          : "Remote bootstrap is running; waiting for first public-safe log output.",
+      status: options.timedOut ? "timed_out" : "running"
+    };
+  }));
 }
 
 async function readRemoteCompletion(

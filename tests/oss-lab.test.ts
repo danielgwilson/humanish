@@ -424,10 +424,10 @@ describe("OSS lab command", () => {
     };
     expect(json.schema).toBe("mimetic.oss-meta-lab-result.v1");
     expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
-      "CorentinTh/it-tools",
-      "drawdb-io/drawdb",
-      "CorentinTh/it-tools",
-      "drawdb-io/drawdb"
+      "repo-01",
+      "repo-02",
+      "repo-03",
+      "repo-04"
     ]);
     expect(json.observer.observerPath).toBe(".mimetic/runs/oss-meta-test/observer/index.html");
 
@@ -441,7 +441,7 @@ describe("OSS lab command", () => {
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic init --yes");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx mimetic run --app-url");
-    expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/CorentinTh/it-tools");
+    expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/repo-01");
   });
 
   it("runs the bundled OSS meta-lab through the generic lab runner", async () => {
@@ -528,7 +528,7 @@ describe("OSS lab command", () => {
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
-        currentStep: "Waiting for E2B_API_KEY before launching CorentinTh/it-tools."
+        currentStep: "Waiting for E2B_API_KEY before launching repo-01."
       });
       expect(bundle.streams[0]).toMatchObject({
         status: "blocked",
@@ -589,7 +589,7 @@ describe("OSS lab command", () => {
       };
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
-        currentStep: "Waiting for CODEX_API_KEY or CODEX_ACCESS_TOKEN before launching CorentinTh/it-tools."
+        currentStep: "Waiting for CODEX_API_KEY or CODEX_ACCESS_TOKEN before launching repo-01."
       });
     } finally {
       if (previousE2b === undefined) delete process.env.E2B_API_KEY;
@@ -661,7 +661,7 @@ describe("OSS lab command", () => {
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.simulations[0]).toMatchObject({
         status: "blocked",
-        currentStep: "Waiting for Codex actor API quota/auth preflight before launching CorentinTh/it-tools."
+        currentStep: "Waiting for Codex actor API quota/auth preflight before launching repo-01."
       });
       await rm(cwd, { recursive: true, force: true });
     } finally {

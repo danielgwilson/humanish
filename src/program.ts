@@ -36,7 +36,8 @@ import {
 import type { OssLabResult } from "./oss-lab.js";
 import {
   cleanupOssMetaLabSandboxes,
-  runOssMetaLab
+  runOssMetaLab,
+  startOssMetaLabLiveRefresh
 } from "./oss-meta-lab.js";
 import type { OssMetaLabResult } from "./oss-meta-lab.js";
 import {
@@ -981,11 +982,13 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const wantsMachine = wantsJson(command);
       const shouldOpen = options.open === false ? false : wantsMachine ? options.open === true : true;
       const wantsFollow = !wantsMachine && options.detach !== true && options.dryRun !== true;
+      const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
+      const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
       const result = await runOssMetaLab({
         ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
         cwd: options.cwd,
         open: wantsFollow ? false : shouldOpen,
-        ...(options.redactRepos === undefined ? {} : { redactRepoNames: options.redactRepos }),
+        ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
         repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
         ...(count === null ? { count: Number.NaN } : { count }),
         ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
@@ -994,8 +997,10 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       let server: ObserverServer | null = null;
       let output = result;
+      let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
       if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
         server = await serveObserver(result.observer, { open: shouldOpen, port });
+        liveRefresh = startOssMetaLabLiveRefresh(result);
         output = {
           ...result,
           observer: {
@@ -1032,6 +1037,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         await followObserver(io, output.observer, server, output.liveRequested
           ? {
               onStop: async () => {
+                await liveRefresh?.stop();
                 const cleanup = await cleanupOssMetaLabSandboxes(output);
                 return [
                   `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
@@ -1267,14 +1273,15 @@ async function runOssMetaLabCommand(args: {
       ? args.options.open === true
       : args.options.open ?? args.manifest.defaults?.open ?? args.mode === "watch";
   const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+  const repoOverrideRequested = (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
+  const defaultRedactRepos = repoOverrideRequested ? true : args.manifest.defaults?.redactRepos;
+  const redactRepoNames = args.options.redactRepos ?? defaultRedactRepos;
   const result = await runOssMetaLab({
     ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
     cwd: args.options.cwd,
     open: wantsFollow ? false : shouldOpen,
     ...(dryRun === undefined ? {} : { dryRun }),
-    ...(args.options.redactRepos === undefined
-      ? args.manifest.defaults?.redactRepos === undefined ? {} : { redactRepoNames: args.manifest.defaults.redactRepos }
-      : { redactRepoNames: args.options.redactRepos }),
+    ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
     repos: labRepos(args.options, args.manifest),
     ...(count === null ? { count: Number.NaN } : { count }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
@@ -1282,8 +1289,10 @@ async function runOssMetaLabCommand(args: {
 
   let server: ObserverServer | null = null;
   let output = result;
+  let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
   if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
     server = await serveObserver(result.observer, { open: shouldOpen, port });
+    liveRefresh = startOssMetaLabLiveRefresh(result);
     output = withOssMetaLabServer(result, server);
   }
 
@@ -1299,6 +1308,7 @@ async function runOssMetaLabCommand(args: {
     await followObserver(args.io, output.observer, server, output.liveRequested
       ? {
           onStop: async () => {
+            await liveRefresh?.stop();
             const cleanup = await cleanupOssMetaLabSandboxes(output);
             return [
               `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
