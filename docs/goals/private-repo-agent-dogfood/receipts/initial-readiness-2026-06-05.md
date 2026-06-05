@@ -1,9 +1,14 @@
 # Initial Readiness Receipt: 2026-06-05
 
-## What This Proves
+## What This Establishes
 
 The private-repo dogfood path is ready for a formal goal run, with one known
 Mimetic-owned bootstrap blocker already ticketed.
+
+This receipt is orientation, not completion proof. The raw runtime artifacts
+from these private runs are not committed. A future `/goal` must rerun current
+proof, inspect current `.mimetic/` artifacts, and produce a fresh completion
+audit before claiming success.
 
 ## Public-Safe Evidence
 

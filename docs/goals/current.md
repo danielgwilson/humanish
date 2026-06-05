@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-02
+Status date: 2026-06-05
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -186,7 +186,8 @@ The next most useful engineering slice is repeated agent dogfood against real
 apps and tools, while preserving the public-safety boundary:
 
 - public/open-source fixture proof for publishable examples;
-- private maintainer dogfood through the repo-only public-safe packet at
+- private maintainer dogfood through the repo-only public-safe packet, which is
+  intentionally not part of the npm payload, at
   [`docs/goals/private-repo-agent-dogfood/goal.md`](https://github.com/danielgwilson/mimetic-cli/blob/main/docs/goals/private-repo-agent-dogfood/goal.md);
 - then the first provider-backed multi-step browser persona adapter.
 

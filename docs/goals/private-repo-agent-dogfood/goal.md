@@ -27,12 +27,19 @@ Private repo labels, private screenshots, private source snippets, raw private
 logs, and private run commands must not be committed. Use redacted labels such
 as `repo-01` through `repo-04` in committed receipts.
 
+The initial readiness receipt is orientation only. It does not satisfy the
+completion invariants for a future `/goal`; the formal goal run must generate
+current `.mimetic/` evidence and a fresh completion audit.
+
 ## Success Invariants
 
 - A current ignored env file supplies `GH_TOKEN`, `E2B_API_KEY`, and
   `OPENAI_API_KEY` or equivalent provider auth without printing values.
 - The four Daniel-authorized private repo slugs are supplied through current
   command context or ignored local lab source, not committed docs.
+- If those exact slugs are not supplied in the current thread or an ignored
+  local manifest, stop instead of inferring them from memory, docs, or prior
+  receipts.
 - GitHub access preflight passes for all assigned private repos through
   credential-isolated anonymous-first, token-second auth.
 - A headed E2B Observer-of-Observers run starts up to four desktop lanes, with
@@ -189,6 +196,10 @@ pnpm mimetic -- watch oss \
 - `docs/goals/private-repo-agent-dogfood/receipts/*.md`
 - Public-safe GitHub issues in `mimetic-cli` for Mimetic-owned defects.
 
+Prior readiness receipts can guide the run, but completion requires proof
+artifacts from the current goal execution. Do not mark complete from receipt
+prose alone.
+
 ## Known Failure Modes
 
 - Bootstrap-only success: deterministic setup passes but actor evidence is
@@ -248,6 +259,8 @@ clean up providers, write a receipt, and report the remaining proof gap.
 Stop before:
 
 - editing `.env` or credential files;
+- the exact four authorized private repo slugs are not supplied in current
+  command context or an ignored local manifest;
 - printing, committing, or pasting secret values;
 - committing private repo labels or private source snippets;
 - persisting private screenshots or raw private transcripts;

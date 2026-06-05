@@ -19,7 +19,7 @@ tasks:
     summary: "Map every success invariant to evidence before any completion claim."
 receipts:
   - path: docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md
-    summary: "Initial private-repo readiness proof: auth fixed, one-lane pass, four-lane 3/4 pass, #86 blocker filed, and sandbox cleanup killed 5/5."
+    summary: "Orientation receipt only: auth path was proven, one-lane pass and four-lane 3/4 pass were observed, #86 blocker was filed, and sandbox cleanup killed 5/5. Future goals must rerun current proof before completion."
 verification:
   status: ready
   last_command: "private redacted preflight plus one-lane and four-lane headed E2B trials; see initial receipt"
@@ -38,6 +38,7 @@ evidence:
   cleanup_readbacks:
     - "Killed 5/5 disposable E2B sandboxes after initial proof runs."
   missing:
+    - "Current formal-goal .mimetic run artifacts do not exist yet; initial readiness run IDs are orientation only."
     - "Formal actor-required four-repo evaluation receipt has not been produced yet."
     - "Per-lane meaningful-use and feedback classification has not been produced yet."
 completion_audit:
