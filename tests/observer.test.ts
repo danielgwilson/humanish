@@ -116,6 +116,251 @@ function renderObserverClientForTest(data: unknown): { click: (action: string) =
   };
 }
 
+function browserLabObserverData(): Record<string, unknown> {
+  const terminalTail = "$ npx mimetic verify\nnested observer: ready";
+  return {
+    run: {
+      createdAt: "2026-06-03T12:00:00.000Z",
+      lifecycle: [],
+      mode: "oss-meta-lab",
+      persona: { name: "Synthetic Lab Operator" },
+      runId: "multi-surface-proof",
+      scenario: { goal: "Watch nested Observer evidence.", title: "OSS Observer-of-Observers" },
+      status: "pass"
+    },
+    events: [],
+    streams: [
+      {
+        id: "lane-01",
+        simId: "sim-01",
+        kind: "browser",
+        kindLabel: "Browser",
+        label: "CorentinTh/it-tools desktop",
+        status: "running",
+        statusLabel: "Running",
+        transport: "sse",
+        updatedAt: "2026-06-03T12:00:05.000Z",
+        url: "https://stream.example/it-tools",
+        embed: { kind: "iframe", url: "https://stream.example/it-tools" },
+        viewport: { width: 1440, height: 900 },
+        ui: {
+          appUrl: "https://app.example/it-tools",
+          nestedObserverUrl: "https://observer.example/nested/index.html",
+          route: "e2b://desktop/it-tools",
+          screenshotUrl: "../screenshots/oss-01-desktop.png",
+          state: "bootstrap terminal launched"
+        },
+        terminal: {
+          format: "plain",
+          stdin: "sent",
+          tail: terminalTail,
+          title: "Codex TUI bootstrap - CorentinTh/it-tools"
+        },
+        terminalPlain: terminalTail,
+        completion: {
+          checkedAt: "2026-06-03T12:00:06.000Z",
+          nestedObserverPresent: true,
+          reason: "Bootstrap terminal launched.",
+          status: "running"
+        },
+        artifacts: [
+          { label: "desktop screenshot", path: "screenshots/oss-01-desktop.png", kind: "screenshot" },
+          { label: "nested observer", path: "observer/nested/index.html", kind: "observer" },
+          { label: "setup quality", path: "setup-quality/oss-01-desktop-setup-quality.json", kind: "filesystem" },
+          { label: "events", path: "events.ndjson", kind: "events" }
+        ],
+        sim: {
+          currentStep: "watching nested Observer",
+          id: "sim-01",
+          index: 1,
+          mode: "browser-sim",
+          personaId: "operator",
+          progress: 50,
+          scenarioId: "oss-meta-lab",
+          startedAt: "2026-06-03T12:00:00.000Z",
+          status: "running",
+          streamIds: ["lane-01"],
+          streamKind: "browser",
+          summary: "Headed desktop lane",
+          updatedAt: "2026-06-03T12:00:05.000Z"
+        },
+        timeline: []
+      }
+    ]
+  };
+}
+
+interface FakeLiveFrame {
+  parentNode: { children?: Array<{ innerHTML?: string }>; parentNode: unknown } | null;
+  src: string;
+  srcSetCount: number;
+}
+
+function renderObserverClientWithDomForTest(data: unknown): {
+  click: (action: string) => void;
+  html: () => string;
+  iframes: FakeLiveFrame[];
+} {
+  class FakeElement {
+    attrs: Record<string, string> = {};
+    children: FakeElement[] = [];
+    parentNode: FakeElement | null = null;
+    rect: { left: number; top: number; right: number; bottom: number; width: number; height: number };
+    style: Record<string, string> = {};
+    className = "";
+    innerHTML = "";
+    tagName: string;
+    srcSetCount = 0;
+    srcValue = "";
+
+    constructor(tagName: string, rect?: FakeElement["rect"]) {
+      this.tagName = tagName.toUpperCase();
+      this.rect = rect ?? { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+    }
+
+    appendChild(child: FakeElement): FakeElement {
+      if (child.parentNode && child.parentNode !== this) child.parentNode.removeChild(child);
+      if (!this.children.includes(child)) this.children.push(child);
+      child.parentNode = this;
+      return child;
+    }
+
+    removeChild(child: FakeElement): FakeElement {
+      this.children = this.children.filter((candidate) => candidate !== child);
+      child.parentNode = null;
+      return child;
+    }
+
+    setAttribute(name: string, value: string): void {
+      this.attrs[name] = value;
+    }
+
+    getAttribute(name: string): string | null {
+      return this.attrs[name] ?? null;
+    }
+
+    getBoundingClientRect(): FakeElement["rect"] {
+      return this.rect;
+    }
+
+    set src(value: string) {
+      this.srcValue = value;
+      this.srcSetCount += 1;
+    }
+
+    get src(): string {
+      return this.srcValue;
+    }
+  }
+
+  let html = "";
+  let clickHandler:
+    | ((event: {
+        preventDefault: () => void;
+        target: { closest: (selector: string) => { getAttribute: (name: string) => string | null; tagName: string } | null };
+      }) => void)
+    | null = null;
+
+  const iframes: FakeLiveFrame[] = [];
+  const stage = new FakeElement("main", { left: 0, top: 100, right: 1000, bottom: 780, width: 1000, height: 680 });
+  const body = new FakeElement("body");
+  const app = new FakeElement("div");
+
+  function mountsFromHtml(): FakeElement[] {
+    const mounts: FakeElement[] = [];
+    const re = /data-live-stream-id="([^"]+)" data-live-stream-url="([^"]+)" data-live-stream-title="([^"]+)"/g;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(html))) {
+      const mount = new FakeElement("div", { left: 120, top: 160, right: 760, bottom: 520, width: 640, height: 360 });
+      mount.setAttribute("data-live-stream-id", match[1] ?? "");
+      mount.setAttribute("data-live-stream-url", match[2] ?? "");
+      mount.setAttribute("data-live-stream-title", match[3] ?? "");
+      mounts.push(mount);
+    }
+    return mounts;
+  }
+
+  Object.defineProperty(app, "innerHTML", {
+    get: () => html,
+    set: (value: string) => {
+      html = value;
+    }
+  });
+  Object.assign(app, {
+    addEventListener: (event: string, handler: typeof clickHandler) => {
+      if (event === "click") clickHandler = handler;
+    },
+    contains: () => true,
+    querySelector: (selector: string) => (selector === ".stage" ? stage : null),
+    querySelectorAll: (selector: string) => (selector === "[data-live-stream-id]" ? mountsFromHtml() : [])
+  });
+
+  const documentElement = new FakeElement("html");
+  Object.assign(documentElement, {
+    setAttribute: () => {},
+    style: { setProperty: () => {} }
+  });
+
+  const location = {
+    hash: "",
+    href: "file:///tmp/mimetic/observer/index.html",
+    protocol: "file:"
+  };
+  const sandbox = {
+    document: {
+      activeElement: null,
+      addEventListener: () => {},
+      body,
+      createElement: (tagName: string) => {
+        const element = new FakeElement(tagName);
+        if (tagName === "iframe") iframes.push(element as FakeLiveFrame);
+        return element;
+      },
+      documentElement,
+      getElementById: (id: string) => {
+        if (id === "app") return app;
+        if (id === "observer-data") return { textContent: JSON.stringify(data) };
+        return null;
+      }
+    },
+    location,
+    window: {
+      addEventListener: () => {},
+      history: { replaceState: () => {} },
+      innerHeight: 900,
+      innerWidth: 1200,
+      localStorage: { getItem: () => null, setItem: () => {} },
+      location,
+      requestAnimationFrame: (callback: () => void) => {
+        callback();
+        return 1;
+      },
+      setTimeout: (callback: () => void) => {
+        callback();
+        return 1;
+      }
+    },
+    URL
+  };
+
+  runInNewContext(observerClientJs(), sandbox);
+
+  return {
+    click: (action: string) => {
+      const target = {
+        getAttribute: (name: string) => (name === "data-action" ? action : null),
+        tagName: "BUTTON"
+      };
+      clickHandler?.({
+        preventDefault: () => {},
+        target: { closest: () => target }
+      });
+    },
+    html: () => html,
+    iframes
+  };
+}
+
 describe("observer rendering", () => {
   it("renders a static observer from a verified bundle", async () => {
     await withRunBundle(async (cwd) => {
@@ -154,79 +399,17 @@ describe("observer rendering", () => {
   });
 
   it("renders multi-surface browser lab metadata without hiding live and screenshot modes", () => {
-    const terminalTail = "$ npx mimetic verify\nnested observer: ready";
-    const client = renderObserverClientForTest({
-      run: {
-        createdAt: "2026-06-03T12:00:00.000Z",
-        lifecycle: [],
-        mode: "oss-meta-lab",
-        persona: { name: "Synthetic Lab Operator" },
-        runId: "multi-surface-proof",
-        scenario: { goal: "Watch nested Observer evidence.", title: "OSS Observer-of-Observers" },
-        status: "pass"
-      },
-      events: [],
-      streams: [
-        {
-          id: "lane-01",
-          simId: "sim-01",
-          kind: "browser",
-          kindLabel: "Browser",
-          label: "CorentinTh/it-tools desktop",
-          status: "running",
-          statusLabel: "Running",
-          transport: "sse",
-          updatedAt: "2026-06-03T12:00:05.000Z",
-          url: "https://stream.example/it-tools",
-          embed: { kind: "iframe", url: "https://stream.example/it-tools" },
-          viewport: { width: 1440, height: 900 },
-          ui: {
-            appUrl: "https://app.example/it-tools",
-            nestedObserverUrl: "https://observer.example/nested/index.html",
-            route: "e2b://desktop/it-tools",
-            screenshotUrl: "../screenshots/oss-01-desktop.png",
-            state: "bootstrap terminal launched"
-          },
-          terminal: {
-            format: "plain",
-            stdin: "sent",
-            tail: terminalTail,
-            title: "Codex TUI bootstrap - CorentinTh/it-tools"
-          },
-          terminalPlain: terminalTail,
-          completion: {
-            checkedAt: "2026-06-03T12:00:06.000Z",
-            nestedObserverPresent: true,
-            reason: "Bootstrap terminal launched.",
-            status: "running"
-          },
-          artifacts: [
-            { label: "desktop screenshot", path: "screenshots/oss-01-desktop.png", kind: "screenshot" },
-            { label: "nested observer", path: "observer/nested/index.html", kind: "observer" },
-            { label: "setup quality", path: "setup-quality/oss-01-desktop-setup-quality.json", kind: "filesystem" },
-            { label: "events", path: "events.ndjson", kind: "events" }
-          ],
-          sim: {
-            currentStep: "watching nested Observer",
-            id: "sim-01",
-            index: 1,
-            mode: "browser-sim",
-            personaId: "operator",
-            progress: 50,
-            scenarioId: "oss-meta-lab",
-            startedAt: "2026-06-03T12:00:00.000Z",
-            status: "running",
-            streamIds: ["lane-01"],
-            streamKind: "browser",
-            summary: "Headed desktop lane",
-            updatedAt: "2026-06-03T12:00:05.000Z"
-          },
-          timeline: []
-        }
-      ]
-    });
+    const client = renderObserverClientForTest(browserLabObserverData());
 
-    expect(client.html()).toContain('src="https://stream.example/it-tools"');
+    expect(client.html()).toContain('data-live-stream-id="lane-01"');
+    expect(client.html()).toContain('data-live-stream-url="https://stream.example/it-tools"');
+    expect(client.html()).toContain("connecting live stream");
+    expect(client.html()).not.toContain("<iframe");
+
+    client.click("media:screenshot");
+
+    expect(client.html()).toContain('src="../screenshots/oss-01-desktop.png"');
+    expect(client.html()).toContain("viewing fallback");
     expect(client.html()).toContain('data-kind="app"');
     expect(client.html()).toContain('data-kind="observer"');
     expect(client.html()).toContain('data-kind="completion"');
@@ -235,17 +418,37 @@ describe("observer rendering", () => {
     expect(client.html()).toContain('data-kind="artifact"');
     expect(client.html()).toContain("nested observer: ready");
 
-    client.click("media:screenshot");
-
-    expect(client.html()).toContain('src="../screenshots/oss-01-desktop.png"');
-    expect(client.html()).toContain("viewing fallback");
-
     client.click("open:lane-01");
     client.click("tab:files");
 
     expect(client.html()).toContain("setup quality");
     expect(client.html()).toContain("setup-quality/oss-01-desktop-setup-quality.json");
     expect(client.html()).toContain("Static file view cannot hydrate artifacts inline");
+  });
+
+  it("keeps live stream iframe parents stable across observer rerenders", () => {
+    const client = renderObserverClientWithDomForTest(browserLabObserverData());
+
+    expect(client.iframes).toHaveLength(1);
+    const frame = client.iframes[0]!;
+    const frameParent = frame.parentNode;
+    const host = frameParent?.parentNode;
+
+    client.click("toggle-console");
+    client.click("open:lane-01");
+    client.click("toggle-side");
+    client.click("toggle-tweaks");
+
+    expect(client.iframes).toHaveLength(1);
+    expect(client.iframes[0]).toBe(frame);
+    expect(frame.parentNode).toBe(frameParent);
+    expect(frameParent?.parentNode).toBe(host);
+    expect(frame.src).toBe("https://stream.example/it-tools");
+    expect(frame.srcSetCount).toBe(1);
+    const overlay = frameParent?.children?.[1];
+    expect(overlay?.innerHTML).toContain('data-kind="app"');
+    expect(overlay?.innerHTML).toContain('data-kind="observer"');
+    expect(overlay?.innerHTML).toContain('data-kind="screenshot"');
   });
 
   it("serves observer artifacts over a live localhost server", async () => {

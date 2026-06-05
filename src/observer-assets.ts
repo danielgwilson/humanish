@@ -417,6 +417,10 @@ a { color: inherit; text-decoration: none; }
 
 /* ============================================================ STREAM SURFACES */
 .surface-fill { position: absolute; inset: 0; width: 100%; height: 100%; }
+.live-stream-mount { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.live-stream-overlay { position: absolute; overflow: hidden; pointer-events: none; z-index: 2; }
+.live-stream-overlay[data-focus="true"] .bw-lab-dock { max-height: 86px; }
+.live-stream-overlay[data-focus="true"] .bw-chip-v { max-width: min(420px, 38vw); }
 
 /* browser/ui mock */
 .bw { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0b0d10; }
@@ -958,6 +962,7 @@ export function observerClientJs(): string {
 
   // ---------------------------------------------------------------- hydrate
   var DATA_FILE = "observer-data.json";
+  var REFRESH_MS = 5000;
   var dataEl = document.getElementById("observer-data");
   var currentData = null;
   try { currentData = JSON.parse((dataEl && dataEl.textContent) || "null"); } catch (e) { currentData = null; }
@@ -1013,6 +1018,9 @@ export function observerClientJs(): string {
     motion: readPref("motion", "full")
   };
   var artifactCache = {};
+  var liveStreamFrames = {};
+  var liveStreamHost = null;
+  var liveStreamLayoutRaf = null;
 
   // ---------------------------------------------------------------- tone / labels
   var TONE = {
@@ -1220,6 +1228,11 @@ export function observerClientJs(): string {
   function browserLiveUrl(s) {
     return (s.embed && s.embed.kind === "iframe" && s.embed.url) || s.url || "";
   }
+  function liveStreamMount(s, liveUrl) {
+    return '<div class="live-stream-mount surface-fill" data-live-stream-id="' + esc(s.id) + '" data-live-stream-url="' + esc(liveUrl) + '" data-live-stream-title="' + esc(laneName(s) || "live stream") + '">'
+      + '<div class="bw-app-wait"><div class="wait-spinner" style="width:24px;height:24px"></div>'
+      + '<div class="mono" style="font-size:9px">connecting live stream</div></div></div>';
+  }
   function browserShot(s) {
     var art = firstArtifactKind(s, "screenshot");
     return (s.ui && s.ui.screenshotUrl) || (s.embed && s.embed.kind === "screenshot" && s.embed.url) || (art && linkHref(art.path, true)) || "";
@@ -1325,8 +1338,9 @@ export function observerClientJs(): string {
     var route = laneRoute(s) || "(local)";
     var liveUrl = browserLiveUrl(s);
     var shot = browserShot(s);
+    var dock = browserLabDock(s, shot);
     var body;
-    if (liveUrl && S.media === "live") body = '<iframe class="surface-fill" src="' + esc(liveUrl) + '" title="' + esc(laneName(s) || "live stream") + '" allow="clipboard-read; clipboard-write; fullscreen" referrerpolicy="no-referrer"></iframe>';
+    if (liveUrl && S.media === "live") body = liveStreamMount(s, liveUrl);
     else if (shot) body = '<img class="surface-fill" style="object-fit:cover;object-position:top" src="' + esc(shot) + '" alt="viewport screenshot"/>';
     else body = '<div class="bw-app-wait"><div class="wait-spinner" style="width:24px;height:24px"></div>'
       + '<div class="mono" style="font-size:9px">' + esc(route) + '</div>'
@@ -1334,7 +1348,7 @@ export function observerClientJs(): string {
     return '<div class="bw">'
       + '<div class="bw-chrome"><div class="bw-dots"><i></i><i></i><i></i></div>'
       + '<div class="bw-url">' + icon("lock", 8) + '<span>' + esc(route) + '</span></div></div>'
-      + '<div class="bw-viewport">' + body + browserLabDock(s, shot) + '</div>'
+      + '<div class="bw-viewport">' + body + (liveUrl && S.media === "live" ? "" : dock) + '</div>'
       + (live ? liveTag() : "")
       + '</div>';
   }
@@ -1863,6 +1877,141 @@ export function observerClientJs(): string {
     menu.style.left = left + "px";
     menu.style.visibility = "visible";
   }
+  function ensureLiveStreamHost() {
+    if (liveStreamHost) return liveStreamHost;
+    if (!document.createElement) return null;
+    var host = document.body || document.documentElement;
+    if (!host || !host.appendChild) return null;
+    liveStreamHost = document.createElement("div");
+    liveStreamHost.setAttribute("data-live-stream-host", "true");
+    liveStreamHost.style.position = "fixed";
+    liveStreamHost.style.inset = "0";
+    liveStreamHost.style.overflow = "visible";
+    liveStreamHost.style.pointerEvents = "none";
+    liveStreamHost.style.zIndex = "20";
+    host.appendChild(liveStreamHost);
+    return liveStreamHost;
+  }
+  function createLiveStreamRecord(id, url, title) {
+    var host = ensureLiveStreamHost();
+    if (!host) return null;
+    var wrapper = document.createElement("div");
+    wrapper.setAttribute("data-live-stream-wrapper", id);
+    wrapper.style.position = "fixed";
+    wrapper.style.overflow = "hidden";
+    wrapper.style.background = "#000";
+    wrapper.style.pointerEvents = "none";
+    wrapper.style.display = "none";
+    var frame = document.createElement("iframe");
+    frame.style.position = "absolute";
+    frame.style.border = "0";
+    frame.style.margin = "0";
+    frame.style.display = "block";
+    frame.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen");
+    frame.setAttribute("referrerpolicy", "no-referrer");
+    frame.setAttribute("title", title || "live stream");
+    frame.setAttribute("data-live-stream-frame", id);
+    frame.src = url;
+    var overlay = document.createElement("div");
+    overlay.className = "live-stream-overlay";
+    overlay.style.position = "absolute";
+    overlay.style.overflow = "hidden";
+    overlay.style.pointerEvents = "none";
+    overlay.style.zIndex = "2";
+    wrapper.appendChild(frame);
+    wrapper.appendChild(overlay);
+    host.appendChild(wrapper);
+    return { url: url, wrapper: wrapper, frame: frame, overlay: overlay, overlayHtml: "" };
+  }
+  function removeLiveStreamRecord(id) {
+    var rec = liveStreamFrames[id];
+    if (rec && rec.wrapper && rec.wrapper.parentNode) rec.wrapper.parentNode.removeChild(rec.wrapper);
+    delete liveStreamFrames[id];
+  }
+  function hideLiveStreamRecord(rec) {
+    if (!rec || !rec.wrapper) return;
+    rec.wrapper.style.display = "none";
+    rec.wrapper.style.pointerEvents = "none";
+  }
+  function clipRect(rect) {
+    var stage = app.querySelector && app.querySelector(".stage");
+    var s = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect() : null;
+    var left = Math.max(rect.left, 0, s ? s.left : 0);
+    var top = Math.max(rect.top, 0, s ? s.top : 0);
+    var right = Math.min(rect.right, window.innerWidth || rect.right, s ? s.right : rect.right);
+    var bottom = Math.min(rect.bottom, window.innerHeight || rect.bottom, s ? s.bottom : rect.bottom);
+    return { left: left, top: top, right: right, bottom: bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+  }
+  function layoutLiveStreamRecord(rec, mount, overlayHtml) {
+    if (!rec || !mount || !mount.getBoundingClientRect) return hideLiveStreamRecord(rec);
+    var rect = mount.getBoundingClientRect();
+    var clipped = clipRect(rect);
+    if (rect.width < 2 || rect.height < 2 || clipped.width < 2 || clipped.height < 2) return hideLiveStreamRecord(rec);
+    rec.wrapper.style.display = "block";
+    rec.wrapper.style.left = clipped.left + "px";
+    rec.wrapper.style.top = clipped.top + "px";
+    rec.wrapper.style.width = clipped.width + "px";
+    rec.wrapper.style.height = clipped.height + "px";
+    rec.wrapper.style.pointerEvents = S.view === "focus" ? "auto" : "none";
+    rec.frame.style.left = (rect.left - clipped.left) + "px";
+    rec.frame.style.top = (rect.top - clipped.top) + "px";
+    rec.frame.style.width = rect.width + "px";
+    rec.frame.style.height = rect.height + "px";
+    rec.frame.style.pointerEvents = S.view === "focus" ? "auto" : "none";
+    if (rec.overlay) {
+      rec.overlay.style.left = rec.frame.style.left;
+      rec.overlay.style.top = rec.frame.style.top;
+      rec.overlay.style.width = rec.frame.style.width;
+      rec.overlay.style.height = rec.frame.style.height;
+      rec.overlay.setAttribute("data-focus", S.view === "focus" ? "true" : "false");
+      if (rec.overlayHtml !== overlayHtml) {
+        rec.overlay.innerHTML = overlayHtml || "";
+        rec.overlayHtml = overlayHtml || "";
+      }
+    }
+  }
+  function reconcileLiveStreams() {
+    if (!app.querySelectorAll || !document.createElement) return;
+    var known = {};
+    currentData.streams.forEach(function (s) {
+      var url = browserLiveUrl(s);
+      if (url) known[s.id] = { url: url, stream: s };
+    });
+    var mounts = app.querySelectorAll("[data-live-stream-id]");
+    var visible = {};
+    Array.prototype.forEach.call(mounts, function (mount) {
+      var id = mount.getAttribute("data-live-stream-id");
+      var url = mount.getAttribute("data-live-stream-url") || "";
+      var title = mount.getAttribute("data-live-stream-title") || "live stream";
+      if (!id || !url) return;
+      var knownStream = known[id] && known[id].stream;
+      var overlayHtml = knownStream ? browserLabDock(knownStream, browserShot(knownStream)) : "";
+      var rec = liveStreamFrames[id];
+      if (!rec || rec.url !== url) {
+        removeLiveStreamRecord(id);
+        rec = createLiveStreamRecord(id, url, title);
+        if (!rec) return;
+        liveStreamFrames[id] = rec;
+      } else {
+        rec.frame.setAttribute("title", title);
+      }
+      visible[id] = true;
+      layoutLiveStreamRecord(rec, mount, overlayHtml);
+    });
+    Object.keys(liveStreamFrames).forEach(function (id) {
+      var rec = liveStreamFrames[id];
+      if (!known[id] || (rec && rec.url !== known[id].url)) removeLiveStreamRecord(id);
+      else if (!visible[id]) hideLiveStreamRecord(rec);
+    });
+  }
+  function scheduleLiveStreamLayout() {
+    if (liveStreamLayoutRaf != null) return;
+    var raf = window.requestAnimationFrame || function (fn) { return window.setTimeout(fn, 16); };
+    liveStreamLayoutRaf = raf(function () {
+      liveStreamLayoutRaf = null;
+      reconcileLiveStreams();
+    });
+  }
 
   function render() {
     var docEl = document.documentElement;
@@ -1898,6 +2047,7 @@ export function observerClientJs(): string {
       if (inp) { inp.focus(); try { inp.setSelectionRange(caret, caret); } catch (e) {} }
     }
     placeMenus();
+    reconcileLiveStreams();
     var cb = document.getElementById("console-body");
     if (cb && scrolls[".console-body"] == null) cb.scrollTop = cb.scrollHeight;
   }
@@ -2026,11 +2176,33 @@ export function observerClientJs(): string {
       S.focusedId = next; if (S.view !== "focus") S.view = "focus"; render();
     }
   });
-  window.addEventListener("resize", function () { if (openDd) placeMenus(); });
+  window.addEventListener("resize", function () { if (openDd) placeMenus(); scheduleLiveStreamLayout(); });
+  app.addEventListener("scroll", scheduleLiveStreamLayout, true);
 
   // ================================================================ POLLING
   function dataKey(d) {
-    return (d.generatedAt || "") + "|" + (d.streams || []).map(function (s) { return s.id + s.status + laneProgress(s); }).join(",");
+    var streams = (d.streams || []).map(function (s) {
+      return {
+        id: s.id,
+        status: s.status,
+        progress: laneProgress(s),
+        step: laneStep(s),
+        updatedAt: s.updatedAt,
+        url: browserLiveUrl(s),
+        route: laneRoute(s),
+        tail: (s.terminalPlain || (s.terminal && s.terminal.tail) || "").slice(-1200),
+        artifacts: (s.artifacts || []).map(function (a) { return [a.kind, a.path, a.label]; }),
+        completion: s.completion || null
+      };
+    });
+    var events = (d.events || []).slice(-200).map(function (e) { return [e.at, e.level, e.type, e.simId, e.streamId, e.message]; });
+    var run = d.run || {};
+    return JSON.stringify({
+      run: [run.runId, run.status, (run.lifecycle || []).length, (run.knownGaps || []).length],
+      summary: d.summary || {},
+      streams: streams,
+      events: events
+    });
   }
   function refresh() {
     if (location.protocol === "file:") return Promise.resolve();
@@ -2062,7 +2234,7 @@ export function observerClientJs(): string {
   render();
   refresh().then(function () {
     if (location.protocol !== "file:") {
-      refreshTimer = setInterval(refresh, 2500);
+      refreshTimer = setInterval(refresh, REFRESH_MS);
       refreshHistoryIndex();
       historyTimer = setInterval(refreshHistoryIndex, 30000);
     }
