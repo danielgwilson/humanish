@@ -13,7 +13,8 @@ dogfood run for Mimetic. Repo labels are redacted as `repo-01` through
 - Credential-isolated GitHub read preflight passed `4/4` assigned repos.
 - OpenAI actor preflight passed for the run-selected actor model.
 - Live provider scope stayed within the packet rails: E2B Desktop, OpenAI/Codex,
-  and GitHub read access; max concurrent E2B desktops was `4`.
+  and GitHub read access. This run used four desktop lanes because four repos
+  were assigned, not because four is a policy cap.
 
 ## Run Evidence
 

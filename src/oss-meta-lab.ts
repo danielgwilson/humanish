@@ -1267,7 +1267,10 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   } else if (liveDesktops.some((desktop) => desktop.url)) {
     warnings.push("Skipped persistent desktop screenshots because repo labels are redacted; live stream URLs remain runtime-only.");
   }
-  const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops, redactRepoNames);
+  const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops, {
+    assignments,
+    redactRepoNames
+  });
   warnings.push(...actorEvidenceSummary.warnings);
   const bundle = buildMetaBundle({
     assignments,
@@ -1322,7 +1325,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     observer,
     repos: publicRepos,
     runId,
-    sandboxes: liveDesktops.map(formatLiveDesktopForResult),
+    sandboxes: liveDesktops.map((desktop) => formatLiveDesktopForResult(desktop, redactRepoNames)),
     warnings: [...warnings, ...observer.warnings]
   };
 
@@ -1391,7 +1394,7 @@ export function startOssMetaLabLiveRefresh(
         timedOut,
         timeoutMs
       });
-      result.sandboxes = runtime.liveDesktops.map(formatLiveDesktopForResult);
+      result.sandboxes = runtime.liveDesktops.map((desktop) => formatLiveDesktopForResult(desktop, runtime.redactRepoNames));
       const outcome = classifyMetaLabOutcome({
         dryRun: runtime.dryRun,
         liveDesktops: runtime.liveDesktops,
@@ -1578,7 +1581,10 @@ function buildMetaBundle(args: {
 
   for (const assignment of args.assignments) {
     const prompt = buildCodexBootstrapPrompt(assignment, args.redactRepoNames);
-    const liveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
+    const rawLiveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
+    const liveDesktop = rawLiveDesktop && args.redactRepoNames
+      ? redactLiveDesktopRepoMentions(rawLiveDesktop, assignment.repo)
+      : rawLiveDesktop;
     const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
     const scenarioId = args.redactRepoNames ? `oss-meta-${repoLabel}` : assignment.scenarioId;
     const status = statusForMeta(args, liveDesktop);
@@ -1595,7 +1601,7 @@ function buildMetaBundle(args: {
       streamKind: "browser",
       mode: "browser-sim",
       progress: progressForMeta(status, liveDesktop),
-      currentStep: currentStepForMeta(args, assignment),
+      currentStep: currentStepForMeta(args, assignment, liveDesktop),
       summary: completion
         ? `Headed E2B desktop lane assigned to ${repoLabel}; ${completion.reason}`
         : liveDesktop?.bootstrap?.status === "started"
@@ -1897,8 +1903,7 @@ function currentStepForMeta(args: {
   liveRequested: boolean;
   missingKeys: string[];
   redactRepoNames?: boolean;
-}, assignment: OssMetaLabAssignment): string {
-  const liveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
+}, assignment: OssMetaLabAssignment, liveDesktop?: OssMetaLabLiveDesktop): string {
   const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
   if (args.dryRun) {
     return `Contract ready for ${repoLabel}; no E2B desktop launched.`;
@@ -2100,7 +2105,11 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
     ...(liveDesktop.completion.visualReason === undefined ? [] : [`visual_reason: ${liveDesktop.completion.visualReason}`]),
     ...(liveDesktop.completion.setupQuality === undefined ? [] : [
       `setup_quality: ${liveDesktop.completion.setupQuality.status}`,
-      `setup_summary: ${liveDesktop.completion.setupQuality.summary}`
+      `setup_summary: ${liveDesktop.completion.setupQuality.summary}`,
+      ...(liveDesktop.completion.setupQuality.studyQuality === undefined ? [] : [
+        `study_quality: ${liveDesktop.completion.setupQuality.studyQuality.rating}`,
+        `study_summary: ${liveDesktop.completion.setupQuality.studyQuality.summary}`
+      ])
     ]),
     "",
     "public-safe actor last message tail:",
@@ -2160,6 +2169,7 @@ function buildMetaFeedbackCandidates(args: {
     const baseEvidence = feedbackEvidenceForDesktop(desktop);
     const setupQualityPath = desktop.actorEvidence?.setupQualityPath;
     const failedSetupChecks = desktop.completion?.setupQuality?.checks.filter((check) => !check.ok) ?? [];
+    const studyQuality = desktop.completion?.setupQuality?.studyQuality;
 
     if (setupQualityPath && failedSetupChecks.length > 0) {
       candidates.push({
@@ -2198,7 +2208,7 @@ function buildMetaFeedbackCandidates(args: {
     }
 
     const actorText = `${desktop.completion?.actorLastMessageTail ?? ""}\n${desktop.completion?.actorLogTail ?? ""}`;
-    if (/\b(?:does not support|unknown option|unsupported|does not expose|did not expose|did not accept|not available)\b[\s\S]{0,160}(?:--app-url|run --app-url)|(?:--app-url|run --app-url)[\s\S]{0,160}\b(?:does not support|unknown option|unsupported|does not expose|did not expose|did not accept|not available)\b/i.test(actorText)) {
+    if (hasAppUrlProofBlocker(actorText)) {
       candidates.push({
         schema: "mimetic.feedback-candidate.v1",
         id: `published-cli-app-url-${safeArtifactToken(assignment.streamId)}`,
@@ -2222,8 +2232,45 @@ function buildMetaFeedbackCandidates(args: {
         proposed_next_state: "adapter-hardening",
         acceptance_proof: [
           "npm view mimetic-cli version",
-          "npx mimetic -- run --help | grep -- --app-url",
+          "npx --package mimetic-cli mimetic run --help | grep -- --app-url",
           `pnpm mimetic -- verify --run ${args.runId} --json`
+        ]
+      });
+    }
+
+    if (setupQualityPath && studyQuality && (studyQuality.rating === "none" || studyQuality.rating === "ceremonial")) {
+      candidates.push({
+        schema: "mimetic.feedback-candidate.v1",
+        id: `study-quality-${safeArtifactToken(assignment.streamId)}`,
+        run_id: args.runId,
+        stream_id: assignment.streamId,
+        adapter_id: "oss-meta-lab",
+        scenario_id: scenarioId,
+        persona_id: `codex-oss-operator-${String(assignment.index).padStart(2, "0")}`,
+        actor: "codex-tui",
+        substrate: "e2b-desktop",
+        failure_owner: "actor",
+        summary: `${repoLabel} Mimetic setup was ${studyQuality.rating}`,
+        expected: "The setup actor should turn Mimetic init into an app-aware user-study plan with customized coverage, personas, scenarios, app-url proof, and public-safe feedback.",
+        actual: studyQuality.summary,
+        evidence: [
+          {
+            path: setupQualityPath,
+            kind: "filesystem",
+            note: "Setup-quality snapshot includes study-quality checks and public-safe structural signals."
+          },
+          ...baseEvidence
+        ],
+        redaction: {
+          status: "passed",
+          notes: "Study-quality feedback candidate references local public-safe artifacts only."
+        },
+        idempotency_key: `mimetic:${args.runId}:${assignment.streamId}:study-quality`,
+        proposed_next_state: "study-quality-review",
+        acceptance_proof: [
+          `pnpm mimetic -- verify --run ${args.runId} --json`,
+          `pnpm mimetic -- watch --run ${args.runId} --no-open`,
+          "Study-quality rating is useful or high_leverage, or the remaining ceremonial state is explicitly explained."
         ]
       });
     }
@@ -2293,11 +2340,13 @@ function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoN
     "4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.",
     "5. Install Mimetic as a dev dependency with the package manager the repo already uses.",
     "6. Run `npx mimetic init --yes` or the package-manager equivalent.",
-    "7. Author plausible public-safe Mimetic personas and desktop/mobile browser scenarios for this repo if feasible.",
-    "8. Run `npx mimetic run --help` and verify `--app-url` is available.",
-    "9. If the app is running locally, run `npx mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.",
-    "10. After `run --app-url`, render or open the nested Mimetic Observer with `npx mimetic watch --run latest --detach --no-open --json` and keep it visible.",
-    "11. Record public-safe blockers and evidence paths only.",
+    "7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.",
+    "8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.",
+    "9. Run `npx mimetic run --help` and verify `--app-url` is available.",
+    "10. If the app is running locally, run `npx mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.",
+    "11. After `run --app-url`, render or open the nested Mimetic Observer with `npx mimetic watch --run latest --detach --no-open --json` and keep it visible.",
+    "12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.",
+    "13. Record public-safe blockers and evidence paths only.",
     "",
     "Expected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
   ].join("\n");
@@ -2483,7 +2532,10 @@ async function refreshOssMetaLabLiveRuntime(
   if (options.captureScreenshots) {
     await captureLiveDesktopScreenshots(runtime.artifactRoot, runtime.liveDesktops);
   }
-  await writeActorEvidenceArtifacts(runtime.artifactRoot, runtime.liveDesktops, runtime.redactRepoNames);
+  await writeActorEvidenceArtifacts(runtime.artifactRoot, runtime.liveDesktops, {
+    assignments: runtime.assignments,
+    redactRepoNames: runtime.redactRepoNames
+  });
 
   const bundle = buildMetaBundle({
     assignments: runtime.assignments,
@@ -2623,7 +2675,10 @@ async function captureLiveDesktopScreenshots(
 async function writeActorEvidenceArtifacts(
   artifactRoot: string,
   liveDesktops: OssMetaLabLiveDesktop[],
-  redactRepoNames: boolean
+  options: {
+    assignments: OssMetaLabAssignment[];
+    redactRepoNames: boolean;
+  }
 ): Promise<{ warnings: string[] }> {
   const candidates = liveDesktops.filter((desktop) =>
     desktop.completion?.actorLastMessageTail || desktop.completion?.actorLogTail || desktop.completion?.setupQuality
@@ -2639,6 +2694,8 @@ async function writeActorEvidenceArtifacts(
   let written = 0;
 
   for (const desktop of candidates) {
+    const assignment = options.assignments.find((candidate) => candidate.streamId === desktop.streamId);
+    const repoForRedaction = options.redactRepoNames ? assignment?.repo : undefined;
     const baseName = safeArtifactToken(desktop.streamId);
     const actorEvidence: OssMetaLabActorEvidenceArtifacts = {};
 
@@ -2646,7 +2703,10 @@ async function writeActorEvidenceArtifacts(
       const relativePath = path.join("actor-evidence", `${baseName}-actor-last-message-tail.txt`);
       await writeFile(
         path.join(artifactRoot, relativePath),
-        renderPublicSafeActorEvidenceText("actor-last-message", desktop.streamId, desktop.completion.actorLastMessageTail),
+        renderPublicSafeActorEvidenceText("actor-last-message", desktop.streamId, desktop.completion.actorLastMessageTail, {
+          providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
+          repo: repoForRedaction
+        }),
         "utf8"
       );
       actorEvidence.actorLastMessageTailPath = relativePath;
@@ -2657,7 +2717,10 @@ async function writeActorEvidenceArtifacts(
       const relativePath = path.join("actor-evidence", `${baseName}-actor-log-tail.txt`);
       await writeFile(
         path.join(artifactRoot, relativePath),
-        renderPublicSafeActorEvidenceText("actor-log", desktop.streamId, desktop.completion.actorLogTail),
+        renderPublicSafeActorEvidenceText("actor-log", desktop.streamId, desktop.completion.actorLogTail, {
+          providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
+          repo: repoForRedaction
+        }),
         "utf8"
       );
       actorEvidence.actorLogTailPath = relativePath;
@@ -2666,8 +2729,8 @@ async function writeActorEvidenceArtifacts(
 
     if (desktop.completion?.setupQuality) {
       const relativePath = path.join("setup-quality", `${baseName}-setup-quality.json`);
-      const snapshot = redactRepoNames
-        ? suppressSetupQualityPreviews(desktop.completion.setupQuality)
+      const snapshot = options.redactRepoNames
+        ? redactSetupQualityRepoMentions(suppressSetupQualityPreviews(desktop.completion.setupQuality), repoForRedaction)
         : desktop.completion.setupQuality;
       await writeJson(path.join(artifactRoot, relativePath), snapshot);
       actorEvidence.setupQualityPath = relativePath;
@@ -2693,6 +2756,7 @@ function suppressSetupQualityPreviews(snapshot: RunSetupQualitySnapshot): RunSet
       label: sanitizeSetupQualityText(check.label),
       detail: sanitizeSetupQualityText(check.detail)
     })),
+    ...(snapshot.studyQuality ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) } : {}),
     previews: [],
     redaction: {
       status: "passed",
@@ -2702,8 +2766,13 @@ function suppressSetupQualityPreviews(snapshot: RunSetupQualitySnapshot): RunSet
   };
 }
 
-function renderPublicSafeActorEvidenceText(kind: string, streamId: string, text: string): string {
-  const sanitized = sanitizeRemoteLog(text);
+function renderPublicSafeActorEvidenceText(
+  kind: string,
+  streamId: string,
+  text: string,
+  redaction?: { providerRuntimeId?: string | undefined; repo?: string | undefined }
+): string {
+  const sanitized = sanitizeRemoteLog(redactPrivateRuntimeMentions(text, redaction));
   return [
     `schema: mimetic.oss-meta-actor-evidence.v1`,
     `kind: ${kind}`,
@@ -2712,6 +2781,99 @@ function renderPublicSafeActorEvidenceText(kind: string, streamId: string, text:
     "",
     sanitized || "(no actor evidence captured)"
   ].join("\n").trimEnd() + "\n";
+}
+
+function redactLiveDesktopRepoMentions(desktop: OssMetaLabLiveDesktop, repo: string): OssMetaLabLiveDesktop {
+  return {
+    ...desktop,
+    ...(desktop.bootstrap
+      ? {
+          bootstrap: {
+            ...desktop.bootstrap,
+            tail: redactPrivateRuntimeMentions(desktop.bootstrap.tail, { providerRuntimeId: desktop.sandboxId, repo })
+          }
+        }
+      : {}),
+    ...(desktop.completion
+      ? { completion: redactCompletionRepoMentions(desktop.completion, repo, desktop.sandboxId) }
+      : {})
+  };
+}
+
+function redactCompletionRepoMentions(completion: OssMetaLabCompletion, repo: string, providerRuntimeId?: string): OssMetaLabCompletion {
+  const redaction = { providerRuntimeId, repo };
+  return {
+    ...completion,
+    ...(completion.actorLogTail === undefined ? {} : { actorLogTail: redactPrivateRuntimeMentions(completion.actorLogTail, redaction) }),
+    ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: redactPrivateRuntimeMentions(completion.actorLastMessageTail, redaction) }),
+    ...(completion.appReason === undefined ? {} : { appReason: redactPrivateRuntimeMentions(completion.appReason, redaction) }),
+    ...(completion.logTail === undefined ? {} : { logTail: redactPrivateRuntimeMentions(completion.logTail, redaction) }),
+    reason: redactPrivateRuntimeMentions(completion.reason, redaction),
+    ...(completion.setupQuality === undefined ? {} : { setupQuality: redactSetupQualityRepoMentions(completion.setupQuality, repo) }),
+    ...(completion.visualReason === undefined ? {} : { visualReason: redactPrivateRuntimeMentions(completion.visualReason, redaction) })
+  };
+}
+
+function redactSetupQualityRepoMentions(snapshot: RunSetupQualitySnapshot, repo: string | undefined): RunSetupQualitySnapshot {
+  if (!repo) {
+    return snapshot;
+  }
+
+  return JSON.parse(JSON.stringify(snapshot, (_key, value) =>
+    typeof value === "string" ? redactRepoMentions(value, repo) : value
+  )) as RunSetupQualitySnapshot;
+}
+
+function redactRepoMentions(text: string, repo: string): string {
+  const [owner, name] = repo.split("/");
+  if (!owner || !name) {
+    return text;
+  }
+
+  const replacement = "[redacted-authorized-repo]";
+  let redacted = text
+    .replace(new RegExp(`https://github\\.com/${escapeRegExp(owner)}/${escapeRegExp(name)}(?:\\.git)?`, "gi"), replacement)
+    .replace(new RegExp(`git@github\\.com:${escapeRegExp(owner)}/${escapeRegExp(name)}(?:\\.git)?`, "gi"), replacement)
+    .replace(new RegExp(`\\b${escapeRegExp(owner)}/${escapeRegExp(name)}\\b`, "gi"), replacement);
+
+  if (name.length >= 4 && !isCommonRepoBasename(name)) {
+    redacted = redacted.replace(new RegExp(`\\b${escapeRegExp(name)}\\b`, "gi"), replacement);
+  }
+
+  return redacted;
+}
+
+function redactPrivateRuntimeMentions(text: string, redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined } | undefined): string {
+  let redacted = text;
+  if (redaction?.repo) {
+    redacted = redactRepoMentions(redacted, redaction.repo);
+  }
+  if (redaction?.providerRuntimeId) {
+    redacted = redacted.replace(new RegExp(escapeRegExp(redaction.providerRuntimeId), "g"), "[redacted-provider-runtime-id]");
+  }
+  return redacted;
+}
+
+function isCommonRepoBasename(value: string): boolean {
+  return new Set(["app", "web", "api", "cli", "repo", "site", "docs", "main", "next", "demo", "test"]).has(value.toLowerCase());
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasAppUrlProofBlocker(text: string): boolean {
+  const normalized = normalizeActorEvidenceForPattern(text);
+  const blocker = "(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))";
+  const appUrl = "(?:--app-url|run\\s+--app-url|app-url\\s+proof)";
+  return new RegExp(`${blocker}[\\s\\S]{0,220}${appUrl}|${appUrl}[\\s\\S]{0,220}${blocker}`, "i").test(normalized);
+}
+
+function normalizeActorEvidenceForPattern(text: string): string {
+  return text
+    .replace(/[*_`~[\](){}<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function arrangeLiveDesktopForScreenshot(
@@ -2914,6 +3076,7 @@ function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSet
       })),
     tree: safeTree,
     previews: safePreviews,
+    ...(snapshot.studyQuality ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) } : {}),
     packageScripts: safeScripts,
     mimetic: {
       configPresent: snapshot.mimetic.configPresent === true,
@@ -2921,6 +3084,40 @@ function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSet
       scenarioCount: typeof snapshot.mimetic.scenarioCount === "number" && Number.isFinite(snapshot.mimetic.scenarioCount) ? Math.max(0, Math.round(snapshot.mimetic.scenarioCount)) : 0,
       packageScriptPresent: snapshot.mimetic.packageScriptPresent === true,
       gitignoreContainsRuntimeIgnore: snapshot.mimetic.gitignoreContainsRuntimeIgnore === true
+    }
+  };
+}
+
+function sanitizeStudyQualitySnapshot(studyQuality: NonNullable<RunSetupQualitySnapshot["studyQuality"]>): NonNullable<RunSetupQualitySnapshot["studyQuality"]> {
+  const rating = studyQuality.rating === "none"
+    || studyQuality.rating === "ceremonial"
+    || studyQuality.rating === "useful"
+    || studyQuality.rating === "high_leverage"
+    ? studyQuality.rating
+    : "none";
+
+  return {
+    schema: "mimetic.study-quality.v1",
+    rating,
+    summary: sanitizeSetupQualityText(studyQuality.summary).slice(0, 320),
+    checks: Array.isArray(studyQuality.checks)
+      ? studyQuality.checks
+        .filter((check) => isRecord(check) && typeof check.id === "string" && typeof check.label === "string" && typeof check.detail === "string")
+        .slice(0, 20)
+        .map((check) => ({
+          id: sanitizeSetupQualityText(check.id).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80) || "study-check",
+          label: sanitizeSetupQualityText(check.label).slice(0, 140),
+          ok: check.ok === true,
+          detail: sanitizeSetupQualityText(check.detail).slice(0, 320)
+        }))
+      : [],
+    signals: {
+      appUrlProofBlocked: studyQuality.signals?.appUrlProofBlocked === true,
+      appUrlProofMentioned: studyQuality.signals?.appUrlProofMentioned === true,
+      actorInsightCaptured: studyQuality.signals?.actorInsightCaptured === true,
+      coverageCustomized: studyQuality.signals?.coverageCustomized === true,
+      personaCustomized: studyQuality.signals?.personaCustomized === true,
+      scenarioCustomized: studyQuality.signals?.scenarioCustomized === true
     }
   };
 }
@@ -3274,6 +3471,60 @@ const buildSetupQuality = (root) => {
     } catch {}
   }
   walk(root, 0);
+  const readRel = (rel) => readTextLimited(path.join(root, rel), 20000);
+  const listFilesUnder = (prefix) => {
+    const absoluteRoot = path.join(root, prefix);
+    const files = [];
+    const visit = (dir, depth) => {
+      if (depth > 2 || files.length >= 40) return;
+      let entries = [];
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+      for (const entry of entries) {
+        const absolute = path.join(dir, entry.name);
+        const rel = safeRel(path.relative(root, absolute));
+        if (!rel) continue;
+        if (entry.isDirectory()) visit(absolute, depth + 1);
+        else if (entry.isFile()) files.push(rel);
+      }
+    };
+    visit(absoluteRoot, 0);
+    return files;
+  };
+  const coverageMapText = readRel("mimetic/coverage-map.md");
+  const coverageMatrixText = readRel("mimetic/coverage-matrix.md");
+  const personaFiles = listFilesUnder(path.join("mimetic", "personas"));
+  const scenarioFiles = listFilesUnder(path.join("mimetic", "scenarios"));
+  const personaText = personaFiles.map((rel) => readRel(rel)).join("\\n");
+  const scenarioText = scenarioFiles.map((rel) => readRel(rel)).join("\\n");
+  const configText = readRel("mimetic/config.ts");
+  const defaultPersonaFiles = new Set(["mimetic/personas/synthetic-new-user.yaml", "mimetic/personas/skeptical-power-user.yaml"]);
+  const defaultScenarioFiles = new Set(["mimetic/scenarios/first-run-smoke.yaml", "mimetic/scenarios/onboarding-regression.yaml"]);
+  const coverageCustomized = (
+    Boolean(coverageMapText.trim())
+      && !/Current starter coverage is intentionally minimal/i.test(coverageMapText)
+      && /\\b(screen|route|role|state|path|flow|journey|surface|happy|sad|friction)\\b/i.test(coverageMapText)
+  ) || (
+    Boolean(coverageMatrixText.trim())
+      && !/\\bstarter\\b/i.test(coverageMatrixText)
+      && /\\b(screen|route|role|state|path|flow|journey|surface|happy|sad|friction)\\b/i.test(coverageMatrixText)
+  );
+  const personaCustomized = personaFiles.some((rel) => !defaultPersonaFiles.has(rel))
+    || (Boolean(personaText.trim())
+      && !/Synthetic New User|Skeptical Power User|privacy-safe first-time user evaluating the app/i.test(personaText)
+      && /\\b(role|workflow|creator|operator|admin|guest|player|customer|power user|novice|skeptical|accessibility|persona)\\b/i.test(personaText));
+  const scenarioCustomized = scenarioFiles.some((rel) => !defaultScenarioFiles.has(rel))
+    || (Boolean(scenarioText.trim())
+      && !/First-run smoke|Onboarding regression|Reach the first meaningful product state|Exercise onboarding friction/i.test(scenarioText)
+      && /\\b(route|screen|journey|state|happy|sad|friction|error|empty|mobile|desktop|evidence|expectation)\\b/i.test(scenarioText));
+  const actorEvidenceText = [actorLogTail, actorLastMessageTail, redactedTail, scenarioText, configText].join("\\n");
+  const actorEvidenceNormalized = actorEvidenceText.replace(/[*_\`~[\\](){}<>]/g, " ").replace(/\\s+/g, " ").trim();
+  const appUrlProofBlocked = /(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))[\\s\\S]{0,220}(?:--app-url|run\\s+--app-url|app-url\\s+proof)|(?:--app-url|run\\s+--app-url|app-url\\s+proof)[\\s\\S]{0,220}(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))/i.test(actorEvidenceNormalized);
+  const appUrlProofMentioned = !appUrlProofBlocked && (
+    nestedVerifyStatus === "passed"
+    || /(?:mimetic\\s+run[\\s\\S]{0,160}--app-url|--app-url[\\s\\S]{0,160}mimetic\\s+run)/i.test(actorEvidenceText)
+  );
+  const actorInsightCaptured = /\\b(observed|found|friction|improvement|issue|gap|confusing|blocked|recommend|none observed|feedback)\\b/i.test([actorLogTail, actorLastMessageTail].join("\\n"));
   const gitignore = readTextLimited(path.join(root, ".gitignore"), 20000);
   const configPresent = fs.existsSync(path.join(root, "mimetic", "config.ts"));
   const personaCount = countFilesUnder(root, path.join("mimetic", "personas"));
@@ -3287,6 +3538,23 @@ const buildSetupQuality = (root) => {
     { id: "package-script", label: "Package script", ok: packageScriptPresent, detail: packageScriptPresent ? "package.json exposes a Mimetic script." : "package.json does not expose a Mimetic script." },
     { id: "runtime-ignore", label: "Runtime ignore", ok: gitignoreContainsRuntimeIgnore, detail: gitignoreContainsRuntimeIgnore ? ".gitignore ignores .mimetic/." : ".gitignore does not ignore .mimetic/." }
   ];
+  const studyChecks = [
+    { id: "coverage-customized", label: "Coverage customized", ok: coverageCustomized, detail: coverageCustomized ? "Coverage map or matrix appears app-aware." : "Coverage map/matrix still appears starter-level or absent." },
+    { id: "personas-customized", label: "Personas customized", ok: personaCustomized, detail: personaCustomized ? "Personas appear app-specific or non-starter." : "Personas appear generic starter-level." },
+    { id: "scenarios-customized", label: "Scenarios customized", ok: scenarioCustomized, detail: scenarioCustomized ? "Scenarios appear app-specific or non-starter." : "Scenarios appear generic starter-level." },
+    { id: "app-url-proof", label: "App-url proof", ok: appUrlProofMentioned, detail: appUrlProofMentioned ? "Actor/setup evidence references app-url proof." : appUrlProofBlocked ? "Actor evidence reports that app-url proof was blocked." : "No app-url proof signal detected." },
+    { id: "actor-insight", label: "Actor insight", ok: actorInsightCaptured, detail: actorInsightCaptured ? "Actor evidence mentions feedback, friction, coverage, or observed product behavior." : "Actor evidence does not capture product feedback or coverage insight." }
+  ];
+  const studySignalCount = studyChecks.filter((check) => check.ok).length;
+  const usefulStudy = coverageCustomized && personaCustomized && scenarioCustomized;
+  const concreteStudyInsight = actorInsightCaptured || appUrlProofBlocked;
+  const studyRating = !configPresent || personaCount === 0 || scenarioCount === 0
+    ? "none"
+    : usefulStudy && concreteStudyInsight && (appUrlProofMentioned || appUrlProofBlocked)
+      ? "high_leverage"
+      : usefulStudy
+        ? "useful"
+        : "ceremonial";
   const failed = checks.filter((check) => !check.ok);
   return {
     schema: "mimetic.setup-quality.v1",
@@ -3301,6 +3569,20 @@ const buildSetupQuality = (root) => {
     checks,
     tree,
     previews,
+    studyQuality: {
+      schema: "mimetic.study-quality.v1",
+      rating: studyRating,
+      summary: "Study-quality rating " + studyRating + " from " + studySignalCount + "/5 app-specific leverage signals" + (appUrlProofBlocked ? "; app-url proof path was blocked by actor evidence." : "."),
+      checks: studyChecks,
+      signals: {
+        appUrlProofBlocked,
+        appUrlProofMentioned,
+        actorInsightCaptured,
+        coverageCustomized,
+        personaCustomized,
+        scenarioCustomized
+      }
+    },
     packageScripts,
     mimetic: { configPresent, personaCount, scenarioCount, packageScriptPresent, gitignoreContainsRuntimeIgnore }
   };
@@ -3882,7 +4164,7 @@ start_actor_attempt() {
 set +e
 APP_DIR="$APP_DIR"
 if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
-  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Inspect package.json, README, scripts, and the app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Start the local app if feasible. Run npx mimetic run --help and verify --app-url is available. If the app is running locally, run npx mimetic run --app-url <loopback-url> --sims 2; do not use mimetic watch --sims as app behavior proof. After run --app-url, render or open the nested Mimetic Observer with npx mimetic watch --run latest --detach --no-open --json if feasible. Once the nested Observer proof is rendered or blocked with evidence, write a concise final summary and exit successfully. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
+  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Your goal is useful product-specific user-study setup, not ceremonial install proof. Inspect package.json, README, routes, scripts, and the running app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Replace starter mimetic/coverage-map.md and mimetic/coverage-matrix.md with app-aware screens, roles, states, happy paths, and at least one sad/friction path. Author at least two public-safe app-specific personas and two desktop/mobile browser scenarios; avoid generic first-run-smoke only. Start the local app if feasible. Run npx mimetic run --help and verify --app-url is available. If the app is running locally, run npx mimetic run --app-url <loopback-url> --sims 2; do not use mimetic watch --sims as app behavior proof. After run --app-url, render or open the nested Mimetic Observer with npx mimetic watch --run latest --detach --no-open --json if feasible. Final summary must include personas/scenarios created, product journeys covered, one observed friction/improvement or none observed, and evidence paths. Do not stop at install/init proof. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
 else
   PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Once the draft is written, exit successfully. Do not wait on long-running watchers. Do not print secrets, do not commit, do not push, and do not file issues.'
 fi
@@ -4199,7 +4481,7 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
-function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop): OssMetaLabResult["sandboxes"][number] {
+function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop, redactRepoNames: boolean): OssMetaLabResult["sandboxes"][number] {
   return {
     ...(desktop.completion?.actorStatus ? { actorStatus: desktop.completion.actorStatus } : {}),
     ...(desktop.completion?.appStatus ? { appStatus: desktop.completion.appStatus } : {}),
@@ -4207,7 +4489,7 @@ function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop): OssMetaLabR
     ...(desktop.completion ? { completionReason: desktop.completion.reason, completionStatus: desktop.completion.status } : {}),
     repo: desktop.repo,
     ...(desktop.screenshot ? { screenshotPresent: true } : {}),
-    ...(desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
+    ...(!redactRepoNames && desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
     streamId: desktop.streamId,
     urlPresent: Boolean(desktop.url),
     ...(desktop.completion?.visualStatus ? { visualStatus: desktop.completion.visualStatus } : {}),

@@ -31,6 +31,12 @@ explicitly approves that exact action.
    npm i -D mimetic-cli
    ```
 
+   The package is `mimetic-cli`; the installed binary is `mimetic`. After
+   installation, `npx mimetic ...` resolves the local project binary. For a
+   one-shot command before installation, use
+   `npx --package mimetic-cli mimetic ...` so npm does not resolve an unrelated
+   package named `mimetic`.
+
 3. Preview setup:
 
    ```bash

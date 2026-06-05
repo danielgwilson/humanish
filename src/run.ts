@@ -87,6 +87,25 @@ export interface RunSetupQualitySnapshot {
     truncated: boolean;
     text: string;
   }>;
+  studyQuality?: {
+    schema: "mimetic.study-quality.v1";
+    rating: "none" | "ceremonial" | "useful" | "high_leverage";
+    summary: string;
+    checks: Array<{
+      id: string;
+      label: string;
+      ok: boolean;
+      detail: string;
+    }>;
+    signals: {
+      appUrlProofBlocked: boolean;
+      appUrlProofMentioned: boolean;
+      actorInsightCaptured: boolean;
+      coverageCustomized: boolean;
+      personaCustomized: boolean;
+      scenarioCustomized: boolean;
+    };
+  };
   packageScripts: Record<string, string>;
   mimetic: {
     configPresent: boolean;
@@ -121,7 +140,7 @@ export interface RunFeedbackCandidate {
     notes: string;
   };
   idempotency_key: string;
-  proposed_next_state: "watch" | "adapter-hardening" | "target-app-setup" | "actor-auth" | "setup-quality-review";
+  proposed_next_state: "watch" | "adapter-hardening" | "target-app-setup" | "actor-auth" | "setup-quality-review" | "study-quality-review";
   acceptance_proof: string[];
 }
 

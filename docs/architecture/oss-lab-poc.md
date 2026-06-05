@@ -130,7 +130,8 @@ Each stream lane records:
   `MIMETIC_OSS_META_ACTOR_FIRST=1` and required through
   `MIMETIC_OSS_META_REQUIRE_ACTOR=1`;
 - setup-quality filesystem evidence: shallow tree, Mimetic setup checks,
-  package scripts, and allowlisted previews for public runs;
+  package scripts, study-quality rating, and allowlisted previews for public
+  runs;
 - public-safe remote bootstrap log tail;
 - public-safe gaps and events.
 
@@ -153,7 +154,9 @@ When the remote bootstrap completes, the host persists a local
 render it inline from the served Observer. Static `file://` observers keep the
 artifact link openable but do not hydrate it inline. Token-backed/private runs
 suppress raw file previews by default while preserving the setup checks and
-tree shape.
+tree shape. They also preserve `studyQuality` structural signals so an actor
+that merely installs Mimetic receives a `ceremonial` rating instead of being
+treated as successful user-study leverage.
 
 The live desktop substrate is an optional peer dependency. Install it in the
 project that runs live labs:
@@ -234,5 +237,6 @@ Neither path may claim private product behavior proof without live, redacted,
 public-safe evidence.
 
 Feedback candidates are derived from this evidence when a lane records concrete
-setup-quality gaps or actor-reported Mimetic CLI blockers. `mimetic feedback`
-uses those candidates before falling back to generic dry-run follow-up drafts.
+setup-quality gaps, ceremonial/absent study quality, or actor-reported Mimetic
+CLI blockers. `mimetic feedback` uses those candidates before falling back to
+generic dry-run follow-up drafts.

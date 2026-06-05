@@ -97,6 +97,19 @@ tree:
 previews:
   - path: "mimetic/config.ts"
     language: "typescript"
+studyQuality:
+  schema: mimetic.study-quality.v1
+  rating: "none|ceremonial|useful|high_leverage"
+  checks:
+    - id: "coverage-customized"
+      ok: true
+  signals:
+    appUrlProofBlocked: false
+    appUrlProofMentioned: true
+    actorInsightCaptured: true
+    coverageCustomized: true
+    personaCustomized: true
+    scenarioCustomized: true
 packageScripts:
   mimetic: "mimetic watch"
 mimetic:
@@ -113,7 +126,9 @@ For public OSS runs, previews may include allowlisted setup files such as
 `mimetic/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
 previews are suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
 browser profiles, `node_modules`, `.mimetic/`, and arbitrary source files are
-excluded.
+not included. `studyQuality` is deliberately structural: it stores booleans,
+checks, and a rating so private runs can preserve the useful quality signal
+without committing raw private persona, scenario, or coverage text.
 
 ## Latest And History
 

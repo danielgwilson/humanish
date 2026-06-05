@@ -244,15 +244,14 @@ Spend rails:
 
 - Stop before estimated incremental provider spend exceeds USD 30.
 - Stop after 3 wall-clock hours of live provider work unless Daniel extends it.
-- Maximum 4 concurrently running E2B desktops.
-- No arbitrary total run-count cap.
+- No arbitrary run-count cap or desktop-count cap.
 - Kill disposable E2B sandboxes after every live run and record cleanup
   readback.
 - Record provider usage as public-safe estimates or CLI summaries only; do not
   persist raw provider account payloads or secrets.
 
-If the dollar, wall-clock, or concurrent-resource cap is hit, stop live runs,
-clean up providers, write a receipt, and report the remaining proof gap.
+If the dollar or wall-clock cap is hit, stop live runs, clean up providers,
+write a receipt, and report the remaining proof gap.
 
 ## Stop And Ask
 

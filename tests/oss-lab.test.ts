@@ -493,6 +493,8 @@ describe("OSS lab command", () => {
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_TIMEOUT_MS");
       expect(script).toContain("ACTOR_TIMEOUT_SECONDS");
       expect(script).toContain("Do not wait on long-running watchers");
+      expect(script).toContain("coverage-map.md");
+      expect(script).toContain("Do not stop at install/init proof");
       expect(script).toContain("Run npx mimetic run --help and verify --app-url is available");
       expect(script).toContain("do not use mimetic watch --sims as app behavior proof");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_MODEL");
@@ -958,7 +960,7 @@ describe("OSS lab command", () => {
           completion: {
             actorLogPath: "/remote/it-tools/actor.log",
             actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
-            actorLastMessageTail: "Set up Mimetic, but the installed CLI did not expose run --app-url in the proof path.",
+            actorLastMessageTail: "Set up Mimetic, but the installed CLI does **not** expose run --app-url in the proof path.",
             actorPid: 4321,
             actorStatus: "running",
             appLogPath: "/remote/it-tools/app.log",
@@ -1009,6 +1011,33 @@ describe("OSS lab command", () => {
                   text: "export default { run: { appUrl: 'http://127.0.0.1:5173' } };"
                 }
               ],
+              studyQuality: {
+                schema: "mimetic.study-quality.v1",
+                rating: "ceremonial",
+                summary: "Study-quality rating ceremonial from 2/5 app-specific leverage signals.",
+                checks: [
+                  {
+                    id: "coverage-customized",
+                    label: "Coverage customized",
+                    ok: false,
+                    detail: "Coverage map/matrix still appears starter-level or absent."
+                  },
+                  {
+                    id: "app-url-proof",
+                    label: "App-url proof",
+                    ok: false,
+                    detail: "Actor evidence reports that app-url proof was blocked."
+                  }
+                ],
+                signals: {
+                  appUrlProofBlocked: true,
+                  appUrlProofMentioned: false,
+                  actorInsightCaptured: false,
+                  coverageCustomized: false,
+                  personaCustomized: false,
+                  scenarioCustomized: true
+                }
+              },
               packageScripts: {
                 dev: "vite"
               },
@@ -1072,7 +1101,7 @@ describe("OSS lab command", () => {
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
       actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
-      actorLastMessageTail: "Set up Mimetic, but the installed CLI did not expose run --app-url in the proof path.",
+      actorLastMessageTail: "Set up Mimetic, but the installed CLI does **not** expose run --app-url in the proof path.",
       actorStatus: "running",
       appStatus: "running",
       appUrl: "http://127.0.0.1:5173",
@@ -1083,6 +1112,7 @@ describe("OSS lab command", () => {
       visualWindowCount: 3
     });
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor last message tail:");
+    expect(bundle.streams[0]?.terminal?.tail).toContain("study_quality: ceremonial");
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor log tail:");
     expect(bundle.streams[0]?.terminal?.tail).toContain("npx mimetic init --yes");
     expect(bundle.streams[0]).toMatchObject({
@@ -1117,7 +1147,7 @@ describe("OSS lab command", () => {
       path: "setup-quality/oss-01-desktop-setup-quality.json",
       kind: "filesystem"
     });
-    expect(bundle.feedbackCandidates).toHaveLength(2);
+    expect(bundle.feedbackCandidates).toHaveLength(3);
     expect(bundle.feedbackCandidates[0]).toMatchObject({
       schema: "mimetic.feedback-candidate.v1",
       failure_owner: "actor",
@@ -1139,6 +1169,17 @@ describe("OSS lab command", () => {
       path: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
       kind: "log",
       note: "Public-safe actor last-message tail."
+    });
+    expect(bundle.feedbackCandidates[2]).toMatchObject({
+      schema: "mimetic.feedback-candidate.v1",
+      failure_owner: "actor",
+      proposed_next_state: "study-quality-review",
+      summary: "CorentinTh/it-tools Mimetic setup was ceremonial"
+    });
+    expect(bundle.feedbackCandidates[2]?.evidence).toContainEqual({
+      path: "setup-quality/oss-01-desktop-setup-quality.json",
+      kind: "filesystem",
+      note: "Setup-quality snapshot includes study-quality checks and public-safe structural signals."
     });
     expect(bundle.streams[1]?.terminal?.tail).toContain("verification failed");
     expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.passed");
@@ -1217,17 +1258,20 @@ describe("OSS lab command", () => {
             terminalTitle: "Mimetic 1 repo-01"
           },
           completion: {
+            actorLastMessageTail: "Configured Mimetic for maintainer/private-app in sandbox-private-123 and opened the private-app Observer.",
+            actorLogTail: "git clone https://github.com/maintainer/private-app.git\nprivate-app setup complete in sandbox-private-123",
             appStatus: "running",
             appUrl: "http://127.0.0.1:3000",
             checkedAt: "2026-06-02T10:31:00.000Z",
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
-            reason: "Target app surface, nested Mimetic proof, and nested Observer were checked.",
+            reason: "Target app surface, nested Mimetic proof, and nested Observer were checked in sandbox-private-123.",
             status: "passed",
             visualStatus: "visible",
             visualWindowCount: 3
           },
           repo: "repo-01",
+          sandboxId: "sandbox-private-123",
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
           url: "https://stream.example/auth-key-should-not-persist"
@@ -1242,7 +1286,12 @@ describe("OSS lab command", () => {
     const serialized = JSON.stringify(bundle);
     expect(serialized).toContain("repo-01");
     expect(serialized).not.toContain("maintainer/private-app");
+    expect(serialized).not.toContain("private-app");
+    expect(serialized).not.toContain("sandbox-private-123");
+    expect(serialized).not.toContain("sandboxId");
     expect(serialized).not.toContain("stream.example");
+    expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain("[redacted-authorized-repo]");
+    expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain("[redacted-provider-runtime-id]");
     expect(bundle.streams[0]?.url).toBeUndefined();
     expect(bundle.streams[0]?.label).toBe("E2B desktop - repo-01");
   });

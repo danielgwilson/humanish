@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.1.4)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.1.5)
 
 ## Install
 
@@ -18,6 +18,10 @@ npm i -D mimetic-cli
 npx mimetic init --yes
 npx mimetic watch
 ```
+
+The package is `mimetic-cli`; the installed binary is `mimetic`. For a one-shot
+command before installation, use `npx --package mimetic-cli mimetic ...` so npm
+does not resolve an unrelated package named `mimetic`.
 
 For coding agents, install the repo skill first:
 

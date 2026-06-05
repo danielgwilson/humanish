@@ -40,7 +40,8 @@ Post-audit fixes:
   than comparing it to a hidden max-running desktop ceiling.
 - The original total run-count cap was reclassified as an arbitrary goal-design
   mistake, not a completion invariant. The corrected spend policy uses dollar
-  budget, wall-clock budget, provider sandbox timeout, and cleanup/readback.
+  budget, wall-clock budget, provider sandbox timeout, and cleanup/readback,
+  not a hidden desktop-count cap.
 - The active goal and packet now explicitly say there is no total-attempt cap;
   only the real spend, time, provider-timeout, cleanup/readback, and
   proof-quality gates can stop the live loop.

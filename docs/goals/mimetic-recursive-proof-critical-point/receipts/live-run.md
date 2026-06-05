@@ -112,7 +112,8 @@ running sandbox list was queried with metadata
 `tool=mimetic-cli&mode=oss-meta-lab`. That provider readback found seven running
 Mimetic OSS meta-lab sandboxes. The old total run-count cap was an arbitrary
 goal-design mistake; the useful provider controls are dollar budget,
-wall-clock budget, max-concurrent running desktops, and cleanup/readback.
+wall-clock budget, provider timeout, and cleanup/readback, not a hidden
+desktop-count cap.
 
 All seven matching disposable sandboxes were killed, and a follow-up provider
 readback returned zero running Mimetic OSS meta-lab sandboxes. Exact provider

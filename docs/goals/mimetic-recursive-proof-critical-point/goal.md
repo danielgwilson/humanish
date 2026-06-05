@@ -30,8 +30,9 @@ app.
   rather than relying only on nested dry-run proof.
 - A bounded live run uses a public-safe OSS app target and stays within the
   approved dollar and wall-clock budgets.
-- Live E2B runs enforce a max-concurrent running-desktop guard and clean up
-  disposable sandboxes after proof collection.
+- Live E2B runs clean up disposable sandboxes after proof collection; spend
+  control uses dollar, wall-clock, timeout, and cleanup/readback gates, not a
+  hidden desktop-count cap.
 - Durable run artifacts contain no secret values, runtime stream auth URLs,
   private repo labels, private screenshots, PII, PHI, or raw private source
   artifacts.

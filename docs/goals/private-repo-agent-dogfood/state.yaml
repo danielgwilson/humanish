@@ -17,6 +17,9 @@ tasks:
   - id: independent_audit
     status: completed
     summary: "Map every success invariant to evidence before any completion claim."
+  - id: meaningful_loop_iteration
+    status: completed
+    summary: "After the first formal run showed mostly ceremonial setup, improve prompts/scoring/redaction, rerun the four authorized lanes, verify high-leverage study setup, and identify the published npm app-url blocker."
 receipts:
   - path: docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md
     summary: "Orientation receipt only: auth path was proven, one-lane pass and four-lane 3/4 pass were observed, #86 blocker was filed, and sandbox cleanup killed 5/5. Future goals must rerun current proof before completion."
@@ -24,34 +27,42 @@ receipts:
     summary: "Formal actor-required four-lane run passed setup/app/Observer evidence, classified meaningful use, captured Mimetic-owned follow-up, and cleaned up 4/4 running E2B sandboxes."
   - path: docs/goals/private-repo-agent-dogfood/receipts/completion-audit-2026-06-05.md
     summary: "Invariant-by-invariant completion audit mapped every goal success condition to public-safe evidence, caveat, fix, or follow-up issue."
+  - path: docs/goals/private-repo-agent-dogfood/receipts/meaningful-loop-2026-06-05.md
+    summary: "Follow-up observe/improve/observe loop: four redacted lanes reached high-leverage app-aware setup, app-url blocker feedback was captured honestly, redaction scan passed, and provider cleanup killed 4/4."
 verification:
   status: passed
-  last_command: "pnpm release:check"
-  last_artifact: "docs/goals/private-repo-agent-dogfood/receipts/completion-audit-2026-06-05.md"
+  last_command: "pnpm mimetic -- verify --run oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb --json"
+  last_artifact: "docs/goals/private-repo-agent-dogfood/receipts/meaningful-loop-2026-06-05.md"
 evidence:
   environment_state:
     - "GH_TOKEN/E2B_API_KEY/OPENAI_API_KEY names loaded from ignored env file without printing values."
     - "Credential-isolated private-repo preflight passed 4/4 assigned repos."
     - "Formal run verified 4/4 redacted lanes with running app surfaces, nested verification, nested Observer presence, visible headed layouts, and actor evidence."
+    - "Follow-up loop verified 4/4 redacted lanes with actors passed, target app surfaces running, headed layouts visible, and no provider sandbox IDs in redacted JSON."
   independent_checks:
     - "Private repo slug scan over tracked public surface returned no hits."
     - "Historical recursive-proof receipts had provider sandbox IDs redacted, and public-surface scan now checks sandbox-ID context."
     - "state.yaml parsed successfully and git diff --check passed."
     - "pnpm release:check passed: typecheck, 17 test files / 120 tests, build, public-surface scan, skill check, and npm pack dry run."
+    - "Ignored run artifact scan for oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
   observer_runs:
     - "oss-meta-2026-06-05T06-06-30-955Z-1914b164"
     - "oss-meta-2026-06-05T06-07-41-618Z-5b4d1727"
     - "oss-meta-2026-06-05T07-02-38-522Z-ea401be2"
+    - "oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb"
   setup_quality:
     - "Formal run setup-quality snapshots passed 5/5 checks for all four redacted lanes."
+    - "Follow-up setup-quality artifacts rated all four lanes high_leverage with app-aware coverage/persona/scenario signals and honest appUrlProofBlocked=true."
   actor_feedback:
     - "Manual lane classification: repo-01 ceremonial, repo-02 ceremonial, repo-03 useful, repo-04 ceremonial."
     - "Actionable Mimetic-owned proof-path confusion observed and addressed locally; issue #88 filed for cleanup receipts and meaningful-use scoring."
+    - "Follow-up loop produced four feedback candidates for the published npm app-url proof blocker."
   usage_receipts:
     - "Completion audit records meaningful-use ratings and the caveat that most lanes were setup/Observer proof rather than high-leverage product study."
   cleanup_readbacks:
     - "Killed 5/5 disposable E2B sandboxes after initial proof runs."
     - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after formal run; post-cleanup provider readback found 0 running."
+    - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after the follow-up loop; post-cleanup provider readback found 0 running."
   missing: []
 completion_audit:
   status: passed
@@ -64,7 +75,7 @@ provider_spend_policy:
     - GitHub read access
   dollar_cap_usd: 30
   wall_clock_cap_hours: 3
-  max_concurrent_e2b_desktops: 4
+  desktop_count_cap: null
   total_run_count_cap: null
   cleanup_required: true
 public_safety:

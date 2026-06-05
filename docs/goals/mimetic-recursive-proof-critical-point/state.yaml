@@ -118,7 +118,7 @@ evidence:
     - "docs/goals/mimetic-recursive-proof-critical-point/receipts/canonical-main-app-target-proof.md"
   missing:
     - "Exact provider dollar usage was not available from the CLI; receipt records bounded commands and observed launch attempts."
-    - "Historical debug attempts exceeded the old arbitrary total run-count cap; this is no longer treated as a completion blocker because the corrected policy uses dollar budget, wall-clock budget, max-concurrent running desktops, and provider cleanup/readback."
+    - "Historical debug attempts exceeded the old arbitrary total run-count cap; this is no longer treated as a completion blocker because the corrected policy uses dollar budget, wall-clock budget, provider timeout, and provider cleanup/readback."
     - "The published npm 0.1.4 path used by the remote actor did not yet expose the branch app-url proof path; the actor used public npm watch while deterministic bootstrap used the locally packed branch package for nested live app-url proof."
     - "This proves one public-safe recursive critical-point lane; broader platform readiness, repeated-run reliability, and multi-step autonomous persona navigation remain future adapter slices."
 completion_audit:
