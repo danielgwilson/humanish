@@ -33,6 +33,7 @@ import type {
 export const OSS_META_LAB_SCHEMA = "mimetic.oss-meta-lab-result.v1";
 
 export interface OssMetaLabOptions {
+  codexAppServer?: boolean;
   completionTimeoutMs?: number;
   count?: number;
   cwd: string;
@@ -81,11 +82,14 @@ interface OssMetaLabLiveDesktop {
 interface OssMetaLabActorEvidenceArtifacts {
   actorLastMessageTailPath?: string;
   actorLogTailPath?: string;
+  appServerEventsPath?: string;
+  appServerTracePath?: string;
+  appServerTranscriptPath?: string;
   setupQualityPath?: string;
 }
 
 interface OssMetaLabBootstrap {
-  codexMode: "tui-attempted";
+  codexMode: "app-server-client" | "tui-attempted";
   completionPath?: string;
   launcherPath?: string;
   logPath?: string;
@@ -102,6 +106,7 @@ export type OssMetaLabActorStatus = "not_started" | "running" | "passed" | "fail
 export type OssMetaLabVisualStatus = "not_started" | "visible" | "blocked" | "unknown";
 
 export interface OssMetaLabCompletion {
+  appServerActorEvidence?: OssMetaLabAppServerActorEvidence;
   actorLogPath?: string;
   actorLogTail?: string;
   actorLastMessageTail?: string;
@@ -123,6 +128,18 @@ export interface OssMetaLabCompletion {
   visualReason?: string;
   visualStatus?: OssMetaLabVisualStatus;
   visualWindowCount?: number;
+}
+
+export interface OssMetaLabAppServerActorEvidence {
+  eventsPath: string;
+  eventsText?: string;
+  reason?: string;
+  status?: string;
+  traceJson?: unknown;
+  tracePath: string;
+  traceText?: string;
+  transcriptPath: string;
+  transcriptText?: string;
 }
 
 export interface OssMetaLabHostActorPlan {
@@ -244,6 +261,7 @@ const OSS_META_LAB_REMOTE_ENV_NAMES = [
   "MIMETIC_OSS_META_ACTOR_FIRST",
   "MIMETIC_OSS_META_ACTOR_MODEL",
   "MIMETIC_OSS_META_HOST_CODEX_ACTOR",
+  "MIMETIC_OSS_META_CODEX_APP_SERVER",
   "MIMETIC_OSS_META_ACTOR_TIMEOUT_MS",
   "MIMETIC_OSS_META_REQUIRE_ACTOR"
 ] as const;
@@ -302,6 +320,9 @@ export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<stri
   const result: Record<string, string> = {};
   const codexApiKey = env.CODEX_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
   const codexAccessToken = env.CODEX_ACCESS_TOKEN?.trim();
+  const codexAppServerUrl = env.MIMETIC_OSS_META_CODEX_APP_SERVER_URL?.trim()
+    || env.CODEX_APP_SERVER_CLIENT_URL?.trim()
+    || env.CODEX_APP_SERVER_URL?.trim();
   const githubToken = githubTokenFromEnv(env);
 
   if (codexApiKey) {
@@ -309,6 +330,9 @@ export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<stri
   }
   if (codexAccessToken) {
     result.MIMETIC_CODEX_ACCESS_TOKEN = codexAccessToken;
+  }
+  if (codexAppServerUrl) {
+    result.MIMETIC_CODEX_APP_SERVER_URL = codexAppServerUrl;
   }
   if (githubToken) {
     result.MIMETIC_GITHUB_TOKEN = githubToken;
@@ -528,6 +552,10 @@ export async function preflightOssMetaActorApiKey(args: {
 
 function hostCodexActorRequested(env: NodeJS.ProcessEnv): boolean {
   return env.MIMETIC_OSS_META_HOST_CODEX_ACTOR === "1";
+}
+
+function codexAppServerModeRequested(env: NodeJS.ProcessEnv, explicit = false): boolean {
+  return explicit || env.MIMETIC_OSS_META_CODEX_APP_SERVER === "1";
 }
 
 function remoteActorAuthRequested(env: NodeJS.ProcessEnv): boolean {
@@ -1015,6 +1043,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const cwd = path.resolve(options.cwd);
   const dryRun = options.dryRun === true;
   const liveRequested = !dryRun;
+  const codexAppServerMode = codexAppServerModeRequested(process.env, options.codexAppServer === true);
   const warnings: string[] = [];
   const repos = normalizeOssRepoSlugs(options.repos);
   const count = options.count ?? DEFAULT_OSS_REPOS.length;
@@ -1198,6 +1227,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
       liveDesktops = await launchLiveDesktops(assignments, {
+        codexAppServerMode,
         cwd,
         hostActorPlansByStream,
         ...(localPackage ? { localPackage } : {}),
@@ -1247,14 +1277,16 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   if (liveDesktops.length > 0) {
     warnings.push(`Launched ${liveDesktopCount}/${liveDesktops.length} live E2B desktop stream${liveDesktops.length === 1 ? "" : "s"}.`);
     if (startedBootstrapCount > 0) {
-      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Mimetic setup, and Codex actor attempt.`);
+      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Mimetic setup, and ${codexAppServerMode ? "Codex app-server client surface" : "Codex actor attempt"}.`);
       if (terminalCompletionCount > 0) {
         warnings.push(`Classified ${terminalCompletionCount}/${startedBootstrapCount} bootstrap terminal state${startedBootstrapCount === 1 ? "" : "s"} from remote public-safe evidence.`);
         warnings.push(`Detected ${runningAppCount}/${terminalCompletionCount} target app HTTP-ready surface${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
         warnings.push(`Detected ${visibleDesktopCount}/${terminalCompletionCount} headed desktop visual layout${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
       }
     } else {
-      warnings.push("Codex TUI injection and nested Mimetic execution remain the next substrate slice behind these live desktops.");
+      warnings.push(codexAppServerMode
+        ? "Codex app-server client surfacing and nested Mimetic execution remain the next substrate slice behind these live desktops."
+        : "Codex TUI injection and nested Mimetic execution remain the next substrate slice behind these live desktops.");
     }
   }
   if (failedLiveDesktopCount > 0) {
@@ -1591,6 +1623,7 @@ function buildMetaBundle(args: {
     const screenshot = liveDesktop?.screenshot;
     const terminalTail = terminalTailForMeta(prompt, liveDesktop);
     const liveStreamPresent = Boolean(liveDesktop?.url);
+    const appServerMode = liveDesktop?.bootstrap?.codexMode === "app-server-client";
     simulations.push({
       id: assignment.simId,
       index: assignment.index,
@@ -1604,8 +1637,8 @@ function buildMetaBundle(args: {
       summary: completion
         ? `Headed E2B desktop lane assigned to ${repoLabel}; ${completion.reason}`
         : liveDesktop?.bootstrap?.status === "started"
-        ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Mimetic and open the nested Observer.`
-        : `Headed E2B desktop lane assigned to ${repoLabel}; nested Codex TUI should set up Mimetic and open a nested Observer inside that desktop.`,
+        ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Mimetic and open the nested Observer${appServerMode ? " plus Codex app-server client surface" : ""}.`
+        : `Headed E2B desktop lane assigned to ${repoLabel}; remote bootstrap should set up Mimetic and open a nested Observer inside that desktop.`,
       streamIds: [assignment.streamId],
       startedAt: args.createdAt,
       updatedAt: args.createdAt
@@ -1630,14 +1663,16 @@ function buildMetaBundle(args: {
         deviceScaleFactor: 1
       },
       terminal: {
-        title: `Codex TUI bootstrap - ${repoLabel}`,
+        title: `${appServerMode ? "Codex app-server" : "Codex"} bootstrap - ${repoLabel}`,
         format: "plain",
         stdin: liveDesktop?.bootstrap ? "sent" : "planned",
         tail: terminalTail
       },
       ui: {
         route: completion?.appUrl ?? `e2b://desktop/${repoLabel}`,
-        intent: "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+        intent: appServerMode
+          ? "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and opens a Codex app-server client surface."
+          : "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
         ...(completion?.actorStatus ? { actorStatus: completion.actorStatus } : {}),
         ...(completion?.appStatus ? { appStatus: completion.appStatus } : {}),
         ...(completion?.appUrl ? { appUrl: completion.appUrl } : {}),
@@ -1655,15 +1690,21 @@ function buildMetaBundle(args: {
           ? "bootstrap terminal launched; target app and nested Observer setup running"
           : liveStreamPresent ? "live E2B desktop stream present; stream URL is runtime-only" : args.dryRun ? "contract desktop" : "headed E2B desktop"
       },
-      ...(completion ? { completion: completionForStream(completion) } : {}),
+      ...(completion ? { completion: completionForStream(completion, appServerMode) } : {}),
       artifacts: [
         { label: "run bundle", path: "run.json", kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
         { label: "events", path: "events.ndjson", kind: "events" },
         ...(completion?.appLogPath ? [{ label: "remote app log", path: completion.appLogPath, kind: "log" as const }] : []),
         ...(completion?.actorLogPath ? [{ label: "remote actor log", path: completion.actorLogPath, kind: "log" as const }] : []),
+        ...(completion?.appServerActorEvidence?.tracePath ? [{ label: "codex app-server trace", path: completion.appServerActorEvidence.tracePath, kind: "trace" as const }] : []),
+        ...(completion?.appServerActorEvidence?.eventsPath ? [{ label: "codex app-server events", path: completion.appServerActorEvidence.eventsPath, kind: "events" as const }] : []),
+        ...(completion?.appServerActorEvidence?.transcriptPath ? [{ label: "codex app-server transcript", path: completion.appServerActorEvidence.transcriptPath, kind: "log" as const }] : []),
         ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath ? [{ label: "actor last-message tail", path: liveDesktop.actorEvidence.actorLastMessageTailPath, kind: "log" as const }] : []),
         ...(liveDesktop?.actorEvidence?.actorLogTailPath ? [{ label: "actor log tail", path: liveDesktop.actorEvidence.actorLogTailPath, kind: "log" as const }] : []),
+        ...(liveDesktop?.actorEvidence?.appServerTracePath ? [{ label: "codex app-server trace", path: liveDesktop.actorEvidence.appServerTracePath, kind: "trace" as const }] : []),
+        ...(liveDesktop?.actorEvidence?.appServerEventsPath ? [{ label: "codex app-server events", path: liveDesktop.actorEvidence.appServerEventsPath, kind: "events" as const }] : []),
+        ...(liveDesktop?.actorEvidence?.appServerTranscriptPath ? [{ label: "codex app-server transcript", path: liveDesktop.actorEvidence.appServerTranscriptPath, kind: "log" as const }] : []),
         ...(liveDesktop?.actorEvidence?.setupQualityPath ? [{ label: "setup quality", path: liveDesktop.actorEvidence.setupQualityPath, kind: "filesystem" as const }] : []),
         ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
         ...(liveDesktop?.bootstrap?.logPath ? [{ label: "remote bootstrap log", path: liveDesktop.bootstrap.logPath, kind: "log" as const }] : []),
@@ -1687,7 +1728,9 @@ function buildMetaBundle(args: {
         at: args.createdAt,
         level: "info",
         type: "oss-meta.codex.prompt.ready",
-        message: "Codex TUI bootstrap prompt is available in the stream logs tab.",
+        message: appServerMode
+          ? "Codex app-server client hook is available in the stream logs tab."
+          : "Codex bootstrap prompt is available in the stream logs tab.",
         simId: assignment.simId,
         streamId: assignment.streamId
       }
@@ -1872,6 +1915,11 @@ function statusForMeta(args: {
   if (args.dryRun) return "contract_proof_only";
   if (liveDesktop?.completion?.status === "passed" && liveDesktop.completion.appStatus !== "running") return "blocked";
   if (liveDesktop?.completion?.status === "passed" && liveDesktop.completion.visualStatus !== "visible") return "blocked";
+  if (
+    liveDesktop?.completion?.status === "passed"
+    && liveDesktop.bootstrap?.codexMode === "app-server-client"
+    && liveDesktop.completion.actorStatus !== "passed"
+  ) return "blocked";
   if (liveDesktop?.completion?.status === "passed") return "passed";
   if (liveDesktop?.completion?.status === "failed") return "failed";
   if (liveDesktop?.completion?.status === "blocked") return "blocked";
@@ -1911,7 +1959,9 @@ function currentStepForMeta(args: {
     return liveDesktop.completion.reason;
   }
   if (liveDesktop?.bootstrap?.status === "started") {
-    return `Bootstrap terminal launched for ${repoLabel}; Codex TUI attempt, Mimetic setup, and nested Observer run inside the desktop.`;
+    return liveDesktop.bootstrap.codexMode === "app-server-client"
+      ? `Bootstrap terminal launched for ${repoLabel}; Codex app-server actor, Mimetic setup, target app, and nested Observer run inside the desktop.`
+      : `Bootstrap terminal launched for ${repoLabel}; Codex TUI attempt, Mimetic setup, and nested Observer run inside the desktop.`;
   }
   if (liveDesktop?.bootstrap?.status === "failed") {
     return `Bootstrap launcher failed for ${repoLabel}.`;
@@ -1925,7 +1975,7 @@ function currentStepForMeta(args: {
   if (args.missingKeys.length > 0) {
     return `Waiting for ${args.missingKeys.join(", ")} before launching ${repoLabel}.`;
   }
-  return `Ready to launch E2B desktop and inject Codex TUI for ${repoLabel}.`;
+  return `Ready to launch E2B desktop and run Codex actor setup for ${repoLabel}.`;
 }
 
 function createMetaReview(args: {
@@ -2069,6 +2119,19 @@ function classifyMetaLabOutcome(args: {
     };
   }
 
+  const completedWithMissingAppServerActor = args.liveDesktops.filter((desktop) =>
+    desktop.bootstrap?.codexMode === "app-server-client"
+    && desktop.completion?.status === "passed"
+    && desktop.completion.actorStatus !== "passed"
+  );
+  if (completedWithMissingAppServerActor.length > 0) {
+    return {
+      ok: false,
+      reason: `OSS meta-lab completed nested Mimetic setup but did not capture passed Codex app-server actor evidence for ${completedWithMissingAppServerActor.length}/${args.liveDesktops.length} headed desktop lane${completedWithMissingAppServerActor.length === 1 ? "" : "s"}.`,
+      verdict: "blocked"
+    };
+  }
+
   if (args.liveDesktops.length > 0 && args.liveDesktops.every((desktop) => desktop.completion?.status === "passed")) {
     return {
       ok: true,
@@ -2124,7 +2187,13 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
   return lines.join("\n").trim();
 }
 
-function completionForStream(completion: OssMetaLabCompletion): RunStreamCompletion {
+function completionForStream(completion: OssMetaLabCompletion, appServerMode = false): RunStreamCompletion {
+  const effectiveStatus = appServerMode && completion.status === "passed" && completion.actorStatus !== "passed"
+    ? "blocked"
+    : completion.status;
+  const effectiveReason = effectiveStatus === "blocked" && completion.status === "passed" && completion.actorStatus !== "passed"
+    ? "Codex app-server mode requires passed app-server actor evidence; actor evidence did not reach passed."
+    : completion.reason;
   return {
     ...(completion.actorLogPath === undefined ? {} : { actorLogPath: completion.actorLogPath }),
     ...(completion.actorLogTail === undefined ? {} : { actorLogTail: completion.actorLogTail }),
@@ -2141,8 +2210,8 @@ function completionForStream(completion: OssMetaLabCompletion): RunStreamComplet
     ...(completion.logTail === undefined ? {} : { logTail: completion.logTail }),
     ...(completion.nestedObserverPresent === undefined ? {} : { nestedObserverPresent: completion.nestedObserverPresent }),
     ...(completion.nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed: completion.nestedVerifyPassed }),
-    reason: completion.reason,
-    status: completion.status,
+    reason: effectiveReason,
+    status: effectiveStatus,
     ...(completion.visualReason === undefined ? {} : { visualReason: completion.visualReason }),
     ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus }),
     ...(completion.visualWindowCount === undefined ? {} : { visualWindowCount: completion.visualWindowCount })
@@ -2378,6 +2447,7 @@ ${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
 async function launchLiveDesktops(
   assignments: OssMetaLabAssignment[],
   options: {
+    codexAppServerMode?: boolean;
     cwd?: string;
     hostActorPlansByStream?: Map<string, OssMetaLabHostActorPlanResult>;
     localPackage?: OssMetaLabLocalPackage;
@@ -2408,6 +2478,7 @@ async function launchLiveDesktops(
         },
         envs: {
           ...collectOssMetaLabRemoteEnv(process.env),
+          ...(options.codexAppServerMode ? { MIMETIC_OSS_META_CODEX_APP_SERVER: "1" } : {}),
           ...collectOssMetaLabPrivateEnv(process.env)
         },
         resolution: [1440, 960],
@@ -2417,6 +2488,7 @@ async function launchLiveDesktops(
         }
       });
       const bootstrap = await startOssBootstrap(desktop, assignment, options.localPackage, requestTimeoutMs, {
+        ...(options.codexAppServerMode === undefined ? {} : { codexAppServerMode: options.codexAppServerMode }),
         ...(hostActorPlanResult === undefined ? {} : { hostActorPlanResult }),
         repoLabel,
         token: options.redactRepoNames ? repoLabel : repoSlugToken(assignment.repo)
@@ -2684,7 +2756,10 @@ async function writeActorEvidenceArtifacts(
   }
 ): Promise<{ warnings: string[] }> {
   const candidates = liveDesktops.filter((desktop) =>
-    desktop.completion?.actorLastMessageTail || desktop.completion?.actorLogTail || desktop.completion?.setupQuality
+    desktop.completion?.actorLastMessageTail
+    || desktop.completion?.actorLogTail
+    || desktop.completion?.appServerActorEvidence
+    || desktop.completion?.setupQuality
   );
   if (candidates.length === 0) {
     return { warnings: [] };
@@ -2738,6 +2813,35 @@ async function writeActorEvidenceArtifacts(
       await writeJson(path.join(artifactRoot, relativePath), snapshot);
       actorEvidence.setupQualityPath = relativePath;
       written += 1;
+    }
+
+    if (desktop.completion?.appServerActorEvidence) {
+      const evidence = desktop.completion.appServerActorEvidence;
+      const tracePath = path.join("codex-app-server", `${baseName}-summary.json`);
+      const eventsPath = path.join("codex-app-server", `${baseName}-events.ndjson`);
+      const transcriptPath = path.join("codex-app-server", `${baseName}-transcript.txt`);
+      await mkdir(path.join(artifactRoot, "codex-app-server"), { recursive: true });
+      await writeJson(
+        path.join(artifactRoot, tracePath),
+        isRecord(evidence.traceJson)
+          ? evidence.traceJson
+          : {
+              schema: "mimetic.codex-app-server-trace.missing.v1",
+              redaction: { status: "passed" },
+              status: evidence.status ?? "unknown",
+              reason: evidence.reason ?? "Remote app-server trace JSON was not captured.",
+              traceText: evidence.traceText ?? ""
+            }
+      );
+      await writeFile(path.join(artifactRoot, eventsPath), evidence.eventsText ?? "No app-server event envelope tail captured.\n", "utf8");
+      await writeFile(path.join(artifactRoot, transcriptPath), evidence.transcriptText ?? "No app-server transcript tail captured.\n", "utf8");
+      evidence.tracePath = tracePath;
+      evidence.eventsPath = eventsPath;
+      evidence.transcriptPath = transcriptPath;
+      actorEvidence.appServerTracePath = tracePath;
+      actorEvidence.appServerEventsPath = eventsPath;
+      actorEvidence.appServerTranscriptPath = transcriptPath;
+      written += 3;
     }
 
     desktop.actorEvidence = actorEvidence;
@@ -2809,12 +2913,36 @@ function redactCompletionRepoMentions(completion: OssMetaLabCompletion, repo: st
     ...completion,
     ...(completion.actorLogTail === undefined ? {} : { actorLogTail: redactPrivateActorEvidence(completion.actorLogTail, redaction) }),
     ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: redactPrivateActorEvidence(completion.actorLastMessageTail, redaction) }),
+    ...(completion.appServerActorEvidence === undefined ? {} : { appServerActorEvidence: redactAppServerActorEvidence(completion.appServerActorEvidence, redaction) }),
     ...(completion.appReason === undefined ? {} : { appReason: redactPrivateRuntimeMentions(completion.appReason, redaction) }),
     ...(completion.logTail === undefined ? {} : { logTail: redactPrivateRuntimeMentions(completion.logTail, redaction) }),
     reason: redactPrivateRuntimeMentions(completion.reason, redaction),
     ...(completion.setupQuality === undefined ? {} : { setupQuality: redactSetupQualityRepoMentions(completion.setupQuality, repo) }),
     ...(completion.visualReason === undefined ? {} : { visualReason: redactPrivateRuntimeMentions(completion.visualReason, redaction) })
   };
+}
+
+function redactAppServerActorEvidence(
+  evidence: OssMetaLabAppServerActorEvidence,
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined }
+): OssMetaLabAppServerActorEvidence {
+  return {
+    ...evidence,
+    ...(evidence.eventsText === undefined ? {} : { eventsText: redactPrivateActorEvidence(evidence.eventsText, redaction) }),
+    ...(evidence.reason === undefined ? {} : { reason: redactPrivateRuntimeMentions(evidence.reason, redaction) }),
+    ...(evidence.status === undefined ? {} : { status: redactPrivateRuntimeMentions(evidence.status, redaction) }),
+    ...(evidence.traceJson === undefined ? {} : { traceJson: redactJsonValue(evidence.traceJson, redaction) }),
+    ...(evidence.traceText === undefined ? {} : { traceText: redactPrivateActorEvidence(evidence.traceText, redaction) }),
+    ...(evidence.transcriptText === undefined ? {} : { transcriptText: redactPrivateActorEvidence(evidence.transcriptText, redaction) })
+  };
+}
+
+function redactJsonValue(value: unknown, redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined }): unknown {
+  try {
+    return JSON.parse(redactPrivateActorEvidence(JSON.stringify(value), redaction));
+  } catch {
+    return value;
+  }
 }
 
 function redactPrivateActorEvidence(text: string, redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined } | undefined): string {
@@ -2934,6 +3062,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       actorLastMessageTail?: unknown;
       actorPid?: unknown;
       actorStatus?: unknown;
+      appServerActorEvidence?: unknown;
       appLogPath?: unknown;
       appPid?: unknown;
       appReason?: unknown;
@@ -2962,6 +3091,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
     const appStatus = normalizeAppStatus(parsed.appStatus);
     const actorStatus = normalizeActorStatus(parsed.actorStatus);
     const visualStatus = normalizeVisualStatus(parsed.visualStatus);
+    const appServerActorEvidence = normalizeAppServerActorEvidence(parsed.appServerActorEvidence);
 
     return {
       ...(typeof parsed.actorLogPath === "string" && parsed.actorLogPath.trim() ? { actorLogPath: sanitizeRemoteLog(parsed.actorLogPath) } : {}),
@@ -2969,6 +3099,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       ...(typeof parsed.actorLastMessageTail === "string" && parsed.actorLastMessageTail.trim() ? { actorLastMessageTail: sanitizeRemoteLog(parsed.actorLastMessageTail) } : {}),
       ...(typeof parsed.actorPid === "number" && Number.isFinite(parsed.actorPid) ? { actorPid: parsed.actorPid } : {}),
       ...(actorStatus ? { actorStatus } : {}),
+      ...(appServerActorEvidence ? { appServerActorEvidence } : {}),
       ...(typeof parsed.appLogPath === "string" && parsed.appLogPath.trim() ? { appLogPath: sanitizeRemoteLog(parsed.appLogPath) } : {}),
       ...(typeof parsed.appPid === "number" && Number.isFinite(parsed.appPid) ? { appPid: parsed.appPid } : {}),
       ...(typeof parsed.appReason === "string" && parsed.appReason.trim() ? { appReason: sanitizeRemoteLog(parsed.appReason).replace(/\s+/g, " ").slice(0, 240) } : {}),
@@ -3024,6 +3155,38 @@ function normalizeActorStatus(value: unknown): OssMetaLabActorStatus | null {
     || value === "unknown"
     ? value
     : null;
+}
+
+function normalizeAppServerActorEvidence(value: unknown): OssMetaLabAppServerActorEvidence | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const tracePath = safeRelativeArtifactPath(typeof value.tracePath === "string" ? value.tracePath : "");
+  const eventsPath = safeRelativeArtifactPath(typeof value.eventsPath === "string" ? value.eventsPath : "");
+  const transcriptPath = safeRelativeArtifactPath(typeof value.transcriptPath === "string" ? value.transcriptPath : "");
+  if (!tracePath || !eventsPath || !transcriptPath) {
+    return null;
+  }
+
+  return {
+    eventsPath,
+    ...(typeof value.eventsText === "string" && value.eventsText.trim() ? { eventsText: sanitizeRemoteLog(value.eventsText) } : {}),
+    ...(typeof value.reason === "string" && value.reason.trim() ? { reason: sanitizeRemoteLog(value.reason).replace(/\s+/g, " ").slice(0, 240) } : {}),
+    ...(typeof value.status === "string" && value.status.trim() ? { status: sanitizeRemoteLog(value.status).replace(/\s+/g, " ").slice(0, 80) } : {}),
+    ...(isRecord(value.traceJson) ? { traceJson: value.traceJson } : {}),
+    tracePath,
+    ...(typeof value.traceText === "string" && value.traceText.trim() ? { traceText: sanitizeRemoteLog(value.traceText) } : {}),
+    transcriptPath,
+    ...(typeof value.transcriptText === "string" && value.transcriptText.trim() ? { transcriptText: sanitizeRemoteLog(value.transcriptText) } : {})
+  };
+}
+
+function safeRelativeArtifactPath(value: string): string {
+  const normalized = value.replace(/\\/g, "/").replace(/^\.\/+/, "");
+  if (!normalized || normalized.startsWith("/") || normalized.startsWith("../") || normalized.includes("://") || normalized.split("/").includes("..")) {
+    return "";
+  }
+  return normalized;
 }
 
 function normalizeCompletionStatus(value: unknown): OssMetaLabCompletionStatus | null {
@@ -3225,7 +3388,7 @@ async function startOssBootstrap(
   assignment: OssMetaLabAssignment,
   localPackage: OssMetaLabLocalPackage | undefined,
   requestTimeoutMs: number,
-  display: { hostActorPlanResult?: OssMetaLabHostActorPlanResult; repoLabel: string; token: string } = {
+  display: { codexAppServerMode?: boolean; hostActorPlanResult?: OssMetaLabHostActorPlanResult; repoLabel: string; token: string } = {
     repoLabel: assignment.repo,
     token: repoSlugToken(assignment.repo)
   }
@@ -3241,6 +3404,7 @@ async function startOssBootstrap(
   const completionPath = `${stateDir}/completion.json`;
   const nestedObserverPath = `${appDir}/.mimetic/runs/nested-${token}/observer/index.html`;
   const title = `Mimetic ${assignment.index} ${display.repoLabel}`;
+  const codexMode = codexAppServerModeRequested(process.env, display.codexAppServerMode === true) ? "app-server-client" : "tui-attempted";
   const baseTail = [
     `repo: ${display.repoLabel}`,
     `project: ${appDir}`,
@@ -3307,7 +3471,7 @@ async function startOssBootstrap(
     }).catch(() => undefined);
 
     return {
-      codexMode: "tui-attempted",
+      codexMode,
       completionPath,
       launcherPath,
       logPath,
@@ -3316,14 +3480,16 @@ async function startOssBootstrap(
       status: "started",
       tail: [
         "Visible E2B bootstrap terminal launched.",
-        "The terminal clones the authorized repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
+        codexMode === "app-server-client"
+          ? "The terminal clones the authorized repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, opens the nested Observer, and opens the Codex app-server client surface in Chrome when configured."
+          : "The terminal clones the authorized repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
         baseTail
       ].join("\n"),
       terminalTitle: title
     };
   } catch (error) {
     return {
-      codexMode: "tui-attempted",
+      codexMode,
       completionPath,
       launcherPath,
       logPath,
@@ -3360,8 +3526,9 @@ export TERM=xterm-256color
 export MIMETIC_PUBLIC_SAFE=1
 MIMETIC_PRIVATE_CODEX_API_KEY="\${MIMETIC_CODEX_API_KEY:-}"
 MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="\${MIMETIC_CODEX_ACCESS_TOKEN:-}"
+MIMETIC_PRIVATE_CODEX_APP_SERVER_URL="\${MIMETIC_CODEX_APP_SERVER_URL:-}"
 MIMETIC_PRIVATE_GITHUB_TOKEN="\${MIMETIC_GITHUB_TOKEN:-}"
-unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_GITHUB_TOKEN
+unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_CODEX_APP_SERVER_URL MIMETIC_GITHUB_TOKEN
 unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN
 STATE_DIR=${shellQuote(args.stateDir)}
 ROOT_DIR="$STATE_DIR"
@@ -3374,6 +3541,13 @@ HOST_ACTOR_PLAN=${args.remoteHostActorPlanPath ? shellQuote(args.remoteHostActor
 APP_LOG_PATH="$ROOT_DIR/app.log"
 ACTOR_LOG_PATH="$ROOT_DIR/actor.log"
 ACTOR_LAST_MESSAGE_PATH="$ROOT_DIR/actor-last-message.txt"
+CODEX_APP_SERVER_ROOT_PATH="$ROOT_DIR/codex-app-server"
+CODEX_APP_SERVER_STATE_PATH="$CODEX_APP_SERVER_ROOT_PATH/state.json"
+CODEX_APP_SERVER_LOG_PATH="$CODEX_APP_SERVER_ROOT_PATH/ui.log"
+CODEX_APP_SERVER_PROMPT_PATH="$ROOT_DIR/codex-app-server-prompt.txt"
+CODEX_APP_SERVER_PORT="\${MIMETIC_OSS_META_CODEX_APP_SERVER_PORT:-45137}"
+CODEX_APP_SERVER_UI_URL=""
+STREAM_ID=${shellQuote(args.assignment.streamId)}
 TERMINAL_TITLE=${shellQuote(`Mimetic ${args.assignment.index} ${args.displayRepo}`)}
 mkdir -p "$ROOT_DIR"
 touch "$LOG_PATH"
@@ -3388,6 +3562,7 @@ ACTOR_PID=""
 VISUAL_STATUS=not_started
 VISUAL_REASON="Browser windows have not been arranged."
 VISUAL_WINDOW_COUNT=0
+CODEX_APP_SERVER_CLIENT_OPENED=0
 
 write_completion() {
   local status="$1"
@@ -3398,7 +3573,7 @@ write_completion() {
     nested_observer_present=true
   fi
 
-  node - "$COMPLETION_PATH" "$LOG_PATH" "$APP_DIR" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" <<'NODE' || true
+  node - "$COMPLETION_PATH" "$LOG_PATH" "$APP_DIR" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" "$STREAM_ID" "$CODEX_APP_SERVER_STATE_PATH" "$CODEX_APP_SERVER_ROOT_PATH" <<'NODE' || true
 const fs = require("node:fs");
 const path = require("node:path");
 const [
@@ -3421,7 +3596,10 @@ const [
   actorLastMessagePath,
   visualStatus,
   visualReason,
-  visualWindowCount
+  visualWindowCount,
+  streamId,
+  codexAppServerStatePath,
+  codexAppServerRootPath
 ] = process.argv.slice(2);
 const tailFile = (filePath, lines = 80) => fs.existsSync(filePath)
   ? fs.readFileSync(filePath, "utf8").split(/\\r?\\n/).slice(-lines).join("\\n")
@@ -3543,6 +3721,8 @@ const buildSetupQuality = (root) => {
   const configText = readRel("mimetic/config.ts");
   const defaultPersonaFiles = new Set(["mimetic/personas/synthetic-new-user.yaml", "mimetic/personas/skeptical-power-user.yaml"]);
   const defaultScenarioFiles = new Set(["mimetic/scenarios/first-run-smoke.yaml", "mimetic/scenarios/onboarding-regression.yaml"]);
+  const personaEntries = personaFiles.map((rel) => ({ rel, text: readRel(rel) }));
+  const scenarioEntries = scenarioFiles.map((rel) => ({ rel, text: readRel(rel) }));
   const coverageCustomized = (
     Boolean(coverageMapText.trim())
       && !/Current starter coverage is intentionally minimal/i.test(coverageMapText)
@@ -3552,14 +3732,16 @@ const buildSetupQuality = (root) => {
       && !/\\bstarter\\b/i.test(coverageMatrixText)
       && /\\b(screen|route|role|state|path|flow|journey|surface|happy|sad|friction)\\b/i.test(coverageMatrixText)
   );
-  const personaCustomized = personaFiles.some((rel) => !defaultPersonaFiles.has(rel))
-    || (Boolean(personaText.trim())
-      && !/Synthetic New User|Skeptical Power User|privacy-safe first-time user evaluating the app/i.test(personaText)
-      && /\\b(role|workflow|creator|operator|admin|guest|player|customer|power user|novice|skeptical|accessibility|persona)\\b/i.test(personaText));
-  const scenarioCustomized = scenarioFiles.some((rel) => !defaultScenarioFiles.has(rel))
-    || (Boolean(scenarioText.trim())
-      && !/First-run smoke|Onboarding regression|Reach the first meaningful product state|Exercise onboarding friction/i.test(scenarioText)
-      && /\\b(route|screen|journey|state|happy|sad|friction|error|empty|mobile|desktop|evidence|expectation)\\b/i.test(scenarioText));
+  const personaCustomizedCount = personaEntries.filter(({ rel, text }) => !defaultPersonaFiles.has(rel)
+    || (Boolean(text.trim())
+      && !/privacy-safe first-time user evaluating the app|prefers clear affordances over novelty|starter persona/i.test(text)
+      && /\\b(role|workflow|creator|operator|admin|guest|player|customer|seller|designer|developer|founder|marketer|power user|novice|skeptical|accessibility|persona|job-to-be-done)\\b/i.test(text))).length;
+  const scenarioCustomizedCount = scenarioEntries.filter(({ rel, text }) => !defaultScenarioFiles.has(rel)
+    || (Boolean(text.trim())
+      && !/Reach the first meaningful product state|Exercise onboarding friction|starter scenario/i.test(text)
+      && /\\b(route|screen|journey|state|happy|sad|friction|error|empty|mobile|desktop|evidence|expectation|selector|upload|preview|pricing|auth|settings|checkout|workflow)\\b/i.test(text))).length;
+  const personaCustomized = personaCustomizedCount >= Math.min(2, personaFiles.length || 2);
+  const scenarioCustomized = scenarioCustomizedCount >= Math.min(2, scenarioFiles.length || 2);
   const actorEvidenceText = [actorLogTail, actorLastMessageTail, redactedTail, scenarioText, configText].join("\\n");
   const actorEvidenceNormalized = actorEvidenceText.replace(/[*_\`~[\\](){}<>]/g, " ").replace(/\\s+/g, " ").trim();
   const appUrlProofBlocked = /(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))[\\s\\S]{0,220}(?:--app-url|run\\s+--app-url|app-url\\s+proof)|(?:--app-url|run\\s+--app-url|app-url\\s+proof)[\\s\\S]{0,220}(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))/i.test(actorEvidenceNormalized);
@@ -3567,7 +3749,7 @@ const buildSetupQuality = (root) => {
     nestedVerifyStatus === "passed"
     || /(?:mimetic\\s+run[\\s\\S]{0,160}--app-url|--app-url[\\s\\S]{0,160}mimetic\\s+run)/i.test(actorEvidenceText)
   );
-  const actorInsightCaptured = /\\b(observed|found|friction|improvement|issue|gap|confusing|blocked|recommend|none observed|feedback)\\b/i.test([actorLogTail, actorLastMessageTail].join("\\n"));
+  const actorInsightCaptured = /\\b(observed|found|friction|improvement|issue|gap|confusing|blocked|recommend|none observed|feedback|useful improvement|next harness upgrade)\\b/i.test(actorEvidenceNormalized);
   const gitignore = readTextLimited(path.join(root, ".gitignore"), 20000);
   const configPresent = fs.existsSync(path.join(root, "mimetic", "config.ts"));
   const personaCount = countFilesUnder(root, path.join("mimetic", "personas"));
@@ -3631,6 +3813,83 @@ const buildSetupQuality = (root) => {
   };
 };
 const setupQuality = buildSetupQuality(appDir);
+const safeToken = (value) => String(value || "stream").replace(/[^a-zA-Z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120) || "stream";
+const appServerActorEvidence = (() => {
+  if (!fs.existsSync(codexAppServerStatePath)) return null;
+  try {
+    const state = JSON.parse(fs.readFileSync(codexAppServerStatePath, "utf8"));
+    const result = state && typeof state === "object" ? state.result || {} : {};
+    const readArtifact = (relativePath, maxBytes = 120000) => {
+      if (!relativePath || String(relativePath).includes("..") || String(relativePath).includes("://")) return "";
+      return readTextLimited(path.join(codexAppServerRootPath, String(relativePath)), maxBytes);
+    };
+    const readJsonArtifact = (relativePath) => {
+      if (!relativePath || String(relativePath).includes("..") || String(relativePath).includes("://")) return null;
+      try {
+        return JSON.parse(fs.readFileSync(path.join(codexAppServerRootPath, String(relativePath)), "utf8"));
+      } catch {
+        return null;
+      }
+    };
+    const compactList = (items, mapper, limit = 8) => Array.isArray(items)
+      ? items.slice(-limit).map(mapper).filter(Boolean)
+      : undefined;
+    const projectTraceJson = (value) => {
+      if (!value || typeof value !== "object") return null;
+      const messages = compactList(value.messages, (message) => message && typeof message === "object" ? {
+        ...(message.itemId ? { itemId: cleanText(message.itemId) } : {}),
+        ...(message.text ? { text: cleanText(message.text).slice(0, 4000) } : {})
+      } : null, 10);
+      const commands = compactList(value.commands, (command) => command && typeof command === "object" ? {
+        ...(command.itemId ? { itemId: cleanText(command.itemId) } : {}),
+        ...(command.command ? { command: cleanText(command.command).slice(0, 2000) } : {}),
+        ...(command.cwd ? { cwd: cleanText(command.cwd).slice(0, 500) } : {}),
+        ...(command.status ? { status: cleanText(command.status).slice(0, 80) } : {}),
+        ...(Number.isFinite(command.exitCode) ? { exitCode: command.exitCode } : {}),
+        ...(command.outputTail ? { outputTail: cleanText(command.outputTail).slice(-4000) } : {})
+      } : null, 12);
+      const fileChanges = compactList(value.fileChanges, (change) => change && typeof change === "object" ? {
+        ...(change.itemId ? { itemId: cleanText(change.itemId) } : {}),
+        ...(change.status ? { status: cleanText(change.status).slice(0, 80) } : {}),
+        ...(Number.isFinite(change.changeCount) ? { changeCount: change.changeCount } : {}),
+        ...(change.outputTail ? { outputTail: cleanText(change.outputTail).slice(-2000) } : {})
+      } : null, 8);
+      return {
+        schema: "mimetic.codex-app-server-trace.projected.v1",
+        sourceSchema: cleanText(value.schema || ""),
+        redaction: value.redaction && typeof value.redaction === "object" ? value.redaction : { status: "passed" },
+        status: cleanText(value.status || result.status || state.status || ""),
+        reason: cleanText(value.reason || result.reason || state.reason || ""),
+        ...(value.counts && typeof value.counts === "object" ? { counts: value.counts } : {}),
+        ...(messages && messages.length ? { messages } : {}),
+        ...(commands && commands.length ? { commands } : {}),
+        ...(fileChanges && fileChanges.length ? { fileChanges } : {}),
+        ...(value.tokenUsage && typeof value.tokenUsage === "object" ? { tokenUsage: value.tokenUsage } : {}),
+        ...(value.threadId ? { threadId: cleanText(value.threadId) } : {}),
+        ...(value.turnId ? { turnId: cleanText(value.turnId) } : {}),
+        ...(value.sessionId ? { sessionId: cleanText(value.sessionId) } : {}),
+        ...(value.completedAt ? { completedAt: cleanText(value.completedAt) } : {}),
+        ...(Number.isFinite(value.durationMs) ? { durationMs: value.durationMs } : {})
+      };
+    };
+    const rawTraceJson = readJsonArtifact(result.tracePath);
+    const traceJson = projectTraceJson(rawTraceJson);
+    const traceText = traceJson ? "" : readArtifact(result.tracePath, 160000);
+    const token = safeToken(streamId);
+    return {
+      eventsPath: path.join("codex-app-server", token + "-events.ndjson"),
+      eventsText: readArtifact(result.eventsPath, 120000),
+      reason: cleanText(state.reason || result.reason || ""),
+      status: cleanText(state.status || result.status || ""),
+      tracePath: path.join("codex-app-server", token + "-summary.json"),
+      ...(traceJson ? { traceJson } : { traceText }),
+      transcriptPath: path.join("codex-app-server", token + "-transcript.txt"),
+      transcriptText: readArtifact(result.transcriptPath, 80000)
+    };
+  } catch {
+    return null;
+  }
+})();
 fs.writeFileSync(completionPath, JSON.stringify({
   schema: "mimetic.oss-meta-bootstrap-completion.v1",
   status,
@@ -3646,6 +3905,7 @@ fs.writeFileSync(completionPath, JSON.stringify({
   actorLogPath: cleanText(actorLogPath),
   actorLogTail,
   actorLastMessageTail,
+  ...(appServerActorEvidence ? { appServerActorEvidence } : {}),
   nestedObserverPresent: nestedObserverPresent === "true",
   nestedVerifyStatus,
   setupQuality,
@@ -3669,6 +3929,8 @@ finish() {
     write_completion "blocked" "Nested Mimetic proof completed, but the target app surface was not proven running." "$exit_code"
   elif [[ "$VISUAL_STATUS" != "visible" ]]; then
     write_completion "blocked" "Nested Mimetic proof completed, but headed desktop visual layout was not proven visible." "$exit_code"
+  elif [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
+    write_completion "blocked" "Codex app-server mode requires passed Codex app-server actor evidence." "$exit_code"
   elif [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
     write_completion "blocked" "Required Codex actor evidence did not reach a passed terminal status." "$exit_code"
   else
@@ -3684,6 +3946,8 @@ echo "public_safe=1"
 echo "provider_secrets=isolated"
 echo "github_token=$([[ -n "$MIMETIC_PRIVATE_GITHUB_TOKEN" ]] && echo available-for-clone || echo absent)"
 echo "codex_actor_auth=$([[ -n "$MIMETIC_PRIVATE_CODEX_API_KEY$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" ]] && echo available-for-actor || echo absent)"
+echo "codex_app_server_mode=\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}"
+echo "codex_app_server_client=$([[ -n "$MIMETIC_PRIVATE_CODEX_APP_SERVER_URL" ]] && echo available || echo placeholder)"
 echo "host_actor_plan=$([[ -f "$HOST_ACTOR_PLAN" ]] && echo available || echo absent)"
 echo
 
@@ -3813,12 +4077,37 @@ open_nested_observer() {
   fi
 }
 
+open_codex_app_server_client() {
+  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
+    return 0
+  fi
+  if [[ "$CODEX_APP_SERVER_CLIENT_OPENED" == "1" ]]; then
+    return 0
+  fi
+
+  echo
+  echo "== codex app-server client surface =="
+  local client_url="\${CODEX_APP_SERVER_UI_URL:-$MIMETIC_PRIVATE_CODEX_APP_SERVER_URL}"
+  if [[ -z "$client_url" ]]; then
+    ACTOR_STATUS=blocked
+    echo "codex_app_server_client=blocked reason=no real app-server UI URL available"
+    return 1
+  fi
+  echo "codex_app_server_client=provided"
+  open_browser_url "$client_url" codex-app-server 430 520 330 420
+  CODEX_APP_SERVER_CLIENT_OPENED=1
+}
+
 arrange_lab_windows() {
   echo
   echo "== visual desktop layout =="
   VISUAL_STATUS=unknown
   VISUAL_REASON="Window manager proof was not collected."
   VISUAL_WINDOW_COUNT=0
+  local expected_chrome_windows=2
+  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+    expected_chrome_windows=3
+  fi
   if ! command -v xdotool >/dev/null 2>&1; then
     VISUAL_STATUS=unknown
     VISUAL_REASON="xdotool is unavailable; cannot prove headed browser window visibility."
@@ -3832,7 +4121,7 @@ arrange_lab_windows() {
     mapfile -t chrome_windows < <(xdotool search --onlyvisible --class google-chrome 2>/dev/null || true)
     observer_window="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
     VISUAL_WINDOW_COUNT="\${#chrome_windows[@]}"
-    if [[ "$VISUAL_WINDOW_COUNT" -ge 2 && -n "$observer_window" ]]; then
+    if [[ "$VISUAL_WINDOW_COUNT" -ge "$expected_chrome_windows" && -n "$observer_window" ]]; then
       break
     fi
     sleep 0.25
@@ -3873,12 +4162,20 @@ arrange_lab_windows() {
 
   mapfile -t chrome_windows < <(xdotool search --onlyvisible --class google-chrome 2>/dev/null || true)
   VISUAL_WINDOW_COUNT="\${#chrome_windows[@]}"
-  if [[ "$VISUAL_WINDOW_COUNT" -ge 2 && -n "$observer_window" ]]; then
+  if [[ "$VISUAL_WINDOW_COUNT" -ge "$expected_chrome_windows" && -n "$observer_window" ]]; then
     VISUAL_STATUS=visible
-    VISUAL_REASON="Detected $VISUAL_WINDOW_COUNT visible Chrome windows including nested Observer; app and Observer windows arranged for screenshot."
+    if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+      VISUAL_REASON="Detected $VISUAL_WINDOW_COUNT visible Chrome windows including target app, nested Observer, and Codex app-server client surface."
+    else
+      VISUAL_REASON="Detected $VISUAL_WINDOW_COUNT visible Chrome windows including nested Observer; app and Observer windows arranged for screenshot."
+    fi
   else
     VISUAL_STATUS=blocked
-    VISUAL_REASON="Expected app and nested Observer browser windows, detected $VISUAL_WINDOW_COUNT visible Chrome window(s)."
+    if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+      VISUAL_REASON="Expected target app, nested Observer, and Codex app-server client browser windows, detected $VISUAL_WINDOW_COUNT visible Chrome window(s)."
+    else
+      VISUAL_REASON="Expected app and nested Observer browser windows, detected $VISUAL_WINDOW_COUNT visible Chrome window(s)."
+    fi
   fi
   echo "visual_status=$VISUAL_STATUS window_count=$VISUAL_WINDOW_COUNT reason=$VISUAL_REASON"
 }
@@ -4129,6 +4426,44 @@ NODE
   return "$apply_exit"
 }
 
+start_codex_app_server_actor_attempt() {
+  echo "Codex app-server mode requested."
+  mkdir -p "$CODEX_APP_SERVER_ROOT_PATH"
+  cat > "$CODEX_APP_SERVER_PROMPT_PATH" <<'PROMPT'
+You are a Mimetic meta-lab actor running through Codex app-server in a disposable authorized repo clone.
+
+Goal: make Mimetic useful for this app, then run at least one meaningful public-safe user-test proof.
+
+Work requirements:
+- Inspect package.json, README, routes/components where lightweight, and the running app URL from APP_URL.
+- Improve Mimetic setup beyond ceremonial init: app-aware coverage map/matrix, at least two app-specific synthetic personas, and at least two meaningful browser scenarios covering desktop/mobile or happy/friction states.
+- Do not leave only starter persona/scenario filenames, ids, or names. Write app-specific persona and scenario files with app-specific ids, names, goals, selectors, and expectations.
+- Use committed mimetic/ source files for personas/scenarios. Keep runtime output under ignored .mimetic/.
+- Run at least one meaningful Mimetic proof against the running app URL when available: npx --no-install mimetic run --app-url "$APP_URL" --sims 2.
+- Render or refresh the nested Observer with npx --no-install mimetic watch --run latest --detach --no-open when feasible.
+- Finish with concise public-safe feedback: what user journey was tested, what evidence path proves it, and one useful product or Mimetic harness improvement.
+
+Safety:
+- Do not print secrets, environment values, raw private source, or private screenshots.
+- Do not commit, push, file issues, or mutate remotes.
+- Do not run provider-spend-heavy commands beyond the bounded Mimetic/Codex proof.
+PROMPT
+
+  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+  local command
+  command="APP_URL=$(printf '%q' "$APP_URL") MIMETIC_PRIVATE_CODEX_API_KEY=$(printf '%q' "$MIMETIC_PRIVATE_CODEX_API_KEY") MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN=$(printf '%q' "$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN") npx --no-install mimetic codex app-server --cwd $(printf '%q' "$APP_DIR") --run-root $(printf '%q' "$CODEX_APP_SERVER_ROOT_PATH") --state-file $(printf '%q' "$CODEX_APP_SERVER_STATE_PATH") --prompt-file $(printf '%q' "$CODEX_APP_SERVER_PROMPT_PATH") --timeout-ms $(printf '%q' "$timeout_ms") --port $(printf '%q' "$CODEX_APP_SERVER_PORT") --sandbox danger-full-access --actor-command 'npx -y @openai/codex@latest app-server --listen stdio://' --keep-open"
+  nohup bash -lc "$command" > "$CODEX_APP_SERVER_LOG_PATH" 2>&1 &
+  ACTOR_PID=$!
+  ACTOR_STATUS=running
+  CODEX_APP_SERVER_UI_URL="http://127.0.0.1:$CODEX_APP_SERVER_PORT/"
+  echo "actor_status=$ACTOR_STATUS source=codex-app-server pid=$ACTOR_PID log=$CODEX_APP_SERVER_LOG_PATH state=$CODEX_APP_SERVER_STATE_PATH"
+  echo "codex_app_server_trace=codex-app-server/summary.json"
+  echo "codex_app_server_events=codex-app-server/events.ndjson"
+  echo "codex_app_server_transcript=codex-app-server/transcript.txt"
+  wait_for_http "$CODEX_APP_SERVER_UI_URL" 60000 500 || true
+  open_codex_app_server_client || true
+}
+
 start_target_app_surface() {
   echo
   echo "== target app surface =="
@@ -4201,6 +4536,11 @@ start_target_app_surface() {
 start_actor_attempt() {
   echo
   echo "== codex actor attempt =="
+  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+    start_codex_app_server_actor_attempt
+    return 0
+  fi
+
   local actor_script="$ROOT_DIR/actor-run.sh"
   cat > "$actor_script" <<ACTOR
 #!/usr/bin/env bash
@@ -4240,12 +4580,64 @@ ACTOR
 }
 
 wait_for_actor_attempt_if_required() {
-  if [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" != "1" ]]; then
+  if [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" != "1" && "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
     return 0
   fi
 
   echo
   echo "== required codex actor readback =="
+  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+    local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+    local started_ms
+    started_ms="$(date +%s%3N)"
+    while true; do
+      local status_line
+      status_line="$(node - "$CODEX_APP_SERVER_STATE_PATH" <<'NODE' 2>/dev/null || true
+const fs = require("node:fs");
+const [statePath] = process.argv.slice(2);
+if (!fs.existsSync(statePath)) process.exit(2);
+const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+console.log(String(state.status || "unknown"));
+NODE
+)"
+      if [[ "$status_line" != "starting" && "$status_line" != "running" && "$status_line" != "unknown" && -n "$status_line" ]]; then
+        ACTOR_STATUS="$status_line"
+        break
+      fi
+      local now_ms
+      now_ms="$(date +%s%3N)"
+      if [[ $((now_ms - started_ms)) -ge "$timeout_ms" ]]; then
+        ACTOR_STATUS=timed_out
+        echo "actor_status=$ACTOR_STATUS timeout_ms=$timeout_ms state=$CODEX_APP_SERVER_STATE_PATH log=$CODEX_APP_SERVER_LOG_PATH"
+        return 1
+      fi
+      sleep 1
+    done
+    echo "actor_status=$ACTOR_STATUS source=codex-app-server state=$CODEX_APP_SERVER_STATE_PATH log=$CODEX_APP_SERVER_LOG_PATH"
+    echo "actor_log_tail_begin"
+    tail -n 80 "$CODEX_APP_SERVER_LOG_PATH" || true
+    echo "actor_log_tail_end"
+    if [[ -f "$CODEX_APP_SERVER_ROOT_PATH/codex-app-server/summary.json" ]]; then
+      node - "$CODEX_APP_SERVER_ROOT_PATH/codex-app-server/summary.json" "$ACTOR_LAST_MESSAGE_PATH" <<'NODE' || true
+const fs = require("node:fs");
+const [summaryPath, outPath] = process.argv.slice(2);
+const summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
+const messages = Array.isArray(summary.messages) ? summary.messages : [];
+const text = messages
+  .slice(-4)
+  .map((message) => typeof message?.text === "string" ? message.text : "")
+  .filter(Boolean)
+  .join("\\n\\n")
+  .slice(-12000);
+fs.writeFileSync(outPath, text || "No final Codex app-server agent message captured.\\n");
+NODE
+    elif [[ -f "$CODEX_APP_SERVER_ROOT_PATH/codex-app-server/transcript.txt" ]]; then
+      tail -n 80 "$CODEX_APP_SERVER_ROOT_PATH/codex-app-server/transcript.txt" > "$ACTOR_LAST_MESSAGE_PATH" || true
+    fi
+    [[ "$ACTOR_STATUS" == "passed" ]]
+    return $?
+  fi
+
   if [[ -z "$ACTOR_PID" ]]; then
     ACTOR_STATUS=blocked
     echo "actor_status=$ACTOR_STATUS reason=no actor process was started"
@@ -4332,7 +4724,7 @@ else
 fi
 
 echo
-if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" && "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
   start_actor_attempt
   wait_for_actor_attempt_if_required || true
 fi
@@ -4346,6 +4738,11 @@ npx --no-install mimetic init --yes
 apply_host_actor_plan || true
 
 start_target_app_surface
+
+if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+  start_actor_attempt
+  wait_for_actor_attempt_if_required || true
+fi
 
 echo
 echo "== nested mimetic proof =="
@@ -4363,8 +4760,9 @@ else
 fi
 npx --no-install mimetic watch --run latest --detach --no-open
 open_nested_observer "opening nested observer"
+open_codex_app_server_client
 arrange_lab_windows
-if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" != "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" != "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" && "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
   start_actor_attempt
   wait_for_actor_attempt_if_required || true
 fi
@@ -4421,13 +4819,17 @@ exit 0`;
 
 function buildRemoteScreenshotArrangeCommand(terminalTitle: string | undefined): string {
   return `TERMINAL_TITLE=${shellQuote(terminalTitle ?? "")}
+EXPECTED_CHROME_WINDOWS=2
+if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+  EXPECTED_CHROME_WINDOWS=3
+fi
 if ! command -v xdotool >/dev/null 2>&1; then
   exit 0
 fi
 for attempt in $(seq 1 24); do
   CHROME_COUNT="$(xdotool search --onlyvisible --class google-chrome 2>/dev/null | wc -l | tr -d ' ')"
   OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
-  if [[ "$CHROME_COUNT" -ge 2 && -n "$OBSERVER_WINDOW" ]]; then
+  if [[ "$CHROME_COUNT" -ge "$EXPECTED_CHROME_WINDOWS" && -n "$OBSERVER_WINDOW" ]]; then
     break
   fi
   sleep 0.25

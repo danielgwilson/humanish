@@ -208,6 +208,145 @@ function browserLabObserverData(): Record<string, unknown> {
   };
 }
 
+function codexAppServerTraceObserverData(): Record<string, unknown> {
+  return {
+    run: {
+      createdAt: "2026-06-05T16:00:00.000Z",
+      lifecycle: [],
+      mode: "codex-app-server-fixture",
+      persona: { name: "Synthetic Codex Operator" },
+      runId: "codex-app-server-trace-proof",
+      scenario: { goal: "Inspect public-safe Codex trace metadata.", title: "Codex App Server Trace" },
+      status: "pass"
+    },
+    events: [],
+    streams: [
+      {
+        id: "codex-lane-01",
+        simId: "sim-codex-01",
+        kind: "codex-ui",
+        kindLabel: "Codex UI",
+        label: "Codex app-server trace",
+        status: "running",
+        statusLabel: "Running",
+        transport: "app-server",
+        updatedAt: "2026-06-05T16:00:05.000Z",
+        url: "https://codex.example/session/public-safe",
+        viewport: { width: 1280, height: 900 },
+        ui: {
+          route: "/codex/session/public-safe",
+          state: "watching synthetic app-server trace"
+        },
+        terminal: {
+          format: "plain",
+          stdin: "disabled",
+          tail: "codex-app-server trace connected\nstatus: responding",
+          title: "Codex app-server"
+        },
+        terminalPlain: "codex-app-server trace connected\nstatus: responding",
+        codex: {
+          provider: "codex-app-server",
+          sessionId: "session-public-safe-01",
+          state: "watching",
+          contract: "Observer renders Codex app-server trace metadata without private transcript content.",
+          trace: {
+            status: "responding",
+            threadId: "thread-public-safe-01",
+            turnId: "turn-public-safe-02",
+            model: "gpt-5-codex-test",
+            service: "codex-app-server",
+            events: [
+              {
+                at: "2026-06-05T16:00:01.000Z",
+                kind: "message",
+                role: "user",
+                text: "Synthetic request to inspect a public fixture."
+              },
+              {
+                at: "2026-06-05T16:00:02.000Z",
+                kind: "reasoning",
+                summary: "Planning a bounded observer projection check."
+              },
+              {
+                at: "2026-06-05T16:00:03.000Z",
+                kind: "tool",
+                toolName: "read_fixture",
+                status: "complete",
+                text: "Loaded synthetic trace metadata."
+              },
+              {
+                at: "2026-06-05T16:00:04.000Z",
+                kind: "file",
+                action: "linked",
+                path: "traces/codex-app-server-public-trace.json"
+              },
+              {
+                at: "2026-06-05T16:00:05.000Z",
+                kind: "command",
+                command: "pnpm vitest run tests/observer.test.ts",
+                status: "passed"
+              }
+            ]
+          }
+        },
+        artifacts: [
+          { label: "codex trace", path: "traces/codex-app-server-public-trace.json", kind: "trace" },
+          { label: "event log", path: "events.ndjson", kind: "events" }
+        ],
+        sim: {
+          currentStep: "Watching Codex app-server trace metadata",
+          id: "sim-codex-01",
+          index: 1,
+          mode: "codex-app-sim",
+          personaId: "synthetic-codex-operator",
+          progress: 60,
+          scenarioId: "codex-app-server-trace",
+          startedAt: "2026-06-05T16:00:00.000Z",
+          status: "running",
+          streamIds: ["codex-lane-01"],
+          streamKind: "codex-ui",
+          summary: "Codex app-server trace lane",
+          updatedAt: "2026-06-05T16:00:05.000Z"
+        },
+        timeline: []
+      }
+    ]
+  };
+}
+
+function codexNoTraceObserverData(): Record<string, unknown> {
+  const data = codexAppServerTraceObserverData();
+  const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
+  stream.status = "contract_proof_only";
+  stream.statusLabel = "Contract proof";
+  stream.url = undefined;
+  stream.terminalPlain = "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned";
+  stream.terminal = {
+    format: "plain",
+    stdin: "disabled",
+    tail: stream.terminalPlain,
+    title: "Codex UI"
+  };
+  stream.codex = {
+    provider: "codex-app-server",
+    state: "not_connected",
+    contract: "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links."
+  };
+  stream.artifacts = [
+    { label: "run bundle", path: "run.json", kind: "bundle" },
+    { label: "review", path: "review.md", kind: "review" },
+    { label: "event log", path: "events.ndjson", kind: "events" }
+  ];
+  stream.sim = {
+    ...(stream.sim as Record<string, unknown>),
+    currentStep: "App-server embed contract captured",
+    progress: 100,
+    status: "contract_proof_only",
+    summary: "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence."
+  };
+  return data;
+}
+
 interface FakeLiveFrame {
   parentNode: { children?: Array<{ innerHTML?: string }>; parentNode: unknown } | null;
   src: string;
@@ -445,6 +584,45 @@ describe("observer rendering", () => {
     expect(client.html()).toContain("setup quality");
     expect(client.html()).toContain("setup-quality/oss-01-desktop-setup-quality.json");
     expect(client.html()).toContain("Static file view cannot hydrate artifacts inline");
+  });
+
+  it("projects Codex app-server trace metadata into chips, event lanes, and artifact links", () => {
+    const client = renderObserverClientForTest(codexAppServerTraceObserverData(), "#focus=codex-lane-01");
+
+    expect(client.html()).toContain('data-cx-chip="status"');
+    expect(client.html()).toContain("responding");
+    expect(client.html()).toContain('data-cx-chip="thread"');
+    expect(client.html()).toContain("thread-public-safe-01");
+    expect(client.html()).toContain('data-cx-chip="turn"');
+    expect(client.html()).toContain("turn-public-safe-02");
+    expect(client.html()).toContain('data-cx-chip="model"');
+    expect(client.html()).toContain("gpt-5-codex-test");
+    expect(client.html()).toContain('data-cx-chip="service"');
+    expect(client.html()).toContain("codex-app-server");
+
+    expect(client.html()).toContain('data-cx-kind="message"');
+    expect(client.html()).toContain('data-cx-kind="reasoning"');
+    expect(client.html()).toContain('data-cx-kind="tool"');
+    expect(client.html()).toContain('data-cx-kind="file"');
+    expect(client.html()).toContain('data-cx-kind="command"');
+    expect(client.html()).toContain("Synthetic request to inspect a public fixture.");
+    expect(client.html()).toContain("Planning a bounded observer projection check.");
+    expect(client.html()).toContain("read_fixture");
+    expect(client.html()).toContain("pnpm vitest run tests/observer.test.ts");
+
+    expect(client.html()).toContain('class="cx-artifact"');
+    expect(client.html()).toContain('href="../traces/codex-app-server-public-trace.json"');
+  });
+
+  it("keeps Codex UI fallback receipts when no app-server trace metadata exists", () => {
+    const client = renderObserverClientForTest(codexNoTraceObserverData(), "#focus=codex-lane-01");
+
+    expect(client.html()).toContain("codex-app-server session contract");
+    expect(client.html()).toContain("state: not_connected");
+    expect(client.html()).toContain("receipts: planned");
+    expect(client.html()).toContain('data-cx-chip="status"');
+    expect(client.html()).toContain('data-cx-chip="service"');
+    expect(client.html()).not.toContain('class="cx-lanes"');
   });
 
   it("keeps live stream iframe parents stable across observer rerenders", () => {

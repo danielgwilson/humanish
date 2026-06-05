@@ -21,6 +21,7 @@ export interface LabManifest {
   limit?: number;
   repos?: string[];
   defaults?: {
+    codexAppServer?: boolean;
     dryRun?: boolean;
     open?: boolean;
     redactRepos?: boolean;

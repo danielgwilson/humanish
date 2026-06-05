@@ -527,6 +527,50 @@ a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1);
 .cx-tool { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 9.5px; color: var(--text-3); padding: 5px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface-1); }
 .cx-tool .cx-spin { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--line-3); border-top-color: var(--accent); animation: spin 1s linear infinite; flex: none; }
 .cx-tool svg { width: 12px; height: 12px; color: var(--green); }
+.cx-chips { display: flex; flex-wrap: wrap; gap: 5px; min-height: 0; }
+.cx-chip {
+  min-width: 0; max-width: 100%;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 7px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--surface-1);
+  font-family: var(--mono); font-size: 9px; color: var(--text-2);
+}
+.cx-chip[data-tone="live"] { color: var(--accent-2); border-color: color-mix(in oklab, var(--accent) 34%, transparent); background: var(--accent-soft); }
+.cx-chip[data-tone="ok"] { color: var(--green); border-color: color-mix(in oklab, var(--green) 34%, transparent); background: var(--green-soft); }
+.cx-chip[data-tone="warn"] { color: var(--amber); border-color: color-mix(in oklab, var(--amber) 34%, transparent); background: var(--amber-soft); }
+.cx-chip[data-tone="err"] { color: var(--red); border-color: color-mix(in oklab, var(--red) 34%, transparent); background: var(--red-soft); }
+.cx-chip-k { flex: none; text-transform: uppercase; letter-spacing: .08em; color: currentColor; }
+.cx-chip-v { min-width: 0; max-width: min(260px, 46vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.cx-lanes { display: flex; flex-direction: column; gap: 7px; min-height: 0; }
+.cx-lane {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px;
+  padding: 8px; border-radius: 8px; border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface-1) 88%, black);
+  animation: line-in .24s var(--ease-out) both;
+}
+.cx-lane-ic {
+  width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--text-3);
+}
+.cx-lane[data-cx-kind="message"] .cx-lane-ic { color: var(--accent-2); }
+.cx-lane[data-cx-kind="reasoning"] .cx-lane-ic { color: var(--violet); }
+.cx-lane[data-cx-kind="tool"] .cx-lane-ic { color: var(--green); }
+.cx-lane[data-cx-kind="file"] .cx-lane-ic { color: var(--cyan); }
+.cx-lane[data-cx-kind="command"] .cx-lane-ic { color: var(--amber); }
+.cx-lane-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cx-lane-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.cx-lane-kind { font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); flex: none; }
+.cx-lane-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: var(--text-1); }
+.cx-lane-body { color: var(--text-2); font-size: 10.5px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cx-lane-meta { font-family: var(--mono); font-size: 8.5px; color: var(--text-4); }
+.cx-artifacts { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 2px; }
+.cx-artifact {
+  display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%;
+  padding: 4px 7px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--surface-1); color: var(--text-2); font-family: var(--mono); font-size: 9px;
+}
+a.cx-artifact:hover { border-color: var(--line-3); color: var(--text-1); }
+.cx-artifact span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* waiting / proof / empty surface */
 .wait { position: absolute; inset: 0; display: grid; place-items: center; background:
@@ -1438,16 +1482,170 @@ export function observerClientJs(): string {
       + (live ? '<div class="term-line"><span class="term-txt cmd">$<span class="term-caret"></span></span></div>' : '')
       + '</div></div>';
   }
+  function codexTraceObject(s) {
+    var c = s.codex || {};
+    var meta = s.metadata || {};
+    var trace = c.trace || c.traceMetadata || s.trace || meta.codex || meta.codexAppServer || meta.appServerTrace || {};
+    if (!trace || typeof trace !== "object" || Array.isArray(trace)) trace = {};
+    return { codex: c, trace: trace };
+  }
+  function isCodexAppServer(s) {
+    var roots = codexTraceObject(s);
+    return s.kind === "codex-ui" && (s.transport === "app-server" || roots.codex.provider === "codex-app-server" || roots.trace.provider === "codex-app-server" || roots.trace.service === "codex-app-server");
+  }
+  function codexField(s, names) {
+    var roots = codexTraceObject(s);
+    var list = [roots.trace, roots.codex, s];
+    for (var i = 0; i < list.length; i += 1) {
+      var obj = list[i] || {};
+      for (var j = 0; j < names.length; j += 1) {
+        var v = obj[names[j]];
+        if (v != null && String(v).trim() !== "") return String(v);
+      }
+    }
+    return "";
+  }
+  function codexTraceEvents(s) {
+    if (!isCodexAppServer(s)) return [];
+    var roots = codexTraceObject(s);
+    var trace = roots.trace;
+    var c = roots.codex;
+    var groups = [
+      c.events,
+      c.traceEvents,
+      trace.events,
+      trace.messages,
+      trace.reasoning,
+      trace.commands,
+      trace.fileChanges,
+      trace.tools,
+      trace.approvals,
+      trace.items,
+      trace.timeline,
+      trace.traceEvents
+    ];
+    var out = [];
+    groups.forEach(function (items) {
+      if (Array.isArray(items)) out = out.concat(items);
+    });
+    return out;
+  }
+  function codexKind(raw) {
+    var k = String((raw && (raw.kind || raw.type || raw.event || raw.category)) || "").toLowerCase();
+    if (k.indexOf("reason") >= 0) return "reasoning";
+    if (k.indexOf("command") >= 0 || k.indexOf("shell") >= 0 || k.indexOf("exec") >= 0) return "command";
+    if (k.indexOf("file") >= 0 || k.indexOf("patch") >= 0 || k.indexOf("diff") >= 0) return "file";
+    if (k.indexOf("tool") >= 0 || k.indexOf("function") >= 0) return "tool";
+    if (k.indexOf("message") >= 0 || k.indexOf("assistant") >= 0 || k.indexOf("user") >= 0) return "message";
+    if (raw && (raw.command || raw.cmd)) return "command";
+    if (raw && (raw.path || raw.file || raw.filePath)) return "file";
+    if (raw && (raw.tool || raw.toolName || raw.name)) return "tool";
+    return "message";
+  }
+  function codexEventValue(raw, names) {
+    if (!raw) return "";
+    for (var i = 0; i < names.length; i += 1) {
+      var v = raw[names[i]];
+      if (v == null) continue;
+      if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+        var out = String(v).trim();
+        if (out) return out;
+      }
+    }
+    return "";
+  }
+  function codexEventTitle(raw, kind) {
+    if (kind === "command") return codexEventValue(raw, ["title", "command", "cmd", "name"]) || "command";
+    if (kind === "file") return codexEventValue(raw, ["title", "path", "filePath", "file", "name"]) || "file";
+    if (kind === "tool") return codexEventValue(raw, ["title", "toolName", "tool", "name"]) || "tool";
+    if (kind === "reasoning") return codexEventValue(raw, ["title", "summary", "phase"]) || "reasoning";
+    return codexEventValue(raw, ["title", "role", "speaker", "name"]) || "message";
+  }
+  function codexEventBody(raw, kind) {
+    if (kind === "command") return codexEventValue(raw, ["text", "summary", "command", "cmd", "output", "result"]);
+    if (kind === "file") return codexEventValue(raw, ["text", "summary", "action", "path", "filePath", "file"]);
+    if (kind === "tool") return codexEventValue(raw, ["text", "summary", "input", "output", "result", "status"]);
+    return codexEventValue(raw, ["text", "content", "message", "summary", "delta"]);
+  }
+  function codexEventMeta(raw) {
+    var bits = [];
+    var at = codexEventValue(raw, ["at", "time", "timestamp", "createdAt"]);
+    var status = codexEventValue(raw, ["status", "state"]);
+    var exitCode = codexEventValue(raw, ["exitCode", "exit_code"]);
+    if (at) bits.push(shortTime(at) || at);
+    if (status) bits.push(status);
+    if (exitCode) bits.push("exit " + exitCode);
+    return bits.join(" · ");
+  }
+  function codexIcon(kind) {
+    if (kind === "command") return "terminal";
+    if (kind === "file") return "file";
+    if (kind === "tool") return "check";
+    if (kind === "reasoning") return "spark";
+    return "info";
+  }
+  function codexChip(label, value, toneName) {
+    if (!value) return "";
+    return '<span class="cx-chip" data-cx-chip="' + esc(label) + '" data-tone="' + esc(toneName || "info") + '"><span class="cx-chip-k">' + esc(label) + '</span><span class="cx-chip-v">' + esc(clip(value, 64)) + '</span></span>';
+  }
+  function codexMetaChips(s) {
+    if (!isCodexAppServer(s)) return "";
+    var status = codexField(s, ["status", "state"]) || s.statusLabel || statusLabel(s.status);
+    var thread = codexField(s, ["threadId", "thread_id", "thread", "sessionId", "session_id"]);
+    var turn = codexField(s, ["turnId", "turn_id", "turn"]);
+    var model = codexField(s, ["model", "modelName", "model_name"]);
+    var service = codexField(s, ["service", "serviceName", "service_name", "provider"]) || (s.transport === "app-server" ? "codex-app-server" : "");
+    var t = tone(s.status);
+    return [
+      codexChip("status", status, t === "running" ? "live" : t === "complete" ? "ok" : t === "blocked" ? "warn" : s.status === "failed" ? "err" : "info"),
+      codexChip("thread", thread, "info"),
+      codexChip("turn", turn, "info"),
+      codexChip("model", model, "info"),
+      codexChip("service", service, "info")
+    ].filter(function (x) { return !!x; }).join("");
+  }
+  function codexTraceRows(s) {
+    var evs = codexTraceEvents(s);
+    if (!evs.length) return "";
+    return '<div class="cx-lanes" aria-label="Codex app-server trace events">' + evs.slice(-12).map(function (ev) {
+      var kind = codexKind(ev);
+      var title = codexEventTitle(ev, kind);
+      var body = codexEventBody(ev, kind);
+      var meta = codexEventMeta(ev);
+      return '<div class="cx-lane" data-cx-kind="' + esc(kind) + '"><span class="cx-lane-ic">' + icon(codexIcon(kind), 13) + '</span><div class="cx-lane-main">'
+        + '<div class="cx-lane-head"><span class="cx-lane-kind">' + esc(kind) + '</span><span class="cx-lane-title">' + esc(title) + '</span></div>'
+        + (body ? '<div class="cx-lane-body">' + esc(clip(body, 220)) + '</div>' : '')
+        + (meta ? '<div class="cx-lane-meta">' + esc(meta) + '</div>' : '')
+        + '</div></div>';
+    }).join("") + '</div>';
+  }
+  function codexArtifactLinks(s) {
+    if (!isCodexAppServer(s)) return "";
+    var arts = laneArtifacts(s).filter(function (a) { return !!artifactHref(a); }).slice(0, 5);
+    if (!arts.length) return "";
+    return '<div class="cx-artifacts" aria-label="Codex linked artifacts">' + arts.map(function (a) {
+      return '<a class="cx-artifact" href="' + esc(artifactHref(a)) + '" target="_blank" rel="noopener noreferrer" data-action="external" data-kind="' + esc(a.kind || "artifact") + '">' + icon("file", 12) + '<span>' + esc(a.label || a.path) + '</span></a>';
+    }).join("") + '</div>';
+  }
   function codexSurface(s) {
     var live = tone(s.status) === "running";
     var parts = [];
     var summary = laneSummary(s) || (s.codex && s.codex.contract) || laneStep(s);
+    var chips = codexMetaChips(s);
+    var traceRows = codexTraceRows(s);
+    var artifacts = codexArtifactLinks(s);
+    if (chips) parts.push('<div class="cx-chips">' + chips + '</div>');
     if (summary) parts.push('<div class="cx-msg agent">' + esc(summary) + '</div>');
-    var receipts = termLines(s);
-    receipts.forEach(function (ln, i) {
-      var pending = live && i === receipts.length - 1;
-      parts.push('<div class="cx-tool">' + (pending ? '<span class="cx-spin"></span>' : icon("check", 12)) + '<span>' + esc(ln.text) + '</span></div>');
-    });
+    if (traceRows) {
+      parts.push(traceRows);
+    } else {
+      var receipts = termLines(s);
+      receipts.forEach(function (ln, i) {
+        var pending = live && i === receipts.length - 1;
+        parts.push('<div class="cx-tool">' + (pending ? '<span class="cx-spin"></span>' : icon("check", 12)) + '<span>' + esc(ln.text) + '</span></div>');
+      });
+    }
+    if (artifacts) parts.push(artifacts);
     if (live) parts.push('<div class="cx-tool"><span class="cx-spin"></span><span>thinking…</span></div>');
     return '<div class="codex">'
       + '<div class="codex-bar"><span class="cx-spark">' + icon("spark", 11) + '</span> ' + esc(laneRoute(s) || "codex.app-server · session") + '</div>'

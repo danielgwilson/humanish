@@ -25,7 +25,7 @@ import {
   runOssMetaLab,
   sandboxIdsForOssMetaLabCleanup
 } from "../src/oss-meta-lab.js";
-import type { OssMetaLabResult } from "../src/oss-meta-lab.js";
+import type { OssMetaLabCompletion, OssMetaLabResult } from "../src/oss-meta-lab.js";
 import {
   createProgram,
   exitCodeForOssMetaLab,
@@ -146,6 +146,8 @@ describe("OSS lab command", () => {
       MIMETIC_OSS_META_ACTOR_FIRST: "1",
       MIMETIC_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
       MIMETIC_OSS_META_HOST_CODEX_ACTOR: "1",
+      MIMETIC_OSS_META_CODEX_APP_SERVER: "1",
+      MIMETIC_OSS_META_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/private-token-test",
       MIMETIC_OSS_META_ACTOR_TIMEOUT_MS: "240000",
       MIMETIC_OSS_META_REQUIRE_ACTOR: "1",
       OPENAI_API_KEY: "must-not-forward-from-helper"
@@ -153,6 +155,7 @@ describe("OSS lab command", () => {
       MIMETIC_OSS_META_ACTOR_FIRST: "1",
       MIMETIC_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
       MIMETIC_OSS_META_HOST_CODEX_ACTOR: "1",
+      MIMETIC_OSS_META_CODEX_APP_SERVER: "1",
       MIMETIC_OSS_META_ACTOR_TIMEOUT_MS: "240000",
       MIMETIC_OSS_META_REQUIRE_ACTOR: "1"
     });
@@ -161,12 +164,14 @@ describe("OSS lab command", () => {
   it("isolates provider secrets under Mimetic-private remote env names", () => {
     expect(collectOssMetaLabPrivateEnv({
       CODEX_ACCESS_TOKEN: "codex-access-token-test",
+      CODEX_APP_SERVER_CLIENT_URL: "https://codex-app-server.example/session/client-token-test",
       E2B_API_KEY: "must-not-forward-to-remote-env",
       GH_TOKEN: "github-token-test",
       OPENAI_API_KEY: "openai-token-test"
     })).toEqual({
       MIMETIC_CODEX_ACCESS_TOKEN: "codex-access-token-test",
       MIMETIC_CODEX_API_KEY: "openai-token-test",
+      MIMETIC_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/client-token-test",
       MIMETIC_GITHUB_TOKEN: "github-token-test"
     });
 
@@ -492,6 +497,9 @@ describe("OSS lab command", () => {
       expect(script).toContain("mimetic/personas");
       expect(script).toContain("mimetic/scenarios");
       expect(script).toContain("MIMETIC_OSS_META_HOST_CODEX_ACTOR");
+      expect(script).toContain("MIMETIC_OSS_META_CODEX_APP_SERVER");
+      expect(script).toContain("MIMETIC_PRIVATE_CODEX_APP_SERVER_URL");
+      expect(script).toContain("MIMETIC_CODEX_APP_SERVER_URL");
       expect(script).toContain("wait_for_actor_attempt_if_required");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_FIRST");
       expect(script).toContain("MIMETIC_OSS_META_REQUIRE_ACTOR");
@@ -507,6 +515,19 @@ describe("OSS lab command", () => {
       expect(script).toContain("ACTOR_LAST_MESSAGE_PATH");
       expect(script).toContain("actorLogTail");
       expect(script).toContain("actorLastMessageTail");
+      expect(script).toContain("open_codex_app_server_client");
+      expect(script).toContain("codex_app_server_client=provided");
+      expect(script).toContain("npx -y @openai/codex@latest app-server --listen stdio://");
+      expect(script).toContain("codex-app-server/summary.json");
+      expect(script).toContain("codex-app-server/events.ndjson");
+      expect(script).toContain("codex-app-server/transcript.txt");
+      expect(script).toContain("mimetic.codex-app-server-trace.projected.v1");
+      expect(script).toContain("projectTraceJson");
+      expect(script).not.toContain("codex_app_server_client=placeholder");
+      expect(script).not.toContain("source=codex-app-server-client");
+      expect(script).not.toContain("remote-control-hook-pending");
+      expect(script).toContain("Codex app-server mode requested.");
+      expect(script).toContain("target app, nested Observer, and Codex app-server client");
       expect(script).toContain('pnpm add --save-dev --workspace-root "$spec" --ignore-scripts');
       expect(script).not.toContain('pnpm add -D "$spec" --ignore-scripts');
       expect(script).toContain("@openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check");
@@ -515,7 +536,9 @@ describe("OSS lab command", () => {
       expect(script).toContain("--output-last-message");
       expect(script).toContain("CODEX_COMMAND=");
       expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="${MIMETIC_CODEX_API_KEY:-}"');
+      expect(script).toContain('MIMETIC_PRIVATE_CODEX_APP_SERVER_URL="${MIMETIC_CODEX_APP_SERVER_URL:-}"');
       expect(script).toContain("unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN");
+      expect(script).toContain("unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_CODEX_APP_SERVER_URL MIMETIC_GITHUB_TOKEN");
       expect(script).toContain('CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
       expect(script).toContain('CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
       expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="$MIMETIC_PRIVATE_CODEX_API_KEY" MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"');
@@ -936,6 +959,204 @@ describe("OSS lab command", () => {
       path: "host-actors/todoapp/actor-plan.json",
       kind: "trace"
     });
+  });
+
+  it("does not count suspended app-server actor completions as passed", () => {
+    const assignments = buildOssRepoAssignments(["maciekt07/TodoApp"], 1);
+    const bundle = buildOssMetaBundleFixture({
+      assignments,
+      createdAt: "2026-06-04T10:05:00.000Z",
+      cwd: "/tmp/mimetic-oss-meta-app-server-fixture",
+      dryRun: false,
+      lanes: [
+        {
+          bootstrap: {
+            codexMode: "app-server-client",
+            completionPath: "/remote/todoapp/completion.json",
+            logPath: "/remote/todoapp/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/todoapp/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "codex_app_server_client=provided\nactor_status=suspended source=codex-app-server-client"
+          },
+          completion: {
+            actorLastMessageTail: "Opened a headed client surface instead of launching @openai/codex exec.",
+            actorLogTail: "codex_app_server_mode=1\nactor_status=suspended\nsource=codex-app-server-client",
+            actorStatus: "suspended",
+            appStatus: "running",
+            appUrl: "http://127.0.0.1:5173",
+            checkedAt: "2026-06-04T10:06:00.000Z",
+            nestedObserverPresent: true,
+            nestedVerifyPassed: true,
+            reason: "Target app surface, nested Mimetic proof, and nested Observer were checked.",
+            status: "passed",
+            visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
+            visualStatus: "visible",
+            visualWindowCount: 4
+          },
+          repo: "maciekt07/TodoApp",
+          simId: assignments[0]?.simId ?? "oss-01",
+          streamId: assignments[0]?.streamId ?? "oss-01-desktop",
+          url: "https://stream.example/todoapp"
+        }
+      ],
+      liveRequested: true,
+      missingKeys: [],
+      runId: "oss-meta-app-server-fixture"
+    });
+
+    expect(bundle.review.verdict).not.toBe("pass");
+    expect(bundle.simulations[0]?.status).not.toBe("passed");
+    expect(bundle.streams[0]?.status).not.toBe("passed");
+    expect(bundle.streams[0]?.completion?.status).not.toBe("passed");
+    expect(bundle.streams[0]?.terminal?.title).toBe("Codex app-server bootstrap - maciekt07/TodoApp");
+    expect(bundle.streams[0]?.ui?.intent).toContain("Codex app-server client surface");
+    expect(bundle.streams[0]?.ui?.intent).not.toContain("attempts a Codex actor");
+    expect(bundle.streams[0]?.terminal?.tail).toContain("source=codex-app-server-client");
+    expect(bundle.events.find((event) => event.type === "oss-meta.codex.prompt.ready")?.message).toContain("app-server client hook");
+  });
+
+  it("labels app-server-backed OSS meta-lab actor evidence artifacts without treating them as TUI exec", () => {
+    const assignments = buildOssRepoAssignments(["maciekt07/TodoApp"], 1);
+    const appServerCompletion: OssMetaLabCompletion & {
+      appServerActorEvidence: {
+        eventsPath: string;
+        tracePath: string;
+        transcriptPath: string;
+      };
+    } = {
+      actorLastMessageTail: "Completed a public-safe Codex app-server turn and wrote redacted transcript evidence.",
+      actorLogTail: "codex_app_server_mode=1\nactor_status=passed\nsource=codex-app-server",
+      actorStatus: "passed",
+      appServerActorEvidence: {
+        eventsPath: "codex-app-server/oss-01-desktop-events.ndjson",
+        tracePath: "codex-app-server/oss-01-desktop-summary.json",
+        transcriptPath: "codex-app-server/oss-01-desktop-transcript.txt"
+      },
+      appStatus: "running",
+      appUrl: "http://127.0.0.1:5173",
+      checkedAt: "2026-06-04T10:06:00.000Z",
+      nestedObserverPresent: true,
+      nestedVerifyPassed: true,
+      reason: "Target app surface, nested Mimetic proof, nested Observer, and Codex app-server actor evidence were checked.",
+      status: "passed",
+      visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
+      visualStatus: "visible",
+      visualWindowCount: 4
+    };
+    const bundle = buildOssMetaBundleFixture({
+      assignments,
+      createdAt: "2026-06-04T10:05:00.000Z",
+      cwd: "/tmp/mimetic-oss-meta-app-server-evidence-fixture",
+      dryRun: false,
+      lanes: [
+        {
+          bootstrap: {
+            codexMode: "app-server-client",
+            completionPath: "/remote/todoapp/completion.json",
+            logPath: "/remote/todoapp/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/todoapp/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "codex_app_server_client=provided\nactor_status=passed source=codex-app-server"
+          },
+          completion: appServerCompletion,
+          repo: "maciekt07/TodoApp",
+          simId: assignments[0]?.simId ?? "oss-01",
+          streamId: assignments[0]?.streamId ?? "oss-01-desktop",
+          url: "https://stream.example/todoapp"
+        }
+      ],
+      liveRequested: true,
+      missingKeys: [],
+      runId: "oss-meta-app-server-evidence-fixture"
+    });
+
+    expect(bundle.review.verdict).toBe("pass");
+    expect(bundle.streams[0]?.terminal?.title).toBe("Codex app-server bootstrap - maciekt07/TodoApp");
+    expect(bundle.streams[0]?.ui?.intent).toContain("Codex app-server client surface");
+    expect(bundle.streams[0]?.ui?.intent).not.toContain("attempts a Codex actor");
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "codex app-server trace",
+      path: "codex-app-server/oss-01-desktop-summary.json",
+      kind: "trace"
+    });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "codex app-server events",
+      path: "codex-app-server/oss-01-desktop-events.ndjson",
+      kind: "events"
+    });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "codex app-server transcript",
+      path: "codex-app-server/oss-01-desktop-transcript.txt",
+      kind: "log"
+    });
+  });
+
+  it("redacts structured Codex app-server trace evidence for private repo meta-labs", () => {
+    const assignments = buildOssRepoAssignments(["maintainer/private-cinema-app"], 1);
+    const appServerCompletion: OssMetaLabCompletion = {
+      actorLastMessageTail: "Set up private-cinema-app and ran Mimetic.",
+      actorStatus: "passed",
+      appServerActorEvidence: {
+        eventsPath: "codex-app-server/oss-01-desktop-events.ndjson",
+        eventsText: "agent mentioned maintainer/private-cinema-app",
+        traceJson: {
+          schema: "mimetic.codex-app-server-trace.projected.v1",
+          status: "passed",
+          messages: [
+            { text: "Implemented private-cinema-app setup in maintainer/private-cinema-app." }
+          ],
+          commands: [
+            { command: "git clone https://github.com/maintainer/private-cinema-app.git" }
+          ]
+        },
+        tracePath: "codex-app-server/oss-01-desktop-summary.json",
+        transcriptPath: "codex-app-server/oss-01-desktop-transcript.txt",
+        transcriptText: "private-cinema-app proof passed."
+      },
+      appStatus: "running",
+      appUrl: "http://127.0.0.1:3000",
+      checkedAt: "2026-06-05T10:06:00.000Z",
+      nestedObserverPresent: true,
+      nestedVerifyPassed: true,
+      reason: "private-cinema-app setup passed.",
+      status: "passed",
+      visualStatus: "visible"
+    };
+    const bundle = buildOssMetaBundleFixture({
+      assignments,
+      createdAt: "2026-06-05T10:05:00.000Z",
+      cwd: "/tmp/mimetic-oss-meta-app-server-redaction-fixture",
+      dryRun: false,
+      lanes: [
+        {
+          bootstrap: {
+            codexMode: "app-server-client",
+            completionPath: "/remote/repo/completion.json",
+            logPath: "/remote/repo/bootstrap.log",
+            mimeticPackageUploaded: true,
+            nestedObserverPath: "/remote/repo/.mimetic/runs/nested/observer/index.html",
+            status: "started",
+            tail: "actor_status=passed source=codex-app-server"
+          },
+          completion: appServerCompletion,
+          repo: "maintainer/private-cinema-app",
+          simId: assignments[0]?.simId ?? "oss-01",
+          streamId: assignments[0]?.streamId ?? "oss-01-desktop",
+          url: "https://stream.example/private"
+        }
+      ],
+      liveRequested: true,
+      missingKeys: [],
+      redactRepoNames: true,
+      runId: "oss-meta-app-server-redaction-fixture"
+    });
+
+    const serialized = JSON.stringify(bundle);
+    expect(serialized).not.toContain("maintainer/private-cinema-app");
+    expect(serialized).not.toContain("private-cinema-app");
+    expect(serialized).toContain("[redacted-authorized-repo]");
   });
 
   it("renders public-safe terminal completion states without live provider spend", () => {

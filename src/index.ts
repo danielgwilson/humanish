@@ -1,5 +1,15 @@
 export { normalizeCliArgv } from "./argv.js";
 export {
+  CODEX_APP_SERVER_UI_SCHEMA,
+  startCodexAppServerUi
+} from "./codex-app-server-ui.js";
+export type { CodexAppServerUiController, CodexAppServerUiOptions, CodexAppServerUiState } from "./codex-app-server-ui.js";
+export {
+  CODEX_APP_SERVER_TRACE_SCHEMA,
+  runCodexAppServerSession
+} from "./codex-app-server.js";
+export type { CodexAppServerRunOptions, CodexAppServerRunResult, CodexAppServerTrace } from "./codex-app-server.js";
+export {
   FEEDBACK_RESULT_SCHEMA,
   FEEDBACK_SCHEMA,
   draftFeedback,

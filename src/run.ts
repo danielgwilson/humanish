@@ -5,6 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import {
+  CODEX_APP_SERVER_TRACE_SCHEMA,
+  runCodexAppServerSession,
+  type CodexAppServerRunResult,
+  type CodexAppServerTrace
+} from "./codex-app-server.js";
 import { buildObserverData } from "./observer-data.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
@@ -124,7 +130,7 @@ export interface RunFeedbackCandidate {
   adapter_id: string;
   scenario_id: string;
   persona_id: string;
-  actor: "codex-tui" | "codex-exec" | "synthetic-dry-run" | "unknown";
+  actor: "codex-tui" | "codex-exec" | "codex-app-server" | "synthetic-dry-run" | "unknown";
   substrate: "e2b-desktop" | "local-filesystem" | "codex-app-server" | "unknown";
   failure_owner: "harness" | "target-app" | "actor" | "environment" | "unknown";
   summary: string;
@@ -200,9 +206,16 @@ export interface RunStream {
   };
   codex?: {
     provider: "codex-app-server";
+    eventCount?: number;
+    experimentalApi?: boolean;
+    model?: string;
     sessionId?: string;
-    state: "not_connected" | "connecting" | "watching";
+    state: "not_connected" | "connecting" | "watching" | "running" | "completed" | "failed" | "blocked" | "timed_out";
     contract: string;
+    threadId?: string;
+    trace?: CodexAppServerTrace;
+    tracePath?: string;
+    turnId?: string;
   };
   completion?: RunStreamCompletion;
   artifacts: Array<{
@@ -298,6 +311,7 @@ export interface RunResult {
       | "MIMETIC_ACTOR_FANOUT_UNIMPLEMENTED"
       | "MIMETIC_APP_URL_OPTION_CONFLICT"
       | "MIMETIC_BROWSER_APP_CAPTURE_FAILED"
+      | "MIMETIC_CODEX_APP_SERVER_FAILED"
       | "MIMETIC_LIVE_RUN_UNIMPLEMENTED"
       | "MIMETIC_LOCAL_CODEX_EXEC_FAILED"
       | "MIMETIC_LOCAL_CODEX_TUI_FAILED"
@@ -377,7 +391,7 @@ const BROWSER_APP_DEFAULT_TIMEOUT_MS = 60_000;
 
 const execFileAsync = promisify(execFile);
 
-type LocalCodexActor = "codex-tui" | "codex-exec";
+type LocalCodexActor = "codex-tui" | "codex-exec" | "codex-app-server";
 
 const builtinPersona = {
   id: "builtin-synthetic-new-user",
@@ -474,6 +488,9 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     if (actor === "codex-exec") {
       return runLocalCodexExec({ ...options, actor, cwd, simCount });
     }
+    if (actor === "codex-app-server") {
+      return runLocalCodexAppServer({ ...options, actor, cwd, simCount });
+    }
 
     return {
       schema: "mimetic.run-result.v1",
@@ -482,7 +499,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
       warnings,
       error: {
         code: "MIMETIC_LIVE_RUN_UNIMPLEMENTED",
-        message: "Only run --dry-run is implemented unless --actor codex-tui, --actor codex-exec, or the matching MIMETIC_ENABLE_LOCAL_CODEX_* env var is set."
+        message: "Only run --dry-run is implemented unless --actor codex-tui, --actor codex-exec, --actor codex-app-server, or the matching MIMETIC_ENABLE_LOCAL_CODEX_* env var is set."
       }
     };
   }
@@ -1167,7 +1184,7 @@ function compactBrowserError(error: unknown): string {
 }
 
 function isLocalCodexActor(value: string): value is LocalCodexActor {
-  return value === "codex-tui" || value === "codex-exec";
+  return value === "codex-tui" || value === "codex-exec" || value === "codex-app-server";
 }
 
 function resolveRequestedLocalCodexActor(actor: string | undefined): LocalCodexActor | undefined {
@@ -1181,6 +1198,10 @@ function resolveRequestedLocalCodexActor(actor: string | undefined): LocalCodexA
 
   if (process.env.MIMETIC_ENABLE_LOCAL_CODEX_EXEC === "1") {
     return "codex-exec";
+  }
+
+  if (process.env.MIMETIC_ENABLE_LOCAL_CODEX_APP_SERVER === "1") {
+    return "codex-app-server";
   }
 
   return undefined;
@@ -2029,6 +2050,412 @@ async function runLocalCodexExec(options: RunOptions & {
   };
 }
 
+interface LocalCodexAppServerLane {
+  focus: LocalCodexExecFocus;
+  prefix: string;
+  prompt: string;
+  promptDigest: string;
+  simId: string;
+  streamId: string;
+}
+
+interface LocalCodexAppServerLaneBundleInput {
+  completion?: RunStreamCompletion;
+  currentStep: string;
+  focus: LocalCodexExecFocus;
+  progress: number;
+  result?: CodexAppServerRunResult;
+  simId: string;
+  status: RunSimulationStatus;
+  streamId: string;
+  summary: string;
+  terminalTail: string;
+  updatedAt: string;
+}
+
+function buildLocalCodexAppServerBundle(args: {
+  artifactRoot: string;
+  createdAt: string;
+  cwd: string;
+  events: RunEvent[];
+  lanes: LocalCodexAppServerLaneBundleInput[];
+  lifecycle: RunBundle["lifecycle"];
+  mimeticSource: RunBundle["source"]["mimeticSource"];
+  packageName: string | null;
+  persona: RunBundle["persona"];
+  review: ReviewSummary;
+  runId: string;
+  scenario: RunBundle["scenario"];
+  simCount: number;
+}): RunBundle {
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: "live",
+    simCount: args.simCount,
+    createdAt: args.createdAt,
+    cwd: args.cwd,
+    artifactRoot: args.artifactRoot,
+    source: {
+      packageName: args.packageName,
+      mimeticSource: args.mimeticSource,
+      git: {
+        status: "not_captured",
+        note: "Source git state capture is planned for the core primitives slice."
+      }
+    },
+    persona: args.persona,
+    scenario: args.scenario,
+    lifecycle: args.lifecycle,
+    simulations: args.lanes.map((lane, index): RunSimulation => ({
+      id: lane.simId,
+      index: index + 1,
+      personaId: `codex-app-server-${lane.focus.id}`,
+      scenarioId: args.scenario.id,
+      status: lane.status,
+      streamKind: "codex-ui",
+      mode: "codex-app-sim",
+      progress: lane.progress,
+      currentStep: lane.currentStep,
+      summary: lane.summary,
+      streamIds: [lane.streamId],
+      startedAt: args.createdAt,
+      updatedAt: lane.updatedAt
+    })),
+    streams: args.lanes.map((lane): RunStream => {
+      const result = lane.result;
+      const artifacts: RunStream["artifacts"] = [
+        { label: "run bundle", path: "run.json", kind: "bundle" },
+        { label: "review", path: "review.md", kind: "review" },
+        { label: "event log", path: "events.ndjson", kind: "events" },
+        ...(result ? [
+          { label: "codex app-server trace", path: result.tracePath, kind: "trace" as const },
+          { label: "codex app-server events", path: result.eventsPath, kind: "events" as const },
+          { label: "codex app-server transcript", path: result.transcriptPath, kind: "log" as const }
+        ] : [])
+      ];
+
+      return {
+        id: lane.streamId,
+        simId: lane.simId,
+        kind: "codex-ui",
+        label: `Codex app-server - ${lane.focus.label}`,
+        status: lane.status,
+        transport: "app-server",
+        updatedAt: lane.updatedAt,
+        embed: {
+          kind: "placeholder",
+          title: `Codex app-server - ${lane.focus.label}`
+        },
+        terminal: {
+          title: `Codex app-server - ${lane.focus.label}`,
+          format: "plain",
+          stdin: "sent",
+          tail: lane.terminalTail
+        },
+        codex: {
+          provider: "codex-app-server",
+          contract: "Mimetic captures Codex app-server Thread, Turn, Item, approval, command, file, tool, message, and reasoning evidence as redacted local artifacts.",
+          state: codexStateForStream(lane.status),
+          ...(result?.experimentalApi === undefined ? {} : { experimentalApi: result.experimentalApi }),
+          ...(result?.counts === undefined ? {} : { eventCount: result.counts.envelopes }),
+          ...(result?.model === undefined ? {} : { model: result.model }),
+          ...(result?.sessionId === undefined ? {} : { sessionId: result.sessionId }),
+          ...(result?.threadId === undefined ? {} : { threadId: result.threadId }),
+          ...(result?.trace === undefined ? {} : { trace: result.trace }),
+          ...(result?.tracePath === undefined ? {} : { tracePath: result.tracePath }),
+          ...(result?.turnId === undefined ? {} : { turnId: result.turnId })
+        },
+        ...(lane.completion ? { completion: lane.completion } : {}),
+        artifacts
+      };
+    }),
+    events: args.events,
+    redaction: {
+      status: "passed",
+      notes: "Codex app-server envelopes and transcript summaries were redacted before persistence; raw prompts and secret-bearing fields are not stored in run events."
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson"
+    },
+    review: args.review,
+    feedbackCandidates: []
+  };
+}
+
+async function runLocalCodexAppServer(options: RunOptions & {
+  actor: "codex-app-server";
+  cwd: string;
+  simCount: number;
+}): Promise<RunResult> {
+  const warnings: string[] = [];
+  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("MIMETIC_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  if (timeoutMs === null) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings,
+      error: {
+        code: "MIMETIC_INVALID_TIMEOUT",
+        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
+      }
+    };
+  }
+
+  const now = new Date();
+  const createdAt = now.toISOString();
+  const runId = options.runId ?? `codex-app-server-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const artifactRoot = path.join(".mimetic", "runs", runId);
+  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
+  const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
+  const packageName = await readPackageName(options.cwd);
+  const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const selection = await loadDryRunSelection(options.cwd, mimeticSource);
+  if (mimeticSource === "missing") {
+    warnings.push("Committed mimetic/ source was not found; using built-in synthetic Codex app-server actor defaults.");
+  }
+  warnings.push(...selection.warnings);
+
+  const events: RunEvent[] = [];
+  const pushEvent = (
+    type: string,
+    message: string,
+    level: RunEvent["level"] = "info",
+    simId?: string,
+    streamId?: string
+  ): void => {
+    events.push({
+      id: `event-${String(events.length + 1).padStart(3, "0")}`,
+      at: new Date().toISOString(),
+      level,
+      type,
+      message,
+      ...(simId === undefined ? {} : { simId }),
+      ...(streamId === undefined ? {} : { streamId })
+    });
+  };
+
+  await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
+  await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
+  await writeJson(path.join(options.cwd, ".mimetic", "runs", "latest.json"), {
+    schema: "mimetic.latest-run.v1",
+    runId,
+    path: artifactRoot,
+    updatedAt: createdAt
+  } satisfies RunPointer);
+
+  const lanes: LocalCodexAppServerLane[] = Array.from({ length: options.simCount }, (_, index) => {
+    const focus = localCodexExecFocus(index);
+    const simId = `sim-${String(index + 1).padStart(2, "0")}`;
+    const streamId = `${simId}-codex-app-server`;
+    const prompt = buildLocalCodexAppServerPrompt(selection, {
+      focus,
+      index: index + 1,
+      total: options.simCount
+    });
+    const promptDigest = digestText(prompt);
+    pushEvent(
+      "codex-app-server.spawned",
+      `Spawned Codex app-server lane ${index + 1}/${options.simCount} (${focus.label}) in explicit opt-in mode.`,
+      "info",
+      simId,
+      streamId
+    );
+    pushEvent(
+      "codex-app-server.prompt.submitted",
+      `Submitted bounded public-safe app-server prompt digest ${promptDigest}; raw prompt omitted from event log.`,
+      "info",
+      simId,
+      streamId
+    );
+    return {
+      focus,
+      prefix: options.simCount === 1 ? "" : `actors/${streamId}/`,
+      prompt,
+      promptDigest,
+      simId,
+      streamId
+    };
+  });
+
+  for (const lane of lanes) {
+    pushEvent(
+      "codex-app-server.running",
+      "Published Codex app-server running snapshot for Observer polling.",
+      "info",
+      lane.simId,
+      lane.streamId
+    );
+  }
+  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+
+  const baseLifecycle: RunBundle["lifecycle"] = [
+    {
+      at: createdAt,
+      event: "run.created",
+      message: `Live Codex app-server run created with ${options.simCount} explicit opt-in lane${options.simCount === 1 ? "" : "s"}.`
+    },
+    {
+      at: createdAt,
+      event: "actor.selected",
+      message: "Selected local codex-app-server actor."
+    }
+  ];
+  const runningAt = new Date().toISOString();
+  const runningBundle = buildLocalCodexAppServerBundle({
+    runId,
+    simCount: options.simCount,
+    createdAt,
+    cwd: options.cwd,
+    artifactRoot,
+    packageName,
+    mimeticSource,
+    persona: selection.persona,
+    scenario: selection.scenario,
+    lifecycle: [
+      ...baseLifecycle,
+      {
+        at: runningAt,
+        event: "codex-app-server.running",
+        message: "Codex app-server lanes are running; Observer data will refresh as redacted app-server evidence arrives."
+      }
+    ],
+    lanes: lanes.map((lane): LocalCodexAppServerLaneBundleInput => ({
+      focus: lane.focus,
+      simId: lane.simId,
+      streamId: lane.streamId,
+      status: "running",
+      progress: 35,
+      currentStep: "Codex app-server actor running",
+      summary: `Codex app-server actor ${lane.focus.label} is running.`,
+      terminalTail: "Codex app-server actor is running; redacted Thread/Turn/Item trace evidence will be linked after completion.",
+      updatedAt: runningAt,
+      completion: {
+        checkedAt: runningAt,
+        reason: "Codex app-server turn is still running",
+        status: "running"
+      }
+    })),
+    events,
+    review: createLocalActorRunningReviewSummary("Codex app-server")
+  });
+  await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
+
+  const laneResults = await mapWithConcurrency(lanes, options.simCount, async (lane) => {
+    const laneRunRoot = lane.prefix ? path.join(absoluteArtifactRoot, lane.prefix) : absoluteArtifactRoot;
+    const result = await runCodexAppServerSession({
+      cwd: options.cwd,
+      prompt: lane.prompt,
+      runRoot: laneRunRoot,
+      timeoutMs,
+      ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
+      approvalPolicy: "never",
+      experimentalApi: process.env.MIMETIC_CODEX_APP_SERVER_EXPERIMENTAL === "1",
+      ...(process.env.MIMETIC_CODEX_APP_SERVER_MODEL ? { model: process.env.MIMETIC_CODEX_APP_SERVER_MODEL } : {}),
+      sandbox: readCodexAppServerSandboxFromEnv(),
+      serviceName: "mimetic-cli"
+    });
+    return {
+      lane,
+      result: prefixCodexAppServerResultPaths(result, lane.prefix)
+    };
+  });
+
+  const completedAt = new Date().toISOString();
+  const statuses = laneResults.map((entry) => entry.result.status);
+  const status = aggregateActorStatus(statuses);
+  const verdictReason = options.simCount === 1
+    ? laneResults[0]?.result.reason ?? "Codex app-server actor did not return a result"
+    : summarizeExecFanout(statuses);
+  for (const entry of laneResults) {
+    pushEvent(
+      "codex-app-server.artifact",
+      `Captured ${entry.result.counts.envelopes} app-server envelope${entry.result.counts.envelopes === 1 ? "" : "s"}; trace summary and transcript were redacted before persistence.`,
+      "info",
+      entry.lane.simId,
+      entry.lane.streamId
+    );
+    pushEvent(
+      "codex-app-server.verdict",
+      `Codex app-server actor lane ${entry.lane.focus.label} verdict ${entry.result.status}: ${entry.result.reason}`,
+      entry.result.status === "passed" ? "info" : entry.result.status === "timed_out" ? "warn" : "error",
+      entry.lane.simId,
+      entry.lane.streamId
+    );
+  }
+  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+
+  const bundle = buildLocalCodexAppServerBundle({
+    runId,
+    simCount: options.simCount,
+    createdAt,
+    cwd: options.cwd,
+    artifactRoot,
+    packageName,
+    mimeticSource,
+    persona: selection.persona,
+    scenario: selection.scenario,
+    lifecycle: [
+      ...baseLifecycle,
+      {
+        at: completedAt,
+        event: "review.skeleton.created",
+        message: "Created review skeleton from redacted Codex app-server lifecycle evidence."
+      }
+    ],
+    lanes: laneResults.map((entry): LocalCodexAppServerLaneBundleInput => ({
+      focus: entry.lane.focus,
+      simId: entry.lane.simId,
+      streamId: entry.lane.streamId,
+      status: entry.result.status,
+      progress: 100,
+      currentStep: entry.result.status === "passed" ? "Codex app-server actor completed" : "Codex app-server actor needs review",
+      summary: `Codex app-server actor ${entry.lane.focus.label} ${entry.result.status}: ${entry.result.reason}`,
+      terminalTail: entry.result.tail,
+      updatedAt: completedAt,
+      result: entry.result,
+      completion: {
+        checkedAt: completedAt,
+        ...(entry.result.exitCode === undefined ? {} : { exitCode: entry.result.exitCode }),
+        logTail: entry.result.tail,
+        reason: entry.result.reason,
+        status: entry.result.status
+      }
+    })),
+    events,
+    review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex app-server" : "Codex app-server fanout", status, verdictReason)
+  });
+
+  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
+
+  return {
+    schema: "mimetic.run-result.v1",
+    ok: status === "passed",
+    runId,
+    mode: "live",
+    simCount: options.simCount,
+    cwd: options.cwd,
+    artifactRoot,
+    bundlePath: path.join(artifactRoot, "run.json"),
+    reviewPath: path.join(artifactRoot, "review.md"),
+    latestPath: path.join(".mimetic", "runs", "latest.json"),
+    warnings,
+    ...(status === "passed"
+      ? {}
+      : {
+          error: {
+            code: "MIMETIC_CODEX_APP_SERVER_FAILED" as const,
+            message: `Codex app-server actor ${status}: ${verdictReason}`
+          }
+        })
+  };
+}
+
 function buildSyntheticObserverFixtures(args: {
   createdAt: string;
   personaId: string;
@@ -2772,6 +3199,69 @@ function buildLocalCodexExecPrompt(selection: {
   ].join(" ");
 }
 
+function buildLocalCodexAppServerPrompt(selection: {
+  persona: RunBundle["persona"];
+  scenario: RunBundle["scenario"];
+}, lane: {
+  focus: LocalCodexExecFocus;
+  index: number;
+  total: number;
+}): string {
+  return [
+    "You are a Mimetic Codex app-server dogfood actor running through the official Codex app-server protocol.",
+    `Persona: ${selection.persona.name}.`,
+    `Scenario: ${selection.scenario.title}.`,
+    `Fanout lane ${lane.index}/${lane.total}. Focus: ${lane.focus.instruction}.`,
+    "Work read-only unless the host explicitly configured a stronger sandbox.",
+    "Inspect the current repository's Mimetic setup, Observer proof contract, and public-safety posture.",
+    "Use at most two lightweight local commands or file reads.",
+    `Suggested commands: \`${lane.focus.suggestedCommands[0]}\` and \`${lane.focus.suggestedCommands[1]}\`.`,
+    "Do not print secrets, keys, raw private transcripts, private screenshots, or private source snippets.",
+    "Do not commit, push, open GitHub issues, mutate remote systems, or run provider-spend-heavy commands.",
+    "End with one concise public-safe recommendation for improving Mimetic as a closed-loop user-study harness."
+  ].join(" ");
+}
+
+function readCodexAppServerSandboxFromEnv(): "read-only" | "workspace-write" | "danger-full-access" {
+  const value = process.env.MIMETIC_CODEX_APP_SERVER_SANDBOX;
+  if (value === "workspace-write" || value === "danger-full-access") {
+    return value;
+  }
+  return "read-only";
+}
+
+function codexStateForStream(status: RunSimulationStatus): NonNullable<RunStream["codex"]>["state"] {
+  if (status === "running" || status === "preparing" || status === "queued") {
+    return "running";
+  }
+  if (status === "passed" || status === "complete") {
+    return "completed";
+  }
+  if (status === "failed") {
+    return "failed";
+  }
+  if (status === "timed_out") {
+    return "timed_out";
+  }
+  if (status === "blocked") {
+    return "blocked";
+  }
+  return "watching";
+}
+
+function prefixCodexAppServerResultPaths(result: CodexAppServerRunResult, prefix: string): CodexAppServerRunResult {
+  if (!prefix) {
+    return result;
+  }
+
+  return {
+    ...result,
+    eventsPath: `${prefix}${result.eventsPath}`,
+    tracePath: `${prefix}${result.tracePath}`,
+    transcriptPath: `${prefix}${result.transcriptPath}`
+  };
+}
+
 function parseCommandLine(input: string): string[] {
   const tokens: string[] = [];
   let current = "";
@@ -2923,6 +3413,16 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     message: missingEvidenceArtifacts.length === 0
       ? "referenced local screenshot/trace/log/filesystem artifacts are present"
       : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
+  });
+  const codexAppServerFindings = isRunBundle(bundle)
+    ? await validateCodexAppServerEvidence(resolved, bundle)
+    : [];
+  checks.push({
+    name: "codex app-server evidence",
+    ok: codexAppServerFindings.length === 0,
+    message: codexAppServerFindings.length === 0
+      ? "live Codex app-server streams either are absent or include valid redacted trace evidence"
+      : `codex app-server findings: ${codexAppServerFindings.join(", ")}`
   });
 
   const ok = checks.every((check) => check.ok);
@@ -3261,12 +3761,16 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 }
 
 async function writeRunBundleArtifacts(absoluteArtifactRoot: string, bundle: RunBundle): Promise<void> {
-  await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
-  await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(absoluteArtifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  const publicBundle: RunBundle = {
+    ...bundle,
+    cwd: "[target-cwd]"
+  };
+  await writeJson(path.join(absoluteArtifactRoot, "run.json"), publicBundle);
+  await writeJson(path.join(absoluteArtifactRoot, "review.json"), publicBundle.review);
+  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(publicBundle), "utf8");
+  await writeFile(path.join(absoluteArtifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
-  await writeJson(path.join(absoluteArtifactRoot, "observer", "observer-data.json"), buildObserverData(bundle));
+  await writeJson(path.join(absoluteArtifactRoot, "observer", "observer-data.json"), buildObserverData(publicBundle));
 }
 
 async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle): Promise<string[]> {
@@ -3302,6 +3806,56 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
   }
 
   return missing;
+}
+
+async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle): Promise<string[]> {
+  if (bundle.mode !== "live") {
+    return [];
+  }
+
+  const findings: string[] = [];
+  const appServerStreams = bundle.streams.filter((stream) =>
+    stream.kind === "codex-ui"
+    && stream.transport === "app-server"
+    && stream.codex?.provider === "codex-app-server"
+    && stream.status !== "contract_proof_only"
+  );
+
+  for (const stream of appServerStreams) {
+    const traceArtifact = stream.artifacts.find((artifact) =>
+      artifact.kind === "trace"
+      && artifact.path.includes("codex-app-server")
+    );
+    const eventsArtifact = stream.artifacts.find((artifact) =>
+      artifact.kind === "events"
+      && artifact.path.includes("codex-app-server")
+    );
+    const logArtifact = stream.artifacts.find((artifact) =>
+      artifact.kind === "log"
+      && artifact.path.includes("codex-app-server")
+    );
+
+    if (!traceArtifact) {
+      findings.push(`${stream.id} missing codex app-server trace artifact`);
+      continue;
+    }
+
+    const trace = await readJsonIfExists(path.join(runRoot, traceArtifact.path));
+    if (!isRecord(trace) || trace.schema !== CODEX_APP_SERVER_TRACE_SCHEMA) {
+      findings.push(`${stream.id} trace artifact must use ${CODEX_APP_SERVER_TRACE_SCHEMA}`);
+    }
+    if (!isRecord(trace) || !isRecord(trace.redaction) || trace.redaction.status !== "passed") {
+      findings.push(`${stream.id} trace redaction status must be passed`);
+    }
+    if (!eventsArtifact) {
+      findings.push(`${stream.id} missing codex app-server event envelope log`);
+    }
+    if (!logArtifact) {
+      findings.push(`${stream.id} missing codex app-server transcript summary log`);
+    }
+  }
+
+  return findings;
 }
 
 const riskyPublicArtifactPathSegments = new Set([

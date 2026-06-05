@@ -48,7 +48,7 @@ const staleInternalContextNames = [
 const privateResiduePatterns = [
   ["absolute_local_user_path", /\/Users\/[A-Za-z0-9._-]+\//g],
   ["local_git_path", /\blocal_git\b/g],
-  ["provider_sandbox_id", /\b(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?(?!\[redacted-sandbox-id\])[a-z0-9]{18,}`?/gi],
+  ["provider_sandbox_id", /\b(?:(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?|sandboxId["']?\s*[:=]\s*["']?)(?!\[redacted-sandbox-id\])i[a-z0-9]{18,}`?/g],
   ["stale_internal_docs_path", new RegExp(`\\bdocs/(?:${staleInternalDocDirs.join("|")})\\b`, "g")],
   ["stale_internal_context_name", new RegExp(`\\b(?:${staleInternalContextNames.join("|")})\\b`, "gi")],
   ...((process.env.MIMETIC_PUBLIC_DENYLIST_PATTERN ?? "")

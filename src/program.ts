@@ -1,9 +1,12 @@
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Command, Option } from "commander";
 
+import { startCodexAppServerUi } from "./codex-app-server-ui.js";
+import type { CodexAppServerUiState } from "./codex-app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
 import type { EnvFileLoadResult } from "./env-file.js";
 import {
@@ -100,6 +103,7 @@ export interface UnsupportedEnvelope {
 }
 
 interface LabCommandOptions {
+  codexAppServer?: boolean | undefined;
   count?: string | undefined;
   cwd: string;
   detach?: boolean | undefined;
@@ -115,6 +119,20 @@ interface LabCommandOptions {
   repos?: string | undefined;
   runId?: string | undefined;
   sims?: string | undefined;
+}
+
+interface CodexAppServerUiCliResult {
+  schema: "mimetic.codex-app-server-ui-result.v1";
+  ok: boolean;
+  cwd: string;
+  reason: string;
+  stateFile?: string;
+  status?: string;
+  url?: string;
+  error?: {
+    code: "MIMETIC_CODEX_APP_SERVER_PROMPT_REQUIRED" | "MIMETIC_INVALID_PORT" | "MIMETIC_INVALID_TIMEOUT";
+    message: string;
+  };
 }
 
 const defaultIo: CliIo = {
@@ -158,7 +176,7 @@ export const plannedCommands: PlannedCommand[] = [
       { flags: "[lab]", description: "Optional lab id or .yaml path." },
       { flags: "--dry-run", description: "Generate contract proof without browser, keys, or provider spend." },
       { flags: "--app-url <url>", description: "Capture live desktop/mobile browser evidence against a running loopback app URL." },
-      { flags: "--actor codex-tui|codex-exec", description: "Explicitly opt into a local Codex actor." },
+      { flags: "--actor codex-tui|codex-exec|codex-app-server", description: "Explicitly opt into a local Codex actor." },
       { flags: "--sims <count>", description: "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1." },
       { flags: "--env-file <path>", description: "Load a local env file for this run without persisting values." },
       { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
@@ -248,9 +266,10 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
+  registerCodexCommands(program, cliIo);
   registerLabCommands(program, cliIo);
 
-  const implementedCommands = new Set(["init", "doctor", "run", "verify", "review", "runs", "watch", "lab"]);
+  const implementedCommands = new Set(["init", "doctor", "run", "verify", "review", "runs", "watch", "codex", "lab"]);
   for (const plannedCommand of plannedCommands.filter((command) => !implementedCommands.has(command.name))) {
     registerUnsupportedCommand(program, plannedCommand, cliIo);
   }
@@ -308,7 +327,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
     .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
-    .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec"]))
+    .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec", "codex-app-server"]))
     .option("--sims <count>", "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.")
     .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(240_000))
     .option("--cwd <path>", "Target project directory.", ".")
@@ -455,6 +474,104 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
     });
 }
 
+function registerCodexCommands(parent: Command, io: CliIo): void {
+  const codex = parent
+    .command("codex")
+    .description("Run Codex-native Mimetic integration surfaces.");
+
+  codex
+    .command("app-server")
+    .description("Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--prompt <text>", "Prompt to submit to Codex app-server.")
+    .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
+    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.", ".mimetic/codex-app-server-ui")
+    .option("--state-file <path>", "State JSON file for external observers.")
+    .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(240_000))
+    .option("--port <port>", "Local browser UI port.", "0")
+    .option("--model <model>", "Optional Codex model override.")
+    .addOption(new Option("--sandbox <mode>", "Turn sandbox policy.").choices(["read-only", "workspace-write", "danger-full-access"]).default("read-only"))
+    .option("--actor-command <command>", "Override app-server command. Defaults to codex app-server --listen stdio://.")
+    .option("--keep-open", "Keep the browser UI process alive after the actor finishes.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (options: {
+      actorCommand?: string;
+      cwd: string;
+      json?: boolean;
+      keepOpen?: boolean;
+      model?: string;
+      port: string;
+      prompt?: string;
+      promptFile?: string;
+      runRoot: string;
+      sandbox: "read-only" | "workspace-write" | "danger-full-access";
+      stateFile?: string;
+      timeoutMs: string;
+    }, command) => {
+      const timeoutMs = parseTimeoutMs(options.timeoutMs);
+      const port = parseObserverPort(options.port);
+      if (timeoutMs === null) {
+        const result = codexAppServerUiError(options.cwd, "MIMETIC_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 600000.");
+        writeResult(command, io, result, formatCodexAppServerUiHuman);
+        io.setExitCode(2);
+        return;
+      }
+      if (port === null) {
+        const result = codexAppServerUiError(options.cwd, "MIMETIC_INVALID_PORT", "--port must be an integer between 0 and 65535.");
+        writeResult(command, io, result, formatCodexAppServerUiHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      const prompt = await readCodexAppServerPrompt(options);
+      if (!prompt) {
+        const result = codexAppServerUiError(options.cwd, "MIMETIC_CODEX_APP_SERVER_PROMPT_REQUIRED", "Provide --prompt or --prompt-file.");
+        writeResult(command, io, result, formatCodexAppServerUiHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      const controller = await startCodexAppServerUi({
+        ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
+        cwd: options.cwd,
+        keepOpen: options.keepOpen === true,
+        ...(options.model === undefined ? {} : { model: options.model }),
+        port,
+        prompt,
+        runRoot: options.runRoot,
+        sandbox: options.sandbox,
+        ...(options.stateFile === undefined ? {} : { stateFile: options.stateFile }),
+        timeoutMs
+      });
+
+      const initial = {
+        schema: "mimetic.codex-app-server-ui-result.v1" as const,
+        ok: true,
+        cwd: resolve(options.cwd),
+        stateFile: controller.stateFile,
+        url: controller.url,
+        status: controller.initialState.status,
+        reason: controller.initialState.reason
+      };
+      if (options.keepOpen === true) {
+        writeResult(command, io, initial, formatCodexAppServerUiHuman);
+        io.setExitCode(0);
+        await controller.completion;
+        await new Promise<void>((resolveWait) => {
+          process.once("SIGINT", () => {
+            void controller.close().finally(resolveWait);
+          });
+        });
+        return;
+      }
+
+      const completed = await controller.completion;
+      const output = codexAppServerUiResultFromState(completed);
+      writeResult(command, io, output, formatCodexAppServerUiHuman);
+      io.setExitCode(output.ok ? 0 : 2);
+    });
+}
+
 function registerWatchCommand(parent: Command, io: CliIo): void {
   parent
     .command("watch")
@@ -463,6 +580,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
+    .option("--codex-app-server", "Lab only: use Codex app-server client mode for OSS headed desktops.")
     .option("--sims <count>", "Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted.")
     .option("--count <count>", "Lab only: override headed desktop lane count.")
     .option("--limit <count>", "Lab only: override smoke lab repo limit.")
@@ -499,6 +617,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .action(async (labArg: string | undefined, options: {
       cwd: string;
       count?: string;
+      codexAppServer?: boolean;
       detach?: boolean;
       dryRun?: boolean;
       envFile?: string;
@@ -567,6 +686,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
           options: {
             cwd: options.cwd,
             ...(options.count === undefined ? {} : { count: options.count }),
+            ...(options.codexAppServer === undefined ? {} : { codexAppServer: options.codexAppServer }),
             ...(options.detach === undefined ? {} : { detach: options.detach }),
             ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
             ...(options.keep === undefined ? {} : { keep: options.keep }),
@@ -822,6 +942,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .description("Run a Mimetic lab manifest.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--dry-run", "Render contract evidence without live provider spend.")
+    .option("--codex-app-server", "Use Codex app-server client mode for headed desktop actor surfaces.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
@@ -925,6 +1046,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     )
     .action(async (options: {
       count: string;
+      codexAppServer?: boolean;
       cwd: string;
       detach?: boolean;
       dryRun?: boolean;
@@ -990,6 +1112,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       try {
         result = await runOssMetaLab({
           ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
+          ...(options.codexAppServer === undefined ? {} : { codexAppServer: options.codexAppServer }),
           cwd: options.cwd,
           ...(wantsFollow
             ? {
@@ -1282,6 +1405,7 @@ async function runOssMetaLabCommand(args: {
       ? args.options.open === true
       : args.options.open ?? args.manifest.defaults?.open ?? args.mode === "watch";
   const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+  const codexAppServer = args.options.codexAppServer ?? args.manifest.defaults?.codexAppServer;
   const repoOverrideRequested = (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
   const defaultRedactRepos = repoOverrideRequested ? true : args.manifest.defaults?.redactRepos;
   const redactRepoNames = args.options.redactRepos ?? defaultRedactRepos;
@@ -1291,6 +1415,7 @@ async function runOssMetaLabCommand(args: {
   try {
     result = await runOssMetaLab({
       ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
+      ...(codexAppServer === undefined ? {} : { codexAppServer }),
       cwd: args.options.cwd,
       ...(wantsFollow
         ? {
@@ -1537,6 +1662,20 @@ function formatObserverHuman(result: ObserverResult): string {
   ].join("\n") + "\n";
 }
 
+function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): string {
+  if (!result.ok) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
+  return [
+    "mimetic codex app-server",
+    `url: ${result.url ?? "not-started"}`,
+    `status: ${result.status ?? "unknown"}`,
+    `state: ${result.stateFile ?? "none"}`,
+    `reason: ${result.reason}`
+  ].join("\n") + "\n";
+}
+
 function formatEnvFileHuman(result: EnvFileLoadResult): string {
   if (!result.ok) {
     return `${result.error?.code}: ${result.error?.message}\n`;
@@ -1592,6 +1731,48 @@ function formatLabResolveFailureHuman(result: LabResolveFailure): string {
     `${result.error.code}: ${result.error.message}`,
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
+}
+
+async function readCodexAppServerPrompt(options: {
+  cwd: string;
+  prompt?: string;
+  promptFile?: string;
+}): Promise<string | null> {
+  if (options.prompt !== undefined && options.prompt.trim()) {
+    return options.prompt;
+  }
+  if (options.promptFile !== undefined && options.promptFile.trim()) {
+    const promptPath = resolve(options.cwd, options.promptFile);
+    const text = await readFile(promptPath, "utf8");
+    return text.trim() || null;
+  }
+  return null;
+}
+
+function codexAppServerUiError(
+  cwd: string,
+  code: NonNullable<CodexAppServerUiCliResult["error"]>["code"],
+  message: string
+): CodexAppServerUiCliResult {
+  return {
+    schema: "mimetic.codex-app-server-ui-result.v1",
+    ok: false,
+    cwd: resolve(cwd),
+    reason: message,
+    error: { code, message }
+  };
+}
+
+function codexAppServerUiResultFromState(state: CodexAppServerUiState): CodexAppServerUiCliResult {
+  return {
+    schema: "mimetic.codex-app-server-ui-result.v1",
+    ok: state.status === "passed",
+    cwd: state.cwd,
+    reason: state.reason,
+    stateFile: state.stateFile,
+    status: state.status,
+    ...(state.url === undefined ? {} : { url: state.url })
+  };
 }
 
 function parsePositiveInteger(value: string): number | null {

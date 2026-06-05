@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { renderObserver } from "../src/observer.js";
 import { createProgram } from "../src/program.js";
+import { startCodexAppServerUi } from "../src/codex-app-server-ui.js";
 import {
   RUN_BUNDLE_SCHEMA,
   listRuns,
@@ -952,6 +953,202 @@ describe("dry-run bundles", () => {
           process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousCommand;
         }
       }
+    });
+  });
+
+  it("persists Codex app-server UI state without raw prompt, key, or local paths", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeAppServer = path.join(cwd, "fake-codex-app-server-ui.mjs");
+      const fakeApiKey = `sk-${"ui-state-testsecretvalue1234567890"}`;
+      const previousOpenai = process.env.OPENAI_API_KEY;
+      await writeFile(
+        fakeAppServer,
+        [
+          "import readline from 'node:readline';",
+          "const rl = readline.createInterface({ input: process.stdin });",
+          "const send = (message) => process.stdout.write(JSON.stringify(message) + '\\n');",
+          "const thread = { id: 'thread-ui-public-safe-01', sessionId: 'session-ui-public-safe-01', model: 'test-model', cwd: process.cwd(), cliVersion: 'codex-cli-test' };",
+          "const turn = { id: 'turn-ui-public-safe-01', status: 'inProgress' };",
+          "rl.on('line', (line) => {",
+          "  const msg = JSON.parse(line);",
+          "  if (msg.method === 'initialize') send({ id: msg.id, result: { userAgent: 'fake-codex-app-server-ui' } });",
+          "  if (msg.method === 'account/login/start') send({ id: msg.id, result: { type: 'apiKey' } });",
+          "  if (msg.method === 'thread/start') { send({ id: msg.id, result: { thread } }); send({ method: 'thread/started', params: { thread } }); }",
+          "  if (msg.method === 'turn/start') {",
+          "    send({ id: msg.id, result: { turn } });",
+          "    send({ method: 'turn/started', params: { threadId: thread.id, turn } });",
+          "    send({ method: 'item/agentMessage/delta', params: { threadId: thread.id, turnId: turn.id, itemId: 'msg-ui-01', delta: 'UI state path check complete.' } });",
+          "    send({ method: 'turn/completed', params: { threadId: thread.id, turn: { ...turn, status: 'completed' } } });",
+          "    setTimeout(() => process.exit(0), 50);",
+          "  }",
+          "});"
+        ].join("\n"),
+        "utf8"
+      );
+
+      process.env.OPENAI_API_KEY = fakeApiKey;
+      try {
+        const controller = await startCodexAppServerUi({
+          actorCommand: `${JSON.stringify(process.execPath)} ${JSON.stringify(fakeAppServer)}`,
+          cwd,
+          prompt: `Private UI prompt marker at ${cwd} with ${fakeApiKey}`,
+          runRoot: ".mimetic/codex-app-server-ui-test",
+          stateFile: ".mimetic/codex-app-server-ui-test/state.json",
+          timeoutMs: 5_000
+        });
+        await controller.completion;
+        const stateText = await readFile(path.join(cwd, ".mimetic/codex-app-server-ui-test/state.json"), "utf8");
+        expect(stateText).toContain("[target-cwd]");
+        expect(stateText).not.toContain(cwd);
+        expect(stateText).not.toContain("Private UI prompt marker");
+        expect(stateText).not.toContain(fakeApiKey);
+        expect(stateText).toContain("promptDigest");
+      } finally {
+        if (previousOpenai === undefined) {
+          delete process.env.OPENAI_API_KEY;
+        } else {
+          process.env.OPENAI_API_KEY = previousOpenai;
+        }
+      }
+    });
+  });
+
+  it("runs an explicit Codex app-server actor with redacted protocol evidence", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const fakeAppServer = path.join(cwd, "fake-codex-app-server.mjs");
+      const fakeApiKey = `sk-${"testsecretvalue1234567890"}`;
+      const fakeAwsAccessKey = `AKIA${"IOSFODNN7EXAMPLE"}`;
+      const previousOpenai = process.env.OPENAI_API_KEY;
+      await writeFile(
+        fakeAppServer,
+        [
+          "import readline from 'node:readline';",
+          "const rl = readline.createInterface({ input: process.stdin });",
+          "const send = (message) => process.stdout.write(JSON.stringify(message) + '\\n');",
+          "let apiKeyLoginSeen = false;",
+          "const thread = { id: 'thread-public-safe-01', sessionId: 'session-public-safe-01', preview: '', ephemeral: true, modelProvider: 'openai', createdAt: 1780680000, updatedAt: 1780680000, status: 'running', path: null, cwd: process.cwd(), cliVersion: 'codex-cli-test', source: 'app-server', threadSource: null, agentNickname: null, agentRole: null, gitInfo: null, name: null, turns: [] };",
+          "const turn = { id: 'turn-public-safe-01', items: [], itemsView: 'full', status: 'inProgress', error: null, startedAt: 1780680000, completedAt: null, durationMs: null };",
+          "const finish = () => {",
+          "  send({ method: 'serverRequest/resolved', params: { threadId: thread.id, requestId: 'approval-public-safe-01' } });",
+          "  send({ method: 'item/agentMessage/delta', params: { threadId: thread.id, turnId: turn.id, itemId: 'msg-01', delta: 'Synthetic app-server agent message with secret ' + 'sk-' + 'testsecretvalue1234567890' } });",
+          "  send({ method: 'item/reasoning/summaryTextDelta', params: { threadId: thread.id, turnId: turn.id, itemId: 'reason-01', summaryIndex: 0, delta: 'Checked the public-safe harness contract.' } });",
+          "  send({ method: 'turn/plan/updated', params: { threadId: thread.id, turnId: turn.id, explanation: 'Synthetic plan', plan: [{ step: 'Inspect app-server proof', status: 'completed' }] } });",
+          `  send({ method: 'item/started', params: { threadId: thread.id, turnId: turn.id, item: { type: 'commandExecution', id: 'cmd-01', command: 'node --version && echo ${fakeAwsAccessKey}', cwd: process.cwd(), processId: null, source: 'exec', status: 'inProgress', commandActions: [], aggregatedOutput: null, exitCode: null, durationMs: null }, startedAtMs: Date.now() } });`,
+          "  send({ method: 'item/commandExecution/outputDelta', params: { threadId: thread.id, turnId: turn.id, itemId: 'cmd-01', delta: 'v24.0.0\\n' } });",
+          `  send({ method: 'item/completed', params: { threadId: thread.id, turnId: turn.id, item: { type: 'commandExecution', id: 'cmd-01', command: 'node --version && echo ${fakeAwsAccessKey}', cwd: process.cwd(), processId: null, source: 'exec', status: 'completed', commandActions: [], aggregatedOutput: 'v24.0.0\\n', exitCode: 0, durationMs: 12 }, completedAtMs: Date.now() } });`,
+          "  send({ method: 'turn/completed', params: { threadId: thread.id, turn: { ...turn, status: 'completed', completedAt: 1780680001, durationMs: 1000 } } });",
+          "  setTimeout(() => process.exit(0), 50);",
+          "};",
+          "rl.on('line', (line) => {",
+          "  const msg = JSON.parse(line);",
+          "  if (msg.method === 'initialize') send({ id: msg.id, result: { userAgent: 'fake-codex-app-server', platformFamily: 'test', platformOs: 'test' } });",
+          "  if (msg.method === 'account/login/start') { if (msg.params?.type !== 'apiKey' || typeof msg.params?.apiKey !== 'string' || !msg.params.apiKey.startsWith('sk-')) { send({ id: msg.id, error: { code: -32600, message: 'missing api key login' } }); return; } apiKeyLoginSeen = true; send({ id: msg.id, result: { type: 'apiKey' } }); }",
+          "  if (msg.method === 'thread/start') { if (!apiKeyLoginSeen) { send({ id: msg.id, error: { code: -32600, message: 'api key login not seen' } }); return; } send({ id: msg.id, result: { thread } }); send({ method: 'thread/started', params: { thread } }); }",
+          "  if (msg.method === 'turn/start') {",
+          "    const input = msg.params?.input?.[0];",
+          "    if (input?.type !== 'text' || !Array.isArray(input.text_elements)) { send({ id: msg.id, error: { code: -32600, message: 'invalid test input shape' } }); return; }",
+          "    if (msg.params?.sandboxPolicy?.type !== 'readOnly' || msg.params.sandboxPolicy.networkAccess !== false) { send({ id: msg.id, error: { code: -32600, message: 'invalid test sandboxPolicy shape' } }); return; }",
+          "    send({ id: msg.id, result: { turn } }); send({ method: 'turn/started', params: { threadId: thread.id, turn } }); send({ method: 'item/commandExecution/requestApproval', id: 'approval-public-safe-01', params: { threadId: thread.id, turnId: turn.id, itemId: 'cmd-01', reason: 'synthetic approval request', command: 'node --version', cwd: process.cwd() } });",
+          "  }",
+          "  if (msg.id === 'approval-public-safe-01') finish();",
+          "});"
+        ].join("\n"),
+        "utf8"
+      );
+
+      process.env.OPENAI_API_KEY = fakeApiKey;
+
+      let result;
+      try {
+        result = await runDryRun({
+          cwd,
+          actor: "codex-app-server",
+          actorCommand: [process.execPath, fakeAppServer],
+          runId: "codex-app-server-test",
+          simCount: 1,
+          timeoutMs: 5_000
+        });
+      } finally {
+        if (previousOpenai === undefined) {
+          delete process.env.OPENAI_API_KEY;
+        } else {
+          process.env.OPENAI_API_KEY = previousOpenai;
+        }
+      }
+
+      expect(result.ok).toBe(true);
+      expect(result.mode).toBe("live");
+      expect(result.runId).toBe("codex-app-server-test");
+
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".mimetic/runs/codex-app-server-test/run.json"), "utf8")
+      ) as {
+        events: Array<{ type: string; message: string }>;
+        review: { verdict: string };
+        simulations: Array<{ mode: string; status: string; streamKind: string }>;
+        streams: Array<{
+          artifacts: Array<{ kind: string; path: string }>;
+          codex: {
+            provider: string;
+            state: string;
+            threadId: string;
+            trace: { counts: { approvals: number; commandOutputs: number; envelopes: number }; schema: string };
+            tracePath: string;
+            turnId: string;
+          };
+          kind: string;
+          transport: string;
+        }>;
+      };
+
+      expect(bundle.review.verdict).toBe("pass");
+      expect(bundle.simulations).toEqual([
+        expect.objectContaining({ mode: "codex-app-sim", status: "passed", streamKind: "codex-ui" })
+      ]);
+      expect(bundle.streams[0]).toEqual(expect.objectContaining({
+        kind: "codex-ui",
+        transport: "app-server"
+      }));
+      expect(bundle.streams[0]?.codex.provider).toBe("codex-app-server");
+      expect(bundle.streams[0]?.codex.state).toBe("completed");
+      expect(bundle.streams[0]?.codex.threadId).toBe("thread-public-safe-01");
+      expect(bundle.streams[0]?.codex.turnId).toBe("turn-public-safe-01");
+      expect(bundle.streams[0]?.codex.trace.schema).toBe("mimetic.codex-app-server-trace.v1");
+      expect(bundle.streams[0]?.codex.trace.counts.approvals).toBe(1);
+      expect(bundle.streams[0]?.codex.trace.counts.commandOutputs).toBeGreaterThan(0);
+      expect(bundle.streams[0]?.artifacts.some((artifact) => artifact.path === "codex-app-server/summary.json")).toBe(true);
+      expect(bundle.events.map((event) => event.type)).toContain("codex-app-server.verdict");
+      expect(JSON.stringify(bundle)).not.toContain(`sk-${"testsecretvalue"}`);
+      expect(JSON.stringify(bundle)).toContain("[REDACTED_SECRET]");
+
+      const trace = await readFile(
+        path.join(cwd, ".mimetic/runs/codex-app-server-test/codex-app-server/summary.json"),
+        "utf8"
+      );
+      const appServerEvents = await readFile(
+        path.join(cwd, ".mimetic/runs/codex-app-server-test/codex-app-server/events.ndjson"),
+        "utf8"
+      );
+      const transcript = await readFile(
+        path.join(cwd, ".mimetic/runs/codex-app-server-test/codex-app-server/transcript.txt"),
+        "utf8"
+      );
+      expect(trace).toContain("mimetic.codex-app-server-trace.v1");
+      expect(trace).toContain("approval-public-safe-01");
+      expect(trace).toContain("[REDACTED_SECRET]");
+      expect(trace).not.toContain(`sk-${"testsecretvalue"}`);
+      expect(trace).not.toContain(fakeAwsAccessKey);
+      expect(trace).toContain("[target-cwd]");
+      expect(trace).not.toContain(cwd);
+      expect(appServerEvents).toContain("[REDACTED_PROMPT_TEXT]");
+      expect(appServerEvents).toContain("textDigest");
+      expect(appServerEvents).not.toContain("You are a Mimetic Codex app-server dogfood actor");
+      expect(appServerEvents).not.toContain(cwd);
+      expect(transcript).not.toContain(cwd);
+
+      const verify = await verifyRun(cwd, "latest");
+      expect(verify.ok).toBe(true);
+      expect(verify.checks.find((check) => check.name === "codex app-server evidence")?.ok).toBe(true);
     });
   });
 
