@@ -1544,12 +1544,13 @@ export function buildOssMetaBootstrapScriptFixture(): string {
 
   return buildRemoteBootstrapScript({
     assignment,
-    completionPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/completion.json",
+    appDir: "/home/user/maciekt07-todoapp",
+    completionPath: "/home/user/.mimetic-oss-lab/maciekt07-todoapp/completion.json",
     displayRepo: "maciekt07/TodoApp",
-    logPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/bootstrap.log",
-    nestedObserverPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/repo/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html",
-    remoteHostActorPlanPath: "/home/user/mimetic-oss-lab/maciekt07-todoapp/host-actor-plan.json",
-    rootDir: "/home/user/mimetic-oss-lab/maciekt07-todoapp",
+    logPath: "/home/user/.mimetic-oss-lab/maciekt07-todoapp/bootstrap.log",
+    nestedObserverPath: "/home/user/maciekt07-todoapp/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html",
+    remoteHostActorPlanPath: "/home/user/.mimetic-oss-lab/maciekt07-todoapp/host-actor-plan.json",
+    stateDir: "/home/user/.mimetic-oss-lab/maciekt07-todoapp",
     token: "maciekt07-todoapp"
   });
 }
@@ -3230,17 +3231,19 @@ async function startOssBootstrap(
   }
 ): Promise<OssMetaLabBootstrap> {
   const token = display.token;
-  const rootDir = `/home/user/mimetic-oss-lab/${token}`;
+  const appDir = `/home/user/${token}`;
+  const stateDir = `/home/user/.mimetic-oss-lab/${token}`;
   const remotePackagePath = `/tmp/${localPackage?.fileName ?? "mimetic-cli.tgz"}`;
-  const remoteHostActorPlanPath = `${rootDir}/host-actor-plan.json`;
-  const bootstrapPath = `${rootDir}/bootstrap.sh`;
-  const launcherPath = `${rootDir}/launch-terminal.sh`;
-  const logPath = `${rootDir}/bootstrap.log`;
-  const completionPath = `${rootDir}/completion.json`;
-  const nestedObserverPath = `${rootDir}/repo/.mimetic/runs/nested-${token}/observer/index.html`;
+  const remoteHostActorPlanPath = `${stateDir}/host-actor-plan.json`;
+  const bootstrapPath = `${stateDir}/bootstrap.sh`;
+  const launcherPath = `${stateDir}/launch-terminal.sh`;
+  const logPath = `${stateDir}/bootstrap.log`;
+  const completionPath = `${stateDir}/completion.json`;
+  const nestedObserverPath = `${appDir}/.mimetic/runs/nested-${token}/observer/index.html`;
   const title = `Mimetic ${assignment.index} ${display.repoLabel}`;
   const baseTail = [
     `repo: ${display.repoLabel}`,
+    `project: ${appDir}`,
     `sandbox: ${desktop.sandboxId}`,
     `remote package: ${localPackage ? remotePackagePath : "npm:mimetic-cli fallback"}`,
     `bootstrap: ${bootstrapPath}`,
@@ -3250,7 +3253,7 @@ async function startOssBootstrap(
   ].join("\n");
 
   try {
-    await runDesktopCommand(desktop, `mkdir -p ${shellQuote(rootDir)}`, {
+    await runDesktopCommand(desktop, `mkdir -p ${shellQuote(stateDir)}`, {
       requestTimeoutMs,
       timeoutMs: 30_000
     });
@@ -3270,12 +3273,13 @@ async function startOssBootstrap(
 
     const bootstrapScript = buildRemoteBootstrapScript({
       assignment,
+      appDir,
       completionPath,
       displayRepo: display.repoLabel,
       logPath,
       nestedObserverPath,
       ...(display.hostActorPlanResult?.plan ? { remoteHostActorPlanPath } : {}),
-      rootDir,
+      stateDir,
       token,
       ...(localPackage ? { remotePackagePath } : {})
     });
@@ -3338,13 +3342,14 @@ async function startOssBootstrap(
 
 function buildRemoteBootstrapScript(args: {
   assignment: OssMetaLabAssignment;
+  appDir: string;
   completionPath: string;
   displayRepo: string;
   logPath: string;
   nestedObserverPath: string;
   remoteHostActorPlanPath?: string;
   remotePackagePath?: string;
-  rootDir: string;
+  stateDir: string;
   token: string;
 }): string {
   const repoUrl = `https://github.com/${args.assignment.repo}.git`;
@@ -3358,8 +3363,9 @@ MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="\${MIMETIC_CODEX_ACCESS_TOKEN:-}"
 MIMETIC_PRIVATE_GITHUB_TOKEN="\${MIMETIC_GITHUB_TOKEN:-}"
 unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_GITHUB_TOKEN
 unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN
-ROOT_DIR=${shellQuote(args.rootDir)}
-APP_DIR="$ROOT_DIR/repo"
+STATE_DIR=${shellQuote(args.stateDir)}
+ROOT_DIR="$STATE_DIR"
+APP_DIR=${shellQuote(args.appDir)}
 LOG_PATH=${shellQuote(args.logPath)}
 COMPLETION_PATH=${shellQuote(args.completionPath)}
 NESTED_OBSERVER=${shellQuote(args.nestedObserverPath)}

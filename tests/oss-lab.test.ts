@@ -473,6 +473,11 @@ describe("OSS lab command", () => {
       await writeFile(scriptPath, script, "utf8");
       await execFileAsync("bash", ["-n", scriptPath]);
 
+      expect(script).toContain("STATE_DIR='/home/user/.mimetic-oss-lab/maciekt07-todoapp'");
+      expect(script).toContain("ROOT_DIR=\"$STATE_DIR\"");
+      expect(script).toContain("APP_DIR='/home/user/maciekt07-todoapp'");
+      expect(script).toContain("NESTED_OBSERVER='/home/user/maciekt07-todoapp/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html'");
+      expect(script).not.toContain("/home/user/mimetic-oss-lab/maciekt07-todoapp/repo");
       expect(script).toContain("start_target_app_surface");
       expect(script).toContain('npx --no-install mimetic run --app-url "$APP_URL" --sims 2');
       expect(script).toContain('open_browser_url "$APP_URL" app-desktop');

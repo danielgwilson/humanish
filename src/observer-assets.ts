@@ -557,17 +557,21 @@ a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1);
 /* ============================================================ FOCUS VIEW */
 .focus {
   display: grid;
-  grid-template-columns: var(--rail-w, 188px) 1fr var(--side-w, 360px);
+  grid-template-columns: minmax(0, var(--rail-w, 188px)) minmax(0, 1fr) minmax(0, var(--side-w, 360px));
   height: 100%; min-height: 0;
+  transition: grid-template-columns .22s var(--ease);
 }
 .focus[data-rail="collapsed"] { --rail-w: 0px; }
+.focus[data-side="collapsed"] { --side-w: 0px; }
 
-/* breadcrumb bar lives in the stage column header */
+/* left lane rail; focus navigation lives in the toolbar */
 .focus-rail {
   background: var(--surface-0); border-right: 1px solid var(--line);
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-  transition: width .2s var(--ease);
+  min-width: 0;
+  transition: opacity .18s var(--ease), transform .22s var(--ease), border-color .18s var(--ease);
 }
+.focus[data-rail="collapsed"] .focus-rail { opacity: 0; pointer-events: none; transform: translateX(-10px); border-right-color: transparent; }
 .focus-rail-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; }
 .focus-rail-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; display: flex; flex-direction: column; gap: 4px; }
 .rail-item {
@@ -587,6 +591,9 @@ a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1);
   display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 46px; flex: none;
   background: var(--surface-0); border-bottom: 1px solid var(--line);
 }
+.toolbar.focus-toolbar { overflow-x: auto; gap: 12px; }
+.toolbar.focus-toolbar .crumbs { flex: 1 1 auto; }
+.toolbar.focus-toolbar .focus-status { flex: none; }
 .crumbs { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-3); min-width: 0; }
 .crumbs button { color: var(--text-3); transition: color .15s; white-space: nowrap; }
 .crumbs button:hover { color: var(--text-1); }
@@ -610,7 +617,12 @@ a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1);
 @supports not (aspect-ratio: 1) { .focus-frame { height: 100%; width: 100%; } }
 
 /* side panel */
-.focus-side { background: var(--surface-0); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.focus-side {
+  background: var(--surface-0); border-left: 1px solid var(--line);
+  display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+  transition: opacity .18s var(--ease), transform .22s var(--ease), border-color .18s var(--ease);
+}
+.focus[data-side="collapsed"] .focus-side { opacity: 0; pointer-events: none; transform: translateX(10px); border-left-color: transparent; }
 .side-context { flex: none; padding: 16px; border-bottom: 1px solid var(--line); }
 .side-persona-row { display: flex; align-items: center; gap: 10px; }
 .side-avatar { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--accent-2); font-weight: 600; font-size: 13px; flex: none; }
@@ -688,6 +700,21 @@ a.bw-lab-chip:hover { border-color: rgba(255,255,255,.22); color: var(--text-1);
 .fi-load { padding: 24px 16px; color: var(--text-3); text-align: center; }
 
 .tab-empty { padding: 36px 24px; text-align: center; color: var(--text-3); font-size: 12px; }
+.log-panel { height: 100%; min-height: 0; display: flex; flex-direction: column; background: var(--stream-void); }
+.log-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px 18px; font-family: var(--mono); font-size: 11px; line-height: 1.55; }
+.log-section + .log-section { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+.log-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: var(--text-3); }
+.log-section-title { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
+.log-section-count { font-size: 9px; color: var(--text-4); }
+.log-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
+.log-row + .log-row { margin-top: 1px; }
+.log-num { color: var(--text-4); text-align: right; user-select: none; }
+.log-txt { color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.log-txt.ok { color: var(--green); }
+.log-txt.warn { color: var(--amber); }
+.log-txt.err { color: var(--red); }
+.log-txt.cmd { color: var(--text-1); }
+.log-txt.dim { color: var(--text-3); }
 
 /* ============================================================ HISTORY DRAWER */
 .scrim { position: fixed; inset: 0; background: rgba(4,6,9,.5); backdrop-filter: blur(2px); z-index: 70; animation: fade-in .2s ease; }
@@ -750,8 +777,8 @@ html[data-theme="light"] .scrim { background: rgba(20,28,40,.32); }
 @media (max-width: 860px) {
   .focus { display: block; height: 100%; min-height: 0; overflow-y: auto; }
   .focus-rail { display: none; }
+  .focus[data-rail="collapsed"] .focus-rail { display: none; }
   .focus-stage { min-height: auto; }
-  .focus-bar { position: sticky; top: 0; z-index: 25; }
   .focus-stage-area {
     display: block; min-height: min(60vh, 560px); height: auto;
     padding: 14px; overflow: visible;
@@ -765,6 +792,7 @@ html[data-theme="light"] .scrim { background: rgba(20,28,40,.32); }
     min-height: 360px; max-height: none; border-left: none; border-top: 1px solid var(--line-2);
     border-radius: 0; box-shadow: none; transform: none;
   }
+  .focus[data-side="collapsed"] .focus-side { display: none; }
   .focus-side[data-sheet="open"], .focus-side[data-sheet="closed"] { transform: none; }
   .sheet-grip { display: none; }
 }
@@ -876,11 +904,6 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .si-ring-pct { font-size: 12px; color: var(--text-1); font-weight: 600; }
 .si-ring-issue { font-size: 9.5px; }
 
-/* ============================================================ FOCUS SIDE COLLAPSE */
-.focus[data-side="collapsed"] { --side-w: 0px; grid-template-columns: var(--rail-w, 188px) 1fr; }
-.focus[data-side="collapsed"][data-rail="collapsed"] { grid-template-columns: 1fr; }
-.focus[data-rail="collapsed"]:not([data-side="collapsed"]) { grid-template-columns: 1fr var(--side-w, 360px); }
-
 /* ============================================================ RUN CONSOLE */
 .console {
   display: flex; flex-direction: column; min-height: 0; flex: none;
@@ -986,6 +1009,7 @@ export function observerClientJs(): string {
   var historyTimer = null;
   var openDd = null;
   var NL = String.fromCharCode(10);
+  var CR = String.fromCharCode(13);
   var TIMES = String.fromCharCode(215);
 
   // ---------------------------------------------------------------- prefs
@@ -1020,7 +1044,7 @@ export function observerClientJs(): string {
     railCollapsed: !!readPref("railCollapsed", false),
     sideCollapsed: !!readPref("sideCollapsed", false),
     sheetOpen: false,
-    tab: "events",
+    tab: "logs",
     theme: readPref("theme", "dark"),
     accent: readPref("accent", "#4d7cfe"),
     density: readPref("density", "comfortable"),
@@ -1171,6 +1195,40 @@ export function observerClientJs(): string {
     var arr = String(raw).split(NL);
     while (arr.length && arr[arr.length - 1].trim() === "") arr.pop();
     return arr.map(function (line) { return { text: line, cls: classify(line) }; });
+  }
+  function cleanLogText(v) {
+    return String(v == null ? "" : v).split(CR).join("").trim();
+  }
+  function splitLogText(v) {
+    var raw = cleanLogText(v);
+    if (!raw) return [];
+    var arr = raw.split(NL);
+    while (arr.length && arr[arr.length - 1].trim() === "") arr.pop();
+    return arr.map(function (line) { return { text: line, cls: classify(line) }; });
+  }
+  function logSections(s) {
+    var c = s.completion || {};
+    var sections = [];
+    var actorLast = splitLogText(c.actorLastMessageTail || "");
+    var actorLog = splitLogText(c.actorLogTail || "");
+    var bootstrap = splitLogText(c.logTail || "");
+    var terminal = termLines(s);
+    var terminalRaw = cleanLogText(s.terminalPlain != null ? s.terminalPlain : (s.terminal ? s.terminal.tail : ""));
+    var actorRaw = cleanLogText((c.actorLastMessageTail || "") + NL + (c.actorLogTail || "") + NL + (c.logTail || ""));
+    if (actorLast.length) sections.push({ id: "actor-last", title: "Actor last message", lines: actorLast });
+    if (actorLog.length) sections.push({ id: "actor-log", title: "Codex agent log", lines: actorLog });
+    if (bootstrap.length) sections.push({ id: "bootstrap-log", title: "Bootstrap log", lines: bootstrap });
+    if (terminal.length && (!actorRaw || actorRaw.indexOf(terminalRaw) < 0)) {
+      sections.push({ id: "lane-summary", title: actorRaw ? "Lane summary" : "Lane log", lines: terminal });
+    }
+    return sections;
+  }
+  function hasAgentLogs(s) {
+    var c = s.completion || {};
+    return !!(cleanLogText(c.actorLastMessageTail || "") || cleanLogText(c.actorLogTail || ""));
+  }
+  function logLineCount(s) {
+    return logSections(s).reduce(function (sum, section) { return sum + section.lines.length; }, 0);
   }
   function clip(v, n) {
     var s = String(v == null ? "" : v).trim();
@@ -1343,12 +1401,12 @@ export function observerClientJs(): string {
     }
     return '<div class="wait"><div class="wait-inner">' + inner + '</div></div>';
   }
-  function browserSurface(s) {
+  function browserSurface(s, focus) {
     var live = tone(s.status) === "running";
     var route = laneRoute(s) || "(local)";
     var liveUrl = browserLiveUrl(s);
     var shot = browserShot(s);
-    var dock = browserLabDock(s, shot);
+    var dock = focus ? browserLabDock(s, shot) : "";
     var body;
     if (liveUrl && S.media === "live") body = liveStreamMount(s, liveUrl);
     else if (shot) body = '<img class="surface-fill" style="object-fit:cover;object-position:top" src="' + esc(shot) + '" alt="viewport screenshot"/>';
@@ -1403,7 +1461,7 @@ export function observerClientJs(): string {
     if ((st === "blocked" || st === "timed_out") && !hasTail && !((k === "ui" || k === "browser") && browserHasLabSignals(s))) return waitSurface(s);
     if (k === "ui" || k === "browser") {
       if ((st === "blocked" || st === "timed_out" || st === "failed" || st === "contract_proof_only") && !browserHasLabSignals(s)) return waitSurface(s);
-      return browserSurface(s);
+      return browserSurface(s, focus);
     }
     if (k === "terminal" || k === "tui") return hasTail ? terminalSurface(s, focus) : waitSurface(s);
     if (k === "codex-ui") {
@@ -1505,6 +1563,7 @@ export function observerClientJs(): string {
       + icon("caret", 13) + '</button></div>';
   }
   function buildToolbar() {
+    if (S.view === "focus") return buildFocusToolbar();
     var total = currentData.streams.length;
     var shown = filteredStreams().length;
     return '<div class="toolbar">'
@@ -1524,6 +1583,26 @@ export function observerClientJs(): string {
       + '<button aria-pressed="' + (S.density === "comfortable" ? "true" : "false") + '" title="Comfortable" data-action="density:comfortable">' + icon("comfy", 15) + '</button>'
       + '<button aria-pressed="' + (S.density === "compact" ? "true" : "false") + '" title="Compact" data-action="density:compact">' + icon("compact", 15) + '</button>'
       + '<button aria-pressed="' + (S.density === "dense" ? "true" : "false") + '" title="Dense" data-action="density:dense">' + icon("dense", 15) + '</button></div>'
+      + '</div>';
+  }
+  function buildFocusToolbar() {
+    var ss = currentData.streams;
+    if (!ss.length) return '<div class="toolbar focus-toolbar"><div class="crumbs"><span class="cur">No lanes</span></div></div>';
+    var idx = focusIndex();
+    var s = ss[idx];
+    var live = tone(s.status) === "running";
+    return '<div class="toolbar focus-toolbar">'
+      + '<div class="crumbs">'
+      + '<button class="crumb-rail-toggle" data-action="toggle-rail" aria-label="' + (S.railCollapsed ? "Show lane rail" : "Hide lane rail") + '" title="' + (S.railCollapsed ? "Show lane rail - [" : "Hide lane rail - [") + '">' + icon("list", 15) + '</button>'
+      + '<button data-action="exit-focus">Grid</button><span class="sep">/</span>'
+      + '<span class="mono" style="color:var(--text-3)">' + pad2(idx + 1) + '</span>'
+      + '<span class="cur" title="' + esc(laneName(s)) + '">' + esc(laneName(s)) + '</span></div>'
+      + '<span class="focus-status" data-tone="' + tone(s.status) + '" style="color:' + statusColor(s.status) + '">' + pip(s.status, live) + ' ' + statusLabel(s.status) + '</span>'
+      + '<div class="focus-nav"><button class="icon-btn" data-action="nav:-1" aria-label="Previous lane">' + icon("chevL") + '</button>'
+      + '<span class="focus-stepper mono">' + (idx + 1) + ' / ' + ss.length + '</span>'
+      + '<button class="icon-btn" data-action="nav:1" aria-label="Next lane">' + icon("chevR") + '</button></div>'
+      + '<button class="icon-btn" data-action="toggle-side" aria-pressed="' + (S.sideCollapsed ? "false" : "true") + '" aria-label="' + (S.sideCollapsed ? "Show details panel" : "Hide details panel") + '" title="' + (S.sideCollapsed ? "Show details panel - ]" : "Hide details panel - ]") + '">' + icon("panelRight") + '</button>'
+      + '<button class="icon-btn" data-action="exit-focus" aria-label="Close focus (Esc)">' + icon("x") + '</button>'
       + '</div>';
   }
   function buildDdMenu() {
@@ -1693,7 +1772,7 @@ export function observerClientJs(): string {
   function buildSideBody(s) {
     if (S.tab === "events") {
       var evs = laneEvents(s);
-      if (!evs.length) return '<div class="tab-empty">No lifecycle events recorded yet.</div>';
+      if (!evs.length) return '<div class="tab-empty">No orchestrator lifecycle events recorded yet.</div>';
       return evs.map(function (ev, i) {
         var ic = (ev.level === "error" || ev.level === "warn") ? "alert" : "info";
         return '<div class="evt" data-level="' + esc(ev.level) + '"><div class="evt-rail"><span class="evt-icon">' + icon(ic, 12) + '</span>' + (i === evs.length - 1 ? '' : '<span class="evt-conn"></span>') + '</div>'
@@ -1703,12 +1782,17 @@ export function observerClientJs(): string {
     if (S.tab === "files") {
       return buildFilesTab(s);
     }
-    var lines = termLines(s);
-    if (!lines.length) lines = [{ text: "No log text recorded for this lane.", cls: "dim" }];
-    var rows = lines.map(function (ln, i) {
-      return '<div class="term-line"><span class="term-num">' + pad2(i + 1) + '</span><span class="term-txt ' + ln.cls + '">' + esc(ln.text || " ") + '</span></div>';
-    }).join("");
-    return '<div class="term" style="position:static;height:100%"><div class="term-body" style="overflow-y:auto">' + rows + '</div></div>';
+    return buildLogsTab(s);
+  }
+  function buildLogsTab(s) {
+    var sections = logSections(s);
+    if (!sections.length) return '<div class="tab-empty">No agent or terminal log text recorded for this lane.</div>';
+    return '<div class="log-panel"><div class="log-scroll">' + sections.map(function (section) {
+      var rows = section.lines.map(function (ln, i) {
+        return '<div class="log-row"><span class="log-num">' + pad2(i + 1) + '</span><span class="log-txt ' + ln.cls + '">' + esc(ln.text || " ") + '</span></div>';
+      }).join("");
+      return '<section class="log-section" data-log-section="' + esc(section.id) + '"><div class="log-section-head"><span class="log-section-title">' + esc(section.title) + '</span><span class="log-section-count">' + section.lines.length + ' lines</span></div>' + rows + '</section>';
+    }).join("") + '</div></div>';
   }
   function buildFocus() {
     var ss = currentData.streams;
@@ -1718,9 +1802,9 @@ export function observerClientJs(): string {
     var run = currentData.run;
     var live = tone(s.status) === "running";
     var tabs = [
-      { id: "events", label: "Events", n: laneEvents(s).length },
+      { id: "logs", label: hasAgentLogs(s) ? "Agent Logs" : "Logs", n: logLineCount(s) },
       { id: "files", label: "Files", n: laneArtifacts(s).length },
-      { id: "logs", label: "Logs", n: termLines(s).length }
+      { id: "events", label: "Lifecycle", n: laneEvents(s).length }
     ];
     var rail = '<aside class="focus-rail" aria-label="Lanes"><div class="focus-rail-head"><span class="eyebrow">' + ss.length + ' lanes</span>'
       + '<button class="icon-btn" style="width:26px;height:26px" data-action="toggle-rail" aria-label="Collapse lane rail">' + icon("chevL", 15) + '</button></div>'
@@ -1730,34 +1814,20 @@ export function observerClientJs(): string {
           + '<span class="rail-meta"><span class="rail-name">' + esc(laneName(r)) + '</span><span class="rail-sub">' + pip(r.status, tone(r.status) === "running") + ' ' + esc(r.kindLabel || r.kind) + '</span></span></button>';
       }).join("") + '</div></aside>';
 
-    var stage = '<section class="focus-stage"><header class="focus-bar"><div class="crumbs">'
-      + (S.railCollapsed ? '<button class="crumb-rail-toggle" data-action="toggle-rail" aria-label="Show lane rail">' + icon("list", 15) + '</button>' : '')
-      + '<button data-action="exit-focus">Grid</button><span class="sep">/</span>'
-      + '<span class="mono" style="color:var(--text-3)">' + pad2(idx + 1) + '</span>'
-      + '<span class="cur" title="' + esc(laneName(s)) + '">' + esc(laneName(s)) + '</span></div>'
-      + '<div class="tb-spacer"></div>'
-      + '<span class="focus-status" data-tone="' + tone(s.status) + '" style="color:' + statusColor(s.status) + '">' + pip(s.status, live) + ' ' + statusLabel(s.status) + '</span>'
-      + '<div class="focus-nav"><button class="icon-btn" data-action="nav:-1" aria-label="Previous lane">' + icon("chevL") + '</button>'
-      + '<span class="focus-stepper mono">' + (idx + 1) + ' / ' + ss.length + '</span>'
-      + '<button class="icon-btn" data-action="nav:1" aria-label="Next lane">' + icon("chevR") + '</button></div>'
-      + '<button class="icon-btn" data-action="toggle-side" aria-pressed="' + (S.sideCollapsed ? "false" : "true") + '" aria-label="Toggle details panel">' + icon("panelRight") + '</button>'
-      + '<button class="icon-btn" data-action="exit-focus" aria-label="Close focus (Esc)">' + icon("x") + '</button></header>'
-      + '<div class="focus-stage-area"><div class="focus-frame" style="--aspect:' + aspectFor(s) + '">' + streamSurface(s, true) + '</div></div></section>';
+    var stage = '<section class="focus-stage"><div class="focus-stage-area"><div class="focus-frame" style="--aspect:' + aspectFor(s) + '">' + streamSurface(s, true) + '</div></div></section>';
 
-    var side = "";
-    if (!S.sideCollapsed) {
-      side = '<aside class="focus-side" data-sheet="' + (S.sheetOpen ? "open" : "closed") + '">'
+    var side = '<aside class="focus-side" aria-hidden="' + (S.sideCollapsed ? "true" : "false") + '" data-sheet="' + (S.sheetOpen ? "open" : "closed") + '">'
         + '<button class="sheet-grip" data-action="toggle-sheet" aria-label="Toggle details"></button>'
         + '<div class="side-context"><div class="side-persona-row"><span class="side-avatar mono">' + esc(initials((run.persona && run.persona.name) || "")) + '</span>'
-        + '<div style="min-width:0"><div class="side-persona-name">' + esc((run.persona && run.persona.name) || "Persona") + '</div><div class="side-persona-id mono">attempting · ' + esc(laneName(s)) + '</div></div></div>'
-        + '<div class="side-goal"><span class="eyebrow">Goal</span><div class="side-goal-text">' + esc((run.scenario && run.scenario.goal) || laneSummary(s)) + '</div></div>'
+        + '<div style="min-width:0"><div class="side-persona-name">' + esc((run.persona && run.persona.name) || "Persona") + '</div><div class="side-persona-id mono">persona driving · ' + esc(laneName(s)) + '</div></div></div>'
+        + '<div class="side-goal"><span class="eyebrow">Persona</span><div class="side-goal-text">' + esc((run.persona && run.persona.name) || "Synthetic persona") + ' is attempting this lane as a realistic setup operator.</div></div>'
+        + '<div class="side-goal"><span class="eyebrow">Scenario</span><div class="side-goal-text">' + esc((run.scenario && run.scenario.goal) || laneSummary(s)) + '</div></div>'
         + '<div class="side-now"><div class="side-now-row">' + pip(s.status, live) + '<span class="eyebrow" style="color:' + (live ? "var(--accent-2)" : "var(--text-3)") + '">' + (live ? "Now" : "Last step") + '</span></div>'
         + '<div class="side-now-text">' + esc(laneStep(s)) + '</div></div></div>'
         + '<div class="side-tabs" role="tablist">' + tabs.map(function (t) {
           return '<button class="side-tab" role="tab" aria-selected="' + (S.tab === t.id ? "true" : "false") + '" data-action="tab:' + t.id + '">' + t.label + '<span class="tab-n">' + t.n + '</span></button>';
         }).join("") + '</div>'
         + '<div class="side-body">' + buildSideBody(s) + '</div></aside>';
-    }
     return '<div class="focus" data-rail="' + (S.railCollapsed ? "collapsed" : "open") + '" data-side="' + (S.sideCollapsed ? "collapsed" : "open") + '">' + rail + stage + side + '</div>';
   }
   function statusColor(st) {
@@ -1860,7 +1930,7 @@ export function observerClientJs(): string {
   // ================================================================ RENDER
   function captureScrolls() {
     var map = {};
-    [".grid-scroll", ".console-body", ".focus-rail-list", ".side-body", ".focus-stage-area", ".drawer-list"].forEach(function (sel) {
+    [".grid-scroll", ".console-body", ".focus-rail-list", ".side-body", ".focus-stage-area", ".drawer-list", ".log-scroll"].forEach(function (sel) {
       var el = app.querySelector(sel);
       if (el) map[sel] = el.scrollTop;
     });
@@ -1995,7 +2065,7 @@ export function observerClientJs(): string {
       var title = mount.getAttribute("data-live-stream-title") || "live stream";
       if (!id || !url) return;
       var knownStream = known[id] && known[id].stream;
-      var overlayHtml = knownStream ? browserLabDock(knownStream, browserShot(knownStream)) : "";
+      var overlayHtml = (S.view === "focus" && knownStream) ? browserLabDock(knownStream, browserShot(knownStream)) : "";
       var rec = liveStreamFrames[id];
       if (!rec || rec.url !== url) {
         removeLiveStreamRecord(id);
@@ -2161,7 +2231,9 @@ export function observerClientJs(): string {
     }
   });
   document.addEventListener("keydown", function (e) {
-    var typing = document.activeElement && document.activeElement.tagName === "INPUT";
+    var active = document.activeElement;
+    var tag = active && active.tagName ? String(active.tagName).toUpperCase() : "";
+    var typing = !!(active && (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable));
     if (e.key === "Escape") {
       if (openDd) { openDd = null; return render(); }
       if (S.detailsOpen) { S.detailsOpen = false; return render(); }
@@ -2175,6 +2247,18 @@ export function observerClientJs(): string {
       e.preventDefault();
       var el = app.querySelector(".tb-search input");
       if (el) el.focus();
+    }
+    if (S.view === "focus" && e.key === "[" && !typing) {
+      e.preventDefault();
+      S.railCollapsed = !S.railCollapsed;
+      writePref("railCollapsed", S.railCollapsed);
+      render();
+    }
+    if (S.view === "focus" && e.key === "]" && !typing) {
+      e.preventDefault();
+      S.sideCollapsed = !S.sideCollapsed;
+      writePref("sideCollapsed", S.sideCollapsed);
+      render();
     }
     if (S.view === "focus" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && !typing) {
       navFocus(e.key === "ArrowRight" ? 1 : -1);

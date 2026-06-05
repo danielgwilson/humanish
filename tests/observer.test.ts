@@ -48,12 +48,18 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   };
 }
 
-function renderObserverClientForTest(data: unknown, hash = ""): { click: (action: string) => void; html: () => string } {
+function renderObserverClientForTest(data: unknown, hash = ""): { click: (action: string) => void; html: () => string; key: (key: string) => void } {
   let html = "";
   let clickHandler:
     | ((event: {
         preventDefault: () => void;
         target: { closest: (selector: string) => { getAttribute: (name: string) => string | null; tagName: string } | null };
+      }) => void)
+    | null = null;
+  let keyHandler:
+    | ((event: {
+        key: string;
+        preventDefault: () => void;
       }) => void)
     | null = null;
 
@@ -78,7 +84,9 @@ function renderObserverClientForTest(data: unknown, hash = ""): { click: (action
   const sandbox = {
     document: {
       activeElement: null,
-      addEventListener: () => {},
+      addEventListener: (event: string, handler: typeof keyHandler) => {
+        if (event === "keydown") keyHandler = handler;
+      },
       documentElement: {
         setAttribute: () => {},
         style: { setProperty: () => {} }
@@ -112,12 +120,19 @@ function renderObserverClientForTest(data: unknown, hash = ""): { click: (action
         target: { closest: () => target }
       });
     },
-    html: () => html
+    html: () => html,
+    key: (key: string) => {
+      keyHandler?.({
+        key,
+        preventDefault: () => {}
+      });
+    }
   };
 }
 
 function browserLabObserverData(): Record<string, unknown> {
   const terminalTail = "$ npx mimetic verify\nnested observer: ready";
+  const actorLogTail = "$ npx --no-install mimetic init --yes\n$ npx --no-install mimetic run --app-url http://localhost:5173 --sims 2\nobserved product friction: none observed";
   return {
     run: {
       createdAt: "2026-06-03T12:00:00.000Z",
@@ -158,7 +173,10 @@ function browserLabObserverData(): Record<string, unknown> {
         },
         terminalPlain: terminalTail,
         completion: {
+          actorLastMessageTail: "Created app-specific personas and scenarios, then opened the nested Observer.",
+          actorLogTail,
           checkedAt: "2026-06-03T12:00:06.000Z",
+          logTail: "== bootstrap complete ==\napp_status=running",
           nestedObserverPresent: true,
           reason: "Bootstrap terminal launched.",
           status: "running"
@@ -409,6 +427,10 @@ describe("observer rendering", () => {
     client.click("media:screenshot");
 
     expect(client.html()).toContain('src="../screenshots/oss-01-desktop.png"');
+    expect(client.html()).not.toContain('class="bw-lab-dock"');
+
+    client.click("open:lane-01");
+
     expect(client.html()).toContain("viewing fallback");
     expect(client.html()).toContain('data-kind="app"');
     expect(client.html()).toContain('data-kind="observer"');
@@ -418,7 +440,6 @@ describe("observer rendering", () => {
     expect(client.html()).toContain('data-kind="artifact"');
     expect(client.html()).toContain("nested observer: ready");
 
-    client.click("open:lane-01");
     client.click("tab:files");
 
     expect(client.html()).toContain("setup quality");
@@ -458,6 +479,7 @@ describe("observer rendering", () => {
     expect(css).toContain(".focus { display: block; height: 100%; min-height: 0; overflow-y: auto; }");
     expect(css).toContain(".focus-side {");
     expect(css).toContain("position: relative; left: auto; right: auto; bottom: auto; top: auto;");
+    expect(css).toContain('.focus[data-side="collapsed"] .focus-side { display: none; }');
     expect(css).toContain('.focus-side[data-sheet="open"], .focus-side[data-sheet="closed"] { transform: none; }');
   });
 
@@ -467,6 +489,24 @@ describe("observer rendering", () => {
     expect(client.html()).toContain('class="focus"');
     expect(client.html()).toContain('class="focus-stage"');
     expect(client.html()).toContain('class="focus-side"');
+    expect(client.html()).toContain("Agent Logs");
+    expect(client.html()).toContain("Codex agent log");
+    expect(client.html()).toContain("Created app-specific personas");
+    expect(client.html()).toContain("Lifecycle");
+    expect(client.html()).toContain("Scenario");
+    expect(client.html()).not.toContain("<span class=\"eyebrow\">Goal</span>");
+    expect(client.html()).not.toContain("Filter lanes");
+    expect(client.html()).toContain("focus-toolbar");
+  });
+
+  it("collapses focus sidebars with keyboard shortcuts when not typing", () => {
+    const client = renderObserverClientForTest(browserLabObserverData(), "#focus=lane-01");
+
+    client.key("[");
+    expect(client.html()).toContain('data-rail="collapsed"');
+
+    client.key("]");
+    expect(client.html()).toContain('data-side="collapsed"');
   });
 
   it("serves observer artifacts over a live localhost server", async () => {
