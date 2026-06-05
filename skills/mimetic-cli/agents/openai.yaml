@@ -1,7 +1,7 @@
 interface:
   display_name: "Mimetic CLI"
   short_description: "Set up public-safe persona simulation"
-  default_prompt: "Use $mimetic-cli to install Mimetic in this repo, scaffold synthetic personas and scenarios, run the safe Observer proof, and report the public-safe artifacts."
+  default_prompt: "Use $mimetic-cli to install Mimetic in this repo, scaffold synthetic personas and scenarios, run the safe Observer proof, and report the public-safe artifacts. If the app can run locally, start it on loopback and use `mimetic run --app-url http://127.0.0.1:<port> --sims 2` before rendering Observer with `mimetic watch --run latest`; do not treat `watch --sims` as app behavior proof."
 
 policy:
   allow_implicit_invocation: true

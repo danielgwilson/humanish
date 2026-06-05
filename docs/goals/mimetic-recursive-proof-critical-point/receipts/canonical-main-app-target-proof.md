@@ -109,7 +109,7 @@ Mimetic Observer in the E2B desktop.
 Sandbox cleanup:
 
 ```text
-killed sandbox: ii4arg677ruf978n6pa9t
+killed sandbox: [redacted-sandbox-id]
 ```
 
 Provider readback:

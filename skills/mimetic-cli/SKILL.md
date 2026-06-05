@@ -113,7 +113,8 @@ npx mimetic lab run first-run --json --no-open
 
 ## First Proof Run
 
-Run the no-credentials path first:
+Run the no-credentials path first. This proves Mimetic artifact plumbing, not
+target app behavior:
 
 ```bash
 npx mimetic doctor
@@ -132,6 +133,20 @@ npx mimetic lab run first-run --json --no-open
 The feedback command prints a public-safe Markdown draft. It must not call the
 GitHub API, require a token, update Projects, use provider credits, or claim
 product behavior proof from a dry run.
+
+When the target app can run locally, prove real browser behavior with
+`run --app-url` after starting the app on loopback:
+
+```bash
+# in another terminal, start the target app on 127.0.0.1 or localhost
+npx mimetic run --app-url http://127.0.0.1:<port> --sims 2 --json
+npx mimetic verify --run latest --json
+npx mimetic watch --run latest --detach --no-open --json
+```
+
+Do not use `mimetic watch --sims ...` as a substitute for app-url proof.
+`watch` renders or follows Observer evidence; `run --app-url` is the command
+that captures live desktop/mobile browser evidence against a running app.
 
 ## Optional Live E2B Lab
 

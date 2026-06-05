@@ -110,7 +110,7 @@ Visual inspection of the screenshot showed:
 Sandbox cleanup:
 
 ```text
-killed sandbox: i39ry62lz2j5a1h12nkx1
+killed sandbox: [redacted-sandbox-id]
 ```
 
 Provider readback:

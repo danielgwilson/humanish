@@ -79,6 +79,7 @@ npx mimetic watch --json --no-open
 | `mimetic init` | Scaffold committed `mimetic/` source and ignored `.mimetic/` runtime state. |
 | `mimetic doctor` | Explain readiness and missing setup. |
 | `mimetic run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
+| `mimetic run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
 | `mimetic watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
 | `mimetic lab list` | List committed and ignored lab manifests. |
 | `mimetic lab inspect <lab>` | Show the source manifest for a lab without running it. |

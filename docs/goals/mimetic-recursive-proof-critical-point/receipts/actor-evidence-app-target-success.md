@@ -129,7 +129,7 @@ opened the nested Observer inside the E2B desktop.
 Sandbox cleanup:
 
 ```text
-killed sandbox: iw1at2jb0bh3b5bdkvq35
+killed sandbox: [redacted-sandbox-id]
 ```
 
 Provider readback:

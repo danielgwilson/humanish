@@ -179,7 +179,7 @@ describe("OSS lab command", () => {
 
   it("preflights private GitHub repo clone access with askpass-scoped token auth after anonymous access fails", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-"));
-    const [assignment] = buildOssRepoAssignments(["danielgwilson/nobg"], 1);
+    const [assignment] = buildOssRepoAssignments(["example/private-fixture"], 1);
     if (!assignment) {
       throw new Error("Missing assignment.");
     }
@@ -221,7 +221,7 @@ describe("OSS lab command", () => {
         "credential.helper=",
         "ls-remote",
         "--exit-code",
-        "https://github.com/danielgwilson/nobg.git",
+        "https://github.com/example/private-fixture.git",
         "HEAD"
       ]);
       expect(calls[0]?.env.GIT_ASKPASS).toBe("false");
@@ -241,7 +241,7 @@ describe("OSS lab command", () => {
 
   it("prefers anonymous repo access when token auth is present for a public repo", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-fallback-"));
-    const [assignment] = buildOssRepoAssignments(["danielgwilson/nobg"], 1);
+    const [assignment] = buildOssRepoAssignments(["example/public-fixture"], 1);
     if (!assignment) {
       throw new Error("Missing assignment.");
     }
@@ -284,7 +284,7 @@ describe("OSS lab command", () => {
 
   it("classifies missing GitHub clone auth without leaking private repo labels when redacted", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-fail-"));
-    const [assignment] = buildOssRepoAssignments(["danielgwilson/nobg"], 1);
+    const [assignment] = buildOssRepoAssignments(["example/private-fixture"], 1);
     if (!assignment) {
       throw new Error("Missing assignment.");
     }
@@ -296,7 +296,7 @@ describe("OSS lab command", () => {
         env: {},
         redactRepoNames: true,
         execFileImpl: async () => {
-          throw new Error("Command failed: git ls-remote https://github.com/danielgwilson/nobg.git HEAD");
+          throw new Error("Command failed: git ls-remote https://github.com/example/private-fixture.git HEAD");
         }
       });
 
@@ -306,7 +306,7 @@ describe("OSS lab command", () => {
       })]);
       expect(result[0]?.reason).toContain("private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT");
       expect(result[0]?.reason).toContain("[redacted-authorized-repo]");
-      expect(result[0]?.reason).not.toContain("danielgwilson/nobg");
+      expect(result[0]?.reason).not.toContain("example/private-fixture");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -493,11 +493,15 @@ describe("OSS lab command", () => {
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_TIMEOUT_MS");
       expect(script).toContain("ACTOR_TIMEOUT_SECONDS");
       expect(script).toContain("Do not wait on long-running watchers");
+      expect(script).toContain("Run npx mimetic run --help and verify --app-url is available");
+      expect(script).toContain("do not use mimetic watch --sims as app behavior proof");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_MODEL");
       expect(script).toContain("actor_log_tail_begin");
       expect(script).toContain("ACTOR_LAST_MESSAGE_PATH");
       expect(script).toContain("actorLogTail");
       expect(script).toContain("actorLastMessageTail");
+      expect(script).toContain('pnpm add --save-dev --workspace-root "$spec" --ignore-scripts');
+      expect(script).not.toContain('pnpm add -D "$spec" --ignore-scripts');
       expect(script).toContain("@openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check");
       expect(script).toContain("-m \\$actor_model_q");
       expect(script).toContain("--dangerously-bypass-approvals-and-sandbox");
@@ -954,7 +958,7 @@ describe("OSS lab command", () => {
           completion: {
             actorLogPath: "/remote/it-tools/actor.log",
             actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
-            actorLastMessageTail: "Set up Mimetic and ran npx mimetic run --app-url http://127.0.0.1:5173 --sims 2.",
+            actorLastMessageTail: "Set up Mimetic, but the installed CLI did not expose run --app-url in the proof path.",
             actorPid: 4321,
             actorStatus: "running",
             appLogPath: "/remote/it-tools/app.log",
@@ -1068,7 +1072,7 @@ describe("OSS lab command", () => {
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
       actorLogTail: "codex actor attempt\nnpx mimetic init --yes\nactor_exit=0",
-      actorLastMessageTail: "Set up Mimetic and ran npx mimetic run --app-url http://127.0.0.1:5173 --sims 2.",
+      actorLastMessageTail: "Set up Mimetic, but the installed CLI did not expose run --app-url in the proof path.",
       actorStatus: "running",
       appStatus: "running",
       appUrl: "http://127.0.0.1:5173",
@@ -1113,7 +1117,7 @@ describe("OSS lab command", () => {
       path: "setup-quality/oss-01-desktop-setup-quality.json",
       kind: "filesystem"
     });
-    expect(bundle.feedbackCandidates).toHaveLength(1);
+    expect(bundle.feedbackCandidates).toHaveLength(2);
     expect(bundle.feedbackCandidates[0]).toMatchObject({
       schema: "mimetic.feedback-candidate.v1",
       failure_owner: "actor",
@@ -1124,6 +1128,17 @@ describe("OSS lab command", () => {
       path: "setup-quality/oss-01-desktop-setup-quality.json",
       kind: "filesystem",
       note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews."
+    });
+    expect(bundle.feedbackCandidates[1]).toMatchObject({
+      schema: "mimetic.feedback-candidate.v1",
+      failure_owner: "harness",
+      proposed_next_state: "adapter-hardening",
+      summary: "Published Mimetic install path blocked app-url proof"
+    });
+    expect(bundle.feedbackCandidates[1]?.evidence).toContainEqual({
+      path: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
+      kind: "log",
+      note: "Public-safe actor last-message tail."
     });
     expect(bundle.streams[1]?.terminal?.tail).toContain("verification failed");
     expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.passed");

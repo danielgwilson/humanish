@@ -108,7 +108,7 @@ actor failure: Quota exceeded. Check your plan and billing details.
 Provider cleanup:
 
 ```text
-killed sandbox: i2qw6vhs016bmg0vrw1e6
+killed sandbox: [redacted-sandbox-id]
 running Mimetic OSS meta-lab sandboxes after cleanup: 0
 ```
 
@@ -148,7 +148,7 @@ actor failure: Quota exceeded. Check your plan and billing details.
 Provider cleanup:
 
 ```text
-killed sandbox: ipobeoyf9t5fllss4qpeb
+killed sandbox: [redacted-sandbox-id]
 running Mimetic OSS meta-lab sandboxes after cleanup: 0
 ```
 

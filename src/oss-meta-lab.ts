@@ -2198,7 +2198,7 @@ function buildMetaFeedbackCandidates(args: {
     }
 
     const actorText = `${desktop.completion?.actorLastMessageTail ?? ""}\n${desktop.completion?.actorLogTail ?? ""}`;
-    if (/\b(?:does not support|unknown option|unsupported)\b[\s\S]{0,120}--app-url/i.test(actorText)) {
+    if (/\b(?:does not support|unknown option|unsupported|does not expose|did not expose|did not accept|not available)\b[\s\S]{0,160}(?:--app-url|run --app-url)|(?:--app-url|run --app-url)[\s\S]{0,160}\b(?:does not support|unknown option|unsupported|does not expose|did not expose|did not accept|not available)\b/i.test(actorText)) {
       candidates.push({
         schema: "mimetic.feedback-candidate.v1",
         id: `published-cli-app-url-${safeArtifactToken(assignment.streamId)}`,
@@ -2294,9 +2294,10 @@ function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoN
     "5. Install Mimetic as a dev dependency with the package manager the repo already uses.",
     "6. Run `npx mimetic init --yes` or the package-manager equivalent.",
     "7. Author plausible public-safe Mimetic personas and desktop/mobile browser scenarios for this repo if feasible.",
-    "8. Run the strongest Mimetic proof path the installed package supports. If the app is running locally, prefer `npx mimetic run --app-url <loopback-url> --sims 2` so the nested Observer contains desktop/mobile browser evidence.",
-    "9. Open the nested Mimetic Observer in the E2B browser and keep it visible.",
-    "10. Record public-safe blockers and evidence paths only.",
+    "8. Run `npx mimetic run --help` and verify `--app-url` is available.",
+    "9. If the app is running locally, run `npx mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.",
+    "10. After `run --app-url`, render or open the nested Mimetic Observer with `npx mimetic watch --run latest --detach --no-open --json` and keep it visible.",
+    "11. Record public-safe blockers and evidence paths only.",
     "",
     "Expected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
   ].join("\n");
@@ -3700,7 +3701,7 @@ install_mimetic_cli() {
 
   case "$pm" in
     pnpm)
-      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false pnpm add -D "$spec" --ignore-scripts
+      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false pnpm add --save-dev --workspace-root "$spec" --ignore-scripts
       ;;
     yarn)
       YARN_ENABLE_SCRIPTS=0 yarn add -D "$spec"
@@ -3881,7 +3882,7 @@ start_actor_attempt() {
 set +e
 APP_DIR="$APP_DIR"
 if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
-  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Inspect package.json, README, scripts, and the app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Start the local app if feasible, then run the strongest Mimetic proof available; prefer npx mimetic run --app-url <loopback-url> --sims 2 when the app is running. Render or open the nested Mimetic Observer if feasible. Once the nested Observer proof is rendered or blocked with evidence, write a concise final summary and exit successfully. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
+  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Inspect package.json, README, scripts, and the app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed. Run npx mimetic init --yes if Mimetic is not initialized. Start the local app if feasible. Run npx mimetic run --help and verify --app-url is available. If the app is running locally, run npx mimetic run --app-url <loopback-url> --sims 2; do not use mimetic watch --sims as app behavior proof. After run --app-url, render or open the nested Mimetic Observer with npx mimetic watch --run latest --detach --no-open --json if feasible. Once the nested Observer proof is rendered or blocked with evidence, write a concise final summary and exit successfully. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
 else
   PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Once the draft is written, exit successfully. Do not wait on long-running watchers. Do not print secrets, do not commit, do not push, and do not file issues.'
 fi

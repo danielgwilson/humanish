@@ -102,7 +102,7 @@ Post-audit fixes:
   schema, redaction, review-artifact, public-safety, and local-evidence checks.
 - Screenshot inspection confirmed the headed Redux Essentials app windows and
   nested Mimetic Observer with desktop/mobile browser lanes.
-- Provider cleanup killed sandbox `i39ry62lz2j5a1h12nkx1`; follow-up provider
+- Provider cleanup killed sandbox `[redacted-sandbox-id]`; follow-up provider
   readback returned zero running Mimetic OSS meta-lab sandboxes.
 - A later app-target live run
   `oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z` passed against
@@ -112,7 +112,7 @@ Post-audit fixes:
   `actor-evidence/`, and verification checked those local log artifacts exist.
 - Screenshot inspection confirmed Todo app desktop/mobile browser windows and
   a nested Mimetic Observer with desktop/mobile browser lanes.
-- Provider cleanup killed sandbox `iw1at2jb0bh3b5bdkvq35`; follow-up provider
+- Provider cleanup killed sandbox `[redacted-sandbox-id]`; follow-up provider
   readback returned zero running Mimetic OSS meta-lab sandboxes.
 - After PR #71 merged, canonical `main` reran the same app-target proof as
   `oss-meta-app-target-main-2026-06-04T19-18Z`; it passed with
@@ -123,7 +123,7 @@ Post-audit fixes:
   redaction, review-artifact, public-safety, and local-evidence checks.
 - Screenshot inspection confirmed Todo app desktop/mobile browser windows and
   a nested Mimetic Observer in the E2B desktop.
-- Provider cleanup killed sandbox `ii4arg677ruf978n6pa9t`; follow-up provider
+- Provider cleanup killed sandbox `[redacted-sandbox-id]`; follow-up provider
   readback returned zero running Mimetic OSS meta-lab sandboxes.
 
 ## Invariant Map
