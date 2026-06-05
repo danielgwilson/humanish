@@ -163,6 +163,14 @@ export interface OssMetaLabActorAuthPreflight {
   status?: number;
 }
 
+export interface OssMetaLabRepoAccessPreflight {
+  ok: boolean;
+  reason: string;
+  repo: string;
+  streamId: string;
+  tokenPresent: boolean;
+}
+
 export interface OssMetaLabScreenshot {
   capturedAt: string;
   observerUrl: string;
@@ -243,6 +251,19 @@ const OSS_META_LAB_ACTOR_AUTH_PLACEHOLDER = "CODEX_API_KEY or CODEX_ACCESS_TOKEN
 const OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER = "Codex actor API quota/auth preflight";
 const OSS_META_LAB_HOST_ACTOR_PLACEHOLDER = "host Codex actor plan";
 
+interface ExecFileAsyncOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  maxBuffer?: number;
+  timeout?: number;
+}
+
+type ExecFileAsyncImpl = (
+  file: string,
+  args: readonly string[],
+  options: ExecFileAsyncOptions
+) => Promise<{ stderr: string | Buffer; stdout: string | Buffer }>;
+
 interface OssMetaLabOutcome {
   ok: boolean;
   reason: string;
@@ -281,7 +302,7 @@ export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<stri
   const result: Record<string, string> = {};
   const codexApiKey = env.CODEX_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
   const codexAccessToken = env.CODEX_ACCESS_TOKEN?.trim();
-  const githubToken = env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim();
+  const githubToken = githubTokenFromEnv(env);
 
   if (codexApiKey) {
     result.MIMETIC_CODEX_API_KEY = codexApiKey;
@@ -294,6 +315,142 @@ export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<stri
   }
 
   return result;
+}
+
+function githubTokenFromEnv(env: NodeJS.ProcessEnv): string {
+  return env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim() || env.GITHUB_PAT?.trim() || "";
+}
+
+async function withGitHubAskPassEnv<T>(
+  root: string,
+  env: NodeJS.ProcessEnv,
+  callback: (gitEnv: NodeJS.ProcessEnv) => Promise<T>
+): Promise<T> {
+  const gitEnv = await createGitHubAskPassEnv(root, env);
+  return callback(gitEnv);
+}
+
+async function createGitHubAskPassEnv(root: string, env: NodeJS.ProcessEnv): Promise<NodeJS.ProcessEnv> {
+  await mkdir(root, { recursive: true });
+  const askPassPath = path.join(root, `git-askpass-${randomBytes(4).toString("hex")}.sh`);
+  await writeFile(askPassPath, [
+    "#!/usr/bin/env bash",
+    "case \"$1\" in",
+    "  *Username*) echo \"x-access-token\" ;;",
+    "  *Password*) echo \"${MIMETIC_GITHUB_TOKEN_RUNTIME:-}\" ;;",
+    "  *) echo \"\" ;;",
+    "esac",
+    ""
+  ].join("\n"), { encoding: "utf8", mode: 0o700 });
+
+  const token = githubTokenFromEnv(env);
+  return {
+    ...env,
+    GIT_ASKPASS: askPassPath,
+    GIT_TERMINAL_PROMPT: "0",
+    ...(token ? { MIMETIC_GITHUB_TOKEN_RUNTIME: token } : {})
+  };
+}
+
+function gitEnvWithoutGitHubToken(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const {
+    GH_TOKEN: _ghToken,
+    GITHUB_PAT: _githubPat,
+    GITHUB_TOKEN: _githubToken,
+    GIT_ASKPASS: _gitAskpass,
+    MIMETIC_GITHUB_TOKEN_RUNTIME: _runtimeToken,
+    ...rest
+  } = env;
+  return {
+    ...rest,
+    GIT_TERMINAL_PROMPT: "0"
+  };
+}
+
+async function runGitRepoAccessProbe(
+  execImpl: ExecFileAsyncImpl,
+  cwd: string,
+  repoUrl: string,
+  env: NodeJS.ProcessEnv,
+  sourceEnv: NodeJS.ProcessEnv
+): Promise<void> {
+  await execImpl("git", ["ls-remote", "--exit-code", repoUrl, "HEAD"], {
+    cwd,
+    env,
+    maxBuffer: 256 * 1024,
+    timeout: readPositiveInt(sourceEnv.MIMETIC_OSS_META_REPO_PREFLIGHT_TIMEOUT_MS, 45_000)
+  });
+}
+
+export async function preflightOssMetaRepoAccess(args: {
+  assignments: OssMetaLabAssignment[];
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+  execFileImpl?: ExecFileAsyncImpl;
+  redactRepoNames?: boolean;
+}): Promise<OssMetaLabRepoAccessPreflight[]> {
+  const execImpl = args.execFileImpl ?? execFileAsync;
+  const tokenPresent = Boolean(githubTokenFromEnv(args.env));
+  const root = path.join(args.cwd, ".mimetic", "tmp", `repo-access-${randomBytes(4).toString("hex")}`);
+
+  try {
+    await mkdir(root, { recursive: true });
+    const tokenGitEnv = tokenPresent ? await createGitHubAskPassEnv(root, args.env) : undefined;
+    const anonymousGitEnv = gitEnvWithoutGitHubToken(args.env);
+    const results: OssMetaLabRepoAccessPreflight[] = [];
+
+    for (const assignment of args.assignments) {
+      const repoUrl = `https://github.com/${assignment.repo}.git`;
+      let tokenError: unknown;
+
+      if (tokenGitEnv) {
+        try {
+          await runGitRepoAccessProbe(execImpl, root, repoUrl, tokenGitEnv, args.env);
+          results.push({
+            ok: true,
+            reason: "GitHub repo clone access preflight passed with token auth.",
+            repo: assignment.repo,
+            streamId: assignment.streamId,
+            tokenPresent: true
+          });
+          continue;
+        } catch (error) {
+          tokenError = error;
+        }
+      }
+
+      try {
+        await runGitRepoAccessProbe(execImpl, root, repoUrl, anonymousGitEnv, args.env);
+        results.push({
+          ok: true,
+          reason: tokenPresent
+            ? "GitHub token auth failed, but unauthenticated public clone access passed."
+            : "GitHub repo clone access preflight passed without token auth.",
+          repo: assignment.repo,
+          streamId: assignment.streamId,
+          tokenPresent
+        });
+      } catch (error) {
+        results.push({
+          ok: false,
+          reason: repoAccessFailureReason({
+            error: tokenError ?? error,
+            fallbackError: tokenError ? error : undefined,
+            redactRepoName: args.redactRepoNames === true,
+            repo: assignment.repo,
+            tokenPresent
+          }),
+          repo: assignment.repo,
+          streamId: assignment.streamId,
+          tokenPresent
+        });
+      }
+    }
+
+    return results;
+  } finally {
+    await rm(root, { recursive: true, force: true }).catch(() => undefined);
+  }
 }
 
 export async function preflightOssMetaActorApiKey(args: {
@@ -413,11 +570,13 @@ async function createHostActorPlan(args: {
 
   try {
     await mkdir(tmpRoot, { recursive: true });
-    await execFileAsync("git", ["clone", "--depth=1", `https://github.com/${args.assignment.repo}.git`, repoDir], {
-      cwd: tmpRoot,
-      env: process.env,
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: readPositiveInt(process.env.MIMETIC_OSS_META_HOST_CLONE_TIMEOUT_MS, 90_000)
+    await withGitHubAskPassEnv(tmpRoot, process.env, async (gitEnv) => {
+      await execFileAsync("git", ["clone", "--depth=1", `https://github.com/${args.assignment.repo}.git`, repoDir], {
+        cwd: tmpRoot,
+        env: gitEnv,
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: readPositiveInt(process.env.MIMETIC_OSS_META_HOST_CLONE_TIMEOUT_MS, 90_000)
+      });
     });
     await writeJson(schemaPath, hostActorPlanJsonSchema());
 
@@ -540,6 +699,74 @@ async function readHostActorRepoContext(repoDir: string): Promise<string> {
     "index_excerpt:",
     indexText.replace(/\s+/g, " ").trim().slice(0, 800) || "(missing)"
   ].join("\n");
+}
+
+function repoAccessFailureReason(args: {
+  error: unknown;
+  fallbackError?: unknown;
+  redactRepoName: boolean;
+  repo: string;
+  tokenPresent: boolean;
+}): string {
+  const sanitized = sanitizeRepoAccessError(args.error, args.repo, args.redactRepoName);
+  const fallback = args.fallbackError
+    ? ` Anonymous fallback also failed: ${sanitizeRepoAccessError(args.fallbackError, args.repo, args.redactRepoName)}`
+    : "";
+  const authHint = args.tokenPresent
+    ? "A GitHub token was present, but `git ls-remote` could not read the repo with token or anonymous access. Check token repo access and scopes."
+    : "No GitHub token was present. Public repos should pass unauthenticated; private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT with read access.";
+  return `${authHint} ${sanitized}${fallback}`.replace(/\s+/g, " ").trim().slice(0, 420);
+}
+
+function sanitizeRepoAccessError(error: unknown, repo: string, redactRepoName: boolean): string {
+  let message = compactError(error)
+    .replace(/github_pat_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+    .replace(/\bMIMETIC_GITHUB_TOKEN_RUNTIME=[^\s]+/g, "MIMETIC_GITHUB_TOKEN_RUNTIME=[redacted-github-token]");
+  if (redactRepoName) {
+    message = message
+      .replaceAll(`https://github.com/${repo}.git`, "https://github.com/[redacted-authorized-repo].git")
+      .replaceAll(`github.com/${repo}.git`, "github.com/[redacted-authorized-repo].git")
+      .replaceAll(repo, "[redacted-authorized-repo]");
+  }
+  return message;
+}
+
+function blockedLiveDesktopsForRepoAccess(args: {
+  assignments: OssMetaLabAssignment[];
+  preflight: OssMetaLabRepoAccessPreflight[];
+  redactRepoNames: boolean;
+}): OssMetaLabLiveDesktop[] {
+  const checkedAt = new Date().toISOString();
+  const preflightByStream = new Map(args.preflight.map((result) => [result.streamId, result]));
+  const failedCount = args.preflight.filter((result) => !result.ok).length;
+
+  return args.assignments.map((assignment): OssMetaLabLiveDesktop => {
+    const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
+    const preflight = preflightByStream.get(assignment.streamId);
+    const reason = preflight?.ok
+      ? `GitHub repo clone access preflight passed for ${repoLabel}, but live launch was skipped because ${failedCount} assigned repo${failedCount === 1 ? "" : "s"} failed preflight.`
+      : preflight?.reason ?? `GitHub repo clone access preflight did not run for ${repoLabel}.`;
+
+    return {
+      completion: {
+        actorStatus: "blocked",
+        appReason: reason,
+        appStatus: "blocked",
+        checkedAt,
+        logTail: reason,
+        nestedObserverPresent: false,
+        nestedVerifyPassed: false,
+        reason,
+        status: "blocked",
+        visualReason: "No headed desktop was launched before repo clone access was proven.",
+        visualStatus: "not_started",
+        visualWindowCount: 0
+      },
+      repo: repoLabel,
+      simId: assignment.simId,
+      streamId: assignment.streamId
+    };
+  });
 }
 
 function buildHostActorPrompt(repo: string, repoContext: string): string {
@@ -758,6 +985,7 @@ function cleanHostActorText(value: unknown, fallback: string): string {
     .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
     .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
     .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+    .replace(/github_pat_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 500);
@@ -810,15 +1038,15 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     };
   }
 
-  const redactRepoNames = options.redactRepoNames ?? (liveRequested && Boolean(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN));
+  const redactRepoNames = options.redactRepoNames ?? (liveRequested && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length)));
   const hostActorMode = liveRequested && hostCodexActorRequested(process.env);
   const missingKeys = missingLiveKeys(process.env);
   if (liveRequested && missingKeys.length > 0) {
     warnings.push(`Live E2B/Codex launch is waiting on env vars: ${missingKeys.join(", ")}.`);
     warnings.push("Observer lanes stay in the live waiting state until keys are present.");
   }
-  if (liveRequested && !(process.env.GH_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim())) {
-    warnings.push("No GH_TOKEN or GITHUB_TOKEN is present; public repos can clone, but private GitHub repos will fail inside E2B.");
+  if (liveRequested && !githubTokenFromEnv(process.env)) {
+    warnings.push("No GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT is present; public repos can clone, but private GitHub repos will fail access preflight.");
   }
 
   const assignments = buildOssRepoAssignments(repos, count);
@@ -876,7 +1104,30 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     await options.onObserverReady(observer as ObserverResult & { ok: true });
   }
 
-  const hostActorPlanResults = hostActorMode && missingKeys.length === 0
+  const shouldPreflightRepoAccess = liveRequested
+    && missingKeys.length === 0
+    && process.env.MIMETIC_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT !== "1"
+    && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length));
+  const repoAccessPreflight = shouldPreflightRepoAccess
+    ? await preflightOssMetaRepoAccess({
+        assignments,
+        cwd,
+        env: process.env,
+        redactRepoNames
+      })
+    : [];
+  const repoAccessPreflightBlocked = repoAccessPreflight.some((result) => !result.ok);
+  if (repoAccessPreflight.length > 0) {
+    const passed = repoAccessPreflight.filter((result) => result.ok).length;
+    warnings.push(`GitHub repo clone access preflight passed ${passed}/${repoAccessPreflight.length} assigned repo${repoAccessPreflight.length === 1 ? "" : "s"}.`);
+    for (const failed of repoAccessPreflight.filter((result) => !result.ok)) {
+      const assignment = assignments.find((candidate) => candidate.streamId === failed.streamId);
+      const repoLabel = assignment && redactRepoNames ? repoArtifactLabel(assignment) : failed.repo;
+      warnings.push(`${repoLabel}: ${failed.reason}`);
+    }
+  }
+
+  const hostActorPlanResults = hostActorMode && missingKeys.length === 0 && !repoAccessPreflightBlocked
     ? await createHostActorPlans({
         assignments,
         cwd,
@@ -917,7 +1168,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       : `Remote Codex actor API-key preflight blocked live launch: ${actorAuthPreflight.reason}`);
   }
   let localPackage: OssMetaLabLocalPackage | undefined;
-  if (liveRequested && missingKeys.length === 0 && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
+  if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
       localPackage = await packLocalMimeticPackage(cwd, runId);
       warnings.push(`Packed local mimetic-cli package for sandbox install (${localPackage.fileName}).`);
@@ -925,7 +1176,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       warnings.push(`Local mimetic-cli package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`);
     }
   }
-  if (liveRequested && missingKeys.length === 0 && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
+  if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
       liveDesktops = await launchLiveDesktops(assignments, {
         cwd,
@@ -956,6 +1207,13 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
         };
       });
     }
+  } else if (repoAccessPreflightBlocked) {
+    liveDesktops = blockedLiveDesktopsForRepoAccess({
+      assignments,
+      preflight: repoAccessPreflight,
+      redactRepoNames
+    });
+    warnings.push("Live E2B launch skipped because GitHub repo clone access preflight failed.");
   } else if (hostActorPlanBlocked) {
     warnings.push("Live E2B launch skipped because required host Codex actor plan evidence did not pass preflight.");
   } else if (actorAuthPreflightBlocked) {
@@ -1453,6 +1711,16 @@ function buildMetaBundle(args: {
           streamId: assignment.streamId
         });
       }
+    } else if (completion) {
+      events.push({
+        id: `event-${String(assignment.index).padStart(3, "0")}-completion-${completion.status}`,
+        at: completion.checkedAt,
+        level: eventLevelForCompletion(completion.status),
+        type: `oss-meta.bootstrap.${completion.status}`,
+        message: `${repoLabel}: ${completion.reason}`,
+        simId: assignment.simId,
+        streamId: assignment.streamId
+      });
     } else if (liveDesktop?.error) {
       events.push({
         id: `event-${String(assignment.index).padStart(3, "0")}-stream-error`,
@@ -3455,6 +3723,7 @@ const clean = (value, fallback) => String(value || fallback)
   .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
   .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
   .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+  .replace(/github_pat_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
   .replace(/\\s+/g, " ")
   .trim()
   .slice(0, 300);
@@ -3678,7 +3947,21 @@ case "$1" in
 esac
 ASKPASS
 chmod 700 "$ASKPASS"
-GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git clone --depth=1 ${shellQuote(repoUrl)} "$APP_DIR"
+clone_repo() {
+  local repo_url=${shellQuote(repoUrl)}
+  if [[ -n "$MIMETIC_PRIVATE_GITHUB_TOKEN" ]]; then
+    if GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git clone --depth=1 "$repo_url" "$APP_DIR"; then
+      echo "clone_auth=token"
+      return 0
+    fi
+    echo "clone_auth=token_failed retry=anonymous_public_clone"
+    rm -rf "$APP_DIR"
+  fi
+
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$repo_url" "$APP_DIR"
+  echo "clone_auth=anonymous"
+}
+clone_repo
 cd "$APP_DIR"
 echo
 echo "== repo fingerprint =="
@@ -3948,6 +4231,7 @@ function compactError(error: unknown): string {
     .replace(/sk-[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
     .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
     .replace(/gh[pousr]_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
+    .replace(/github_pat_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
     .replace(/https?:\/\/[^/\s]*e2b[^)\s]+/gi, "[redacted-e2b-url]")
     .replace(/\s+/g, " ")
     .slice(0, 240);

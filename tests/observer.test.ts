@@ -4,7 +4,7 @@ import path from "node:path";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
-import { observerClientJs } from "../src/observer-assets.js";
+import { observerClientJs, observerCss } from "../src/observer-assets.js";
 import { createProgram } from "../src/program.js";
 import { attachObserverRuntimeStreamUrls, renderObserver, serveObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
@@ -48,7 +48,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   };
 }
 
-function renderObserverClientForTest(data: unknown): { click: (action: string) => void; html: () => string } {
+function renderObserverClientForTest(data: unknown, hash = ""): { click: (action: string) => void; html: () => string } {
   let html = "";
   let clickHandler:
     | ((event: {
@@ -71,8 +71,8 @@ function renderObserverClientForTest(data: unknown): { click: (action: string) =
     contains: () => true
   };
   const location = {
-    hash: "",
-    href: "file:///tmp/mimetic/observer/index.html",
+    hash,
+    href: `file:///tmp/mimetic/observer/index.html${hash}`,
     protocol: "file:"
   };
   const sandbox = {
@@ -449,6 +449,24 @@ describe("observer rendering", () => {
     expect(overlay?.innerHTML).toContain('data-kind="app"');
     expect(overlay?.innerHTML).toContain('data-kind="observer"');
     expect(overlay?.innerHTML).toContain('data-kind="screenshot"');
+  });
+
+  it("keeps focus details reachable on constrained viewports", () => {
+    const css = observerCss();
+
+    expect(css).toContain("@media (max-width: 860px)");
+    expect(css).toContain(".focus { display: block; height: 100%; min-height: 0; overflow-y: auto; }");
+    expect(css).toContain(".focus-side {");
+    expect(css).toContain("position: relative; left: auto; right: auto; bottom: auto; top: auto;");
+    expect(css).toContain('.focus-side[data-sheet="open"], .focus-side[data-sheet="closed"] { transform: none; }');
+  });
+
+  it("opens focus view directly from a focus hash", () => {
+    const client = renderObserverClientForTest(browserLabObserverData(), "#focus=lane-01");
+
+    expect(client.html()).toContain('class="focus"');
+    expect(client.html()).toContain('class="focus-stage"');
+    expect(client.html()).toContain('class="focus-side"');
   });
 
   it("serves observer artifacts over a live localhost server", async () => {
