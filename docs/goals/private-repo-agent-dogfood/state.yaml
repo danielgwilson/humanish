@@ -29,6 +29,9 @@ tasks:
   - id: codex_app_server_four_lane
     status: completed
     summary: "Run four redacted headed lanes in Codex app-server mode; verify 4/4 actor telemetry, setup-quality filesystem evidence, local nested Mimetic proof, meaningful-use scoring, and explicit provider cleanup."
+  - id: provider_browser_persona_public_lane
+    status: completed
+    summary: "Use a public disposable app target to advance issue #74: nested live app-url proof now drives a bounded desktop/mobile two-step browser persona journey, failed once on provider browser executable resolution, passed after the fix, and cleaned provider desktops by metadata readback."
 receipts:
   - path: docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md
     summary: "Orientation receipt only: auth path was proven, one-lane pass and four-lane 3/4 pass were observed, #86 blocker was filed, and sandbox cleanup killed 5/5. Future goals must rerun current proof before completion."
@@ -44,10 +47,12 @@ receipts:
     summary: "Post-0.1.6 confirmation: four lanes passed top-level health, 4/4 app-url proof succeeded, feedback candidates dropped to zero, and cleanup killed 4/4."
   - path: docs/goals/private-repo-agent-dogfood/receipts/codex-app-server-four-lane-2026-06-05.md
     summary: "Codex app-server four-lane proof: 4/4 redacted lanes passed with app-server events/transcripts/summaries, setup-quality filesystem evidence, local nested Mimetic proof, meaningful-use score 100/100, manual cleanup of stale interrupted sandboxes, and zero active E2B sandboxes after cleanup."
+  - path: docs/goals/mimetic-recursive-proof-critical-point/receipts/provider-browser-persona-2026-06-05.md
+    summary: "Public provider-backed browser persona proof: local desktop/mobile two-step trace passed, first E2B run exposed the google-chrome executable-path bug, rerun passed with nested live proof and headed Observer visible, and cleanup read back zero matching desktops."
 verification:
   status: passed
-  last_command: "pnpm mimetic -- verify --run oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4 --json"
-  last_artifact: "docs/goals/private-repo-agent-dogfood/receipts/codex-app-server-four-lane-2026-06-05.md"
+  last_command: "pnpm mimetic -- verify --run oss-meta-2026-06-06T03-05-38-681Z-a8ca327a --json"
+  last_artifact: "docs/goals/mimetic-recursive-proof-critical-point/receipts/provider-browser-persona-2026-06-05.md"
 evidence:
   environment_state:
     - "GH_TOKEN/E2B_API_KEY/OPENAI_API_KEY names loaded from ignored env file without printing values."
@@ -57,6 +62,7 @@ evidence:
     - "Post-publish 0.1.5 rerun verified 4/4 redacted lanes with target app surfaces running, nested verification, nested Observer presence, visible layouts, and 3/4 app-url proof success."
     - "Post-0.1.6 confirmation verified 4/4 redacted lanes with target app surfaces running, nested verification, nested Observer presence, visible layouts, 4/4 app-url proof success, and zero feedback candidates."
     - "Codex app-server four-lane run oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4 verified 4/4 redacted lanes with actorStatus passed, app surfaces running, local nested proof showing nested verification and nested Observer present, headed visual layout visible, setup-quality filesystem evidence, durable cwd projection, app-server trace evidence, and meaningful-use pass 100/100."
+    - "Public provider-backed browser-persona run oss-meta-2026-06-06T03-05-38-681Z-a8ca327a verified 1/1 public headed lane with appStatus running, nestedVerifyPassed true, nestedObserverPresent true, visualStatus visible, visualWindowCount 3, and nested live app-url proof."
   independent_checks:
     - "Private repo slug scan over tracked public surface returned no hits."
     - "Historical recursive-proof receipts had provider sandbox IDs redacted, and public-surface scan now checks sandbox-ID context."
@@ -65,6 +71,8 @@ evidence:
     - "Ignored run artifact scan for oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
     - "Ignored run artifact scan for oss-meta-2026-06-05T16-07-27-703Z-1ce7e253 found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
     - "Ignored run artifact scan for oss-meta-2026-06-05T16-25-58-003Z-515846ab found 0 private repo label hits, 0 stream URL hits, 0 sandboxId key hits, and 0 credential assignment hits."
+    - "Local browser-persona run browser-2026-06-06T02-57-15-842Z-8315e202 verified desktop/mobile mimetic.browser-persona-trace.v1 traces with step-01-load and step-02-interact screenshots."
+    - "Focused tests passed for browser-persona and cleanup changes: tests/run.test.ts, tests/oss-lab.test.ts, tests/program.test.ts, 74 tests."
   observer_runs:
     - "oss-meta-2026-06-05T06-06-30-955Z-1914b164"
     - "oss-meta-2026-06-05T06-07-41-618Z-5b4d1727"
@@ -84,6 +92,7 @@ evidence:
     - "Post-publish loop reduced the published-cli app-url feedback candidate to one lane and converted it into a local-bin execution fix for 0.1.6."
     - "Post-0.1.6 confirmation produced zero feedback candidates; the stale-binary candidate disappeared."
     - "Codex app-server four-lane run produced high_leverage setup-quality ratings across 4/4 lanes with app-url proof, actor insight, coverage, persona, and scenario signals present."
+    - "Public provider browser-persona lane produced an honest setup-quality feedback candidate for ceremonial setup even though nested browser proof passed."
     - "Codex app-server wait loop now emits public-safe running heartbeats before final trace summaries are available."
     - "Issue #99 tracks reliable provider cleanup when attached watch mode is interrupted through package-manager wrappers."
   usage_receipts:
@@ -95,12 +104,15 @@ evidence:
     - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after the post-publish rerun; post-cleanup provider readback found 0 running."
     - "Killed 4/4 running Mimetic OSS meta-lab sandboxes after the post-0.1.6 confirmation; post-cleanup provider readback found 0 running."
     - "After stopping the Codex app-server four-lane headed watcher, explicit E2B SDK cleanup killed 14 stale Mimetic OSS meta-lab sandboxes from interrupted/candidate runs; final provider readback found 0 active sandboxes."
+    - "After the failed provider browser-persona attempt, cleanup matched 1, killed 1, and read back 0 remaining matching Mimetic OSS meta-lab desktops."
+    - "After the successful provider browser-persona rerun, cleanup matched 1, killed 1, and read back 0 remaining matching Mimetic OSS meta-lab desktops."
   missing: []
 completion_audit:
   status: passed
   notes:
     - "All private-repo dogfood success invariants are mapped to public-safe evidence, explicit caveats, scoped local fixes, or issue follow-up."
     - "The Codex app-server four-lane receipt now proves first-class app-server telemetry and meaningful-use scoring against four redacted headed lanes."
+    - "The provider browser-persona receipt now proves a bounded public provider-backed two-step browser journey and records the remaining richer-manifest gap."
     - "Reliable Ctrl-C cleanup through package-manager wrappers remains tracked in issue #99 rather than hidden in a completion claim."
 provider_spend_policy:
   providers:

@@ -81,6 +81,7 @@
   "homepage": "https://github.com/danielgwilson/mimetic-cli#readme",
   "dependencies": {
     "commander": "^14.0.3",
+    "playwright-core": "^1.60.0",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {

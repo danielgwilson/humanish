@@ -17,6 +17,7 @@ import {
   buildOssMetaBundleFixture,
   buildOssRepoAssignments,
   cleanupOssMetaLabSandboxes,
+  cleanupStaleOssMetaLabSandboxes,
   collectOssMetaLabPrivateEnv,
   collectOssMetaLabRemoteEnv,
   normalizeHostActorRecommendedProof,
@@ -498,6 +499,55 @@ describe("OSS lab command", () => {
       errors: []
     });
     expect(killed).toEqual(["sandbox-a", "sandbox-b"]);
+  });
+
+  it("cleans up stale OSS meta-lab sandboxes by provider metadata without exposing ids", async () => {
+    const killed = new Set<string>();
+    const listSandboxes = async () => [
+      { sandboxId: "sandbox-a", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" } },
+      { id: "sandbox-b", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" } },
+      { sandboxID: "sandbox-c", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" } },
+      { sandboxID: "sandbox-missing-metadata" },
+      { sandboxId: "sandbox-paused", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" }, state: "paused" },
+      { sandboxId: "sandbox-other", metadata: { mode: "other", tool: "mimetic-cli" } }
+    ].filter((sandbox) => {
+      const id = sandbox.sandboxId ?? sandbox.sandboxID ?? sandbox.id;
+      return !id || !killed.has(id);
+    });
+
+    await expect(cleanupStaleOssMetaLabSandboxes({
+      killSandbox: async (sandboxId) => {
+        killed.add(sandboxId);
+      },
+      listSandboxes,
+      requestTimeoutMs: 123
+    })).resolves.toEqual({
+      killed: 3,
+      matched: 3,
+      remaining: 0,
+      skipped: 3,
+      errors: []
+    });
+    expect([...killed]).toEqual(["sandbox-a", "sandbox-b", "sandbox-c"]);
+  });
+
+  it("redacts provider ids from cleanup errors when requested", async () => {
+    const result = liveMetaResult({
+      sandboxes: [
+        { repo: "repo-01", sandboxId: "sandbox-secret", streamId: "oss-01-desktop", urlPresent: true }
+      ]
+    });
+
+    const cleanup = await cleanupOssMetaLabSandboxes(result, {
+      killSandbox: async () => {
+        throw new Error("failed to kill sandbox-secret");
+      },
+      redactIds: true
+    });
+
+    expect(cleanup.killed).toBe(0);
+    expect(cleanup.errors.join("\n")).toContain("[provider-runtime]");
+    expect(cleanup.errors.join("\n")).not.toContain("sandbox-secret");
   });
 
   it("keeps default repo selection lightweight and public", () => {

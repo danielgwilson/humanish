@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import type { Browser, Page } from "playwright-core";
+
 import {
   CODEX_APP_SERVER_TRACE_SCHEMA,
   runCodexAppServerSession,
@@ -650,8 +652,21 @@ interface BrowserSurfaceCapture {
   ok: boolean;
   reason: string;
   screenshotPath: string;
+  steps: BrowserPersonaStepCapture[];
   surface: BrowserSurface;
   tracePath: string;
+}
+
+interface BrowserPersonaStepCapture {
+  action: string;
+  completedAt: string;
+  durationMs: number;
+  id: string;
+  label: string;
+  reason: string;
+  screenshotPath: string;
+  status: "passed" | "blocked";
+  url: string;
 }
 
 const browserSurfaces: BrowserSurface[] = [
@@ -762,29 +777,29 @@ async function runBrowserAppProof(options: RunOptions & {
       sourceDigest: selection.persona.sourceDigest
     },
     scenario: {
-      id: "browser-app-surface-smoke",
-      title: "Browser App Surface Smoke",
-      goal: "Capture desktop and mobile browser evidence against a running local app URL.",
-      source: "builtin:browser-app-surface-smoke",
+      id: "browser-persona-two-step",
+      title: "Browser Persona Two-Step Journey",
+      goal: "Drive a synthetic persona through a two-step browser journey against a running local app URL.",
+      source: "builtin:browser-persona-two-step",
       sourceDigest: digestText(appUrl)
     },
     lifecycle: [
       {
         at: createdAt,
         event: "run.created",
-        message: `Live browser app proof created for ${appUrl}.`
+        message: `Live browser persona proof created for ${appUrl}.`
       },
       {
         at: createdAt,
         event: "app.url.accepted",
-        message: "Accepted public-safe loopback app URL for browser surface capture."
+        message: "Accepted public-safe loopback app URL for browser persona journey."
       },
       {
         at: completedAt,
         event: "review.created",
         message: allPassed
-          ? "Created review from desktop/mobile browser screenshot evidence."
-          : "Created review with missing or blocked browser screenshot evidence."
+          ? "Created review from desktop/mobile browser persona step evidence."
+          : "Created review with missing or blocked browser persona step evidence."
       }
     ],
     simulations: captures.map((capture, index) => {
@@ -794,14 +809,14 @@ async function runBrowserAppProof(options: RunOptions & {
         id: simId,
         index: index + 1,
         personaId: selection.persona.id,
-        scenarioId: "browser-app-surface-smoke",
+        scenarioId: "browser-persona-two-step",
         status: capture.ok ? "passed" : "blocked",
         streamKind: "browser",
         mode: "browser-sim",
         progress: 100,
         currentStep: capture.ok
-          ? `${capture.surface.label} captured`
-          : `${capture.surface.label} blocked`,
+          ? `${capture.surface.label} completed ${capture.steps.length} persona steps`
+          : `${capture.surface.label} journey blocked`,
         summary: capture.reason,
         streamIds: [streamId],
         startedAt: createdAt,
@@ -830,7 +845,7 @@ async function runBrowserAppProof(options: RunOptions & {
           appStatus: capture.ok ? "running" : "blocked",
           appUrl,
           route: appUrl,
-          intent: "Verify that the running app renders in a real browser surface for this viewport.",
+          intent: "Drive a synthetic browser persona through a multi-step local app journey for this viewport.",
           screenshotUrl,
           state: capture.reason,
           visualStatus: capture.ok ? "visible" : "blocked"
@@ -845,15 +860,19 @@ async function runBrowserAppProof(options: RunOptions & {
           { label: "run bundle", path: "run.json", kind: "bundle" },
           { label: "review", path: "review.md", kind: "review" },
           { label: "event log", path: "events.ndjson", kind: "events" },
-          { label: `${capture.surface.id} screenshot`, path: capture.screenshotPath, kind: "screenshot" },
-          { label: `${capture.surface.id} browser trace`, path: capture.tracePath, kind: "trace" }
+          { label: `${capture.surface.id} browser trace`, path: capture.tracePath, kind: "trace" },
+          ...capture.steps.map((step) => ({
+            label: `${capture.surface.id} ${step.id} screenshot`,
+            path: step.screenshotPath,
+            kind: "screenshot" as const
+          }))
         ]
       } satisfies RunStream;
     }),
     events,
     redaction: {
       status: "passed",
-      notes: "Browser app proof stores loopback app URLs, screenshots, and generated traces only; secret-like text is rejected by verify."
+      notes: "Browser persona proof stores loopback app URLs, screenshots, and generated traces only; secret-like text is rejected by verify."
     },
     artifacts: {
       run: "run.json",
@@ -904,39 +923,53 @@ async function captureBrowserSurface(args: {
   surface: BrowserSurface;
   timeoutMs: number;
 }): Promise<BrowserSurfaceCapture> {
+  if (process.env.MIMETIC_BROWSER_PERSONA_DRIVER === "fixture") {
+    return captureBrowserSurfaceFixture(args);
+  }
+
+  return captureBrowserSurfaceWithPlaywright(args);
+}
+
+async function captureBrowserSurfaceFixture(args: {
+  absoluteArtifactRoot: string;
+  appUrl: string;
+  browserCommand: string;
+  surface: BrowserSurface;
+  timeoutMs: number;
+}): Promise<BrowserSurfaceCapture> {
   const started = Date.now();
-  const screenshotPath = path.join("screenshots", `${args.surface.id}.png`);
+  const stepOneScreenshotPath = path.join("screenshots", `${args.surface.id}-step-01-load.png`);
+  const stepTwoScreenshotPath = path.join("screenshots", `${args.surface.id}-step-02-interact.png`);
   const tracePath = path.join("traces", `${args.surface.id}.json`);
-  const absoluteScreenshotPath = path.join(args.absoluteArtifactRoot, screenshotPath);
+  const absoluteStepOneScreenshotPath = path.join(args.absoluteArtifactRoot, stepOneScreenshotPath);
+  const absoluteStepTwoScreenshotPath = path.join(args.absoluteArtifactRoot, stepTwoScreenshotPath);
   const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   const capturedAt = new Date().toISOString();
   const profileDir = await mkdtemp(path.join(os.tmpdir(), "mimetic-browser-profile-"));
 
   try {
-    await captureScreenshotWithBrowser({
-      args: [
-      "--headless=new",
-      "--disable-background-networking",
-      "--disable-default-apps",
-      "--disable-extensions",
-      "--disable-gpu",
-      "--disable-dev-shm-usage",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--hide-scrollbars",
-      `--user-data-dir=${profileDir}`,
-      `--window-size=${args.surface.viewport.width},${args.surface.viewport.height}`,
-      `--force-device-scale-factor=${args.surface.viewport.deviceScaleFactor}`,
-      `--screenshot=${absoluteScreenshotPath}`,
-      args.appUrl
-      ],
-      browserCommand: args.browserCommand,
-      screenshotPath: absoluteScreenshotPath,
-      timeoutMs: args.timeoutMs
-    });
+    for (const screenshotPath of [absoluteStepOneScreenshotPath, absoluteStepTwoScreenshotPath]) {
+      await captureScreenshotWithBrowser({
+        args: browserScreenshotArgs({
+          appUrl: args.appUrl,
+          profileDir,
+          screenshotPath,
+          surface: args.surface
+        }),
+        browserCommand: args.browserCommand,
+        screenshotPath,
+        timeoutMs: args.timeoutMs
+      });
+    }
   } catch (error) {
     const reason = `Browser screenshot command failed for ${args.surface.id}: ${compactBrowserError(error)}`;
+    const steps = buildBlockedBrowserPersonaSteps({
+      appUrl: args.appUrl,
+      reason,
+      surface: args.surface,
+      timestamp: capturedAt
+    });
     await writeJson(absoluteTracePath, buildBrowserTrace({
       appUrl: args.appUrl,
       browserCommand: path.basename(args.browserCommand),
@@ -945,7 +978,8 @@ async function captureBrowserSurface(args: {
       ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
       ok: false,
       reason,
-      screenshotPath,
+      screenshotPath: stepTwoScreenshotPath,
+      steps,
       surface: args.surface
     }));
     return {
@@ -954,7 +988,8 @@ async function captureBrowserSurface(args: {
       ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
       ok: false,
       reason,
-      screenshotPath,
+      screenshotPath: stepTwoScreenshotPath,
+      steps,
       surface: args.surface,
       tracePath
     };
@@ -962,15 +997,40 @@ async function captureBrowserSurface(args: {
     await rm(profileDir, { force: true, recursive: true }).catch(() => undefined);
   }
 
-  const screenshotStats = await stat(absoluteScreenshotPath).catch(() => null);
-  const ok = Boolean(screenshotStats?.isFile() && screenshotStats.size > 0 && httpProbe.ok);
+  const stepOneStats = await stat(absoluteStepOneScreenshotPath).catch(() => null);
+  const stepTwoStats = await stat(absoluteStepTwoScreenshotPath).catch(() => null);
+  const ok = Boolean(stepOneStats?.isFile() && stepOneStats.size > 0 && stepTwoStats?.isFile() && stepTwoStats.size > 0 && httpProbe.ok);
   const reason = ok
-    ? `${args.surface.label} screenshot captured from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
-    : screenshotStats?.isFile() && screenshotStats.size > 0
-      ? `${args.surface.label} screenshot exists, but app HTTP readiness was not proven: ${httpProbe.reason}.`
-      : `${args.surface.label} screenshot artifact was missing or empty.`;
+    ? `${args.surface.label} completed 2/2 synthetic browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
+    : stepOneStats?.isFile() || stepTwoStats?.isFile()
+      ? `${args.surface.label} persona screenshots exist, but app HTTP readiness was not proven: ${httpProbe.reason}.`
+      : `${args.surface.label} persona screenshot artifacts were missing or empty.`;
   const completedAt = new Date().toISOString();
   const durationMs = Date.now() - started;
+  const steps: BrowserPersonaStepCapture[] = [
+    {
+      action: "goto",
+      completedAt,
+      durationMs,
+      id: "step-01-load",
+      label: "Load app",
+      reason: httpProbe.reason,
+      screenshotPath: stepOneScreenshotPath,
+      status: httpProbe.ok ? "passed" : "blocked",
+      url: args.appUrl
+    },
+    {
+      action: "synthetic-fixture-interact",
+      completedAt,
+      durationMs,
+      id: "step-02-interact",
+      label: "Complete primary action",
+      reason: ok ? "Fixture driver captured post-interaction surface." : reason,
+      screenshotPath: stepTwoScreenshotPath,
+      status: ok ? "passed" : "blocked",
+      url: args.appUrl
+    }
+  ];
 
   await writeJson(absoluteTracePath, buildBrowserTrace({
     appUrl: args.appUrl,
@@ -980,7 +1040,8 @@ async function captureBrowserSurface(args: {
     ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
     ok,
     reason,
-    screenshotPath,
+    screenshotPath: stepTwoScreenshotPath,
+    steps,
     surface: args.surface
   }));
 
@@ -990,9 +1051,226 @@ async function captureBrowserSurface(args: {
     ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
     ok,
     reason,
-    screenshotPath,
+    screenshotPath: stepTwoScreenshotPath,
+    steps,
     surface: args.surface,
     tracePath
+  };
+}
+
+async function captureBrowserSurfaceWithPlaywright(args: {
+  absoluteArtifactRoot: string;
+  appUrl: string;
+  browserCommand: string;
+  surface: BrowserSurface;
+  timeoutMs: number;
+}): Promise<BrowserSurfaceCapture> {
+  const started = Date.now();
+  const stepOneScreenshotPath = path.join("screenshots", `${args.surface.id}-step-01-load.png`);
+  const stepTwoScreenshotPath = path.join("screenshots", `${args.surface.id}-step-02-interact.png`);
+  const tracePath = path.join("traces", `${args.surface.id}.json`);
+  const absoluteStepOneScreenshotPath = path.join(args.absoluteArtifactRoot, stepOneScreenshotPath);
+  const absoluteStepTwoScreenshotPath = path.join(args.absoluteArtifactRoot, stepTwoScreenshotPath);
+  const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
+  const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
+  let browser: Browser | null = null;
+  let page: Page | null = null;
+  const steps: BrowserPersonaStepCapture[] = [];
+
+  try {
+    const { chromium } = await import("playwright-core");
+    browser = await chromium.launch({
+      executablePath: args.browserCommand,
+      headless: true,
+      args: [
+        "--disable-background-networking",
+        "--disable-default-apps",
+        "--disable-extensions",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-first-run",
+        "--no-default-browser-check"
+      ],
+      timeout: args.timeoutMs
+    });
+    const context = await browser.newContext({
+      deviceScaleFactor: args.surface.viewport.deviceScaleFactor,
+      isMobile: args.surface.viewport.isMobile,
+      viewport: {
+        width: args.surface.viewport.width,
+        height: args.surface.viewport.height
+      }
+    });
+    page = await context.newPage();
+
+    const stepOneStarted = Date.now();
+    await page.goto(args.appUrl, { waitUntil: "domcontentloaded", timeout: args.timeoutMs });
+    await page.screenshot({ path: absoluteStepOneScreenshotPath, fullPage: true });
+    steps.push({
+      action: "goto",
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - stepOneStarted,
+      id: "step-01-load",
+      label: "Load app",
+      reason: httpProbe.reason,
+      screenshotPath: stepOneScreenshotPath,
+      status: httpProbe.ok ? "passed" : "blocked",
+      url: sanitizeLoopbackUrl(page.url())
+    });
+
+    const stepTwoStarted = Date.now();
+    const beforeState = await browserPersonaPageState(page);
+    const textInput = page.locator("input:not([type='hidden']):not([type='submit']):not([type='button']), textarea").first();
+    if (await textInput.count() > 0) {
+      await textInput.fill("synthetic.user@example.test", { timeout: Math.min(args.timeoutMs, 5_000) });
+    }
+
+    const actionTarget = page.locator("button, input[type='submit'], input[type='button'], [role='button']").first();
+    if (await actionTarget.count() === 0) {
+      throw new Error("no primary button-like control found for persona step");
+    }
+
+    await actionTarget.click({ timeout: Math.min(args.timeoutMs, 5_000) });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: absoluteStepTwoScreenshotPath, fullPage: true });
+    const afterState = await browserPersonaPageState(page);
+    const changed = beforeState.url !== afterState.url || beforeState.bodyDigest !== afterState.bodyDigest;
+    steps.push({
+      action: "fill-and-click-primary",
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - stepTwoStarted,
+      id: "step-02-interact",
+      label: "Complete primary action",
+      reason: changed ? "Primary action changed visible page state." : "Primary action did not change visible page state.",
+      screenshotPath: stepTwoScreenshotPath,
+      status: changed ? "passed" : "blocked",
+      url: sanitizeLoopbackUrl(page.url())
+    });
+  } catch (error) {
+    const now = new Date().toISOString();
+    const reason = compactBrowserError(error);
+    if (steps.length === 0) {
+      steps.push(...buildBlockedBrowserPersonaSteps({
+        appUrl: args.appUrl,
+        reason,
+        surface: args.surface,
+        timestamp: now
+      }));
+    } else if (steps.length === 1) {
+      await page?.screenshot({ path: absoluteStepTwoScreenshotPath, fullPage: true }).catch(() => undefined);
+      steps.push({
+        action: "fill-and-click-primary",
+        completedAt: now,
+        durationMs: Date.now() - started,
+        id: "step-02-interact",
+        label: "Complete primary action",
+        reason,
+        screenshotPath: stepTwoScreenshotPath,
+        status: "blocked",
+        url: page ? sanitizeLoopbackUrl(page.url()) : args.appUrl
+      });
+    }
+  } finally {
+    await browser?.close().catch(() => undefined);
+  }
+
+  const completedAt = new Date().toISOString();
+  const durationMs = Date.now() - started;
+  const ok = httpProbe.ok && steps.length >= 2 && steps.every((step) => step.status === "passed");
+  const reason = ok
+    ? `${args.surface.label} completed ${steps.length}/${steps.length} browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
+    : `${args.surface.label} browser persona journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
+
+  await writeJson(absoluteTracePath, buildBrowserTrace({
+    appUrl: args.appUrl,
+    browserCommand: path.basename(args.browserCommand),
+    capturedAt: completedAt,
+    durationMs,
+    ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+    ok,
+    reason,
+    screenshotPath: stepTwoScreenshotPath,
+    steps,
+    surface: args.surface
+  }));
+
+  return {
+    capturedAt: completedAt,
+    durationMs,
+    ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+    ok,
+    reason,
+    screenshotPath: stepTwoScreenshotPath,
+    steps,
+    surface: args.surface,
+    tracePath
+  };
+}
+
+function browserScreenshotArgs(args: {
+  appUrl: string;
+  profileDir: string;
+  screenshotPath: string;
+  surface: BrowserSurface;
+}): string[] {
+  return [
+    "--headless=new",
+    "--disable-background-networking",
+    "--disable-default-apps",
+    "--disable-extensions",
+    "--disable-gpu",
+    "--disable-dev-shm-usage",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--hide-scrollbars",
+    `--user-data-dir=${args.profileDir}`,
+    `--window-size=${args.surface.viewport.width},${args.surface.viewport.height}`,
+    `--force-device-scale-factor=${args.surface.viewport.deviceScaleFactor}`,
+    `--screenshot=${args.screenshotPath}`,
+    args.appUrl
+  ];
+}
+
+function buildBlockedBrowserPersonaSteps(args: {
+  appUrl: string;
+  reason: string;
+  surface: BrowserSurface;
+  timestamp: string;
+}): BrowserPersonaStepCapture[] {
+  return [
+    {
+      action: "goto",
+      completedAt: args.timestamp,
+      durationMs: 0,
+      id: "step-01-load",
+      label: "Load app",
+      reason: args.reason,
+      screenshotPath: path.join("screenshots", `${args.surface.id}-step-01-load.png`),
+      status: "blocked",
+      url: args.appUrl
+    },
+    {
+      action: "fill-and-click-primary",
+      completedAt: args.timestamp,
+      durationMs: 0,
+      id: "step-02-interact",
+      label: "Complete primary action",
+      reason: args.reason,
+      screenshotPath: path.join("screenshots", `${args.surface.id}-step-02-interact.png`),
+      status: "blocked",
+      url: args.appUrl
+    }
+  ];
+}
+
+async function browserPersonaPageState(page: {
+  evaluate<T>(pageFunction: string): Promise<T>;
+  url(): string;
+}): Promise<{ bodyDigest: string; url: string }> {
+  const bodyText = await page.evaluate<string>("document.body ? document.body.innerText : ''");
+  return {
+    bodyDigest: digestText(bodyText.slice(0, 4_000)),
+    url: sanitizeLoopbackUrl(page.url())
   };
 }
 
@@ -1005,10 +1283,11 @@ function buildBrowserTrace(args: {
   ok: boolean;
   reason: string;
   screenshotPath: string;
+  steps: BrowserPersonaStepCapture[];
   surface: BrowserSurface;
 }): Record<string, unknown> {
   return {
-    schema: "mimetic.browser-surface-trace.v1",
+    schema: "mimetic.browser-persona-trace.v1",
     capturedAt: args.capturedAt,
     appUrl: args.appUrl,
     browserCommand: args.browserCommand,
@@ -1017,9 +1296,25 @@ function buildBrowserTrace(args: {
     ok: args.ok,
     reason: args.reason,
     screenshotPath: args.screenshotPath,
+    steps: args.steps,
     surface: args.surface,
     redaction: "passed"
   };
+}
+
+function sanitizeLoopbackUrl(value: string): string {
+  try {
+    const parsed = new URL(value);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "::1") {
+      parsed.username = "";
+      parsed.password = "";
+      parsed.search = parsed.search ? "?[redacted-query]" : "";
+      parsed.hash = parsed.hash ? "#[redacted-hash]" : "";
+      return parsed.toString();
+    }
+  } catch {}
+
+  return "[redacted-url]";
 }
 
 async function captureScreenshotWithBrowser(args: {
@@ -1095,8 +1390,8 @@ function buildBrowserAppEvents(args: {
       id: "event-001",
       at: args.createdAt,
       level: "info",
-      type: "browser-app.run.created",
-      message: "Created live browser app proof run against a loopback URL."
+      type: "browser-persona.run.created",
+      message: "Created live browser persona proof run against a loopback URL."
     }
   ];
 
@@ -1105,11 +1400,22 @@ function buildBrowserAppEvents(args: {
       id: `event-${String(events.length + 1).padStart(3, "0")}`,
       at: capture.capturedAt,
       level: capture.ok ? "info" : "warn",
-      type: capture.ok ? "browser-app.screenshot.captured" : "browser-app.screenshot.blocked",
+      type: capture.ok ? "browser-persona.journey.passed" : "browser-persona.journey.blocked",
       message: `${capture.surface.id}: ${capture.reason}`,
       simId: `browser-${capture.surface.id}`,
       streamId: `browser-${capture.surface.id}-stream`
     });
+    for (const step of capture.steps) {
+      events.push({
+        id: `event-${String(events.length + 1).padStart(3, "0")}`,
+        at: step.completedAt,
+        level: step.status === "passed" ? "info" : "warn",
+        type: step.status === "passed" ? "browser-persona.step.passed" : "browser-persona.step.blocked",
+        message: `${capture.surface.id} ${step.id}: ${step.reason}`,
+        simId: `browser-${capture.surface.id}`,
+        streamId: `browser-${capture.surface.id}-stream`
+      });
+    }
   });
 
   return events;
@@ -1125,10 +1431,10 @@ function createBrowserAppReviewSummary(args: {
     schema: REVIEW_SCHEMA,
     verdict: allPassed ? "pass" : "blocked",
     summary: allPassed
-      ? `Captured ${passed}/${args.captures.length} live browser app surface${args.captures.length === 1 ? "" : "s"} from ${args.appUrl}.`
-      : `Captured ${passed}/${args.captures.length} live browser app surfaces from ${args.appUrl}; at least one required surface was blocked.`,
+      ? `Completed ${passed}/${args.captures.length} live browser persona journey${args.captures.length === 1 ? "" : "s"} from ${args.appUrl}.`
+      : `Completed ${passed}/${args.captures.length} live browser persona journeys from ${args.appUrl}; at least one required journey was blocked.`,
     gaps: [
-      "This browser app proof captures render evidence and HTTP readiness; it does not yet prove autonomous persona navigation through multi-step product flows.",
+      "This proof drives a bounded two-step synthetic browser persona; richer app-specific journey manifests remain the next adapter slice.",
       "Only loopback app URLs are accepted so generated bundles do not preserve private external targets.",
       ...args.captures
         .filter((capture) => !capture.ok)
@@ -1161,11 +1467,11 @@ async function probeAppUrl(appUrl: string, timeoutMs: number): Promise<{ ok: boo
 
 async function resolveBrowserCommand(): Promise<string | null> {
   const candidates = [
-    process.env.MIMETIC_BROWSER_COMMAND,
-    "google-chrome",
-    "chromium",
-    "chromium-browser",
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    await resolveBrowserCandidate(process.env.MIMETIC_BROWSER_COMMAND),
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    await resolveExecutableFromPath("google-chrome"),
+    await resolveExecutableFromPath("chromium"),
+    await resolveExecutableFromPath("chromium-browser")
   ].filter((candidate): candidate is string => Boolean(candidate?.trim()));
 
   for (const candidate of candidates) {
@@ -1181,6 +1487,28 @@ async function resolveBrowserCommand(): Promise<string | null> {
   return null;
 }
 
+async function resolveBrowserCandidate(value: string | undefined): Promise<string | null> {
+  const candidate = value?.trim();
+  if (!candidate) {
+    return null;
+  }
+
+  return path.isAbsolute(candidate) ? candidate : resolveExecutableFromPath(candidate);
+}
+
+async function resolveExecutableFromPath(command: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync("sh", ["-lc", `command -v ${shellQuote(command)}`], {
+      timeout: 5_000,
+      maxBuffer: 256 * 1024
+    });
+    const resolved = stdout.trim().split(/\r?\n/)[0]?.trim();
+    return resolved ? resolved : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeLocalAppUrl(value: string): string | null {
   try {
     const url = new URL(value);
@@ -1190,6 +1518,9 @@ function normalizeLocalAppUrl(value: string): string | null {
     if (!["127.0.0.1", "localhost", "::1"].includes(url.hostname)) {
       return null;
     }
+    url.username = "";
+    url.password = "";
+    url.search = "";
     url.hash = "";
     return url.toString();
   } catch {
