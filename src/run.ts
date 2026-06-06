@@ -64,6 +64,7 @@ export interface RunStreamCompletion {
   visualReason?: string;
   visualStatus?: "not_started" | "visible" | "blocked" | "unknown";
   visualWindowCount?: number;
+  meaningfulUse?: RunMeaningfulUseScore;
 }
 
 export interface RunSetupQualitySnapshot {
@@ -120,6 +121,27 @@ export interface RunSetupQualitySnapshot {
     packageScriptPresent: boolean;
     gitignoreContainsRuntimeIgnore: boolean;
   };
+}
+
+export interface RunMeaningfulUseScore {
+  schema: "mimetic.meaningful-use-score.v1";
+  status: "pass" | "partial" | "fail";
+  score: number;
+  summary: string;
+  hardFailures: string[];
+  components: Array<{
+    id:
+      | "setup-correctness"
+      | "filesystem-evidence"
+      | "nested-mimetic-evidence"
+      | "actor-activity"
+      | "product-surface"
+      | "feedback-quality";
+    label: string;
+    status: "pass" | "partial" | "fail";
+    score: number;
+    detail: string;
+  }>;
 }
 
 export interface RunFeedbackCandidate {
@@ -380,8 +402,11 @@ const sensitivePatterns = [
   /e2b_[a-z0-9_-]{12,}/i,
   /gh[pousr]_[a-z0-9_]{12,}/i,
   /https?:\/\/[^/\s]*e2b[^)\s]+/i,
+  /\/Users\/[A-Za-z0-9._-]+\/[^\s"']*/i,
+  /\/home\/(?:user|runner)\/[^\s"']*/i,
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
 ];
+const CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA = "mimetic.codex-app-server-trace.projected.v1";
 
 const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 240_000;
 const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 600_000;
@@ -584,10 +609,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   };
 
   await mkdir(absoluteArtifactRoot, { recursive: true });
-  await writeJson(path.join(absoluteArtifactRoot, "run.json"), bundle);
-  await writeJson(path.join(absoluteArtifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(absoluteArtifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
   await writeJson(path.join(cwd, ".mimetic", "runs", "latest.json"), {
     schema: "mimetic.latest-run.v1",
     runId,
@@ -3407,11 +3429,16 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
   const missingEvidenceArtifacts = isRunBundle(bundle)
     ? await missingLocalEvidenceArtifacts(resolved, bundle)
     : [];
+  const invalidEvidenceReferences = isRunBundle(bundle)
+    ? invalidRunEvidenceReferences(bundle)
+    : [];
   checks.push({
     name: "local evidence artifacts exist",
-    ok: missingEvidenceArtifacts.length === 0,
-    message: missingEvidenceArtifacts.length === 0
+    ok: missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0,
+    message: missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0
       ? "referenced local screenshot/trace/log/filesystem artifacts are present"
+      : invalidEvidenceReferences.length > 0
+      ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
       : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
   });
   const codexAppServerFindings = isRunBundle(bundle)
@@ -3777,10 +3804,7 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
   const requiredPaths = new Set<string>();
   for (const stream of bundle.streams) {
     for (const artifact of stream.artifacts) {
-      if (
-        (artifact.kind === "screenshot" || artifact.kind === "trace" || artifact.kind === "log" || artifact.kind === "filesystem")
-        && isLocalEvidenceArtifactPath(artifact.path)
-      ) {
+      if (isLocalEvidenceArtifactPath(artifact.path)) {
         requiredPaths.add(artifact.path);
       }
     }
@@ -3793,6 +3817,10 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
     const uiScreenshotPath = normalizeLocalEvidenceReference(stream.ui?.screenshotUrl);
     if (uiScreenshotPath) {
       requiredPaths.add(uiScreenshotPath);
+    }
+
+    if (stream.ui?.nestedObserverPath && isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)) {
+      requiredPaths.add(stream.ui.nestedObserverPath);
     }
   }
 
@@ -3808,6 +3836,37 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
   return missing;
 }
 
+function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
+  const findings: string[] = [];
+  if (path.isAbsolute(bundle.cwd)) {
+    findings.push(`run bundle persists absolute cwd ${bundle.cwd}`);
+  }
+  for (const stream of bundle.streams) {
+    const seen = new Set<string>();
+    for (const artifact of stream.artifacts) {
+      const key = `${artifact.kind}:${artifact.path}`;
+      if (seen.has(key)) {
+        findings.push(`${stream.id} duplicate artifact ${artifact.kind}:${artifact.path}`);
+      }
+      seen.add(key);
+      if (!isLocalEvidenceArtifactPath(artifact.path)) {
+        findings.push(`${stream.id} nonlocal artifact ${artifact.kind}:${artifact.path}`);
+      }
+    }
+
+    if (stream.ui?.nestedObserverPath && !isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)) {
+      findings.push(`${stream.id} nonlocal nested observer reference ${stream.ui.nestedObserverPath}`);
+    }
+    if (stream.embed?.kind === "screenshot" && stream.embed.url && !normalizeLocalEvidenceReference(stream.embed.url)) {
+      findings.push(`${stream.id} nonlocal screenshot embed ${stream.embed.url}`);
+    }
+    if (stream.ui?.screenshotUrl && !normalizeLocalEvidenceReference(stream.ui.screenshotUrl)) {
+      findings.push(`${stream.id} nonlocal screenshot reference ${stream.ui.screenshotUrl}`);
+    }
+  }
+  return findings.slice(0, 50);
+}
+
 async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle): Promise<string[]> {
   if (bundle.mode !== "live") {
     return [];
@@ -3815,13 +3874,20 @@ async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle
 
   const findings: string[] = [];
   const appServerStreams = bundle.streams.filter((stream) =>
-    stream.kind === "codex-ui"
-    && stream.transport === "app-server"
-    && stream.codex?.provider === "codex-app-server"
-    && stream.status !== "contract_proof_only"
+    stream.status !== "contract_proof_only"
+    && (
+      stream.codex?.provider === "codex-app-server"
+      || stream.artifacts.some((artifact) => artifact.path.includes("codex-app-server"))
+    )
   );
 
   for (const stream of appServerStreams) {
+    if (stream.codex?.provider !== "codex-app-server") {
+      findings.push(`${stream.id} missing first-class codex app-server metadata`);
+    }
+    if (stream.status === "running" || stream.codex?.state === "connecting" || stream.codex?.state === "running") {
+      continue;
+    }
     const traceArtifact = stream.artifacts.find((artifact) =>
       artifact.kind === "trace"
       && artifact.path.includes("codex-app-server")
@@ -3841,8 +3907,8 @@ async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle
     }
 
     const trace = await readJsonIfExists(path.join(runRoot, traceArtifact.path));
-    if (!isRecord(trace) || trace.schema !== CODEX_APP_SERVER_TRACE_SCHEMA) {
-      findings.push(`${stream.id} trace artifact must use ${CODEX_APP_SERVER_TRACE_SCHEMA}`);
+    if (!isRecord(trace) || ![CODEX_APP_SERVER_TRACE_SCHEMA, CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA].includes(String(trace.schema))) {
+      findings.push(`${stream.id} trace artifact must use ${CODEX_APP_SERVER_TRACE_SCHEMA} or ${CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA}`);
     }
     if (!isRecord(trace) || !isRecord(trace.redaction) || trace.redaction.status !== "passed") {
       findings.push(`${stream.id} trace redaction status must be passed`);
@@ -3916,11 +3982,14 @@ function shouldScanTextArtifact(relativePath: string): boolean {
 }
 
 function isLocalEvidenceArtifactPath(value: string): boolean {
+  const normalized = value.replace(/\\/g, "/");
   return value.length > 0
-    && !path.isAbsolute(value)
-    && !value.includes("://")
-    && !value.startsWith("..")
-    && !value.split(/[\\/]/).includes("..");
+    && !/^\[[a-z0-9._-]+\]$/i.test(normalized)
+    && !path.isAbsolute(normalized)
+    && !normalized.includes("://")
+    && !normalized.startsWith("..")
+    && !normalized.split("/").includes("..")
+    && !isRiskyPublicArtifactPath(normalized);
 }
 
 function normalizeLocalEvidenceReference(value: string | undefined): string | null {

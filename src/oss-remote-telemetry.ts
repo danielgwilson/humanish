@@ -114,6 +114,16 @@ const secretPatterns: Array<{
     name: "bearer-token",
     pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}\b/gi,
     replacement: "Bearer [redacted-token]"
+  },
+  {
+    name: "remote-home-path",
+    pattern: /\/home\/(?:user|runner)\/[^\s"']+/gi,
+    replacement: "[redacted-remote-path]"
+  },
+  {
+    name: "remote-tmp-path",
+    pattern: /\/tmp\/[^\s"']+/gi,
+    replacement: "[redacted-remote-path]"
   }
 ];
 

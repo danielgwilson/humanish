@@ -177,6 +177,29 @@ function browserLabObserverData(): Record<string, unknown> {
           actorLogTail,
           checkedAt: "2026-06-03T12:00:06.000Z",
           logTail: "== bootstrap complete ==\napp_status=running",
+          meaningfulUse: {
+            schema: "mimetic.meaningful-use-score.v1",
+            status: "partial",
+            score: 78,
+            summary: "Meaningful-use partial (78/100): needs stronger feedback quality.",
+            hardFailures: [],
+            components: [
+              {
+                id: "setup-correctness",
+                label: "Setup correctness",
+                status: "partial",
+                score: 8,
+                detail: "One setup check still needs review."
+              },
+              {
+                id: "feedback-quality",
+                label: "Feedback quality",
+                status: "partial",
+                score: 10,
+                detail: "Study-quality rating was ceremonial."
+              }
+            ]
+          },
           nestedObserverPresent: true,
           reason: "Bootstrap terminal launched.",
           status: "running"
@@ -574,6 +597,7 @@ describe("observer rendering", () => {
     expect(client.html()).toContain('data-kind="app"');
     expect(client.html()).toContain('data-kind="observer"');
     expect(client.html()).toContain('data-kind="completion"');
+    expect(client.html()).toContain('data-kind="meaningful-use"');
     expect(client.html()).toContain('data-kind="terminal"');
     expect(client.html()).toContain('data-kind="screenshot"');
     expect(client.html()).toContain('data-kind="artifact"');
@@ -670,6 +694,9 @@ describe("observer rendering", () => {
     expect(client.html()).toContain("Agent Logs");
     expect(client.html()).toContain("Codex agent log");
     expect(client.html()).toContain("Created app-specific personas");
+    expect(client.html()).toContain("Meaningful Use");
+    expect(client.html()).toContain("partial 78/100");
+    expect(client.html()).toContain("Study-quality rating was ceremonial.");
     expect(client.html()).toContain("Lifecycle");
     expect(client.html()).toContain("Scenario");
     expect(client.html()).not.toContain("<span class=\"eyebrow\">Goal</span>");

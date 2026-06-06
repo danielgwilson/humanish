@@ -349,11 +349,51 @@ completion:
   exitCode: 0
   reason: Synthetic command passed.
   status: passed
+  meaningfulUse:
+    schema: mimetic.meaningful-use-score.v1
+    status: pass
+    score: 100
+    summary: Synthetic setup, actor, product surface, and feedback signals passed.
+    hardFailures: []
+    components:
+      - id: setup-correctness
+        label: Setup correctness
+        status: pass
+        score: 15
+        detail: All setup checks passed.
+      - id: filesystem-evidence
+        label: Filesystem evidence
+        status: pass
+        score: 10
+        detail: Mimetic source tree and setup-quality evidence were captured.
+      - id: nested-mimetic-evidence
+        label: Nested Mimetic evidence
+        status: pass
+        score: 20
+        detail: Nested Observer and verify proof were present.
+      - id: actor-activity
+        label: Actor activity
+        status: pass
+        score: 15
+        detail: Codex actor completed with redacted app-server evidence.
+      - id: product-surface
+        label: Product surface
+        status: pass
+        score: 15
+        detail: Target app was running and visually visible.
+      - id: feedback-quality
+        label: Feedback quality
+        status: pass
+        score: 25
+        detail: The lane produced app-specific user-study feedback.
 artifacts:
   - label: review
     path: review.md
     kind: review
 ```
+
+See [`run-bundle.md`](run-bundle.md#completion-and-meaningful-use-verdicts)
+for the full meaningful-use rubric and hard-failure rules.
 
 ## Review
 

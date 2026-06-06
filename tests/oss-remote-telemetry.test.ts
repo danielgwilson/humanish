@@ -36,7 +36,7 @@ describe("OSS remote telemetry", () => {
       status: "passed"
     });
     expect(telemetry.nestedObserver).toEqual({
-      path: "/home/user/repo/.mimetic/runs/nested/observer/index.html",
+      path: "[redacted-remote-path]",
       presence: "present"
     });
     expect(telemetry.actor.state).toBe("passed");
@@ -167,6 +167,15 @@ describe("OSS remote telemetry", () => {
 
     expect(redactOssRemoteTelemetryText(`E2B_API_KEY=${fakeE2bKey}`)).toContain("[redacted-e2b-key]");
     expect(sanitizeOssRemoteTelemetryUrl(streamUrl)).toContain("authKey=[redacted-url-param]");
+  });
+
+  it("redacts remote sandbox filesystem paths from public-safe telemetry", () => {
+    const text = "project=/home/user/repo-01 bootstrap=/home/user/.mimetic-oss-lab/repo-01/bootstrap.sh package=/tmp/mimetic-cli-0.1.8.tgz";
+    const redacted = redactOssRemoteTelemetryText(text);
+
+    expect(redacted).toContain("[redacted-remote-path]");
+    expect(redacted).not.toContain("/home/user");
+    expect(redacted).not.toContain("/tmp/mimetic-cli");
   });
 
   it("does not redact Codex approval flags as provider tokens", () => {

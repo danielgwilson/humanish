@@ -19,7 +19,7 @@ runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
 createdAt: "<ISO timestamp>"
-cwd: "<local cwd; public issue drafts must not copy this>"
+cwd: "[target-cwd]"
 artifactRoot: ".mimetic/runs/<run-id>"
 source:
   packageName: "<public package name or null>"
@@ -58,6 +58,61 @@ feedbackCandidates:
       - path: "<relative run artifact path>"
         kind: "review|state|log|trace|screenshot|filesystem"
 ```
+
+Persisted `run.json` files must not contain absolute local target paths. Runtime
+commands may return the caller's working directory in process-local JSON
+responses, but durable run bundles use the public-safe `[target-cwd]` marker.
+
+## Completion And Meaningful-Use Verdicts
+
+Each live stream may include `completion` when the harness has enough evidence
+to judge the lane. Completion state is deliberately compact and public-safe:
+it records actor/app/nested-Observer status, terminal tails that have already
+passed redaction, and optional setup-quality evidence.
+
+`completion.meaningfulUse` is the first-class scored verdict for meta-lab
+lanes where a coding agent is asked to set up Mimetic inside another project.
+It is a rubric over already-redacted evidence, not a raw transcript dump.
+
+```yaml
+completion:
+  status: "running|passed|failed|blocked|timed_out"
+  reason: "<public-safe lane summary>"
+  actorStatus: "not_started|running|passed|failed|blocked|timed_out|suspended|unknown"
+  appStatus: "not_started|running|blocked|failed|missing|unknown"
+  nestedObserverPresent: true
+  nestedVerifyPassed: true
+  visualStatus: "not_started|visible|blocked|unknown"
+  meaningfulUse:
+    schema: mimetic.meaningful-use-score.v1
+    status: "pass|partial|fail"
+    score: 0
+    summary: "<public-safe score explanation>"
+    hardFailures:
+      - "<hard failure that prevents green proof>"
+    components:
+      - id: "setup-correctness"
+        label: "Setup correctness"
+        status: "pass|partial|fail"
+        score: 0
+        detail: "<public-safe detail>"
+```
+
+The current OSS meta-lab rubric totals 100 points:
+
+- setup correctness: 15;
+- filesystem evidence: 10;
+- nested Mimetic evidence: 20;
+- actor activity: 15;
+- product surface: 15;
+- feedback quality: 25.
+
+A score of 80 or higher is `pass` only when no hard failure is present and
+every rubric component passes. Scores from 45 through 79, or scores of 80 or
+higher with any non-passing component, are `partial`. Scores below 45,
+failed/timed-out bootstraps, missing nested Mimetic proof, required actor
+failure, or completed lanes without a running visible product surface are
+`fail`.
 
 ## Relative Artifact Layout
 

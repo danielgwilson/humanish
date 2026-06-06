@@ -29,6 +29,7 @@ import type {
   RunStream,
   RunStreamCompletion
 } from "./run.js";
+import { scoreOssMetaMeaningfulUse } from "./oss-meta-lab-scoring.js";
 
 export const OSS_META_LAB_SCHEMA = "mimetic.oss-meta-lab-result.v1";
 
@@ -46,6 +47,7 @@ export interface OssMetaLabOptions {
 }
 
 export interface OssMetaLabLiveRefreshController {
+  cleanup(): Promise<OssMetaLabCleanupResult>;
   stop(): Promise<void>;
 }
 
@@ -85,6 +87,7 @@ interface OssMetaLabActorEvidenceArtifacts {
   appServerEventsPath?: string;
   appServerTracePath?: string;
   appServerTranscriptPath?: string;
+  nestedEvidencePath?: string;
   setupQualityPath?: string;
 }
 
@@ -1380,10 +1383,45 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
 }
 
 async function writeMetaBundleArtifacts(artifactRoot: string, bundle: RunBundle): Promise<void> {
-  await writeJson(path.join(artifactRoot, "run.json"), bundle);
-  await writeJson(path.join(artifactRoot, "review.json"), bundle.review);
-  await writeFile(path.join(artifactRoot, "review.md"), renderMetaReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  const publicBundle = publicSafeOssMetaBundle(bundle);
+  await writeJson(path.join(artifactRoot, "run.json"), publicBundle);
+  await writeJson(path.join(artifactRoot, "review.json"), publicBundle.review);
+  await writeFile(path.join(artifactRoot, "review.md"), renderMetaReviewMarkdown(publicBundle), "utf8");
+  await writeFile(path.join(artifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+}
+
+export function publicSafeOssMetaBundle(bundle: RunBundle): RunBundle {
+  return {
+    ...bundle,
+    cwd: "[target-cwd]",
+    streams: bundle.streams.map(publicSafeMetaStream)
+  };
+}
+
+function publicSafeMetaStream(stream: RunStream): RunStream {
+  return {
+    ...stream,
+    artifacts: uniqueStreamArtifacts(stream.artifacts.filter((artifact) => isLocalEvidenceArtifactPath(artifact.path))),
+    ...(stream.terminal ? {
+      terminal: {
+        ...stream.terminal,
+        tail: sanitizeRemoteLog(stream.terminal.tail)
+      }
+    } : {}),
+    ...(stream.ui ? { ui: publicSafeMetaStreamUi(stream.ui) } : {})
+  };
+}
+
+function publicSafeMetaStreamUi(ui: NonNullable<RunStream["ui"]>): NonNullable<RunStream["ui"]> {
+  const { nestedObserverPath: rawNestedObserverPath, nestedObserverUrl: _rawNestedObserverUrl, ...rest } = ui;
+  const nestedObserverPath = rawNestedObserverPath && isLocalEvidenceArtifactPath(rawNestedObserverPath)
+    ? rawNestedObserverPath
+    : undefined;
+
+  return {
+    ...rest,
+    ...(nestedObserverPath === undefined ? {} : { nestedObserverPath })
+  };
 }
 
 export function startOssMetaLabLiveRefresh(
@@ -1462,18 +1500,43 @@ export function startOssMetaLabLiveRefresh(
     void tick();
   }, intervalMs);
 
-  return {
-    async stop(): Promise<void> {
-      stopped = true;
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-      while (running) {
-        await wait(100);
-      }
+  const stop = async (): Promise<void> => {
+    stopped = true;
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    while (running) {
+      await wait(100);
     }
   };
+
+  return {
+    async cleanup(): Promise<OssMetaLabCleanupResult> {
+      await stop();
+      return cleanupOssMetaLabLiveDesktops(runtime.liveDesktops);
+    },
+    async stop(): Promise<void> {
+      await stop();
+    }
+  };
+}
+
+function cleanupOssMetaLabLiveDesktops(
+  liveDesktops: OssMetaLabLiveDesktop[],
+  options: {
+    killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    requestTimeoutMs?: number;
+  } = {}
+): Promise<OssMetaLabCleanupResult> {
+  return cleanupOssMetaLabSandboxes({
+    sandboxes: liveDesktops.map((desktop) => ({
+      repo: desktop.repo,
+      ...(desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
+      streamId: desktop.streamId,
+      urlPresent: Boolean(desktop.url)
+    }))
+  }, options);
 }
 
 export function sandboxIdsForOssMetaLabCleanup(result: Pick<OssMetaLabResult, "sandboxes">): string[] {
@@ -1644,7 +1707,25 @@ function buildMetaBundle(args: {
       updatedAt: args.createdAt
     });
 
-    streams.push({
+    const artifacts = uniqueStreamArtifacts([
+      { label: "run bundle", path: "run.json", kind: "bundle" as const },
+      { label: "review", path: "review.md", kind: "review" as const },
+      { label: "events", path: "events.ndjson", kind: "events" as const },
+      ...(completion?.appServerActorEvidence?.tracePath ? [{ label: "codex app-server trace", path: completion.appServerActorEvidence.tracePath, kind: "trace" as const }] : []),
+      ...(completion?.appServerActorEvidence?.eventsPath ? [{ label: "codex app-server events", path: completion.appServerActorEvidence.eventsPath, kind: "events" as const }] : []),
+      ...(completion?.appServerActorEvidence?.transcriptPath ? [{ label: "codex app-server transcript", path: completion.appServerActorEvidence.transcriptPath, kind: "log" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath ? [{ label: "actor last-message tail", path: liveDesktop.actorEvidence.actorLastMessageTailPath, kind: "log" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.actorLogTailPath ? [{ label: "actor log tail", path: liveDesktop.actorEvidence.actorLogTailPath, kind: "log" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.appServerTracePath ? [{ label: "codex app-server trace", path: liveDesktop.actorEvidence.appServerTracePath, kind: "trace" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.appServerEventsPath ? [{ label: "codex app-server events", path: liveDesktop.actorEvidence.appServerEventsPath, kind: "events" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.appServerTranscriptPath ? [{ label: "codex app-server transcript", path: liveDesktop.actorEvidence.appServerTranscriptPath, kind: "log" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.nestedEvidencePath ? [{ label: "nested Mimetic proof", path: liveDesktop.actorEvidence.nestedEvidencePath, kind: "trace" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.setupQualityPath ? [{ label: "setup quality", path: liveDesktop.actorEvidence.setupQualityPath, kind: "filesystem" as const }] : []),
+      ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
+      ...(screenshot ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }] : [])
+    ]);
+
+    const stream: RunStream = {
       id: assignment.streamId,
       simId: assignment.simId,
       kind: "browser",
@@ -1676,7 +1757,7 @@ function buildMetaBundle(args: {
         ...(completion?.actorStatus ? { actorStatus: completion.actorStatus } : {}),
         ...(completion?.appStatus ? { appStatus: completion.appStatus } : {}),
         ...(completion?.appUrl ? { appUrl: completion.appUrl } : {}),
-        ...(liveDesktop?.bootstrap?.nestedObserverPath ? { nestedObserverPath: liveDesktop.bootstrap.nestedObserverPath } : {}),
+        ...(liveDesktop?.actorEvidence?.nestedEvidencePath ? { nestedObserverPath: liveDesktop.actorEvidence.nestedEvidencePath } : {}),
         ...(screenshot ? { screenshotUrl: screenshot.observerUrl } : {}),
         ...(completion?.visualStatus ? { visualStatus: completion.visualStatus } : {}),
         state: completion
@@ -1691,27 +1772,12 @@ function buildMetaBundle(args: {
           : liveStreamPresent ? "live E2B desktop stream present; stream URL is runtime-only" : args.dryRun ? "contract desktop" : "headed E2B desktop"
       },
       ...(completion ? { completion: completionForStream(completion, appServerMode) } : {}),
-      artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" },
-        { label: "review", path: "review.md", kind: "review" },
-        { label: "events", path: "events.ndjson", kind: "events" },
-        ...(completion?.appLogPath ? [{ label: "remote app log", path: completion.appLogPath, kind: "log" as const }] : []),
-        ...(completion?.actorLogPath ? [{ label: "remote actor log", path: completion.actorLogPath, kind: "log" as const }] : []),
-        ...(completion?.appServerActorEvidence?.tracePath ? [{ label: "codex app-server trace", path: completion.appServerActorEvidence.tracePath, kind: "trace" as const }] : []),
-        ...(completion?.appServerActorEvidence?.eventsPath ? [{ label: "codex app-server events", path: completion.appServerActorEvidence.eventsPath, kind: "events" as const }] : []),
-        ...(completion?.appServerActorEvidence?.transcriptPath ? [{ label: "codex app-server transcript", path: completion.appServerActorEvidence.transcriptPath, kind: "log" as const }] : []),
-        ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath ? [{ label: "actor last-message tail", path: liveDesktop.actorEvidence.actorLastMessageTailPath, kind: "log" as const }] : []),
-        ...(liveDesktop?.actorEvidence?.actorLogTailPath ? [{ label: "actor log tail", path: liveDesktop.actorEvidence.actorLogTailPath, kind: "log" as const }] : []),
-        ...(liveDesktop?.actorEvidence?.appServerTracePath ? [{ label: "codex app-server trace", path: liveDesktop.actorEvidence.appServerTracePath, kind: "trace" as const }] : []),
-        ...(liveDesktop?.actorEvidence?.appServerEventsPath ? [{ label: "codex app-server events", path: liveDesktop.actorEvidence.appServerEventsPath, kind: "events" as const }] : []),
-        ...(liveDesktop?.actorEvidence?.appServerTranscriptPath ? [{ label: "codex app-server transcript", path: liveDesktop.actorEvidence.appServerTranscriptPath, kind: "log" as const }] : []),
-        ...(liveDesktop?.actorEvidence?.setupQualityPath ? [{ label: "setup quality", path: liveDesktop.actorEvidence.setupQualityPath, kind: "filesystem" as const }] : []),
-        ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
-        ...(liveDesktop?.bootstrap?.logPath ? [{ label: "remote bootstrap log", path: liveDesktop.bootstrap.logPath, kind: "log" as const }] : []),
-        ...(liveDesktop?.bootstrap?.nestedObserverPath ? [{ label: "nested observer path", path: liveDesktop.bootstrap.nestedObserverPath, kind: "observer" as const }] : []),
-        ...(screenshot ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }] : [])
-      ]
-    });
+      artifacts
+    };
+    if (appServerMode) {
+      stream.codex = codexMetadataForMetaStream(liveDesktop, completion);
+    }
+    streams.push(stream);
 
     events.push(
       {
@@ -1904,6 +1970,49 @@ function buildMetaBundle(args: {
     review,
     feedbackCandidates
   };
+}
+
+function uniqueStreamArtifacts(artifacts: RunStream["artifacts"]): RunStream["artifacts"] {
+  const seen = new Set<string>();
+  const unique: RunStream["artifacts"] = [];
+  for (const artifact of artifacts) {
+    const key = `${artifact.kind}:${artifact.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(artifact);
+  }
+  return unique;
+}
+
+function codexMetadataForMetaStream(
+  liveDesktop: OssMetaLabLiveDesktop | undefined,
+  completion: OssMetaLabCompletion | undefined
+): NonNullable<RunStream["codex"]> {
+  const trace = completion?.appServerActorEvidence?.traceJson;
+  const traceRecord = isRecord(trace) ? trace : undefined;
+  const counts = isRecord(traceRecord?.counts) ? traceRecord.counts : undefined;
+  const eventCount = typeof counts?.envelopes === "number" ? counts.envelopes : undefined;
+  return {
+    provider: "codex-app-server",
+    state: codexStateForMeta(completion),
+    contract: "Codex app-server JSON-RPC actor telemetry projected from redacted event envelopes, trace summary, transcript tail, and filesystem setup evidence.",
+    ...(eventCount === undefined ? {} : { eventCount }),
+    ...(liveDesktop?.actorEvidence?.appServerTracePath ? { tracePath: liveDesktop.actorEvidence.appServerTracePath } : {}),
+    ...(typeof traceRecord?.threadId === "string" && traceRecord.threadId.trim() ? { threadId: traceRecord.threadId } : {}),
+    ...(typeof traceRecord?.turnId === "string" && traceRecord.turnId.trim() ? { turnId: traceRecord.turnId } : {}),
+    ...(typeof traceRecord?.sessionId === "string" && traceRecord.sessionId.trim() ? { sessionId: traceRecord.sessionId } : {}),
+    ...(typeof traceRecord?.model === "string" && traceRecord.model.trim() ? { model: traceRecord.model } : {})
+  };
+}
+
+function codexStateForMeta(completion: OssMetaLabCompletion | undefined): NonNullable<RunStream["codex"]>["state"] {
+  if (!completion) return "connecting";
+  if (completion.actorStatus === "passed") return "completed";
+  if (completion.actorStatus === "running") return "running";
+  if (completion.actorStatus === "timed_out" || completion.status === "timed_out") return "timed_out";
+  if (completion.actorStatus === "blocked" || completion.status === "blocked") return "blocked";
+  if (completion.actorStatus === "failed" || completion.status === "failed") return "failed";
+  return completion.status === "running" ? "running" : "watching";
 }
 
 function statusForMeta(args: {
@@ -2194,6 +2303,19 @@ function completionForStream(completion: OssMetaLabCompletion, appServerMode = f
   const effectiveReason = effectiveStatus === "blocked" && completion.status === "passed" && completion.actorStatus !== "passed"
     ? "Codex app-server mode requires passed app-server actor evidence; actor evidence did not reach passed."
     : completion.reason;
+  const meaningfulUse = scoreOssMetaMeaningfulUse({
+    ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: completion.actorLastMessageTail }),
+    ...(completion.actorLogTail === undefined ? {} : { actorLogTail: completion.actorLogTail }),
+    actorRequired: appServerMode,
+    ...(completion.actorStatus === undefined ? {} : { actorStatus: completion.actorStatus }),
+    ...(completion.appStatus === undefined ? {} : { appStatus: completion.appStatus }),
+    ...(completion.appUrl === undefined ? {} : { appUrl: completion.appUrl }),
+    ...(completion.nestedObserverPresent === undefined ? {} : { nestedObserverPresent: completion.nestedObserverPresent }),
+    ...(completion.nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed: completion.nestedVerifyPassed }),
+    ...(completion.setupQuality === undefined ? {} : { setupQuality: completion.setupQuality }),
+    status: effectiveStatus,
+    ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus })
+  });
   return {
     ...(completion.actorLogPath === undefined ? {} : { actorLogPath: completion.actorLogPath }),
     ...(completion.actorLogTail === undefined ? {} : { actorLogTail: completion.actorLogTail }),
@@ -2212,6 +2334,7 @@ function completionForStream(completion: OssMetaLabCompletion, appServerMode = f
     ...(completion.nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed: completion.nestedVerifyPassed }),
     reason: effectiveReason,
     status: effectiveStatus,
+    meaningfulUse,
     ...(completion.visualReason === undefined ? {} : { visualReason: completion.visualReason }),
     ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus }),
     ...(completion.visualWindowCount === undefined ? {} : { visualWindowCount: completion.visualWindowCount })
@@ -2546,7 +2669,7 @@ async function pollLiveDesktopCompletions(
   const warnings: string[] = [];
 
   if (timeoutMs === 0) {
-    warnings.push(`OSS meta-lab completion polling skipped because ${options.timeoutReason ?? "MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=0"}.`);
+    warnings.push(`Initial OSS meta-lab completion wait skipped because ${options.timeoutReason ?? "MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=0"}; attached watch continues polling while the Observer is open.`);
     return { warnings };
   }
 
@@ -2759,6 +2882,8 @@ async function writeActorEvidenceArtifacts(
     desktop.completion?.actorLastMessageTail
     || desktop.completion?.actorLogTail
     || desktop.completion?.appServerActorEvidence
+    || desktop.completion?.nestedObserverPresent !== undefined
+    || desktop.completion?.nestedVerifyPassed !== undefined
     || desktop.completion?.setupQuality
   );
   if (candidates.length === 0) {
@@ -2766,8 +2891,10 @@ async function writeActorEvidenceArtifacts(
   }
 
   const actorEvidenceRoot = path.join(artifactRoot, "actor-evidence");
+  const nestedEvidenceRoot = path.join(artifactRoot, "nested-evidence");
   const setupQualityRoot = path.join(artifactRoot, "setup-quality");
   await mkdir(actorEvidenceRoot, { recursive: true });
+  await mkdir(nestedEvidenceRoot, { recursive: true });
   await mkdir(setupQualityRoot, { recursive: true });
   let written = 0;
 
@@ -2812,6 +2939,27 @@ async function writeActorEvidenceArtifacts(
         : desktop.completion.setupQuality;
       await writeJson(path.join(artifactRoot, relativePath), snapshot);
       actorEvidence.setupQualityPath = relativePath;
+      written += 1;
+    }
+
+    if (desktop.completion && (desktop.completion.nestedObserverPresent !== undefined || desktop.completion.nestedVerifyPassed !== undefined)) {
+      const relativePath = path.join("nested-evidence", `${baseName}-nested-proof.json`);
+      await writeJson(path.join(artifactRoot, relativePath), {
+        schema: "mimetic.oss-meta-nested-proof.v1",
+        streamId: desktop.streamId,
+        redaction: {
+          status: "passed",
+          notes: "Nested proof summary contains booleans and redacted local artifact pointers only; remote sandbox paths are intentionally omitted."
+        },
+        status: desktop.completion.status,
+        reason: desktop.completion.reason,
+        checkedAt: desktop.completion.checkedAt,
+        nestedObserverPresent: desktop.completion.nestedObserverPresent === true,
+        nestedVerifyPassed: desktop.completion.nestedVerifyPassed === true,
+        appStatus: desktop.completion.appStatus ?? "unknown",
+        actorStatus: desktop.completion.actorStatus ?? "unknown"
+      });
+      actorEvidence.nestedEvidencePath = relativePath;
       written += 1;
     }
 
@@ -3350,6 +3498,10 @@ function isSafeRepoRelativePath(value: unknown): value is string {
     && !normalized.startsWith("../")
     && !normalized.split("/").includes("..")
     && !normalized.split("/").some((segment) => /^(?:\.env(?:\..*)?|\.npmrc|\.git|node_modules|dist|build|\.next)$/.test(segment));
+}
+
+function isLocalEvidenceArtifactPath(value: string): boolean {
+  return isSafeRepoRelativePath(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -4449,7 +4601,7 @@ Safety:
 - Do not run provider-spend-heavy commands beyond the bounded Mimetic/Codex proof.
 PROMPT
 
-  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
   local command
   command="APP_URL=$(printf '%q' "$APP_URL") MIMETIC_PRIVATE_CODEX_API_KEY=$(printf '%q' "$MIMETIC_PRIVATE_CODEX_API_KEY") MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN=$(printf '%q' "$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN") npx --no-install mimetic codex app-server --cwd $(printf '%q' "$APP_DIR") --run-root $(printf '%q' "$CODEX_APP_SERVER_ROOT_PATH") --state-file $(printf '%q' "$CODEX_APP_SERVER_STATE_PATH") --prompt-file $(printf '%q' "$CODEX_APP_SERVER_PROMPT_PATH") --timeout-ms $(printf '%q' "$timeout_ms") --port $(printf '%q' "$CODEX_APP_SERVER_PORT") --sandbox danger-full-access --actor-command 'npx -y @openai/codex@latest app-server --listen stdio://' --keep-open"
   nohup bash -lc "$command" > "$CODEX_APP_SERVER_LOG_PATH" 2>&1 &
@@ -4555,7 +4707,7 @@ printf -v app_dir_q '%q' "\\$APP_DIR"
 printf -v prompt_q '%q' "\\$PROMPT"
 printf -v actor_message_q '%q' "$ACTOR_LAST_MESSAGE_PATH"
 ACTOR_MODEL="\${MIMETIC_OSS_META_ACTOR_MODEL:-gpt-5.4-mini}"
-ACTOR_TIMEOUT_MS="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+ACTOR_TIMEOUT_MS="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
 ACTOR_TIMEOUT_SECONDS=\\$(( (ACTOR_TIMEOUT_MS + 999) / 1000 ))
 printf -v actor_model_q '%q' "\\$ACTOR_MODEL"
 CODEX_COMMAND="npx -y @openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check -m \\$actor_model_q -C \\$app_dir_q --dangerously-bypass-approvals-and-sandbox --output-last-message \\$actor_message_q \\$prompt_q"
@@ -4587,9 +4739,10 @@ wait_for_actor_attempt_if_required() {
   echo
   echo "== required codex actor readback =="
   if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
-    local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+    local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
     local started_ms
     started_ms="$(date +%s%3N)"
+    local next_heartbeat_ms=$((started_ms + 15000))
     while true; do
       local status_line
       status_line="$(node - "$CODEX_APP_SERVER_STATE_PATH" <<'NODE' 2>/dev/null || true
@@ -4606,6 +4759,13 @@ NODE
       fi
       local now_ms
       now_ms="$(date +%s%3N)"
+      if [[ "$now_ms" -ge "$next_heartbeat_ms" ]]; then
+        echo "actor_status=running source=codex-app-server elapsed_ms=$((now_ms - started_ms)) state=$CODEX_APP_SERVER_STATE_PATH log=$CODEX_APP_SERVER_LOG_PATH"
+        echo "actor_log_tail_begin"
+        tail -n 20 "$CODEX_APP_SERVER_LOG_PATH" || true
+        echo "actor_log_tail_end"
+        next_heartbeat_ms=$((now_ms + 15000))
+      fi
       if [[ $((now_ms - started_ms)) -ge "$timeout_ms" ]]; then
         ACTOR_STATUS=timed_out
         echo "actor_status=$ACTOR_STATUS timeout_ms=$timeout_ms state=$CODEX_APP_SERVER_STATE_PATH log=$CODEX_APP_SERVER_LOG_PATH"
@@ -4644,7 +4804,7 @@ NODE
     return 1
   fi
 
-  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-240000}"
+  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
   local started_ms
   started_ms="$(date +%s%3N)"
   while kill -0 "$ACTOR_PID" >/dev/null 2>&1; do

@@ -47,6 +47,10 @@ private patient data, or private source snippets.
 
 - Keep `main` clean. Use scoped branches or worktrees for feature work.
 - Make small commits with explicit scope.
+- When the repository owner explicitly grants autonomous shipping authority for
+  a Mimetic goal, do not stop at a PR handoff. Push the branch, open the PR,
+  watch checks/reviews, address failures, merge when green, fast-forward main,
+  and clean up the worktree/branch trail.
 - Before substantial work, read [`docs/ramp/README.md`](docs/ramp/README.md)
   and [`docs/goals/current.md`](docs/goals/current.md).
 - Do not commit generated proof artifacts, local env files, E2B/runtime caches,

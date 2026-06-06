@@ -712,6 +712,22 @@ a.cx-artifact:hover { border-color: var(--line-3); color: var(--text-1); }
 .file-open { font-family: var(--mono); font-size: 9px; color: var(--accent-2); padding: 3px 6px; border-radius: 5px; border: 1px solid var(--line); flex: none; }
 .file-open:hover { background: var(--surface-3); }
 .file-inspector { border-bottom: 1px solid var(--line); background: var(--surface-1); }
+.meaning-card { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-1); }
+.meaning-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.meaning-score { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-2); color: var(--text-2); }
+.meaning-score[data-status="pass"] { color: color-mix(in oklab, var(--green) 72%, white); background: var(--green-soft); border-color: color-mix(in oklab, var(--green) 35%, transparent); }
+.meaning-score[data-status="partial"] { color: color-mix(in oklab, var(--amber) 82%, white); background: var(--amber-soft); border-color: color-mix(in oklab, var(--amber) 35%, transparent); }
+.meaning-score[data-status="fail"] { color: color-mix(in oklab, var(--red) 75%, white); background: var(--red-soft); border-color: color-mix(in oklab, var(--red) 35%, transparent); }
+.meaning-summary { color: var(--text-2); font-size: 11.5px; line-height: 1.45; }
+.meaning-components { display: grid; gap: 6px; margin-top: 10px; }
+.meaning-comp { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; padding: 8px; border-radius: var(--radius-sm); background: var(--surface-0); border: 1px solid var(--line); }
+.meaning-comp-dot { width: 8px; height: 8px; border-radius: 999px; margin-top: 5px; background: var(--text-4); }
+.meaning-comp[data-status="pass"] .meaning-comp-dot { background: var(--green); }
+.meaning-comp[data-status="partial"] .meaning-comp-dot { background: var(--amber); }
+.meaning-comp[data-status="fail"] .meaning-comp-dot { background: var(--red); }
+.meaning-comp-name { color: var(--text-1); font-weight: 560; font-size: 11.5px; }
+.meaning-comp-detail { color: var(--text-3); font-size: 10.5px; line-height: 1.35; margin-top: 1px; }
+.meaning-comp-score { font-family: var(--mono); color: var(--text-3); font-size: 10px; }
 .fi-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
 .fi-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .fi-title h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
@@ -1330,6 +1346,26 @@ export function observerClientJs(): string {
     if (c.reason) bits.push(c.reason);
     return clip(bits.join(" · "), 110);
   }
+  function meaningfulUseTone(m) {
+    if (!m) return "info";
+    return m.status === "pass" ? "ok" : m.status === "partial" ? "warn" : m.status === "fail" ? "err" : "info";
+  }
+  function meaningfulUseText(m) {
+    if (!m) return "";
+    return (m.status || "unknown") + " " + (typeof m.score === "number" ? Math.round(m.score) : 0) + "/100";
+  }
+  function buildMeaningfulUseCard(s) {
+    var m = s.completion && s.completion.meaningfulUse;
+    if (!m) return "";
+    var comps = Array.isArray(m.components) ? m.components : [];
+    return '<div class="meaning-card" aria-label="Meaningful-use score">'
+      + '<div class="meaning-head"><span class="eyebrow">Meaningful Use</span><span class="meaning-score" data-status="' + esc(m.status || "unknown") + '">' + esc(meaningfulUseText(m)) + '</span></div>'
+      + '<div class="meaning-summary">' + esc(m.summary || "No scoring summary captured.") + '</div>'
+      + (comps.length ? '<div class="meaning-components">' + comps.map(function (c) {
+        return '<div class="meaning-comp" data-status="' + esc(c.status || "unknown") + '"><span class="meaning-comp-dot"></span><div><div class="meaning-comp-name">' + esc(c.label || c.id || "Component") + '</div><div class="meaning-comp-detail">' + esc(c.detail || "") + '</div></div><span class="meaning-comp-score">' + esc(String(typeof c.score === "number" ? Math.round(c.score) : 0)) + '</span></div>';
+      }).join("") + '</div>' : "")
+      + '</div>';
+  }
   function labChip(kind, label, detail, href, toneName) {
     var title = label + (detail ? ": " + detail : "");
     var inner = '<span class="bw-chip-k">' + esc(label) + '</span>' + (detail ? '<span class="bw-chip-v">' + esc(detail) + '</span>' : "");
@@ -1368,12 +1404,13 @@ export function observerClientJs(): string {
     if (nested) chips.push(labChip("observer", "observer", shortSurfaceValue(nested), linkHref(nested, !!(nestedArt && nested === nestedArt.path)), "info"));
     else if (completion && typeof completion.nestedObserverPresent === "boolean") chips.push(labChip("observer", "observer", completion.nestedObserverPresent ? "present" : "missing", "", completion.nestedObserverPresent ? "ok" : "warn"));
     if (completion) chips.push(labChip("completion", "status", completionText(completion), "", completionTone(completion)));
+    if (completion && completion.meaningfulUse) chips.push(labChip("meaningful-use", "score", meaningfulUseText(completion.meaningfulUse), "", meaningfulUseTone(completion.meaningfulUse)));
     if (tail) chips.push(labChip("terminal", "terminal", tail, "", "info"));
     if (shot || shotArt) chips.push(labChip("screenshot", "shot", shot ? (S.media === "screenshot" ? "viewing fallback" : "fallback ready") : "artifact", shot ? linkHref(shot, false) : linkHref(shotArt.path, true), "info"));
     if (arts.length) chips.push(labChip("artifact", "files", arts.length + " " + artifactKinds(arts), "", "info"));
     if (ui.state && !completion) chips.push(labChip("state", "state", clip(ui.state, 72), "", "info"));
     if (!chips.length) return "";
-    return '<div class="bw-lab-dock" aria-label="Browser lane lab surfaces">' + chips.slice(0, 6).join("") + '</div>';
+    return '<div class="bw-lab-dock" aria-label="Browser lane lab surfaces">' + chips.slice(0, 8).join("") + '</div>';
   }
 
   function consoleLines() {
@@ -2021,7 +2058,7 @@ export function observerClientJs(): string {
         + '<div class="side-goal"><span class="eyebrow">Persona</span><div class="side-goal-text">' + esc((run.persona && run.persona.name) || "Synthetic persona") + ' is attempting this lane as a realistic setup operator.</div></div>'
         + '<div class="side-goal"><span class="eyebrow">Scenario</span><div class="side-goal-text">' + esc((run.scenario && run.scenario.goal) || laneSummary(s)) + '</div></div>'
         + '<div class="side-now"><div class="side-now-row">' + pip(s.status, live) + '<span class="eyebrow" style="color:' + (live ? "var(--accent-2)" : "var(--text-3)") + '">' + (live ? "Now" : "Last step") + '</span></div>'
-        + '<div class="side-now-text">' + esc(laneStep(s)) + '</div></div></div>'
+        + '<div class="side-now-text">' + esc(laneStep(s)) + '</div></div>' + buildMeaningfulUseCard(s) + '</div>'
         + '<div class="side-tabs" role="tablist">' + tabs.map(function (t) {
           return '<button class="side-tab" role="tab" aria-selected="' + (S.tab === t.id ? "true" : "false") + '" data-action="tab:' + t.id + '">' + t.label + '<span class="tab-n">' + t.n + '</span></button>';
         }).join("") + '</div>'
