@@ -65,14 +65,15 @@ Implemented:
 
 Still not good enough:
 
-- live `--app-url` browser proof exists for desktop/mobile render evidence, but
-  autonomous multi-step user-journey proof is not first-class yet;
+- live `--app-url` browser proof now drives a bounded desktop/mobile two-step
+  browser persona journey, but richer app-specific scenario manifests are not
+  first-class yet;
 - live PTY and Codex UI lanes need stronger completion health;
 - OSS lab lanes can report nested Observer health, target app readiness, actor
   evidence, and setup-quality filesystem checks when a target app starts, but
   need repeated fresh-agent trials across more disposable public apps;
 - Observer evidence has real screenshots/traces for browser app proof; broader
-  adapter-driven persona navigation remains the next gap.
+  adapter-driven app-specific persona navigation remains the next gap.
 
 ## First Commands
 

@@ -102,7 +102,9 @@ Minimum acceptance:
 - screenshot artifact;
 - run bundle references screenshot evidence;
 - Observer renders the screenshot;
-- `verify` fails closed if required evidence is missing.
+- `verify` fails closed if required evidence is missing;
+- bounded desktop/mobile two-step browser persona proof with per-step traces and
+  screenshots. `done`
 
 ### 5. Live Terminal And Codex Lanes
 
@@ -153,8 +155,10 @@ Minimum acceptance:
   transcript artifacts; `done`
 - each lane receives a meaningful-use score over setup, filesystem, nested
   Mimetic proof, actor activity, product surface, and feedback; `done`
-- next gap: provider-backed browser personas must drive richer multi-step
-  target-app journeys instead of relying on nested app-url render proof.
+- provider-backed nested app-url proof now drives a bounded two-step
+  desktop/mobile browser persona journey in a headed E2B lane; `done`
+- next gap: richer app-specific scenario manifests and repeated public app/tool
+  targets, instead of only the built-in two-step generic browser persona.
 
 ## Non-Goals
 
@@ -193,7 +197,7 @@ apps and tools, while preserving the public-safety boundary:
 - private maintainer dogfood through the repo-only public-safe packet, which is
   intentionally not part of the npm payload, at
   [`docs/goals/private-repo-agent-dogfood/goal.md`](https://github.com/danielgwilson/mimetic-cli/blob/main/docs/goals/private-repo-agent-dogfood/goal.md);
-- then the first provider-backed multi-step browser persona adapter.
+- then richer provider-backed app-specific browser persona manifests.
 
 That sequence keeps the package honest: first prove a new maintainer or agent
 can start, then prove Mimetic can observe real product behavior, then use the

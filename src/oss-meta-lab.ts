@@ -61,6 +61,8 @@ export interface OssMetaLabAssignment {
 
 export interface OssMetaLabCleanupResult {
   killed: number;
+  matched?: number;
+  remaining?: number;
   skipped: number;
   errors: string[];
 }
@@ -1525,28 +1527,178 @@ export function startOssMetaLabLiveRefresh(
 function cleanupOssMetaLabLiveDesktops(
   liveDesktops: OssMetaLabLiveDesktop[],
   options: {
+    includeProviderReadback?: boolean;
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
     requestTimeoutMs?: number;
   } = {}
 ): Promise<OssMetaLabCleanupResult> {
-  return cleanupOssMetaLabSandboxes({
+  const result = {
     sandboxes: liveDesktops.map((desktop) => ({
       repo: desktop.repo,
       ...(desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
       streamId: desktop.streamId,
       urlPresent: Boolean(desktop.url)
     }))
-  }, options);
+  };
+
+  return options.includeProviderReadback === false
+    ? cleanupOssMetaLabSandboxes(result, options)
+    : cleanupOssMetaLabSandboxesAndProviderMatches(result, options);
 }
 
 export function sandboxIdsForOssMetaLabCleanup(result: Pick<OssMetaLabResult, "sandboxes">): string[] {
   return [...new Set(result.sandboxes.flatMap((sandbox) => sandbox.sandboxId ? [sandbox.sandboxId] : []))];
 }
 
+export interface OssMetaLabProviderListRequest {
+  metadata: Record<string, string>;
+  requestTimeoutMs: number;
+}
+
+export async function cleanupStaleOssMetaLabSandboxes(options: {
+  killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+  listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
+  requestTimeoutMs?: number;
+} = {}): Promise<OssMetaLabCleanupResult> {
+  return cleanupOssMetaLabSandboxesAndProviderMatches({ sandboxes: [] }, options);
+}
+
+export async function cleanupOssMetaLabSandboxesAndProviderMatches(
+  result: Pick<OssMetaLabResult, "sandboxes">,
+  options: {
+    killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
+    requestTimeoutMs?: number;
+  } = {}
+): Promise<OssMetaLabCleanupResult> {
+  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const listed = await listOssMetaLabProviderSandboxIds({
+    ...(options.listSandboxes === undefined ? {} : { listSandboxes: options.listSandboxes }),
+    requestTimeoutMs
+  });
+  const ids = [...new Set([...sandboxIdsForOssMetaLabCleanup(result), ...listed.ids])];
+  const cleanup = await cleanupOssMetaLabSandboxes({
+    sandboxes: ids.map((sandboxId, index) => ({
+      repo: "oss-meta-lab",
+      sandboxId,
+      streamId: `provider-${String(index + 1).padStart(2, "0")}`,
+      urlPresent: false
+    }))
+  }, {
+    ...(options.killSandbox === undefined ? {} : { killSandbox: options.killSandbox }),
+    redactIds: true,
+    requestTimeoutMs
+  });
+  const remaining = listed.errors.length > 0 || cleanup.errors.length > 0
+    ? undefined
+    : (await listOssMetaLabProviderSandboxIds({
+        ...(options.listSandboxes === undefined ? {} : { listSandboxes: options.listSandboxes }),
+        requestTimeoutMs
+      })).ids.length;
+
+  return {
+    killed: cleanup.killed,
+    matched: ids.length,
+    ...(remaining === undefined ? {} : { remaining }),
+    skipped: result.sandboxes.length - sandboxIdsForOssMetaLabCleanup(result).length + listed.skipped + cleanup.skipped,
+    errors: [...listed.errors, ...cleanup.errors]
+  };
+}
+
+async function listOssMetaLabProviderSandboxIds(options: {
+  listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
+  requestTimeoutMs: number;
+}): Promise<{ ids: string[]; skipped: number; errors: string[] }> {
+  let listSandboxes = options.listSandboxes;
+  if (!listSandboxes) {
+    const e2bApiKey = process.env.E2B_API_KEY;
+    if (!e2bApiKey) {
+      return {
+        ids: [],
+        skipped: 0,
+        errors: ["E2B_API_KEY is not present; provider metadata cleanup readback skipped."]
+      };
+    }
+
+    const desktopModule = await loadE2BDesktopModule();
+    if (!desktopModule.Sandbox.list) {
+      return {
+        ids: [],
+        skipped: 0,
+        errors: ["Installed @e2b/desktop SDK does not expose Sandbox.list; provider metadata cleanup readback skipped."]
+      };
+    }
+
+    listSandboxes = async (request) => {
+      const paginator = desktopModule.Sandbox.list?.({
+        metadata: request.metadata,
+        requestTimeoutMs: request.requestTimeoutMs
+      });
+      const sandboxes: E2BSandboxInfo[] = [];
+      if (!paginator) {
+        return sandboxes;
+      }
+
+      while (true) {
+        sandboxes.push(...await paginator.nextItems({ requestTimeoutMs: request.requestTimeoutMs }));
+        if (!paginator.hasNext) {
+          return sandboxes;
+        }
+      }
+    };
+  }
+
+  try {
+    const sandboxes = await listSandboxes({
+      metadata: { ...OSS_META_LAB_PROVIDER_METADATA },
+      requestTimeoutMs: options.requestTimeoutMs
+    });
+    let skipped = 0;
+    const ids = sandboxes.flatMap((sandbox) => {
+      const id = sandboxProviderId(sandbox);
+      if (!id || !isCleanupEligibleOssMetaLabSandbox(sandbox)) {
+        skipped += 1;
+        return [];
+      }
+
+      return [id];
+    });
+    return { ids: [...new Set(ids)], skipped, errors: [] };
+  } catch (error) {
+    return {
+      ids: [],
+      skipped: 0,
+      errors: [`provider metadata cleanup readback failed: ${compactError(error)}`]
+    };
+  }
+}
+
+function sandboxProviderId(sandbox: E2BSandboxInfo): string | null {
+  for (const value of [sandbox.sandboxId, sandbox.sandboxID, sandbox.id]) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function isCleanupEligibleOssMetaLabSandbox(sandbox: E2BSandboxInfo): boolean {
+  const metadata = sandbox.metadata;
+  if (!metadata || metadata.tool !== OSS_META_LAB_PROVIDER_METADATA.tool || metadata.mode !== OSS_META_LAB_PROVIDER_METADATA.mode) {
+    return false;
+  }
+
+  const state = typeof sandbox.state === "string" ? sandbox.state.toLowerCase() : "";
+  return !["closed", "killed", "paused", "terminated"].includes(state);
+}
+
 export async function cleanupOssMetaLabSandboxes(
   result: Pick<OssMetaLabResult, "sandboxes">,
   options: {
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    redactIds?: boolean;
     requestTimeoutMs?: number;
   } = {}
 ): Promise<OssMetaLabCleanupResult> {
@@ -1587,7 +1739,8 @@ export async function cleanupOssMetaLabSandboxes(
       await killSandbox(id, requestTimeoutMs);
       killed += 1;
     } catch (error) {
-      errors.push(`${id}: ${compactError(error)}`);
+      const errorText = compactError(error);
+      errors.push(`${options.redactIds ? "[provider-runtime]" : id}: ${options.redactIds ? errorText.replaceAll(id, "[provider-runtime]") : errorText}`);
     }
   }
 
@@ -2106,7 +2259,7 @@ function createMetaReview(args: {
     nestedLiveProof && appRunning.length > 0 && visualVisible.length > 0
       ? "Target app browser surfaces, nested Observer windows, and nested Mimetic live app-url proof are visible inside headed desktops."
       : appRunning.length > 0 && visualVisible.length > 0
-      ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; real Mimetic browser personas driving those apps are still the next adapter slice."
+      ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; nested Mimetic live proof is still missing."
       : appRunning.length > 0
       ? "Target app surfaces responded over HTTP, but headed desktop browser-window visibility was not detected for every lane."
       : started.length > 0 && terminalCompletions.length === started.length
@@ -2115,7 +2268,7 @@ function createMetaReview(args: {
       ? "Visible E2B bootstrap terminals are launched and run nested Mimetic setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
       : "Nested Mimetic Observer evidence is represented as a lane contract until Codex TUI injection and nested Mimetic execution land.",
     nestedLiveProof
-      ? "Nested Mimetic proof reached live app-url mode with desktop/mobile browser evidence; autonomous multi-step persona navigation is still the next adapter slice."
+      ? "Nested Mimetic proof reached live app-url mode with desktop/mobile browser persona evidence; richer app-specific journey manifests remain the next adapter slice."
       : "Nested Mimetic proof did not reach live app-url mode; target app startup or browser evidence is still missing.",
     "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
     "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default."
@@ -5198,7 +5351,9 @@ interface E2BSandboxListOptions {
 }
 
 interface E2BSandboxInfo {
+  id?: string;
   metadata?: Record<string, string>;
+  sandboxID?: string;
   sandboxId?: string;
   state?: string;
 }

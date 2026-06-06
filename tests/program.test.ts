@@ -1,10 +1,11 @@
 import { CommanderError } from "commander";
+import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { createProgram } from "../src/program.js";
+import { createProgram, followObserver } from "../src/program.js";
 
 interface CliResult {
   exitCode: number;
@@ -74,6 +75,59 @@ async function readJson(filePath: string): Promise<unknown> {
 }
 
 describe("mimetic CLI scaffold", () => {
+  it("cleans up attached Observer watches on package-manager style termination signals", async () => {
+    let exitCode = 0;
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const signalTarget = new EventEmitter();
+    let closed = 0;
+    let cleanupCalls = 0;
+
+    const promise = followObserver(
+      {
+        writeOut: (text) => stdout.push(text),
+        writeErr: (text) => stderr.push(text),
+        setExitCode: (code) => {
+          exitCode = code;
+        }
+      },
+      {
+        schema: "mimetic.observer-result.v1",
+        ok: true,
+        cwd: "/tmp/mimetic",
+        observerPath: ".mimetic/runs/run/observer/index.html",
+        run: "run",
+        warnings: []
+      },
+      {
+        opened: false,
+        url: "http://127.0.0.1:1234/observer/index.html",
+        close: async () => {
+          closed += 1;
+        }
+      },
+      {
+        onStop: async () => {
+          cleanupCalls += 1;
+          return ["E2B sandbox cleanup killed 1, skipped 0."];
+        },
+        signalTarget,
+        signals: ["SIGTERM"]
+      }
+    );
+
+    signalTarget.emit("SIGTERM");
+    signalTarget.emit("SIGTERM");
+    await promise;
+
+    expect(exitCode).toBe(143);
+    expect(closed).toBe(1);
+    expect(cleanupCalls).toBe(1);
+    expect(stderr.join("")).toBe("");
+    expect(stdout.join("")).toContain("watch cleanup: E2B sandbox cleanup killed 1, skipped 0.");
+    expect(stdout.join("")).toContain("watch stopped");
+  });
+
   it("prints useful Commander help", async () => {
     const result = await runCli(["--help"]);
 

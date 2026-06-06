@@ -39,6 +39,7 @@ import {
 import type { OssLabResult } from "./oss-lab.js";
 import {
   cleanupOssMetaLabSandboxes,
+  cleanupStaleOssMetaLabSandboxes,
   runOssMetaLab,
   startOssMetaLabLiveRefresh
 } from "./oss-meta-lab.js";
@@ -937,6 +938,35 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     });
 
   lab
+    .command("cleanup")
+    .argument("[lab]", "Provider-backed lab to clean up.", "oss")
+    .description("Clean up stale provider resources for a lab without printing provider ids.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (labName: string, _options: { json?: boolean }, command) => {
+      if (labName !== "oss") {
+        const result = {
+          schema: "mimetic.oss-meta-lab-cleanup-result.v1" as const,
+          ok: false,
+          lab: labName,
+          cleanup: { killed: 0, skipped: 0, errors: [`Unsupported cleanup lab '${labName}'.`] }
+        };
+        writeResult(command, io, result, formatOssMetaLabCleanupHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      const cleanup = await cleanupStaleOssMetaLabSandboxes();
+      const result = {
+        schema: "mimetic.oss-meta-lab-cleanup-result.v1" as const,
+        ok: cleanup.errors.length === 0,
+        lab: "oss",
+        cleanup
+      };
+      writeResult(command, io, result, formatOssMetaLabCleanupHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  lab
     .command("run")
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Run a Mimetic lab manifest.")
@@ -1804,16 +1834,42 @@ function parseObserverPort(value: string): number | null {
   return parsed >= 0 && parsed <= 65535 ? parsed : null;
 }
 
-async function followObserver(
+type WatchStopSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
+
+interface WatchSignalTarget {
+  once(event: WatchStopSignal, listener: () => void): unknown;
+  removeListener(event: WatchStopSignal, listener: () => void): unknown;
+}
+
+export async function followObserver(
   io: CliIo,
   result: ObserverResult,
   server: ObserverServer,
-  options: { onStop?: () => Promise<string[]> } = {}
+  options: {
+    onStop?: () => Promise<string[]>;
+    signalTarget?: WatchSignalTarget;
+    signals?: WatchStopSignal[];
+  } = {}
 ): Promise<void> {
   io.writeOut(`watching: ${result.serverUrl ?? result.observerUrl ?? result.observerPath}\n`);
   io.writeOut("watching: press Ctrl-C to stop\n");
   await new Promise<void>((resolve) => {
-    process.once("SIGINT", () => {
+    const signalTarget = options.signalTarget ?? process;
+    const signals = options.signals ?? ["SIGINT", "SIGTERM", "SIGHUP"];
+    const handlers = new Map<WatchStopSignal, () => void>();
+    let stopping = false;
+
+    const stop = (signal: WatchStopSignal) => {
+      if (stopping) {
+        return;
+      }
+
+      stopping = true;
+      for (const [registeredSignal, handler] of handlers.entries()) {
+        signalTarget.removeListener(registeredSignal, handler);
+      }
+      io.setExitCode(exitCodeForSignal(signal));
+
       (async () => {
         try {
           await server.close();
@@ -1835,8 +1891,25 @@ async function followObserver(
         io.writeOut("watch stopped\n");
         resolve();
       })();
-    });
+    };
+
+    for (const signal of signals) {
+      const handler = () => stop(signal);
+      handlers.set(signal, handler);
+      signalTarget.once(signal, handler);
+    }
   });
+}
+
+function exitCodeForSignal(signal: WatchStopSignal): number {
+  switch (signal) {
+    case "SIGINT":
+      return 130;
+    case "SIGTERM":
+      return 143;
+    case "SIGHUP":
+      return 129;
+  }
 }
 
 function formatFeedbackHuman(result: FeedbackResult): string {
@@ -1890,6 +1963,28 @@ function formatOssMetaLabHuman(result: OssMetaLabResult): string {
       return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${completionLabel}${screenshotLabel}${sandboxLabel}`;
     }),
     ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatOssMetaLabCleanupHuman(result: {
+  cleanup: {
+    errors: string[];
+    killed: number;
+    matched?: number;
+    remaining?: number;
+    skipped: number;
+  };
+  lab: string;
+  ok: boolean;
+  schema: string;
+}): string {
+  return [
+    `mimetic lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
+    ...(result.cleanup.matched === undefined ? [] : [`matched: ${result.cleanup.matched}`]),
+    `killed: ${result.cleanup.killed}`,
+    `skipped: ${result.cleanup.skipped}`,
+    ...(result.cleanup.remaining === undefined ? [] : [`remaining: ${result.cleanup.remaining}`]),
+    ...result.cleanup.errors.map((error) => `error: ${error}`)
   ].join("\n") + "\n";
 }
 

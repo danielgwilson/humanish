@@ -362,7 +362,9 @@ describe("dry-run bundles", () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
         const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
         process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -402,12 +404,27 @@ describe("dry-run bundles", () => {
           expect(bundle.streams[1]?.viewport.isMobile).toBe(true);
           expect(bundle.streams[0]?.embed.kind).toBe("screenshot");
           expect(bundle.streams[0]?.ui.appUrl).toBe(appUrl);
+          expect(bundle.streams[0]?.ui.screenshotUrl).toBe("../screenshots/desktop-step-02-interact.png");
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-step-01-load.png");
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-step-02-interact.png");
 
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/desktop.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/desktop-step-01-load.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/desktop-step-02-interact.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile-step-01-load.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile-step-02-interact.png"))).resolves.toBeTruthy();
           await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/traces/desktop.json"))).resolves.toBeTruthy();
           await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/events.ndjson"))).resolves.toBeTruthy();
           await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/profiles"))).rejects.toBeTruthy();
+          const desktopTrace = JSON.parse(
+            await readFile(path.join(cwd, ".mimetic/runs/browser-app-test/traces/desktop.json"), "utf8")
+          ) as { schema: string; steps: Array<{ status: string; screenshotPath: string }> };
+          expect(desktopTrace.schema).toBe("mimetic.browser-persona-trace.v1");
+          expect(desktopTrace.steps).toHaveLength(2);
+          expect(desktopTrace.steps.map((step) => step.status)).toEqual(["passed", "passed"]);
+          expect(desktopTrace.steps.map((step) => step.screenshotPath)).toEqual([
+            "screenshots/desktop-step-01-load.png",
+            "screenshots/desktop-step-02-interact.png"
+          ]);
 
           const verify = await verifyRun(cwd, "latest");
           expect(verify.ok).toBe(true);
@@ -428,23 +445,28 @@ describe("dry-run bundles", () => {
           expect(missingEmbedVerify.ok).toBe(false);
           expect(missingEmbedVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
             .toContain("screenshots/missing-embed.png");
-          bundle.streams[0]!.embed.url = "../screenshots/desktop.png";
+          bundle.streams[0]!.embed.url = "../screenshots/desktop-step-02-interact.png";
           await writeFile(
             path.join(cwd, ".mimetic/runs/browser-app-test/run.json"),
             `${JSON.stringify(bundle, null, 2)}\n`,
             "utf8"
           );
 
-          await rm(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile.png"));
+          await rm(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile-step-02-interact.png"));
           const missingVerify = await verifyRun(cwd, "latest");
           expect(missingVerify.ok).toBe(false);
           expect(missingVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-            .toContain("screenshots/mobile.png");
+            .toContain("screenshots/mobile-step-02-interact.png");
         } finally {
           if (previousBrowserCommand === undefined) {
             delete process.env.MIMETIC_BROWSER_COMMAND;
           } else {
             process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+          if (previousBrowserPersonaDriver === undefined) {
+            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+          } else {
+            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -461,6 +483,53 @@ describe("dry-run bundles", () => {
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("MIMETIC_INVALID_APP_URL");
+    });
+  });
+
+  it("strips loopback app URL userinfo, query, and hash before durable browser proof artifacts", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          const pollutedUrl = appUrl.replace("http://", "http://synthetic-user:synthetic-pass@") + "?access_token=secret-token#private-fragment";
+          const result = await runDryRun({
+            appUrl: pollutedUrl,
+            cwd,
+            runId: "browser-app-url-sanitize"
+          });
+
+          expect(result.ok).toBe(true);
+
+          const bundleText = await readFile(path.join(cwd, ".mimetic/runs/browser-app-url-sanitize/run.json"), "utf8");
+          const desktopTraceText = await readFile(path.join(cwd, ".mimetic/runs/browser-app-url-sanitize/traces/desktop.json"), "utf8");
+          const bundle = JSON.parse(bundleText) as { streams: Array<{ ui: { appUrl: string; route: string } }> };
+
+          expect(bundle.streams[0]?.ui.appUrl).toBe(appUrl);
+          expect(bundle.streams[0]?.ui.route).toBe(appUrl);
+          for (const text of [bundleText, desktopTraceText]) {
+            expect(text).not.toContain("synthetic-user");
+            expect(text).not.toContain("synthetic-pass");
+            expect(text).not.toContain("access_token");
+            expect(text).not.toContain("secret-token");
+            expect(text).not.toContain("private-fragment");
+          }
+        } finally {
+          if (previousBrowserCommand === undefined) {
+            delete process.env.MIMETIC_BROWSER_COMMAND;
+          } else {
+            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+          if (previousBrowserPersonaDriver === undefined) {
+            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+          } else {
+            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+          }
+        }
+      });
     });
   });
 

@@ -18,9 +18,14 @@ const html = `<!doctype html>
           Synthetic email
           <input name="email" value="synthetic.user@example.test">
         </label>
-        <button type="button">Continue</button>
+        <button type="button" data-testid="continue">Continue</button>
       </form>
     </main>
+    <script>
+      document.querySelector('[data-testid="continue"]').addEventListener('click', () => {
+        document.querySelector('[data-testid="state"]').textContent = 'second-visible-state';
+      });
+    </script>
   </body>
 </html>`;
 
