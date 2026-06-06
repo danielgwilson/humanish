@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { realpathSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
+
+import { publicPathForTrace, redactText } from "./redaction.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "mimetic.codex-app-server-trace.v1";
 
@@ -157,35 +158,6 @@ export interface CodexTraceNotice {
   method: string;
   message: string;
 }
-
-const sensitivePatterns = [
-  /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/g,
-  /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g,
-  /\be2b_[A-Za-z0-9]{16,}\b/g,
-  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/g,
-  /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
-  /\bAKIA[0-9A-Z]{16}\b/g,
-  /\bAIza[0-9A-Za-z_-]{20,}\b/g,
-  /\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b/g,
-  /\bhf_[A-Za-z0-9]{30,}\b/g,
-  /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g,
-  /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
-  /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
-  /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g,
-  /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g,
-  /https?:\/\/[^/\s]*e2b[^)\s]+/gi,
-  /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi
-];
-
-const privatePathPatterns: Array<[RegExp, string]> = [
-  [/\/private\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/private\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"]
-];
 
 const authLikeKey = /(api[_-]?key|access[_-]?token|auth[_-]?url|authorization|bearer|credential|password|secret|token)$/i;
 const pathLikeKey = /^(cwd|path|writableRoots|workspaceRoot)$/i;
@@ -981,41 +953,6 @@ function redactJsonValue(value: unknown, keyHint = "", rootCwd?: string): unknow
     );
   }
   return value;
-}
-
-export function redactText(text: string): string {
-  const withoutSecrets = sensitivePatterns.reduce((current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"), text);
-  return privatePathPatterns.reduce((current, [pattern, replacement]) => current.replace(pattern, replacement), withoutSecrets);
-}
-
-function canonicalizePath(value: string): string {
-  const resolved = path.resolve(value);
-  try {
-    // Follow symlinks so an actor cwd reported in realpath form (e.g. /private/tmp
-    // on macOS) matches a configured root still in its symlinked form (/tmp).
-    // Without this, path.relative yields a "../"-prefixed path that escapes the
-    // [target-cwd] label and leaks an absolute temp path into the trace.
-    return realpathSync.native(resolved);
-  } catch {
-    return resolved;
-  }
-}
-
-export function publicPathForTrace(value: string, rootCwd: string): string {
-  if (!path.isAbsolute(value)) {
-    return redactText(value);
-  }
-
-  const root = canonicalizePath(rootCwd);
-  const absolute = canonicalizePath(value);
-  const relative = path.relative(root, absolute).replace(/\\/g, "/");
-  if (relative === "") {
-    return "[target-cwd]";
-  }
-  if (!relative.startsWith("..") && !path.isAbsolute(relative)) {
-    return `[target-cwd]/${relative}`;
-  }
-  return redactText(value);
 }
 
 function digestText(text: string): string {

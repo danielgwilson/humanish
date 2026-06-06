@@ -16,6 +16,7 @@ import {
 } from "./codex-app-server.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
+import { containsSensitive, redactToSecretLabel } from "./redaction.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
 export const REVIEW_SCHEMA = "mimetic.review.v1";
@@ -423,19 +424,6 @@ interface RunPointer {
   updatedAt: string;
 }
 
-const sensitivePatterns = [
-  /sk-[a-z0-9_-]{20,}/i,
-  /e2b_[a-z0-9_-]{12,}/i,
-  /gh[pousr]_[a-z0-9_]{12,}/i,
-  /https?:\/\/[^/\s]*e2b[^)\s]+/i,
-  /\/Users\/[A-Za-z0-9._-]+\/[^\s"']*/i,
-  /\/home\/(?:user|runner)\/[^\s"']*/i,
-  /\/private\/var\/folders\/[^\s"']*/i,
-  /\/var\/folders\/[^\s"']*/i,
-  /\/private\/tmp\/[^\s"']*/i,
-  /\/tmp\/[^\s"']*/i,
-  /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
-];
 const CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA = "mimetic.codex-app-server-trace.projected.v1";
 
 const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 240_000;
@@ -4854,14 +4842,11 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 function containsSensitivePattern(text: string): boolean {
-  return sensitivePatterns.some((pattern) => pattern.test(text));
+  return containsSensitive(text);
 }
 
 function redactSensitiveText(text: string): string {
-  return sensitivePatterns.reduce((current, pattern) => {
-    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
-    return current.replace(new RegExp(pattern.source, flags), "[REDACTED_SECRET]");
-  }, text);
+  return redactToSecretLabel(text);
 }
 
 function isRunBundle(value: unknown): value is RunBundle {

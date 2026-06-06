@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { publicPathForTrace, redactText } from "../src/codex-app-server.js";
+import { containsSensitive, publicPathForTrace, redactText, redactToSecretLabel } from "../src/redaction.js";
 
 describe("codex app-server trace redaction", () => {
   it("labels a symlinked target cwd as [target-cwd] even when the actor reports the realpath form", async () => {
@@ -45,5 +45,35 @@ describe("codex app-server trace redaction", () => {
     expect(publicPathForTrace("/tmp/some-other-root/file", `${root}/mimetic-unrelated-root`)).toContain(
       "[REDACTED_LOCAL_PATH]"
     );
+  });
+});
+
+describe("shared redaction helpers", () => {
+  // Build secret-shaped values at runtime so the literal source carries no
+  // scannable token (the public-surface scanner also reads test files).
+  const fakeOpenAiKey = `sk-proj-${"abcdefghijklmnopqrstuvwxyz0123"}`;
+  const fakeE2bKey = `e2b_${"0123456789abcdef0123"}`;
+
+  it("detects secret-shaped tokens and known local paths", () => {
+    expect(containsSensitive(`token ${fakeOpenAiKey}`)).toBe(true);
+    expect(containsSensitive(fakeE2bKey)).toBe(true);
+    expect(containsSensitive("ran from /tmp/build-7f/out")).toBe(true);
+    expect(containsSensitive("ran from /var/folders/aa/bb/T/run")).toBe(true);
+    expect(containsSensitive("a perfectly safe synthetic line")).toBe(false);
+  });
+
+  it("detection is stable across repeated calls (no sticky lastIndex state)", () => {
+    const text = "ran from /tmp/build-7f/out";
+    expect(containsSensitive(text)).toBe(true);
+    expect(containsSensitive(text)).toBe(true);
+    expect(containsSensitive(text)).toBe(true);
+  });
+
+  it("redactToSecretLabel collapses both secrets and paths to one label", () => {
+    const out = redactToSecretLabel(`key ${fakeOpenAiKey} at /tmp/x/y`);
+    expect(out).toContain("[REDACTED_SECRET]");
+    expect(out).not.toContain(fakeOpenAiKey);
+    expect(out).not.toContain("/tmp/x/y");
+    expect(out).not.toContain("[REDACTED_LOCAL_PATH]");
   });
 });
