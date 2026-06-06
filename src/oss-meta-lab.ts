@@ -15,6 +15,7 @@ import {
 import { redactOssRemoteTelemetryText } from "./oss-remote-telemetry.js";
 import {
   buildRunSource,
+  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
   runDryRun
@@ -1444,7 +1445,7 @@ async function writeMetaBundleArtifacts(artifactRoot: string, bundle: RunBundle)
 export function publicSafeOssMetaBundle(bundle: RunBundle): RunBundle {
   return {
     ...bundle,
-    cwd: "[target-cwd]",
+    cwd: PUBLIC_TARGET_CWD,
     streams: bundle.streams.map(publicSafeMetaStream)
   };
 }

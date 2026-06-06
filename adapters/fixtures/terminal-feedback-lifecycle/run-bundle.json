@@ -4,7 +4,7 @@
   "mode": "dry-run",
   "simCount": 1,
   "createdAt": "2026-06-02T10:30:00.000Z",
-  "cwd": "adapters/fixtures/terminal-feedback-lifecycle",
+  "cwd": "[target-cwd]",
   "artifactRoot": ".mimetic/runs/terminal-feedback-lifecycle-fixture",
   "source": {
     "packageName": "fixture-terminal-product",

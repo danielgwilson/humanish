@@ -34,7 +34,7 @@ import {
   shouldForceExitAfterOssMetaLab,
   shouldServeOssMetaLabObserver
 } from "../src/program.js";
-import type { RunSetupQualitySnapshot } from "../src/run.js";
+import { PUBLIC_TARGET_CWD, type RunSetupQualitySnapshot } from "../src/run.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -759,12 +759,14 @@ describe("OSS lab command", () => {
     expect(json.observer.observerPath).toBe(".mimetic/runs/oss-meta-test/observer/index.html");
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-test", "run.json"), "utf8")) as {
+      cwd: string;
       mode: string;
       streams: Array<{
         terminal: { tail: string };
         ui: { route: string };
       }>;
     };
+    expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install mimetic init --yes");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install mimetic run --app-url");
@@ -846,11 +848,13 @@ describe("OSS lab command", () => {
       expect(json.warnings.join("\n")).toContain("waiting on env vars");
 
       const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-waiting-test", "run.json"), "utf8")) as {
+        cwd: string;
         mode: string;
         review: { verdict: string };
         simulations: Array<{ currentStep: string; status: string }>;
         streams: Array<{ embed: { kind: string }; status: string }>;
       };
+      expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
       expect(bundle.mode).toBe("live");
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.simulations[0]).toMatchObject({
