@@ -157,8 +157,13 @@ Minimum acceptance:
   Mimetic proof, actor activity, product surface, and feedback; `done`
 - provider-backed nested app-url proof now drives a bounded two-step
   desktop/mobile browser persona journey in a headed E2B lane; `done`
-- next gap: richer app-specific scenario manifests and repeated public app/tool
-  targets, instead of only the built-in two-step generic browser persona.
+- app-specific executable browser steps can now be authored under
+  `mimetic/scenarios/*.yaml` and are summarized into top-level nested proof
+  evidence; `done`
+- repeated public app/tool headed proofs with app-specific manifests have passed
+  against two public targets; `done`
+- next gap: richer multi-step product journeys and broader multi-persona
+  matrices.
 
 ## Non-Goals
 

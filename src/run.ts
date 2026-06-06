@@ -6,6 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { Browser, Page } from "playwright-core";
+import { parse as parseYaml } from "yaml";
 
 import {
   CODEX_APP_SERVER_TRACE_SCHEMA,
@@ -657,8 +658,17 @@ interface BrowserSurfaceCapture {
   tracePath: string;
 }
 
+type BrowserPersonaAction = "goto" | "click" | "fill" | "assertText" | "waitForText" | "waitForSelector";
+
+interface BrowserPersonaAssertionCapture {
+  id: string;
+  reason: string;
+  status: "passed" | "blocked";
+}
+
 interface BrowserPersonaStepCapture {
   action: string;
+  assertions?: BrowserPersonaAssertionCapture[];
   completedAt: string;
   durationMs: number;
   id: string;
@@ -667,6 +677,33 @@ interface BrowserPersonaStepCapture {
   screenshotPath: string;
   status: "passed" | "blocked";
   url: string;
+}
+
+interface BrowserPersonaStepExpectation {
+  selectorVisible?: string;
+  stateChanged?: boolean;
+  text?: string;
+  urlIncludes?: string;
+}
+
+interface BrowserPersonaStepManifest {
+  action: BrowserPersonaAction;
+  expectation?: BrowserPersonaStepExpectation;
+  id: string;
+  label: string;
+  path?: string;
+  selector?: string;
+  value?: string;
+}
+
+interface BrowserPersonaJourney {
+  goal: string;
+  scenarioId: string;
+  scenarioTitle: string;
+  source: string;
+  sourceDigest: string;
+  startPath: string;
+  steps: BrowserPersonaStepManifest[];
 }
 
 const browserSurfaces: BrowserSurface[] = [
@@ -734,8 +771,25 @@ async function runBrowserAppProof(options: RunOptions & {
   const packageName = await readPackageName(options.cwd);
   const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
   const selection = await loadDryRunSelection(options.cwd, mimeticSource);
+  if (selection.browserJourneyFailure) {
+    return {
+      schema: "mimetic.run-result.v1",
+      ok: false,
+      cwd: options.cwd,
+      warnings: [...warnings, ...selection.warnings],
+      error: {
+        code: "MIMETIC_BROWSER_APP_CAPTURE_FAILED",
+        message: selection.browserJourneyFailure
+      }
+    };
+  }
+
+  const browserJourney = selection.browserJourney ?? builtinBrowserPersonaJourney();
   if (mimeticSource === "missing") {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic browser-app defaults.");
+  }
+  if (!selection.browserJourney) {
+    warnings.push("No executable browser scenario manifest was found; using built-in browser persona two-step journey.");
   }
   warnings.push(...selection.warnings);
 
@@ -747,13 +801,14 @@ async function runBrowserAppProof(options: RunOptions & {
     absoluteArtifactRoot,
     appUrl,
     browserCommand,
+    browserJourney,
     surface,
     timeoutMs: options.timeoutMs ?? BROWSER_APP_DEFAULT_TIMEOUT_MS
   })));
   const completedAt = new Date().toISOString();
   const events = buildBrowserAppEvents({ appUrl, captures, createdAt });
   const allPassed = captures.every((capture) => capture.ok);
-  const review = createBrowserAppReviewSummary({ appUrl, captures });
+  const review = createBrowserAppReviewSummary({ appUrl, browserJourney, captures });
   const bundle: RunBundle = {
     schema: RUN_BUNDLE_SCHEMA,
     runId,
@@ -777,11 +832,11 @@ async function runBrowserAppProof(options: RunOptions & {
       sourceDigest: selection.persona.sourceDigest
     },
     scenario: {
-      id: "browser-persona-two-step",
-      title: "Browser Persona Two-Step Journey",
-      goal: "Drive a synthetic persona through a two-step browser journey against a running local app URL.",
-      source: "builtin:browser-persona-two-step",
-      sourceDigest: digestText(appUrl)
+      id: browserJourney.scenarioId,
+      title: browserJourney.scenarioTitle,
+      goal: browserJourney.goal,
+      source: browserJourney.source,
+      sourceDigest: browserJourney.sourceDigest
     },
     lifecycle: [
       {
@@ -809,7 +864,7 @@ async function runBrowserAppProof(options: RunOptions & {
         id: simId,
         index: index + 1,
         personaId: selection.persona.id,
-        scenarioId: "browser-persona-two-step",
+        scenarioId: browserJourney.scenarioId,
         status: capture.ok ? "passed" : "blocked",
         streamKind: "browser",
         mode: "browser-sim",
@@ -845,7 +900,7 @@ async function runBrowserAppProof(options: RunOptions & {
           appStatus: capture.ok ? "running" : "blocked",
           appUrl,
           route: appUrl,
-          intent: "Drive a synthetic browser persona through a multi-step local app journey for this viewport.",
+          intent: browserJourney.goal,
           screenshotUrl,
           state: capture.reason,
           visualStatus: capture.ok ? "visible" : "blocked"
@@ -920,6 +975,7 @@ async function captureBrowserSurface(args: {
   absoluteArtifactRoot: string;
   appUrl: string;
   browserCommand: string;
+  browserJourney: BrowserPersonaJourney;
   surface: BrowserSurface;
   timeoutMs: number;
 }): Promise<BrowserSurfaceCapture> {
@@ -934,38 +990,59 @@ async function captureBrowserSurfaceFixture(args: {
   absoluteArtifactRoot: string;
   appUrl: string;
   browserCommand: string;
+  browserJourney: BrowserPersonaJourney;
   surface: BrowserSurface;
   timeoutMs: number;
 }): Promise<BrowserSurfaceCapture> {
   const started = Date.now();
-  const stepOneScreenshotPath = path.join("screenshots", `${args.surface.id}-step-01-load.png`);
-  const stepTwoScreenshotPath = path.join("screenshots", `${args.surface.id}-step-02-interact.png`);
   const tracePath = path.join("traces", `${args.surface.id}.json`);
-  const absoluteStepOneScreenshotPath = path.join(args.absoluteArtifactRoot, stepOneScreenshotPath);
-  const absoluteStepTwoScreenshotPath = path.join(args.absoluteArtifactRoot, stepTwoScreenshotPath);
   const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   const capturedAt = new Date().toISOString();
   const profileDir = await mkdtemp(path.join(os.tmpdir(), "mimetic-browser-profile-"));
+  const steps: BrowserPersonaStepCapture[] = [];
+  let currentUrl = args.appUrl;
 
   try {
-    for (const screenshotPath of [absoluteStepOneScreenshotPath, absoluteStepTwoScreenshotPath]) {
+    for (const [index, step] of args.browserJourney.steps.entries()) {
+      if (step.action === "goto") {
+        currentUrl = resolveBrowserStepUrl(args.appUrl, step.path ?? args.browserJourney.startPath);
+      }
+      const stepStarted = Date.now();
+      const screenshotPath = screenshotPathForBrowserStep(args.surface, step);
+      const absoluteScreenshotPath = path.join(args.absoluteArtifactRoot, screenshotPath);
       await captureScreenshotWithBrowser({
         args: browserScreenshotArgs({
-          appUrl: args.appUrl,
+          appUrl: currentUrl,
           profileDir,
-          screenshotPath,
+          screenshotPath: absoluteScreenshotPath,
           surface: args.surface
         }),
         browserCommand: args.browserCommand,
-        screenshotPath,
+        screenshotPath: absoluteScreenshotPath,
         timeoutMs: args.timeoutMs
+      });
+      const assertions = fixtureAssertionsForBrowserStep(step, httpProbe.ok);
+      steps.push({
+        action: step.action,
+        ...(assertions.length === 0 ? {} : { assertions }),
+        completedAt: new Date().toISOString(),
+        durationMs: Date.now() - stepStarted,
+        id: step.id,
+        label: step.label,
+        reason: httpProbe.ok
+          ? `Fixture driver captured ${step.action} step ${index + 1}/${args.browserJourney.steps.length}.`
+          : httpProbe.reason,
+        screenshotPath,
+        status: httpProbe.ok && assertions.every((assertion) => assertion.status === "passed") ? "passed" : "blocked",
+        url: sanitizeLoopbackUrl(currentUrl)
       });
     }
   } catch (error) {
     const reason = `Browser screenshot command failed for ${args.surface.id}: ${compactBrowserError(error)}`;
-    const steps = buildBlockedBrowserPersonaSteps({
-      appUrl: args.appUrl,
+    const blockedSteps = buildBlockedBrowserPersonaSteps({
+      browserJourney: args.browserJourney,
+      currentUrl,
       reason,
       surface: args.surface,
       timestamp: capturedAt
@@ -973,13 +1050,14 @@ async function captureBrowserSurfaceFixture(args: {
     await writeJson(absoluteTracePath, buildBrowserTrace({
       appUrl: args.appUrl,
       browserCommand: path.basename(args.browserCommand),
+      browserJourney: args.browserJourney,
       capturedAt,
       durationMs: Date.now() - started,
       ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
       ok: false,
       reason,
-      screenshotPath: stepTwoScreenshotPath,
-      steps,
+      screenshotPath: blockedSteps.at(-1)?.screenshotPath ?? screenshotPathForBrowserStep(args.surface, args.browserJourney.steps[0]),
+      steps: blockedSteps,
       surface: args.surface
     }));
     return {
@@ -988,8 +1066,8 @@ async function captureBrowserSurfaceFixture(args: {
       ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
       ok: false,
       reason,
-      screenshotPath: stepTwoScreenshotPath,
-      steps,
+      screenshotPath: blockedSteps.at(-1)?.screenshotPath ?? screenshotPathForBrowserStep(args.surface, args.browserJourney.steps[0]),
+      steps: blockedSteps,
       surface: args.surface,
       tracePath
     };
@@ -997,50 +1075,27 @@ async function captureBrowserSurfaceFixture(args: {
     await rm(profileDir, { force: true, recursive: true }).catch(() => undefined);
   }
 
-  const stepOneStats = await stat(absoluteStepOneScreenshotPath).catch(() => null);
-  const stepTwoStats = await stat(absoluteStepTwoScreenshotPath).catch(() => null);
-  const ok = Boolean(stepOneStats?.isFile() && stepOneStats.size > 0 && stepTwoStats?.isFile() && stepTwoStats.size > 0 && httpProbe.ok);
+  const screenshotStats = await Promise.all(steps.map((step) => stat(path.join(args.absoluteArtifactRoot, step.screenshotPath)).catch(() => null)));
+  const screenshotsOk = screenshotStats.every((stats) => stats?.isFile() && stats.size > 0);
+  const ok = Boolean(screenshotsOk && httpProbe.ok && steps.every((step) => step.status === "passed"));
   const reason = ok
-    ? `${args.surface.label} completed 2/2 synthetic browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
-    : stepOneStats?.isFile() || stepTwoStats?.isFile()
+    ? `${args.surface.label} completed ${steps.length}/${steps.length} browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
+    : screenshotsOk
       ? `${args.surface.label} persona screenshots exist, but app HTTP readiness was not proven: ${httpProbe.reason}.`
       : `${args.surface.label} persona screenshot artifacts were missing or empty.`;
   const completedAt = new Date().toISOString();
   const durationMs = Date.now() - started;
-  const steps: BrowserPersonaStepCapture[] = [
-    {
-      action: "goto",
-      completedAt,
-      durationMs,
-      id: "step-01-load",
-      label: "Load app",
-      reason: httpProbe.reason,
-      screenshotPath: stepOneScreenshotPath,
-      status: httpProbe.ok ? "passed" : "blocked",
-      url: args.appUrl
-    },
-    {
-      action: "synthetic-fixture-interact",
-      completedAt,
-      durationMs,
-      id: "step-02-interact",
-      label: "Complete primary action",
-      reason: ok ? "Fixture driver captured post-interaction surface." : reason,
-      screenshotPath: stepTwoScreenshotPath,
-      status: ok ? "passed" : "blocked",
-      url: args.appUrl
-    }
-  ];
 
   await writeJson(absoluteTracePath, buildBrowserTrace({
     appUrl: args.appUrl,
     browserCommand: path.basename(args.browserCommand),
+    browserJourney: args.browserJourney,
     capturedAt: completedAt,
     durationMs,
     ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
     ok,
     reason,
-    screenshotPath: stepTwoScreenshotPath,
+    screenshotPath: steps.at(-1)?.screenshotPath ?? screenshotPathForBrowserStep(args.surface, args.browserJourney.steps[0]),
     steps,
     surface: args.surface
   }));
@@ -1051,7 +1106,7 @@ async function captureBrowserSurfaceFixture(args: {
     ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
     ok,
     reason,
-    screenshotPath: stepTwoScreenshotPath,
+    screenshotPath: steps.at(-1)?.screenshotPath ?? screenshotPathForBrowserStep(args.surface, args.browserJourney.steps[0]),
     steps,
     surface: args.surface,
     tracePath
@@ -1062,15 +1117,12 @@ async function captureBrowserSurfaceWithPlaywright(args: {
   absoluteArtifactRoot: string;
   appUrl: string;
   browserCommand: string;
+  browserJourney: BrowserPersonaJourney;
   surface: BrowserSurface;
   timeoutMs: number;
 }): Promise<BrowserSurfaceCapture> {
   const started = Date.now();
-  const stepOneScreenshotPath = path.join("screenshots", `${args.surface.id}-step-01-load.png`);
-  const stepTwoScreenshotPath = path.join("screenshots", `${args.surface.id}-step-02-interact.png`);
   const tracePath = path.join("traces", `${args.surface.id}.json`);
-  const absoluteStepOneScreenshotPath = path.join(args.absoluteArtifactRoot, stepOneScreenshotPath);
-  const absoluteStepTwoScreenshotPath = path.join(args.absoluteArtifactRoot, stepTwoScreenshotPath);
   const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   let browser: Browser | null = null;
@@ -1103,72 +1155,45 @@ async function captureBrowserSurfaceWithPlaywright(args: {
     });
     page = await context.newPage();
 
-    const stepOneStarted = Date.now();
-    await page.goto(args.appUrl, { waitUntil: "domcontentloaded", timeout: args.timeoutMs });
-    await page.screenshot({ path: absoluteStepOneScreenshotPath, fullPage: true });
-    steps.push({
-      action: "goto",
-      completedAt: new Date().toISOString(),
-      durationMs: Date.now() - stepOneStarted,
-      id: "step-01-load",
-      label: "Load app",
-      reason: httpProbe.reason,
-      screenshotPath: stepOneScreenshotPath,
-      status: httpProbe.ok ? "passed" : "blocked",
-      url: sanitizeLoopbackUrl(page.url())
-    });
-
-    const stepTwoStarted = Date.now();
-    const beforeState = await browserPersonaPageState(page);
-    const textInput = page.locator("input:not([type='hidden']):not([type='submit']):not([type='button']), textarea").first();
-    if (await textInput.count() > 0) {
-      await textInput.fill("synthetic.user@example.test", { timeout: Math.min(args.timeoutMs, 5_000) });
+    for (const step of args.browserJourney.steps) {
+      steps.push(await executeBrowserPersonaStep({
+        absoluteArtifactRoot: args.absoluteArtifactRoot,
+        appUrl: args.appUrl,
+        browserJourney: args.browserJourney,
+        page,
+        step,
+        surface: args.surface,
+        timeoutMs: args.timeoutMs
+      }));
     }
-
-    const actionTarget = page.locator("button, input[type='submit'], input[type='button'], [role='button']").first();
-    if (await actionTarget.count() === 0) {
-      throw new Error("no primary button-like control found for persona step");
-    }
-
-    await actionTarget.click({ timeout: Math.min(args.timeoutMs, 5_000) });
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: absoluteStepTwoScreenshotPath, fullPage: true });
-    const afterState = await browserPersonaPageState(page);
-    const changed = beforeState.url !== afterState.url || beforeState.bodyDigest !== afterState.bodyDigest;
-    steps.push({
-      action: "fill-and-click-primary",
-      completedAt: new Date().toISOString(),
-      durationMs: Date.now() - stepTwoStarted,
-      id: "step-02-interact",
-      label: "Complete primary action",
-      reason: changed ? "Primary action changed visible page state." : "Primary action did not change visible page state.",
-      screenshotPath: stepTwoScreenshotPath,
-      status: changed ? "passed" : "blocked",
-      url: sanitizeLoopbackUrl(page.url())
-    });
   } catch (error) {
     const now = new Date().toISOString();
     const reason = compactBrowserError(error);
     if (steps.length === 0) {
       steps.push(...buildBlockedBrowserPersonaSteps({
-        appUrl: args.appUrl,
+        browserJourney: args.browserJourney,
+        currentUrl: args.appUrl,
         reason,
         surface: args.surface,
         timestamp: now
       }));
-    } else if (steps.length === 1) {
-      await page?.screenshot({ path: absoluteStepTwoScreenshotPath, fullPage: true }).catch(() => undefined);
-      steps.push({
-        action: "fill-and-click-primary",
-        completedAt: now,
-        durationMs: Date.now() - started,
-        id: "step-02-interact",
-        label: "Complete primary action",
-        reason,
-        screenshotPath: stepTwoScreenshotPath,
-        status: "blocked",
-        url: page ? sanitizeLoopbackUrl(page.url()) : args.appUrl
-      });
+    } else if (steps.length < args.browserJourney.steps.length) {
+      const nextStep = args.browserJourney.steps[steps.length];
+      if (nextStep) {
+        const screenshotPath = screenshotPathForBrowserStep(args.surface, nextStep);
+        await page?.screenshot({ path: path.join(args.absoluteArtifactRoot, screenshotPath), fullPage: true }).catch(() => undefined);
+        steps.push({
+          action: nextStep.action,
+          completedAt: now,
+          durationMs: Date.now() - started,
+          id: nextStep.id,
+          label: nextStep.label,
+          reason,
+          screenshotPath,
+          status: "blocked",
+          url: page ? sanitizeLoopbackUrl(page.url()) : args.appUrl
+        });
+      }
     }
   } finally {
     await browser?.close().catch(() => undefined);
@@ -1176,7 +1201,7 @@ async function captureBrowserSurfaceWithPlaywright(args: {
 
   const completedAt = new Date().toISOString();
   const durationMs = Date.now() - started;
-  const ok = httpProbe.ok && steps.length >= 2 && steps.every((step) => step.status === "passed");
+  const ok = httpProbe.ok && steps.length === args.browserJourney.steps.length && steps.every((step) => step.status === "passed");
   const reason = ok
     ? `${args.surface.label} completed ${steps.length}/${steps.length} browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
     : `${args.surface.label} browser persona journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
@@ -1184,12 +1209,13 @@ async function captureBrowserSurfaceWithPlaywright(args: {
   await writeJson(absoluteTracePath, buildBrowserTrace({
     appUrl: args.appUrl,
     browserCommand: path.basename(args.browserCommand),
+    browserJourney: args.browserJourney,
     capturedAt: completedAt,
     durationMs,
     ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
     ok,
     reason,
-    screenshotPath: stepTwoScreenshotPath,
+    screenshotPath: steps.at(-1)?.screenshotPath ?? screenshotPathForBrowserStep(args.surface, args.browserJourney.steps[0]),
     steps,
     surface: args.surface
   }));
@@ -1200,11 +1226,155 @@ async function captureBrowserSurfaceWithPlaywright(args: {
     ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
     ok,
     reason,
-    screenshotPath: stepTwoScreenshotPath,
+    screenshotPath: steps.at(-1)?.screenshotPath ?? screenshotPathForBrowserStep(args.surface, args.browserJourney.steps[0]),
     steps,
     surface: args.surface,
     tracePath
   };
+}
+
+async function executeBrowserPersonaStep(args: {
+  absoluteArtifactRoot: string;
+  appUrl: string;
+  browserJourney: BrowserPersonaJourney;
+  page: Page;
+  step: BrowserPersonaStepManifest;
+  surface: BrowserSurface;
+  timeoutMs: number;
+}): Promise<BrowserPersonaStepCapture> {
+  const started = Date.now();
+  const beforeState = await browserPersonaPageState(args.page);
+  const stepTimeoutMs = Math.min(args.timeoutMs, 8_000);
+  if (args.step.action === "goto") {
+    await args.page.goto(resolveBrowserStepUrl(args.appUrl, args.step.path ?? args.browserJourney.startPath), {
+      waitUntil: "domcontentloaded",
+      timeout: args.timeoutMs
+    });
+  } else if (args.step.action === "fill") {
+    if (!args.step.selector) {
+      throw new Error(`${args.step.id} fill step is missing selector`);
+    }
+    await args.page.locator(args.step.selector).first().fill(args.step.value ?? "synthetic.user@example.test", {
+      timeout: stepTimeoutMs
+    });
+  } else if (args.step.action === "click") {
+    let target = args.step.selector
+      ? args.page.locator(args.step.selector).first()
+      : args.page.locator("button, input[type='submit'], input[type='button'], [role='button']").first();
+    if (!args.step.selector) {
+      const textInput = args.page.locator("input:not([type='hidden']):not([type='submit']):not([type='button']), textarea").first();
+      if (await textInput.count() > 0) {
+        await textInput.fill(args.step.value ?? "synthetic.user@example.test", { timeout: stepTimeoutMs });
+      }
+    }
+    if (await target.count() === 0) {
+      throw new Error(`${args.step.id} click step found no target`);
+    }
+    await target.click({ timeout: stepTimeoutMs });
+    await args.page.waitForTimeout(300);
+  } else if (args.step.action === "assertText" || args.step.action === "waitForText") {
+    const expectedText = args.step.expectation?.text ?? args.step.value;
+    if (!expectedText) {
+      throw new Error(`${args.step.id} text assertion step is missing expected text`);
+    }
+    await waitForPageText(args.page, expectedText, stepTimeoutMs);
+  } else if (args.step.action === "waitForSelector") {
+    if (!args.step.selector) {
+      throw new Error(`${args.step.id} selector wait step is missing selector`);
+    }
+    await args.page.locator(args.step.selector).first().waitFor({ state: "visible", timeout: stepTimeoutMs });
+  } else {
+    const exhaustive: never = args.step.action;
+    throw new Error(`Unsupported browser persona action: ${exhaustive}`);
+  }
+
+  const afterState = await browserPersonaPageState(args.page);
+  const screenshotPath = screenshotPathForBrowserStep(args.surface, args.step);
+  await args.page.screenshot({
+    path: path.join(args.absoluteArtifactRoot, screenshotPath),
+    fullPage: true
+  });
+  const assertions = await evaluateBrowserStepExpectations({
+    afterState,
+    beforeState,
+    page: args.page,
+    step: args.step,
+    timeoutMs: stepTimeoutMs
+  });
+  const blockedAssertion = assertions.find((assertion) => assertion.status !== "passed");
+  return {
+    action: args.step.action,
+    ...(assertions.length === 0 ? {} : { assertions }),
+    completedAt: new Date().toISOString(),
+    durationMs: Date.now() - started,
+    id: args.step.id,
+    label: args.step.label,
+    reason: blockedAssertion?.reason ?? `${args.step.action} completed for ${args.step.label}.`,
+    screenshotPath,
+    status: blockedAssertion ? "blocked" : "passed",
+    url: sanitizeLoopbackUrl(args.page.url())
+  };
+}
+
+async function evaluateBrowserStepExpectations(args: {
+  afterState: { bodyDigest: string; url: string };
+  beforeState: { bodyDigest: string; url: string };
+  page: Page;
+  step: BrowserPersonaStepManifest;
+  timeoutMs: number;
+}): Promise<BrowserPersonaAssertionCapture[]> {
+  const assertions: BrowserPersonaAssertionCapture[] = [];
+  const expectation = args.step.expectation;
+  if (!expectation) {
+    return assertions;
+  }
+
+  if (expectation.stateChanged === true) {
+    const changed = args.beforeState.url !== args.afterState.url || args.beforeState.bodyDigest !== args.afterState.bodyDigest;
+    assertions.push({
+      id: "state-changed",
+      reason: changed ? "Visible page state changed." : "Visible page state did not change.",
+      status: changed ? "passed" : "blocked"
+    });
+  }
+  if (expectation.text) {
+    assertions.push(await pageTextAssertion(args.page, expectation.text, args.timeoutMs));
+  }
+  if (expectation.selectorVisible) {
+    const visible = await args.page.locator(expectation.selectorVisible).first().isVisible({ timeout: args.timeoutMs }).catch(() => false);
+    assertions.push({
+      id: "selector-visible",
+      reason: visible ? "Expected selector was visible." : "Expected selector was not visible.",
+      status: visible ? "passed" : "blocked"
+    });
+  }
+  if (expectation.urlIncludes) {
+    const includes = args.afterState.url.includes(expectation.urlIncludes);
+    assertions.push({
+      id: "url-includes",
+      reason: includes ? "URL included expected public-safe substring." : "URL did not include expected public-safe substring.",
+      status: includes ? "passed" : "blocked"
+    });
+  }
+
+  return assertions;
+}
+
+async function pageTextAssertion(page: Page, expectedText: string, timeoutMs: number): Promise<BrowserPersonaAssertionCapture> {
+  const passed = await waitForPageText(page, expectedText, timeoutMs).then(() => true).catch(() => false);
+  return {
+    id: "text-present",
+    reason: passed ? "Expected text was present." : "Expected text was not present.",
+    status: passed ? "passed" : "blocked"
+  };
+}
+
+async function waitForPageText(page: Page, expectedText: string, timeoutMs: number): Promise<void> {
+  await page.waitForFunction(
+    "(needle) => typeof needle === 'string' && Boolean(document.body?.innerText.includes(needle))",
+    expectedText,
+    { timeout: timeoutMs }
+  );
 }
 
 function browserScreenshotArgs(args: {
@@ -1232,35 +1402,56 @@ function browserScreenshotArgs(args: {
 }
 
 function buildBlockedBrowserPersonaSteps(args: {
-  appUrl: string;
+  browserJourney: BrowserPersonaJourney;
+  currentUrl: string;
   reason: string;
   surface: BrowserSurface;
   timestamp: string;
 }): BrowserPersonaStepCapture[] {
-  return [
-    {
-      action: "goto",
-      completedAt: args.timestamp,
-      durationMs: 0,
-      id: "step-01-load",
-      label: "Load app",
-      reason: args.reason,
-      screenshotPath: path.join("screenshots", `${args.surface.id}-step-01-load.png`),
-      status: "blocked",
-      url: args.appUrl
-    },
-    {
-      action: "fill-and-click-primary",
-      completedAt: args.timestamp,
-      durationMs: 0,
-      id: "step-02-interact",
-      label: "Complete primary action",
-      reason: args.reason,
-      screenshotPath: path.join("screenshots", `${args.surface.id}-step-02-interact.png`),
-      status: "blocked",
-      url: args.appUrl
-    }
-  ];
+  return args.browserJourney.steps.map((step) => ({
+    action: step.action,
+    completedAt: args.timestamp,
+    durationMs: 0,
+    id: step.id,
+    label: step.label,
+    reason: args.reason,
+    screenshotPath: screenshotPathForBrowserStep(args.surface, step),
+    status: "blocked",
+    url: sanitizeLoopbackUrl(args.currentUrl)
+  }));
+}
+
+function fixtureAssertionsForBrowserStep(step: BrowserPersonaStepManifest, httpOk: boolean): BrowserPersonaAssertionCapture[] {
+  const assertions: BrowserPersonaAssertionCapture[] = [];
+  const expectation = step.expectation;
+  if (!expectation) {
+    return assertions;
+  }
+  const ids: Array<BrowserPersonaAssertionCapture["id"]> = [];
+  if (expectation.stateChanged === true) ids.push("state-changed");
+  if (expectation.text) ids.push("text-present");
+  if (expectation.selectorVisible) ids.push("selector-visible");
+  if (expectation.urlIncludes) ids.push("url-includes");
+  return ids.map((id) => ({
+    id,
+    reason: httpOk
+      ? "Fixture driver recorded the expected assertion shape."
+      : "Fixture driver could not prove the assertion because app HTTP readiness failed.",
+    status: httpOk ? "passed" : "blocked"
+  }));
+}
+
+function screenshotPathForBrowserStep(surface: BrowserSurface, step: BrowserPersonaStepManifest | undefined): string {
+  return path.join("screenshots", `${surface.id}-${step?.id ?? "step"}.png`);
+}
+
+function resolveBrowserStepUrl(appUrl: string, value: string | undefined): string {
+  const url = new URL(value?.trim() || "", appUrl);
+  const normalized = normalizeLocalAppUrl(url.toString());
+  if (!normalized) {
+    throw new Error("browser step URL must resolve to a loopback HTTP URL");
+  }
+  return normalized;
 }
 
 async function browserPersonaPageState(page: {
@@ -1277,6 +1468,7 @@ async function browserPersonaPageState(page: {
 function buildBrowserTrace(args: {
   appUrl: string;
   browserCommand: string;
+  browserJourney: BrowserPersonaJourney;
   capturedAt: string;
   durationMs: number;
   httpStatus?: number;
@@ -1295,6 +1487,13 @@ function buildBrowserTrace(args: {
     ...(args.httpStatus === undefined ? {} : { httpStatus: args.httpStatus }),
     ok: args.ok,
     reason: args.reason,
+    scenario: {
+      id: args.browserJourney.scenarioId,
+      title: args.browserJourney.scenarioTitle,
+      source: args.browserJourney.source,
+      sourceDigest: args.browserJourney.sourceDigest,
+      stepCount: args.browserJourney.steps.length
+    },
     screenshotPath: args.screenshotPath,
     steps: args.steps,
     surface: args.surface,
@@ -1423,18 +1622,22 @@ function buildBrowserAppEvents(args: {
 
 function createBrowserAppReviewSummary(args: {
   appUrl: string;
+  browserJourney: BrowserPersonaJourney;
   captures: BrowserSurfaceCapture[];
 }): ReviewSummary {
   const passed = args.captures.filter((capture) => capture.ok).length;
   const allPassed = passed === args.captures.length;
+  const usedBuiltinFallback = args.browserJourney.source.startsWith("builtin:");
   return {
     schema: REVIEW_SCHEMA,
     verdict: allPassed ? "pass" : "blocked",
     summary: allPassed
-      ? `Completed ${passed}/${args.captures.length} live browser persona journey${args.captures.length === 1 ? "" : "s"} from ${args.appUrl}.`
-      : `Completed ${passed}/${args.captures.length} live browser persona journeys from ${args.appUrl}; at least one required journey was blocked.`,
+      ? `Completed ${passed}/${args.captures.length} live browser persona journey${args.captures.length === 1 ? "" : "s"} from ${args.appUrl} using ${args.browserJourney.scenarioId}.`
+      : `Completed ${passed}/${args.captures.length} live browser persona journeys from ${args.appUrl} using ${args.browserJourney.scenarioId}; at least one required journey was blocked.`,
     gaps: [
-      "This proof drives a bounded two-step synthetic browser persona; richer app-specific journey manifests remain the next adapter slice.",
+      usedBuiltinFallback
+        ? "This proof used the built-in two-step fallback because no executable browser scenario manifest was found."
+        : `This proof used executable browser steps from ${args.browserJourney.source}.`,
       "Only loopback app URLs are accepted so generated bundles do not preserve private external targets.",
       ...args.captures
         .filter((capture) => !capture.ok)
@@ -3975,6 +4178,8 @@ async function loadDryRunSelection(
   cwd: string,
   mimeticSource: "present" | "missing"
 ): Promise<{
+  browserJourney?: BrowserPersonaJourney;
+  browserJourneyFailure?: string;
   persona: RunBundle["persona"];
   scenario: RunBundle["scenario"];
   warnings: string[];
@@ -3993,6 +4198,7 @@ async function loadDryRunSelection(
   const scenarioPath = "mimetic/scenarios/first-run-smoke.yaml";
   const personaText = await readTextIfExists(path.join(cwd, personaPath));
   const scenarioText = await readTextIfExists(path.join(cwd, scenarioPath));
+  const browserJourneySelection = await loadBrowserPersonaJourneySelection(cwd);
 
   if (personaText === null) {
     warnings.push(`${personaPath} was not found; using built-in persona defaults.`);
@@ -4003,6 +4209,8 @@ async function loadDryRunSelection(
   }
 
   return {
+    ...(browserJourneySelection.journey ? { browserJourney: browserJourneySelection.journey } : {}),
+    ...(browserJourneySelection.failure ? { browserJourneyFailure: browserJourneySelection.failure } : {}),
     persona: personaText === null
       ? builtinPersona
       : {
@@ -4020,7 +4228,246 @@ async function loadDryRunSelection(
           source: scenarioPath,
           sourceDigest: digestText(scenarioText)
         },
-    warnings
+    warnings: [...warnings, ...browserJourneySelection.warnings]
+  };
+}
+
+async function loadBrowserPersonaJourneySelection(cwd: string): Promise<{
+  failure?: string;
+  journey?: BrowserPersonaJourney;
+  warnings: string[];
+}> {
+  const warnings: string[] = [];
+  const scenarioDir = path.join(cwd, "mimetic", "scenarios");
+  const names = await readdir(scenarioDir).catch((error: unknown) => {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      return [] as string[];
+    }
+    throw error;
+  });
+  const files = names
+    .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
+    .sort((left, right) => {
+      if (left === "first-run-smoke.yaml") return -1;
+      if (right === "first-run-smoke.yaml") return 1;
+      return left.localeCompare(right);
+    });
+
+  for (const name of files) {
+    const relativePath = path.join("mimetic", "scenarios", name);
+    const absolutePath = path.join(cwd, relativePath);
+    const text = await readTextIfExists(absolutePath);
+    if (text === null) {
+      continue;
+    }
+    let raw: unknown;
+    try {
+      raw = parseYaml(text);
+    } catch (error) {
+      return {
+        failure: `${relativePath} could not be parsed as YAML; browser persona journey failed closed.`,
+        warnings
+      };
+    }
+
+    const parsed = parseBrowserPersonaJourneyFromScenario({
+      raw,
+      relativePath,
+      sourceDigest: digestText(text)
+    });
+    if (parsed.failure) {
+      return {
+        failure: parsed.failure,
+        warnings
+      };
+    }
+    if (parsed.journey) {
+      return {
+        journey: parsed.journey,
+        warnings
+      };
+    }
+  }
+
+  return { warnings };
+}
+
+function parseBrowserPersonaJourneyFromScenario(args: {
+  raw: unknown;
+  relativePath: string;
+  sourceDigest: string;
+}): { failure?: string; journey?: BrowserPersonaJourney } {
+  if (!isRecord(args.raw)) {
+    return {};
+  }
+  const scenarioId = publicSafeToken(stringValue(args.raw.id), path.basename(args.relativePath, path.extname(args.relativePath)));
+  const scenarioTitle = stringValue(args.raw.title) ?? scenarioId;
+  const goal = stringValue(args.raw.goal) ?? "Drive a public-safe browser persona through the local app.";
+  const browser = isRecord(args.raw.browser) ? args.raw.browser : undefined;
+  const declaredBrowser = args.raw.mode === "browser" || browser !== undefined || hasInlineBrowserSteps(args.raw.steps);
+  if (!declaredBrowser) {
+    return {};
+  }
+
+  let startPath = "/";
+  let rawSteps: unknown[] = [];
+  if (browser !== undefined) {
+    const parsedStartPath = stringValue(browser.startPath) ?? stringValue(browser.start_path);
+    if (parsedStartPath !== undefined) {
+      startPath = parsedStartPath;
+    }
+    if (Array.isArray(browser.steps)) {
+      rawSteps = browser.steps;
+    } else if ("steps" in browser) {
+      return { failure: `${args.relativePath} browser.steps must be a non-empty array.` };
+    }
+  }
+  if (rawSteps.length === 0 && Array.isArray(args.raw.steps)) {
+    rawSteps = args.raw.steps;
+  }
+
+  const steps: BrowserPersonaStepManifest[] = [];
+  for (const [index, rawStep] of rawSteps.entries()) {
+    const parsed = parseBrowserPersonaStep(rawStep, index);
+    if (parsed.failure) {
+      return { failure: `${args.relativePath}: ${parsed.failure}` };
+    }
+    if (parsed.step) {
+      steps.push(parsed.step);
+    }
+  }
+
+  if (browser !== undefined && steps.length === 0) {
+    return { failure: `${args.relativePath} declared browser steps, but no executable steps were found.` };
+  }
+  if (steps.length === 0) {
+    return {};
+  }
+
+  return {
+    journey: {
+      goal,
+      scenarioId,
+      scenarioTitle,
+      source: args.relativePath,
+      sourceDigest: args.sourceDigest,
+      startPath,
+      steps
+    }
+  };
+}
+
+function parseBrowserPersonaStep(rawStep: unknown, index: number): { failure?: string; step?: BrowserPersonaStepManifest } {
+  if (!isRecord(rawStep)) {
+    return { failure: `browser step ${index + 1} must be an object.` };
+  }
+  const inlineBrowser = isRecord(rawStep.browser) ? rawStep.browser : undefined;
+  const source = inlineBrowser ?? rawStep;
+  const hasExecutableFields = inlineBrowser !== undefined || "action" in rawStep || "selector" in rawStep || "path" in rawStep || "expect" in rawStep;
+  if (!hasExecutableFields) {
+    return {};
+  }
+
+  const action = browserPersonaActionValue(source.action);
+  if (!action) {
+    return { failure: `browser step ${index + 1} has unsupported or missing action.` };
+  }
+
+  const label = stringValue(rawStep.name)
+    ?? stringValue(rawStep.label)
+    ?? stringValue(source.label)
+    ?? `Step ${index + 1}`;
+  const id = publicSafeToken(stringValue(rawStep.id) ?? stringValue(source.id), `step-${String(index + 1).padStart(2, "0")}-${label}`);
+  const selector = stringValue(source.selector);
+  const pathValue = stringValue(source.path);
+  const value = stringValue(source.value);
+  const expectation = browserStepExpectationValue(source.expect ?? source.expectation);
+
+  if (action === "fill" && !selector) {
+    return { failure: `${id} fill action requires selector.` };
+  }
+  if (action === "waitForSelector" && !selector) {
+    return { failure: `${id} waitForSelector action requires selector.` };
+  }
+  if ((action === "assertText" || action === "waitForText") && !expectation?.text && !value) {
+    return { failure: `${id} ${action} action requires expect.text or value.` };
+  }
+
+  return {
+    step: {
+      action,
+      ...(expectation ? { expectation } : {}),
+      id,
+      label,
+      ...(pathValue === undefined ? {} : { path: pathValue }),
+      ...(selector === undefined ? {} : { selector }),
+      ...(value === undefined ? {} : { value })
+    }
+  };
+}
+
+function hasInlineBrowserSteps(value: unknown): boolean {
+  return Array.isArray(value) && value.some((entry) => isRecord(entry) && isRecord(entry.browser));
+}
+
+function browserPersonaActionValue(value: unknown): BrowserPersonaAction | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase().replace(/[-_\s]+/g, "");
+  if (normalized === "goto" || normalized === "open" || normalized === "navigate") return "goto";
+  if (normalized === "click" || normalized === "press") return "click";
+  if (normalized === "fill" || normalized === "type") return "fill";
+  if (normalized === "asserttext" || normalized === "expecttext") return "assertText";
+  if (normalized === "waitfortext") return "waitForText";
+  if (normalized === "waitforselector") return "waitForSelector";
+  return null;
+}
+
+function browserStepExpectationValue(value: unknown): BrowserPersonaStepExpectation | undefined {
+  if (typeof value === "string" && value.trim()) {
+    return { text: value.trim() };
+  }
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const text = stringValue(value.text);
+  const selectorVisible = stringValue(value.selectorVisible) ?? stringValue(value.selector_visible);
+  const urlIncludes = stringValue(value.urlIncludes) ?? stringValue(value.url_includes);
+  const stateChanged = booleanValue(value.stateChanged) ?? booleanValue(value.state_changed);
+  const expectation: BrowserPersonaStepExpectation = {
+    ...(selectorVisible === undefined ? {} : { selectorVisible }),
+    ...(stateChanged === undefined ? {} : { stateChanged }),
+    ...(text === undefined ? {} : { text }),
+    ...(urlIncludes === undefined ? {} : { urlIncludes })
+  };
+  return Object.keys(expectation).length === 0 ? undefined : expectation;
+}
+
+function builtinBrowserPersonaJourney(): BrowserPersonaJourney {
+  return {
+    goal: "Drive a synthetic persona through a two-step browser journey against a running local app URL.",
+    scenarioId: "browser-persona-two-step",
+    scenarioTitle: "Browser Persona Two-Step Journey",
+    source: "builtin:browser-persona-two-step",
+    sourceDigest: digestText("browser-persona-two-step"),
+    startPath: "",
+    steps: [
+      {
+        action: "goto",
+        id: "step-01-load",
+        label: "Load app"
+      },
+      {
+        action: "click",
+        expectation: {
+          stateChanged: true
+        },
+        id: "step-02-interact",
+        label: "Complete primary action",
+        value: "synthetic.user@example.test"
+      }
+    ]
   };
 }
 
@@ -4053,6 +4500,23 @@ function readYamlScalar(text: string, key: string): string | null {
   }
 
   return match[1].replace(/^["']|["']$/g, "");
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function publicSafeToken(value: string | undefined, fallback: string): string {
+  const candidate = (value ?? fallback)
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return candidate || fallback;
 }
 
 function digestText(text: string): string {

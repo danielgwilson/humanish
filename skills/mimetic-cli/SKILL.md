@@ -87,6 +87,45 @@ Scenarios should define the target app surface, start URL, task intent,
 success signals, and failure signals. Keep app-specific truth in the target
 repo's `mimetic/` files, not in the package or this skill.
 
+When the app can run locally, make at least one scenario executable with a
+`browser.steps` manifest so `mimetic run --app-url` can drive the app instead
+of falling back to the generic two-step proof:
+
+```yaml
+schema: mimetic.scenario.v1
+id: product-core-flow
+title: Product core flow
+persona: synthetic-new-user
+goal: Reach and verify the first meaningful app state with synthetic data.
+mode: browser
+browser:
+  startPath: /
+  steps:
+    - id: open-home
+      label: Open the app
+      action: goto
+      path: /
+      expect:
+        text: "Get started"
+    - id: enter-synthetic-input
+      label: Enter synthetic fixture input
+      action: fill
+      selector: "input[name='query']"
+      value: "synthetic fixture"
+    - id: submit-primary-action
+      label: Submit the primary action
+      action: click
+      selector: "button[type='submit']"
+      expect:
+        stateChanged: true
+```
+
+Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
+and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
+`urlIncludes`, and `stateChanged`. Use public-safe selectors and synthetic
+values only. Do not write real emails, names, customer data, tickets, logs, or
+tokens into scenario files.
+
 ## Authoring Labs
 
 Create reusable simulation runs as `.yaml` lab manifests:

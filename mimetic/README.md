@@ -28,5 +28,10 @@ Format standard:
 - `.yml` is reserved for outside ecosystem files such as GitHub Actions, not
   Mimetic source.
 
+Executable browser journeys live in `mimetic/scenarios/*.yaml` under
+`browser.steps`. `mimetic run --app-url <loopback-url>` uses those steps when
+present and falls back to the built-in two-step browser persona proof when no
+executable browser scenario exists.
+
 This config is the first full local TUI harness target; future slices can decide
 whether TUI-specific fanout is needed beyond the current `codex-exec` fanout.

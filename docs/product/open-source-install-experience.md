@@ -186,6 +186,37 @@ Live execution should be staged after the dry-run path is boring:
 Do not make E2B, OpenAI, or GitHub credentials part of the first successful
 run.
 
+For step 3, app-specific browser scenarios are authored as `.yaml` source under
+`mimetic/scenarios/*.yaml`:
+
+```yaml
+schema: mimetic.scenario.v1
+id: core-browser-flow
+title: Core browser flow
+persona: synthetic-new-user
+goal: Reach the first meaningful product state with synthetic data.
+mode: browser
+browser:
+  startPath: /
+  steps:
+    - id: open-home
+      label: Open the app
+      action: goto
+      path: /
+      expect:
+        text: "Get started"
+    - id: submit-primary-action
+      label: Submit the primary action
+      action: click
+      selector: "button[type='submit']"
+      expect:
+        stateChanged: true
+```
+
+`mimetic run --app-url <loopback-url>` uses the first executable browser
+scenario it finds. If no executable browser steps exist, Mimetic falls back to
+the built-in two-step browser persona proof and says so in warnings/review.
+
 Live E2B desktop labs are an optional advanced path. Target projects that need
 them should install `@e2b/desktop` explicitly instead of receiving that
 substrate as part of the default Mimetic package install. When a GitHub token is

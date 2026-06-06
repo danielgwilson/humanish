@@ -126,6 +126,7 @@ export interface OssMetaLabCompletion {
   exitCode?: number;
   logTail?: string;
   nestedObserverPresent?: boolean;
+  nestedStepTraceSummary?: OssMetaLabNestedStepTraceSummary;
   nestedVerifyPassed?: boolean;
   reason: string;
   setupQuality?: RunSetupQualitySnapshot;
@@ -133,6 +134,43 @@ export interface OssMetaLabCompletion {
   visualReason?: string;
   visualStatus?: OssMetaLabVisualStatus;
   visualWindowCount?: number;
+}
+
+export interface OssMetaLabNestedStepTraceSummary {
+  schema: "mimetic.oss-meta-nested-step-trace-summary.v1";
+  redaction: {
+    status: "passed";
+    notes: string;
+  };
+  counts: {
+    blockedSteps: number;
+    passedSteps: number;
+    surfaces: number;
+    totalSteps: number;
+    traces: number;
+  };
+  scenario?: {
+    id: string;
+    source?: string;
+    sourceDigest?: string;
+    stepCount?: number;
+    title?: string;
+  };
+  status: "passed" | "blocked" | "unknown";
+  surfaces: Array<{
+    id: string;
+    label?: string;
+    ok: boolean;
+    reason: string;
+    steps: Array<{
+      action: string;
+      assertionStatuses?: string[];
+      id: string;
+      label?: string;
+      reason: string;
+      status: "passed" | "blocked" | "unknown";
+    }>;
+  }>;
 }
 
 export interface OssMetaLabAppServerActorEvidence {
@@ -1985,6 +2023,17 @@ function buildMetaBundle(args: {
             simId: assignment.simId,
             streamId: assignment.streamId
           });
+          if (completion.nestedStepTraceSummary) {
+            events.push({
+              id: `event-${String(assignment.index).padStart(3, "0")}-nested-step-trace`,
+              at: completion.checkedAt,
+              level: completion.nestedStepTraceSummary.status === "passed" ? "info" : "warn",
+              type: "oss-meta.nested.step_trace.summary",
+              message: `${repoLabel}: Nested browser trace summary captured ${completion.nestedStepTraceSummary.counts.passedSteps}/${completion.nestedStepTraceSummary.counts.totalSteps} steps across ${completion.nestedStepTraceSummary.counts.surfaces} surface(s).`,
+              simId: assignment.simId,
+              streamId: assignment.streamId
+            });
+          }
         }
       } else if (liveDesktop.bootstrap?.status === "failed") {
         events.push({
@@ -2007,6 +2056,17 @@ function buildMetaBundle(args: {
         simId: assignment.simId,
         streamId: assignment.streamId
       });
+      if (completion.nestedStepTraceSummary) {
+        events.push({
+          id: `event-${String(assignment.index).padStart(3, "0")}-nested-step-trace`,
+          at: completion.checkedAt,
+          level: completion.nestedStepTraceSummary.status === "passed" ? "info" : "warn",
+          type: "oss-meta.nested.step_trace.summary",
+          message: `${repoLabel}: Nested browser trace summary captured ${completion.nestedStepTraceSummary.counts.passedSteps}/${completion.nestedStepTraceSummary.counts.totalSteps} steps across ${completion.nestedStepTraceSummary.counts.surfaces} surface(s).`,
+          simId: assignment.simId,
+          streamId: assignment.streamId
+        });
+      }
     } else if (liveDesktop?.error) {
       events.push({
         id: `event-${String(assignment.index).padStart(3, "0")}-stream-error`,
@@ -2527,7 +2587,7 @@ function buildMetaFeedbackCandidates(args: {
         actor: "codex-tui",
         substrate: "e2b-desktop",
         failure_owner: "actor",
-        summary: `${repoLabel} Mimetic setup needs review`,
+        summary: `Generated Mimetic setup for ${repoLabel} needs review`,
         expected: "The setup actor should create committed Mimetic source files, useful personas/scenarios, a package script, and a .mimetic/ runtime ignore without preserving private state.",
         actual: failedSetupChecks.map((check) => `${check.label}: ${check.detail}`).join(" "),
         evidence: [
@@ -2594,7 +2654,7 @@ function buildMetaFeedbackCandidates(args: {
         actor: "codex-tui",
         substrate: "e2b-desktop",
         failure_owner: "actor",
-        summary: `${repoLabel} Mimetic setup was ${studyQuality.rating}`,
+        summary: `Generated Mimetic setup for ${repoLabel} was ${studyQuality.rating}`,
         expected: "The setup actor should turn Mimetic init into an app-aware user-study plan with customized coverage, personas, scenarios, app-url proof, and public-safe feedback.",
         actual: studyQuality.summary,
         evidence: [
@@ -3036,6 +3096,7 @@ async function writeActorEvidenceArtifacts(
     || desktop.completion?.actorLogTail
     || desktop.completion?.appServerActorEvidence
     || desktop.completion?.nestedObserverPresent !== undefined
+    || desktop.completion?.nestedStepTraceSummary !== undefined
     || desktop.completion?.nestedVerifyPassed !== undefined
     || desktop.completion?.setupQuality
   );
@@ -3095,7 +3156,11 @@ async function writeActorEvidenceArtifacts(
       written += 1;
     }
 
-    if (desktop.completion && (desktop.completion.nestedObserverPresent !== undefined || desktop.completion.nestedVerifyPassed !== undefined)) {
+    if (desktop.completion && (
+      desktop.completion.nestedObserverPresent !== undefined
+      || desktop.completion.nestedStepTraceSummary !== undefined
+      || desktop.completion.nestedVerifyPassed !== undefined
+    )) {
       const relativePath = path.join("nested-evidence", `${baseName}-nested-proof.json`);
       await writeJson(path.join(artifactRoot, relativePath), {
         schema: "mimetic.oss-meta-nested-proof.v1",
@@ -3109,6 +3174,7 @@ async function writeActorEvidenceArtifacts(
         checkedAt: desktop.completion.checkedAt,
         nestedObserverPresent: desktop.completion.nestedObserverPresent === true,
         nestedVerifyPassed: desktop.completion.nestedVerifyPassed === true,
+        ...(desktop.completion.nestedStepTraceSummary ? { stepTraceSummary: desktop.completion.nestedStepTraceSummary } : {}),
         appStatus: desktop.completion.appStatus ?? "unknown",
         actorStatus: desktop.completion.actorStatus ?? "unknown"
       });
@@ -3217,10 +3283,18 @@ function redactCompletionRepoMentions(completion: OssMetaLabCompletion, repo: st
     ...(completion.appServerActorEvidence === undefined ? {} : { appServerActorEvidence: redactAppServerActorEvidence(completion.appServerActorEvidence, redaction) }),
     ...(completion.appReason === undefined ? {} : { appReason: redactPrivateRuntimeMentions(completion.appReason, redaction) }),
     ...(completion.logTail === undefined ? {} : { logTail: redactPrivateRuntimeMentions(completion.logTail, redaction) }),
+    ...(completion.nestedStepTraceSummary === undefined ? {} : { nestedStepTraceSummary: redactNestedStepTraceSummary(completion.nestedStepTraceSummary, redaction) }),
     reason: redactPrivateRuntimeMentions(completion.reason, redaction),
     ...(completion.setupQuality === undefined ? {} : { setupQuality: redactSetupQualityRepoMentions(completion.setupQuality, repo) }),
     ...(completion.visualReason === undefined ? {} : { visualReason: redactPrivateRuntimeMentions(completion.visualReason, redaction) })
   };
+}
+
+function redactNestedStepTraceSummary(
+  summary: OssMetaLabNestedStepTraceSummary,
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined }
+): OssMetaLabNestedStepTraceSummary {
+  return normalizeNestedStepTraceSummary(redactJsonValue(summary, redaction)) ?? summary;
 }
 
 function redactAppServerActorEvidence(
@@ -3373,6 +3447,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       exitCode?: unknown;
       logTail?: unknown;
       nestedObserverPresent?: unknown;
+      nestedStepTraceSummary?: unknown;
       nestedVerifyStatus?: unknown;
       reason?: unknown;
       setupQuality?: unknown;
@@ -3393,6 +3468,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
     const actorStatus = normalizeActorStatus(parsed.actorStatus);
     const visualStatus = normalizeVisualStatus(parsed.visualStatus);
     const appServerActorEvidence = normalizeAppServerActorEvidence(parsed.appServerActorEvidence);
+    const nestedStepTraceSummary = normalizeNestedStepTraceSummary(parsed.nestedStepTraceSummary);
 
     return {
       ...(typeof parsed.actorLogPath === "string" && parsed.actorLogPath.trim() ? { actorLogPath: sanitizeRemoteLog(parsed.actorLogPath) } : {}),
@@ -3410,6 +3486,7 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       ...(typeof parsed.exitCode === "number" ? { exitCode: parsed.exitCode } : {}),
       ...(typeof parsed.logTail === "string" ? { logTail: sanitizeRemoteLog(parsed.logTail) } : {}),
       ...(typeof parsed.nestedObserverPresent === "boolean" ? { nestedObserverPresent: parsed.nestedObserverPresent } : {}),
+      ...(nestedStepTraceSummary ? { nestedStepTraceSummary } : {}),
       ...(nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed }),
       reason: typeof parsed.reason === "string" && parsed.reason.trim()
         ? sanitizeRemoteLog(parsed.reason).replace(/\s+/g, " ").slice(0, 240)
@@ -3456,6 +3533,103 @@ function normalizeActorStatus(value: unknown): OssMetaLabActorStatus | null {
     || value === "unknown"
     ? value
     : null;
+}
+
+function normalizeNestedStepTraceSummary(value: unknown): OssMetaLabNestedStepTraceSummary | null {
+  if (!isRecord(value) || !Array.isArray(value.surfaces)) {
+    return null;
+  }
+  const surfaces = value.surfaces
+    .slice(0, 8)
+    .filter((surface) => isRecord(surface))
+    .map((surface) => {
+      const steps = Array.isArray(surface.steps)
+        ? surface.steps
+          .slice(0, 20)
+          .filter((step) => isRecord(step))
+          .map((step) => {
+            const status = normalizeNestedStepStatus(step.status);
+            const assertionStatuses = Array.isArray(step.assertionStatuses)
+              ? step.assertionStatuses
+                .map((statusValue) => publicSafeSummaryToken(statusValue, "assertion"))
+                .filter(Boolean)
+                .slice(0, 12)
+              : undefined;
+            return {
+              action: publicSafeSummaryToken(step.action, "action"),
+              ...(assertionStatuses && assertionStatuses.length > 0 ? { assertionStatuses } : {}),
+              id: publicSafeSummaryToken(step.id, "step"),
+              ...(typeof step.label === "string" && step.label.trim() ? { label: sanitizeNestedTraceText(step.label, 140) } : {}),
+              reason: sanitizeNestedTraceText(step.reason, 240),
+              status
+            };
+          })
+        : [];
+      return {
+        id: publicSafeSummaryToken(surface.id, "surface"),
+        ...(typeof surface.label === "string" && surface.label.trim() ? { label: sanitizeNestedTraceText(surface.label, 140) } : {}),
+        ok: surface.ok === true,
+        reason: sanitizeNestedTraceText(surface.reason, 240),
+        steps
+      };
+    })
+    .filter((surface) => surface.steps.length > 0);
+  if (surfaces.length === 0) {
+    return null;
+  }
+
+  const totalSteps = surfaces.reduce((total, surface) => total + surface.steps.length, 0);
+  const passedSteps = surfaces.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "passed").length, 0);
+  const blockedSteps = surfaces.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "blocked").length, 0);
+  const scenario = isRecord(value.scenario)
+    ? {
+        id: publicSafeSummaryToken(value.scenario.id, "scenario"),
+        ...(typeof value.scenario.source === "string" && isSafeRepoRelativePath(value.scenario.source) ? { source: sanitizeSetupQualityPath(value.scenario.source) } : {}),
+        ...(typeof value.scenario.sourceDigest === "string" && value.scenario.sourceDigest.trim() ? { sourceDigest: publicSafeSummaryToken(value.scenario.sourceDigest, "digest") } : {}),
+        ...(typeof value.scenario.stepCount === "number" && Number.isFinite(value.scenario.stepCount) ? { stepCount: Math.max(0, Math.round(value.scenario.stepCount)) } : {}),
+        ...(typeof value.scenario.title === "string" && value.scenario.title.trim() ? { title: sanitizeNestedTraceText(value.scenario.title, 140) } : {})
+      }
+    : undefined;
+
+  return {
+    schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+    redaction: {
+      status: "passed",
+      notes: "Nested browser trace summary stores counts and redacted step metadata only; URLs, auth streams, remote paths, screenshots, and raw DOM text are omitted."
+    },
+    counts: {
+      blockedSteps,
+      passedSteps,
+      surfaces: surfaces.length,
+      totalSteps,
+      traces: surfaces.length
+    },
+    ...(scenario ? { scenario } : {}),
+    status: blockedSteps > 0 ? "blocked" : passedSteps === totalSteps ? "passed" : "unknown",
+    surfaces
+  };
+}
+
+function normalizeNestedStepStatus(value: unknown): "passed" | "blocked" | "unknown" {
+  return value === "passed" || value === "blocked" ? value : "unknown";
+}
+
+function publicSafeSummaryToken(value: unknown, fallback: string): string {
+  const token = sanitizeSetupQualityText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return token || fallback;
+}
+
+function sanitizeNestedTraceText(value: unknown, maxLength: number): string {
+  return sanitizeSetupQualityText(value)
+    .replace(/https?:\/\/\S+/gi, "[redacted-url]")
+    .replace(/(?:^|\s)\/(?:home|tmp|var|Users)\/\S+/g, " [redacted-path]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function normalizeAppServerActorEvidence(value: unknown): OssMetaLabAppServerActorEvidence | null {
@@ -3878,7 +4052,7 @@ write_completion() {
     nested_observer_present=true
   fi
 
-  node - "$COMPLETION_PATH" "$LOG_PATH" "$APP_DIR" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" "$STREAM_ID" "$CODEX_APP_SERVER_STATE_PATH" "$CODEX_APP_SERVER_ROOT_PATH" <<'NODE' || true
+  node - "$COMPLETION_PATH" "$LOG_PATH" "$APP_DIR" "$status" "$reason" "$exit_code" "$nested_observer_present" "$NESTED_OBSERVER" "$NESTED_VERIFY_STATUS" "$APP_STATUS" "$APP_REASON" "$APP_URL" "$APP_PID" "$APP_LOG_PATH" "$ACTOR_STATUS" "$ACTOR_PID" "$ACTOR_LOG_PATH" "$ACTOR_LAST_MESSAGE_PATH" "$VISUAL_STATUS" "$VISUAL_REASON" "$VISUAL_WINDOW_COUNT" "$STREAM_ID" "$CODEX_APP_SERVER_STATE_PATH" "$CODEX_APP_SERVER_ROOT_PATH" <<'NODE' || true
 const fs = require("node:fs");
 const path = require("node:path");
 const [
@@ -3889,6 +4063,7 @@ const [
   reason,
   exitCode,
   nestedObserverPresent,
+  nestedObserverPath,
   nestedVerifyStatus,
   appStatus,
   appReason,
@@ -4195,6 +4370,82 @@ const appServerActorEvidence = (() => {
     return null;
   }
 })();
+const nestedStepTraceSummary = (() => {
+  try {
+    const runRoot = path.dirname(path.dirname(String(nestedObserverPath || "")));
+    const tracesDir = path.join(runRoot, "traces");
+    if (!fs.existsSync(tracesDir)) return null;
+    const traceNames = fs.readdirSync(tracesDir)
+      .filter((name) => name.endsWith(".json"))
+      .sort()
+      .slice(0, 8);
+    if (!traceNames.length) return null;
+    const surfaceSummaries = [];
+    let scenario = null;
+    for (const name of traceNames) {
+      let trace = null;
+      try {
+        trace = JSON.parse(fs.readFileSync(path.join(tracesDir, name), "utf8"));
+      } catch {
+        continue;
+      }
+      if (!trace || typeof trace !== "object" || !Array.isArray(trace.steps)) continue;
+      if (!scenario && trace.scenario && typeof trace.scenario === "object") {
+        scenario = {
+          id: cleanText(trace.scenario.id || "scenario"),
+          ...(trace.scenario.source ? { source: safeRel(trace.scenario.source) } : {}),
+          ...(trace.scenario.sourceDigest ? { sourceDigest: cleanText(trace.scenario.sourceDigest) } : {}),
+          ...(Number.isFinite(trace.scenario.stepCount) ? { stepCount: trace.scenario.stepCount } : {}),
+          ...(trace.scenario.title ? { title: cleanText(trace.scenario.title) } : {})
+        };
+      }
+      const steps = trace.steps.slice(0, 20).map((step) => {
+        const assertions = Array.isArray(step.assertions)
+          ? step.assertions.slice(0, 12).map((assertion) => cleanText((assertion.id || "assertion") + ":" + (assertion.status || "unknown")))
+          : [];
+        return {
+          action: cleanText(step.action || "action"),
+          ...(assertions.length ? { assertionStatuses: assertions } : {}),
+          id: cleanText(step.id || "step"),
+          ...(step.label ? { label: cleanText(step.label) } : {}),
+          reason: cleanText(step.reason || ""),
+          status: step.status === "passed" || step.status === "blocked" ? step.status : "unknown"
+        };
+      });
+      if (!steps.length) continue;
+      surfaceSummaries.push({
+        id: cleanText(trace.surface && trace.surface.id ? trace.surface.id : path.basename(name, ".json")),
+        ...(trace.surface && trace.surface.label ? { label: cleanText(trace.surface.label) } : {}),
+        ok: trace.ok === true,
+        reason: cleanText(trace.reason || ""),
+        steps
+      });
+    }
+    if (!surfaceSummaries.length) return null;
+    const totalSteps = surfaceSummaries.reduce((total, surface) => total + surface.steps.length, 0);
+    const passedSteps = surfaceSummaries.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "passed").length, 0);
+    const blockedSteps = surfaceSummaries.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "blocked").length, 0);
+    return {
+      schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+      redaction: {
+        status: "passed",
+        notes: "Projected inside disposable sandbox from nested Mimetic trace JSON; URLs, screenshots, and remote paths are omitted."
+      },
+      counts: {
+        blockedSteps,
+        passedSteps,
+        surfaces: surfaceSummaries.length,
+        totalSteps,
+        traces: traceNames.length
+      },
+      ...(scenario ? { scenario } : {}),
+      status: blockedSteps > 0 ? "blocked" : passedSteps === totalSteps ? "passed" : "unknown",
+      surfaces: surfaceSummaries
+    };
+  } catch {
+    return null;
+  }
+})();
 fs.writeFileSync(completionPath, JSON.stringify({
   schema: "mimetic.oss-meta-bootstrap-completion.v1",
   status,
@@ -4212,6 +4463,7 @@ fs.writeFileSync(completionPath, JSON.stringify({
   actorLastMessageTail,
   ...(appServerActorEvidence ? { appServerActorEvidence } : {}),
   nestedObserverPresent: nestedObserverPresent === "true",
+  ...(nestedStepTraceSummary ? { nestedStepTraceSummary } : {}),
   nestedVerifyStatus,
   setupQuality,
   visualStatus,
@@ -4628,7 +4880,11 @@ install_mimetic_cli() {
 
   case "$pm" in
     pnpm)
-      PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false pnpm add --save-dev --workspace-root "$spec" --ignore-scripts
+      if pnpm root -w >/dev/null 2>&1; then
+        PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false pnpm add --save-dev --workspace-root "$spec" --ignore-scripts
+      else
+        PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false npm_config_verify_deps_before_run=false pnpm add --save-dev "$spec" --ignore-scripts
+      fi
       ;;
     yarn)
       YARN_ENABLE_SCRIPTS=0 yarn add -D "$spec"
@@ -4769,6 +5025,76 @@ PROMPT
   open_codex_app_server_client || true
 }
 
+write_app_specific_browser_scenario() {
+  if [[ "$APP_STATUS" != "running" || -z "$APP_URL" ]]; then
+    return 0
+  fi
+
+  node - "$APP_DIR" "$APP_URL" <<'NODE' || true
+const fs = require("node:fs");
+const path = require("node:path");
+const [appDir, appUrl] = process.argv.slice(2);
+const clean = (value, fallback = "") => String(value || fallback)
+  .replace(/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, "[redacted-openai-key]")
+  .replace(/e2b_[A-Za-z0-9_-]{12,}/g, "[redacted-e2b-key]")
+  .replace(/(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,})/g, "[redacted-github-token]")
+  .replace(/https?:\\/\\/[^\\s]+/g, "[redacted-url]")
+  .replace(/\\s+/g, " ")
+  .trim()
+  .slice(0, 160);
+const yamlScalar = (value) => clean(value, "").replace(/'/g, "''");
+const token = (value, fallback) => clean(value, fallback).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || fallback;
+const visibleTextFromHtml = (html) => clean(html
+  .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
+  .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+  .replace(/<[^>]+>/g, " "), "");
+const titleFromHtml = (html) => {
+  const match = html.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i);
+  return clean(match ? match[1] : "", "");
+};
+(async () => {
+  try {
+    const response = await fetch(appUrl);
+    const html = await response.text();
+    const title = titleFromHtml(html);
+    const bodyText = visibleTextFromHtml(html);
+    const expectedText = clean(bodyText.split(/[.!?\\n]/).find((part) => clean(part, "").length >= 4) || title, "");
+    const scenarioId = token(title || "app-surface-browser", "app-surface-browser");
+    const scenarioPath = path.join(appDir, "mimetic", "scenarios", "app-surface-browser.yaml");
+    fs.mkdirSync(path.dirname(scenarioPath), { recursive: true });
+    const lines = [
+      "schema: mimetic.scenario.v1",
+      "id: " + scenarioId,
+      "title: App surface browser proof",
+      "persona: synthetic-new-user",
+      "goal: Prove the running app exposes a public-safe browser surface for synthetic users.",
+      "mode: browser",
+      "browser:",
+      "  startPath: /",
+      "  steps:",
+      "    - id: app-surface-load",
+      "      label: Load the running app surface",
+      "      action: goto",
+      "      path: /",
+      "      expect:",
+      "        selectorVisible: body",
+      ...(expectedText ? [
+        "        text: '" + yamlScalar(expectedText) + "'"
+      ] : []),
+      "    - id: app-surface-ready",
+      "      label: Confirm the browser can observe the app body",
+      "      action: waitForSelector",
+      "      selector: body"
+    ];
+    fs.writeFileSync(scenarioPath, lines.join("\\n") + "\\n");
+    console.log("browser_scenario=authored path=mimetic/scenarios/app-surface-browser.yaml expected_text=" + (expectedText ? "present" : "absent"));
+  } catch (error) {
+    console.log("browser_scenario=skipped reason=" + clean(error && error.message ? error.message : error, "unknown"));
+  }
+})();
+NODE
+}
+
 start_target_app_surface() {
   echo
   echo "== target app surface =="
@@ -4830,6 +5156,7 @@ start_target_app_surface() {
     APP_REASON="target app responded at $APP_URL"
     open_browser_url "$APP_URL" app-desktop 0 0 760 520
     open_browser_url "$APP_URL" app-compact 0 520 430 420
+    write_app_specific_browser_scenario || true
   else
     APP_STATUS=blocked
     APP_REASON="target app did not become HTTP-ready at $APP_URL"

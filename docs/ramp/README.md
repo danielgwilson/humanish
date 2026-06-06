@@ -65,15 +65,17 @@ Implemented:
 
 Still not good enough:
 
-- live `--app-url` browser proof now drives a bounded desktop/mobile two-step
-  browser persona journey, but richer app-specific scenario manifests are not
-  first-class yet;
+- live `--app-url` browser proof now supports app-specific executable
+  `browser.steps` in `mimetic/scenarios/*.yaml`, with headed provider-backed
+  public proof against two app/tool targets;
 - live PTY and Codex UI lanes need stronger completion health;
 - OSS lab lanes can report nested Observer health, target app readiness, actor
-  evidence, and setup-quality filesystem checks when a target app starts, but
-  need repeated fresh-agent trials across more disposable public apps;
-- Observer evidence has real screenshots/traces for browser app proof; broader
-  adapter-driven app-specific persona navigation remains the next gap.
+  evidence, setup-quality filesystem checks, and nested browser step summaries
+  when a target app starts, but need repeated fresh-agent trials across more
+  disposable public apps;
+- Observer evidence has real screenshots/traces for browser app proof; richer
+  multi-step product journeys and broader multi-persona matrices remain the next
+  gap.
 
 ## First Commands
 

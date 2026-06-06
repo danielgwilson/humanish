@@ -623,6 +623,10 @@ describe("OSS lab command", () => {
       expect(script).toContain("NESTED_OBSERVER='/home/user/maciekt07-todoapp/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html'");
       expect(script).not.toContain("/home/user/mimetic-oss-lab/maciekt07-todoapp/repo");
       expect(script).toContain("start_target_app_surface");
+      expect(script).toContain("write_app_specific_browser_scenario");
+      expect(script).toContain("app-surface-browser.yaml");
+      expect(script).toContain("browser_scenario=authored");
+      expect(script).toContain("selectorVisible: body");
       expect(script).toContain('npx --no-install mimetic run --app-url "$APP_URL" --sims 2');
       expect(script).toContain('open_browser_url "$APP_URL" app-desktop');
       expect(script).toContain("arrange_lab_windows");
@@ -664,13 +668,15 @@ describe("OSS lab command", () => {
       expect(script).toContain("codex-app-server/transcript.txt");
       expect(script).toContain("mimetic.codex-app-server-trace.projected.v1");
       expect(script).toContain("projectTraceJson");
+      expect(script).toContain("mimetic.oss-meta-nested-step-trace-summary.v1");
+      expect(script).toContain("nestedStepTraceSummary");
       expect(script).not.toContain("codex_app_server_client=placeholder");
       expect(script).not.toContain("source=codex-app-server-client");
       expect(script).not.toContain("remote-control-hook-pending");
       expect(script).toContain("Codex app-server mode requested.");
       expect(script).toContain("target app, nested Observer, and Codex app-server client");
       expect(script).toContain('pnpm add --save-dev --workspace-root "$spec" --ignore-scripts');
-      expect(script).not.toContain('pnpm add -D "$spec" --ignore-scripts');
+      expect(script).toContain('pnpm add --save-dev "$spec" --ignore-scripts');
       expect(script).toContain("@openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check");
       expect(script).toContain("-m \\$actor_model_q");
       expect(script).toContain("--dangerously-bypass-approvals-and-sandbox");
@@ -1183,6 +1189,74 @@ describe("OSS lab command", () => {
       appUrl: "http://127.0.0.1:5173",
       checkedAt: "2026-06-04T10:06:00.000Z",
       nestedObserverPresent: true,
+      nestedStepTraceSummary: {
+        schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+        redaction: {
+          status: "passed",
+          notes: "Fixture summary stores public-safe nested trace metadata only."
+        },
+        counts: {
+          blockedSteps: 0,
+          passedSteps: 4,
+          surfaces: 2,
+          totalSteps: 4,
+          traces: 2
+        },
+        scenario: {
+          id: "todo-list-browser",
+          source: "mimetic/scenarios/todo-list-browser.yaml",
+          sourceDigest: "abcdef123456",
+          stepCount: 2,
+          title: "Todo list browser"
+        },
+        status: "passed",
+        surfaces: [
+          {
+            id: "desktop",
+            label: "Desktop browser surface",
+            ok: true,
+            reason: "Desktop browser surface completed 2/2 browser persona steps.",
+            steps: [
+              {
+                action: "goto",
+                assertionStatuses: ["text-present:passed"],
+                id: "open-home",
+                label: "Open home",
+                reason: "goto completed for Open home.",
+                status: "passed"
+              },
+              {
+                action: "click",
+                assertionStatuses: ["state-changed:passed"],
+                id: "create-todo",
+                label: "Create todo",
+                reason: "Visible page state changed.",
+                status: "passed"
+              }
+            ]
+          },
+          {
+            id: "mobile",
+            label: "Mobile browser surface",
+            ok: true,
+            reason: "Mobile browser surface completed 2/2 browser persona steps.",
+            steps: [
+              {
+                action: "goto",
+                id: "open-home",
+                reason: "goto completed for Open home.",
+                status: "passed"
+              },
+              {
+                action: "click",
+                id: "create-todo",
+                reason: "Visible page state changed.",
+                status: "passed"
+              }
+            ]
+          }
+        ]
+      },
       nestedVerifyPassed: true,
       reason: "Target app surface, nested Mimetic proof, nested Observer, and Codex app-server actor evidence were checked.",
       setupQuality: highLeverageSetupQualityFixture(),
@@ -1257,6 +1331,9 @@ describe("OSS lab command", () => {
       state: "completed"
     });
     expect(bundle.streams[0]?.ui?.nestedObserverPath).toBe("nested-evidence/oss-01-desktop-nested-proof.json");
+    expect(bundle.events.map((event) => event.type)).toContain("oss-meta.nested.step_trace.summary");
+    expect(bundle.events.find((event) => event.type === "oss-meta.nested.step_trace.summary")?.message)
+      .toContain("4/4 steps across 2 surface");
     const artifactRefs = bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
     expect(artifactRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
     expect(artifactRefs.every((ref) => !ref.includes("/remote/"))).toBe(true);
@@ -1289,6 +1366,13 @@ describe("OSS lab command", () => {
     });
     expect(persisted.streams[0]?.ui?.nestedObserverPath).toBe("nested-evidence/oss-01-desktop-nested-proof.json");
     expect(persistedRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
+    const observerData = buildObserverData(persisted);
+    expect(observerData.streams[0]?.artifacts).toContainEqual({
+      label: "nested Mimetic proof",
+      path: "nested-evidence/oss-01-desktop-nested-proof.json",
+      kind: "trace"
+    });
+    expect(observerData.streams[0]?.timeline.map((event) => event.type)).toContain("oss-meta.nested.step_trace.summary");
   });
 
   it("redacts structured Codex app-server trace evidence for private repo meta-labs", () => {
@@ -1317,6 +1401,45 @@ describe("OSS lab command", () => {
       appUrl: "http://127.0.0.1:3000",
       checkedAt: "2026-06-05T10:06:00.000Z",
       nestedObserverPresent: true,
+      nestedStepTraceSummary: {
+        schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+        redaction: {
+          status: "passed",
+          notes: "mentions private-cinema-app /remote/private-cinema-app github_pat_fakepat123456789012"
+        },
+        counts: {
+          blockedSteps: 0,
+          passedSteps: 1,
+          surfaces: 1,
+          totalSteps: 1,
+          traces: 1
+        },
+        scenario: {
+          id: "private-cinema-app-flow",
+          source: "/remote/private-cinema-app/mimetic/scenarios/private.yaml",
+          sourceDigest: "abc123",
+          stepCount: 1,
+          title: "private-cinema-app flow"
+        },
+        status: "passed",
+        surfaces: [
+          {
+            id: "desktop-private-cinema-app",
+            ok: true,
+            reason: "private-cinema-app passed at https://stream.example/private from /remote/private-cinema-app with github_pat_fakepat123456789012",
+            steps: [
+              {
+                action: "goto",
+                assertionStatuses: ["private-cinema-app:passed"],
+                id: "open-private-cinema-app",
+                label: "Open private-cinema-app",
+                reason: "Loaded /remote/private-cinema-app and token github_pat_fakepat123456789012",
+                status: "passed"
+              }
+            ]
+          }
+        ]
+      },
       nestedVerifyPassed: true,
       reason: "private-cinema-app setup passed.",
       status: "passed",
@@ -1354,6 +1477,9 @@ describe("OSS lab command", () => {
     const serialized = JSON.stringify(bundle);
     expect(serialized).not.toContain("maintainer/private-cinema-app");
     expect(serialized).not.toContain("private-cinema-app");
+    expect(serialized).not.toContain("github_pat_fakepat");
+    expect(serialized).not.toContain("stream.example/private");
+    expect(serialized).not.toContain("/remote/private");
     expect(serialized).toContain("[redacted-authorized-repo]");
   });
 
@@ -1586,7 +1712,7 @@ describe("OSS lab command", () => {
       schema: "mimetic.feedback-candidate.v1",
       failure_owner: "actor",
       proposed_next_state: "setup-quality-review",
-      summary: "CorentinTh/it-tools Mimetic setup needs review"
+      summary: "Generated Mimetic setup for CorentinTh/it-tools needs review"
     });
     expect(bundle.feedbackCandidates[0]?.evidence).toContainEqual({
       path: "setup-quality/oss-01-desktop-setup-quality.json",
@@ -1608,7 +1734,7 @@ describe("OSS lab command", () => {
       schema: "mimetic.feedback-candidate.v1",
       failure_owner: "actor",
       proposed_next_state: "study-quality-review",
-      summary: "CorentinTh/it-tools Mimetic setup was ceremonial"
+      summary: "Generated Mimetic setup for CorentinTh/it-tools was ceremonial"
     });
     expect(bundle.feedbackCandidates[2]?.evidence).toContainEqual({
       path: "setup-quality/oss-01-desktop-setup-quality.json",
