@@ -1,3 +1,23 @@
+export {
+  ACTOR_TRACE_SCHEMA,
+  CODEX_APP_SERVER_CAPABILITIES,
+  codexResultToActorTrace,
+  codexStatusToCompletionReason
+} from "./actor-contract.js";
+export type {
+  ActorCapabilities,
+  ActorCompletionReason,
+  ActorLane,
+  ActorPersonaRef,
+  ActorProtocol,
+  ActorStatus,
+  ActorTokenUsage,
+  ActorTrace,
+  ActorTraceItem,
+  ActorTraceItemKind
+} from "./actor-contract.js";
+export { actorRegistry, getActor } from "./actor-registry.js";
+export type { ActorDescriptor, ActorId } from "./actor-registry.js";
 export { normalizeCliArgv } from "./argv.js";
 export {
   CODEX_APP_SERVER_UI_SCHEMA,

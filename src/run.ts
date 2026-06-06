@@ -10,10 +10,10 @@ import { parse as parseYaml } from "yaml";
 
 import {
   CODEX_APP_SERVER_TRACE_SCHEMA,
-  runCodexAppServerSession,
   type CodexAppServerRunResult,
   type CodexAppServerTrace
 } from "./codex-app-server.js";
+import { getActor } from "./actor-registry.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
 import { containsSensitive, redactToSecretLabel } from "./redaction.js";
@@ -2891,7 +2891,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
 
   const laneResults = await mapWithConcurrency(lanes, options.simCount, async (lane) => {
     const laneRunRoot = lane.prefix ? path.join(absoluteArtifactRoot, lane.prefix) : absoluteArtifactRoot;
-    const result = await runCodexAppServerSession({
+    const result = await getActor("codex-app-server").runSession({
       cwd: options.cwd,
       prompt: lane.prompt,
       runRoot: laneRunRoot,
