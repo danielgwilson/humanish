@@ -234,6 +234,7 @@ pnpm mimetic:lab:list
 - [Current goals](docs/goals/current.md)
 - [Project layout](docs/architecture/project-layout.md)
 - [Observer architecture](docs/architecture/observer.md)
+- [Actor contract (pluggable harnesses)](docs/architecture/actor-contract.md)
 - [OSS lab POC](docs/architecture/oss-lab-poc.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Open-source install experience](docs/product/open-source-install-experience.md)
