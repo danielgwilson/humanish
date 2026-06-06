@@ -44,6 +44,15 @@ Use synthetic personas, synthetic examples, redacted evidence pointers, and
 env var names without values. Generated run bundles belong under ignored
 `.mimetic/`.
 
+**What the automated gate enforces.** `mimetic verify` scans public-bound
+artifacts and fails closed on secret, key, and token shapes and on known local
+path shapes. It does not yet detect free-form PII or PHI such as names, emails,
+phone numbers, dates of birth, or medical identifiers. Keeping those out depends
+on using synthetic data and on review, so `redaction: passed` means the
+automated secret and path scan found no matches, not that the artifact was
+certified free of PII or PHI. A first-class PII/PHI detector is on the roadmap
+([#108](https://github.com/danielgwilson/mimetic-cli/issues/108)).
+
 ## How It Works
 
 ```text

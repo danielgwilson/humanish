@@ -145,6 +145,15 @@ defaults:
     path: "mimetic/policies/redaction.yaml",
     plane: "source",
     contents: `schema: mimetic.redaction-policy.v1
+# Public-safety policy of intent for this project.
+#
+# Enforcement scope: \`mimetic verify\` detects the classes under \`enforced\`
+# (secret/key/token shapes and known local-path shapes) and fails closed on a
+# match. It does NOT detect free-form PII/PHI (names, emails, DOBs, MRNs). The
+# classes under \`author_responsibility\` are forbidden in public output but rely
+# on using synthetic data and on review, not automated detection. So
+# \`redaction: passed\` means the secret/path scan found no matches, not that the
+# artifact was certified free of PII/PHI.
 deny:
   - pii
   - phi
@@ -154,6 +163,15 @@ deny:
   - private_screenshots
   - customer_data
   - patient_data
+enforced:
+  - secret_key_token_shapes
+  - known_local_path_shapes
+author_responsibility:
+  - pii
+  - phi
+  - patient_data
+  - customer_data
+  - names_emails_and_other_identifiers
 allow:
   - synthetic_personas
   - synthetic_fixtures

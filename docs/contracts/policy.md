@@ -134,6 +134,18 @@ Redaction gates public output. A run may keep ignored local artifacts for
 operator inspection, but public feedback cannot promote them unless the
 redaction result is `passed`.
 
+### Enforcement scope
+
+Be precise about what the automated gate does. `mimetic verify` runs a
+public-safety scan that detects secret/key/token shapes and known local-path
+shapes, and fails closed on a match. It does **not** detect free-form PII/PHI
+(names, emails, phone numbers, dates of birth, MRNs, medical detail); avoiding
+those depends on using synthetic data and on reviewer judgment. Accordingly,
+`redaction: passed` means the automated secret/path scan found no matches, not a
+certification that the artifact is free of every class in the policy below. A
+first-class PII/PHI detector is planned (issue #108) and would move the listed
+PII classes from author-responsibility to enforced.
+
 Required redaction gates:
 
 - run bundle verification;
