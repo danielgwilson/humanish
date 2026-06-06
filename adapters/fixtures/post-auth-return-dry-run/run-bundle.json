@@ -4,7 +4,7 @@
   "mode": "dry-run",
   "simCount": 1,
   "createdAt": "2026-06-02T10:20:00.000Z",
-  "cwd": "adapters/fixtures/post-auth-return-dry-run",
+  "cwd": "[target-cwd]",
   "artifactRoot": ".mimetic/runs/post-auth-return-dry-run-fixture",
   "source": {
     "packageName": "fixture-upload-studio",

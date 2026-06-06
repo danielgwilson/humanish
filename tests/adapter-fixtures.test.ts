@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { FEEDBACK_SCHEMA } from "../src/feedback.js";
-import { RUN_BUNDLE_SCHEMA } from "../src/run.js";
+import { PUBLIC_TARGET_CWD, RUN_BUNDLE_SCHEMA } from "../src/run.js";
 
 interface AdapterFixture {
   schema: string;
@@ -23,6 +23,7 @@ interface RunBundleFixture {
   schema: string;
   runId: string;
   mode: string;
+  cwd: string;
   source: {
     packageName: string | null;
   };
@@ -170,6 +171,7 @@ describe("adapter fixture parity contracts", () => {
     ]);
 
     expect(bundle.schema).toBe(RUN_BUNDLE_SCHEMA);
+    expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.source.packageName).toBe("fixture-upload-studio");
     expect(bundle.persona.id).toBe("synthetic-returning-creator");
@@ -216,6 +218,7 @@ describe("adapter fixture parity contracts", () => {
     expect(policy.redaction.status).toBe("passed");
 
     expect(bundle.schema).toBe(RUN_BUNDLE_SCHEMA);
+    expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
     expect(bundle.streams).toHaveLength(1);
     expect(bundle.streams[0]).toEqual(expect.objectContaining({ kind: "terminal" }));
     expect(bundle.streams[0]?.terminal?.tail).toContain("spend policy: no_spend");

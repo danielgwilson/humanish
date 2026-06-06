@@ -8,6 +8,7 @@ import { renderObserver } from "../src/observer.js";
 import { createProgram } from "../src/program.js";
 import { startCodexAppServerUi } from "../src/codex-app-server-ui.js";
 import {
+  PUBLIC_TARGET_CWD,
   RUN_BUNDLE_SCHEMA,
   listRuns,
   readReview,
@@ -153,9 +154,9 @@ describe("dry-run bundles", () => {
       expect(run.runId).toBe("dryrun-test");
       expect(run.bundlePath).toBe(".mimetic/runs/dryrun-test/run.json");
 
-      const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/dryrun-test/run.json"), "utf8")
-      ) as {
+      const bundleText = await readFile(path.join(cwd, ".mimetic/runs/dryrun-test/run.json"), "utf8");
+      const bundle = JSON.parse(bundleText) as {
+        cwd: string;
         schema: string;
         review: { verdict: string };
         simCount: number;
@@ -163,6 +164,8 @@ describe("dry-run bundles", () => {
         source: { git: { schema: string; status: string } };
       };
       expect(bundle.schema).toBe(RUN_BUNDLE_SCHEMA);
+      expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
+      expect(bundleText).not.toContain(cwd);
       expect(bundle.simCount).toBe(1);
       expect(bundle.simulations).toHaveLength(1);
       expect(bundle.source.git.schema).toBe("mimetic.git-state.v1");
@@ -438,8 +441,7 @@ describe("dry-run bundles", () => {
 
       const verify = await verifyRun(cwd, "raw-cwd-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-        .toContain("absolute cwd");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
 

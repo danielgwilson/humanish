@@ -22,6 +22,7 @@ export const REVIEW_SCHEMA = "mimetic.review.v1";
 export const VERIFY_SCHEMA = "mimetic.verify-result.v1";
 export const RUNS_SCHEMA = "mimetic.runs-result.v1";
 export const DOCTOR_SCHEMA = "mimetic.doctor-result.v1";
+export const PUBLIC_TARGET_CWD = "[target-cwd]";
 const SAFE_GIT_NOTES = new Set([
   "Git command could not be started.",
   "Git status command could not be captured.",
@@ -4581,7 +4582,7 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 async function writeRunBundleArtifacts(absoluteArtifactRoot: string, bundle: RunBundle): Promise<void> {
   const publicBundle: RunBundle = {
     ...bundle,
-    cwd: "[target-cwd]"
+    cwd: PUBLIC_TARGET_CWD
   };
   await writeJson(path.join(absoluteArtifactRoot, "run.json"), publicBundle);
   await writeJson(path.join(absoluteArtifactRoot, "review.json"), publicBundle.review);
@@ -4862,7 +4863,7 @@ function isRunBundle(value: unknown): value is RunBundle {
     && (value.mode === "dry-run" || value.mode === "live")
     && isPositiveSafeInteger(value.simCount)
     && typeof value.createdAt === "string"
-    && typeof value.cwd === "string"
+    && value.cwd === PUBLIC_TARGET_CWD
     && typeof value.artifactRoot === "string"
     && isRunSource(value.source)
     && isPersonaSummary(value.persona)
