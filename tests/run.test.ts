@@ -155,10 +155,18 @@ describe("dry-run bundles", () => {
 
       const bundle = JSON.parse(
         await readFile(path.join(cwd, ".mimetic/runs/dryrun-test/run.json"), "utf8")
-      ) as { schema: string; review: { verdict: string }; simCount: number; simulations: unknown[] };
+      ) as {
+        schema: string;
+        review: { verdict: string };
+        simCount: number;
+        simulations: unknown[];
+        source: { git: { schema: string; status: string } };
+      };
       expect(bundle.schema).toBe(RUN_BUNDLE_SCHEMA);
       expect(bundle.simCount).toBe(1);
       expect(bundle.simulations).toHaveLength(1);
+      expect(bundle.source.git.schema).toBe("mimetic.git-state.v1");
+      expect(bundle.source.git.status).toBe("missing");
       expect(bundle.review.verdict).toBe("contract_proof_only");
 
       await expect(stat(path.join(cwd, ".mimetic/runs/latest.json"))).resolves.toBeTruthy();
@@ -198,6 +206,146 @@ describe("dry-run bundles", () => {
       ) as { simCount: number; simulations: unknown[] };
       expect(bundle.simCount).toBe(65);
       expect(bundle.simulations).toHaveLength(65);
+    });
+  });
+
+  it("fails closed on malformed run bundle shapes", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "malformed-run-shape"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-run-shape/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        streams?: unknown;
+      };
+      delete bundle.streams;
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "malformed-run-shape");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
+    });
+  });
+
+  it("fails closed on malformed source git provenance", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "malformed-run-source-git"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-run-source-git/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        source: { git: { schema?: string } };
+      };
+      bundle.source.git.schema = "mimetic.legacy-not-captured";
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "malformed-run-source-git");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
+    });
+  });
+
+  it("fails closed on unsafe git provenance values", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "malformed-run-git-values"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-run-git-values/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        source: { git: { head: { shortSha: unknown }; note: string } };
+      };
+      bundle.source.git.head.shortSha = "private/repo-name";
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      let verify = await verifyRun(cwd, "malformed-run-git-values");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
+
+      bundle.source.git.head.shortSha = null;
+      bundle.source.git.note = "private branch and remote details";
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      verify = await verifyRun(cwd, "malformed-run-git-values");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
+    });
+  });
+
+  it("fails closed on malformed feedback candidates", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "malformed-feedback-candidate"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-feedback-candidate/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        feedbackCandidates: unknown[];
+      };
+      bundle.feedbackCandidates = [42];
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "malformed-feedback-candidate");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
+    });
+  });
+
+  it("fails closed on simulation and stream consistency mismatches", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "malformed-sim-streams"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-sim-streams/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        simCount: number;
+        simulations: Array<{ id: string; streamIds: string[] }>;
+        streams: Array<{ id: string; simId: string }>;
+      };
+      bundle.simCount = bundle.simulations.length + 1;
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      let verify = await verifyRun(cwd, "malformed-sim-streams");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
+
+      bundle.simCount = bundle.simulations.length;
+      const firstStream = bundle.streams[0];
+      expect(firstStream).toBeDefined();
+      bundle.streams[0] = {
+        ...firstStream!,
+        simId: "missing-simulation"
+      };
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      verify = await verifyRun(cwd, "malformed-sim-streams");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
 
@@ -399,6 +547,7 @@ describe("dry-run bundles", () => {
             mode: string;
             review: { verdict: string };
             scenario: { id: string; source: string };
+            source: { git: { schema: string; status: string } };
             simulations: Array<{ mode: string; status: string; streamKind: string }>;
             streams: Array<{
               artifacts: Array<{ kind: string; path: string }>;
@@ -412,6 +561,8 @@ describe("dry-run bundles", () => {
 
           expect(bundle.mode).toBe("live");
           expect(bundle.review.verdict).toBe("pass");
+          expect(bundle.source.git.schema).toBe("mimetic.git-state.v1");
+          expect(bundle.source.git.status).toBe("missing");
           expect(bundle.scenario).toEqual(expect.objectContaining({
             id: "browser-persona-two-step",
             source: "builtin:browser-persona-two-step"

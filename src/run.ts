@@ -14,6 +14,7 @@ import {
   type CodexAppServerRunResult,
   type CodexAppServerTrace
 } from "./codex-app-server.js";
+import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
@@ -21,6 +22,16 @@ export const REVIEW_SCHEMA = "mimetic.review.v1";
 export const VERIFY_SCHEMA = "mimetic.verify-result.v1";
 export const RUNS_SCHEMA = "mimetic.runs-result.v1";
 export const DOCTOR_SCHEMA = "mimetic.doctor-result.v1";
+const SAFE_GIT_NOTES = new Set([
+  "Git command could not be started.",
+  "Git status command could not be captured.",
+  "Git status command could not be started.",
+  "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names.",
+  "Git work tree was clean; branch names, remotes, paths, and file names were not captured.",
+  "No git work tree was detected.",
+  "public-safe synthetic fixture",
+  "public-safe synthetic OSS meta-lab fixture"
+]);
 
 export interface RunOptions {
   cwd: string;
@@ -271,10 +282,7 @@ export interface RunBundle {
   source: {
     packageName: string | null;
     mimeticSource: "present" | "missing";
-    git: {
-      status: "not_captured";
-      note: string;
-    };
+    git: CapturedGitState;
   };
   persona: {
     id: string;
@@ -317,6 +325,20 @@ export interface ReviewSummary {
   verdict: "contract_proof_only" | "pass" | "fail" | "blocked" | "timed_out";
   summary: string;
   gaps: string[];
+}
+
+export async function buildRunSource(args: {
+  cwd: string;
+  capturedAt?: Date | string;
+  mimeticSource: RunBundle["source"]["mimeticSource"];
+  packageName: string | null;
+}): Promise<RunBundle["source"]> {
+  const gitOptions = args.capturedAt === undefined ? {} : { capturedAt: args.capturedAt };
+  return {
+    packageName: args.packageName,
+    mimeticSource: args.mimeticSource,
+    git: await captureGitState(args.cwd, gitOptions)
+  };
 }
 
 export interface RunResult {
@@ -539,6 +561,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const absoluteArtifactRoot = path.join(cwd, artifactRoot);
   const packageName = await readPackageName(cwd);
   const mimeticSource = await directoryExists(path.join(cwd, "mimetic")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd, capturedAt: createdAt, mimeticSource, packageName });
   const selection = await loadDryRunSelection(cwd, mimeticSource);
 
   if (mimeticSource === "missing") {
@@ -561,14 +584,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     createdAt,
     cwd,
     artifactRoot,
-    source: {
-      packageName,
-      mimeticSource,
-      git: {
-        status: "not_captured",
-        note: "Source git state capture is planned for the core primitives slice."
-      }
-    },
+    source,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -770,6 +786,7 @@ async function runBrowserAppProof(options: RunOptions & {
   const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
   const packageName = await readPackageName(options.cwd);
   const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, mimeticSource, packageName });
   const selection = await loadDryRunSelection(options.cwd, mimeticSource);
   if (selection.browserJourneyFailure) {
     return {
@@ -817,14 +834,7 @@ async function runBrowserAppProof(options: RunOptions & {
     createdAt,
     cwd: options.cwd,
     artifactRoot,
-    source: {
-      packageName,
-      mimeticSource,
-      git: {
-        status: "not_captured",
-        note: "Browser app proof records local app evidence only; host git state capture is a later primitive."
-      }
-    },
+    source,
     persona: {
       id: selection.persona.id,
       name: selection.persona.name,
@@ -1807,6 +1817,7 @@ async function runLocalCodexTui(options: RunOptions & {
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
   const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, mimeticSource, packageName });
   const selection = await loadDryRunSelection(options.cwd, mimeticSource);
   if (mimeticSource === "missing") {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic local actor defaults.");
@@ -1873,14 +1884,7 @@ async function runLocalCodexTui(options: RunOptions & {
       createdAt,
       cwd: options.cwd,
       artifactRoot,
-      source: {
-        packageName,
-        mimeticSource,
-        git: {
-          status: "not_captured",
-          note: "Source git state capture is planned for the core primitives slice."
-        }
-      },
+      source,
       persona: selection.persona,
       scenario: selection.scenario,
       lifecycle: [
@@ -2033,14 +2037,7 @@ async function runLocalCodexTui(options: RunOptions & {
     createdAt,
     cwd: options.cwd,
     artifactRoot,
-    source: {
-      packageName,
-      mimeticSource,
-      git: {
-        status: "not_captured",
-        note: "Source git state capture is planned for the core primitives slice."
-      }
-    },
+    source,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -2188,6 +2185,7 @@ function buildLocalCodexExecBundle(args: {
   scenario: RunBundle["scenario"];
   persona: RunBundle["persona"];
   simCount: number;
+  source: RunBundle["source"];
 }): RunBundle {
   return {
     schema: RUN_BUNDLE_SCHEMA,
@@ -2197,14 +2195,7 @@ function buildLocalCodexExecBundle(args: {
     createdAt: args.createdAt,
     cwd: args.cwd,
     artifactRoot: args.artifactRoot,
-    source: {
-      packageName: args.packageName,
-      mimeticSource: args.mimeticSource,
-      git: {
-        status: "not_captured",
-        note: "Source git state capture is planned for the core primitives slice."
-      }
-    },
+    source: args.source,
     persona: args.persona,
     scenario: args.scenario,
     lifecycle: args.lifecycle,
@@ -2315,6 +2306,7 @@ async function runLocalCodexExec(options: RunOptions & {
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
   const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, mimeticSource, packageName });
   const selection = await loadDryRunSelection(options.cwd, mimeticSource);
   if (mimeticSource === "missing") {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic local actor defaults.");
@@ -2422,6 +2414,7 @@ async function runLocalCodexExec(options: RunOptions & {
     artifactRoot,
     packageName,
     mimeticSource,
+    source,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -2547,6 +2540,7 @@ async function runLocalCodexExec(options: RunOptions & {
     artifactRoot,
     packageName,
     mimeticSource,
+    source,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -2643,6 +2637,7 @@ function buildLocalCodexAppServerBundle(args: {
   runId: string;
   scenario: RunBundle["scenario"];
   simCount: number;
+  source: RunBundle["source"];
 }): RunBundle {
   return {
     schema: RUN_BUNDLE_SCHEMA,
@@ -2652,14 +2647,7 @@ function buildLocalCodexAppServerBundle(args: {
     createdAt: args.createdAt,
     cwd: args.cwd,
     artifactRoot: args.artifactRoot,
-    source: {
-      packageName: args.packageName,
-      mimeticSource: args.mimeticSource,
-      git: {
-        status: "not_captured",
-        note: "Source git state capture is planned for the core primitives slice."
-      }
-    },
+    source: args.source,
     persona: args.persona,
     scenario: args.scenario,
     lifecycle: args.lifecycle,
@@ -2771,6 +2759,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
   const mimeticSource = await directoryExists(path.join(options.cwd, "mimetic")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, mimeticSource, packageName });
   const selection = await loadDryRunSelection(options.cwd, mimeticSource);
   if (mimeticSource === "missing") {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic Codex app-server actor defaults.");
@@ -2871,6 +2860,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     artifactRoot,
     packageName,
     mimeticSource,
+    source,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -2954,6 +2944,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     artifactRoot,
     packageName,
     mimeticSource,
+    source,
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -3943,6 +3934,11 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     message: "run bundle schema is mimetic.run-bundle.v1"
   });
   checks.push({
+    name: "run bundle shape",
+    ok: isRunBundle(bundle),
+    message: "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+  });
+  checks.push({
     name: "redaction passed",
     ok: isRecord(bundle) && isRecord(bundle.redaction) && bundle.redaction.status === "passed",
     message: "redaction status must be passed"
@@ -4864,11 +4860,292 @@ function isRunBundle(value: unknown): value is RunBundle {
     && value.schema === RUN_BUNDLE_SCHEMA
     && typeof value.runId === "string"
     && (value.mode === "dry-run" || value.mode === "live")
+    && isPositiveSafeInteger(value.simCount)
     && typeof value.createdAt === "string"
+    && typeof value.cwd === "string"
+    && typeof value.artifactRoot === "string"
+    && isRunSource(value.source)
+    && isPersonaSummary(value.persona)
+    && isScenarioSummary(value.scenario)
+    && Array.isArray(value.lifecycle)
+    && value.lifecycle.every(isLifecycleEvent)
+    && Array.isArray(value.simulations)
+    && value.simulations.length === value.simCount
+    && value.simulations.every(isRunSimulation)
+    && Array.isArray(value.streams)
+    && value.streams.every(isRunStream)
+    && hasConsistentSimulationStreams(value.simulations, value.streams)
+    && Array.isArray(value.events)
+    && value.events.every(isRunEvent)
+    && isRunArtifactIndex(value.artifacts)
     && isRecord(value.review)
     && isReviewSummary(value.review)
     && isRecord(value.redaction)
-    && value.redaction.status === "passed";
+    && value.redaction.status === "passed"
+    && Array.isArray(value.feedbackCandidates)
+    && value.feedbackCandidates.every(isRunFeedbackCandidate);
+}
+
+function isRunSource(value: unknown): value is RunBundle["source"] {
+  return isRecord(value)
+    && (typeof value.packageName === "string" || value.packageName === null)
+    && (value.mimeticSource === "present" || value.mimeticSource === "missing")
+    && isCapturedGitState(value.git);
+}
+
+function isCapturedGitState(value: unknown): value is CapturedGitState {
+  return isRecord(value)
+    && value.schema === GIT_STATE_SCHEMA
+    && (value.status === "clean" || value.status === "dirty" || value.status === "missing" || value.status === "unavailable")
+    && typeof value.capturedAt === "string"
+    && isRecord(value.head)
+    && (isSafeGitShortSha(value.head.shortSha) || value.head.shortSha === null)
+    && (value.head.refState === "attached" || value.head.refState === "detached" || value.head.refState === "unborn" || value.head.refState === "unknown")
+    && isRecord(value.changes)
+    && isNonNegativeSafeInteger(value.changes.staged)
+    && isNonNegativeSafeInteger(value.changes.unstaged)
+    && isNonNegativeSafeInteger(value.changes.untracked)
+    && isNonNegativeSafeInteger(value.changes.total)
+    && typeof value.note === "string"
+    && SAFE_GIT_NOTES.has(value.note);
+}
+
+function isPersonaSummary(value: unknown): value is RunBundle["persona"] {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.name === "string"
+    && typeof value.source === "string"
+    && typeof value.sourceDigest === "string";
+}
+
+function isScenarioSummary(value: unknown): value is RunBundle["scenario"] {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.title === "string"
+    && typeof value.goal === "string"
+    && typeof value.source === "string"
+    && typeof value.sourceDigest === "string";
+}
+
+function isLifecycleEvent(value: unknown): value is RunBundle["lifecycle"][number] {
+  return isRecord(value)
+    && typeof value.at === "string"
+    && typeof value.event === "string"
+    && typeof value.message === "string";
+}
+
+function isRunSimulation(value: unknown): value is RunSimulation {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && isPositiveSafeInteger(value.index)
+    && typeof value.personaId === "string"
+    && typeof value.scenarioId === "string"
+    && isRunSimulationStatus(value.status)
+    && isRunStreamKind(value.streamKind)
+    && (value.mode === "browser-sim" || value.mode === "cli-sim" || value.mode === "tui-sim" || value.mode === "codex-app-sim")
+    && typeof value.progress === "number"
+    && typeof value.currentStep === "string"
+    && typeof value.summary === "string"
+    && Array.isArray(value.streamIds)
+    && value.streamIds.every((streamId) => typeof streamId === "string")
+    && typeof value.startedAt === "string"
+    && typeof value.updatedAt === "string";
+}
+
+function isRunStream(value: unknown): value is RunStream {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.simId === "string"
+    && isRunStreamKind(value.kind)
+    && typeof value.label === "string"
+    && isRunSimulationStatus(value.status)
+    && (value.transport === "snapshot" || value.transport === "polling" || value.transport === "sse" || value.transport === "pty" || value.transport === "app-server")
+    && typeof value.updatedAt === "string"
+    && Array.isArray(value.artifacts)
+    && value.artifacts.every(isRunStreamArtifact);
+}
+
+function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][number] {
+  return isRecord(value)
+    && typeof value.label === "string"
+    && typeof value.path === "string"
+    && (
+      value.kind === "bundle"
+      || value.kind === "review"
+      || value.kind === "observer"
+      || value.kind === "events"
+      || value.kind === "screenshot"
+      || value.kind === "trace"
+      || value.kind === "log"
+      || value.kind === "filesystem"
+    );
+}
+
+function isRunEvent(value: unknown): value is RunEvent {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.at === "string"
+    && (value.level === "info" || value.level === "warn" || value.level === "error")
+    && typeof value.type === "string"
+    && typeof value.message === "string";
+}
+
+function isRunArtifactIndex(value: unknown): value is RunBundle["artifacts"] {
+  return isRecord(value)
+    && typeof value.run === "string"
+    && typeof value.reviewJson === "string"
+    && typeof value.reviewMarkdown === "string"
+    && typeof value.observerData === "string"
+    && typeof value.events === "string";
+}
+
+function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCandidate {
+  return isRecord(value)
+    && value.schema === "mimetic.feedback-candidate.v1"
+    && typeof value.id === "string"
+    && typeof value.run_id === "string"
+    && (typeof value.stream_id === "string" || value.stream_id === undefined)
+    && typeof value.adapter_id === "string"
+    && typeof value.scenario_id === "string"
+    && typeof value.persona_id === "string"
+    && isFeedbackActor(value.actor)
+    && isFeedbackSubstrate(value.substrate)
+    && isFeedbackFailureOwner(value.failure_owner)
+    && typeof value.summary === "string"
+    && typeof value.expected === "string"
+    && typeof value.actual === "string"
+    && Array.isArray(value.evidence)
+    && value.evidence.every(isRunFeedbackEvidence)
+    && isRecord(value.redaction)
+    && value.redaction.status === "passed"
+    && typeof value.redaction.notes === "string"
+    && typeof value.idempotency_key === "string"
+    && isFeedbackNextState(value.proposed_next_state)
+    && Array.isArray(value.acceptance_proof)
+    && value.acceptance_proof.every((item) => typeof item === "string");
+}
+
+function isRunFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
+  return isRecord(value)
+    && typeof value.path === "string"
+    && value.path.length > 0
+    && !path.isAbsolute(value.path)
+    && !value.path.includes("://")
+    && !value.path.includes("..")
+    && (
+      value.kind === "review"
+      || value.kind === "state"
+      || value.kind === "log"
+      || value.kind === "trace"
+      || value.kind === "screenshot"
+      || value.kind === "filesystem"
+    )
+    && typeof value.note === "string";
+}
+
+function hasConsistentSimulationStreams(
+  simulations: unknown[],
+  streams: unknown[]
+): boolean {
+  const simIds = new Set<string>();
+  const expectedStreamSimIds = new Map<string, string>();
+  const streamById = new Map<string, RunStream>();
+
+  for (const simulation of simulations) {
+    if (!isRunSimulation(simulation)) {
+      return false;
+    }
+
+    simIds.add(simulation.id);
+    for (const streamId of simulation.streamIds) {
+      if (expectedStreamSimIds.has(streamId)) {
+        return false;
+      }
+
+      expectedStreamSimIds.set(streamId, simulation.id);
+    }
+  }
+
+  for (const stream of streams) {
+    if (!isRunStream(stream) || !simIds.has(stream.simId) || streamById.has(stream.id)) {
+      return false;
+    }
+
+    const expectedSimId = expectedStreamSimIds.get(stream.id);
+    if (expectedSimId === undefined || stream.simId !== expectedSimId) {
+      return false;
+    }
+
+    streamById.set(stream.id, stream);
+  }
+
+  return streamById.size === expectedStreamSimIds.size;
+}
+
+function isRunSimulationStatus(value: unknown): value is RunSimulationStatus {
+  return value === "queued"
+    || value === "preparing"
+    || value === "running"
+    || value === "passed"
+    || value === "complete"
+    || value === "blocked"
+    || value === "timed_out"
+    || value === "failed"
+    || value === "contract_proof_only";
+}
+
+function isRunStreamKind(value: unknown): value is RunStreamKind {
+  return value === "ui"
+    || value === "browser"
+    || value === "terminal"
+    || value === "tui"
+    || value === "codex-ui"
+    || value === "artifact"
+    || value === "summary";
+}
+
+function isSafeGitShortSha(value: unknown): value is string {
+  return typeof value === "string" && /^[a-f0-9]{7,12}$/.test(value);
+}
+
+function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {
+  return value === "codex-tui"
+    || value === "codex-exec"
+    || value === "codex-app-server"
+    || value === "synthetic-dry-run"
+    || value === "unknown";
+}
+
+function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
+  return value === "e2b-desktop"
+    || value === "local-filesystem"
+    || value === "codex-app-server"
+    || value === "unknown";
+}
+
+function isFeedbackFailureOwner(value: unknown): value is RunFeedbackCandidate["failure_owner"] {
+  return value === "harness"
+    || value === "target-app"
+    || value === "actor"
+    || value === "environment"
+    || value === "unknown";
+}
+
+function isFeedbackNextState(value: unknown): value is RunFeedbackCandidate["proposed_next_state"] {
+  return value === "watch"
+    || value === "adapter-hardening"
+    || value === "target-app-setup"
+    || value === "actor-auth"
+    || value === "setup-quality-review"
+    || value === "study-quality-review";
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && typeof value === "number" && value >= 1;
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && typeof value === "number" && value >= 0;
 }
 
 function isReviewSummary(value: unknown): value is ReviewSummary {

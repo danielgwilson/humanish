@@ -14,6 +14,7 @@ import {
 } from "./oss-lab.js";
 import { redactOssRemoteTelemetryText } from "./oss-remote-telemetry.js";
 import {
+  buildRunSource,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
   runDryRun
@@ -290,6 +291,7 @@ interface OssMetaLabRuntime {
   persistScreenshots: boolean;
   redactRepoNames: boolean;
   runId: string;
+  source: RunBundle["source"];
   startedAt: number;
 }
 
@@ -1172,6 +1174,12 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
 
   const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
   const createdAt = new Date().toISOString();
+  const source = await buildRunSource({
+    capturedAt: createdAt,
+    cwd,
+    mimeticSource: "present",
+    packageName: "mimetic-cli"
+  });
   const persistScreenshots = liveRequested;
   let liveDesktops: OssMetaLabLiveDesktop[] = [];
   let substrateMissingKeys = [...missingKeys];
@@ -1186,7 +1194,8 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     liveRequested,
     missingKeys: substrateMissingKeys,
     redactRepoNames,
-    runId
+    runId,
+    source
   });
   await writeMetaBundleArtifacts(artifactRoot, initialBundle);
 
@@ -1354,7 +1363,8 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     liveRequested,
     missingKeys: substrateMissingKeys,
     redactRepoNames,
-    runId
+    runId,
+    source
   });
 
   await writeMetaBundleArtifacts(artifactRoot, bundle);
@@ -1415,6 +1425,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       persistScreenshots,
       redactRepoNames,
       runId,
+      source,
       startedAt: Date.now()
     });
   }
@@ -1841,6 +1852,29 @@ export function buildOssMetaBootstrapScriptFixture(): string {
   });
 }
 
+function syntheticOssMetaRunSource(createdAt: string): RunBundle["source"] {
+  return {
+    packageName: "mimetic-cli",
+    mimeticSource: "present",
+    git: {
+      schema: "mimetic.git-state.v1",
+      status: "clean",
+      capturedAt: createdAt,
+      head: {
+        shortSha: null,
+        refState: "unknown"
+      },
+      changes: {
+        staged: 0,
+        unstaged: 0,
+        untracked: 0,
+        total: 0
+      },
+      note: "public-safe synthetic OSS meta-lab fixture"
+    }
+  };
+}
+
 function buildMetaBundle(args: {
   assignments: OssMetaLabAssignment[];
   createdAt: string;
@@ -1851,6 +1885,7 @@ function buildMetaBundle(args: {
   missingKeys: string[];
   redactRepoNames: boolean;
   runId: string;
+  source?: RunBundle["source"];
 }): RunBundle {
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
@@ -2128,14 +2163,7 @@ function buildMetaBundle(args: {
     createdAt: args.createdAt,
     cwd: args.cwd,
     artifactRoot: path.join(".mimetic", "runs", args.runId),
-    source: {
-      packageName: "mimetic-cli",
-      mimeticSource: "present",
-      git: {
-        status: "not_captured",
-        note: "OSS meta-lab does not capture host git state in this slice."
-      }
-    },
+    source: args.source ?? syntheticOssMetaRunSource(args.createdAt),
     persona: {
       id: "oss-meta-codex-tui-operators",
       name: "Codex TUI OSS Setup Operators",
@@ -2953,7 +2981,8 @@ async function refreshOssMetaLabLiveRuntime(
     liveRequested: runtime.liveRequested,
     missingKeys: runtime.missingKeys,
     redactRepoNames: runtime.redactRepoNames,
-    runId: runtime.runId
+    runId: runtime.runId,
+    source: runtime.source
   });
   await writeMetaBundleArtifacts(runtime.artifactRoot, bundle);
   await renderObserver(runtime.cwd, runtime.runId, { open: false });
