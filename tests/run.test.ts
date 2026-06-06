@@ -124,6 +124,22 @@ async function writeFakeBrowserCommand(cwd: string): Promise<string> {
   return browser;
 }
 
+async function writeMimeticBrowserScenario(cwd: string, scenarioText: string): Promise<void> {
+  await mkdir(path.join(cwd, "mimetic", "personas"), { recursive: true });
+  await mkdir(path.join(cwd, "mimetic", "scenarios"), { recursive: true });
+  await writeFile(
+    path.join(cwd, "mimetic/personas/synthetic-new-user.yaml"),
+    [
+      "schema: mimetic.persona.v1",
+      "id: synthetic-new-user",
+      "name: Synthetic New User",
+      "summary: Public-safe fixture persona."
+    ].join("\n") + "\n",
+    "utf8"
+  );
+  await writeFile(path.join(cwd, "mimetic/scenarios/app-browser.yaml"), scenarioText, "utf8");
+}
+
 describe("dry-run bundles", () => {
   it("writes and verifies a synthetic run bundle", async () => {
     await withFixtureCopy(async (cwd) => {
@@ -382,6 +398,7 @@ describe("dry-run bundles", () => {
           ) as {
             mode: string;
             review: { verdict: string };
+            scenario: { id: string; source: string };
             simulations: Array<{ mode: string; status: string; streamKind: string }>;
             streams: Array<{
               artifacts: Array<{ kind: string; path: string }>;
@@ -395,6 +412,10 @@ describe("dry-run bundles", () => {
 
           expect(bundle.mode).toBe("live");
           expect(bundle.review.verdict).toBe("pass");
+          expect(bundle.scenario).toEqual(expect.objectContaining({
+            id: "browser-persona-two-step",
+            source: "builtin:browser-persona-two-step"
+          }));
           expect(bundle.simulations).toEqual([
             expect.objectContaining({ mode: "browser-sim", status: "passed", streamKind: "browser" }),
             expect.objectContaining({ mode: "browser-sim", status: "passed", streamKind: "browser" })
@@ -457,6 +478,291 @@ describe("dry-run bundles", () => {
           expect(missingVerify.ok).toBe(false);
           expect(missingVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
             .toContain("screenshots/mobile-step-02-interact.png");
+        } finally {
+          if (previousBrowserCommand === undefined) {
+            delete process.env.MIMETIC_BROWSER_COMMAND;
+          } else {
+            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+          if (previousBrowserPersonaDriver === undefined) {
+            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+          } else {
+            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+          }
+        }
+      });
+    });
+  });
+
+  it("uses executable browser scenario manifests for browser app proof traces", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        await writeMimeticBrowserScenario(
+          cwd,
+          [
+            "schema: mimetic.scenario.v1",
+            "id: app-onboarding",
+            "title: Fixture app onboarding",
+            "persona: synthetic-new-user",
+            "goal: Exercise the fixture app through app-specific browser checks.",
+            "mode: browser",
+            "browser:",
+            "  startPath: /",
+            "  steps:",
+            "    - id: open-home",
+            "      label: Open fixture home",
+            "      action: goto",
+            "      path: /",
+            "      expect:",
+            "        text: browser surface proof",
+            "    - id: confirm-copy",
+            "      label: Confirm visible copy",
+            "      action: assertText",
+            "      value: browser surface proof"
+          ].join("\n") + "\n"
+        );
+
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          const result = await runDryRun({
+            appUrl,
+            cwd,
+            runId: "browser-app-manifest-test",
+            simCount: 1
+          });
+
+          expect(result.ok).toBe(true);
+          const bundle = JSON.parse(
+            await readFile(path.join(cwd, ".mimetic/runs/browser-app-manifest-test/run.json"), "utf8")
+          ) as {
+            review: { gaps: string[]; verdict: string };
+            scenario: { goal: string; id: string; source: string; title: string };
+            simulations: Array<{ scenarioId: string }>;
+            streams: Array<{ artifacts: Array<{ path: string }>; ui: { intent: string; screenshotUrl: string } }>;
+          };
+          expect(bundle.scenario).toEqual(expect.objectContaining({
+            goal: "Exercise the fixture app through app-specific browser checks.",
+            id: "app-onboarding",
+            source: "mimetic/scenarios/app-browser.yaml",
+            title: "Fixture app onboarding"
+          }));
+          expect(bundle.simulations[0]?.scenarioId).toBe("app-onboarding");
+          expect(bundle.streams[0]?.ui.intent).toBe("Exercise the fixture app through app-specific browser checks.");
+          expect(bundle.streams[0]?.ui.screenshotUrl).toBe("../screenshots/desktop-confirm-copy.png");
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-open-home.png");
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-confirm-copy.png");
+          expect(bundle.review.gaps.join("\n")).toContain("mimetic/scenarios/app-browser.yaml");
+
+          const desktopTrace = JSON.parse(
+            await readFile(path.join(cwd, ".mimetic/runs/browser-app-manifest-test/traces/desktop.json"), "utf8")
+          ) as {
+            scenario: { id: string; source: string; stepCount: number };
+            steps: Array<{ action: string; assertions?: Array<{ id: string; status: string }>; id: string; label: string; screenshotPath: string; status: string }>;
+          };
+          expect(desktopTrace.scenario).toEqual(expect.objectContaining({
+            id: "app-onboarding",
+            source: "mimetic/scenarios/app-browser.yaml",
+            stepCount: 2
+          }));
+          expect(desktopTrace.steps).toEqual([
+            expect.objectContaining({
+              action: "goto",
+              id: "open-home",
+              label: "Open fixture home",
+              screenshotPath: "screenshots/desktop-open-home.png",
+              status: "passed"
+            }),
+            expect.objectContaining({
+              action: "assertText",
+              id: "confirm-copy",
+              label: "Confirm visible copy",
+              screenshotPath: "screenshots/desktop-confirm-copy.png",
+              status: "passed"
+            })
+          ]);
+          expect(desktopTrace.steps[0]?.assertions).toEqual([
+            expect.objectContaining({ id: "text-present", status: "passed" })
+          ]);
+
+          const verify = await verifyRun(cwd, "latest");
+          expect(verify.ok).toBe(true);
+        } finally {
+          if (previousBrowserCommand === undefined) {
+            delete process.env.MIMETIC_BROWSER_COMMAND;
+          } else {
+            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+          if (previousBrowserPersonaDriver === undefined) {
+            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+          } else {
+            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+          }
+        }
+      });
+    });
+  });
+
+  it("allows a one-step executable browser scenario manifest", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        await writeMimeticBrowserScenario(
+          cwd,
+          [
+            "schema: mimetic.scenario.v1",
+            "id: single-step-proof",
+            "title: Single-step browser proof",
+            "persona: synthetic-new-user",
+            "goal: Load the fixture app and verify visible copy.",
+            "mode: browser",
+            "browser:",
+            "  startPath: /",
+            "  steps:",
+            "    - id: open-home",
+            "      label: Open fixture home",
+            "      action: goto",
+            "      path: /",
+            "      expect:",
+            "        text: browser surface proof"
+          ].join("\n") + "\n"
+        );
+
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          const result = await runDryRun({
+            appUrl,
+            cwd,
+            runId: "browser-app-one-step-manifest",
+            simCount: 1
+          });
+
+          expect(result.ok).toBe(true);
+          const desktopTrace = JSON.parse(
+            await readFile(path.join(cwd, ".mimetic/runs/browser-app-one-step-manifest/traces/desktop.json"), "utf8")
+          ) as {
+            scenario: { id: string; stepCount: number };
+            steps: Array<{ id: string; status: string }>;
+          };
+          expect(desktopTrace.scenario).toEqual(expect.objectContaining({
+            id: "single-step-proof",
+            stepCount: 1
+          }));
+          expect(desktopTrace.steps).toEqual([
+            expect.objectContaining({
+              id: "open-home",
+              status: "passed"
+            })
+          ]);
+        } finally {
+          if (previousBrowserCommand === undefined) {
+            delete process.env.MIMETIC_BROWSER_COMMAND;
+          } else {
+            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+          if (previousBrowserPersonaDriver === undefined) {
+            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+          } else {
+            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+          }
+        }
+      });
+    });
+  });
+
+  it("fails closed for unparsable scenario YAML during browser app proof", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        await writeMimeticBrowserScenario(
+          cwd,
+          [
+            "schema: mimetic.scenario.v1",
+            "id: unparsable-browser-scenario",
+            "title: Unparsable browser scenario",
+            "mode: browser",
+            "browser:",
+            "  steps:",
+            "    - id: open-home",
+            "      action: goto",
+            "      expect:",
+            "        text: \"unterminated"
+          ].join("\n") + "\n"
+        );
+
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          const result = await runDryRun({
+            appUrl,
+            cwd,
+            runId: "browser-app-unparsable-manifest"
+          });
+
+          expect(result.ok).toBe(false);
+          expect(result.error?.code).toBe("MIMETIC_BROWSER_APP_CAPTURE_FAILED");
+          expect(result.error?.message).toContain("could not be parsed as YAML");
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-unparsable-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+        } finally {
+          if (previousBrowserCommand === undefined) {
+            delete process.env.MIMETIC_BROWSER_COMMAND;
+          } else {
+            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+          }
+          if (previousBrowserPersonaDriver === undefined) {
+            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+          } else {
+            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+          }
+        }
+      });
+    });
+  });
+
+  it("fails closed for malformed executable browser scenario manifests", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        await writeMimeticBrowserScenario(
+          cwd,
+          [
+            "schema: mimetic.scenario.v1",
+            "id: malformed-browser-scenario",
+            "title: Malformed browser scenario",
+            "goal: Prove malformed executable browser steps fail closed.",
+            "mode: browser",
+            "browser:",
+            "  steps:",
+            "    - id: missing-selector",
+            "      label: Missing selector fill",
+            "      action: fill",
+            "      value: synthetic.user@example.test"
+          ].join("\n") + "\n"
+        );
+
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          const result = await runDryRun({
+            appUrl,
+            cwd,
+            runId: "browser-app-malformed-manifest"
+          });
+
+          expect(result.ok).toBe(false);
+          expect(result.error?.code).toBe("MIMETIC_BROWSER_APP_CAPTURE_FAILED");
+          expect(result.error?.message).toContain("fill action requires selector");
+          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-malformed-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
         } finally {
           if (previousBrowserCommand === undefined) {
             delete process.env.MIMETIC_BROWSER_COMMAND;

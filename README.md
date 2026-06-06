@@ -118,6 +118,49 @@ npx mimetic lab run .mimetic/labs/local-dogfood.yaml --json --no-open
 env var names, never values, and does not persist those values into run bundles
 or Observer data.
 
+## Browser Scenario Manifests
+
+`mimetic run --app-url http://127.0.0.1:<port>` looks for executable browser
+steps in committed `mimetic/scenarios/*.yaml`. If none are present, Mimetic
+falls back to the built-in two-step browser persona proof. Browser steps are
+public-safe source, so use synthetic fixture values and committed relative app
+paths only.
+
+```yaml
+schema: mimetic.scenario.v1
+id: todo-onboarding
+title: Todo onboarding
+persona: synthetic-new-user
+goal: Create the first synthetic todo and verify the list updates.
+mode: browser
+browser:
+  startPath: /
+  steps:
+    - id: open-home
+      label: Open the todo app
+      action: goto
+      path: /
+      expect:
+        text: Add todo
+    - id: enter-todo
+      label: Enter synthetic todo text
+      action: fill
+      selector: input[name="todo"]
+      value: Synthetic onboarding task
+    - id: create-todo
+      label: Create the todo
+      action: click
+      selector: button[type="submit"]
+      expect:
+        text: Synthetic onboarding task
+        stateChanged: true
+```
+
+Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
+and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
+`urlIncludes`, and `stateChanged`. Generated traces are stored as JSON under
+`.mimetic/runs/<run>/traces/` and summarized in the Observer.
+
 ## Maintainer OSS Meta-Lab Example
 
 This repository includes an experimental authorized-repo dogfood lab:
