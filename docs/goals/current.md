@@ -149,8 +149,12 @@ Minimum acceptance:
   it; `done`
 - top-level Observer updates lane verdicts from evidence; `done`
 - feedback candidates are derived from setup-quality/actor evidence; `done`
-- next gap: provider-backed browser personas must drive multi-step target-app
-  journeys instead of relying on nested app-url render proof.
+- Codex app-server actor telemetry is persisted as redacted trace, event, and
+  transcript artifacts; `done`
+- each lane receives a meaningful-use score over setup, filesystem, nested
+  Mimetic proof, actor activity, product surface, and feedback; `done`
+- next gap: provider-backed browser personas must drive richer multi-step
+  target-app journeys instead of relying on nested app-url render proof.
 
 ## Non-Goals
 

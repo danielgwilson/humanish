@@ -22,6 +22,7 @@ import {
   normalizeHostActorRecommendedProof,
   preflightOssMetaActorApiKey,
   preflightOssMetaRepoAccess,
+  publicSafeOssMetaBundle,
   runOssMetaLab,
   sandboxIdsForOssMetaLabCleanup
 } from "../src/oss-meta-lab.js";
@@ -32,8 +33,96 @@ import {
   shouldForceExitAfterOssMetaLab,
   shouldServeOssMetaLabObserver
 } from "../src/program.js";
+import type { RunSetupQualitySnapshot } from "../src/run.js";
 
 const execFileAsync = promisify(execFile);
+
+function highLeverageSetupQualityFixture(): RunSetupQualitySnapshot {
+  return {
+    schema: "mimetic.setup-quality.v1",
+    generatedAt: "2026-06-04T10:06:00.000Z",
+    redaction: {
+      status: "passed",
+      rawPreviews: "included",
+      notes: "Only allowlisted setup files are previewed."
+    },
+    summary: "Mimetic setup is app-specific and proof-oriented.",
+    status: "passed",
+    checks: [
+      {
+        id: "mimetic-config",
+        label: "Mimetic config",
+        ok: true,
+        detail: "mimetic/config.ts exists."
+      },
+      {
+        id: "package-script",
+        label: "Package script",
+        ok: true,
+        detail: "package.json exposes a Mimetic watch script."
+      },
+      {
+        id: "runtime-ignore",
+        label: "Runtime ignore",
+        ok: true,
+        detail: ".gitignore excludes .mimetic/ runtime state."
+      }
+    ],
+    tree: [
+      { path: "package.json", type: "file", sizeBytes: 540 },
+      { path: "mimetic", type: "directory" },
+      { path: "mimetic/config.ts", type: "file", sizeBytes: 180 },
+      { path: "mimetic/personas/product-researcher.yaml", type: "file", sizeBytes: 220 },
+      { path: "mimetic/scenarios/desktop-core-flow.yaml", type: "file", sizeBytes: 260 }
+    ],
+    previews: [
+      {
+        path: "mimetic/config.ts",
+        language: "typescript",
+        truncated: false,
+        text: "export default { run: { appUrl: 'http://127.0.0.1:5173', sims: 2 } };"
+      }
+    ],
+    studyQuality: {
+      schema: "mimetic.study-quality.v1",
+      rating: "high_leverage",
+      summary: "Study-quality rating high_leverage from app-specific personas, scenarios, app URL proof, and actor insight.",
+      checks: [
+        {
+          id: "coverage-customized",
+          label: "Coverage customized",
+          ok: true,
+          detail: "Coverage map names concrete screens and friction paths."
+        },
+        {
+          id: "persona-customized",
+          label: "Persona customized",
+          ok: true,
+          detail: "Personas are specific to the product audience."
+        }
+      ],
+      signals: {
+        appUrlProofBlocked: false,
+        appUrlProofMentioned: true,
+        actorInsightCaptured: true,
+        coverageCustomized: true,
+        personaCustomized: true,
+        scenarioCustomized: true
+      }
+    },
+    packageScripts: {
+      dev: "vite",
+      mimetic: "mimetic watch"
+    },
+    mimetic: {
+      configPresent: true,
+      gitignoreContainsRuntimeIgnore: true,
+      packageScriptPresent: true,
+      personaCount: 2,
+      scenarioCount: 2
+    }
+  };
+}
 
 async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
@@ -504,6 +593,7 @@ describe("OSS lab command", () => {
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_FIRST");
       expect(script).toContain("MIMETIC_OSS_META_REQUIRE_ACTOR");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_TIMEOUT_MS");
+      expect(script).toContain('MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000');
       expect(script).toContain("ACTOR_TIMEOUT_SECONDS");
       expect(script).toContain("Do not wait on long-running watchers");
       expect(script).toContain("coverage-map.md");
@@ -512,6 +602,7 @@ describe("OSS lab command", () => {
       expect(script).toContain("do not use mimetic watch --sims as app behavior proof");
       expect(script).toContain("MIMETIC_OSS_META_ACTOR_MODEL");
       expect(script).toContain("actor_log_tail_begin");
+      expect(script).toContain("elapsed_ms=$((now_ms - started_ms))");
       expect(script).toContain("ACTOR_LAST_MESSAGE_PATH");
       expect(script).toContain("actorLogTail");
       expect(script).toContain("actorLastMessageTail");
@@ -1014,6 +1105,11 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.ui?.intent).not.toContain("attempts a Codex actor");
     expect(bundle.streams[0]?.terminal?.tail).toContain("source=codex-app-server-client");
     expect(bundle.events.find((event) => event.type === "oss-meta.codex.prompt.ready")?.message).toContain("app-server client hook");
+    expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
+      schema: "mimetic.meaningful-use-score.v1",
+      status: "fail"
+    });
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain("Required actor did not pass (suspended).");
   });
 
   it("labels app-server-backed OSS meta-lab actor evidence artifacts without treating them as TUI exec", () => {
@@ -1039,6 +1135,7 @@ describe("OSS lab command", () => {
       nestedObserverPresent: true,
       nestedVerifyPassed: true,
       reason: "Target app surface, nested Mimetic proof, nested Observer, and Codex app-server actor evidence were checked.",
+      setupQuality: highLeverageSetupQualityFixture(),
       status: "passed",
       visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
       visualStatus: "visible",
@@ -1051,6 +1148,10 @@ describe("OSS lab command", () => {
       dryRun: false,
       lanes: [
         {
+          actorEvidence: {
+            nestedEvidencePath: "nested-evidence/oss-01-desktop-nested-proof.json",
+            setupQualityPath: "setup-quality/oss-01-desktop-setup-quality.json"
+          },
           bootstrap: {
             codexMode: "app-server-client",
             completionPath: "/remote/todoapp/completion.json",
@@ -1091,6 +1192,53 @@ describe("OSS lab command", () => {
       path: "codex-app-server/oss-01-desktop-transcript.txt",
       kind: "log"
     });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "setup quality",
+      path: "setup-quality/oss-01-desktop-setup-quality.json",
+      kind: "filesystem"
+    });
+    expect(bundle.streams[0]?.artifacts).toContainEqual({
+      label: "nested Mimetic proof",
+      path: "nested-evidence/oss-01-desktop-nested-proof.json",
+      kind: "trace"
+    });
+    expect(bundle.streams[0]?.codex).toMatchObject({
+      provider: "codex-app-server",
+      state: "completed"
+    });
+    expect(bundle.streams[0]?.ui?.nestedObserverPath).toBe("nested-evidence/oss-01-desktop-nested-proof.json");
+    const artifactRefs = bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
+    expect(artifactRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
+    expect(artifactRefs.every((ref) => !ref.includes("/remote/"))).toBe(true);
+    expect(artifactRefs.every((ref) => !path.isAbsolute(ref.split(":").slice(1).join(":")))).toBe(true);
+    expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
+      schema: "mimetic.meaningful-use-score.v1",
+      status: "pass",
+      score: 100,
+      hardFailures: []
+    });
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.components.map((component) => component.id)).toEqual([
+      "setup-correctness",
+      "filesystem-evidence",
+      "nested-mimetic-evidence",
+      "actor-activity",
+      "product-surface",
+      "feedback-quality"
+    ]);
+
+    const persisted = publicSafeOssMetaBundle(bundle);
+    const persistedSerialized = JSON.stringify(persisted);
+    const persistedRefs = persisted.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
+    expect(persisted.cwd).toBe("[target-cwd]");
+    expect(persistedSerialized).not.toContain("/tmp/mimetic-oss-meta-app-server-evidence-fixture");
+    expect(persistedSerialized).not.toContain("/remote/todoapp");
+    expect(persistedSerialized).not.toContain("/home/user");
+    expect(persisted.streams[0]?.codex).toMatchObject({
+      provider: "codex-app-server",
+      state: "completed"
+    });
+    expect(persisted.streams[0]?.ui?.nestedObserverPath).toBe("nested-evidence/oss-01-desktop-nested-proof.json");
+    expect(persistedRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
   });
 
   it("redacts structured Codex app-server trace evidence for private repo meta-labs", () => {
@@ -1337,6 +1485,16 @@ describe("OSS lab command", () => {
       visualStatus: "visible",
       visualWindowCount: 3
     });
+    expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
+      schema: "mimetic.meaningful-use-score.v1",
+      status: "partial"
+    });
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.score).toBeGreaterThanOrEqual(45);
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.score).toBeLessThan(80);
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.components.find((component) => component.id === "feedback-quality")).toMatchObject({
+      status: "partial",
+      score: 8
+    });
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor last message tail:");
     expect(bundle.streams[0]?.terminal?.tail).toContain("study_quality: ceremonial");
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor log tail:");
@@ -1457,6 +1615,11 @@ describe("OSS lab command", () => {
     expect(bundle.review.summary).toContain("timed out");
     expect(bundle.simulations.map((sim) => sim.status)).toEqual(["timed_out"]);
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["timed_out"]);
+    expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
+      schema: "mimetic.meaningful-use-score.v1",
+      status: "fail"
+    });
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain("Remote bootstrap timed out.");
 
     const observerData = buildObserverData(bundle, "2026-06-02T09:35:00.000Z");
     expect(observerData.summary.active).toBe(0);
@@ -1536,6 +1699,7 @@ describe("OSS lab command", () => {
     expect(serialized).not.toContain("sandbox-private-123");
     expect(serialized).not.toContain("sandboxId");
     expect(serialized).not.toContain("stream.example");
+    expect(serialized).not.toContain("/remote/repo-01");
     expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain("[redacted-authorized-repo]");
     expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain("[redacted-provider-runtime-id]");
     expect(bundle.streams[0]?.url).toBeUndefined();

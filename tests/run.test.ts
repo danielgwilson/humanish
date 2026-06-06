@@ -258,6 +258,106 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("rejects run bundles that persist raw local cwd paths", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "raw-cwd-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/raw-cwd-regression/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as { cwd: string };
+      bundle.cwd = cwd;
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "raw-cwd-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+        .toContain("absolute cwd");
+    });
+  });
+
+  it("rejects nonlocal stream artifact references in run bundles", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "nonlocal-artifact-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/nonlocal-artifact-regression/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        streams: Array<{ artifacts: Array<{ label: string; path: string; kind: string }> }>;
+      };
+      bundle.streams[0]?.artifacts.push({
+        label: "remote actor log",
+        path: "/home/user/private-repo/actor.log",
+        kind: "log"
+      });
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "nonlocal-artifact-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+        .toContain("nonlocal artifact");
+    });
+  });
+
+  it("rejects local nested Mimetic proof references when the artifact is missing", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "missing-nested-proof-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/missing-nested-proof-regression/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        streams: Array<{ ui?: { nestedObserverPath?: string } }>;
+      };
+      bundle.streams[0]!.ui = {
+        ...(bundle.streams[0]?.ui ?? {}),
+        nestedObserverPath: "nested-evidence/missing-nested-proof.json"
+      };
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "missing-nested-proof-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+        .toContain("nested-evidence/missing-nested-proof.json");
+    });
+  });
+
+  it("rejects placeholder nested proof references as nonlocal evidence", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "placeholder-nested-proof-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const bundlePath = path.join(cwd, ".mimetic/runs/placeholder-nested-proof-regression/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        streams: Array<{ ui?: { nestedObserverPath?: string } }>;
+      };
+      bundle.streams[0]!.ui = {
+        ...(bundle.streams[0]?.ui ?? {}),
+        nestedObserverPath: "[remote-nested-observer]"
+      };
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "placeholder-nested-proof-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+        .toContain("nonlocal nested observer reference");
+    });
+  });
+
   it("captures and verifies live browser app desktop/mobile evidence", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {

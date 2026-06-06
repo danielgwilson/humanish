@@ -1168,12 +1168,13 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       if (server && output.observer?.ok) {
         await followObserver(io, output.observer, server, output.liveRequested
           ? {
-              onStop: async () => {
-                await liveRefresh?.stop();
-                const cleanup = await cleanupOssMetaLabSandboxes(output);
-                return [
-                  `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
-                  ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
+	          onStop: async () => {
+	            const cleanup = liveRefresh
+	              ? await liveRefresh.cleanup()
+	              : await cleanupOssMetaLabSandboxes(output);
+	            return [
+	              `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
+	              ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
                 ];
               }
             }
@@ -1468,13 +1469,14 @@ async function runOssMetaLabCommand(args: {
 
   if (server && output.observer?.ok) {
     await followObserver(args.io, output.observer, server, output.liveRequested
-      ? {
-          onStop: async () => {
-            await liveRefresh?.stop();
-            const cleanup = await cleanupOssMetaLabSandboxes(output);
-            return [
-              `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
-              ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
+	      ? {
+	          onStop: async () => {
+	            const cleanup = liveRefresh
+	              ? await liveRefresh.cleanup()
+	              : await cleanupOssMetaLabSandboxes(output);
+	            return [
+	              `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
+	              ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
             ];
           }
         }
