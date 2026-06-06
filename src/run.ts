@@ -430,6 +430,10 @@ const sensitivePatterns = [
   /https?:\/\/[^/\s]*e2b[^)\s]+/i,
   /\/Users\/[A-Za-z0-9._-]+\/[^\s"']*/i,
   /\/home\/(?:user|runner)\/[^\s"']*/i,
+  /\/private\/var\/folders\/[^\s"']*/i,
+  /\/var\/folders\/[^\s"']*/i,
+  /\/private\/tmp\/[^\s"']*/i,
+  /\/tmp\/[^\s"']*/i,
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/i
 ];
 const CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA = "mimetic.codex-app-server-trace.projected.v1";
@@ -1861,7 +1865,7 @@ async function runLocalCodexTui(options: RunOptions & {
       transcript: `${trustPreflight.message}\nRecovery: ${trustPreflight.recoveryCommand}\n`,
       transcriptBytes: Buffer.byteLength(trustPreflight.message)
     };
-    await appendEvent("actor.preflight.blocked", trustPreflight.message, "warn");
+    await appendEvent("actor.preflight.blocked", redactSensitiveText(trustPreflight.message), "warn");
   } else {
     await appendEvent(
       "actor.spawned",
@@ -1986,7 +1990,11 @@ async function runLocalCodexTui(options: RunOptions & {
   const redactedTranscript = redactSensitiveText(actor.transcript);
   const tail = tailText(redactedTranscript, 6_000);
   const status = actor.status;
-  const verdictReason = actor.reason;
+  // Redact the reason before it flows into the persisted event, simulation
+  // summary, completion reason, review, and lifecycle. For a trust-preflight
+  // block the reason embeds the absolute workspace path; the live CLI reason can
+  // still show the real path, but the public-safe bundle must not.
+  const verdictReason = redactSensitiveText(actor.reason);
 
   await writeFile(transcriptPath, redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n", "utf8");
   await writeJson(actorTracePath, {

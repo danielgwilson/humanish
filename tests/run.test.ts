@@ -1816,6 +1816,10 @@ describe("dry-run bundles", () => {
         expect(bundle.events.map((event) => event.type)).toContain("actor.preflight.blocked");
         expect(bundle.events.map((event) => event.type)).toContain("actor.blocked");
         expect(bundle.events.map((event) => event.type)).not.toContain("actor.spawned");
+        // #107 regression: the trust-preflight reason embeds the absolute
+        // workspace path; it must be redacted before it reaches any persisted
+        // bundle field (event, summary, completion reason, review, lifecycle).
+        expect(JSON.stringify(bundle)).not.toContain(cwd);
 
         const verify = await verifyRun(cwd, "latest");
         expect(verify.ok).toBe(true);
