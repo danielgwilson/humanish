@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
@@ -180,6 +181,8 @@ const sensitivePatterns = [
 const privatePathPatterns: Array<[RegExp, string]> = [
   [/\/private\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
+  [/\/private\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
+  [/\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_LOCAL_PATH]"],
   [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"]
 ];
@@ -980,18 +983,31 @@ function redactJsonValue(value: unknown, keyHint = "", rootCwd?: string): unknow
   return value;
 }
 
-function redactText(text: string): string {
+export function redactText(text: string): string {
   const withoutSecrets = sensitivePatterns.reduce((current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"), text);
   return privatePathPatterns.reduce((current, [pattern, replacement]) => current.replace(pattern, replacement), withoutSecrets);
 }
 
-function publicPathForTrace(value: string, rootCwd: string): string {
+function canonicalizePath(value: string): string {
+  const resolved = path.resolve(value);
+  try {
+    // Follow symlinks so an actor cwd reported in realpath form (e.g. /private/tmp
+    // on macOS) matches a configured root still in its symlinked form (/tmp).
+    // Without this, path.relative yields a "../"-prefixed path that escapes the
+    // [target-cwd] label and leaks an absolute temp path into the trace.
+    return realpathSync.native(resolved);
+  } catch {
+    return resolved;
+  }
+}
+
+export function publicPathForTrace(value: string, rootCwd: string): string {
   if (!path.isAbsolute(value)) {
     return redactText(value);
   }
 
-  const root = path.resolve(rootCwd);
-  const absolute = path.resolve(value);
+  const root = canonicalizePath(rootCwd);
+  const absolute = canonicalizePath(value);
   const relative = path.relative(root, absolute).replace(/\\/g, "/");
   if (relative === "") {
     return "[target-cwd]";
