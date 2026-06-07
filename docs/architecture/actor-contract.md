@@ -42,11 +42,14 @@ API surface.
    typed `items[]`. `mimetic.codex-app-server-trace.v1` remains a back-compat
    alias during migration.
 
-3. **A run is multi-turn within one trace, and patience is a harness-enforced
-   turn budget.** The harness, not the model, counts turns/tool-calls and
-   terminates with `completionReason: "gave_up"` when the persona's budget is
-   exceeded. This is what makes persona traits load-bearing rather than prose
-   (see Persona section). One `ActorRunResult` covers a multi-step scenario.
+3. **A run is multi-turn within one trace; it stops on goal, abandonment,
+   unrecoverable failure, or a wall-clock safety timeout, never on a turn cap.**
+   Turn count is explicitly rejected as a stop signal: many turns usually means
+   legitimate complex progress, so a turn budget truncates real work and rewards
+   early quitting (it is a proxy for "too complex," not for "this user would
+   quit"). Patience is modeled as **friction tolerance**, not a budget (see
+   Persona section). The only hard runaway guard is the existing `timeoutMs`.
+   One `ActorRunResult` covers a multi-step scenario.
 
 4. **Redaction is injected once, never re-implemented per adapter.** Every
    adapter receives `RedactionHooks` (the shared secret/path/prompt-digest
@@ -74,7 +77,7 @@ export type ActorStatus = "passed" | "failed" | "blocked" | "timed_out";
 export type ActorCompletionReason =
   | "goal_satisfied"      // scenario success predicate met
   | "turn_completed"      // harness saw an explicit done signal, no predicate
-  | "gave_up"             // persona patience / turn budget exhausted
+  | "gave_up"             // persona abandoned in character: friction exceeded its tolerance
   | "blocked_approval"    // an action was auto-declined and the actor could not proceed
   | "timed_out"
   | "actor_error"
@@ -199,8 +202,12 @@ Plan:
    (map `technical_confidence` to `skill`).
 2. **Compile traits into actor-neutral directives**, not prose, via a pure
    `personaToDirectives(p)`:
-   - patience -> `turnBudget` (low = 4 / give up fast and report friction,
-     medium = 8, high = 16) and a `giveUpRule`.
+   - patience -> `frictionTolerance`: how much failure, dead-end, or
+     no-forward-progress the persona absorbs before abandoning the task in
+     character. Expressed as an instruction the actor embodies ("you are
+     impatient: if you hit repeated friction or stop making progress toward your
+     goal, stop and report exactly what blocked you"), not a turn or tool-call
+     count.
    - skill -> tool/strategy bias (low-skill avoids CLI/flags and narrates
      confusion at ambiguous UI; high-skill uses shortcuts and recovery paths).
    - accessibilityNeeds -> concrete behavior (keyboard_first navigates by
@@ -208,19 +215,25 @@ Plan:
      noisy output as a defect).
    - goals + constraints become explicit success / forbidden lists for the
      scenario predicate.
-3. **The harness enforces the turn budget** (control flow, not text): the Actor
-   loop counts turns/tool-calls and terminates with
-   `completionReason: "gave_up"` when exceeded. Same code in every adapter.
+3. **Abandonment is persona-judged, harness-corroborated, never a counter.** The
+   persona-actor (an LLM embodying that user) decides in character when the
+   friction is no longer worth it and stops with `completionReason: "gave_up"`,
+   citing the specific friction. The harness corroborates with objective signals
+   it already sees in the stream (consecutive failed/blocked actions,
+   repeated-identical-action looping, no progress toward the success predicate)
+   and annotates the abandonment friction as a feedback candidate. The harness
+   imposes no turn cap; its only hard stop is the wall-clock `timeoutMs`.
 4. **Bind the same directives per harness**: pi (`systemPrompt` +
-   `beforeToolCall` allow rules + stop-after-turn), Claude
-   (`system_prompt`/`--append-system-prompt` + `allowedTools` + `max_turns`),
-   Codex (prepend to `turn/start` input; harness-enforced budget), Stagehand
-   (agent context + action policy + screenshot-cycle cap).
+   `beforeToolCall` allow rules), Claude (`system_prompt`/`--append-system-prompt`
+   + `allowedTools`), Codex (prepend to `turn/start` input), Stagehand (agent
+   context + action policy). Each binds the friction-tolerance, skill, and
+   accessibility directives identically; none uses a `max_turns`-style cap as the
+   persona stop condition.
 5. **Prove it.** `ActorTrace.persona.traitsApplied` lists the injected
-   directives; a `persona-fidelity` verify check asserts that the turn budget
-   matched patience, that give-up runs end in `gave_up`, and that accessibility
-   directives reached the system input. "Did the persona drive the run" becomes a
-   verifiable artifact, not an assertion.
+   directives; a `persona-fidelity` verify check asserts that the friction and
+   accessibility directives reached the actor input and that a `gave_up` run
+   cites a concrete friction reason (not a turn count). "Did the persona drive
+   the run" becomes a verifiable artifact, not an assertion.
 
 ## Capability matrix (target adapters)
 
@@ -256,8 +269,10 @@ Plan:
   capabilities do not satisfy the scenario.
 - Screenshot PII in the computer-use lane. Pixel frames never reach a public
   surface unredacted; the default fails closed to a redacted thumbnail.
-- Persona directives regressing into prose. The turn budget and step pass/fail
-  must change control flow, enforced by the `persona-fidelity` check.
+- Persona directives regressing into decoration. Friction tolerance and
+  accessibility must demonstrably reach the actor input and change step pass/fail,
+  enforced by the `persona-fidelity` check; a `gave_up` run must cite a concrete
+  friction, never an elapsed-turn count.
 - License contamination. Proprietary harnesses (Claude CLI, Cursor) sit behind
   adapters; only their open SDKs are depended on directly.
 
