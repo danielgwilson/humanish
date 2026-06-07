@@ -13,7 +13,13 @@ import {
   type ActorTrace
 } from "./actor-contract.js";
 import { piSessionToActorTrace, type PiSessionResult } from "./pi-agent-core.js";
-import { claudeSessionToActorTrace, type ClaudeSessionResult } from "./claude-agent-sdk.js";
+import {
+  claudeSessionToActorTrace,
+  runClaudeAgentSession,
+  type ClaudeAgentSessionOptions,
+  type ClaudeAgentSessionResult,
+  type ClaudeSessionResult
+} from "./claude-agent-sdk.js";
 
 // The set of pluggable actor harnesses. The union grows as adapters land
 // (stagehand-cua next). See docs/architecture/actor-contract.md.
@@ -40,10 +46,12 @@ export interface PiActorDescriptor extends ActorDescriptorBase {
   toActorTrace(session: PiSessionResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-// Like pi, the Claude descriptor exposes only the pure mapper this slice; live
-// query() invocation is deferred behind a DI seam (see src/claude-agent-sdk.ts).
+// The Claude descriptor now exposes a live runSession (drives the SDK query() and
+// writes evidence artifacts) alongside the pure mapper. The SDK is an optional
+// peer loaded lazily; tests inject a fake queryFn via runSession's options.
 export interface ClaudeActorDescriptor extends ActorDescriptorBase {
   id: "claude-agent-sdk";
+  runSession(options: ClaudeAgentSessionOptions): Promise<ClaudeAgentSessionResult>;
   toActorTrace(session: ClaudeSessionResult, persona: ActorPersonaRef): ActorTrace;
 }
 
@@ -67,6 +75,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     id: "claude-agent-sdk",
     label: "Claude Agent SDK",
     capabilities: CLAUDE_AGENT_SDK_CAPABILITIES,
+    runSession: runClaudeAgentSession,
     toActorTrace: claudeSessionToActorTrace
   }
 };
