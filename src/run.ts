@@ -16,6 +16,7 @@ import {
 import { getActor } from "./actor-registry.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
+import { parseResolvedPersona, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { containsSensitive, redactToSecretLabel } from "./redaction.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
@@ -3628,13 +3629,18 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+function personaPromptLine(selection: { resolvedPersona: ResolvedPersona }): string {
+  return renderPersonaPromptSection(selection.resolvedPersona);
+}
+
 function buildLocalCodexTuiPrompt(selection: {
   persona: RunBundle["persona"];
+  resolvedPersona: ResolvedPersona;
   scenario: RunBundle["scenario"];
 }, verdictNonce: string): string {
   return [
     "You are a Mimetic local Codex TUI dogfood actor.",
-    `Persona: ${selection.persona.name}.`,
+    personaPromptLine(selection),
     `Scenario: ${selection.scenario.title}.`,
     "Inspect this public repository's Mimetic setup, run evidence, and Observer affordances.",
     "Run at most two read-only inspection commands; prefer file reads, `node dist/cli.js --help`, or `pnpm typecheck` when available.",
@@ -3719,6 +3725,7 @@ function summarizeExecFanout(statuses: LocalActorTerminalStatus[]): string {
 
 function buildLocalCodexExecPrompt(selection: {
   persona: RunBundle["persona"];
+  resolvedPersona: ResolvedPersona;
   scenario: RunBundle["scenario"];
 }, lane?: {
   focus: LocalCodexExecFocus;
@@ -3732,7 +3739,7 @@ function buildLocalCodexExecPrompt(selection: {
 
   return [
     "You are a Mimetic local Codex exec dogfood actor running noninteractively.",
-    `Persona: ${selection.persona.name}.`,
+    personaPromptLine(selection),
     `Scenario: ${selection.scenario.title}.`,
     ...(lane ? [`Fanout lane ${lane.index}/${lane.total}. Focus: ${lane.focus.instruction}.`] : []),
     "Run at most two read-only local inspection commands.",
@@ -3745,6 +3752,7 @@ function buildLocalCodexExecPrompt(selection: {
 
 function buildLocalCodexAppServerPrompt(selection: {
   persona: RunBundle["persona"];
+  resolvedPersona: ResolvedPersona;
   scenario: RunBundle["scenario"];
 }, lane: {
   focus: LocalCodexExecFocus;
@@ -3753,7 +3761,7 @@ function buildLocalCodexAppServerPrompt(selection: {
 }): string {
   return [
     "You are a Mimetic Codex app-server dogfood actor running through the official Codex app-server protocol.",
-    `Persona: ${selection.persona.name}.`,
+    personaPromptLine(selection),
     `Scenario: ${selection.scenario.title}.`,
     `Fanout lane ${lane.index}/${lane.total}. Focus: ${lane.focus.instruction}.`,
     "Work read-only unless the host explicitly configured a stronger sandbox.",
@@ -4174,6 +4182,7 @@ async function loadDryRunSelection(
   browserJourney?: BrowserPersonaJourney;
   browserJourneyFailure?: string;
   persona: RunBundle["persona"];
+  resolvedPersona: ResolvedPersona;
   scenario: RunBundle["scenario"];
   warnings: string[];
 }> {
@@ -4182,6 +4191,7 @@ async function loadDryRunSelection(
   if (mimeticSource === "missing") {
     return {
       persona: builtinPersona,
+      resolvedPersona: parseResolvedPersona({}, { id: builtinPersona.id, name: builtinPersona.name }),
       scenario: builtinScenario,
       warnings
     };
@@ -4201,6 +4211,20 @@ async function loadDryRunSelection(
     warnings.push(`${scenarioPath} was not found; using built-in scenario defaults.`);
   }
 
+  let resolvedPersona: ResolvedPersona;
+  if (personaText === null) {
+    resolvedPersona = parseResolvedPersona({}, { id: builtinPersona.id, name: builtinPersona.name });
+  } else {
+    const parsedPersona = parsePersonaYaml(personaText);
+    if (parsedPersona.failed) {
+      warnings.push(`${personaPath} could not be parsed as YAML; using built-in persona trait defaults.`);
+    }
+    resolvedPersona = parseResolvedPersona(parsedPersona.value, {
+      id: "synthetic-new-user",
+      name: "Synthetic New User"
+    });
+  }
+
   return {
     ...(browserJourneySelection.journey ? { browserJourney: browserJourneySelection.journey } : {}),
     ...(browserJourneySelection.failure ? { browserJourneyFailure: browserJourneySelection.failure } : {}),
@@ -4212,6 +4236,7 @@ async function loadDryRunSelection(
           source: personaPath,
           sourceDigest: digestText(personaText)
         },
+    resolvedPersona,
     scenario: scenarioText === null
       ? builtinScenario
       : {
@@ -4493,6 +4518,14 @@ function readYamlScalar(text: string, key: string): string | null {
   }
 
   return match[1].replace(/^["']|["']$/g, "");
+}
+
+function parsePersonaYaml(text: string): { value: unknown; failed: boolean } {
+  try {
+    return { value: parseYaml(text), failed: false };
+  } catch {
+    return { value: {}, failed: true };
+  }
 }
 
 function stringValue(value: unknown): string | undefined {
