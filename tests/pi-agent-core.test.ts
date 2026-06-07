@@ -4,46 +4,12 @@ import { ACTOR_TRACE_SCHEMA, PI_AGENT_CORE_CAPABILITIES, type ActorPersonaRef } 
 import {
   piSessionToActorTrace,
   piStatusToCompletionReason,
-  piStopReasonToStatus,
-  type PiSessionResult
+  piStopReasonToStatus
 } from "../src/pi-agent-core.js";
 import { actorRegistry, getActor } from "../src/actor-registry.js";
+import { buildPiSession } from "./actor-fixtures.js";
 
 const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: ["patience:low", "skill:high"], promptDigest: "deadbeef1234" };
-
-function buildPiSession(): PiSessionResult {
-  return {
-    sessionId: "pi-session-1",
-    model: "synthetic-model",
-    providerVersion: "0.75.5",
-    startedAt: "2026-06-06T00:00:00.000Z",
-    completedAt: "2026-06-06T00:00:03.000Z",
-    durationMs: 3000,
-    status: "passed",
-    reason: "agent completed the turn",
-    stats: { tokens: { input: 120, output: 60, total: 180 }, cost: 0.0021 },
-    events: [
-      { type: "agent_start" },
-      { type: "turn_start" },
-      { type: "message_start", role: "assistant" },
-      { type: "message_update", thinkingDelta: "considering the task" },
-      { type: "message_update", textDelta: "Looking at the project" },
-      { type: "message_end", text: "Looking at the project structure.", thinking: "considering the task" },
-      { type: "tool_execution_start", toolCallId: "call-1", toolName: "read_file" },
-      { type: "tool_execution_end", toolCallId: "call-1", isError: false },
-      { type: "tool_execution_start", toolCallId: "call-2", toolName: "bash" },
-      { type: "tool_execution_end", toolCallId: "call-2", isError: true },
-      { type: "queue_update", summary: "steering follow-up queued" },
-      { type: "compaction_start" },
-      { type: "compaction_end" },
-      { type: "auto_retry_start" },
-      { type: "auto_retry_end" },
-      { type: "notice", method: "extension_error", message: "synthetic extension notice" },
-      { type: "turn_end" },
-      { type: "agent_end" }
-    ]
-  };
-}
 
 describe("piSessionToActorTrace", () => {
   const trace = piSessionToActorTrace(buildPiSession(), persona);
