@@ -213,12 +213,20 @@ describe("runComputerUseLoop", () => {
     expect(provider.seen.some((r) => (r.contextHint ?? "").includes("No visible progress"))).toBe(true);
   });
 
-  it("stops on the wall-clock deadline", async () => {
-    const provider = new RepeatProvider({ actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false });
-    const executor = new SignatureExecutor(["s0", "s1", "s2"]);
-    let qi = 0;
-    const q = [0, 50, 200, 250]; // start=0, iter1 check=50 (<100), iter2 check=200 (>100), completedAt=250
-    const now = (): number => q[Math.min(qi++, q.length - 1)] ?? 0;
+  it("stops on the wall-clock deadline (checked at the top of the loop)", async () => {
+    let t = 0;
+    const now = (): number => t;
+    // The first model turn jumps the clock past the deadline; iteration 2 trips it.
+    const provider: CuaProvider = {
+      id: "tick",
+      version: "t",
+      capabilities: FAKE_CAPS,
+      async nextTurn() {
+        t = 1000;
+        return { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false };
+      }
+    };
+    const executor = new SignatureExecutor(["s0", "s1"]);
 
     const result = await runComputerUseLoop({
       instructions: "go",
@@ -233,6 +241,63 @@ describe("runComputerUseLoop", () => {
     expect(result.completionReason).toBe("timed_out");
     expect(result.status).toBe("timed_out");
     expect(result.trace.counts.turns).toBe(1);
+  });
+
+  it("enforces the deadline on a hung provider call (raceSettle)", async () => {
+    const provider: CuaProvider = {
+      id: "hang",
+      version: "h",
+      capabilities: FAKE_CAPS,
+      nextTurn: () => new Promise<CuaTurn>(() => {}) // never resolves
+    };
+    const executor = new SignatureExecutor(["s0"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 30,
+      now: () => 0
+    });
+
+    expect(result.completionReason).toBe("timed_out");
+    expect(result.status).toBe("timed_out");
+  });
+
+  it("does not actuate the desktop once aborted mid-turn", async () => {
+    const controller = new AbortController();
+    let executed = 0;
+    const provider: CuaProvider = {
+      id: "ab",
+      version: "a",
+      capabilities: FAKE_CAPS,
+      async nextTurn() {
+        controller.abort();
+        return { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false };
+      }
+    };
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: "s" }),
+      execute: async () => {
+        executed += 1;
+      }
+    };
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      signal: controller.signal
+    });
+
+    expect(result.completionReason).toBe("harness_error");
+    expect(executed).toBe(0); // no action ran after the abort
   });
 
   it("pauses (blocked) on an unacknowledged safety check", async () => {

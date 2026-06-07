@@ -25,9 +25,12 @@ import type { RedactionHooks } from "./redaction.js";
 // returns no further action -> goal_satisfied) with a harness-corroborated
 // BACKSTOP that force-ends only on unambiguous pathology. The backstop is
 // friction/progress-based, NEVER a turn budget: an idle streak (turns that take
-// no material action) or a no-progress streak (non-idle actions that do not
-// change the UI). The only hard runaway guard is the wall-clock timeoutMs. There
-// is intentionally no maxSteps cap: turns are a terrible proxy for "stop".
+// no material action) or a no-progress streak (turns that do not change the UI
+// state). There is intentionally no maxSteps cap: turns are a terrible proxy for
+// "stop". The only count-free hard stop is the wall-clock timeoutMs, and it is
+// enforced as a deadline race on EVERY model and desktop await (raceSettle), so a
+// hung provider or executor call cannot stall the loop forever; the abort signal
+// is likewise honored before each action so a cancel cannot actuate the desktop.
 
 export type CuaAction =
   | { kind: "click"; x: number; y: number; button?: "left" | "right" | "middle" }
@@ -170,7 +173,7 @@ export function describeCuaAction(action: CuaAction): string {
 function statusForCompletion(reason: ActorCompletionReason): ActorStatus {
   switch (reason) {
     case "goal_satisfied":
-    case "turn_completed":
+    case "turn_completed": // turn_completed is a Codex-lane reason; this loop emits goal_satisfied
       return "passed";
     case "timed_out":
       return "timed_out";
@@ -181,6 +184,43 @@ function statusForCompletion(reason: ActorCompletionReason): ActorStatus {
     case "harness_error":
       return "failed";
   }
+}
+
+// Distinct error classes so the loop can tell a deadline/abort apart from a real
+// adapter failure when raceSettle rejects.
+class CuaDeadlineError extends Error {}
+class CuaAbortError extends Error {}
+
+const neverAbort: AbortSignal = new AbortController().signal;
+
+/**
+ * Wait on a port promise, but stop waiting if the wall-clock budget runs out or
+ * the caller aborts. The underlying promise may still settle later (a promise
+ * cannot be force-cancelled); we simply stop blocking the loop on it. An
+ * already-settled promise always wins, so a fast op is never spuriously failed.
+ */
+function raceSettle<T>(promise: Promise<T>, remainingMs: number, signal?: AbortSignal): Promise<T> {
+  if (signal?.aborted) {
+    return Promise.reject(new CuaAbortError());
+  }
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const finish = (apply: () => void): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      apply();
+    };
+    const onAbort = (): void => finish(() => reject(new CuaAbortError()));
+    const timer = setTimeout(() => finish(() => reject(new CuaDeadlineError())), Math.max(0, remainingMs));
+    if (typeof timer.unref === "function") timer.unref();
+    signal?.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => finish(() => resolve(value)),
+      (error: unknown) => finish(() => reject(error))
+    );
+  });
 }
 
 /**
@@ -206,6 +246,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
 
   const startedAtMs = now();
+  const remaining = (): number => timeoutMs - (now() - startedAtMs);
   const items: ActorTraceItem[] = [];
   const counts: Record<string, number> = {
     turns: 0,
@@ -244,13 +285,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let reason = "computer-use loop completed";
 
   try {
-    let observation = await executor.observe();
+    let observation = await raceSettle(executor.observe(), remaining(), signal);
     await recordScreenshot(observation.screenshot, "turn-00-start");
 
     let previousResponseId: string | undefined;
     let consecutiveIdle = 0;
-    let consecutiveNoProgressCalls = 0;
-    let consecutiveNoProgressObservations = 0;
+    // One canonical "no progress" signal: turns that did not change the UI state
+    // signature (idle or not). The nudge, the stop threshold, and the reason all
+    // key off this counter, and it catches alternating idle/no-progress stalls
+    // that two separate counters would let slip past every backstop but the clock.
+    let consecutiveNoProgress = 0;
     let lastSignature = observation.stateSignature;
     let contextHint: string | undefined;
 
@@ -273,7 +317,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (contextHint !== undefined) request.contextHint = contextHint;
       contextHint = undefined;
 
-      const turn = await provider.nextTurn(request, signal ?? new AbortController().signal);
+      const turn = await raceSettle(provider.nextTurn(request, signal ?? neverAbort), remaining(), signal);
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
@@ -306,15 +350,19 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (turn.pendingSafetyChecks.length > 0) {
         const acks = acknowledgeSafetyChecks(turn.pendingSafetyChecks);
         if (acks === null || acks.length === 0) {
+          // Safety-check categories are provider-defined enums (e.g.
+          // "malicious_instructions"), not free text; record them (redacted for
+          // defense-in-depth) so the evidence shows WHY the run paused.
+          const checks = redaction.redactText(turn.pendingSafetyChecks.join(", "));
           items.push({
             id: nextId("approval"),
             kind: "approval",
             lifecycle: "completed",
             status: "blocked",
-            title: `safety check: ${turn.pendingSafetyChecks.length} pending`
+            title: `safety check: ${checks}`
           });
           completionReason = "blocked_approval";
-          reason = `paused on ${turn.pendingSafetyChecks.length} model safety check(s); not acknowledged`;
+          reason = `paused on model safety check(s): ${checks}; not acknowledged`;
           break;
         }
         request.acknowledgedSafetyChecks = acks;
@@ -322,14 +370,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
       if (turn.done || turn.actions.length === 0) {
         completionReason = "goal_satisfied";
-        reason = turn.message
-          ? redaction.redactText(turn.message)
+        const summary = turn.message?.trim();
+        reason = summary
+          ? redaction.redactText(summary)
           : "model reported a natural endpoint with no further action";
         break;
       }
 
       const idleThisTurn = isIdleTurn(turn.actions);
       for (const action of turn.actions) {
+        if (signal?.aborted) throw new CuaAbortError();
         items.push({
           id: nextId("ui_action"),
           kind: "ui_action",
@@ -337,10 +387,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           title: describeCuaAction(action)
         });
         bump("actions");
-        await executor.execute(action);
+        await raceSettle(executor.execute(action), remaining(), signal);
       }
 
-      observation = await executor.observe();
+      if (signal?.aborted) throw new CuaAbortError();
+      observation = await raceSettle(executor.observe(), remaining(), signal);
       await recordScreenshot(observation.screenshot, `turn-${turnNumber.toString().padStart(2, "0")}`);
 
       const progressed = observation.stateSignature !== lastSignature;
@@ -348,17 +399,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
       consecutiveIdle = idleThisTurn ? consecutiveIdle + 1 : 0;
       if (idleThisTurn) bump("idleTurns");
-      consecutiveNoProgressObservations = progressed ? 0 : consecutiveNoProgressObservations + 1;
-      consecutiveNoProgressCalls = !idleThisTurn && !progressed ? consecutiveNoProgressCalls + 1 : 0;
-      if (!idleThisTurn && !progressed) bump("noProgressTurns");
+      consecutiveNoProgress = progressed ? 0 : consecutiveNoProgress + 1;
+      if (!progressed) bump("noProgressTurns");
 
       // Recovery nudge before the backstop trips: tell the model it is stuck.
-      if (
-        consecutiveNoProgressObservations >= noProgressRecoverySteps &&
-        consecutiveNoProgressCalls < noProgressSteps
-      ) {
+      if (consecutiveNoProgress >= noProgressRecoverySteps && consecutiveNoProgress < noProgressSteps) {
         contextHint =
-          `No visible progress for ${consecutiveNoProgressObservations} step(s). ` +
+          `No visible progress for ${consecutiveNoProgress} step(s). ` +
           "Try a different visible control, scroll within a panel, or stop with a final summary.";
       }
 
@@ -367,22 +414,31 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         reason = `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`;
         break;
       }
-      if (consecutiveNoProgressCalls >= noProgressSteps) {
+      if (consecutiveNoProgress >= noProgressSteps) {
         completionReason = "gave_up";
-        reason = `gave up: ${consecutiveNoProgressCalls} consecutive actions with no change to the UI state`;
+        reason = `gave up: ${consecutiveNoProgress} consecutive turns with no change to the UI state`;
         break;
       }
     }
   } catch (error) {
-    completionReason = "actor_error";
-    reason = redaction.redactText(`computer-use loop error: ${error instanceof Error ? error.message : String(error)}`);
+    if (error instanceof CuaDeadlineError) {
+      completionReason = "timed_out";
+      reason = `wall-clock deadline reached after ${timeoutMs}ms`;
+    } else if (error instanceof CuaAbortError) {
+      completionReason = "harness_error";
+      reason = "run aborted by the harness";
+    } else {
+      completionReason = "actor_error";
+      reason = redaction.redactText(`computer-use loop error: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   const completedAtMs = now();
   const status = statusForCompletion(completionReason);
   const ids: ActorTrace["ids"] = {};
   if (provider.version !== undefined) ids.model = provider.version;
-  if (lastResponseId !== undefined) ids.turnId = lastResponseId;
+  // responseId is provider-authored and opaque; redact for defense-in-depth.
+  if (lastResponseId !== undefined) ids.turnId = redaction.redactText(lastResponseId);
 
   const trace: ActorTrace = {
     schema: ACTOR_TRACE_SCHEMA,
