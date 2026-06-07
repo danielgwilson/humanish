@@ -85,14 +85,19 @@
     "yaml": "^2.9.0"
   },
   "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.0",
     "@e2b/desktop": "^2.2.3"
   },
   "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": true
+    },
     "@e2b/desktop": {
       "optional": true
     }
   },
   "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.0",
     "@e2b/desktop": "^2.2.3",
     "@types/node": "^20.19.41",
     "tsx": "^4.22.4",
