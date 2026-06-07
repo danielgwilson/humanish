@@ -32,6 +32,25 @@ function encodePng(
 const checkerboard = (x: number, y: number): [number, number, number, number] =>
   (x + y) % 2 === 0 ? [0, 0, 0, 255] : [255, 255, 255, 255];
 
+const stripes = (period: number) =>
+  (x: number, _y: number): [number, number, number, number] =>
+    Math.floor(x / period) % 2 === 0 ? [0, 0, 0, 255] : [255, 255, 255, 255];
+
+// Spread between the darkest and lightest red value in a frame. A high-contrast
+// (text-like) pattern that survives redaction keeps a wide spread; a properly
+// coarsened frame collapses toward a narrow band of mid-tones.
+function redChannelSpread(buffer: Buffer): number {
+  const png = PNG.sync.read(buffer);
+  let min = 255;
+  let max = 0;
+  for (let i = 0; i < png.width * png.height; i += 1) {
+    const v = png.data[i * 4] ?? 0;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return max - min;
+}
+
 describe("redactScreenshot", () => {
   it("downscales a large frame to the max width and re-encodes it", () => {
     const source = encodePng(400, 300, checkerboard);
@@ -121,6 +140,56 @@ describe("redactScreenshot", () => {
     const result = redactScreenshot(source, { maxWidth: 32 });
     expect(result.width).toBe(32);
     expect(result.height).toBe(Math.round((300 * 32) / 400)); // 24
+  });
+
+  it("enforces the width cap: a huge maxWidth cannot widen the frame", () => {
+    // The "too coarse to read" invariant must hold even when a caller tries to
+    // disable the downscale. Before the cap, maxWidth 100000 left a full-res,
+    // blur-only frame that stayed legible; this test pins that it cannot.
+    const source = encodePng(400, 300, stripes(2));
+    const result = redactScreenshot(source, { maxWidth: 100_000 });
+    expect(result.width).toBeLessThanOrEqual(128);
+    expect(redChannelSpread(result.buffer)).toBeLessThan(64);
+  });
+
+  it("keeps the no-downscale path illegible (small native frame)", () => {
+    // 90 < 128 so there is no downscale; the internal blur floor (not a caller
+    // knob) must still erase high-frequency, text-like detail. This would fail
+    // with the old fixed radius-2 blur.
+    const source = encodePng(90, 60, stripes(2));
+    const result = redactScreenshot(source);
+    expect(result.width).toBe(90); // confirms we are on the no-downscale path
+    expect(redChannelSpread(result.buffer)).toBeLessThan(96);
+  });
+
+  it("fails closed on an oversized PNG without decoding it (OOM guard)", () => {
+    // Valid signature + an IHDR declaring 100000x100000 (~10 gigapixels). The
+    // guard must return a placeholder before allocating, never attempt decode.
+    const header = Buffer.alloc(24);
+    header.writeUInt32BE(0x89_50_4e_47, 0); // PNG signature (first 4 bytes)
+    header.writeUInt32BE(100_000, 16); // IHDR width
+    header.writeUInt32BE(100_000, 20); // IHDR height
+    const result = redactScreenshot(header);
+    expect(result.decoded).toBe(false);
+    expect(() => PNG.sync.read(result.buffer)).not.toThrow();
+  });
+
+  it("normalizes a non-RGBA source encoding (grayscale) and stays illegible", () => {
+    const rgba = encodePng(400, 300, stripes(2));
+    const grayscale = PNG.sync.write(PNG.sync.read(rgba), { colorType: 0 });
+    const result = redactScreenshot(grayscale);
+    expect(result.decoded).toBe(true);
+    const out = PNG.sync.read(result.buffer);
+    expect(out.data.length).toBe(out.width * out.height * 4); // always RGBA
+    expect(redChannelSpread(result.buffer)).toBeLessThan(64);
+  });
+
+  it("always emits a well-formed RGBA PNG, whatever the input", () => {
+    const inputs = [encodePng(300, 200, checkerboard), Buffer.alloc(0), Buffer.from("nope", "utf8")];
+    for (const input of inputs) {
+      const out = PNG.sync.read(redactScreenshot(input).buffer);
+      expect(out.data.length).toBe(out.width * out.height * 4);
+    }
   });
 
   it("accepts a Uint8Array as well as a Buffer", () => {

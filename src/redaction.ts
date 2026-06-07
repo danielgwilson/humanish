@@ -115,18 +115,29 @@ export function publicPathForTrace(value: string, rootCwd: string): string {
 //
 // Computer-use lanes capture raw desktop frames that can contain secrets, PII,
 // or a logged-in third-party UI. A raw frame must never reach a public artifact.
-// redactScreenshot is the fail-closed primitive that gates that surface: it
+// redactScreenshot is the fail-closed primitive that gates that surface. It
 // always returns a freshly re-encoded, downscaled, box-blurred thumbnail (or a
-// neutral placeholder), and NEVER the source pixels. Downscaling to a small max
-// width destroys legible text by construction; the blur removes residual
-// aliasing. On any uncertainty (non-PNG input, decode failure, or any error in
-// the resize/blur path) it falls back to an opaque placeholder, so a redaction
-// failure can never leak the original frame.
+// neutral placeholder), and NEVER the source pixels. The "too coarse to read"
+// invariant is enforced in code, not by defaults: the emitted width is hard-
+// capped (a caller may request a SMALLER thumbnail but never a larger one), and
+// the blur radius is computed internally with a floor, so neither a caller
+// option nor a natively small frame can widen the output back into legibility.
+// On any uncertainty (non-PNG input, an oversized or unreadable PNG, or any
+// error in the resize/blur path) it falls back to an opaque placeholder, so a
+// redaction failure can never leak the original frame. Threat model: inputs are
+// bounded desktop-viewport frames from our own sandbox, not adversarial uploads.
 // ---------------------------------------------------------------------------
 
 const SCREENSHOT_MAX_WIDTH_DEFAULT = 96;
-const SCREENSHOT_BLUR_RADIUS_DEFAULT = 2;
+// Hard ceiling on the emitted thumbnail width. This, not the default, is what
+// makes the output too coarse to read text off: a 1024px+ desktop frame is
+// downscaled at least ~8x. A caller can only ask for something smaller.
+const SCREENSHOT_MAX_WIDTH_CAP = 128;
+// Reject absurd source dimensions before decode so a crafted IHDR cannot OOM the
+// process before the try/catch can fall back to a placeholder.
+const SCREENSHOT_MAX_SOURCE_PIXELS = 50_000_000;
 const SCREENSHOT_PLACEHOLDER_GRAY = 128;
+const PNG_SIGNATURE_BE = 0x89_50_4e_47;
 
 /**
  * A redacted screenshot safe to persist to a public run bundle. `buffer` is
@@ -150,10 +161,13 @@ export interface RedactedScreenshot {
 }
 
 export interface RedactScreenshotOptions {
-  /** Longest emitted edge in pixels. Smaller is safer and cheaper. Default 96. */
+  /**
+   * Longest emitted edge in pixels. Clamped to [1, 128]: a caller may request a
+   * SMALLER (safer) thumbnail but never a larger one, so no call site can widen
+   * the frame back into legibility. Default 96. Blur is not a caller knob: it is
+   * an internal safety floor computed from the output size.
+   */
   maxWidth?: number;
-  /** Box-blur radius applied at thumbnail scale. Default 2. */
-  blurRadius?: number;
 }
 
 /**
@@ -164,11 +178,13 @@ export function redactScreenshot(
   input: Buffer | Uint8Array,
   options: RedactScreenshotOptions = {}
 ): RedactedScreenshot {
-  const maxWidth = Math.max(1, Math.floor(options.maxWidth ?? SCREENSHOT_MAX_WIDTH_DEFAULT));
-  const blurRadius = Math.max(0, Math.floor(options.blurRadius ?? SCREENSHOT_BLUR_RADIUS_DEFAULT));
+  const maxWidth = Math.min(
+    SCREENSHOT_MAX_WIDTH_CAP,
+    Math.max(1, Math.floor(options.maxWidth ?? SCREENSHOT_MAX_WIDTH_DEFAULT))
+  );
   try {
     const source = Buffer.isBuffer(input) ? input : Buffer.from(input);
-    if (source.length === 0) {
+    if (source.length === 0 || sourcePixelsExceedCap(source)) {
       return placeholderScreenshot(maxWidth);
     }
     const decoded = PNG.sync.read(source);
@@ -180,13 +196,33 @@ export function redactScreenshot(
     const outW = Math.max(1, Math.min(maxWidth, srcW));
     const outH = Math.max(1, Math.round((srcH * outW) / srcW));
     const small = downscaleRgba(decoded.data, srcW, srcH, outW, outH);
-    const blurred = boxBlurRgba(small, outW, outH, blurRadius);
+    const blurred = boxBlurRgba(small, outW, outH, effectiveBlurRadius(outW));
     const out = new PNG({ width: outW, height: outH });
     blurred.copy(out.data);
     return { buffer: PNG.sync.write(out), mode: "blurred", width: outW, height: outH, decoded: true };
   } catch {
     return placeholderScreenshot(maxWidth);
   }
+}
+
+// Blur enough to erase sub-thumbnail detail even on the no-downscale path (a
+// natively small source where downscale alone does little). Scales with output
+// width so the floor stays meaningful, never below radius 2.
+function effectiveBlurRadius(outW: number): number {
+  return Math.max(2, Math.round(outW / 24));
+}
+
+// Peek a PNG's declared IHDR dimensions without decoding it, and report whether
+// the pixel count exceeds the cap. A too-short or non-PNG buffer returns false
+// and falls through to PNG.sync.read, which throws and lands on the placeholder.
+function sourcePixelsExceedCap(buf: Buffer): boolean {
+  if (buf.length < 24 || buf.readUInt32BE(0) !== PNG_SIGNATURE_BE) {
+    return false;
+  }
+  // IHDR is the first chunk: width at byte 16, height at byte 20 (big-endian).
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  return width * height > SCREENSHOT_MAX_SOURCE_PIXELS;
 }
 
 function placeholderScreenshot(maxWidth: number): RedactedScreenshot {
