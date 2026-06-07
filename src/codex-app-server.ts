@@ -1,10 +1,9 @@
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
 
-import { publicPathForTrace, redactText } from "./redaction.js";
+import { digestText, publicPathForTrace, redactText } from "./redaction.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "mimetic.codex-app-server-trace.v1";
 
@@ -953,10 +952,6 @@ function redactJsonValue(value: unknown, keyHint = "", rootCwd?: string): unknow
     );
   }
   return value;
-}
-
-function digestText(text: string): string {
-  return createHash("sha256").update(text).digest("hex").slice(0, 12);
 }
 
 function limitTranscript(value: string): string {

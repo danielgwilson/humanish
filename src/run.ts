@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -18,7 +18,7 @@ import type { ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
-import { containsSensitive, redactToSecretLabel } from "./redaction.js";
+import { containsSensitive, digestText, redactToSecretLabel } from "./redaction.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
 export const REVIEW_SCHEMA = "mimetic.review.v1";
@@ -4560,10 +4560,6 @@ function publicSafeToken(value: string | undefined, fallback: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   return candidate || fallback;
-}
-
-function digestText(text: string): string {
-  return createHash("sha256").update(text).digest("hex").slice(0, 12);
 }
 
 function escapeRegExp(value: string): string {

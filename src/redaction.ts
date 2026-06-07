@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
@@ -282,6 +283,70 @@ function boxBlurRgba(data: Buffer, width: number, height: number, radius: number
   }
   return blurPass(blurPass(data, width, height, radius, true), width, height, radius, false);
 }
+
+// ---------------------------------------------------------------------------
+// Prompt logging.
+//
+// Raw persona prompts can carry synthetic identity details, so they are never
+// written to the event log verbatim. digestText is the single source of truth
+// for the short content digest used across producers; promptForLog turns a raw
+// prompt into a log-safe reference (placeholder + digest + length).
+// ---------------------------------------------------------------------------
+
+/** Stable short content digest (sha256, first 12 hex chars). */
+export function digestText(text: string): string {
+  return createHash("sha256").update(text).digest("hex").slice(0, 12);
+}
+
+/**
+ * A log-safe reference to a raw prompt: a placeholder string, a stable digest,
+ * and the length. Proves which prompt was used without persisting its text.
+ */
+export function promptForLog(raw: string): { placeholder: string; digest: string; length: number } {
+  const digest = digestText(raw);
+  return { placeholder: `[persona-prompt sha256:${digest} len:${raw.length}]`, digest, length: raw.length };
+}
+
+// ---------------------------------------------------------------------------
+// Injectable redaction hooks.
+//
+// The single redaction surface handed to every actor so no adapter reimplements
+// redaction (the contract's "use the injected RedactionHooks" rule). Mirrors
+// docs/architecture/actor-contract.md. redactScreenshot is async to match the
+// contract (a future ocr_scrubbed mode may be async); today it wraps the
+// synchronous fail-closed thumbnailer above.
+// ---------------------------------------------------------------------------
+
+export interface ScreenshotMeta {
+  /** Optional smaller-only thumbnail width (clamped to the safe ceiling). */
+  maxWidth?: number;
+  /** Free-form label for logs (e.g. "turn-03-call-01"). Never enters the pixels. */
+  label?: string;
+}
+
+export interface RedactionHooks {
+  redactText(text: string): string;
+  publicPath(value: string, rootCwd: string): string;
+  redactScreenshot(
+    buffer: Buffer | Uint8Array,
+    meta?: ScreenshotMeta
+  ): Promise<{ buffer: Buffer; method: "blurred" | "ocr_scrubbed" }>;
+  promptForLog(raw: string): { placeholder: string; digest: string; length: number };
+}
+
+/** The default hooks wired into every actor: redaction.ts is the source of truth. */
+export const defaultRedactionHooks: RedactionHooks = {
+  redactText,
+  publicPath: publicPathForTrace,
+  async redactScreenshot(buffer, meta) {
+    const result = redactScreenshot(
+      buffer,
+      meta?.maxWidth === undefined ? {} : { maxWidth: meta.maxWidth }
+    );
+    return { buffer: result.buffer, method: result.mode };
+  },
+  promptForLog
+};
 
 function blurPass(src: Buffer, width: number, height: number, radius: number, horizontal: boolean): Buffer {
   const out = Buffer.alloc(src.length);
