@@ -122,6 +122,20 @@ export const PI_AGENT_CORE_CAPABILITIES: ActorCapabilities = {
   license: "open"
 };
 
+// Claude Agent SDK (@anthropic-ai/claude-agent-sdk): in-process query() stream
+// with typed SDK messages. Pre-grant approvals via permissionMode/allowedTools.
+// Anthropic-centric models (others via a proxy), so byoModel is false.
+export const CLAUDE_AGENT_SDK_CAPABILITIES: ActorCapabilities = {
+  headless: true,
+  structuredTrace: true,
+  lanes: ["code", "app"],
+  producesScreenshots: false,
+  byoModel: false,
+  preGrantableApprovals: true,
+  inProcessTools: true,
+  license: "open"
+};
+
 // Codex app-server reports four terminal statuses but no explicit completion
 // reason enum, so map status -> reason. App-server "blocked" is approval-driven
 // (an action was declined and the turn could not proceed). "goal_satisfied" and

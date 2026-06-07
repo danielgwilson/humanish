@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, type ActorCapabilities, type ActorTrace } from "../src/actor-contract.js";
 import { getActor } from "../src/actor-registry.js";
-import { buildCodexResult, buildPiSession, fixturePersona } from "./actor-fixtures.js";
+import { buildClaudeSession, buildCodexResult, buildPiSession, fixturePersona } from "./actor-fixtures.js";
 
 // The shared contract every adapter's ActorTrace must satisfy. This is what makes
 // the harnesses interchangeable (ADR step 7): one persona run through codex and pi
@@ -78,40 +78,51 @@ function assertConformsToActorTrace(trace: ActorTrace): void {
 describe("cross-harness ActorTrace conformance", () => {
   const codex = getActor("codex-app-server").toActorTrace(buildCodexResult(), fixturePersona);
   const pi = getActor("pi-agent-core").toActorTrace(buildPiSession(), fixturePersona);
+  const claude = getActor("claude-agent-sdk").toActorTrace(buildClaudeSession(), fixturePersona);
+  const traces = [
+    { name: "codex-app-server", trace: codex },
+    { name: "pi-agent-core", trace: pi },
+    { name: "claude-agent-sdk", trace: claude }
+  ];
 
-  it("codex-app-server produces a conformant trace", () => {
-    assertConformsToActorTrace(codex);
+  for (const { name, trace } of traces) {
+    it(`${name} produces a conformant trace`, () => {
+      assertConformsToActorTrace(trace);
+    });
+  }
+
+  it("all adapters emit the identical envelope shape (same top-level keys)", () => {
+    const codexKeys = Object.keys(codex).sort();
+    expect(Object.keys(pi).sort()).toEqual(codexKeys);
+    expect(Object.keys(claude).sort()).toEqual(codexKeys);
   });
 
-  it("pi-agent-core produces a conformant trace", () => {
-    assertConformsToActorTrace(pi);
+  it("all adapters thread the same persona reference identically", () => {
+    for (const { trace } of traces) {
+      expect(trace.persona).toEqual(fixturePersona);
+    }
   });
 
-  it("both adapters emit the identical envelope shape (same top-level keys)", () => {
-    expect(Object.keys(codex).sort()).toEqual(Object.keys(pi).sort());
+  it("all adapters use the shared status and completion-reason vocabulary", () => {
+    for (const { trace } of traces) {
+      expect(ACTOR_STATUSES).toContain(trace.status);
+      expect(COMPLETION_REASONS).toContain(trace.completionReason);
+    }
   });
 
-  it("both thread the same persona reference identically", () => {
-    expect(codex.persona).toEqual(fixturePersona);
-    expect(pi.persona).toEqual(fixturePersona);
+  it("all adapters report redaction passed", () => {
+    for (const { trace } of traces) {
+      expect(trace.redaction.status).toBe("passed");
+    }
   });
 
-  it("both use the shared status and completion-reason vocabulary", () => {
-    expect(ACTOR_STATUSES).toContain(codex.status);
-    expect(ACTOR_STATUSES).toContain(pi.status);
-    expect(COMPLETION_REASONS).toContain(codex.completionReason);
-    expect(COMPLETION_REASONS).toContain(pi.completionReason);
-  });
-
-  it("both report redaction passed", () => {
-    expect(codex.redaction.status).toBe("passed");
-    expect(pi.redaction.status).toBe("passed");
-  });
-
-  it("differ only where providers legitimately differ", () => {
+  it("each adapter declares its own distinct provider and protocol", () => {
     expect(codex.provider).toBe("codex-app-server");
     expect(pi.provider).toBe("pi-agent-core");
+    expect(claude.provider).toBe("claude-agent-sdk");
     expect(codex.protocol).toBe("json-rpc");
     expect(pi.protocol).toBe("in-process-sdk");
+    expect(claude.protocol).toBe("in-process-sdk");
+    expect(new Set(traces.map((entry) => entry.trace.provider)).size).toBe(3);
   });
 });

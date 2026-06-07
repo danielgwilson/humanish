@@ -156,7 +156,8 @@ describe("actorRegistry with the pi adapter", () => {
     const codex = getActor("codex-app-server");
     expect(codex.id).toBe("codex-app-server");
     expect(typeof codex.runSession).toBe("function");
-    expect(Object.keys(actorRegistry).sort()).toEqual(["codex-app-server", "pi-agent-core"]);
+    expect(Object.keys(actorRegistry)).toContain("codex-app-server");
+    expect(Object.keys(actorRegistry)).toContain("pi-agent-core");
   });
 
   it("maps a pi session through the registry descriptor", () => {
