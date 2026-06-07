@@ -4,6 +4,7 @@ import {
   type CodexAppServerRunResult
 } from "./codex-app-server.js";
 import {
+  CLAUDE_AGENT_SDK_CAPABILITIES,
   CODEX_APP_SERVER_CAPABILITIES,
   PI_AGENT_CORE_CAPABILITIES,
   codexResultToActorTrace,
@@ -12,10 +13,11 @@ import {
   type ActorTrace
 } from "./actor-contract.js";
 import { piSessionToActorTrace, type PiSessionResult } from "./pi-agent-core.js";
+import { claudeSessionToActorTrace, type ClaudeSessionResult } from "./claude-agent-sdk.js";
 
 // The set of pluggable actor harnesses. The union grows as adapters land
-// (claude-agent-sdk, stagehand-cua next). See docs/architecture/actor-contract.md.
-export type ActorId = "codex-app-server" | "pi-agent-core";
+// (stagehand-cua next). See docs/architecture/actor-contract.md.
+export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk";
 
 interface ActorDescriptorBase {
   id: ActorId;
@@ -38,7 +40,14 @@ export interface PiActorDescriptor extends ActorDescriptorBase {
   toActorTrace(session: PiSessionResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor;
+// Like pi, the Claude descriptor exposes only the pure mapper this slice; live
+// query() invocation is deferred behind a DI seam (see src/claude-agent-sdk.ts).
+export interface ClaudeActorDescriptor extends ActorDescriptorBase {
+  id: "claude-agent-sdk";
+  toActorTrace(session: ClaudeSessionResult, persona: ActorPersonaRef): ActorTrace;
+}
+
+export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor | ClaudeActorDescriptor;
 
 export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   "codex-app-server": {
@@ -53,6 +62,12 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     label: "pi Agent Core",
     capabilities: PI_AGENT_CORE_CAPABILITIES,
     toActorTrace: piSessionToActorTrace
+  },
+  "claude-agent-sdk": {
+    id: "claude-agent-sdk",
+    label: "Claude Agent SDK",
+    capabilities: CLAUDE_AGENT_SDK_CAPABILITIES,
+    toActorTrace: claudeSessionToActorTrace
   }
 };
 
@@ -60,6 +75,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
 // signatures (e.g. getActor("codex-app-server").runSession(...) stays valid).
 export function getActor(id: "codex-app-server"): CodexActorDescriptor;
 export function getActor(id: "pi-agent-core"): PiActorDescriptor;
+export function getActor(id: "claude-agent-sdk"): ClaudeActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor {
   const actor = actorRegistry[id];

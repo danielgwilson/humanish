@@ -3,6 +3,7 @@
 import type { CodexAppServerRunResult, CodexAppServerTrace } from "../src/codex-app-server.js";
 import type { ActorPersonaRef } from "../src/actor-contract.js";
 import type { PiSessionResult } from "../src/pi-agent-core.js";
+import type { ClaudeSessionResult } from "../src/claude-agent-sdk.js";
 
 export const fixturePersona: ActorPersonaRef = {
   id: "synthetic-new-user",
@@ -115,6 +116,44 @@ export function buildPiSession(): PiSessionResult {
       { type: "notice", method: "extension_error", message: "synthetic extension notice" },
       { type: "turn_end" },
       { type: "agent_end" }
+    ]
+  };
+}
+
+export function buildClaudeSession(): ClaudeSessionResult {
+  return {
+    startedAt: "2026-06-06T00:00:00.000Z",
+    completedAt: "2026-06-06T00:00:04.000Z",
+    providerVersion: "0.3.168",
+    messages: [
+      { type: "system", subtype: "init", session_id: "claude-session-1", model: "synthetic-model" },
+      {
+        type: "assistant",
+        message: {
+          content: [
+            { type: "thinking", thinking: "considering the request" },
+            { type: "text", text: "Inspecting the project setup." },
+            { type: "tool_use", id: "toolu_01", name: "Read" }
+          ]
+        }
+      },
+      {
+        type: "user",
+        message: {
+          content: [{ type: "tool_result", tool_use_id: "toolu_01", is_error: false }]
+        }
+      },
+      {
+        type: "result",
+        subtype: "success",
+        is_error: false,
+        duration_ms: 4000,
+        num_turns: 1,
+        session_id: "claude-session-1",
+        total_cost_usd: 0.0034,
+        usage: { input_tokens: 200, output_tokens: 80 },
+        result: "Completed the inspection."
+      }
     ]
   };
 }
