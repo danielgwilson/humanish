@@ -14,9 +14,10 @@ import {
   type CodexAppServerTrace
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
+import type { ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
-import { parseResolvedPersona, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { containsSensitive, redactToSecretLabel } from "./redaction.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
@@ -256,6 +257,9 @@ export interface RunStream {
     tracePath?: string;
     turnId?: string;
   };
+  // Provider-neutral projection of the actor's evidence (mimetic.actor-trace.v1).
+  // Populated alongside the raw `codex` evidence; carries persona.traitsApplied.
+  actor?: ActorTrace;
   completion?: RunStreamCompletion;
   artifacts: Array<{
     label: string;
@@ -2631,6 +2635,7 @@ function buildLocalCodexAppServerBundle(args: {
   mimeticSource: RunBundle["source"]["mimeticSource"];
   packageName: string | null;
   persona: RunBundle["persona"];
+  resolvedPersona: ResolvedPersona;
   review: ReviewSummary;
   runId: string;
   scenario: RunBundle["scenario"];
@@ -2666,6 +2671,15 @@ function buildLocalCodexAppServerBundle(args: {
     })),
     streams: args.lanes.map((lane): RunStream => {
       const result = lane.result;
+      // Provider-neutral projection of the actor evidence, with the persona's
+      // applied traits threaded in. Only present once the lane has a result.
+      const actor: ActorTrace | undefined = result
+        ? getActor("codex-app-server").toActorTrace(result, {
+            id: args.persona.id,
+            traitsApplied: personaToDirectives(args.resolvedPersona).traitsApplied,
+            promptDigest: result.trace.promptDigest
+          })
+        : undefined;
       const artifacts: RunStream["artifacts"] = [
         { label: "run bundle", path: "run.json", kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
@@ -2708,6 +2722,7 @@ function buildLocalCodexAppServerBundle(args: {
           ...(result?.tracePath === undefined ? {} : { tracePath: result.tracePath }),
           ...(result?.turnId === undefined ? {} : { turnId: result.turnId })
         },
+        ...(actor === undefined ? {} : { actor }),
         ...(lane.completion ? { completion: lane.completion } : {}),
         artifacts
       };
@@ -2860,6 +2875,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     mimeticSource,
     source,
     persona: selection.persona,
+    resolvedPersona: selection.resolvedPersona,
     scenario: selection.scenario,
     lifecycle: [
       ...baseLifecycle,
@@ -2944,6 +2960,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     mimeticSource,
     source,
     persona: selection.persona,
+    resolvedPersona: selection.resolvedPersona,
     scenario: selection.scenario,
     lifecycle: [
       ...baseLifecycle,

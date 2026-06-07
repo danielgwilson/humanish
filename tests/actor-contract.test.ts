@@ -245,4 +245,14 @@ describe("codexResultToActorTrace edge cases", () => {
     const plan = codexResultToActorTrace(result, persona).items.find((item) => item.kind === "plan");
     expect(plan?.title).toBe("Plan update");
   });
+
+  it("redacts the reason field to honor the redaction contract", () => {
+    // Build the path via join so no literal local path appears in source.
+    const leakyPath = ["", "Users", "synthetic", "work"].join("/");
+    const result = buildCodexResult();
+    result.reason = `failed at ${leakyPath} while running`;
+    const actorTrace = codexResultToActorTrace(result, persona);
+    expect(actorTrace.reason).not.toContain(leakyPath);
+    expect(actorTrace.reason).toContain("[REDACTED_LOCAL_PATH]");
+  });
 });
