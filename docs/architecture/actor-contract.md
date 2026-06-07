@@ -235,6 +235,50 @@ Plan:
    cites a concrete friction reason (not a turn count). "Did the persona drive
    the run" becomes a verifiable artifact, not an assertion.
 
+## Decision: how abandonment is adjudicated
+
+"When does a synthetic persona give up?" has no obvious best answer, so the
+choice is recorded here rather than left implicit and silently re-litigated.
+
+Options considered:
+
+1. **Persona-judged only** (the LLM decides in character, uncorroborated).
+   Truest embodiment, but LLM stop behavior is erratic (often too stubborn,
+   sometimes too eager), non-reproducible, and hard to verify. A purely
+   model-judged stop can also run uselessly to the wall-clock timeout.
+2. **Harness-adjudicated from objective signals only** (no-progress,
+   repeated-failure, looping); the persona just sets a numeric threshold.
+   Deterministic and reproducible, but mechanical, misses the subjective "this
+   is not worth it" judgment that is the whole point of a persona, and a fixed
+   threshold quietly drifts back toward a disguised counter.
+3. **Persona-judged primary, harness-corroborated backstop.** The actor decides
+   in character and emits `gave_up` with the friction; the harness independently
+   tracks objective signals and (a) annotates the friction as a feedback
+   candidate, and (b) force-ends only on unambiguous pathology (e.g. repeated
+   identical failed actions = a loop, or no progress past a wall-clock
+   checkpoint) so a too-stubborn model cannot waste the entire timeout.
+
+**Decision: option 3.** It keeps the behavior emergent and persona-faithful (the
+value) while the objective backstop adds reproducibility and bounds a stubborn
+model. Every backstop signal is progress- or friction-based, never a turn or
+tool-call count.
+
+Non-obvious tradeoffs to revisit with real-run data:
+
+- The backstop thresholds (what counts as "looping" or "no progress") are
+  themselves judgment calls. Start conservative (fire only on unambiguous
+  pathology) and tune against real runs, logging when the backstop fires versus
+  when the persona self-abandons, so the split stays mostly persona-judged.
+- Friction tolerance per patience level is qualitative in the prompt, not a
+  number. If "impatient" proves too soft, escalate by feeding the actor explicit
+  running friction context ("you have hit 3 dead-ends"), still never a turn
+  count.
+- `persona-fidelity` treats a `gave_up` with no cited friction as a fidelity
+  failure, not an accepted stop, so the model cannot quietly quit for no reason.
+
+This keeps patience load-bearing and reproducible without ever using elapsed
+turns as a stop signal.
+
 ## Capability matrix (target adapters)
 
 | Adapter | headless | structured trace | sandbox | BYO model | license | actor fit |
