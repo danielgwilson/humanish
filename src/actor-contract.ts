@@ -108,6 +108,20 @@ export const CODEX_APP_SERVER_CAPABILITIES: ActorCapabilities = {
   license: "open"
 };
 
+// pi-agent-core (@earendil-works/pi-agent-core): an embeddable, provider-agnostic
+// agent loop (MIT). byoModel: 15+ providers incl. local. No confirmed pre-grant
+// approval hook today, so preGrantableApprovals is false until verified.
+export const PI_AGENT_CORE_CAPABILITIES: ActorCapabilities = {
+  headless: true,
+  structuredTrace: true,
+  lanes: ["code", "app"],
+  producesScreenshots: false,
+  byoModel: true,
+  preGrantableApprovals: false,
+  inProcessTools: true,
+  license: "open"
+};
+
 // Codex app-server reports four terminal statuses but no explicit completion
 // reason enum, so map status -> reason. App-server "blocked" is approval-driven
 // (an action was declined and the turn could not proceed). "goal_satisfied" and

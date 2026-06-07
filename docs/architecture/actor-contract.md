@@ -298,7 +298,14 @@ turns as a stop signal.
 3. Personas load-bearing: `ResolvedPersona`, `personaToDirectives`, harness turn
    budget, and the `persona-fidelity` verify check.
 4. `pi-agent-core` adapter (proves the contract against a non-Codex protocol;
-   local-model dogfood for ~$0).
+   local-model dogfood for ~$0). Landed in two slices: first the pure
+   `piSessionToActorTrace` mapper + registry generalization (discriminated
+   `ActorDescriptor` union + `getActor` overloads) + a fixture conformance test,
+   with no pi dependency and no model key required (proves the evidence contract
+   is provider-neutral); then a follow-up live SDK shim behind a DI seam, deferred
+   until the package identity (`@earendil-works/pi-agent-core` vs
+   `@mariozechner/pi-coding-agent`) and the Node `>=22.19` vs engines `>=20` gap
+   are pinned against an installed build.
 5. `claude-agent-sdk` adapter (the `app` lane).
 6. `stagehand-cua` computer-use lane plus `redactScreenshot`.
 7. Cross-harness conformance test: one persona x scenario through every adapter,
