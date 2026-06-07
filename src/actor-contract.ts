@@ -1,4 +1,5 @@
 import type { CodexAppServerRunResult, CodexAppServerStatus, CodexAppServerTrace } from "./codex-app-server.js";
+import { redactText } from "./redaction.js";
 
 // The provider-neutral evidence schema. Codex item/* events, Claude
 // ToolUse/ToolResult blocks, pi tool_execution_* events, and computer-use
@@ -299,7 +300,9 @@ export function codexResultToActorTrace(result: CodexAppServerRunResult, persona
     durationMs: trace.durationMs,
     status: trace.status,
     completionReason: codexStatusToCompletionReason(trace.status),
-    reason: result.reason,
+    // result.reason is the raw reason; the codex trace redacts its own reason, so
+    // redact here too to keep the actor projection consistent (defense in depth).
+    reason: redactText(result.reason),
     ids: {
       ...(result.sessionId === undefined ? {} : { sessionId: result.sessionId }),
       ...(result.threadId === undefined ? {} : { threadId: result.threadId }),

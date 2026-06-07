@@ -1724,6 +1724,11 @@ describe("dry-run bundles", () => {
             tracePath: string;
             turnId: string;
           };
+          actor?: {
+            schema: string;
+            provider: string;
+            persona: { id: string; promptDigest: string; traitsApplied: string[] };
+          };
           kind: string;
           transport: string;
         }>;
@@ -1744,6 +1749,17 @@ describe("dry-run bundles", () => {
       expect(bundle.streams[0]?.codex.trace.schema).toBe("mimetic.codex-app-server-trace.v1");
       expect(bundle.streams[0]?.codex.trace.counts.approvals).toBe(1);
       expect(bundle.streams[0]?.codex.trace.counts.commandOutputs).toBeGreaterThan(0);
+      // Provider-neutral actor projection is populated alongside the raw codex evidence,
+      // and carries the persona's applied traits.
+      const actorTrace = bundle.streams[0]?.actor;
+      expect(actorTrace?.schema).toBe("mimetic.actor-trace.v1");
+      expect(actorTrace?.provider).toBe("codex-app-server");
+      expect(actorTrace?.persona.id).toBeTruthy();
+      expect(typeof actorTrace?.persona.promptDigest).toBe("string");
+      expect(actorTrace?.persona.promptDigest.length).toBeGreaterThan(0);
+      expect(Array.isArray(actorTrace?.persona.traitsApplied)).toBe(true);
+      expect(actorTrace?.persona.traitsApplied.some((entry: string) => entry.startsWith("patience:"))).toBe(true);
+      expect(actorTrace?.persona.traitsApplied.some((entry: string) => entry.startsWith("skill:"))).toBe(true);
       expect(bundle.streams[0]?.artifacts.some((artifact) => artifact.path === "codex-app-server/summary.json")).toBe(true);
       expect(bundle.events.map((event) => event.type)).toContain("codex-app-server.verdict");
       expect(JSON.stringify(bundle)).not.toContain(`sk-${"testsecretvalue"}`);
