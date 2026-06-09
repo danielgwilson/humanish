@@ -303,7 +303,7 @@ describe("runComputerUseLoop", () => {
   it("pauses (blocked) on an unacknowledged safety check", async () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "click", x: 1, y: 1 }],
-      pendingSafetyChecks: ["malicious_instructions"],
+      pendingSafetyChecks: [{ id: "sc_1", code: "malicious_instructions", message: "be careful" }],
       done: false
     });
     const executor = new SignatureExecutor(["s0", "s1"]);
@@ -322,6 +322,37 @@ describe("runComputerUseLoop", () => {
     expect(result.status).toBe("blocked");
     expect(result.reason).toContain("safety check");
     expect(result.trace.items.some((i) => i.kind === "approval")).toBe(true);
+  });
+
+  it("carries acknowledged safety checks onto the NEXT turn's request, verbatim and one-shot", async () => {
+    const check = { id: "sc_9", code: "malicious_instructions", message: "be careful" };
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [check], done: false, responseId: "r1" },
+      { actions: [{ kind: "click", x: 2, y: 2 }], pendingSafetyChecks: [], done: false, responseId: "r2" },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done" }
+    ]);
+    const executor = new SignatureExecutor(["s0", "s1", "s2"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      acknowledgeSafetyChecks: (checks) => checks
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(provider.seen).toHaveLength(3);
+    // Turn 1: nothing to acknowledge yet.
+    expect(provider.seen[0]?.acknowledgedSafetyChecks).toBeUndefined();
+    // Turn 2: the acks granted for turn 1's checks ride the request that carries
+    // that call's output — verbatim wire triples, not fabricated from codes.
+    expect(provider.seen[1]?.acknowledgedSafetyChecks).toEqual([check]);
+    // Turn 3: acks are one-shot; stale acks must not be re-sent.
+    expect(provider.seen[2]?.acknowledgedSafetyChecks).toBeUndefined();
   });
 
   it("stops when the signal is already aborted", async () => {

@@ -162,18 +162,28 @@ describe("parseOpenAiResponse", () => {
     expect(parsed.callIds).toEqual([]);
   });
 
-  it("collects pending_safety_check codes", () => {
+  it("collects pending_safety_check triples verbatim, with fallbacks for partial shapes", () => {
     const parsed = parseOpenAiResponse({
       output: [
         {
           type: "computer_call",
           call_id: "call_x",
           action: { type: "click", x: 1, y: 1 },
-          pending_safety_checks: [{ code: "malicious_instructions", message: "be careful" }, { id: "fallback_id" }, {}]
+          pending_safety_checks: [
+            { id: "sc_1", code: "malicious_instructions", message: "be careful" },
+            { code: "code_only" },
+            { id: "fallback_id" },
+            {}
+          ]
         }
       ]
     });
-    expect(parsed.turn.pendingSafetyChecks).toEqual(["malicious_instructions", "fallback_id", "safety_check"]);
+    expect(parsed.turn.pendingSafetyChecks).toEqual([
+      { id: "sc_1", code: "malicious_instructions", message: "be careful" },
+      { id: "code_only", code: "code_only", message: "code_only" },
+      { id: "fallback_id", code: "fallback_id", message: "fallback_id" },
+      { id: "safety_check", code: "safety_check", message: "safety_check" }
+    ]);
   });
 
   it("collects a top-level output_text into the message", () => {
@@ -225,12 +235,14 @@ describe("request builders", () => {
     expect(out.acknowledged_safety_checks).toBeUndefined();
   });
 
-  it("buildCallOutput echoes acknowledged safety checks when present", () => {
-    const out = buildCallOutput("call_42", SCREENSHOT, ["malicious_instructions"]) as {
+  it("buildCallOutput echoes acknowledged safety checks verbatim (wire id preserved, never fabricated)", () => {
+    const out = buildCallOutput("call_42", SCREENSHOT, [
+      { id: "sc_123", code: "malicious_instructions", message: "be careful" }
+    ]) as {
       acknowledged_safety_checks: Array<{ id: string; code: string; message: string }>;
     };
     expect(out.acknowledged_safety_checks).toEqual([
-      { id: "malicious_instructions", code: "malicious_instructions", message: "malicious_instructions" }
+      { id: "sc_123", code: "malicious_instructions", message: "be careful" }
     ]);
   });
 

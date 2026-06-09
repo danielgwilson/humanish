@@ -56,6 +56,20 @@ export interface CuaObservation {
   stateSignature: string;
 }
 
+/**
+ * A safety check the model raised. The triple is preserved verbatim from the
+ * wire: providers match acknowledgements on `id`, so fabricating or collapsing
+ * these fields would break the proceed path.
+ */
+export interface CuaSafetyCheck {
+  /** Wire id the provider matches acknowledgements on. */
+  id: string;
+  /** Provider-defined category code (e.g. "malicious_instructions"). */
+  code: string;
+  /** Human-readable explanation from the model. */
+  message: string;
+}
+
 export interface CuaTurnRequest {
   /** Persona + task instruction, sent as the system-level steer (first turn). */
   instructions: string;
@@ -64,7 +78,7 @@ export interface CuaTurnRequest {
   /** Opaque continuation handle from the previous turn (provider-specific). */
   previousResponseId?: string;
   /** Safety checks the harness chose to acknowledge, passed back to the model. */
-  acknowledgedSafetyChecks?: string[];
+  acknowledgedSafetyChecks?: CuaSafetyCheck[];
   /** A nudge injected by the backstop before it trips, summarizing the stall. */
   contextHint?: string;
 }
@@ -79,7 +93,7 @@ export interface CuaTurn {
   /** Actions to perform this turn. Empty means the model is done. */
   actions: CuaAction[];
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
-  pendingSafetyChecks: string[];
+  pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
   usage?: { input?: number; output?: number };
   /** True when the model reported a natural endpoint (no further action). */
@@ -120,10 +134,11 @@ export interface CuaLoopOptions {
   noProgressSteps?: number;
   /**
    * If the model flags safety checks, decide which to acknowledge. Returning the
-   * list proceeds; returning null/[] pauses the run (blocked_approval). Default:
-   * pause on any safety check (fail-closed; real approval policy wires in later).
+   * list proceeds (the acks are echoed back on the next turn's request); returning
+   * null/[] pauses the run (blocked_approval). Default: pause on any safety check
+   * (fail-closed; real approval policy wires in later).
    */
-  acknowledgeSafetyChecks?: (checks: string[]) => string[] | null;
+  acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
   /** Persist a redacted screenshot, returning the ref path recorded in the trace. */
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
 }
@@ -297,6 +312,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     let consecutiveNoProgress = 0;
     let lastSignature = observation.stateSignature;
     let contextHint: string | undefined;
+    // Acks granted for the previous turn's safety checks. They must ride the
+    // NEXT request (the one carrying that call's computer_call_output), so they
+    // are staged here rather than written onto the request already sent.
+    let pendingAcks: CuaSafetyCheck[] | undefined;
 
     // Bounded by wall-clock and the friction backstops, never a turn count.
     for (;;) {
@@ -315,7 +334,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       const request: CuaTurnRequest = { instructions, observation };
       if (previousResponseId !== undefined) request.previousResponseId = previousResponseId;
       if (contextHint !== undefined) request.contextHint = contextHint;
+      if (pendingAcks !== undefined) request.acknowledgedSafetyChecks = pendingAcks;
       contextHint = undefined;
+      pendingAcks = undefined;
 
       const turn = await raceSettle(provider.nextTurn(request, signal ?? neverAbort), remaining(), signal);
       bump("turns");
@@ -353,7 +374,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           // Safety-check categories are provider-defined enums (e.g.
           // "malicious_instructions"), not free text; record them (redacted for
           // defense-in-depth) so the evidence shows WHY the run paused.
-          const checks = redaction.redactText(turn.pendingSafetyChecks.join(", "));
+          const checks = redaction.redactText(turn.pendingSafetyChecks.map((check) => check.code).join(", "));
           items.push({
             id: nextId("approval"),
             kind: "approval",
@@ -365,7 +386,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           reason = `paused on model safety check(s): ${checks}; not acknowledged`;
           break;
         }
-        request.acknowledgedSafetyChecks = acks;
+        pendingAcks = acks;
       }
 
       if (turn.done || turn.actions.length === 0) {

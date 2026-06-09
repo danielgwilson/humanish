@@ -24,9 +24,11 @@ function makePng(seed: number): Buffer {
 }
 
 // Real OpenAI Responses provider, fake transport. Returns the scripted JSON per call.
-function scriptedFetch(responses: unknown[]): FetchLike {
+// When a sink is passed, each parsed POST body is recorded so tests can assert wire shapes.
+function scriptedFetch(responses: unknown[], requestBodies?: Array<Record<string, unknown>>): FetchLike {
   let i = 0;
-  return async (_url, _init) => {
+  return async (_url, init) => {
+    if (requestBodies) requestBodies.push(JSON.parse(init.body) as Record<string, unknown>);
     const value = responses[Math.min(i, responses.length - 1)];
     i += 1;
     return { ok: true, status: 200, text: async () => JSON.stringify(value), json: async () => value };
@@ -75,7 +77,12 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const desktop = makeFakeDesktop();
 
-    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop });
+    // Resolve through the registry so this pins the descriptor's runSession, not just the module fn.
+    const result = await getActor("openai-computer-use").runSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop
+    });
 
     expect(result.status).toBe("passed");
     expect(result.completionReason).toBe("goal_satisfied");
@@ -97,11 +104,11 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(Array.isArray(trace.items)).toBe(true);
     expect(trace.redaction).toBeDefined();
     expect(trace.counts).toBeDefined();
-    expect(trace.ids?.model ?? DEFAULT_OPENAI_CU_MODEL).toBe(DEFAULT_OPENAI_CU_MODEL);
+    expect(trace.ids?.model).toBe(DEFAULT_OPENAI_CU_MODEL);
   });
 
   it("T4: typed secrets and raw frames never reach the trace (redaction enforced at the boundary)", async () => {
-    const secret = "hunter2@secret.example";
+    const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([
       { id: "r1", output: [{ type: "computer_call", call_id: "c1", action: { type: "type", text: secret } }] },
       { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "typed" }] }] }
@@ -126,10 +133,52 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
         }]
       }
     ]);
-    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop: makeFakeDesktop() });
+    const desktop = makeFakeDesktop();
+    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop });
 
     expect(result.status).toBe("blocked");
     expect(result.completionReason).toBe("blocked_approval");
+    // Fail-closed means NOT actuated: the flagged click must never reach the desktop.
+    expect(desktop.calls).toHaveLength(0);
+  });
+
+  it("T5b: granted acks ride the next wire request verbatim (the exported seam works end-to-end)", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchFn = scriptedFetch(
+      [
+        {
+          id: "r1",
+          output: [{
+            type: "computer_call",
+            call_id: "c1",
+            action: { type: "click", x: 1, y: 2 },
+            pending_safety_checks: [{ id: "s1", code: "malicious_instructions", message: "be careful" }]
+          }]
+        },
+        { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "done" }] }] }
+      ],
+      bodies
+    );
+    const desktop = makeFakeDesktop();
+
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop,
+      acknowledgeSafetyChecks: (checks) => checks
+    });
+
+    expect(result.status).toBe("passed");
+    // Acknowledged checks proceed: the flagged click WAS actuated.
+    expect(desktop.calls).toContainEqual(["leftClick", 1, 2]);
+    // And the follow-up POST echoes the verbatim wire triple on the call output.
+    const second = bodies[1] as { input?: Array<Record<string, unknown>> };
+    const callOutput = (second.input ?? []).find((item) => item.type === "computer_call_output") as
+      | { acknowledged_safety_checks?: unknown }
+      | undefined;
+    expect(callOutput?.acknowledged_safety_checks).toEqual([
+      { id: "s1", code: "malicious_instructions", message: "be careful" }
+    ]);
   });
 
   it("T6: the API key never escapes into the trace", async () => {

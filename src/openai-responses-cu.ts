@@ -1,5 +1,5 @@
 import type { ActorCapabilities } from "./actor-contract.js";
-import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
+import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
 // behind the CuaProvider port from src/computer-use.ts. It mirrors the
@@ -167,7 +167,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   const callIds: string[] = [];
   const reasoningParts: string[] = [];
   const messageParts: string[] = [];
-  const safetyChecks: string[] = [];
+  const safetyChecks: CuaSafetyCheck[] = [];
 
   for (const rawItem of output) {
     const item = asRecord(rawItem);
@@ -188,9 +188,18 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
         if (callId !== undefined) callIds.push(callId);
         const mapped = openAiActionToCua(item.action);
         if (mapped !== null) actions.push(mapped);
+        // Preserve the wire triple verbatim: the API matches acknowledgements on
+        // `id`, so collapsing to a code string (and fabricating ids on echo)
+        // would silently break the proceed path.
         for (const rawCheck of asArray(item.pending_safety_checks)) {
           const check = asRecord(rawCheck);
-          safetyChecks.push(asString(check.code) || asString(check.id) || "safety_check");
+          const id = asString(check.id);
+          const code = asString(check.code);
+          safetyChecks.push({
+            id: id || code || "safety_check",
+            code: code || id || "safety_check",
+            message: asString(check.message) || code || id || "safety_check"
+          });
         }
         break;
       }
@@ -267,7 +276,7 @@ export function buildInitialRequest(ctx: OpenAiCuContext): Record<string, unknow
  * screenshot as an inline data URL. Acknowledged safety checks (if any) are
  * echoed back so the model can proceed past a check the harness approved.
  */
-export function buildCallOutput(callId: string, screenshot: Buffer, acknowledged?: string[]): Record<string, unknown> {
+export function buildCallOutput(callId: string, screenshot: Buffer, acknowledged?: CuaSafetyCheck[]): Record<string, unknown> {
   return {
     type: "computer_call_output",
     call_id: callId,
@@ -276,7 +285,7 @@ export function buildCallOutput(callId: string, screenshot: Buffer, acknowledged
       image_url: `data:image/png;base64,${screenshot.toString("base64")}`
     },
     ...(acknowledged && acknowledged.length > 0
-      ? { acknowledged_safety_checks: acknowledged.map((code) => ({ id: code, code, message: code })) }
+      ? { acknowledged_safety_checks: acknowledged.map(({ id, code, message }) => ({ id, code, message })) }
       : {})
   };
 }

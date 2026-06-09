@@ -14,7 +14,8 @@ import {
   type CuaExecutor,
   type CuaLoopOptions,
   type CuaLoopResult,
-  type CuaProvider
+  type CuaProvider,
+  type CuaSafetyCheck
 } from "./computer-use.js";
 import {
   createE2BDesktopExecutor,
@@ -48,10 +49,11 @@ export interface CuaActorSessionOptions {
   redaction?: RedactionHooks;
   now?: () => number;
   /**
-   * Decide which model-flagged safety checks to acknowledge. Omitted here means the loop's own
-   * fail-closed default applies (pause on any check). PR scope deliberately does NOT auto-ack.
+   * Decide which model-flagged safety checks to acknowledge; returned checks are echoed back
+   * (verbatim wire triples) on the next turn's request so the model proceeds. Omitted here means
+   * the loop's own fail-closed default applies (pause on any check). No auto-ack policy ships yet.
    */
-  acknowledgeSafetyChecks?: (checks: string[]) => string[] | null;
+  acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
   idleSteps?: number;
   noProgressSteps?: number;
   /** Persist a redacted screenshot, returning the ref path recorded in the trace. */
