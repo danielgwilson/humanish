@@ -19,8 +19,8 @@ export const LAB_CONFIG_SCHEMA = "mimetic.lab.v2";
 // (a leading "." or "/" is read as a file path; a leading "-" collides with CLI flags).
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-/** Where the run acts: the host repo, or a fresh clone. (app-url returns in a later slice.) */
-export type LabSubjectSource = "this-repo" | "clone";
+/** Where the run acts: the host repo, a fresh clone, or a running app at a loopback URL. */
+export type LabSubjectSource = "this-repo" | "clone" | "app-url";
 
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. */
@@ -36,6 +36,8 @@ export interface LabSubject {
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
   repos?: string[];
   clone?: LabSubjectClone;
+  /** `app-url`: a loopback http(s) URL a computer-use actor drives (127.0.0.1/localhost only). */
+  appUrl?: string;
 }
 
 export interface LabActorLaneFocus {
@@ -247,8 +249,8 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone") {
-    return invalid("`subject.source` must be one of: this-repo, clone.");
+  if (source !== "this-repo" && source !== "clone" && source !== "app-url") {
+    return invalid("`subject.source` must be one of: this-repo, clone, app-url.");
   }
   const subject: LabSubject = { source };
 
@@ -264,7 +266,33 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     }
   }
 
+  if (source === "app-url") {
+    const appUrl = str(raw.appUrl);
+    if (!appUrl) {
+      return invalid("`subject.appUrl` is required when source is app-url.");
+    }
+    if (!isLoopbackUrl(appUrl)) {
+      return invalid("`subject.appUrl` must be a loopback http(s) URL (127.0.0.1 or localhost) — public targets are not allowed.");
+    }
+    subject.appUrl = appUrl;
+  }
+
   return { ok: true, value: subject };
+}
+
+// Public-safety: a lab may only drive a local app, never a public site. Loopback hosts only.
+function isLoopbackUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
 
 function parseClone(raw: unknown): LabSubjectClone | undefined {

@@ -20,10 +20,13 @@ import {
   type ClaudeAgentSessionResult,
   type ClaudeSessionResult
 } from "./claude-agent-sdk.js";
+import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use-actor.js";
+import type { CuaLoopResult } from "./computer-use.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES } from "./openai-responses-cu.js";
 
 // The set of pluggable actor harnesses. The union grows as adapters land
 // (stagehand-cua next). See docs/architecture/actor-contract.md.
-export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk";
+export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use";
 
 interface ActorDescriptorBase {
   id: ActorId;
@@ -55,7 +58,15 @@ export interface ClaudeActorDescriptor extends ActorDescriptorBase {
   toActorTrace(session: ClaudeSessionResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor | ClaudeActorDescriptor;
+// The CUA descriptor exposes runSession ONLY (no toActorTrace): runComputerUseLoop already
+// returns a fully-formed ActorTrace at result.trace, so a mapper would be a no-op identity.
+// This mirrors PiActorDescriptor being mapper-only — the union is intentionally heterogeneous.
+export interface CuaActorDescriptor extends ActorDescriptorBase {
+  id: "openai-computer-use";
+  runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
+}
+
+export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor | ClaudeActorDescriptor | CuaActorDescriptor;
 
 export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   "codex-app-server": {
@@ -77,6 +88,14 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     capabilities: CLAUDE_AGENT_SDK_CAPABILITIES,
     runSession: runClaudeAgentSession,
     toActorTrace: claudeSessionToActorTrace
+  },
+  // The ActorId names the actor slot (keeps the lane open for a future stagehand-cua provider);
+  // the trace's `provider` string stays "openai-responses-cu" (the concrete model adapter).
+  "openai-computer-use": {
+    id: "openai-computer-use",
+    label: "OpenAI Computer Use",
+    capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+    runSession: runCuaActorSession
   }
 };
 
@@ -85,6 +104,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
 export function getActor(id: "codex-app-server"): CodexActorDescriptor;
 export function getActor(id: "pi-agent-core"): PiActorDescriptor;
 export function getActor(id: "claude-agent-sdk"): ClaudeActorDescriptor;
+export function getActor(id: "openai-computer-use"): CuaActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor {
   const actor = actorRegistry[id];

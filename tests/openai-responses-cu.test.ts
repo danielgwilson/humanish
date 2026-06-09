@@ -196,7 +196,9 @@ describe("request builders", () => {
   it("buildInitialRequest carries the tool spec, reasoning, and an input_text user item", () => {
     const body = buildInitialRequest(ctx);
     expect(body.model).toBe(DEFAULT_OPENAI_CU_MODEL);
-    expect(body.tools).toEqual([{ type: "computer", display_width: 1280, display_height: 800, environment: "browser" }]);
+    // The live `computer` tool takes no display/environment fields (verified against the API
+    // 2026-06; sending them returns 400 "Unknown parameter tools[0].display_width").
+    expect(body.tools).toEqual([{ type: "computer" }]);
     expect(body.truncation).toBe("auto");
     expect(body.reasoning).toEqual({ effort: "medium" });
     expect(body.instructions).toBe("Do the thing.");

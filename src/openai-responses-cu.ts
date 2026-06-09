@@ -250,14 +250,10 @@ export interface OpenAiCuContext {
 function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
   return {
     model: ctx.model,
-    tools: [
-      {
-        type: "computer",
-        display_width: ctx.display.width,
-        display_height: ctx.display.height,
-        environment: ctx.display.environment
-      }
-    ],
+    // The Responses API `computer` tool takes no display/environment fields — the model infers
+    // resolution from the screenshots it is sent. (Sending display_* returns a 400
+    // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
+    tools: [{ type: "computer" }],
     truncation: "auto",
     reasoning: { effort: ctx.reasoningEffort },
     ...(ctx.safetyIdentifier === undefined ? {} : { safety_identifier: ctx.safetyIdentifier })

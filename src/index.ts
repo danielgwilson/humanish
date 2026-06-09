@@ -17,7 +17,32 @@ export type {
   ActorTraceItemKind
 } from "./actor-contract.js";
 export { actorRegistry, getActor } from "./actor-registry.js";
-export type { ActorDescriptor, ActorId } from "./actor-registry.js";
+export type { ActorDescriptor, ActorId, CuaActorDescriptor } from "./actor-registry.js";
+export {
+  describeCuaAction,
+  runComputerUseLoop
+} from "./computer-use.js";
+export type {
+  CuaAction,
+  CuaExecutor,
+  CuaLoopOptions,
+  CuaLoopResult,
+  CuaObservation,
+  CuaProvider,
+  CuaTurn,
+  CuaTurnRequest
+} from "./computer-use.js";
+export { runCuaActorSession } from "./computer-use-actor.js";
+export type { CuaActorSessionOptions } from "./computer-use-actor.js";
+export { createE2BDesktopExecutor } from "./e2b-desktop-executor.js";
+export type { E2BDesktopExecutorOptions, E2BDesktopLike } from "./e2b-desktop-executor.js";
+export { loadE2BDesktopModule } from "./e2b-desktop-launch.js";
+export {
+  DEFAULT_OPENAI_CU_MODEL,
+  OPENAI_RESPONSES_CU_CAPABILITIES,
+  createOpenAiResponsesProvider
+} from "./openai-responses-cu.js";
+export type { OpenAiResponsesProviderOptions } from "./openai-responses-cu.js";
 export { normalizeCliArgv } from "./argv.js";
 export {
   CODEX_APP_SERVER_UI_SCHEMA,

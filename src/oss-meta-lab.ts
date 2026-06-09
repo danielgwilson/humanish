@@ -7,6 +7,13 @@ import { fileURLToPath } from "node:url";
 
 import { attachObserverRuntimeStreamUrls, renderObserver } from "./observer.js";
 import type { ObserverResult } from "./observer.js";
+import { loadE2BDesktopModule } from "./e2b-desktop-launch.js";
+import type {
+  E2BCommandResult,
+  E2BCommandRunOptions,
+  E2BDesktopSandbox,
+  E2BSandboxInfo
+} from "./e2b-desktop-launch.js";
 import {
   DEFAULT_OSS_REPOS,
   normalizeOssRepoSlugs,
@@ -3873,25 +3880,6 @@ function sanitizeRemoteLog(value: string): string {
     .trim();
 }
 
-async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
-  try {
-    return await import("@e2b/desktop") as unknown as E2BDesktopModule;
-  } catch (error) {
-    if (isMissingE2BDesktopDependency(error)) {
-      throw new Error(
-        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `mimetic lab run oss --dry-run`."
-      );
-    }
-
-    throw error;
-  }
-}
-
-function isMissingE2BDesktopDependency(error: unknown): boolean {
-  const value = error as { code?: string; message?: string };
-  return value.code === "ERR_MODULE_NOT_FOUND" && value.message?.includes("@e2b/desktop") === true;
-}
-
 async function startOssBootstrap(
   desktop: E2BDesktopSandbox,
   assignment: OssMetaLabAssignment,
@@ -5694,87 +5682,5 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-interface E2BDesktopModule {
-  Sandbox: {
-    create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
-    kill?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<unknown>;
-    list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
-  };
-}
-
-interface E2BSandboxListOptions {
-  metadata?: Record<string, string>;
-  requestTimeoutMs?: number;
-}
-
-interface E2BSandboxInfo {
-  id?: string;
-  metadata?: Record<string, string>;
-  sandboxID?: string;
-  sandboxId?: string;
-  state?: string;
-}
-
-interface E2BSandboxPaginator {
-  hasNext: boolean;
-  nextItems(options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo[]>;
-}
-
-interface E2BDesktopCreateOptions {
-  apiKey: string;
-  dpi?: number;
-  envs?: Record<string, string>;
-  lifecycle?: {
-    onTimeout: "kill" | "pause";
-  };
-  metadata?: Record<string, string>;
-  requestTimeoutMs?: number;
-  resolution?: [number, number];
-  timeoutMs?: number;
-}
-
-interface E2BDesktopSandbox {
-  sandboxId: string;
-  commands: {
-    run(command: string, options?: E2BCommandRunOptions): Promise<E2BCommandResult>;
-  };
-  files: {
-    write(path: string, data: string | ArrayBuffer, options?: {
-      requestTimeoutMs?: number;
-      useOctetStream?: boolean;
-    }): Promise<unknown>;
-  };
-  launch(application: string, uri?: string): Promise<void>;
-  screenshot(format?: "bytes"): Promise<Uint8Array>;
-  wait(ms: number): Promise<void>;
-  stream: {
-    getAuthKey(): string;
-    getUrl(options?: {
-      authKey?: string;
-      autoConnect?: boolean;
-      resize?: "off" | "scale" | "remote";
-      viewOnly?: boolean;
-    }): string;
-    start(options?: {
-      requireAuth?: boolean;
-      windowId?: string;
-    }): Promise<void>;
-  };
-}
-
-interface E2BCommandRunOptions {
-  background?: false;
-  cwd?: string;
-  envs?: Record<string, string>;
-  onStderr?: (data: string) => void | Promise<void>;
-  onStdout?: (data: string) => void | Promise<void>;
-  requestTimeoutMs?: number;
-  timeoutMs?: number;
-}
-
-interface E2BCommandResult {
-  error?: string;
-  exitCode?: number;
-  stderr?: string;
-  stdout?: string;
-}
+// E2B desktop interfaces + the optional-peer loader now live in ./e2b-desktop-launch.js
+// (shared with the computer-use actor lane) and are imported at the top of this file.
