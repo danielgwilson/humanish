@@ -27,9 +27,10 @@ import {
 import type {
   LabInspectResult,
   LabListResult,
-  LabManifest,
   LabResolveFailure
 } from "./labs.js";
+import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
+import type { LabConfig } from "./lab-config.js";
 import { renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
 import {
@@ -1288,28 +1289,35 @@ async function runLabCommand(args: {
     return;
   }
 
-  switch (resolved.manifest.kind) {
+  // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect —
+  // otherwise a setting that does nothing is silently swallowed on the path users actually run.
+  for (const warning of resolved.warnings) {
+    args.io.writeErr(`warning: ${warning}\n`);
+  }
+
+  const config = resolved.config;
+  switch (selectLabBackend(config)) {
     case "synthetic":
-      await runSyntheticLabCommand({ ...args, manifest: resolved.manifest });
+      await runSyntheticBackend({ ...args, config });
       return;
-    case "oss-meta":
-      await runOssMetaLabCommand({ ...args, manifest: resolved.manifest });
+    case "meta":
+      await runMetaBackend({ ...args, config });
       return;
-    case "oss-smoke":
-      await runOssSmokeLabCommand({ ...args, manifest: resolved.manifest });
+    case "smoke":
+      await runSmokeBackend({ ...args, config });
       return;
   }
 }
 
-async function runSyntheticLabCommand(args: {
+async function runSyntheticBackend(args: {
   command: Command;
   io: CliIo;
   lab: string;
-  manifest: LabManifest;
+  config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
-  const simCount = parseLabCount(args.options.sims, args.manifest.sims ?? args.manifest.count ?? 4);
+  const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
   if (simCount === null) {
     const result: RunResult = {
       schema: "mimetic.run-result.v1",
@@ -1326,12 +1334,16 @@ async function runSyntheticLabCommand(args: {
     return;
   }
 
-  const runResult = await runDryRun({
+  const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
-    dryRun: args.options.dryRun ?? args.manifest.defaults?.dryRun ?? true,
-    simCount,
+    count: simCount,
+    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
   });
+  if (outcome.backend !== "synthetic") {
+    throw new Error(`Expected synthetic backend, got ${outcome.backend}.`);
+  }
+  const runResult = outcome.result;
 
   if (args.mode === "run") {
     writeResult(args.command, args.io, runResult, formatRunHuman);
@@ -1345,7 +1357,7 @@ async function runSyntheticLabCommand(args: {
     return;
   }
 
-  const openOverride = args.options.open ?? args.manifest.defaults?.open;
+  const openOverride = args.options.open ?? args.config.defaults?.open;
   await renderAndMaybeFollowObserver({
     command: args.command,
     cwd: args.options.cwd,
@@ -1357,14 +1369,15 @@ async function runSyntheticLabCommand(args: {
   });
 }
 
-async function runOssSmokeLabCommand(args: {
+async function runSmokeBackend(args: {
   command: Command;
   io: CliIo;
-  manifest: LabManifest;
+  config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
-  const limit = parseLabCount(args.options.limit ?? args.options.sims, args.manifest.limit ?? args.manifest.count ?? args.manifest.repos?.length ?? DEFAULT_OSS_REPOS.length);
+  const fanout = args.config.subject.clone?.fanout ?? args.config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
+  const limit = parseLabCount(args.options.limit ?? args.options.sims, fanout);
   if (limit === null) {
     const result: OssLabResult = {
       schema: "mimetic.oss-lab-result.v1",
@@ -1387,25 +1400,32 @@ async function runOssSmokeLabCommand(args: {
     return;
   }
 
-  const result = await runOssLab({
+  const repos = labReposOverride(args.options);
+  const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
-    limit,
-    repos: labRepos(args.options, args.manifest),
+    count: limit,
+    ...(repos === undefined ? {} : { repos }),
     ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
   });
+  if (outcome.backend !== "smoke") {
+    throw new Error(`Expected smoke backend, got ${outcome.backend}.`);
+  }
+  const result = outcome.result;
   writeResult(args.command, args.io, result, formatOssLabHuman);
   args.io.setExitCode(result.ok ? 0 : 2);
 }
 
-async function runOssMetaLabCommand(args: {
+async function runMetaBackend(args: {
   command: Command;
   io: CliIo;
-  manifest: LabManifest;
+  config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
-  const count = parseLabCount(args.options.count ?? args.options.sims, args.manifest.count ?? args.manifest.sims ?? args.manifest.repos?.length ?? DEFAULT_OSS_REPOS.length);
+  const metaCountDefault = args.config.subject.clone?.fanout ?? args.config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
+  const count = parseLabCount(args.options.count ?? args.options.sims, metaCountDefault);
+  const repos = labReposOverride(args.options);
   const port = parseObserverPort(args.options.port ?? "0");
   if (port === null) {
     const result: OssMetaLabResult = {
@@ -1419,7 +1439,7 @@ async function runOssMetaLabCommand(args: {
         message: "--port must be an integer between 0 and 65535."
       },
       liveRequested: args.options.dryRun !== true,
-      repos: labRepos(args.options, args.manifest),
+      repos: repos ?? args.config.subject.repos ?? [],
       sandboxes: [],
       warnings: []
     };
@@ -1429,25 +1449,25 @@ async function runOssMetaLabCommand(args: {
   }
 
   const wantsMachine = wantsJson(args.command);
-  const dryRun = args.options.dryRun ?? args.manifest.defaults?.dryRun;
+  const dryRun = resolveLabDryRun(args.config, args.options.dryRun, undefined);
   const shouldOpen = args.options.open === false
     ? false
     : wantsMachine
       ? args.options.open === true
-      : args.options.open ?? args.manifest.defaults?.open ?? args.mode === "watch";
+      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
   const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
-  const codexAppServer = args.options.codexAppServer ?? args.manifest.defaults?.codexAppServer;
+  const codexAppServer = args.options.codexAppServer ?? args.config.execution?.desktop?.codexAppServer;
   const repoOverrideRequested = (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
-  const defaultRedactRepos = repoOverrideRequested ? true : args.manifest.defaults?.redactRepos;
+  const defaultRedactRepos = repoOverrideRequested ? true : args.config.policies?.redactRepos;
   const redactRepoNames = args.options.redactRepos ?? defaultRedactRepos;
   let server: ObserverServer | null = null;
   let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
   let result: OssMetaLabResult;
   try {
-    result = await runOssMetaLab({
+    const outcome = await runLab(args.config, {
+      cwd: args.options.cwd,
       ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
       ...(codexAppServer === undefined ? {} : { codexAppServer }),
-      cwd: args.options.cwd,
       ...(wantsFollow
         ? {
             onObserverReady: async (observer) => {
@@ -1459,11 +1479,15 @@ async function runOssMetaLabCommand(args: {
         : {}),
       open: wantsFollow ? false : shouldOpen,
       ...(dryRun === undefined ? {} : { dryRun }),
-      ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
-      repos: labRepos(args.options, args.manifest),
-      ...(count === null ? { count: Number.NaN } : { count }),
+      ...(redactRepoNames === undefined ? {} : { redactRepos: redactRepoNames }),
+      ...(repos === undefined ? {} : { repos }),
+      count: count === null ? Number.NaN : count,
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
     });
+    if (outcome.backend !== "meta") {
+      throw new Error(`Expected meta backend, got ${outcome.backend}.`);
+    }
+    result = outcome.result;
   } catch (error) {
     const earlyServer = server as ObserverServer | null;
     await earlyServer?.close().catch((cleanupError: unknown) => {
@@ -1578,12 +1602,12 @@ async function applyEnvFileOption(args: {
   return false;
 }
 
-function labRepos(options: LabCommandOptions, manifest: LabManifest): string[] {
-  return [
+function labReposOverride(options: LabCommandOptions): string[] | undefined {
+  const override = [
     ...(options.repo ?? []),
-    ...(options.repos ? [options.repos] : []),
-    ...(options.repo?.length || options.repos ? [] : manifest.repos ?? [])
+    ...(options.repos ? [options.repos] : [])
   ];
+  return override.length > 0 ? override : undefined;
 }
 
 function parseLabCount(value: string | undefined, fallback: number): number | null {
@@ -1732,28 +1756,28 @@ function formatLabListHuman(result: LabListResult): string {
 
   return [
     "mimetic labs",
-    ...result.labs.map((lab) => `- ${lab.id} ${lab.kind} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`),
+    ...result.labs.map((lab) => `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }
 
 function formatLabInspectHuman(result: LabInspectResult): string {
-  if (!result.ok || !result.manifest) {
+  if (!result.ok || !result.config) {
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
 
+  const config = result.config;
   return [
     "mimetic lab",
-    `id: ${result.manifest.id}`,
-    `kind: ${result.manifest.kind}`,
-    ...(result.manifest.title ? [`title: ${result.manifest.title}`] : []),
-    ...(result.manifest.description ? [`description: ${result.manifest.description}`] : []),
+    `id: ${config.id}`,
+    `subject: ${config.subject.source}`,
+    ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
+    `actors: ${config.actors.map((actor) => actor.type).join(", ")}`,
+    ...(config.title ? [`title: ${config.title}`] : []),
+    ...(config.description ? [`description: ${config.description}`] : []),
     ...(result.path ? [`path: ${result.path}`] : []),
     ...(result.origin ? [`origin: ${result.origin}`] : []),
-    ...(result.manifest.sims === undefined ? [] : [`sims: ${result.manifest.sims}`]),
-    ...(result.manifest.count === undefined ? [] : [`count: ${result.manifest.count}`]),
-    ...(result.manifest.limit === undefined ? [] : [`limit: ${result.manifest.limit}`]),
-    ...(result.manifest.repos?.length ? [`repos: ${result.manifest.repos.join(", ")}`] : []),
+    ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }

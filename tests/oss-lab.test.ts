@@ -778,15 +778,21 @@ describe("OSS lab command", () => {
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
     await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
     await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
-      "schema: mimetic.lab.v1",
+      "schema: mimetic.lab.v2",
       "id: oss",
-      "kind: oss-meta",
-      "count: 2",
-      "repos:",
-      "  - CorentinTh/it-tools",
-      "  - drawdb-io/drawdb",
-      "defaults:",
-      "  dryRun: true"
+      "subject:",
+      "  source: clone",
+      "  repos:",
+      "    - CorentinTh/it-tools",
+      "    - drawdb-io/drawdb",
+      "  clone:",
+      "    fanout: 2",
+      "execution:",
+      "  target: e2b-desktop",
+      "actors:",
+      "  - type: codex-app-server",
+      "scenario:",
+      "  mode: dry-run"
     ].join("\n"), "utf8");
 
     const result = await runCli([
@@ -813,6 +819,37 @@ describe("OSS lab command", () => {
       "CorentinTh/it-tools",
       "drawdb-io/drawdb"
     ]);
+  });
+
+  it("forces repo-label redaction when repos are overridden on the CLI (privacy invariant)", async () => {
+    // Regression: a CLI --repos override must force redactRepos=true so an authorized private
+    // slug never reaches durable artifacts, even with no policies.redactRepos in the lab.
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-redact-"));
+    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
+    await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
+      "schema: mimetic.lab.v2",
+      "id: oss",
+      "subject:",
+      "  source: clone",
+      "  repos:",
+      "    - CorentinTh/it-tools",
+      "execution:",
+      "  target: e2b-desktop",
+      "actors:",
+      "  - type: codex-app-server",
+      "scenario:",
+      "  mode: dry-run"
+    ].join("\n"), "utf8");
+
+    const result = await runCli([
+      "lab", "run", "oss", "--json", "--no-open", "--cwd", cwd,
+      "--repos", "example-private/secret-app", "--run-id", "redact-override-test"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    // The raw overridden slug must NOT appear anywhere in the public-safe output.
+    expect(result.stdout).not.toContain("example-private/secret-app");
   });
 
   it("fails live launch closed into waiting lanes when E2B is absent", async () => {

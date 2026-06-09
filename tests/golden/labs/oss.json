@@ -1,0 +1,419 @@
+{
+  "schema": "mimetic.run-bundle.v1",
+  "runId": "golden-oss",
+  "mode": "dry-run",
+  "simCount": 4,
+  "createdAt": "2026-06-08T18:59:52.999Z",
+  "cwd": "[target-cwd]",
+  "artifactRoot": ".mimetic/runs/golden-oss",
+  "source": {
+    "packageName": "mimetic-cli",
+    "mimeticSource": "present",
+    "git": {
+      "schema": "mimetic.git-state.v1",
+      "status": "dirty",
+      "capturedAt": "2026-06-08T18:59:52.999Z",
+      "head": {
+        "shortSha": "a1b95edc7dab",
+        "refState": "attached"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 2,
+        "total": 2
+      },
+      "note": "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names."
+    }
+  },
+  "persona": {
+    "id": "oss-meta-codex-tui-operators",
+    "name": "Codex TUI OSS Setup Operators",
+    "source": "lab:oss:meta",
+    "sourceDigest": "public-safe"
+  },
+  "scenario": {
+    "id": "oss-meta-observer-of-observers",
+    "title": "OSS Observer-of-Observers Meta-Lab",
+    "goal": "Launch headed E2B desktops where Codex agents clone authorized GitHub repos, set up Mimetic, run nested Mimetic proof commands, attempt Codex TUI, and keep each nested Observer visible.",
+    "source": "lab:oss:meta",
+    "sourceDigest": "public-safe"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-06-08T18:59:52.999Z",
+      "event": "oss-meta.run.created",
+      "message": "Created OSS meta-lab run with 4 headed desktop lanes."
+    },
+    {
+      "at": "2026-06-08T18:59:52.999Z",
+      "event": "oss-meta.repos.assigned",
+      "message": "Assigned repos: CorentinTh/it-tools, drawdb-io/drawdb, maciekt07/TodoApp, lissy93/dashy."
+    },
+    {
+      "at": "2026-06-08T18:59:52.999Z",
+      "event": "oss-meta.observer.ready",
+      "message": "Top-level Observer is ready to watch nested Mimetic Observers."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "oss-01",
+      "index": 1,
+      "personaId": "codex-oss-operator-01",
+      "scenarioId": "oss-meta-corentinth-it-tools",
+      "status": "contract_proof_only",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Contract ready for CorentinTh/it-tools; no E2B desktop launched.",
+      "summary": "Headed E2B desktop lane assigned to CorentinTh/it-tools; remote bootstrap should set up Mimetic and open a nested Observer inside that desktop.",
+      "streamIds": [
+        "oss-01-desktop"
+      ],
+      "startedAt": "2026-06-08T18:59:52.999Z",
+      "updatedAt": "2026-06-08T18:59:52.999Z"
+    },
+    {
+      "id": "oss-02",
+      "index": 2,
+      "personaId": "codex-oss-operator-02",
+      "scenarioId": "oss-meta-drawdb-io-drawdb",
+      "status": "contract_proof_only",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Contract ready for drawdb-io/drawdb; no E2B desktop launched.",
+      "summary": "Headed E2B desktop lane assigned to drawdb-io/drawdb; remote bootstrap should set up Mimetic and open a nested Observer inside that desktop.",
+      "streamIds": [
+        "oss-02-desktop"
+      ],
+      "startedAt": "2026-06-08T18:59:52.999Z",
+      "updatedAt": "2026-06-08T18:59:52.999Z"
+    },
+    {
+      "id": "oss-03",
+      "index": 3,
+      "personaId": "codex-oss-operator-03",
+      "scenarioId": "oss-meta-maciekt07-todoapp",
+      "status": "contract_proof_only",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Contract ready for maciekt07/TodoApp; no E2B desktop launched.",
+      "summary": "Headed E2B desktop lane assigned to maciekt07/TodoApp; remote bootstrap should set up Mimetic and open a nested Observer inside that desktop.",
+      "streamIds": [
+        "oss-03-desktop"
+      ],
+      "startedAt": "2026-06-08T18:59:52.999Z",
+      "updatedAt": "2026-06-08T18:59:52.999Z"
+    },
+    {
+      "id": "oss-04",
+      "index": 4,
+      "personaId": "codex-oss-operator-04",
+      "scenarioId": "oss-meta-lissy93-dashy",
+      "status": "contract_proof_only",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Contract ready for lissy93/dashy; no E2B desktop launched.",
+      "summary": "Headed E2B desktop lane assigned to lissy93/dashy; remote bootstrap should set up Mimetic and open a nested Observer inside that desktop.",
+      "streamIds": [
+        "oss-04-desktop"
+      ],
+      "startedAt": "2026-06-08T18:59:52.999Z",
+      "updatedAt": "2026-06-08T18:59:52.999Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "oss-01-desktop",
+      "simId": "oss-01",
+      "kind": "browser",
+      "label": "E2B desktop - CorentinTh/it-tools",
+      "status": "contract_proof_only",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-08T18:59:52.999Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "E2B desktop 1"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "Codex bootstrap - CorentinTh/it-tools",
+        "format": "plain",
+        "stdin": "planned",
+        "tail": "# Mimetic OSS Meta-Lab Actor 1\n\nYou are running inside a disposable headed E2B desktop with a visible terminal and browser.\nPublic-safety hard rails: use only authorized repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.\n\nTarget repo: https://github.com/CorentinTh/it-tools.git\n\nMission:\n1. Clone the target repo into a clean disposable workspace.\n2. Inspect the package manager, dev scripts, README, and app shape.\n3. Get the repo into a local runnable dev mode if feasible.\n4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.\n5. Install Mimetic as a dev dependency with the package manager the repo already uses. The package is `mimetic-cli`; the binary is `mimetic`.\n6. Run `npx --no-install mimetic init --yes` or the package-manager equivalent. Do not run bare `npx mimetic` unless you have confirmed it resolves the local `mimetic-cli` binary.\n7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.\n8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.\n9. Run `npx --no-install mimetic run --help` and verify `--app-url` is available. If the local binary is missing, install `mimetic-cli`; one-shot fallback is `npx --yes --package mimetic-cli@latest mimetic run --help`.\n10. If the app is running locally, run `npx --no-install mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.\n11. After `run --app-url`, render or open the nested Mimetic Observer with `npx --no-install mimetic watch --run latest --detach --no-open --json` and keep it visible.\n12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.\n13. Record public-safe blockers and evidence paths only.\n\nExpected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
+      },
+      "ui": {
+        "route": "e2b://desktop/CorentinTh/it-tools",
+        "intent": "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+        "state": "contract desktop"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "oss-02-desktop",
+      "simId": "oss-02",
+      "kind": "browser",
+      "label": "E2B desktop - drawdb-io/drawdb",
+      "status": "contract_proof_only",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-08T18:59:52.999Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "E2B desktop 2"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "Codex bootstrap - drawdb-io/drawdb",
+        "format": "plain",
+        "stdin": "planned",
+        "tail": "# Mimetic OSS Meta-Lab Actor 2\n\nYou are running inside a disposable headed E2B desktop with a visible terminal and browser.\nPublic-safety hard rails: use only authorized repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.\n\nTarget repo: https://github.com/drawdb-io/drawdb.git\n\nMission:\n1. Clone the target repo into a clean disposable workspace.\n2. Inspect the package manager, dev scripts, README, and app shape.\n3. Get the repo into a local runnable dev mode if feasible.\n4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.\n5. Install Mimetic as a dev dependency with the package manager the repo already uses. The package is `mimetic-cli`; the binary is `mimetic`.\n6. Run `npx --no-install mimetic init --yes` or the package-manager equivalent. Do not run bare `npx mimetic` unless you have confirmed it resolves the local `mimetic-cli` binary.\n7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.\n8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.\n9. Run `npx --no-install mimetic run --help` and verify `--app-url` is available. If the local binary is missing, install `mimetic-cli`; one-shot fallback is `npx --yes --package mimetic-cli@latest mimetic run --help`.\n10. If the app is running locally, run `npx --no-install mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.\n11. After `run --app-url`, render or open the nested Mimetic Observer with `npx --no-install mimetic watch --run latest --detach --no-open --json` and keep it visible.\n12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.\n13. Record public-safe blockers and evidence paths only.\n\nExpected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
+      },
+      "ui": {
+        "route": "e2b://desktop/drawdb-io/drawdb",
+        "intent": "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+        "state": "contract desktop"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "oss-03-desktop",
+      "simId": "oss-03",
+      "kind": "browser",
+      "label": "E2B desktop - maciekt07/TodoApp",
+      "status": "contract_proof_only",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-08T18:59:52.999Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "E2B desktop 3"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "Codex bootstrap - maciekt07/TodoApp",
+        "format": "plain",
+        "stdin": "planned",
+        "tail": "# Mimetic OSS Meta-Lab Actor 3\n\nYou are running inside a disposable headed E2B desktop with a visible terminal and browser.\nPublic-safety hard rails: use only authorized repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.\n\nTarget repo: https://github.com/maciekt07/TodoApp.git\n\nMission:\n1. Clone the target repo into a clean disposable workspace.\n2. Inspect the package manager, dev scripts, README, and app shape.\n3. Get the repo into a local runnable dev mode if feasible.\n4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.\n5. Install Mimetic as a dev dependency with the package manager the repo already uses. The package is `mimetic-cli`; the binary is `mimetic`.\n6. Run `npx --no-install mimetic init --yes` or the package-manager equivalent. Do not run bare `npx mimetic` unless you have confirmed it resolves the local `mimetic-cli` binary.\n7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.\n8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.\n9. Run `npx --no-install mimetic run --help` and verify `--app-url` is available. If the local binary is missing, install `mimetic-cli`; one-shot fallback is `npx --yes --package mimetic-cli@latest mimetic run --help`.\n10. If the app is running locally, run `npx --no-install mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.\n11. After `run --app-url`, render or open the nested Mimetic Observer with `npx --no-install mimetic watch --run latest --detach --no-open --json` and keep it visible.\n12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.\n13. Record public-safe blockers and evidence paths only.\n\nExpected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
+      },
+      "ui": {
+        "route": "e2b://desktop/maciekt07/TodoApp",
+        "intent": "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+        "state": "contract desktop"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "oss-04-desktop",
+      "simId": "oss-04",
+      "kind": "browser",
+      "label": "E2B desktop - lissy93/dashy",
+      "status": "contract_proof_only",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-08T18:59:52.999Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "E2B desktop 4"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "Codex bootstrap - lissy93/dashy",
+        "format": "plain",
+        "stdin": "planned",
+        "tail": "# Mimetic OSS Meta-Lab Actor 4\n\nYou are running inside a disposable headed E2B desktop with a visible terminal and browser.\nPublic-safety hard rails: use only authorized repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.\n\nTarget repo: https://github.com/lissy93/dashy.git\n\nMission:\n1. Clone the target repo into a clean disposable workspace.\n2. Inspect the package manager, dev scripts, README, and app shape.\n3. Get the repo into a local runnable dev mode if feasible.\n4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.\n5. Install Mimetic as a dev dependency with the package manager the repo already uses. The package is `mimetic-cli`; the binary is `mimetic`.\n6. Run `npx --no-install mimetic init --yes` or the package-manager equivalent. Do not run bare `npx mimetic` unless you have confirmed it resolves the local `mimetic-cli` binary.\n7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.\n8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.\n9. Run `npx --no-install mimetic run --help` and verify `--app-url` is available. If the local binary is missing, install `mimetic-cli`; one-shot fallback is `npx --yes --package mimetic-cli@latest mimetic run --help`.\n10. If the app is running locally, run `npx --no-install mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.\n11. After `run --app-url`, render or open the nested Mimetic Observer with `npx --no-install mimetic watch --run latest --detach --no-open --json` and keep it visible.\n12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.\n13. Record public-safe blockers and evidence paths only.\n\nExpected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
+      },
+      "ui": {
+        "route": "e2b://desktop/lissy93/dashy",
+        "intent": "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+        "state": "contract desktop"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.contract.created",
+      "message": "Created public-safe OSS meta-lab Observer-of-Observers contract."
+    },
+    {
+      "id": "event-001-assigned",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.repo.assigned",
+      "message": "Assigned CorentinTh/it-tools to Codex desktop lane 1.",
+      "simId": "oss-01",
+      "streamId": "oss-01-desktop"
+    },
+    {
+      "id": "event-001-prompt",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.codex.prompt.ready",
+      "message": "Codex bootstrap prompt is available in the stream logs tab.",
+      "simId": "oss-01",
+      "streamId": "oss-01-desktop"
+    },
+    {
+      "id": "event-002-assigned",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.repo.assigned",
+      "message": "Assigned drawdb-io/drawdb to Codex desktop lane 2.",
+      "simId": "oss-02",
+      "streamId": "oss-02-desktop"
+    },
+    {
+      "id": "event-002-prompt",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.codex.prompt.ready",
+      "message": "Codex bootstrap prompt is available in the stream logs tab.",
+      "simId": "oss-02",
+      "streamId": "oss-02-desktop"
+    },
+    {
+      "id": "event-003-assigned",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.repo.assigned",
+      "message": "Assigned maciekt07/TodoApp to Codex desktop lane 3.",
+      "simId": "oss-03",
+      "streamId": "oss-03-desktop"
+    },
+    {
+      "id": "event-003-prompt",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.codex.prompt.ready",
+      "message": "Codex bootstrap prompt is available in the stream logs tab.",
+      "simId": "oss-03",
+      "streamId": "oss-03-desktop"
+    },
+    {
+      "id": "event-004-assigned",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.repo.assigned",
+      "message": "Assigned lissy93/dashy to Codex desktop lane 4.",
+      "simId": "oss-04",
+      "streamId": "oss-04-desktop"
+    },
+    {
+      "id": "event-004-prompt",
+      "at": "2026-06-08T18:59:52.999Z",
+      "level": "info",
+      "type": "oss-meta.codex.prompt.ready",
+      "message": "Codex bootstrap prompt is available in the stream logs tab.",
+      "simId": "oss-04",
+      "streamId": "oss-04-desktop"
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "OSS meta-lab artifacts contain GitHub slugs and redacted/synthetic bootstrap evidence only."
+  },
+  "artifacts": {
+    "run": "run.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "mimetic.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend.",
+    "gaps": [
+      "Nested Mimetic Observer evidence is represented as a lane contract until Codex TUI injection and nested Mimetic execution land.",
+      "Nested Mimetic proof did not reach live app-url mode; target app startup or browser evidence is still missing.",
+      "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
+      "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default."
+    ]
+  },
+  "feedbackCandidates": []
+}

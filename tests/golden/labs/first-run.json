@@ -1,0 +1,408 @@
+{
+  "schema": "mimetic.run-bundle.v1",
+  "runId": "golden-first-run",
+  "mode": "dry-run",
+  "simCount": 4,
+  "createdAt": "2026-06-08T18:59:51.436Z",
+  "cwd": "[target-cwd]",
+  "artifactRoot": ".mimetic/runs/golden-first-run",
+  "source": {
+    "packageName": "mimetic-cli",
+    "mimeticSource": "present",
+    "git": {
+      "schema": "mimetic.git-state.v1",
+      "status": "dirty",
+      "capturedAt": "2026-06-08T18:59:51.436Z",
+      "head": {
+        "shortSha": "a1b95edc7dab",
+        "refState": "attached"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 1,
+        "total": 1
+      },
+      "note": "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names."
+    }
+  },
+  "persona": {
+    "id": "synthetic-new-user",
+    "name": "Open-Source Maintainer Trial User",
+    "source": "mimetic/personas/synthetic-new-user.yaml",
+    "sourceDigest": "0913c2176445"
+  },
+  "scenario": {
+    "id": "first-run-smoke",
+    "title": "Mimetic CLI first-run smoke",
+    "goal": "Prove that Mimetic can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
+    "source": "mimetic/scenarios/first-run-smoke.yaml",
+    "sourceDigest": "31424602f93d"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-06-08T18:59:51.436Z",
+      "event": "run.created",
+      "message": "Synthetic dry-run contract bundle created with 4 sims."
+    },
+    {
+      "at": "2026-06-08T18:59:51.436Z",
+      "event": "persona.selected",
+      "message": "Selected public-safe synthetic persona."
+    },
+    {
+      "at": "2026-06-08T18:59:51.436Z",
+      "event": "scenario.selected",
+      "message": "Selected public-safe first-run scenario."
+    },
+    {
+      "at": "2026-06-08T18:59:51.436Z",
+      "event": "review.skeleton.created",
+      "message": "Created review skeleton without claiming product proof."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-01",
+      "index": 1,
+      "personaId": "synthetic-new-user",
+      "scenarioId": "first-run-smoke",
+      "status": "contract_proof_only",
+      "streamKind": "ui",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Route and viewport contract captured",
+      "summary": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+      "streamIds": [
+        "sim-01-ui"
+      ],
+      "startedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-06-08T18:59:51.436Z"
+    },
+    {
+      "id": "sim-02",
+      "index": 2,
+      "personaId": "synthetic-new-user",
+      "scenarioId": "first-run-smoke",
+      "status": "contract_proof_only",
+      "streamKind": "terminal",
+      "mode": "cli-sim",
+      "progress": 100,
+      "currentStep": "Command transcript contract captured",
+      "summary": "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
+      "streamIds": [
+        "sim-02-terminal"
+      ],
+      "startedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-06-08T18:59:51.436Z"
+    },
+    {
+      "id": "sim-03",
+      "index": 3,
+      "personaId": "synthetic-new-user",
+      "scenarioId": "first-run-smoke",
+      "status": "contract_proof_only",
+      "streamKind": "tui",
+      "mode": "tui-sim",
+      "progress": 100,
+      "currentStep": "Terminal UI frame contract captured",
+      "summary": "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
+      "streamIds": [
+        "sim-03-tui"
+      ],
+      "startedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-06-08T18:59:51.436Z"
+    },
+    {
+      "id": "sim-04",
+      "index": 4,
+      "personaId": "synthetic-new-user",
+      "scenarioId": "first-run-smoke",
+      "status": "contract_proof_only",
+      "streamKind": "codex-ui",
+      "mode": "codex-app-sim",
+      "progress": 100,
+      "currentStep": "App-server embed contract captured",
+      "summary": "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+      "streamIds": [
+        "sim-04-codex-ui"
+      ],
+      "startedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-06-08T18:59:51.436Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "sim-01-ui",
+      "simId": "sim-01",
+      "kind": "ui",
+      "label": "UI journey",
+      "status": "contract_proof_only",
+      "transport": "polling",
+      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "UI journey"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "UI journey",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace"
+      },
+      "ui": {
+        "route": "/first-run",
+        "intent": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "state": "contract-only"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "sim-02-terminal",
+      "simId": "sim-02",
+      "kind": "terminal",
+      "label": "CLI actor",
+      "status": "contract_proof_only",
+      "transport": "snapshot",
+      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "embed": {
+        "kind": "terminal",
+        "title": "CLI actor"
+      },
+      "terminal": {
+        "title": "CLI actor",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "$ mimetic doctor\nok target cwd\nok mimetic source\n$ mimetic run --scenario first-run-smoke\ncontract proof emitted"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "sim-03-tui",
+      "simId": "sim-03",
+      "kind": "tui",
+      "label": "TUI actor",
+      "status": "contract_proof_only",
+      "transport": "pty",
+      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "embed": {
+        "kind": "terminal",
+        "title": "TUI actor"
+      },
+      "terminal": {
+        "title": "TUI actor",
+        "format": "ansi",
+        "stdin": "disabled",
+        "tail": "\u001b[2mMimetic TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    },
+    {
+      "id": "sim-04-codex-ui",
+      "simId": "sim-04",
+      "kind": "codex-ui",
+      "label": "Codex UI",
+      "status": "contract_proof_only",
+      "transport": "app-server",
+      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "Codex UI"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "Codex UI",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned"
+      },
+      "ui": {
+        "route": "/codex/session",
+        "intent": "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+        "state": "contract-only"
+      },
+      "codex": {
+        "provider": "codex-app-server",
+        "state": "not_connected",
+        "contract": "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links."
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "info",
+      "type": "observer.contract.created",
+      "message": "Created public-safe observer stream contract."
+    },
+    {
+      "id": "event-001-a",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "UI journey stream contract ready.",
+      "simId": "sim-01",
+      "streamId": "sim-01-ui"
+    },
+    {
+      "id": "event-001-b",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-01",
+      "streamId": "sim-01-ui"
+    },
+    {
+      "id": "event-002-a",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "CLI actor stream contract ready.",
+      "simId": "sim-02",
+      "streamId": "sim-02-terminal"
+    },
+    {
+      "id": "event-002-b",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-02",
+      "streamId": "sim-02-terminal"
+    },
+    {
+      "id": "event-003-a",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "TUI actor stream contract ready.",
+      "simId": "sim-03",
+      "streamId": "sim-03-tui"
+    },
+    {
+      "id": "event-003-b",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-03",
+      "streamId": "sim-03-tui"
+    },
+    {
+      "id": "event-004-a",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "Codex UI stream contract ready.",
+      "simId": "sim-04",
+      "streamId": "sim-04-codex-ui"
+    },
+    {
+      "id": "event-004-b",
+      "at": "2026-06-08T18:59:51.436Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-04",
+      "streamId": "sim-04-codex-ui"
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Dry-run bundle contains synthetic contract proof only."
+  },
+  "artifacts": {
+    "run": "run.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "mimetic.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Synthetic dry-run bundle was generated. This proves Mimetic artifact plumbing, not product behavior.",
+    "gaps": [
+      "No browser was launched.",
+      "No product state was verified.",
+      "No model, provider, or E2B substrate was used."
+    ]
+  },
+  "feedbackCandidates": []
+}
