@@ -231,16 +231,9 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 // POST body. They never carry the apiKey (that lives only in the header).
 // ---------------------------------------------------------------------------
 
-export interface OpenAiCuDisplay {
-  width: number;
-  height: number;
-  environment?: string;
-}
-
 export interface OpenAiCuContext {
   model: string;
   instructions: string;
-  display: { width: number; height: number; environment: string };
   reasoningEffort: "low" | "medium" | "high";
   safetyIdentifier?: string;
 }
@@ -341,7 +334,6 @@ export type FetchLike = (
 export interface OpenAiResponsesProviderOptions {
   apiKey: string;
   model?: string;
-  display?: { width: number; height: number; environment?: string };
   reasoningEffort?: "low" | "medium" | "high";
   safetyIdentifier?: string;
   endpoint?: string;
@@ -362,7 +354,6 @@ class ZdrError extends Error {
 }
 
 const DEFAULT_ENDPOINT = "https://api.openai.com/v1/responses";
-const DEFAULT_DISPLAY = { width: 1280, height: 800, environment: "browser" } as const;
 
 // A 400 whose body mentions any of these means the account/org cannot use
 // server-side response state, so we must fall back to explicit-context mode.
@@ -410,11 +401,6 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   const maxRetries = options.maxRetries ?? 3;
   const fetchFn = options.fetchFn ?? defaultFetch();
   const delayFn = options.delayFn ?? defaultDelay;
-  const display = {
-    width: options.display?.width ?? DEFAULT_DISPLAY.width,
-    height: options.display?.height ?? DEFAULT_DISPLAY.height,
-    environment: options.display?.environment ?? DEFAULT_DISPLAY.environment
-  };
 
   let lastResponseId: string | undefined;
   let pendingCallIds: string[] = [];
@@ -424,7 +410,6 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   const buildContext = (instructions: string): OpenAiCuContext => ({
     model,
     instructions,
-    display,
     reasoningEffort,
     ...(options.safetyIdentifier === undefined ? {} : { safetyIdentifier: options.safetyIdentifier })
   });

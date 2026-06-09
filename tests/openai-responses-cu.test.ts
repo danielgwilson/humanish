@@ -41,7 +41,6 @@ function request(overrides: Partial<CuaTurnRequest> = {}): CuaTurnRequest {
 const ctx: OpenAiCuContext = {
   model: DEFAULT_OPENAI_CU_MODEL,
   instructions: "Do the thing.",
-  display: { width: 1280, height: 800, environment: "browser" },
   reasoningEffort: "medium"
 };
 

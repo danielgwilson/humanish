@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.2.0)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.3.0)
 
 ## Install
 
