@@ -821,6 +821,37 @@ describe("OSS lab command", () => {
     ]);
   });
 
+  it("forces repo-label redaction when repos are overridden on the CLI (privacy invariant)", async () => {
+    // Regression: a CLI --repos override must force redactRepos=true so an authorized private
+    // slug never reaches durable artifacts, even with no policies.redactRepos in the lab.
+    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-redact-"));
+    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
+    await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
+      "schema: mimetic.lab.v2",
+      "id: oss",
+      "subject:",
+      "  source: clone",
+      "  repos:",
+      "    - CorentinTh/it-tools",
+      "execution:",
+      "  target: e2b-desktop",
+      "actors:",
+      "  - type: codex-app-server",
+      "scenario:",
+      "  mode: dry-run"
+    ].join("\n"), "utf8");
+
+    const result = await runCli([
+      "lab", "run", "oss", "--json", "--no-open", "--cwd", cwd,
+      "--repos", "example-private/secret-app", "--run-id", "redact-override-test"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    // The raw overridden slug must NOT appear anywhere in the public-safe output.
+    expect(result.stdout).not.toContain("example-private/secret-app");
+  });
+
   it("fails live launch closed into waiting lanes when E2B is absent", async () => {
     const previousE2b = process.env.E2B_API_KEY;
     const previousOpenai = process.env.OPENAI_API_KEY;

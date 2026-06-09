@@ -113,7 +113,6 @@ export interface LabReview {
 
 export interface LabDefaults {
   open?: boolean;
-  detach?: boolean;
 }
 
 export interface LabConfig {
@@ -199,6 +198,17 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const defaults = parseDefaults(raw.defaults);
   if (defaults) config.defaults = defaults;
 
+  // this-repo subjects run locally and dry-run only — there is no live execution target for the
+  // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
+  if (config.subject.source === "this-repo") {
+    if (config.execution?.target) {
+      return invalid("`execution.target` applies only to clone subjects; this-repo labs run locally.");
+    }
+    if (config.scenario?.mode === "live") {
+      return invalid("this-repo labs are dry-run only; use a clone subject for a live run.");
+    }
+  }
+
   return { ok: true, config, warnings: forwardDeclaredWarnings(config) };
 }
 
@@ -212,11 +222,17 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
     if (actor.persona) inert.push(`actors[${index}].persona`);
     if (actor.model) inert.push(`actors[${index}].model`);
   }
+  if (config.subject.clone?.depth !== undefined) inert.push("subject.clone.depth");
   if (config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
   if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
   if (config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
   if (config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
+  // codexAppServer is consumed only on the e2b-desktop (meta) route; flag it when it cannot reach there.
+  const routesToDesktop = config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
+  if (config.execution?.desktop?.codexAppServer !== undefined && !routesToDesktop) {
+    inert.push("execution.desktop.codexAppServer (needs subject.source: clone + execution.target: e2b-desktop)");
+  }
   if (config.scenario?.ref) inert.push("scenario.ref");
   if (config.scenario?.inline) inert.push("scenario.inline");
   if (config.review) inert.push("review");
@@ -409,7 +425,6 @@ function parseDefaults(raw: unknown): LabDefaults | undefined {
   }
   const defaults: LabDefaults = {};
   if (typeof raw.open === "boolean") defaults.open = raw.open;
-  if (typeof raw.detach === "boolean") defaults.detach = raw.detach;
   return Object.keys(defaults).length > 0 ? defaults : undefined;
 }
 

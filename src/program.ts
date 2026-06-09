@@ -1289,6 +1289,12 @@ async function runLabCommand(args: {
     return;
   }
 
+  // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect —
+  // otherwise a setting that does nothing is silently swallowed on the path users actually run.
+  for (const warning of resolved.warnings) {
+    args.io.writeErr(`warning: ${warning}\n`);
+  }
+
   const config = resolved.config;
   switch (selectLabBackend(config)) {
     case "synthetic":
@@ -1473,7 +1479,7 @@ async function runMetaBackend(args: {
         : {}),
       open: wantsFollow ? false : shouldOpen,
       ...(dryRun === undefined ? {} : { dryRun }),
-      ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
+      ...(redactRepoNames === undefined ? {} : { redactRepos: redactRepoNames }),
       ...(repos === undefined ? {} : { repos }),
       count: count === null ? Number.NaN : count,
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId })

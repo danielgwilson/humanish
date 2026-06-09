@@ -8,14 +8,14 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "oss",
       title: "OSS meta-lab",
-      subject: { source: "clone", repos: ["CorentinTh/it-tools"], clone: { depth: 1, fanout: 4 } },
+      subject: { source: "clone", repos: ["CorentinTh/it-tools"], clone: { fanout: 4 } },
       actors: [{ type: "codex-app-server", count: 1 }],
       execution: { target: "e2b-desktop", desktop: { codexAppServer: true } },
       scenario: { mode: "live" }
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.config.subject).toEqual({ source: "clone", repos: ["CorentinTh/it-tools"], clone: { depth: 1, fanout: 4 } });
+    expect(result.config.subject).toEqual({ source: "clone", repos: ["CorentinTh/it-tools"], clone: { fanout: 4 } });
     expect(result.config.actors[0]?.type).toBe("codex-app-server");
     expect(result.config.execution?.target).toBe("e2b-desktop");
     expect(result.config.execution?.desktop?.codexAppServer).toBe(true);
@@ -91,7 +91,9 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
     ["empty actors", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [] }],
     ["actor without type", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ count: 1 }] }],
     ["bad execution target", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }], execution: { target: "vm" } }],
-    ["non-positive resolution", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }], execution: { desktop: { resolution: [0, -1] } } }]
+    ["non-positive resolution", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }], execution: { desktop: { resolution: [0, -1] } } }],
+    ["this-repo with execution.target", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }], execution: { target: "e2b-desktop" } }],
+    ["this-repo with live scenario", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }], scenario: { mode: "live" } }]
   ])("rejects invalid config: %s", (_label, input) => {
     const result = parseLabConfig(input);
     expect(result.ok).toBe(false);
