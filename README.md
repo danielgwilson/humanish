@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.3.0)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.4.0)
 
 ## Install
 
@@ -126,6 +126,29 @@ npx mimetic lab run .mimetic/labs/local-dogfood.yaml --json --no-open
 `--env-file` loads values for the current process only. Mimetic reports loaded
 env var names, never values, and does not persist those values into run bundles
 or Observer data.
+
+### Computer-Use Labs (app-url)
+
+A lab with `subject.source: app-url` dispatches a **registered computer-use actor**
+(`actors[0].type`, resolved against the actor registry — e.g. `openai-computer-use`)
+to drive your app in a hosted E2B desktop browser and emit a redacted evidence
+bundle (blurred screenshots, length-only typed text, provider-neutral
+`mimetic.actor-trace.v1` on the stream). `mimetic init` scaffolds an example at
+`mimetic/labs/cua-browser.yaml`.
+
+```bash
+npx mimetic lab run cua-browser                 # dry-run contract bundle (no spend)
+```
+
+Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass via
+`--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. The entry
+`appUrl` is loopback-only and must be reachable from **inside** the sandbox —
+driving public sites is rejected at parse time and re-checked by the engine. The
+lab does not serve your app yet, so a CLI-only live run requires something already
+answering on that sandbox-internal URL; today that means **library callers**, who
+provision the subject via the `prepareDesktop` hook
+(`runLab(config, { cuaHooks: { prepareDesktop } })`) before the browser opens. The
+clone+serve subject is the next slice.
 
 ## Browser Scenario Manifests
 

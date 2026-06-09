@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-05
+Status date: 2026-06-09
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -105,6 +105,11 @@ Minimum acceptance:
 - `verify` fails closed if required evidence is missing;
 - bounded desktop/mobile two-step browser persona proof with per-step traces and
   screenshots. `done`
+- LLM-driven browser lane: the registered `openai-computer-use` actor dispatches
+  from a lab config (`subject.source: app-url`, loopback entry only) into a hosted
+  E2B desktop, fills the provider-neutral `stream.actor` trace seam, and persists
+  a verified redacted bundle (0.3.0 registered the actor; 0.4.0 made
+  `actors[].type` a real dispatch key). `done`
 
 ### 5. Live Terminal And Codex Lanes
 

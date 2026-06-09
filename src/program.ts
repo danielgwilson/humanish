@@ -30,6 +30,7 @@ import type {
   LabResolveFailure
 } from "./labs.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
+import type { CuaActorLabResult } from "./cua-actor-lab.js";
 import type { LabConfig } from "./lab-config.js";
 import { renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
@@ -1296,7 +1297,8 @@ async function runLabCommand(args: {
   }
 
   const config = resolved.config;
-  switch (selectLabBackend(config)) {
+  const backend = selectLabBackend(config);
+  switch (backend) {
     case "synthetic":
       await runSyntheticBackend({ ...args, config });
       return;
@@ -1306,6 +1308,12 @@ async function runLabCommand(args: {
     case "smoke":
       await runSmokeBackend({ ...args, config });
       return;
+    case "cua":
+      await runCuaBackend({ ...args, config });
+      return;
+    default:
+      // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
+      throw new Error(`Unhandled lab backend: ${String(backend satisfies never)}`);
   }
 }
 
@@ -1367,6 +1375,69 @@ async function runSyntheticBackend(args: {
     ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
     ...(openOverride === undefined ? {} : { open: openOverride })
   });
+}
+
+async function runCuaBackend(args: {
+  command: Command;
+  io: CliIo;
+  config: LabConfig;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const wantsMachine = wantsJson(args.command);
+  const shouldOpen = args.options.open === false
+    ? false
+    : wantsMachine
+      ? args.options.open === true
+      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+
+  const outcome = await runLab(args.config, {
+    cwd: args.options.cwd,
+    // Watch mode opens the served Observer below instead of the static render.
+    open: args.mode === "watch" ? false : shouldOpen,
+    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+  if (outcome.backend !== "cua") {
+    throw new Error(`Expected cua backend, got ${outcome.backend}.`);
+  }
+  const result = outcome.result;
+  writeResult(args.command, args.io, result, formatCuaLabHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
+
+  // Watch mode serves the freshly rendered Observer (and opens it unless told not to).
+  if (args.mode === "watch" && result.ok && !wantsMachine) {
+    await renderAndMaybeFollowObserver({
+      command: args.command,
+      cwd: args.options.cwd,
+      io: args.io,
+      port: args.options.port ?? "0",
+      runInput: result.runId,
+      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+    });
+  }
+}
+
+function formatCuaLabHuman(result: CuaActorLabResult): string {
+  return [
+    `mimetic lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+    `run: ${result.runId}`,
+    `lab: ${result.labId}`,
+    `actor: ${result.actor}`,
+    `subject: ${result.appUrl}`,
+    ...(result.session
+      ? [`session: ${result.session.status} (${result.session.completionReason}) — ${result.session.reason}`,
+         `screenshots: ${result.session.screenshots} (redacted)`]
+      : []),
+    ...(result.sandbox
+      ? [`sandbox: ${result.sandbox.sandboxId} stream=${result.sandbox.streamUrlPresent ? "connected" : "missing"} killed=${result.sandbox.killed ? "yes" : "no"}`]
+      : []),
+    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
 }
 
 async function runSmokeBackend(args: {

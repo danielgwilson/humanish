@@ -68,6 +68,16 @@ export interface CuaActorDescriptor extends ActorDescriptorBase {
 
 export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor | ClaudeActorDescriptor | CuaActorDescriptor;
 
+/**
+ * REGISTRY CONTRACT: an actor whose capabilities include the "computer-use" lane is a
+ * CuaActorDescriptor — its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
+ * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature; this
+ * guard is what lets the lab dispatch on capabilities rather than on hardcoded actor ids.
+ */
+export function isCuaActorDescriptor(descriptor: ActorDescriptor): descriptor is CuaActorDescriptor {
+  return descriptor.capabilities.lanes.includes("computer-use");
+}
+
 export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   "codex-app-server": {
     id: "codex-app-server",

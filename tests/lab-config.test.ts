@@ -39,10 +39,10 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("accepts a free-form actor.type today (it is NOT yet resolved against the registry)", () => {
-    // HONEST CONTRACT: actor.type is a free-form label; routing ignores it. A type that is not a
-    // registered actor still parses and runs. Registry resolution is a later slice; this test
-    // pins the current truth rather than implying validation that does not exist.
+  it("accepts a free-form actor.type on non-app-url routes (registry-resolved only where consumed)", () => {
+    // HONEST CONTRACT: on this-repo/clone routes actor.type is a free-form label and routing
+    // ignores it. Only the app-url (computer-use) route resolves it against the actor registry,
+    // because only there does the descriptor actually run the session.
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "future",
@@ -86,7 +86,7 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
     ["id with space", { schema: LAB_CONFIG_SCHEMA, id: "has space", subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
     ["id not starting alphanumeric", { schema: LAB_CONFIG_SCHEMA, id: ".hidden", subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
     ["no subject", { schema: LAB_CONFIG_SCHEMA, id: "x", actors: [{ type: "a" }] }],
-    ["bad subject source", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "app-url" }, actors: [{ type: "a" }] }],
+    ["bad subject source", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "vm" }, actors: [{ type: "a" }] }],
     ["clone without repos", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "clone" }, actors: [{ type: "a" }] }],
     ["empty actors", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [] }],
     ["actor without type", { schema: LAB_CONFIG_SCHEMA, id: "x", subject: { source: "this-repo" }, actors: [{ count: 1 }] }],
@@ -99,5 +99,96 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+  });
+
+  describe("app-url (computer-use route)", () => {
+    const validCua = {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-browser",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app.",
+        laneFocus: { instruction: "Focus on onboarding." },
+        model: "gpt-5.5"
+      }],
+      execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { resolution: [1280, 800], sandboxTimeoutMs: 600000 } },
+      scenario: { mode: "dry-run" }
+    };
+
+    it("parses a computer-use lab with ZERO warnings — every set field is consumed on this route", () => {
+      const result = parseLabConfig(validCua);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.subject).toEqual({ source: "app-url", appUrl: "http://127.0.0.1:3000/" });
+      expect(result.config.actors[0]?.type).toBe("openai-computer-use");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("still warns about genuinely inert fields on the cua route (e.g. execution.concurrency)", () => {
+      const result = parseLabConfig({ ...validCua, execution: { ...validCua.execution, concurrency: 2 } });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("execution.concurrency");
+      expect(result.warnings[0]).not.toContain("timeoutMs");
+    });
+
+    it("warns about laneFocus.id/label on the cua route — only laneFocus.instruction is consumed there", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        actors: [{ type: "openai-computer-use", laneFocus: { id: "lane-1", label: "Lane one" } }]
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("actors[0].laneFocus.id");
+      expect(result.warnings[0]).toContain("actors[0].laneFocus.label");
+      expect(result.warnings[0]).not.toContain("laneFocus.instruction");
+    });
+
+    it("keeps warning about mission/persona/model on routes that do NOT consume them", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "clone-with-prompt-fields",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type: "codex-app-server", mission: "inert here", model: "inert" }]
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("actors[0].mission");
+      expect(result.warnings[0]).toContain("actors[0].model");
+    });
+
+    it.each([
+      ["missing appUrl", { ...validCua, subject: { source: "app-url" } }],
+      ["public URL", { ...validCua, subject: { source: "app-url", appUrl: "https://example.com/" } }],
+      ["non-http scheme", { ...validCua, subject: { source: "app-url", appUrl: "file:///tmp/index.html" } }],
+      ["not a URL", { ...validCua, subject: { source: "app-url", appUrl: "localhost:3000" } }],
+      ["missing e2b-desktop target", { ...validCua, execution: { timeoutMs: 1000 } }],
+      ["local target", { ...validCua, execution: { target: "local" } }],
+      ["unregistered actor type", { ...validCua, actors: [{ type: "not-a-real-actor" }] }],
+      ["registered but not computer-use", { ...validCua, actors: [{ type: "codex-app-server" }] }],
+      ["fan-out count", { ...validCua, actors: [{ type: "openai-computer-use", count: 2 }] }]
+    ])("fails closed on cua mis-config: %s", (_label, input) => {
+      const result = parseLabConfig(input);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+    });
+
+    it("names the registered computer-use actors in the unsupported-actor error", () => {
+      const result = parseLabConfig({ ...validCua, actors: [{ type: "codex-app-server" }] });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("openai-computer-use");
+      expect(result.error.message).toContain('"codex-app-server"');
+    });
+
+    it("accepts loopback variants (localhost, [::1]) and https", () => {
+      for (const appUrl of ["http://localhost:8080/app", "https://127.0.0.1/", "http://[::1]:3000/"]) {
+        const result = parseLabConfig({ ...validCua, subject: { source: "app-url", appUrl } });
+        expect(result.ok, appUrl).toBe(true);
+      }
+    });
   });
 });

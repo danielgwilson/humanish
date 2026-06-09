@@ -1,12 +1,15 @@
 // Shared E2B desktop substrate: the optional-peer loader + the structural interfaces for the
 // real @e2b/desktop Sandbox. Hoisted out of oss-meta-lab.ts so both the OSS meta-lab and the
-// computer-use actor lane launch desktops through one seam (the peer dep is optional and lazily
-// loaded, so neither path pulls @e2b/desktop into the published tarball or CI).
+// computer-use lab (cua-actor-lab.ts) launch desktops through one seam (the peer dep is
+// optional and lazily loaded, so neither path pulls @e2b/desktop into the published tarball
+// or CI).
 //
-// E2BDesktopSandbox stays byte-identical to the shape the meta path has always used (so meta is
-// unchanged). The CUA executor needs the additional mouse/keyboard methods (E2BDesktopLike in
-// e2b-desktop-executor.ts); the live Sandbox has them, so the CUA call site casts the launched
-// sandbox to E2BDesktopLike rather than widening this interface across the whole meta file.
+// E2BDesktopSandbox stays shape-compatible with what the meta path has always used (so meta is
+// unchanged); `open` is declared optional because older SDKs may lack it (the CUA lab falls
+// back to launch). The CUA executor needs the additional mouse/keyboard methods (E2BDesktopLike
+// in e2b-desktop-executor.ts); the live Sandbox has them, so the CUA call site casts the
+// launched sandbox to E2BDesktopLike rather than widening this interface across the whole
+// meta file.
 
 export interface E2BDesktopModule {
   Sandbox: {
@@ -76,6 +79,8 @@ export interface E2BDesktopSandbox {
     }): Promise<unknown>;
   };
   launch(application: string, uri?: string): Promise<void>;
+  /** Open a file or URL with the desktop's default application (present on @e2b/desktop >= 1.x). */
+  open?(fileOrUrl: string): Promise<void>;
   screenshot(format?: "bytes"): Promise<Uint8Array>;
   wait(ms: number): Promise<void>;
   stream: {

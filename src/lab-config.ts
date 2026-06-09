@@ -1,17 +1,20 @@
 // mimetic.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
-// HONEST SCOPE (read before trusting field names): the engine today routes by
+// HONEST SCOPE (read before trusting field names): the engine routes by
 // subject.source × execution.target and consumes a deliberately small set of fields:
-//   subject.source/repos/clone.{fanout,keep}, actors[0].count, execution.target +
+//   subject.source/repos/appUrl/clone.{fanout,keep}, actors[0].count, execution.target +
 //   execution.desktop.codexAppServer, scenario.mode, policies.redactRepos, defaults.open.
-// Everything else (actors[].{type,mission,laneFocus,persona,model}, multi-actor fan-out,
-// execution timeouts/concurrency/resolution, scenario.ref/inline, review.*, personas[]) is
-// FORWARD-DECLARED for the next slice and NOT yet consumed — parseLabConfig emits a warning
-// listing any such field that is set, so `lab inspect` shows the truth. `actors[].type` is a
-// free-form label today; it is NOT resolved/validated against the actor registry yet.
+// On the app-url (computer-use) route, `actors[0].type` IS load-bearing: it must resolve to
+// a registered computer-use actor, and that descriptor runs the session. That route also
+// consumes actors[0].{mission,persona,laneFocus.instruction,model}, execution.timeoutMs, and
+// execution.desktop.{resolution,sandboxTimeoutMs}. On the other routes those fields remain
+// FORWARD-DECLARED and NOT yet consumed — parseLabConfig emits a warning listing any such
+// field that is set, so `lab inspect` shows the truth.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
+
+import { actorRegistry } from "./actor-registry.js";
 
 export const LAB_CONFIG_SCHEMA = "mimetic.lab.v2";
 
@@ -19,8 +22,8 @@ export const LAB_CONFIG_SCHEMA = "mimetic.lab.v2";
 // (a leading "." or "/" is read as a file path; a leading "-" collides with CLI flags).
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-/** Where the run acts: the host repo, or a fresh clone. (app-url returns in a later slice.) */
-export type LabSubjectSource = "this-repo" | "clone";
+/** Where the run acts: the host repo, a fresh clone, or a running app a browser actor drives. */
+export type LabSubjectSource = "this-repo" | "clone" | "app-url";
 
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. */
@@ -36,40 +39,48 @@ export interface LabSubject {
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
   repos?: string[];
   clone?: LabSubjectClone;
+  /**
+   * `app-url`: a loopback http(s) URL the computer-use actor drives (127.0.0.1/localhost
+   * only — driving arbitrary public sites is not allowed). The URL must be reachable from
+   * INSIDE the desktop sandbox; the lab does not serve the app (library callers provision
+   * it via the prepareDesktop hook; clone+serve is a later slice).
+   */
+  appUrl?: string;
 }
 
 export interface LabActorLaneFocus {
   id?: string;
   label?: string;
-  /** Per-lane steer appended to the actor's mission. FORWARD-DECLARED (PR #2). */
+  /** Per-lane steer appended to the actor's mission. Consumed on the app-url route. */
   instruction?: string;
 }
 
 export interface LabActor {
   /**
-   * A free-form actor label. NOT yet resolved/validated against the actor registry — routing
-   * ignores it today (it lands as a dispatch key in the next slice). Built-ins use descriptive
-   * labels (e.g. synthetic-persona, mimetic-setup, codex-app-server).
+   * The actor label. On app-url subjects this is a REAL dispatch key: it must resolve to a
+   * registered computer-use actor (e.g. openai-computer-use) and that descriptor runs the
+   * session. On other routes it remains a free-form label (built-ins use descriptive labels
+   * like synthetic-persona, mimetic-setup, codex-app-server).
    */
   type: string;
-  /** Lane count. Consumed today only for the synthetic backend (actors[0].count → simCount). */
+  /** Lane count. Consumed for the synthetic backend (actors[0].count → simCount); must be 1 on app-url. */
   count?: number;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Consumed on the app-url route (laneFocus.instruction appended to the mission). */
   laneFocus?: LabActorLaneFocus;
-  /** Free-form mission. FORWARD-DECLARED (PR #2) — not yet threaded into the actor prompt. */
+  /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. */
   mission?: string;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Provider model override. Consumed on the app-url route. */
   model?: string;
 }
 
 export type LabExecutionTarget = "local" | "e2b-desktop";
 
 export interface LabExecutionDesktop {
-  /** FORWARD-DECLARED (PR #2) — the desktop resolution is fixed today. */
+  /** Desktop resolution [width, height]. Consumed on the app-url route; fixed on the meta route. */
   resolution?: [number, number];
-  /** FORWARD-DECLARED (PR #2). */
+  /** Sandbox server-side timeout. Consumed on the app-url route. */
   sandboxTimeoutMs?: number;
   /** Use the Codex app-server client mode for headed desktop actor surfaces. Consumed (meta). */
   codexAppServer?: boolean;
@@ -77,11 +88,11 @@ export interface LabExecutionDesktop {
 
 export interface LabExecution {
   target?: LabExecutionTarget;
-  /** FORWARD-DECLARED (PR #2). */
+  /** Actor session wall-clock budget. Consumed on the app-url route. */
   timeoutMs?: number;
-  /** FORWARD-DECLARED (PR #2). */
+  /** FORWARD-DECLARED. */
   completionTimeoutMs?: number;
-  /** FORWARD-DECLARED (PR #2). */
+  /** FORWARD-DECLARED. */
   concurrency?: number;
   desktop?: LabExecutionDesktop;
 }
@@ -202,10 +213,29 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
   if (config.subject.source === "this-repo") {
     if (config.execution?.target) {
-      return invalid("`execution.target` applies only to clone subjects; this-repo labs run locally.");
+      return invalid("`execution.target` applies only to clone/app-url subjects; this-repo labs run locally.");
     }
     if (config.scenario?.mode === "live") {
-      return invalid("this-repo labs are dry-run only; use a clone subject for a live run.");
+      return invalid("this-repo labs are dry-run only; use a clone or app-url subject for a live run.");
+    }
+  }
+
+  // app-url subjects route to the computer-use lane: the actor type is a REAL dispatch key
+  // (registry-resolved), and the substrate is a hosted desktop. Fail closed on mis-configs.
+  if (config.subject.source === "app-url") {
+    if (config.execution?.target !== "e2b-desktop") {
+      return invalid("app-url subjects require `execution.target: e2b-desktop` — the computer-use actor drives a hosted desktop browser.");
+    }
+    const type = config.actors[0]?.type ?? "";
+    const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+    if (!descriptor || !descriptor.capabilities.lanes.includes("computer-use")) {
+      const computerUseActors = Object.values(actorRegistry)
+        .filter((entry) => entry.capabilities.lanes.includes("computer-use"))
+        .map((entry) => entry.id);
+      return invalid(`actors[0].type must be a registered computer-use actor for app-url subjects (one of: ${computerUseActors.join(", ")}); got "${type}".`);
+    }
+    if ((config.actors[0]?.count ?? 1) > 1) {
+      return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
     }
   }
 
@@ -216,18 +246,27 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 // setting that silently does nothing. Keeps the schema forward-correct AND honest.
 function forwardDeclaredWarnings(config: LabConfig): string[] {
   const inert: string[] = [];
+  // The app-url (computer-use) route consumes the actor prompt fields, execution.timeoutMs,
+  // and execution.desktop.{resolution,sandboxTimeoutMs}; on every other route they are inert.
+  const routesToCua = config.subject.source === "app-url";
   for (const [index, actor] of config.actors.entries()) {
-    if (actor.mission) inert.push(`actors[${index}].mission`);
-    if (actor.laneFocus) inert.push(`actors[${index}].laneFocus`);
-    if (actor.persona) inert.push(`actors[${index}].persona`);
-    if (actor.model) inert.push(`actors[${index}].model`);
+    if (!routesToCua) {
+      if (actor.mission) inert.push(`actors[${index}].mission`);
+      if (actor.laneFocus) inert.push(`actors[${index}].laneFocus`);
+      if (actor.persona) inert.push(`actors[${index}].persona`);
+      if (actor.model) inert.push(`actors[${index}].model`);
+    } else {
+      // The cua route consumes laneFocus.instruction ONLY; id/label remain inert there.
+      if (actor.laneFocus?.id) inert.push(`actors[${index}].laneFocus.id`);
+      if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
+    }
   }
   if (config.subject.clone?.depth !== undefined) inert.push("subject.clone.depth");
-  if (config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
+  if (!routesToCua && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
   if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
-  if (config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
-  if (config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
+  if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
+  if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
   // codexAppServer is consumed only on the e2b-desktop (meta) route; flag it when it cannot reach there.
   const routesToDesktop = config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
   if (config.execution?.desktop?.codexAppServer !== undefined && !routesToDesktop) {
@@ -247,8 +286,8 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone") {
-    return invalid("`subject.source` must be one of: this-repo, clone.");
+  if (source !== "this-repo" && source !== "clone" && source !== "app-url") {
+    return invalid("`subject.source` must be one of: this-repo, clone, app-url.");
   }
   const subject: LabSubject = { source };
 
@@ -264,7 +303,36 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     }
   }
 
+  if (source === "app-url") {
+    const appUrl = str(raw.appUrl);
+    if (!appUrl) {
+      return invalid("`subject.appUrl` is required when source is app-url.");
+    }
+    if (!isLoopbackUrl(appUrl)) {
+      return invalid("`subject.appUrl` must be a loopback http(s) URL (127.0.0.1 or localhost) — driving public targets is not allowed.");
+    }
+    subject.appUrl = appUrl;
+  }
+
   return { ok: true, value: subject };
+}
+
+// Public-safe stance: a computer-use actor's ENTRY URL is always an app the lab owner runs on
+// loopback (inside the sandbox), never an arbitrary public site. (The constraint binds the
+// entry point; a navigation watchdog for mid-session escapes is a later slice.) Exported so
+// the engine re-enforces the same boundary on configs that arrive through the library API.
+export function isLoopbackUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
 
 function parseClone(raw: unknown): LabSubjectClone | undefined {

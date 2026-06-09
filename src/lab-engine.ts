@@ -1,22 +1,22 @@
 // The single lab engine. A lab is a config (mimetic.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
-// The three backends (synthetic dry/browser, clone smoke, clone+E2B-desktop meta) are genuinely
-// distinct execution substrates and stay as proven primitives; runLab is the one entry that maps
-// config -> backend options. Adding a new actor/execution extends routing via the registries +
-// these selectors, never via a new `kind` in a closed enum.
-//
-// PR #1 scope: behavior-preserving structural unification (golden-proven). Per-actor mission
-// threading into the live E2B bootstrap + the computer-use actor are PR #2 (live-tested there);
-// the v2 schema already carries those fields so the contract is forward-correct.
+// The four backends (synthetic dry/browser, clone smoke, clone+E2B-desktop meta, app-url
+// computer-use) are genuinely distinct execution substrates and stay as proven primitives;
+// runLab is the one entry that maps config -> backend options. Adding a new actor/execution
+// extends routing via the registries + these selectors, never via a new `kind` in a closed
+// enum. On the cua route the two axes are visibly orthogonal: subject x execution selects the
+// substrate here, while actors[0].type selects WHICH registered actor runs the session inside
+// it (resolved through the actor registry in cua-actor-lab.ts).
 
+import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "./cua-actor-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult } from "./run.js";
 import type { LabConfig } from "./lab-config.js";
 
-export type LabBackend = "synthetic" | "smoke" | "meta";
+export type LabBackend = "synthetic" | "smoke" | "meta" | "cua";
 
 /** Runtime overrides from CLI flags. Each wins over the config when provided. */
 export interface RunLabOptions {
@@ -33,12 +33,15 @@ export interface RunLabOptions {
   /** Meta watch-follow plumbing. */
   completionTimeoutMs?: number;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
+  /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
+  cuaHooks?: CuaActorLabHooks;
 }
 
 export type LabOutcome =
   | { backend: "synthetic"; result: RunResult }
   | { backend: "smoke"; result: OssLabResult }
-  | { backend: "meta"; result: OssMetaLabResult };
+  | { backend: "meta"; result: OssMetaLabResult }
+  | { backend: "cua"; result: CuaActorLabResult };
 
 /**
  * Route a lab config to its execution backend purely from its declared composition.
@@ -46,6 +49,11 @@ export type LabOutcome =
  * (a new subject/execution pairing adds a route) rather than a closed kind enum.
  */
 export function selectLabBackend(config: LabConfig): LabBackend {
+  if (config.subject.source === "app-url") {
+    // app-url + e2b-desktop is the computer-use route (the only valid pairing; the parser
+    // rejects everything else). The actor registry then resolves actors[0].type inside it.
+    return "cua";
+  }
   if (config.subject.source === "clone") {
     return config.execution?.target === "e2b-desktop" ? "meta" : "smoke";
   }
@@ -114,6 +122,19 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.completionTimeoutMs === undefined ? {} : { completionTimeoutMs: options.completionTimeoutMs }),
         ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId })
+      });
+      return { backend, result };
+    }
+    case "cua": {
+      // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runCuaActorLab({
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks })
       });
       return { backend, result };
     }

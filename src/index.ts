@@ -16,7 +16,7 @@ export type {
   ActorTraceItem,
   ActorTraceItemKind
 } from "./actor-contract.js";
-export { actorRegistry, getActor } from "./actor-registry.js";
+export { actorRegistry, getActor, isCuaActorDescriptor } from "./actor-registry.js";
 export type { ActorDescriptor, ActorId, CuaActorDescriptor } from "./actor-registry.js";
 export {
   describeCuaAction,
@@ -106,6 +106,17 @@ export type {
   RunsResult,
   VerifyResult
 } from "./run.js";
+export {
+  CUA_ACTOR_LAB_PROVIDER_METADATA,
+  CUA_ACTOR_LAB_SCHEMA,
+  buildCuaBundle,
+  runCuaActorLab
+} from "./cua-actor-lab.js";
+export type { CuaActorLabHooks, CuaActorLabResult, RunCuaActorLabOptions } from "./cua-actor-lab.js";
+export { LAB_CONFIG_SCHEMA, parseLabConfig } from "./lab-config.js";
+export type { LabActor, LabConfig, LabConfigParseResult, LabSubject, LabSubjectSource } from "./lab-config.js";
+export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
+export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";
 export {
   CLI_RESPONSE_SCHEMA,
   createProgram,
