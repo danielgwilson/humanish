@@ -3,33 +3,18 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
-export const LAB_MANIFEST_SCHEMA = "mimetic.lab.v1";
+import { parseLabConfig, type LabConfig } from "./lab-config.js";
+
+export { LAB_CONFIG_SCHEMA } from "./lab-config.js";
+export type { LabConfig } from "./lab-config.js";
+
 export const LAB_LIST_SCHEMA = "mimetic.lab-list.v1";
 export const LAB_INSPECT_SCHEMA = "mimetic.lab-inspect.v1";
 
-export type LabKind = "synthetic" | "oss-meta" | "oss-smoke";
 export type LabOrigin = "committed" | "ignored" | "explicit";
 
-export interface LabManifest {
-  schema: typeof LAB_MANIFEST_SCHEMA;
-  id: string;
-  kind: LabKind;
-  title?: string;
-  description?: string;
-  sims?: number;
-  count?: number;
-  limit?: number;
-  repos?: string[];
-  defaults?: {
-    codexAppServer?: boolean;
-    dryRun?: boolean;
-    open?: boolean;
-    redactRepos?: boolean;
-  };
-}
-
-export interface ResolvedLabManifest {
-  manifest: LabManifest;
+export interface ResolvedLabConfig {
+  config: LabConfig;
   origin: LabOrigin;
   path: string;
   warnings: string[];
@@ -47,20 +32,22 @@ export interface LabResolveFailure {
 }
 
 export type LabResolveResult =
-  | ({ ok: true } & ResolvedLabManifest)
+  | ({ ok: true } & ResolvedLabConfig)
   | LabResolveFailure;
+
+export interface LabListEntry {
+  id: string;
+  source: LabConfig["subject"]["source"];
+  origin: LabOrigin;
+  path: string;
+  title?: string;
+}
 
 export interface LabListResult {
   schema: typeof LAB_LIST_SCHEMA;
   ok: true;
   cwd: string;
-  labs: Array<{
-    id: string;
-    kind: LabKind;
-    origin: LabOrigin;
-    path: string;
-    title?: string;
-  }>;
+  labs: LabListEntry[];
   warnings: string[];
 }
 
@@ -69,7 +56,7 @@ export interface LabInspectResult {
   ok: boolean;
   cwd: string;
   lab: string;
-  manifest?: LabManifest;
+  config?: LabConfig;
   origin?: LabOrigin;
   path?: string;
   error?: LabResolveFailure["error"];
@@ -101,7 +88,7 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
       continue;
     }
 
-    return parseLabManifest({
+    return parseResolvedLab({
       cwd: resolvedCwd,
       lab,
       origin: candidate.origin,
@@ -125,7 +112,7 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
 export async function listLabManifests(cwd: string): Promise<LabListResult> {
   const resolvedCwd = path.resolve(cwd);
   const warnings: string[] = [];
-  const labs = new Map<string, LabListResult["labs"][number]>();
+  const labs = new Map<string, LabListEntry>();
   const dirs = [
     { origin: "committed" as const, dir: path.join(resolvedCwd, committedLabsDir) },
     ...ignoredLabsDirs.map((dir) => ({ origin: "ignored" as const, dir: path.join(resolvedCwd, dir) }))
@@ -135,7 +122,7 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
     const names = await safeReadDir(entry.dir);
     for (const name of names.filter((value) => value.endsWith(".yaml") || value.endsWith(".yml"))) {
       const candidatePath = path.join(entry.dir, name);
-      const parsed = await parseLabManifest({
+      const parsed = await parseResolvedLab({
         cwd: resolvedCwd,
         lab: name.replace(/\.(?:ya?ml)$/i, ""),
         origin: entry.origin,
@@ -147,13 +134,13 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
         continue;
       }
 
-      const key = `${parsed.manifest.id}:${entry.origin}:${relativeToCwd(resolvedCwd, candidatePath)}`;
+      const key = `${parsed.config.id}:${entry.origin}:${relativeToCwd(resolvedCwd, candidatePath)}`;
       labs.set(key, {
-        id: parsed.manifest.id,
-        kind: parsed.manifest.kind,
+        id: parsed.config.id,
+        source: parsed.config.subject.source,
         origin: entry.origin,
         path: relativeToCwd(resolvedCwd, candidatePath),
-        ...(parsed.manifest.title ? { title: parsed.manifest.title } : {})
+        ...(parsed.config.title ? { title: parsed.config.title } : {})
       });
     }
   }
@@ -185,14 +172,14 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
     ok: true,
     cwd: path.resolve(cwd),
     lab,
-    manifest: resolved.manifest,
+    config: resolved.config,
     origin: resolved.origin,
     path: resolved.path,
     warnings: resolved.warnings
   };
 }
 
-async function parseLabManifest(args: {
+async function parseResolvedLab(args: {
   cwd: string;
   lab: string;
   origin: LabOrigin;
@@ -203,64 +190,22 @@ async function parseLabManifest(args: {
   try {
     raw = parse(await readFile(args.path, "utf8"));
   } catch (error: unknown) {
-    return {
-      ok: false,
-      cwd: args.cwd,
-      lab: args.lab,
-      error: {
-        code: "MIMETIC_LAB_INVALID",
-        message: error instanceof Error ? error.message : "Lab YAML could not be parsed."
-      },
-      warnings: args.warnings
-    };
+    return invalidLab(args, error instanceof Error ? error.message : "Lab YAML could not be parsed.");
   }
 
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return invalidLab(args, "Lab manifest must be a YAML object.");
+  const parsed = parseLabConfig(raw);
+  if (!parsed.ok) {
+    return invalidLab(args, parsed.error.message);
   }
 
-  const record = raw as Record<string, unknown>;
-  const schema = stringValue(record.schema);
-  const id = stringValue(record.id);
-  const kind = stringValue(record.kind);
-  if (schema !== LAB_MANIFEST_SCHEMA) {
-    return invalidLab(args, `Lab schema must be ${LAB_MANIFEST_SCHEMA}.`);
-  }
-  if (!id || !/^[A-Za-z0-9_.-]+$/.test(id)) {
-    return invalidLab(args, "Lab id must be a public-safe token.");
-  }
-  if (!isLabKind(kind)) {
-    return invalidLab(args, "Lab kind must be synthetic, oss-meta, or oss-smoke.");
-  }
-
-  const title = stringValue(record.title);
-  const description = stringValue(record.description);
-  const sims = positiveIntegerValue(record.sims);
-  const count = positiveIntegerValue(record.count);
-  const limit = positiveIntegerValue(record.limit);
-  const repos = repoListValue(record.repos);
-  const defaults = defaultsValue(record.defaults);
-  const manifest: LabManifest = {
-    schema: LAB_MANIFEST_SCHEMA,
-    id,
-    kind,
-    ...(title === undefined ? {} : { title }),
-    ...(description === undefined ? {} : { description }),
-    ...(sims === undefined ? {} : { sims }),
-    ...(count === undefined ? {} : { count }),
-    ...(limit === undefined ? {} : { limit }),
-    ...(repos === undefined ? {} : { repos }),
-    ...(defaults === undefined ? {} : { defaults })
-  };
-
-  const warnings = [...args.warnings];
+  const warnings = [...args.warnings, ...parsed.warnings];
   if (args.path.endsWith(".yml")) {
     warnings.push("Prefer .yaml for Mimetic-authored lab source; .yml is accepted for compatibility only.");
   }
 
   return {
     ok: true,
-    manifest,
+    config: parsed.config,
     origin: args.origin,
     path: relativeToCwd(args.cwd, args.path),
     warnings
@@ -282,50 +227,6 @@ function invalidLab(args: {
     },
     warnings: args.warnings
   };
-}
-
-function stringValue(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function positiveIntegerValue(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 1) {
-    return value;
-  }
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : undefined;
-  }
-  return undefined;
-}
-
-function repoListValue(value: unknown): string[] | undefined {
-  if (typeof value === "string") {
-    return value.split(",").map((repo) => repo.trim()).filter(Boolean);
-  }
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const repos = value.filter((entry): entry is string => typeof entry === "string")
-    .map((repo) => repo.trim())
-    .filter(Boolean);
-  return repos.length > 0 ? repos : undefined;
-}
-
-function defaultsValue(value: unknown): LabManifest["defaults"] | undefined {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return undefined;
-  }
-  const record = value as Record<string, unknown>;
-  const defaults: NonNullable<LabManifest["defaults"]> = {};
-  if (typeof record.dryRun === "boolean") defaults.dryRun = record.dryRun;
-  if (typeof record.open === "boolean") defaults.open = record.open;
-  if (typeof record.redactRepos === "boolean") defaults.redactRepos = record.redactRepos;
-  return Object.keys(defaults).length > 0 ? defaults : undefined;
-}
-
-function isLabKind(kind: string | undefined): kind is LabKind {
-  return kind === "synthetic" || kind === "oss-meta" || kind === "oss-smoke";
 }
 
 function labLooksLikePath(lab: string): boolean {

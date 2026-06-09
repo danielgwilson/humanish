@@ -1,14 +1,24 @@
-schema: mimetic.lab.v1
+schema: mimetic.lab.v2
 id: oss
-kind: oss-meta
 title: OSS meta-lab dogfood
 description: Experimental Observer-of-Observers for authorized repos; useful for maintainer dogfood and disposable public app trials.
-count: 4
-repos:
-  - CorentinTh/it-tools
-  - drawdb-io/drawdb
-  - maciekt07/TodoApp
-  - lissy93/dashy
+subject:
+  source: clone
+  repos:
+    - CorentinTh/it-tools
+    - drawdb-io/drawdb
+    - maciekt07/TodoApp
+    - lissy93/dashy
+  clone:
+    fanout: 4
+actors:
+  - type: codex-app-server
+    laneFocus:
+      id: code
+      label: Nested setup + run
+execution:
+  target: e2b-desktop
+scenario:
+  mode: live
 defaults:
-  dryRun: false
   open: true

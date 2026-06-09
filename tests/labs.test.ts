@@ -13,21 +13,30 @@ describe("lab manifest resolution", () => {
   it("resolves committed, ignored, and explicit .yaml lab manifests", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-labs-"));
     await writeLab(cwd, "mimetic/labs/first-run.yaml", [
-      "schema: mimetic.lab.v1",
+      "schema: mimetic.lab.v2",
       "id: first-run",
-      "kind: synthetic",
       "title: First run",
-      "sims: 3"
+      "subject:",
+      "  source: this-repo",
+      "actors:",
+      "  - type: synthetic-persona",
+      "    count: 3"
     ].join("\n"));
     await writeLab(cwd, ".mimetic/local/labs/private.yaml", [
-      "schema: mimetic.lab.v1",
+      "schema: mimetic.lab.v2",
       "id: private",
-      "kind: oss-meta",
-      "repos:",
-      "  - example/app",
-      "defaults:",
-      "  dryRun: true",
-      "  redactRepos: true"
+      "subject:",
+      "  source: clone",
+      "  repos:",
+      "    - example/app",
+      "execution:",
+      "  target: e2b-desktop",
+      "actors:",
+      "  - type: codex-app-server",
+      "policies:",
+      "  redactRepos: true",
+      "scenario:",
+      "  mode: dry-run"
     ].join("\n"));
 
     const committed = await resolveLabManifest(cwd, "first-run");
@@ -36,9 +45,9 @@ describe("lab manifest resolution", () => {
     const list = await listLabManifests(cwd);
 
     expect(committed.ok && committed.origin).toBe("committed");
-    expect(committed.ok && committed.manifest.sims).toBe(3);
+    expect(committed.ok && committed.config.actors[0]?.count).toBe(3);
     expect(ignored.ok && ignored.origin).toBe("ignored");
-    expect(ignored.ok && ignored.manifest.repos).toEqual(["example/app"]);
+    expect(ignored.ok && ignored.config.subject.repos).toEqual(["example/app"]);
     expect(explicit.ok && explicit.origin).toBe("explicit");
     expect(list.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual([
       "committed:first-run",
@@ -49,14 +58,18 @@ describe("lab manifest resolution", () => {
   it("warns on .yml and fails invalid schemas", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-labs-invalid-"));
     await writeLab(cwd, "mimetic/labs/compat.yml", [
-      "schema: mimetic.lab.v1",
+      "schema: mimetic.lab.v2",
       "id: compat",
-      "kind: synthetic"
+      "subject:",
+      "  source: this-repo",
+      "actors:",
+      "  - type: synthetic-persona"
     ].join("\n"));
     await writeLab(cwd, "mimetic/labs/bad.yaml", [
       "schema: nope",
       "id: bad",
-      "kind: synthetic"
+      "subject:",
+      "  source: this-repo"
     ].join("\n"));
 
     const compat = await inspectLabManifest(cwd, "compat");

@@ -270,11 +270,14 @@ describe("mimetic CLI scaffold", () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
       "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v1",
+        "schema: mimetic.lab.v2",
         "id: first-run",
-        "kind: synthetic",
         "title: First run",
-        "sims: 2"
+        "subject:",
+        "  source: this-repo",
+        "actors:",
+        "  - type: synthetic-persona",
+        "    count: 2"
       ].join("\n")
     }, async (cwd) => {
       const list = await runCli(["lab", "list", "--cwd", cwd]);
@@ -282,19 +285,19 @@ describe("mimetic CLI scaffold", () => {
 
       expect(list.exitCode).toBe(0);
       expect(list.stdout).toContain("mimetic labs");
-      expect(list.stdout).toContain("first-run synthetic committed");
+      expect(list.stdout).toContain("first-run this-repo committed");
 
       const envelope = JSON.parse(inspect.stdout) as {
         ok: boolean;
-        manifest: { id: string; kind: string; sims: number };
+        config: { id: string; subject: { source: string }; actors: Array<{ type: string; count?: number }> };
       };
       expect(inspect.exitCode).toBe(0);
       expect(envelope.ok).toBe(true);
-      expect(envelope.manifest).toEqual(expect.objectContaining({
+      expect(envelope.config).toEqual(expect.objectContaining({
         id: "first-run",
-        kind: "synthetic",
-        sims: 2
+        subject: { source: "this-repo" }
       }));
+      expect(envelope.config.actors[0]).toEqual(expect.objectContaining({ type: "synthetic-persona", count: 2 }));
     });
   });
 
@@ -302,12 +305,15 @@ describe("mimetic CLI scaffold", () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
       "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v1",
+        "schema: mimetic.lab.v2",
         "id: first-run",
-        "kind: synthetic",
-        "sims: 2",
-        "defaults:",
-        "  dryRun: true"
+        "subject:",
+        "  source: this-repo",
+        "actors:",
+        "  - type: synthetic-persona",
+        "    count: 2",
+        "scenario:",
+        "  mode: dry-run"
       ].join("\n")
     }, async (cwd) => {
       const run = await runCli([
@@ -353,9 +359,12 @@ describe("mimetic CLI scaffold", () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
       "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v1",
+        "schema: mimetic.lab.v2",
         "id: first-run",
-        "kind: synthetic"
+        "subject:",
+        "  source: this-repo",
+        "actors:",
+        "  - type: synthetic-persona"
       ].join("\n")
     }, async (cwd) => {
       const result = await runCli([

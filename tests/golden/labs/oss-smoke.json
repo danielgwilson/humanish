@@ -1,0 +1,262 @@
+{
+  "schema": "mimetic.oss-lab-result.v1",
+  "ok": true,
+  "cleanup": {
+    "kept": false,
+    "sandboxRemoved": true
+  },
+  "completedAt": "2026-06-08T19:00:02.865Z",
+  "cwd": "/home/azureuser/claude/mimetic-cli-repo/worktrees/labs-as-config",
+  "reportJsonPath": ".mimetic/lab/oss/golden-oss-smoke/report.json",
+  "reportMarkdownPath": ".mimetic/lab/oss/golden-oss-smoke/report.md",
+  "repos": [
+    {
+      "changedFiles": [
+        "M .gitignore",
+        "M package.json",
+        "?? mimetic/README.md",
+        "?? mimetic/adapters/app.ts",
+        "?? mimetic/config.ts",
+        "?? mimetic/coverage-map.md",
+        "?? mimetic/coverage-matrix.md",
+        "?? mimetic/fixtures/synthetic-login-state.json",
+        "?? mimetic/labs/first-run.yaml",
+        "?? mimetic/personas/skeptical-power-user.yaml",
+        "?? mimetic/personas/synthetic-new-user.yaml",
+        "?? mimetic/policies/credentials.example.yaml",
+        "?? mimetic/policies/network.yaml",
+        "?? mimetic/policies/redaction.yaml",
+        "?? mimetic/review/milestones.yaml",
+        "?? mimetic/review/vocabulary.yaml",
+        "?? mimetic/scenarios/first-run-smoke.yaml",
+        "?? mimetic/scenarios/onboarding-regression.yaml"
+      ],
+      "clonePath": ".mimetic/tmp/oss-lab/golden-oss-smoke/CorentinTh__it-tools",
+      "mimeticRunId": "golden-oss-smoke-corentinth-it-tools",
+      "observerPath": ".mimetic/runs/golden-oss-smoke-corentinth-it-tools/observer/index.html",
+      "ok": true,
+      "repo": "CorentinTh/it-tools",
+      "steps": [
+        {
+          "durationMs": 548,
+          "name": "clone",
+          "ok": true,
+          "summary": "shallow public clone created"
+        },
+        {
+          "durationMs": 11,
+          "name": "mimetic init",
+          "ok": true,
+          "summary": "16 files created, 2 files updated, 9 runtime dirs planned/applied"
+        },
+        {
+          "durationMs": 1,
+          "name": "mimetic doctor",
+          "ok": true,
+          "summary": "4/4 checks passed"
+        },
+        {
+          "durationMs": 41,
+          "name": "mimetic watch evidence",
+          "ok": true,
+          "summary": "observer rendered at .mimetic/runs/golden-oss-smoke-corentinth-it-tools/observer/index.html"
+        },
+        {
+          "durationMs": 6,
+          "name": "mimetic verify",
+          "ok": true,
+          "summary": "8/8 checks passed"
+        }
+      ],
+      "url": "https://github.com/CorentinTh/it-tools.git",
+      "warnings": []
+    },
+    {
+      "changedFiles": [
+        "M .gitignore",
+        "M package.json",
+        "?? mimetic/README.md",
+        "?? mimetic/adapters/app.ts",
+        "?? mimetic/config.ts",
+        "?? mimetic/coverage-map.md",
+        "?? mimetic/coverage-matrix.md",
+        "?? mimetic/fixtures/synthetic-login-state.json",
+        "?? mimetic/labs/first-run.yaml",
+        "?? mimetic/personas/skeptical-power-user.yaml",
+        "?? mimetic/personas/synthetic-new-user.yaml",
+        "?? mimetic/policies/credentials.example.yaml",
+        "?? mimetic/policies/network.yaml",
+        "?? mimetic/policies/redaction.yaml",
+        "?? mimetic/review/milestones.yaml",
+        "?? mimetic/review/vocabulary.yaml",
+        "?? mimetic/scenarios/first-run-smoke.yaml",
+        "?? mimetic/scenarios/onboarding-regression.yaml"
+      ],
+      "clonePath": ".mimetic/tmp/oss-lab/golden-oss-smoke/drawdb-io__drawdb",
+      "mimeticRunId": "golden-oss-smoke-drawdb-io-drawdb",
+      "observerPath": ".mimetic/runs/golden-oss-smoke-drawdb-io-drawdb/observer/index.html",
+      "ok": true,
+      "repo": "drawdb-io/drawdb",
+      "steps": [
+        {
+          "durationMs": 648,
+          "name": "clone",
+          "ok": true,
+          "summary": "shallow public clone created"
+        },
+        {
+          "durationMs": 9,
+          "name": "mimetic init",
+          "ok": true,
+          "summary": "16 files created, 2 files updated, 9 runtime dirs planned/applied"
+        },
+        {
+          "durationMs": 1,
+          "name": "mimetic doctor",
+          "ok": true,
+          "summary": "4/4 checks passed"
+        },
+        {
+          "durationMs": 34,
+          "name": "mimetic watch evidence",
+          "ok": true,
+          "summary": "observer rendered at .mimetic/runs/golden-oss-smoke-drawdb-io-drawdb/observer/index.html"
+        },
+        {
+          "durationMs": 4,
+          "name": "mimetic verify",
+          "ok": true,
+          "summary": "8/8 checks passed"
+        }
+      ],
+      "url": "https://github.com/drawdb-io/drawdb.git",
+      "warnings": []
+    },
+    {
+      "changedFiles": [
+        "M .gitignore",
+        "M package.json",
+        "?? mimetic/README.md",
+        "?? mimetic/adapters/app.ts",
+        "?? mimetic/config.ts",
+        "?? mimetic/coverage-map.md",
+        "?? mimetic/coverage-matrix.md",
+        "?? mimetic/fixtures/synthetic-login-state.json",
+        "?? mimetic/labs/first-run.yaml",
+        "?? mimetic/personas/skeptical-power-user.yaml",
+        "?? mimetic/personas/synthetic-new-user.yaml",
+        "?? mimetic/policies/credentials.example.yaml",
+        "?? mimetic/policies/network.yaml",
+        "?? mimetic/policies/redaction.yaml",
+        "?? mimetic/review/milestones.yaml",
+        "?? mimetic/review/vocabulary.yaml",
+        "?? mimetic/scenarios/first-run-smoke.yaml",
+        "?? mimetic/scenarios/onboarding-regression.yaml"
+      ],
+      "clonePath": ".mimetic/tmp/oss-lab/golden-oss-smoke/maciekt07__TodoApp",
+      "mimeticRunId": "golden-oss-smoke-maciekt07-todoapp",
+      "observerPath": ".mimetic/runs/golden-oss-smoke-maciekt07-todoapp/observer/index.html",
+      "ok": true,
+      "repo": "maciekt07/TodoApp",
+      "steps": [
+        {
+          "durationMs": 1001,
+          "name": "clone",
+          "ok": true,
+          "summary": "shallow public clone created"
+        },
+        {
+          "durationMs": 8,
+          "name": "mimetic init",
+          "ok": true,
+          "summary": "16 files created, 2 files updated, 9 runtime dirs planned/applied"
+        },
+        {
+          "durationMs": 0,
+          "name": "mimetic doctor",
+          "ok": true,
+          "summary": "4/4 checks passed"
+        },
+        {
+          "durationMs": 77,
+          "name": "mimetic watch evidence",
+          "ok": true,
+          "summary": "observer rendered at .mimetic/runs/golden-oss-smoke-maciekt07-todoapp/observer/index.html"
+        },
+        {
+          "durationMs": 5,
+          "name": "mimetic verify",
+          "ok": true,
+          "summary": "8/8 checks passed"
+        }
+      ],
+      "url": "https://github.com/maciekt07/TodoApp.git",
+      "warnings": []
+    },
+    {
+      "changedFiles": [
+        "M .gitignore",
+        "M package.json",
+        "?? mimetic/README.md",
+        "?? mimetic/adapters/app.ts",
+        "?? mimetic/config.ts",
+        "?? mimetic/coverage-map.md",
+        "?? mimetic/coverage-matrix.md",
+        "?? mimetic/fixtures/synthetic-login-state.json",
+        "?? mimetic/labs/first-run.yaml",
+        "?? mimetic/personas/skeptical-power-user.yaml",
+        "?? mimetic/personas/synthetic-new-user.yaml",
+        "?? mimetic/policies/credentials.example.yaml",
+        "?? mimetic/policies/network.yaml",
+        "?? mimetic/policies/redaction.yaml",
+        "?? mimetic/review/milestones.yaml",
+        "?? mimetic/review/vocabulary.yaml",
+        "?? mimetic/scenarios/first-run-smoke.yaml",
+        "?? mimetic/scenarios/onboarding-regression.yaml"
+      ],
+      "clonePath": ".mimetic/tmp/oss-lab/golden-oss-smoke/lissy93__dashy",
+      "mimeticRunId": "golden-oss-smoke-lissy93-dashy",
+      "observerPath": ".mimetic/runs/golden-oss-smoke-lissy93-dashy/observer/index.html",
+      "ok": true,
+      "repo": "lissy93/dashy",
+      "steps": [
+        {
+          "durationMs": 5267,
+          "name": "clone",
+          "ok": true,
+          "summary": "shallow public clone created"
+        },
+        {
+          "durationMs": 8,
+          "name": "mimetic init",
+          "ok": true,
+          "summary": "16 files created, 2 files updated, 9 runtime dirs planned/applied"
+        },
+        {
+          "durationMs": 1,
+          "name": "mimetic doctor",
+          "ok": true,
+          "summary": "4/4 checks passed"
+        },
+        {
+          "durationMs": 246,
+          "name": "mimetic watch evidence",
+          "ok": true,
+          "summary": "observer rendered at .mimetic/runs/golden-oss-smoke-lissy93-dashy/observer/index.html"
+        },
+        {
+          "durationMs": 6,
+          "name": "mimetic verify",
+          "ok": true,
+          "summary": "8/8 checks passed"
+        }
+      ],
+      "url": "https://github.com/lissy93/dashy.git",
+      "warnings": []
+    }
+  ],
+  "runId": "golden-oss-smoke",
+  "sandboxPath": ".mimetic/tmp/oss-lab/golden-oss-smoke",
+  "startedAt": "2026-06-08T18:59:54.570Z",
+  "warnings": []
+}

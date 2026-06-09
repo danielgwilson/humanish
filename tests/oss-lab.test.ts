@@ -778,15 +778,21 @@ describe("OSS lab command", () => {
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
     await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
     await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
-      "schema: mimetic.lab.v1",
+      "schema: mimetic.lab.v2",
       "id: oss",
-      "kind: oss-meta",
-      "count: 2",
-      "repos:",
-      "  - CorentinTh/it-tools",
-      "  - drawdb-io/drawdb",
-      "defaults:",
-      "  dryRun: true"
+      "subject:",
+      "  source: clone",
+      "  repos:",
+      "    - CorentinTh/it-tools",
+      "    - drawdb-io/drawdb",
+      "  clone:",
+      "    fanout: 2",
+      "execution:",
+      "  target: e2b-desktop",
+      "actors:",
+      "  - type: codex-app-server",
+      "scenario:",
+      "  mode: dry-run"
     ].join("\n"), "utf8");
 
     const result = await runCli([
