@@ -17,15 +17,15 @@ import { resolveLabManifest } from "../src/labs.js";
 const ROOT = process.cwd();
 
 // Normalize the two ambient, non-behavioral parts of a run bundle: ISO timestamps and the
-// VOLATILE LEAVES of the captured git working-tree state (status/sha/change-counts reflect
-// whatever the repo looks like when the lab runs, not lab behavior). We deliberately keep the
-// git-state STRUCTURE (schema, keys, refState) asserted — only volatile leaf values are masked —
-// so a structural or redaction-shape regression in that safety surface still fails the test.
-const GIT_VOLATILE_LEAVES = new Set([
-  "shortSha", "status", "staged", "unstaged", "untracked", "total", "dirty", "ahead", "behind"
-]);
-
+// captured git working-tree state. The git-state subtree (status/sha/refState/change-counts) is
+// 100% environment-dependent — it differs between a local worktree (attached HEAD) and a CI PR
+// checkout (detached HEAD) — and is NOT part of what this refactor must preserve. We mask every
+// LEAF VALUE inside it while keeping its STRUCTURE (keys) asserted, so a structural regression in
+// that subtree still fails the test but ambient values never make the golden flaky.
 function normalizeBundle(value: unknown, inGitState = false): unknown {
+  if (inGitState && (value === null || typeof value !== "object")) {
+    return "[git]";
+  }
   if (typeof value === "string") {
     return value.replace(/\d{4}-\d{2}-\d{2}T[0-9:.]+Z/g, "[ts]");
   }
@@ -37,9 +37,7 @@ function normalizeBundle(value: unknown, inGitState = false): unknown {
     const nowInGitState = inGitState || obj.schema === "mimetic.git-state.v1";
     const out: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(obj)) {
-      out[key] = nowInGitState && GIT_VOLATILE_LEAVES.has(key) && (entry === null || typeof entry !== "object")
-        ? "[git-volatile]"
-        : normalizeBundle(entry, nowInGitState);
+      out[key] = normalizeBundle(entry, nowInGitState);
     }
     return out;
   }
