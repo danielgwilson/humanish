@@ -191,4 +191,85 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       }
     });
   });
+
+  describe("clone + serve (computer-use route)", () => {
+    const validCloneCua = {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-clone",
+      subject: {
+        source: "clone",
+        repos: ["example-org/example-app"],
+        clone: { depth: 2 },
+        serve: { install: "pnpm install", build: "pnpm build", start: "pnpm start", url: "http://127.0.0.1:3000/", readyTimeoutMs: 60000 },
+        env: ["DATABASE_URL", "GITHUB_TOKEN"]
+      },
+      actors: [{ type: "openai-computer-use", mission: "Explore." }],
+      execution: { target: "e2b-desktop", timeoutMs: 120000 },
+      scenario: { mode: "live" }
+    };
+
+    it("parses with ZERO warnings — serve, env, and clone.depth are all consumed on this route", () => {
+      const result = parseLabConfig(validCloneCua);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.subject.serve?.start).toBe("pnpm start");
+      expect(result.config.subject.env).toEqual(["DATABASE_URL", "GITHUB_TOKEN"]);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("warns clone.keep/fanout as inert on the cua route (sandbox always killed; single lane)", () => {
+      const result = parseLabConfig({
+        ...validCloneCua,
+        subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 1 } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("subject.clone.keep");
+      expect(result.warnings[0]).toContain("subject.clone.fanout");
+      expect(result.warnings[0]).not.toContain("subject.clone.depth");
+    });
+
+    it("warns serve/env/depth as inert on clone routes that do NOT serve (smoke/meta)", () => {
+      const smoke = parseLabConfig({
+        ...validCloneCua,
+        actors: [{ type: "mimetic-setup" }],
+        execution: undefined,
+        scenario: undefined
+      });
+      expect(smoke.ok).toBe(true);
+      if (!smoke.ok) return;
+      expect(smoke.warnings[0]).toContain("subject.serve");
+      expect(smoke.warnings[0]).toContain("subject.env");
+      expect(smoke.warnings[0]).toContain("subject.clone.depth");
+
+      const meta = parseLabConfig({
+        ...validCloneCua,
+        subject: { ...validCloneCua.subject, serve: undefined, env: undefined },
+        actors: [{ type: "codex-app-server" }]
+      });
+      expect(meta.ok).toBe(true);
+      if (!meta.ok) return;
+      expect(meta.warnings[0] ?? "").toContain("subject.clone.depth");
+    });
+
+    it.each([
+      ["serve on app-url", { ...validCloneCua, subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", serve: validCloneCua.subject.serve } }],
+      ["serve on this-repo", { ...validCloneCua, subject: { source: "this-repo", serve: validCloneCua.subject.serve }, execution: undefined, scenario: undefined }],
+      ["env on app-url", { ...validCloneCua, subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", env: ["X_Y"] } }],
+      ["serve without start", { ...validCloneCua, subject: { ...validCloneCua.subject, serve: { url: "http://127.0.0.1:3000/" } } }],
+      ["serve without url", { ...validCloneCua, subject: { ...validCloneCua.subject, serve: { start: "pnpm start" } } }],
+      ["serve with public url", { ...validCloneCua, subject: { ...validCloneCua.subject, serve: { start: "pnpm start", url: "https://example.com/" } } }],
+      ["bad env name", { ...validCloneCua, subject: { ...validCloneCua.subject, env: ["lowercase-bad"] } }],
+      ["empty env list", { ...validCloneCua, subject: { ...validCloneCua.subject, env: [] } }],
+      ["cua-clone without serve", { ...validCloneCua, subject: { source: "clone", repos: ["example-org/example-app"] } }],
+      ["two repos on cua-clone", { ...validCloneCua, subject: { ...validCloneCua.subject, repos: ["a/b", "c/d"] } }],
+      ["bad repo slug", { ...validCloneCua, subject: { ...validCloneCua.subject, repos: ["not a slug; rm -rf"] } }],
+      ["fan-out count", { ...validCloneCua, actors: [{ type: "openai-computer-use", count: 2 }] }]
+    ])("fails closed on clone+serve mis-config: %s", (_label, input) => {
+      const result = parseLabConfig(input);
+      expect(result.ok, _label).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+    });
+  });
 });

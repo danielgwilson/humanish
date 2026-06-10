@@ -154,12 +154,21 @@ title: Computer-use browser lab
 description: >-
   A registered computer-use actor drives your app in a hosted desktop browser and emits a
   redacted evidence bundle. Dry-run by default; switch scenario.mode to live (with
-  OPENAI_API_KEY + E2B_API_KEY via --env-file) for a real session. The appUrl must be
-  reachable from INSIDE the sandbox — library callers provision it via the prepareDesktop
-  hook until clone+serve lands.
+  OPENAI_API_KEY + E2B_API_KEY via --env-file) for a real session. The clone subject below
+  serves your repo INSIDE the sandbox; declared subject env NAMES are provisioned from
+  --env-file (values are never persisted).
 subject:
-  source: app-url
-  appUrl: http://127.0.0.1:3000/
+  source: clone
+  repos: [your-org/your-app]
+  serve:
+    install: pnpm install --frozen-lockfile
+    build: pnpm build
+    start: pnpm start
+    url: http://127.0.0.1:3000/
+  # env: [DATABASE_URL]
+  # Alternative: provision the app yourself (library callers, prepareDesktop hook):
+  # source: app-url
+  # appUrl: http://127.0.0.1:3000/
 actors:
   - type: openai-computer-use
     persona: first-time-visitor

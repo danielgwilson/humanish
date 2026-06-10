@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-09
+Status date: 2026-06-10
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -110,6 +110,12 @@ Minimum acceptance:
   E2B desktop, fills the provider-neutral `stream.actor` trace seam, and persists
   a verified redacted bundle (0.3.0 registered the actor; 0.4.0 made
   `actors[].type` a real dispatch key). `done`
+- Clone subject provider: `subject.source: clone` + `serve` clones a repo INTO the
+  sandbox, installs/builds/starts it from config, probes readiness, and records
+  provenance (repo, commit, env names) in the bundle — config-only computer-use
+  labs against real apps (0.5.0; see `docs/goals/proof-roadmap/goal.md` and
+  `docs/principles/invariants-and-defaults.md` in the repository — repo-only
+  docs, not shipped in the npm package). `done`
 
 ### 5. Live Terminal And Codex Lanes
 

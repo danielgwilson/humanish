@@ -1427,6 +1427,9 @@ function formatCuaLabHuman(result: CuaActorLabResult): string {
     `lab: ${result.labId}`,
     `actor: ${result.actor}`,
     `subject: ${result.appUrl}`,
+    ...(result.subject?.source === "clone"
+      ? [`repo: ${result.subject.repo}${result.subject.commit ? `@${result.subject.commit.slice(0, 12)}` : ""}${result.subject.envNames && result.subject.envNames.length > 0 ? ` env=[${result.subject.envNames.join(", ")}]` : ""}`]
+      : []),
     ...(result.session
       ? [`session: ${result.session.status} (${result.session.completionReason}) — ${result.session.reason}`,
          `screenshots: ${result.session.screenshots} (redacted)`]

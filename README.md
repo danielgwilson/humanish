@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.4.0)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.5.0)
 
 ## Install
 
@@ -127,14 +127,39 @@ npx mimetic lab run .mimetic/labs/local-dogfood.yaml --json --no-open
 env var names, never values, and does not persist those values into run bundles
 or Observer data.
 
-### Computer-Use Labs (app-url)
+### Computer-Use Labs
 
-A lab with `subject.source: app-url` dispatches a **registered computer-use actor**
-(`actors[0].type`, resolved against the actor registry — e.g. `openai-computer-use`)
-to drive your app in a hosted E2B desktop browser and emit a redacted evidence
-bundle (blurred screenshots, length-only typed text, provider-neutral
-`mimetic.actor-trace.v1` on the stream). `mimetic init` scaffolds an example at
-`mimetic/labs/cua-browser.yaml`.
+A computer-use lab dispatches a **registered computer-use actor** (`actors[0].type`,
+resolved against the actor registry — e.g. `openai-computer-use`) to drive an app in
+a hosted E2B desktop browser and emit a redacted evidence bundle (blurred
+screenshots, length-only typed text, provider-neutral `mimetic.actor-trace.v1` on
+the stream). Two subjects route here:
+
+- **`subject.source: clone`** (+ `execution.target: e2b-desktop` + a computer-use
+  actor): the lab clones your repo INTO the sandbox, runs your declared
+  `serve.install`/`serve.build`/`serve.start` commands (detached, with readiness
+  probing), and drives the served app at `serve.url`. Subject env var NAMES declared
+  in `subject.env` are provisioned from `--env-file` (names land in evidence; values
+  never do). The bundle records provenance: repo, cloned commit, env names.
+- **`subject.source: app-url`**: you (a library caller) provision the app yourself
+  via the `prepareDesktop` hook (`runLab(config, { cuaHooks: { prepareDesktop } })`)
+  and the actor drives the URL you declared.
+
+```yaml
+subject:
+  source: clone
+  repos: [example-org/example-app]
+  serve:
+    install: pnpm install --frozen-lockfile
+    build: pnpm build
+    start: pnpm start
+    url: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    mission: Explore the app as a first-time visitor and complete its primary flow.
+execution: { target: e2b-desktop }
+scenario: { mode: live }
+```
 
 ```bash
 npx mimetic lab run cua-browser                 # dry-run contract bundle (no spend)
@@ -142,13 +167,17 @@ npx mimetic lab run cua-browser                 # dry-run contract bundle (no sp
 
 Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass via
 `--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. The entry
-`appUrl` is loopback-only and must be reachable from **inside** the sandbox —
-driving public sites is rejected at parse time and re-checked by the engine. The
-lab does not serve your app yet, so a CLI-only live run requires something already
-answering on that sandbox-internal URL; today that means **library callers**, who
-provision the subject via the `prepareDesktop` hook
-(`runLab(config, { cuaHooks: { prepareDesktop } })`) before the browser opens. The
-clone+serve subject is the next slice.
+URL is loopback-only (the app is served **inside** the sandbox) — driving public
+sites is rejected at parse time and re-checked by the engine. The actor's API key
+never enters the sandbox; only declared subject env names do. `mimetic init`
+scaffolds an example at `mimetic/labs/cua-browser.yaml`.
+
+Trust note: `serve` commands run inside the disposable sandbox with the declared
+subject env provisioned — the same trust class as a repo's package.json scripts.
+Only run lab configs you trust, and declare only the env names that the subject
+genuinely needs. (Since 0.5.0, a clone × e2b-desktop lab whose actor is a
+registered computer-use actor routes here and requires `serve`; on earlier
+versions that shape routed to the meta lab.)
 
 ## Browser Scenario Manifests
 

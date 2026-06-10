@@ -1,0 +1,98 @@
+# Goal: the two-axis proof roadmap
+
+Status: ratified 2026-06-10. This is the standing definition of "mimetic has succeeded,"
+against which individual PRs carve their scope.
+
+## The proof goal
+
+> **Mimetic core is proven when (depth) each first-party bespoke simulation harness can be
+> deleted in favor of mimetic core plus at most a thin, declared, in-repo extension — with
+> decision-equivalent evidence — and (breadth) a stratified panel of foreign repositories
+> goes from install to verified evidence with failures attributed, both gated by the same
+> invariant set that extensions are certified against.**
+
+Depth without breadth is an internal platform wearing an open-source coat. Breadth without
+depth is a demo that cannot replace anything. Both axes are required; neither substitutes.
+
+## Depth axis: the deletion-branch tests
+
+Three first-party private products run bespoke sims today: a consumer web app, an
+agent-facing skill product, and a multi-party clinical platform. Each is a forcing event:
+
+- The bar is **decision-equivalence**, not feature parity: the same product decisions are
+  supported by mimetic-produced evidence, on a branch where the bespoke sim is deleted and
+  the product's own CI gate is green.
+- The success metric is the **extension budget**: how thin is the in-repo extension (custom
+  actor, provider, or scorer registered against mimetic's contracts) needed to close the
+  gap? Zero is not the goal; small, honest, and declared is. The extension seam — how a
+  consumer repo plugs code into the registries without forking core — is therefore a
+  first-class deliverable, certified by the same conformance suite first-party actors pass.
+- Replacement inherits the bespoke sims' *questions*, never their *flaws*. (Example: a
+  bespoke sim that points lanes at an unpinned external database answers its question with
+  unreproducible evidence; the mimetic replacement records `state: UNPINNED` and the
+  consumer decides whether to keep that trade.)
+
+Sequencing: consumer web app first (simplest; forces the subject provider), then the
+agent-skill product (forces the extension-budget thesis: its harness-matrix and cost-ledger
+needs should mostly live in ITS repo as a thin extension, proving the seam), then the
+clinical platform (forces shared-world topology and the PII/PHI detection gate as a hard
+prerequisite). Until a phase begins, its product is a design-review check ("would this
+contract decision break that consumer's thin extension?"), not a build target.
+
+## Breadth axis: the stratified panel
+
+"Works on arbitrary repos" is proven by a recurring, autonomous panel — not by N:
+
+- **Stratify, don't enumerate.** One repo per stratum that stresses a different default:
+  SPA / SSR / CLI-only / API-only; needs-database / static; package managers; monorepo /
+  flat; strong README / hostile README. A stratified N≈20 beats a random N=500.
+- **Golden paths are executable, not judged.** Per stratum repo, a maintained script whose
+  proof is a verified run bundle. Agents produce and maintain these; the success criterion
+  is mechanical.
+- **Attribution by triangulation, not oracle.** Panel failures attribute via diversity:
+  multiple distinct agent harnesses attempt the same setup. One harness fails where others
+  succeed → actor-owned. All fail where the golden script passes → discoverability-owned
+  (the most valuable finding: possible but not findable). Golden script breaks → harness-
+  or target-owned. This is the run bundle's existing `failure_owner` taxonomy, exercised.
+- **The product of the panel is friction reports, not pass rates.** Agents power through
+  friction humans bounce off; where an agent struggled, re-read, or retried is the signal.
+
+The panel is also the proving ground for third-party extensions: an extension ships with a
+lab config; the panel demonstrates it on stratum repos; the conformance suite certifies it
+against the invariants. That is the ecosystem loop.
+
+## Evidence classes
+
+The honesty rule extended to the biggest overclaim risk in the category. What a run proves
+depends on how much of the real user distribution the actor can sample:
+
+| Class | When | What a bundle may claim |
+|---|---|---|
+| `user-census` | The users of the product ARE agents, and the lab runs real production harnesses | A genuine user study, modulo scenario realism |
+| `plausible-use` | LLM personas proxy human users at moderate stakes | Plausible-use evidence; supports most product decisions |
+| `coverage-floor` | LLM personas proxy high-stakes human users whose tails matter most | Robustness floor only — never "users will be fine" |
+
+The class derives from what the actor is relative to the declared user population — not
+from what the lab author wishes. Calibration against real behavioral traces (e.g. session
+replay analytics) can measure and shrink the persona gap for `plausible-use` claims (a
+fidelity score against a named real-traffic baseline), with two standing cautions: replays
+sample surviving users, so calibrating toward them can overfit away from the tails — tail
+coverage requires deliberately synthetic adversarial panels, scored and claimed separately;
+and raw sessions are PII by definition — they never enter mimetic evidence; only aggregate
+divergence findings do. Calibration is the LAST layer of the roadmap: it needs traces
+flowing from real labs first.
+
+## Layer order (each forces the next, none skips ahead)
+
+1. **Subject provider** (`subject: clone` + serve + detached-run primitive + subject-env
+   channel) — the primitive both axes need. See docs/goals/subject-provider/goal.md.
+2. **Depth phase 1**: consumer-web-app parity labs → dual-run comparison → deletion branch.
+3. **Snapshot reuse** (`reuse: snapshot`): memoized provisioning keyed by commit + source +
+   env fingerprint; the cache key IS the provenance pin.
+4. **Extension seam**: out-of-tree actor/provider/scorer registration + conformance
+   certification. **Depth phase 2** (agent-skill product) proves it, adding in-sandbox key
+   placement with per-lane budgets/ledger.
+5. **Breadth panel v1**: stratified repos, executable golden paths, triangulated
+   attribution.
+6. **Shared-world topology** + PII/PHI gate → **depth phase 3** (clinical platform).
+7. **Evidence classes in schema**, then **calibration** as the asymptotic layer.

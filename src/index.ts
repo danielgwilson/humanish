@@ -113,8 +113,10 @@ export {
   runCuaActorLab
 } from "./cua-actor-lab.js";
 export type { CuaActorLabHooks, CuaActorLabResult, RunCuaActorLabOptions } from "./cua-actor-lab.js";
-export { LAB_CONFIG_SCHEMA, parseLabConfig } from "./lab-config.js";
-export type { LabActor, LabConfig, LabConfigParseResult, LabSubject, LabSubjectSource } from "./lab-config.js";
+export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
+export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
+export { isLoopbackUrl, LAB_CONFIG_SCHEMA, parseLabConfig, routesToComputerUse } from "./lab-config.js";
+export type { LabActor, LabConfig, LabConfigParseResult, LabSubject, LabSubjectServe, LabSubjectSource } from "./lab-config.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
 export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";
 export {

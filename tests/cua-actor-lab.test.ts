@@ -54,7 +54,10 @@ interface FakeSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
 }
 
-function makeFakeSandbox(options: { withOpen?: boolean } = {}): FakeSandbox {
+function makeFakeSandbox(options: {
+  withOpen?: boolean;
+  commandHandler?: (command: string) => { stdout?: string; exitCode?: number } | undefined;
+} = {}): FakeSandbox {
   let frame = 0;
   const calls: Array<[string, ...unknown[]]> = [];
   const record = (name: string) => async (...args: unknown[]): Promise<void> => {
@@ -66,12 +69,12 @@ function makeFakeSandbox(options: { withOpen?: boolean } = {}): FakeSandbox {
     commands: {
       run: async (command: string) => {
         calls.push(["commands.run", command]);
-        return { exitCode: 0 };
+        return options.commandHandler?.(command) ?? { exitCode: 0, stdout: "" };
       }
     },
     files: {
-      write: async (filePath: string) => {
-        calls.push(["files.write", filePath]);
+      write: async (filePath: string, data: string | ArrayBuffer) => {
+        calls.push(["files.write", filePath, String(data)]);
         return undefined;
       }
     },
@@ -151,6 +154,45 @@ function cuaConfig(appUrl = "http://127.0.0.1:3000/"): LabConfig {
   return parsed.config;
 }
 
+/** Scripted in-sandbox responses for the clone-route provisioning steps. */
+function cloneCommandHandler(overrides?: (command: string) => { stdout?: string } | undefined) {
+  return (command: string): { stdout?: string } | undefined => {
+    const override = overrides?.(command);
+    if (override !== undefined) return override;
+    if (command.includes("/status")) return { stdout: "0" };
+    if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" };
+    if (command.includes("curl")) return { stdout: "READY" };
+    if (command.includes("tail -c")) return { stdout: "" };
+    return undefined;
+  };
+}
+
+function cloneCuaConfig(extra?: { env?: string[]; readyTimeoutMs?: number }): LabConfig {
+  const parsed = parseLabConfig({
+    schema: LAB_CONFIG_SCHEMA,
+    id: "cua-clone-proof",
+    title: "CUA clone proof",
+    subject: {
+      source: "clone",
+      repos: ["example-org/example-app"],
+      clone: { depth: 2 },
+      serve: {
+        install: "pnpm install --frozen-lockfile",
+        build: "pnpm build",
+        start: "pnpm start",
+        url: "http://127.0.0.1:3000/",
+        ...(extra?.readyTimeoutMs === undefined ? {} : { readyTimeoutMs: extra.readyTimeoutMs })
+      },
+      ...(extra?.env ? { env: extra.env } : {})
+    },
+    actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+    scenario: { mode: "live" }
+  });
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.config;
+}
+
 describe("lab routing (app-url → cua)", () => {
   it("selectLabBackend routes app-url to the cua backend and leaves the other routes untouched", () => {
     expect(selectLabBackend(cuaConfig())).toBe("cua");
@@ -177,6 +219,30 @@ describe("lab routing (app-url → cua)", () => {
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
     expect(selectLabBackend(clone.config)).toBe("smoke");
     expect(selectLabBackend(meta.config)).toBe("meta");
+  });
+
+  it("routes clone × e2b-desktop to cua when the actor lane is computer-use (meta otherwise)", () => {
+    expect(selectLabBackend(cloneCuaConfig())).toBe("cua");
+    // Same subject × execution with a non-cua actor stays on the meta route — the lane
+    // disambiguates where the two axes collide.
+    const meta = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "m2",
+      subject: { source: "clone", repos: ["example-org/example-app"] },
+      actors: [{ type: "codex-app-server" }],
+      execution: { target: "e2b-desktop" }
+    });
+    if (!meta.ok) throw new Error("fixture must parse");
+    expect(selectLabBackend(meta.config)).toBe("meta");
+    // A cua-typed actor WITHOUT the desktop target routes to smoke (type is inert there).
+    const smoke = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "s2",
+      subject: { source: "clone", repos: ["example-org/example-app"] },
+      actors: [{ type: "openai-computer-use" }]
+    });
+    if (!smoke.ok) throw new Error("fixture must parse");
+    expect(selectLabBackend(smoke.config)).toBe("smoke");
   });
 });
 
@@ -477,6 +543,332 @@ describe("runCuaActorLab", () => {
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(false);
     expect(outcome.result.warnings.some((warning) => warning.includes("Sandbox.kill"))).toBe(true);
+  });
+
+  it("clone route: clones, installs, builds, serves, probes, and drives the subject — with provenance and zero value leaks", async () => {
+    const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, created, killed } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: {
+          OPENAI_API_KEY: "test-openai-key",
+          E2B_API_KEY: "test-e2b-key",
+          DATABASE_URL: "postgres-secret-value"
+        },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+
+    expect(result.ok).toBe(true);
+    expect(result.session?.status).toBe("passed");
+    expect(result.appUrl).toBe("http://127.0.0.1:3000/");
+
+    // Env placement: EXACTLY the declared subject names — never the actor keys.
+    expect(created[0]?.envs).toEqual({ DATABASE_URL: "postgres-secret-value" });
+
+    // Provisioning sequence: the wrapper scripts carry the declared commands.
+    const scriptFor = (name: string): string => {
+      const entry = sandbox.calls.find(
+        (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`)
+      );
+      if (!entry) throw new Error(`missing script for ${name}`);
+      return entry[2];
+    };
+    expect(scriptFor("subject-clone")).toContain("git clone --depth 2 https://github.com/example-org/example-app.git");
+    expect(scriptFor("subject-install")).toContain("( pnpm install --frozen-lockfile )");
+    expect(scriptFor("subject-install")).toContain("cd '/home/user/subject'");
+    expect(scriptFor("subject-build")).toContain("( pnpm build )");
+    expect(scriptFor("subject-start")).toContain("( pnpm start )");
+
+    // Readiness was probed before the browser opened on the served URL.
+    const probeIndex = sandbox.calls.findIndex(
+      (call) => call[0] === "commands.run" && String(call[1]).includes("curl")
+    );
+    const openIndex = sandbox.calls.findIndex((call) => call[0] === "open");
+    expect(probeIndex).toBeGreaterThan(-1);
+    expect(openIndex).toBeGreaterThan(probeIndex);
+    expect(sandbox.calls[openIndex]).toEqual(["open", "http://127.0.0.1:3000/"]);
+
+    // The model's click actuated the real executor against the served subject.
+    expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+
+    // Provenance (invariant 5): repo + commit + env NAMES — on the result and in evidence.
+    expect(result.subject).toEqual({
+      source: "clone",
+      repo: "example-org/example-app",
+      commit: "abc123def4567890abc1",
+      envNames: ["DATABASE_URL"]
+    });
+    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    expect(provenance?.message).toContain("example-org/example-app@abc123def4567890abc1");
+    expect(provenance?.message).toContain("DATABASE_URL");
+    const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
+    expect(reviewMd).toContain("Subject cloned from example-org/example-app@");
+
+    // Values never persist: not the subject env value, not the actor keys.
+    for (const file of ["run.json", "review.json", "review.md", "events.ndjson", "actor.json"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text, file).not.toContain("postgres-secret-value");
+      expect(text, file).not.toContain("test-openai-key");
+      expect(text, file).not.toContain("test-e2b-key");
+    }
+  });
+
+  it("clone route with GITHUB_TOKEN: the clone authenticates via in-sandbox env — the token value never appears in any script or artifact", async () => {
+    const config = cloneCuaConfig({ env: ["GITHUB_TOKEN"] });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, created } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    // The token is provisioned as sandbox env…
+    expect(created[0]?.envs).toEqual({ GITHUB_TOKEN: "ghp-token-value" });
+    // …and the clone script references the VARIABLE, never the value, never a token-in-URL.
+    const cloneScript = sandbox.calls.find(
+      (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-clone/run.sh")
+    );
+    expect(cloneScript?.[2]).toContain("$GITHUB_TOKEN");
+    expect(cloneScript?.[2]).toContain("http.extraHeader");
+    expect(cloneScript?.[2]).not.toContain("ghp-token-value");
+    expect(cloneScript?.[2]).not.toMatch(/https:\/\/[^@\s]+@github\.com/);
+
+    const runDir = path.join(cwd, ".mimetic", "runs", outcome.result.runId);
+    for (const file of ["run.json", "review.md", "events.ndjson"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text, file).not.toContain("ghp-token-value");
+    }
+  });
+
+  it("fails closed BEFORE any sandbox exists when a declared subject env name is missing", async () => {
+    const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, created } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(false);
+    expect(outcome.result.error?.code).toBe("MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING");
+    expect(outcome.result.error?.message).toContain("DATABASE_URL");
+    expect(created).toHaveLength(0);
+  });
+
+  it("scrubs PROVISIONED VALUES (no secret shape) from every artifact and the result when a serve step echoes them", async () => {
+    // The P0 class: an app dumps its config on boot failure. The value is arbitrary — no
+    // pattern can catch it; only literal scrubbing of known provisioned values can.
+    const plainValue = "plain-text-pw-" + "12345678";
+    const config = cloneCuaConfig({ env: ["DATABASE_PASSWORD"] });
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("subject-install/status")) return { stdout: "1" };
+        if (command.includes("subject-install") && command.includes("tail -c")) {
+          return { stdout: `boot dump: DATABASE_PASSWORD=${plainValue} (config echo)` };
+        }
+        return undefined;
+      })
+    });
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_PASSWORD: plainValue },
+        loadDesktopModule: async () => module
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+
+    expect(result.ok).toBe(false);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+    // The error is still diagnosable — the log tail rides along — but the VALUE is gone,
+    // replaced by the scrub marker, on the result AND in every persisted artifact.
+    expect(result.error?.message).toContain("subject install failed");
+    expect(result.error?.message).toContain("[REDACTED_SECRET]");
+    expect(result.error?.message).not.toContain(plainValue);
+    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text, file).not.toContain(plainValue);
+    }
+    // And the bundle still VERIFIES: the gate must not trip on the scrubbed error report.
+    expect(result.observer?.ok).toBe(true);
+  });
+
+  it("pattern-redacts a secret-shaped token in a log tail BEFORE truncation can slice through it", async () => {
+    // A distinct, properly-bounded token (NOT a known provisioned value — only pattern
+    // redaction can catch it). It sits at the FRONT of the log with ~2000 chars after it, so
+    // the last-2000 truncation cuts THROUGH the token. Truncate-then-redact would leave a
+    // prefix-less fragment that no longer matches `\bghp_…`; redact-then-truncate erases it.
+    const token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0"; // 44 chars, matches whole
+    const midChunk = token.slice(26, 44); // 18 distinct chars, all AFTER the cut at 22 — truncate-first would expose this
+    const log = token + " " + "z".repeat(1977); // total 2022; cut lands inside the token
+    let t = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("curl")) return { stdout: "WAIT" };
+        if (command.includes("subject-start") && command.includes("tail -c")) return { stdout: log };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cloneCuaConfig({ readyTimeoutMs: 5000 }), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.ok).toBe(false);
+
+    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text, `${file} full token`).not.toContain(token);
+      expect(text, `${file} token fragment`).not.toContain(midChunk);
+    }
+    expect(result.observer?.ok).toBe(true);
+  });
+
+  it("provenance wording is honest per phase: dry-run declares, failed provisioning never claims 'served'", async () => {
+    // Dry-run: nothing cloned — the event must say so.
+    const dry = await runLab(cloneCuaConfig(), { cwd, dryRun: true });
+    if (dry.backend !== "cua") throw new Error("expected cua backend");
+    const dryBundle = JSON.parse(
+      await readFile(path.join(cwd, ".mimetic", "runs", dry.result.runId, "run.json"), "utf8")
+    );
+    const dryProvenance = dryBundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    expect(dryProvenance?.message).toContain("dry-run contract; nothing cloned");
+    expect(dryProvenance?.message).not.toContain("Subject cloned from");
+
+    // Probe failure: cloned at a real commit, but serving never completed — say exactly that.
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) =>
+        command.includes("curl") ? { stdout: "WAIT" } : undefined
+      )
+    });
+    const { module } = makeFakeModule(sandbox);
+    let t = 0;
+    const failed = await runLab(cloneCuaConfig({ readyTimeoutMs: 5000 }), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (failed.backend !== "cua") throw new Error("expected cua backend");
+    const failedBundle = JSON.parse(
+      await readFile(path.join(cwd, ".mimetic", "runs", failed.result.runId, "run.json"), "utf8")
+    );
+    const failedProvenance = failedBundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    expect(failedProvenance?.message).toContain("did not complete");
+    expect(failedProvenance?.message).not.toContain("and served at");
+  });
+
+  it("redacts the repo slug in provenance by default for token-authenticated clones (policies.redactRepos overrides)", async () => {
+    // Token present, no explicit policy → redacted by default.
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module } = makeFakeModule(sandbox);
+    const tokenHooks = {
+      env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" },
+      loadDesktopModule: async () => module,
+      runSession: async (options: Parameters<NonNullable<CuaActorLabHooks["runSession"]>>[0]) =>
+        runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+    };
+    const redacted = await runLab(cloneCuaConfig({ env: ["GITHUB_TOKEN"] }), { cwd, cuaHooks: tokenHooks });
+    if (redacted.backend !== "cua") throw new Error("expected cua backend");
+    expect(redacted.result.subject?.repo).toBe("repo-01");
+    const runDir = path.join(cwd, ".mimetic", "runs", redacted.result.runId);
+    for (const file of ["run.json", "review.md", "events.ndjson"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text, file).not.toContain("example-org/example-app");
+    }
+
+    // Explicit policies.redactRepos: false wins over the token default.
+    const explicit = cloneCuaConfig({ env: ["GITHUB_TOKEN"] });
+    const explicitConfig: LabConfig = { ...explicit, policies: { redactRepos: false } };
+    const sandbox2 = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module: module2 } = makeFakeModule(sandbox2);
+    const unredacted = await runLab(explicitConfig, {
+      cwd,
+      cuaHooks: { ...tokenHooks, loadDesktopModule: async () => module2 }
+    });
+    if (unredacted.backend !== "cua") throw new Error("expected cua backend");
+    expect(unredacted.result.subject?.repo).toBe("example-org/example-app");
+  });
+
+  it("re-enforces the clone-route structure at the engine (tampered config without serve)", async () => {
+    const config = cloneCuaConfig();
+    const { serve: _serve, ...subjectWithoutServe } = config.subject;
+    const tampered: LabConfig = { ...config, subject: subjectWithoutServe };
+    const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("MIMETIC_CUA_LAB_SUBJECT_INVALID");
+  });
+
+  it("persists a failed-evidence bundle (with the server log tail) when the subject never answers the probe", async () => {
+    const config = cloneCuaConfig({ readyTimeoutMs: 5000 });
+    let t = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("curl")) return { stdout: "WAIT" };
+        if (command.includes("tail -c")) return { stdout: "server crashed at boot" };
+        return undefined;
+      })
+    });
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          }
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("MIMETIC_CUA_LAB_FAILED");
+    expect(result.error?.message).toContain("did not answer");
+    expect(result.error?.message).toContain("server crashed at boot");
+    expect(killed).toEqual(["fake-sandbox-001"]);
+
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")
+    );
+    expect(bundle.simulations[0].status).toBe("failed");
   });
 });
 

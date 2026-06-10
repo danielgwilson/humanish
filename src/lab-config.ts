@@ -1,15 +1,18 @@
 // mimetic.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
 // HONEST SCOPE (read before trusting field names): the engine routes by
-// subject.source × execution.target and consumes a deliberately small set of fields:
-//   subject.source/repos/appUrl/clone.{fanout,keep}, actors[0].count, execution.target +
-//   execution.desktop.codexAppServer, scenario.mode, policies.redactRepos, defaults.open.
-// On the app-url (computer-use) route, `actors[0].type` IS load-bearing: it must resolve to
-// a registered computer-use actor, and that descriptor runs the session. That route also
-// consumes actors[0].{mission,persona,laneFocus.instruction,model}, execution.timeoutMs, and
-// execution.desktop.{resolution,sandboxTimeoutMs}. On the other routes those fields remain
-// FORWARD-DECLARED and NOT yet consumed — parseLabConfig emits a warning listing any such
-// field that is set, so `lab inspect` shows the truth.
+// subject.source × execution.target (disambiguated by the actor lane where both axes
+// collide) and consumes a deliberately small set of fields:
+//   subject.source/repos/appUrl/serve/env/clone.{depth,fanout,keep}, actors[0].count,
+//   execution.target + execution.desktop.codexAppServer, scenario.mode,
+//   policies.redactRepos, defaults.open.
+// On the computer-use routes (app-url, and clone × e2b-desktop with a computer-use actor),
+// `actors[0].type` IS load-bearing: it must resolve to a registered computer-use actor, and
+// that descriptor runs the session. Those routes also consume actors[0].{mission,persona,
+// laneFocus.instruction,model}, execution.timeoutMs, execution.desktop.{resolution,
+// sandboxTimeoutMs}, and (clone) subject.{serve,env,clone.depth}. On the other routes those
+// fields remain FORWARD-DECLARED and NOT yet consumed — parseLabConfig emits a warning
+// listing any such field that is set, so `lab inspect` shows the truth.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -26,12 +29,26 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 export type LabSubjectSource = "this-repo" | "clone" | "app-url";
 
 export interface LabSubjectClone {
-  /** git clone depth; 1 (shallow) by default. */
+  /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
   depth?: number;
   /** how many independent clone lanes to fan out (one sandbox/desktop each). */
   fanout?: number;
   /** keep the disposable clone for debugging instead of discarding. */
   keep?: boolean;
+}
+
+/** How a cloned subject is installed/built/started inside the sandbox (computer-use route). */
+export interface LabSubjectServe {
+  /** Optional bounded install step (e.g. "pnpm install --frozen-lockfile"). */
+  install?: string;
+  /** Optional bounded build step. */
+  build?: string;
+  /** Required long-lived start command — launched detached; the sandbox lifecycle owns it. */
+  start: string;
+  /** Loopback entry URL: the readiness-probe target and the URL the actor drives. */
+  url: string;
+  /** Budget for the served app to answer the readiness probe. Default 180000. */
+  readyTimeoutMs?: number;
 }
 
 export interface LabSubject {
@@ -42,10 +59,18 @@ export interface LabSubject {
   /**
    * `app-url`: a loopback http(s) URL the computer-use actor drives (127.0.0.1/localhost
    * only — driving arbitrary public sites is not allowed). The URL must be reachable from
-   * INSIDE the desktop sandbox; the lab does not serve the app (library callers provision
-   * it via the prepareDesktop hook; clone+serve is a later slice).
+   * INSIDE the desktop sandbox; library callers provision it via the prepareDesktop hook.
+   * For a config-only path use `clone` + `serve` — the lab serves the app itself.
    */
   appUrl?: string;
+  /** `clone` (computer-use route): how the cloned app is served in-sandbox. */
+  serve?: LabSubjectServe;
+  /**
+   * Env var NAMES the subject app needs, provisioned into the sandbox from the caller's
+   * environment (--env-file). Names are recorded in evidence; values never are. Consumed
+   * on the computer-use clone route.
+   */
+  env?: string[];
 }
 
 export interface LabActorLaneFocus {
@@ -109,7 +134,12 @@ export interface LabScenario {
 }
 
 export interface LabPolicies {
-  /** Redact target repo labels in durable artifacts (always true for private targets). Consumed. */
+  /**
+   * Redact target repo labels in durable artifacts. Consumed on the meta route and on the
+   * computer-use clone route (provenance), where it DEFAULTS to true when the clone
+   * authenticates via GITHUB_TOKEN (a token-bearing clone is treated as private until
+   * declared otherwise).
+   */
   redactRepos?: boolean;
 }
 
@@ -220,19 +250,34 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
-  // app-url subjects route to the computer-use lane: the actor type is a REAL dispatch key
-  // (registry-resolved), and the substrate is a hosted desktop. Fail closed on mis-configs.
+  // Computer-use routes: the actor type is a REAL dispatch key (registry-resolved), and the
+  // substrate is a hosted desktop. Fail closed on mis-configs.
   if (config.subject.source === "app-url") {
     if (config.execution?.target !== "e2b-desktop") {
       return invalid("app-url subjects require `execution.target: e2b-desktop` — the computer-use actor drives a hosted desktop browser.");
     }
     const type = config.actors[0]?.type ?? "";
-    const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
-    if (!descriptor || !descriptor.capabilities.lanes.includes("computer-use")) {
-      const computerUseActors = Object.values(actorRegistry)
-        .filter((entry) => entry.capabilities.lanes.includes("computer-use"))
-        .map((entry) => entry.id);
-      return invalid(`actors[0].type must be a registered computer-use actor for app-url subjects (one of: ${computerUseActors.join(", ")}); got "${type}".`);
+    if (!actorResolvesToComputerUse(type)) {
+      return invalid(`actors[0].type must be a registered computer-use actor for app-url subjects (one of: ${registeredComputerUseActors().join(", ")}); got "${type}".`);
+    }
+    if ((config.actors[0]?.count ?? 1) > 1) {
+      return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
+    }
+  }
+
+  // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
+  // clones AND serves the subject in-sandbox, then drives it (the meta route otherwise).
+  if (config.subject.source === "clone" && config.execution?.target === "e2b-desktop"
+    && actorResolvesToComputerUse(config.actors[0]?.type)) {
+    if (!config.subject.serve) {
+      return invalid("clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it.");
+    }
+    if ((config.subject.repos?.length ?? 0) !== 1) {
+      return invalid("computer-use clone labs run a single lane; declare exactly one repo in subject.repos.");
+    }
+    const repo = config.subject.repos?.[0] ?? "";
+    if (!REPO_SLUG_PATTERN.test(repo)) {
+      return invalid(`subject.repos[0] must be an owner/repo slug (got "${repo}").`);
     }
     if ((config.actors[0]?.count ?? 1) > 1) {
       return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
@@ -242,13 +287,44 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   return { ok: true, config, warnings: forwardDeclaredWarnings(config) };
 }
 
+// The slug interpolates into an in-sandbox shell command; the strict shape is load-bearing.
+const REPO_SLUG_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+
+function actorResolvesToComputerUse(type: string | undefined): boolean {
+  if (!type) return false;
+  const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+  return Boolean(descriptor?.capabilities.lanes.includes("computer-use"));
+}
+
+function registeredComputerUseActors(): string[] {
+  return Object.values(actorRegistry)
+    .filter((entry) => entry.capabilities.lanes.includes("computer-use"))
+    .map((entry) => entry.id);
+}
+
+/**
+ * True when this config routes to the computer-use backend: an app-url subject, or a clone
+ * subject on a hosted desktop whose first actor resolves to a registered computer-use actor.
+ * Single source of truth — selectLabBackend and the warning logic both use it.
+ */
+export function routesToComputerUse(config: LabConfig): boolean {
+  if (config.subject.source === "app-url") {
+    return true;
+  }
+  return config.subject.source === "clone"
+    && config.execution?.target === "e2b-desktop"
+    && actorResolvesToComputerUse(config.actors[0]?.type);
+}
+
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
 // setting that silently does nothing. Keeps the schema forward-correct AND honest.
 function forwardDeclaredWarnings(config: LabConfig): string[] {
   const inert: string[] = [];
-  // The app-url (computer-use) route consumes the actor prompt fields, execution.timeoutMs,
-  // and execution.desktop.{resolution,sandboxTimeoutMs}; on every other route they are inert.
-  const routesToCua = config.subject.source === "app-url";
+  // The computer-use routes consume the actor prompt fields, execution.timeoutMs,
+  // execution.desktop.{resolution,sandboxTimeoutMs}, and (clone) subject.{serve,env,
+  // clone.depth}; on every other route those fields are inert.
+  const routesToCua = routesToComputerUse(config);
   for (const [index, actor] of config.actors.entries()) {
     if (!routesToCua) {
       if (actor.mission) inert.push(`actors[${index}].mission`);
@@ -261,7 +337,14 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
       if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
     }
   }
-  if (config.subject.clone?.depth !== undefined) inert.push("subject.clone.depth");
+  if (config.subject.clone?.depth !== undefined && !routesToCua) inert.push("subject.clone.depth");
+  if (config.subject.serve && !routesToCua) inert.push("subject.serve");
+  if (config.subject.env && !routesToCua) inert.push("subject.env");
+  if (routesToCua) {
+    // The cua route always kills its sandbox and runs a single lane; keep/fanout are inert.
+    if (config.subject.clone?.keep !== undefined) inert.push("subject.clone.keep");
+    if (config.subject.clone?.fanout !== undefined) inert.push("subject.clone.fanout");
+  }
   if (!routesToCua && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
   if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
@@ -291,6 +374,13 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
   }
   const subject: LabSubject = { source };
 
+  if (source !== "clone" && raw.serve !== undefined) {
+    return invalid("`subject.serve` applies only to clone subjects (the lab serves the cloned app in-sandbox).");
+  }
+  if (source !== "clone" && raw.env !== undefined) {
+    return invalid("`subject.env` applies only to clone subjects (the served app's environment channel).");
+  }
+
   if (source === "clone") {
     const repos = strList(raw.repos);
     if (!repos || repos.length === 0) {
@@ -300,6 +390,22 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     const clone = parseClone(raw.clone);
     if (clone) {
       subject.clone = clone;
+    }
+    const serveResult = parseServe(raw.serve);
+    if (!serveResult.ok) {
+      return serveResult;
+    }
+    if (serveResult.value) subject.serve = serveResult.value;
+    if (raw.env !== undefined) {
+      const env = strList(raw.env);
+      if (!env || env.length === 0) {
+        return invalid("`subject.env` must be a non-empty list of env var NAMES when set.");
+      }
+      const badName = env.find((name) => !ENV_NAME_PATTERN.test(name));
+      if (badName) {
+        return invalid(`subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`);
+      }
+      subject.env = env;
     }
   }
 
@@ -333,6 +439,31 @@ export function isLoopbackUrl(value: string): boolean {
   }
   const host = url.hostname.toLowerCase();
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+}
+
+function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!isRecord(raw)) {
+    return invalid("`subject.serve` must be an object ({ install?, build?, start, url, readyTimeoutMs? }).");
+  }
+  const start = str(raw.start);
+  if (!start) {
+    return invalid("`subject.serve.start` is required when serve is set (the long-lived command that serves the app).");
+  }
+  const url = str(raw.url);
+  if (!url || !isLoopbackUrl(url)) {
+    return invalid("`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost) — the app is served INSIDE the sandbox.");
+  }
+  const serve: LabSubjectServe = { start, url };
+  const install = str(raw.install);
+  if (install) serve.install = install;
+  const build = str(raw.build);
+  if (build) serve.build = build;
+  const readyTimeoutMs = posInt(raw.readyTimeoutMs);
+  if (readyTimeoutMs !== undefined) serve.readyTimeoutMs = readyTimeoutMs;
+  return { ok: true, value: serve };
 }
 
 function parseClone(raw: unknown): LabSubjectClone | undefined {

@@ -1,17 +1,21 @@
-// The computer-use lab backend: an app-url subject driven by a REGISTRY-RESOLVED computer-use
-// actor inside a hosted E2B desktop. This is the path that makes `actors[].type` load-bearing —
-// the descriptor returned by the registry runs the session; the lab only provisions the desktop,
-// composes the prompt from config, persists the evidence bundle, and tears the sandbox down.
+// The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
+// lab clones AND serves in-sandbox) driven by a REGISTRY-RESOLVED computer-use actor inside a
+// hosted E2B desktop. This is the path that makes `actors[].type` load-bearing — the
+// descriptor returned by the registry runs the session; the lab provisions the desktop and
+// subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //
 // Substrate notes:
 // - The desktop is created via the shared loader in e2b-desktop-launch.ts with kill-on-timeout
 //   lifecycle, so a dead host process can never orphan a sandbox past its server-side deadline.
-// - NO env vars are forwarded into the sandbox: the model drives the desktop from OUTSIDE via
-//   the provider API, so no key ever needs to exist inside the sandbox.
+// - Env placement follows the doctrine (docs/principles/invariants-and-defaults.md): the
+//   ACTOR's key never enters the sandbox (the model drives from outside via the provider API);
+//   the SUBJECT's declared env NAMES are provisioned in on the clone route — values come from
+//   the caller's environment and are never logged or persisted.
 // - The live stream URL is runtime-only (carries an auth key) and is never persisted into run
 //   artifacts — only its presence is recorded, mirroring the meta lab's convention.
 // - Evidence is redacted at the loop boundary (blurred screenshots, length-only typed text);
-//   the bundle's `stream.actor` carries the conformant mimetic.actor-trace.v1 projection.
+//   harness errors are redacted at THIS boundary; the bundle's `stream.actor` carries the
+//   conformant mimetic.actor-trace.v1 projection.
 
 import { randomBytes, createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -27,7 +31,14 @@ import {
   type E2BDesktopModule,
   type E2BDesktopSandbox
 } from "./e2b-desktop-launch.js";
-import { isLoopbackUrl, type LabConfig } from "./lab-config.js";
+import {
+  probeUrl,
+  readDetachedLog,
+  runDetachedStep,
+  startDetachedProcess,
+  type DetachedTimers
+} from "./e2b-detached.js";
+import { isLoopbackUrl, type LabConfig, type LabSubjectServe } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
 import {
@@ -54,12 +65,21 @@ const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 const DEFAULT_RESOLUTION: [number, number] = [1440, 960];
 // Server-side reclamation buffer past the loop's own wall-clock stop.
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
+// Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
+const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+const SUBJECT_DIR = "/home/user/subject";
+const CLONE_TIMEOUT_MS = 5 * 60_000;
+const INSTALL_TIMEOUT_MS = 10 * 60_000;
+const BUILD_TIMEOUT_MS = 10 * 60_000;
+const DEFAULT_READY_TIMEOUT_MS = 180_000;
+// How much of a failing step's log tail rides the (redacted) error message.
+const ERROR_TAIL_CHARS = 2000;
 
 /**
- * Library-level hooks. `prepareDesktop` is a real (if early) feature: subject.appUrl must be
- * reachable from INSIDE the sandbox, and the lab does not serve the app yet — library callers
- * provision it here (write files, start a loopback server) before the browser opens. The rest
- * are DI seams so CI drives the full path with fakes at zero network/zero spend.
+ * Library-level hooks. `prepareDesktop` runs after sandbox creation and before subject
+ * provisioning / browser launch — library callers use it for extra in-sandbox setup beyond
+ * what `subject.serve` declares (or to provision an app-url subject entirely). The rest are
+ * DI seams so CI drives the full path with fakes at zero network/zero spend.
  */
 export interface CuaActorLabHooks {
   prepareDesktop?: (desktop: E2BDesktopSandbox) => Promise<void>;
@@ -67,6 +87,8 @@ export interface CuaActorLabHooks {
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
+  /** Injected clock/sleep for the detached-step polling (tests only). */
+  detachedTimers?: DetachedTimers;
 }
 
 export interface RunCuaActorLabOptions {
@@ -104,13 +126,24 @@ export interface CuaActorLabResult {
      * surfaced on the result — the sandbox is already dead by the time the result exists. */
     streamUrlPresent: boolean;
   };
+  /** Subject provenance (invariant 5): what the actor actually drove. */
+  subject?: {
+    source: "app-url" | "clone";
+    repo?: string;
+    /** Cloned commit SHA, when the clone route resolved one. */
+    commit?: string;
+    /** Declared env NAMES provisioned for the subject (values never surface anywhere). */
+    envNames?: string[];
+  };
   observer?: ObserverResult;
   warnings: string[];
   error?: {
     code:
       | "MIMETIC_CUA_LAB_FAILED"
       | "MIMETIC_CUA_LAB_KEYS_MISSING"
+      | "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING"
       | "MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED"
+      | "MIMETIC_CUA_LAB_SUBJECT_INVALID"
       | "MIMETIC_CUA_LAB_SUBJECT_UNSAFE";
     message: string;
   };
@@ -124,7 +157,13 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const render = hooks.renderObserverFn ?? renderObserver;
   const warnings: string[] = [];
 
-  const appUrl = config.subject.appUrl ?? "";
+  // The entry URL: caller-provisioned for app-url subjects; serve-declared for clone subjects
+  // (the lab serves the app in-sandbox before the actor drives it).
+  const cloneRoute = config.subject.source === "clone";
+  const serve = config.subject.serve;
+  const appUrl = (cloneRoute ? serve?.url : config.subject.appUrl) ?? "";
+  const subjectRepo = cloneRoute ? config.subject.repos?.[0] ?? "" : undefined;
+  const subjectEnvNames = cloneRoute ? config.subject.env ?? [] : [];
   const actor = config.actors[0];
   const actorType = actor?.type ?? "";
 
@@ -149,6 +188,28 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     };
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
+
+  // Engine re-enforcement of the clone-route structure for configs arriving via the library
+  // API (the parser rejects these too, but runCuaActorLab is itself exported npm surface).
+  if (cloneRoute && (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))) {
+    return {
+      schema: CUA_ACTOR_LAB_SCHEMA,
+      ok: false,
+      cwd,
+      labId: config.id,
+      actor: descriptor.id,
+      appUrl,
+      dryRun,
+      runId: options.runId ?? "not-created",
+      warnings,
+      error: {
+        code: "MIMETIC_CUA_LAB_SUBJECT_INVALID",
+        message: !serve
+          ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+          : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`
+      }
+    };
+  }
 
   // Re-enforce the loopback entry boundary for configs that arrive through the library API
   // (the parser rejects these too, but runCuaActorLab is itself exported npm surface).
@@ -183,6 +244,23 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
+  // Pattern-based redaction cannot catch an ARBITRARY provisioned value (a DB password has
+  // no secret "shape"), so every value this lab knows is scrubbed by literal match before
+  // anything can persist — applied at the log-tail source (pre-truncation, so a cut tail can
+  // never split a value past the scrubber) and again at the catch boundary.
+  const knownSecretValues = [
+    openaiApiKey,
+    e2bApiKey,
+    ...subjectEnvNames.map((name) => env[name] ?? "")
+  ].filter((value) => value.length >= 4);
+  const scrubKnownValues = (text: string): string =>
+    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+
+  // Provenance redaction: honor policies.redactRepos, and DEFAULT to redacting the slug when
+  // the clone authenticates (a token-bearing clone is a private repo until declared otherwise).
+  const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
+  const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
+
   if (!dryRun) {
     const missingKeys = [
       ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
@@ -202,6 +280,27 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         error: {
           code: "MIMETIC_CUA_LAB_KEYS_MISSING",
           message: `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`
+        }
+      };
+    }
+
+    // The subject's declared env channel fails closed BEFORE any sandbox exists: every
+    // declared NAME must be present in the caller's environment.
+    const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
+    if (missingSubjectEnv.length > 0) {
+      return {
+        schema: CUA_ACTOR_LAB_SCHEMA,
+        ok: false,
+        cwd,
+        labId: config.id,
+        actor: descriptor.id,
+        appUrl,
+        dryRun,
+        runId: options.runId ?? "not-created",
+        warnings,
+        error: {
+          code: "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING",
+          message: `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`
         }
       };
     }
@@ -228,8 +327,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   let sandboxId: string | undefined;
   let killed = false;
   let streamUrl: string | undefined;
+  let subjectCommit: string | undefined;
 
   if (!dryRun) {
+    const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+    // The subject's serve steps (clone/install/build) need their own room beyond the actor
+    // session budget; the sandbox deadline covers the whole lane.
+    const sandboxTimeoutMs = config.execution?.desktop?.sandboxTimeoutMs
+      ?? timeoutMs + (cloneRoute ? SUBJECT_PROVISION_BUDGET_MS : 0) + SANDBOX_TIMEOUT_BUFFER_MS;
     // The module load lives INSIDE the try: a missing optional peer becomes a structured
     // failed result + persisted failed bundle, never a raw stack out of the CLI.
     let desktopModule: E2BDesktopModule | undefined;
@@ -238,15 +343,19 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       desktopModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
       desktop = await desktopModule.Sandbox.create({
         apiKey: e2bApiKey,
-        requestTimeoutMs: readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000),
-        timeoutMs: config.execution?.desktop?.sandboxTimeoutMs ?? timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
+        requestTimeoutMs,
+        timeoutMs: sandboxTimeoutMs,
         metadata: {
           ...CUA_ACTOR_LAB_PROVIDER_METADATA,
           labId: config.id,
           simId: "sim-001"
         },
-        // Deliberately NO envs: the model drives the desktop from outside via the provider
-        // API, so no key or host environment ever enters the sandbox.
+        // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model
+        // drives from outside). The SUBJECT's declared env NAMES are provisioned here on the
+        // clone route — values resolve from the caller's environment and are never persisted.
+        ...(subjectEnvNames.length > 0
+          ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
+          : {}),
         resolution,
         dpi: 96,
         lifecycle: { onTimeout: "kill" }
@@ -255,6 +364,23 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
       if (hooks.prepareDesktop) {
         await hooks.prepareDesktop(desktop);
+      }
+
+      if (cloneRoute && serve && subjectRepo) {
+        subjectCommit = await provisionCloneSubject(desktop, {
+          repo: subjectRepo,
+          depth: config.subject.clone?.depth ?? 1,
+          serve,
+          hasGithubToken: subjectEnvNames.includes("GITHUB_TOKEN"),
+          requestTimeoutMs,
+          scrub: scrubKnownValues,
+          // Provenance survives later-step failures: the commit is recorded the moment it
+          // resolves, not only when provisioning returns.
+          onCommit: (commit) => {
+            subjectCommit = commit;
+          },
+          ...(hooks.detachedTimers ?? {})
+        });
       }
 
       if (desktop.open) {
@@ -274,7 +400,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           resize: "scale"
         });
       } catch (error) {
-        warnings.push(`Live desktop stream unavailable (run continues; evidence still captured): ${redactText(compactError(error))}`);
+        warnings.push(`Live desktop stream unavailable (run continues; evidence still captured): ${redactText(scrubKnownValues(compactError(error)))}`);
       }
 
       const sessionOptions: CuaActorSessionOptions = {
@@ -292,7 +418,10 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     } catch (error) {
       // Redacted at the lab boundary: harness errors (SDK messages, paths) flow into the
       // persisted bundle and review.md, so they pass through the same scrubber as evidence.
-      sessionError = redactText(compactError(error));
+      // Scrubbed + redacted at the lab boundary: known provisioned VALUES are literal-scrubbed
+      // first (pattern redaction cannot catch them), then the pattern pass handles
+      // secret-shaped content. Flows into the bundle, review.md, and result.error.
+      sessionError = redactText(scrubKnownValues(compactError(error)));
     } finally {
       if (desktop && desktopModule) {
         if (typeof desktopModule.Sandbox.kill === "function") {
@@ -300,7 +429,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
             await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
             killed = true;
           } catch (error) {
-            warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(compactError(error))}`);
+            warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(compactError(error)))}`);
           }
         } else {
           warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
@@ -308,6 +437,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       }
     }
   }
+
+  const subjectProvenance = cloneRoute && publicRepo
+    ? {
+        repo: publicRepo,
+        ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
+        envNames: subjectEnvNames
+      }
+    : undefined;
 
   const bundle = buildCuaBundle({
     actorId: descriptor.id,
@@ -324,6 +461,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     ...(session ? { session } : {}),
     ...(sessionError ? { sessionError } : {}),
     source,
+    ...(subjectProvenance === undefined ? {} : { subjectProvenance }),
     ...(session ? { traceArtifactPath: "actor.json" } : {})
   });
 
@@ -374,6 +512,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     ...(sandboxId
       ? { sandbox: { sandboxId, killed, streamUrlPresent: streamUrl !== undefined } }
       : {}),
+    subject: cloneRoute && publicRepo
+      ? {
+          source: "clone",
+          repo: publicRepo,
+          ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
+          envNames: subjectEnvNames
+        }
+      : { source: "app-url" },
     observer,
     warnings: [...warnings, ...observer.warnings],
     ...(ok
@@ -390,6 +536,115 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           }
         })
   };
+}
+
+/**
+ * Provision a clone subject inside the sandbox: clone → (install) → (build) → start →
+ * readiness probe. Returns the cloned commit SHA. Throws (with a capped log tail for the
+ * caller to redact) on any failing step — the lab persists that as a failed-evidence bundle.
+ *
+ * Auth: when GITHUB_TOKEN is among the declared subject env names, the clone authenticates
+ * via an Authorization header computed IN-SANDBOX from the provisioned env — the token never
+ * appears in the script text, the process argv beyond the transient git call, the clone URL,
+ * or .git/config.
+ */
+async function provisionCloneSubject(
+  desktop: E2BDesktopSandbox,
+  args: {
+    repo: string;
+    depth: number;
+    serve: LabSubjectServe;
+    hasGithubToken: boolean;
+    requestTimeoutMs: number;
+    /** Literal scrubber for known provisioned values, applied to log tails PRE-truncation. */
+    scrub: (text: string) => string;
+    /** Called the moment the cloned commit resolves, so provenance survives later failures. */
+    onCommit?: (commit: string) => void;
+  } & DetachedTimers
+): Promise<string | undefined> {
+  const timers: DetachedTimers = {
+    ...(args.now === undefined ? {} : { now: args.now }),
+    ...(args.sleep === undefined ? {} : { sleep: args.sleep })
+  };
+  const cloneCommand = args.hasGithubToken
+    ? `auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0) && git -c http.extraHeader="Authorization: Basic $auth" clone --depth ${args.depth} https://github.com/${args.repo}.git ${SUBJECT_DIR}`
+    : `git clone --depth ${args.depth} https://github.com/${args.repo}.git ${SUBJECT_DIR}`;
+
+  const clone = await runDetachedStep(desktop, {
+    name: "subject-clone",
+    command: cloneCommand,
+    timeoutMs: CLONE_TIMEOUT_MS,
+    requestTimeoutMs: args.requestTimeoutMs,
+    ...timers
+  });
+  if (!clone.ok) {
+    throw new Error(`subject clone ${clone.timedOut ? "timed out" : `failed (exit ${clone.exitCode})`}: ${tailOf(args.scrub(clone.logTail))}`);
+  }
+
+  const head = await desktop.commands.run(
+    `git -C ${SUBJECT_DIR} rev-parse HEAD 2>/dev/null || true`,
+    { requestTimeoutMs: args.requestTimeoutMs }
+  );
+  const commit = (head.stdout ?? "").trim() || undefined;
+  if (commit) {
+    args.onCommit?.(commit);
+  }
+
+  if (args.serve.install) {
+    const install = await runDetachedStep(desktop, {
+      name: "subject-install",
+      command: args.serve.install,
+      cwd: SUBJECT_DIR,
+      timeoutMs: INSTALL_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs,
+      ...timers
+    });
+    if (!install.ok) {
+      throw new Error(`subject install ${install.timedOut ? "timed out" : `failed (exit ${install.exitCode})`}: ${tailOf(args.scrub(install.logTail))}`);
+    }
+  }
+
+  if (args.serve.build) {
+    const build = await runDetachedStep(desktop, {
+      name: "subject-build",
+      command: args.serve.build,
+      cwd: SUBJECT_DIR,
+      timeoutMs: BUILD_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs,
+      ...timers
+    });
+    if (!build.ok) {
+      throw new Error(`subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${tailOf(args.scrub(build.logTail))}`);
+    }
+  }
+
+  await startDetachedProcess(desktop, {
+    name: "subject-start",
+    command: args.serve.start,
+    cwd: SUBJECT_DIR,
+    requestTimeoutMs: args.requestTimeoutMs
+  });
+
+  const ready = await probeUrl(desktop, args.serve.url, {
+    timeoutMs: args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
+    requestTimeoutMs: args.requestTimeoutMs,
+    ...timers
+  });
+  if (!ready) {
+    const startLog = await readDetachedLog(desktop, "subject-start", args.requestTimeoutMs).catch(() => "");
+    throw new Error(`subject did not answer at ${args.serve.url} within ${args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS}ms; server log tail: ${tailOf(args.scrub(startLog))}`);
+  }
+
+  return commit;
+}
+
+function tailOf(log: string): string {
+  // Pattern-redact on the FULL text BEFORE truncating: slicing a tail could otherwise cut
+  // through a secret's prefix (e.g. drop "sk-proj-") and defeat the pattern matcher on the
+  // remainder. Callers literal-scrub known provisioned values first; this is the pattern pass.
+  // (The in-sandbox `tail -c` upstream is a fundamental log-tail limit we cannot redact past.)
+  const trimmed = redactText(log).trim();
+  return trimmed.length > ERROR_TAIL_CHARS ? `…${trimmed.slice(-ERROR_TAIL_CHARS)}` : trimmed || "(no output)";
 }
 
 /** Compose the actor prompt from config: persona line + mission + per-lane steer. */
@@ -433,6 +688,8 @@ export function buildCuaBundle(args: {
   session?: CuaLoopResult;
   sessionError?: string;
   source: RunBundle["source"];
+  /** Clone-route provenance: what the actor actually drove (names only, never values). */
+  subjectProvenance?: { repo: string; commit?: string; envNames: string[] };
   traceArtifactPath?: string;
 }): RunBundle {
   const status: RunSimulationStatus = args.session
@@ -513,15 +770,33 @@ export function buildCuaBundle(args: {
       type: "cua-lab.run.created",
       message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`
     },
-    {
-      id: "event-001-subject",
-      at: args.createdAt,
-      level: "info",
-      type: "cua-lab.subject.declared",
-      message: `Subject app declared at ${args.appUrl} (loopback inside the desktop sandbox).`,
-      simId: "sim-001",
-      streamId: "stream-001"
-    },
+    args.subjectProvenance
+      ? {
+          id: "event-001-subject",
+          at: args.createdAt,
+          level: "info" as const,
+          type: "cua-lab.subject.provenance",
+          // HONEST WORDING: claim "cloned and served" only when it actually happened.
+          message: `${args.dryRun
+            ? `Subject declared: clone of ${args.subjectProvenance.repo}, to be served at ${args.appUrl} in-sandbox (dry-run contract; nothing cloned)`
+            : args.subjectProvenance.commit
+              ? args.session
+                ? `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit} and served at ${args.appUrl} in-sandbox`
+                : `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit}; serving at ${args.appUrl} did not complete (see session error)`
+              : `Subject clone attempted from ${args.subjectProvenance.repo}; commit unresolved (provisioning failed before resolution)`
+          } (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted).`,
+          simId: "sim-001",
+          streamId: "stream-001"
+        }
+      : {
+          id: "event-001-subject",
+          at: args.createdAt,
+          level: "info" as const,
+          type: "cua-lab.subject.declared",
+          message: `Subject app declared at ${args.appUrl} (loopback inside the desktop sandbox).`,
+          simId: "sim-001",
+          streamId: "stream-001"
+        },
     args.session
       ? {
           id: "event-002-session",
@@ -623,6 +898,7 @@ function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] {
 
 function renderCuaReviewMarkdown(bundle: RunBundle): string {
   const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
+  const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
   return [
     `# ${bundle.scenario.title}`,
     "",
@@ -630,6 +906,7 @@ function renderCuaReviewMarkdown(bundle: RunBundle): string {
     `- mode: ${bundle.mode}`,
     `- verdict: ${bundle.review.verdict}`,
     `- summary: ${bundle.review.summary}`,
+    ...(provenance ? [`- subject: ${provenance.message}`] : []),
     ...(trace
       ? [
           `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,

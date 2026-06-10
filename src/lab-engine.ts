@@ -14,7 +14,7 @@ import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult } from "./run.js";
-import type { LabConfig } from "./lab-config.js";
+import { routesToComputerUse, type LabConfig } from "./lab-config.js";
 
 export type LabBackend = "synthetic" | "smoke" | "meta" | "cua";
 
@@ -44,14 +44,15 @@ export type LabOutcome =
   | { backend: "cua"; result: CuaActorLabResult };
 
 /**
- * Route a lab config to its execution backend purely from its declared composition.
- * subject.source x execution.target are orthogonal primitives, so this is open to extension
- * (a new subject/execution pairing adds a route) rather than a closed kind enum.
+ * Route a lab config to its execution backend from its declared composition.
+ * subject.source x execution.target are orthogonal primitives; where both axes collide
+ * (clone x e2b-desktop hosts both the meta bootstrap AND the computer-use serve path) the
+ * actor LANE disambiguates — via routesToComputerUse, the single shared predicate.
  */
 export function selectLabBackend(config: LabConfig): LabBackend {
-  if (config.subject.source === "app-url") {
-    // app-url + e2b-desktop is the computer-use route (the only valid pairing; the parser
-    // rejects everything else). The actor registry then resolves actors[0].type inside it.
+  if (routesToComputerUse(config)) {
+    // app-url subjects, and clone x e2b-desktop subjects whose first actor resolves to a
+    // registered computer-use actor (the lab clones AND serves the app in-sandbox).
     return "cua";
   }
   if (config.subject.source === "clone") {
