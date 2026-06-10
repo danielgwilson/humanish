@@ -1432,7 +1432,7 @@ function formatCuaLabHuman(result: CuaActorLabResult): string {
       : []),
     ...(result.session
       ? [`session: ${result.session.status} (${result.session.completionReason}) — ${result.session.reason}`,
-         `screenshots: ${result.session.screenshots} (redacted)`]
+         `screenshots: ${result.session.screenshots}`]
       : []),
     ...(result.sandbox
       ? [`sandbox: ${result.sandbox.sandboxId} stream=${result.sandbox.streamUrlPresent ? "connected" : "missing"} killed=${result.sandbox.killed ? "yes" : "no"}`]

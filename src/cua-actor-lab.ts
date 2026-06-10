@@ -38,7 +38,7 @@ import {
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
-import { isLoopbackUrl, type LabConfig, type LabSubjectServe } from "./lab-config.js";
+import { isHttpUrl, isLoopbackUrl, type LabConfig, type LabSubjectServe } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
 import {
@@ -62,7 +62,12 @@ export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
 } as const;
 
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
-const DEFAULT_RESOLUTION: [number, number] = [1440, 960];
+// One desktop per run, at a real standard laptop size. NOTE: viewport/device is a per-PERSONA
+// dimension in the mature bespoke sims (mobile/tablet/desktop, isMobile, deviceScaleFactor) —
+// a single fixed desktop cannot simulate a mobile user. Per-persona viewport (with device
+// emulation) is on the critical-path roadmap alongside fan-out; `execution.desktop.resolution`
+// overrides this per run until then.
+const DEFAULT_RESOLUTION: [number, number] = [1280, 800];
 // Server-side reclamation buffer past the loop's own wall-clock stop.
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
@@ -211,9 +216,17 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     };
   }
 
-  // Re-enforce the loopback entry boundary for configs that arrive through the library API
-  // (the parser rejects these too, but runCuaActorLab is itself exported npm surface).
-  if (!isLoopbackUrl(appUrl)) {
+  // Re-enforce the entry-target boundary for configs that arrive through the library API
+  // (the parser rejects these too, but runCuaActorLab is itself exported npm surface). For a
+  // served clone the entry is always loopback (we serve it in-sandbox); for an app-url subject
+  // the owner may declare a public/preview target via policies.allowPublicTargets.
+  const allowPublicTargets = config.policies?.allowPublicTargets === true;
+  const entryTargetSafe = cloneRoute
+    ? isLoopbackUrl(appUrl)
+    : allowPublicTargets
+      ? isHttpUrl(appUrl)
+      : isLoopbackUrl(appUrl);
+  if (!entryTargetSafe) {
     return {
       schema: CUA_ACTOR_LAB_SCHEMA,
       ok: false,
@@ -226,7 +239,9 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       warnings,
       error: {
         code: "MIMETIC_CUA_LAB_SUBJECT_UNSAFE",
-        message: "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) — driving public targets is not allowed."
+        message: cloneRoute || !allowPublicTargets
+          ? "subject entry URL must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+          : "subject.appUrl must be a valid http(s) URL."
       }
     };
   }
@@ -412,19 +427,29 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           ...(actor?.model ? { model: actor.model } : {})
         },
         desktop: desktop as unknown as E2BDesktopLike,
+        // Default raw (full fidelity, local .mimetic); opt into blur for unowned/shared bundles.
+        redactScreenshots: config.policies?.redactScreenshots === true,
+        // Close the narration hole: a provisioned VALUE the model transcribes into reasoning/
+        // message text is literal-scrubbed (it has no shape for pattern redaction to catch).
+        scrubText: scrubKnownValues,
         writeScreenshot
       };
       session = await runSession(sessionOptions);
     } catch (error) {
-      // Redacted at the lab boundary: harness errors (SDK messages, paths) flow into the
-      // persisted bundle and review.md, so they pass through the same scrubber as evidence.
       // Scrubbed + redacted at the lab boundary: known provisioned VALUES are literal-scrubbed
       // first (pattern redaction cannot catch them), then the pattern pass handles
       // secret-shaped content. Flows into the bundle, review.md, and result.error.
       sessionError = redactText(scrubKnownValues(compactError(error)));
     } finally {
       if (desktop && desktopModule) {
-        if (typeof desktopModule.Sandbox.kill === "function") {
+        // Honor subject.clone.keep on FAILURE: leave the sandbox up so the operator can drop in
+        // and debug a failed install/build/boot (the smoke route honors keep; parity here). On
+        // success, or when keep is not set, always reclaim.
+        const failed = sessionError !== undefined || session === undefined;
+        const keepForDebug = config.subject.clone?.keep === true && failed;
+        if (keepForDebug) {
+          warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (subject.clone.keep on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
+        } else if (typeof desktopModule.Sandbox.kill === "function") {
           try {
             await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
             killed = true;
@@ -483,6 +508,11 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     }, null, 2)}\n`,
     "utf8"
   );
+
+  // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
+  if (session?.trace.redaction.screenshots === "raw") {
+    warnings.push("Screenshots are full-fidelity (raw) for local use — gitignored under .mimetic and blocked from commit by the binary-asset scan. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+  }
 
   const observer = await render(cwd, runId, { open: options.open === true });
 
@@ -595,7 +625,7 @@ async function provisionCloneSubject(
       name: "subject-install",
       command: args.serve.install,
       cwd: SUBJECT_DIR,
-      timeoutMs: INSTALL_TIMEOUT_MS,
+      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
       ...timers
     });
@@ -609,7 +639,7 @@ async function provisionCloneSubject(
       name: "subject-build",
       command: args.serve.build,
       cwd: SUBJECT_DIR,
-      timeoutMs: BUILD_TIMEOUT_MS,
+      timeoutMs: args.serve.buildTimeoutMs ?? BUILD_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
       ...timers
     });
@@ -869,7 +899,9 @@ export function buildCuaBundle(args: {
     events,
     redaction: {
       status: "passed",
-      notes: "Computer-use evidence is redacted at the loop boundary: screenshots are blurred fail-closed, typed text is recorded as length only, and reasoning/messages pass through text redaction."
+      notes: args.session?.trace.redaction.screenshots === "raw"
+        ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+        : "Computer-use evidence is redacted at the loop boundary: screenshots are blurred fail-closed, typed text is recorded as length only, and reasoning/messages pass through text redaction."
     },
     artifacts: {
       run: "run.json",

@@ -139,7 +139,24 @@ export interface CuaLoopOptions {
    * (fail-closed; real approval policy wires in later).
    */
   acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
-  /** Persist a redacted screenshot, returning the ref path recorded in the trace. */
+  /**
+   * Redact (blur+downscale) persisted screenshots. Default FALSE — full-fidelity frames are
+   * retained, because the common case is a developer watching a sim of their OWN app locally
+   * (gitignored .mimetic), where blur destroys the core deliverable. Set true for unowned
+   * subjects or when the bundle is meant to be shared as-is. The frame sent to the PROVIDER is
+   * always full-resolution regardless (the model must see the screen to act); this flag only
+   * governs what is PERSISTED. Publish-safety belongs at the publish boundary (commit scan / redactScreenshots), not capture.
+   */
+  redactScreenshots?: boolean;
+  /**
+   * Extra literal scrub for KNOWN provisioned values (which have no detectable "shape", so
+   * pattern redaction cannot catch them), composed BEFORE redactText on every model-authored
+   * text item (reasoning, message, completion summary) and the loop error. The lab passes the
+   * env-value scrubber here so a value the MODEL narrates can never land raw in the trace.
+   * Default: identity (the loop is shape-only on its own).
+   */
+  scrubText?: (text: string) => string;
+  /** Persist a screenshot (raw or redacted per redactScreenshots), returning the trace ref path. */
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
 }
 
@@ -256,9 +273,15 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     idleSteps = DEFAULT_IDLE_STEPS,
     noProgressSteps = DEFAULT_NO_PROGRESS_STEPS,
     acknowledgeSafetyChecks = () => null,
+    redactScreenshots = false,
+    scrubText = (text) => text,
     writeScreenshot = async (name) => `screenshots/${name}`
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
+  // Model-authored narration: literal-scrub known provisioned values, THEN pattern-redact.
+  // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
+  // alone cannot catch it — the lab's scrubKnownValues, injected as scrubText, closes that.
+  const redactNarration = (text: string): string => redaction.redactText(scrubText(text));
 
   const startedAtMs = now();
   const remaining = (): number => timeoutMs - (now() - startedAtMs);
@@ -284,14 +307,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   const recordScreenshot = async (frame: Buffer, label: string): Promise<void> => {
-    const redacted = await redaction.redactScreenshot(frame, { label });
-    const path = await writeScreenshot(`${label}.png`, redacted.buffer);
+    // Default: persist the raw frame (full fidelity, local-only). redactScreenshots flips to the
+    // publish-safe blurred thumbnail. Either way the bytes the model already saw were raw.
+    const { bytes, method } = redactScreenshots
+      ? await redaction.redactScreenshot(frame, { label }).then((r) => ({ bytes: r.buffer, method: r.method }))
+      : { bytes: frame, method: "none" as const };
+    const path = await writeScreenshot(`${label}.png`, bytes);
     items.push({
       id: nextId("screenshot"),
       kind: "screenshot",
       lifecycle: "completed",
       title: label,
-      screenshotRef: { path, redaction: redacted.method }
+      screenshotRef: { path, redaction: method }
     });
     bump("screenshots");
   };
@@ -353,7 +380,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           kind: "reasoning",
           lifecycle: "completed",
           title: `reasoning turn ${turnNumber}`,
-          text: redaction.redactText(turn.reasoning)
+          text: redactNarration(turn.reasoning)
         });
         bump("reasonings");
       }
@@ -363,7 +390,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           kind: "message",
           lifecycle: "completed",
           title: `message turn ${turnNumber}`,
-          text: redaction.redactText(turn.message)
+          text: redactNarration(turn.message)
         });
         bump("messages");
       }
@@ -393,7 +420,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         completionReason = "goal_satisfied";
         const summary = turn.message?.trim();
         reason = summary
-          ? redaction.redactText(summary)
+          ? redactNarration(summary)
           : "model reported a natural endpoint with no further action";
         break;
       }
@@ -450,7 +477,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       reason = "run aborted by the harness";
     } else {
       completionReason = "actor_error";
-      reason = redaction.redactText(`computer-use loop error: ${error instanceof Error ? error.message : String(error)}`);
+      reason = redactNarration(`computer-use loop error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -470,11 +497,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     persona,
     redaction: {
       status: "passed",
-      screenshots: counts.screenshots && counts.screenshots > 0 ? "blurred" : "n/a",
-      notes:
-        counts.screenshots && counts.screenshots > 0
+      screenshots: !(counts.screenshots && counts.screenshots > 0)
+        ? "n/a"
+        : redactScreenshots
+          ? "blurred"
+          : "raw",
+      notes: !(counts.screenshots && counts.screenshots > 0)
+        ? "no screenshots captured"
+        : redactScreenshots
           ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
-          : "no screenshots captured"
+          : `${counts.screenshots} full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle`
     },
     startedAt: new Date(startedAtMs).toISOString(),
     completedAt: new Date(completedAtMs).toISOString(),

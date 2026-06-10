@@ -45,10 +45,16 @@ export interface LabSubjectServe {
   build?: string;
   /** Required long-lived start command — launched detached; the sandbox lifecycle owns it. */
   start: string;
-  /** Loopback entry URL: the readiness-probe target and the URL the actor drives. */
+  /** Loopback entry URL: the readiness-probe target and the URL the actor drives. The lab
+   *  serves the clone INSIDE the sandbox, so this is always loopback (not subject to
+   *  allowPublicTargets — that governs app-url subjects, i.e. external deployments). */
   url: string;
   /** Budget for the served app to answer the readiness probe. Default 180000. */
   readyTimeoutMs?: number;
+  /** Override the install-step timeout (default 600000). Monorepos can exceed it. */
+  installTimeoutMs?: number;
+  /** Override the build-step timeout (default 600000). Large builds can exceed it. */
+  buildTimeoutMs?: number;
 }
 
 export interface LabSubject {
@@ -141,6 +147,20 @@ export interface LabPolicies {
    * declared otherwise).
    */
   redactRepos?: boolean;
+  /**
+   * Blur+downscale persisted screenshots on the computer-use route. Default FALSE — the common
+   * case is watching a sim of your OWN app locally (gitignored .mimetic), where full fidelity is
+   * the deliverable. Set true for unowned subjects or bundles meant to be shared as-is. The
+   * provider always sees raw frames; this only governs what is persisted. Raw bundles stay
+   * local (gitignored, commit-scan-guarded); a redact-on-export step for them is planned.
+   */
+  redactScreenshots?: boolean;
+  /**
+   * Allow an app-url subject to point at a non-loopback (public/preview/staging) URL the lab
+   * owner declares. Default FALSE (loopback-only). The invariant is "the actor drives a target
+   * the owner declared" — setting this IS that declaration (e.g. a Vercel preview of your app).
+   */
+  allowPublicTargets?: boolean;
 }
 
 export interface LabReview {
@@ -263,6 +283,10 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     if ((config.actors[0]?.count ?? 1) > 1) {
       return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
     }
+    // Loopback by default; an owner may declare a public/preview target via policies.
+    if (!config.policies?.allowPublicTargets && !isLoopbackUrl(config.subject.appUrl ?? "")) {
+      return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive a deployed/preview URL you own.");
+    }
   }
 
   // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
@@ -341,8 +365,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.subject.serve && !routesToCua) inert.push("subject.serve");
   if (config.subject.env && !routesToCua) inert.push("subject.env");
   if (routesToCua) {
-    // The cua route always kills its sandbox and runs a single lane; keep/fanout are inert.
-    if (config.subject.clone?.keep !== undefined) inert.push("subject.clone.keep");
+    // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to
+    // debug a failed install/boot; otherwise always killed). clone.fanout is still inert here —
+    // the cua route is single-lane until fan-out lands.
     if (config.subject.clone?.fanout !== undefined) inert.push("subject.clone.fanout");
   }
   if (!routesToCua && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
@@ -414,8 +439,10 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     if (!appUrl) {
       return invalid("`subject.appUrl` is required when source is app-url.");
     }
-    if (!isLoopbackUrl(appUrl)) {
-      return invalid("`subject.appUrl` must be a loopback http(s) URL (127.0.0.1 or localhost) — driving public targets is not allowed.");
+    // Shape-only here; the loopback-vs-public-target gate is applied in the cross-validation
+    // block below, where policies.allowPublicTargets is available.
+    if (!isHttpUrl(appUrl)) {
+      return invalid("`subject.appUrl` must be an http(s) URL.");
     }
     subject.appUrl = appUrl;
   }
@@ -441,6 +468,16 @@ export function isLoopbackUrl(value: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
 
+/** A well-formed http(s) URL (any host). Shape gate before the loopback/public-target policy. */
+export function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
@@ -463,6 +500,10 @@ function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefine
   if (build) serve.build = build;
   const readyTimeoutMs = posInt(raw.readyTimeoutMs);
   if (readyTimeoutMs !== undefined) serve.readyTimeoutMs = readyTimeoutMs;
+  const installTimeoutMs = posInt(raw.installTimeoutMs);
+  if (installTimeoutMs !== undefined) serve.installTimeoutMs = installTimeoutMs;
+  const buildTimeoutMs = posInt(raw.buildTimeoutMs);
+  if (buildTimeoutMs !== undefined) serve.buildTimeoutMs = buildTimeoutMs;
   return { ok: true, value: serve };
 }
 
@@ -601,6 +642,8 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
   }
   const policies: LabPolicies = {};
   if (typeof raw.redactRepos === "boolean") policies.redactRepos = raw.redactRepos;
+  if (typeof raw.redactScreenshots === "boolean") policies.redactScreenshots = raw.redactScreenshots;
+  if (typeof raw.allowPublicTargets === "boolean") policies.allowPublicTargets = raw.allowPublicTargets;
   return Object.keys(policies).length > 0 ? policies : undefined;
 }
 

@@ -44,7 +44,7 @@ function assertConformsToActorTrace(trace: ActorTrace): void {
 
   expect(trace.redaction.status).toBe("passed");
   expect(typeof trace.redaction.notes).toBe("string");
-  expect(["n/a", "blurred", "ocr_scrubbed"]).toContain(trace.redaction.screenshots);
+  expect(["n/a", "raw", "blurred", "ocr_scrubbed"]).toContain(trace.redaction.screenshots);
 
   expect(typeof trace.ids).toBe("object");
   expect(trace.ids).not.toBeNull();

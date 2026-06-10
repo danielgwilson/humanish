@@ -369,6 +369,102 @@ describe("runCuaActorLab", () => {
     }
   });
 
+  it("DEFAULT persists RAW screenshots (full fidelity, local) and warns the bundle is not publish-safe as-is", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams[0].actor.redaction.screenshots).toBe("raw");
+    expect(bundle.streams[0].actor.items.filter((i: { kind: string }) => i.kind === "screenshot")
+      .every((i: { screenshotRef?: { redaction: string } }) => i.screenshotRef?.redaction === "none")).toBe(true);
+    expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity") || w.toLowerCase().includes("raw"))).toBe(true);
+  });
+
+  it("policies.redactScreenshots: true persists blurred screenshots and drops the raw warning", async () => {
+    const config = cuaConfig();
+    const redactedConfig: LabConfig = { ...config, policies: { ...config.policies, redactScreenshots: true } };
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(redactedConfig, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams[0].actor.redaction.screenshots).toBe("blurred");
+    expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity"))).toBe(false);
+  });
+
+  it("policies.allowPublicTargets lets the engine drive a declared public app-url target", async () => {
+    const config = cuaConfig();
+    const publicConfig: LabConfig = {
+      ...config,
+      subject: { source: "app-url", appUrl: "https://preview-xyz.vercel.app/" },
+      policies: { allowPublicTargets: true }
+    };
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(publicConfig, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(outcome.result.error).toBeUndefined();
+    expect(sandbox.calls).toContainEqual(["open", "https://preview-xyz.vercel.app/"]);
+
+    // Without the policy, the engine fails closed even if a config bypasses the parser.
+    const sandbox2 = makeFakeSandbox();
+    const { module: module2 } = makeFakeModule(sandbox2);
+    const blocked = await runLab({ ...publicConfig, policies: {} }, {
+      cwd,
+      cuaHooks: { env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" }, loadDesktopModule: async () => module2 }
+    });
+    if (blocked.backend !== "cua") throw new Error("expected cua backend");
+    expect(blocked.result.ok).toBe(false);
+    expect(blocked.result.error?.code).toBe("MIMETIC_CUA_LAB_SUBJECT_UNSAFE");
+  });
+
+  it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {
+    const config = cloneCuaConfig();
+    const keepConfig: LabConfig = { ...config, subject: { ...config.subject, clone: { ...config.subject.clone, keep: true } } };
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runLab(keepConfig, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async () => { throw new Error("boom during session"); }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(false);
+    // Failure + keep → NOT killed, with a debug warning naming the sandbox.
+    expect(killed).toEqual([]);
+    expect(outcome.result.sandbox?.killed).toBe(false);
+    expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
+  });
+
   it("falls back to launching the browser explicitly when the SDK lacks open()", async () => {
     const sandbox = makeFakeSandbox({ withOpen: false });
     const { module } = makeFakeModule(sandbox);

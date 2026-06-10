@@ -83,7 +83,10 @@ export interface ActorTrace {
   protocol: ActorProtocol;
   lane: ActorLane;
   persona: ActorPersonaRef;
-  redaction: { status: "passed"; screenshots: "n/a" | "blurred" | "ocr_scrubbed"; notes: string };
+  // status: "passed" means the trace conforms to its declared redaction policy and carries no
+  // secret VALUES in text. screenshots: "raw" = full-fidelity frames retained (valid for LOCAL
+  // use; redact before publishing); "blurred"/"ocr_scrubbed" = publish-safe; "n/a" = none captured.
+  redaction: { status: "passed"; screenshots: "n/a" | "raw" | "blurred" | "ocr_scrubbed"; notes: string };
   startedAt: string;
   completedAt: string;
   durationMs: number;

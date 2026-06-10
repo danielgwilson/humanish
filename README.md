@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.5.0)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.6.0)
 
 ## Install
 
@@ -166,11 +166,22 @@ npx mimetic lab run cua-browser                 # dry-run contract bundle (no sp
 ```
 
 Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass via
-`--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. The entry
-URL is loopback-only (the app is served **inside** the sandbox) — driving public
-sites is rejected at parse time and re-checked by the engine. The actor's API key
-never enters the sandbox; only declared subject env names do. `mimetic init`
-scaffolds an example at `mimetic/labs/cua-browser.yaml`.
+`--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. A cloned
+subject is served **inside** the sandbox on loopback; to instead drive a deployment
+you own (a Vercel preview, staging), use an `app-url` subject with
+`policies.allowPublicTargets: true`. The actor's API key never enters the sandbox;
+only declared subject env names do. `mimetic init` scaffolds an example at
+`mimetic/labs/cua-browser.yaml`.
+
+**Screenshots are full-fidelity by default.** Run bundles live in gitignored
+`.mimetic/`, so the Observer shows exactly what the persona saw — the point of
+simming your own app. Set `policies.redactScreenshots: true` to persist blurred
+thumbnails at capture instead (for unowned subjects, or bundles you intend to share
+as-is). Raw bundles are gitignored and blocked from commit by the binary-asset scan;
+a redact-on-export step for sharing a raw bundle is planned. The frame sent to the
+model is always full-resolution regardless. (Doctrine:
+`docs/principles/invariants-and-defaults.md` — redaction binds the publish boundary,
+not capture.)
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
 subject env provisioned — the same trust class as a repo's package.json scripts.

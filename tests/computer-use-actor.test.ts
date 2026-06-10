@@ -107,7 +107,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(trace.ids?.model).toBe(DEFAULT_OPENAI_CU_MODEL);
   });
 
-  it("T4: typed secrets and raw frames never reach the trace (redaction enforced at the boundary)", async () => {
+  it("T4: typed secrets never reach the trace; screenshots default to RAW (full fidelity, local)", async () => {
     const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([
       { id: "r1", output: [{ type: "computer_call", call_id: "c1", action: { type: "type", text: secret } }] },
@@ -115,10 +115,30 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop: makeFakeDesktop() });
 
+    // Typed text redaction is UNCONDITIONAL (the value never enters the trace).
     expect(JSON.stringify(result.trace)).not.toContain(secret);
     const shots = result.trace.items.filter((item) => item.kind === "screenshot");
     expect(shots.length).toBeGreaterThan(0);
+    // Default is full fidelity: refs are "none" (raw), trace reports "raw".
+    expect(shots.every((item) => item.screenshotRef?.redaction === "none")).toBe(true);
+    expect(result.trace.redaction.screenshots).toBe("raw");
+  });
+
+  it("T4b: redactScreenshots: true blurs the persisted frames (publish-safe posture)", async () => {
+    const fetchFn = scriptedFetch([
+      { id: "r1", output: [{ type: "computer_call", call_id: "c1", action: { type: "click", x: 5, y: 6 } }] },
+      { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }
+    ]);
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop: makeFakeDesktop(),
+      redactScreenshots: true
+    });
+    const shots = result.trace.items.filter((item) => item.kind === "screenshot");
+    expect(shots.length).toBeGreaterThan(0);
     expect(shots.every((item) => item.screenshotRef?.redaction === "blurred")).toBe(true);
+    expect(result.trace.redaction.screenshots).toBe("blurred");
   });
 
   it("T5: fail-closed on safety checks by default (no auto-ack passed)", async () => {

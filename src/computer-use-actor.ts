@@ -56,7 +56,14 @@ export interface CuaActorSessionOptions {
   acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
   idleSteps?: number;
   noProgressSteps?: number;
-  /** Persist a redacted screenshot, returning the ref path recorded in the trace. */
+  /**
+   * Redact persisted screenshots (blur+downscale). Default FALSE — full fidelity for local use.
+   * Set true for unowned subjects or share-as-is bundles. The provider always sees raw frames.
+   */
+  redactScreenshots?: boolean;
+  /** Literal scrub for known provisioned values, composed before redactText on model narration. */
+  scrubText?: (text: string) => string;
+  /** Persist a screenshot (raw or redacted per redactScreenshots), returning the trace ref path. */
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
 }
 
@@ -76,6 +83,8 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.idleSteps === undefined ? {} : { idleSteps: options.idleSteps }),
     ...(options.noProgressSteps === undefined ? {} : { noProgressSteps: options.noProgressSteps }),
     ...(options.acknowledgeSafetyChecks === undefined ? {} : { acknowledgeSafetyChecks: options.acknowledgeSafetyChecks }),
+    ...(options.redactScreenshots === undefined ? {} : { redactScreenshots: options.redactScreenshots }),
+    ...(options.scrubText === undefined ? {} : { scrubText: options.scrubText }),
     ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot })
   };
 

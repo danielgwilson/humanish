@@ -165,10 +165,14 @@ subject:
     build: pnpm build
     start: pnpm start
     url: http://127.0.0.1:3000/
+    # installTimeoutMs: 1200000   # bump for monorepo-scale installs/builds (default 600000)
+    # buildTimeoutMs: 1800000
   # env: [DATABASE_URL]
-  # Alternative: provision the app yourself (library callers, prepareDesktop hook):
+  # clone:
+  #   keep: true                  # leave the sandbox up on FAILURE so you can debug install/boot
+  # Alternative: drive a deployment you own (Vercel preview, staging) instead of a clone:
   # source: app-url
-  # appUrl: http://127.0.0.1:3000/
+  # appUrl: https://your-preview.vercel.app/
 actors:
   - type: openai-computer-use
     persona: first-time-visitor
@@ -180,6 +184,9 @@ execution:
   timeoutMs: 300000
 scenario:
   mode: dry-run
+# policies:
+#   redactScreenshots: true       # blur persisted frames (default off — full fidelity for local use)
+#   allowPublicTargets: true      # required to drive a non-loopback app-url (a deployment you own)
 defaults:
   open: true
 `

@@ -141,7 +141,7 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.counts.screenshots).toBe(3);
   });
 
-  it("redacts every screenshot and never logs raw typed text", async () => {
+  it("DEFAULT persists RAW full-fidelity frames (local fidelity) and never logs raw typed text", async () => {
     const provider = new ScriptedProvider([
       { actions: [{ kind: "type", text: "hello@example.test" }], pendingSafetyChecks: [], done: false },
       { actions: [], pendingSafetyChecks: [], done: true, message: "done" }
@@ -158,18 +158,75 @@ describe("runComputerUseLoop", () => {
       timeoutMs: 10_000_000,
       now: monotonicClock(),
       writeScreenshot: sink.writeScreenshot
+      // redactScreenshots omitted → defaults false → raw
     });
 
-    // The typed value (which can carry synthetic identity) is never in the trace.
+    // Typed text (synthetic identity) is STILL never in the trace — that redaction is unconditional.
     expect(JSON.stringify(result.trace)).not.toContain("hello@example.test");
-    // Every screenshot is recorded as a blurred ref...
+    // Screenshots are recorded raw (redaction: "none"), full fidelity for local use.
+    const shots = result.trace.items.filter((i) => i.kind === "screenshot");
+    expect(shots.length).toBeGreaterThan(0);
+    expect(shots.every((i) => i.screenshotRef?.redaction === "none")).toBe(true);
+    expect(result.trace.redaction.screenshots).toBe("raw");
+    // What was persisted IS the raw frame, byte-identical to what the executor produced.
+    expect(sink.written.length).toBe(shots.length);
+    expect(Buffer.compare(sink.written[0]!.bytes, executor.frame)).toBe(0);
+  });
+
+  it("redactScreenshots: true persists blurred thumbnails (publish-safe), not raw frames", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "type", text: "hello@example.test" }], pendingSafetyChecks: [], done: false },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done" }
+    ]);
+    const executor = new SignatureExecutor(["s0", "s1"]);
+    const sink = recorder();
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      redactScreenshots: true,
+      writeScreenshot: sink.writeScreenshot
+    });
+
     const shots = result.trace.items.filter((i) => i.kind === "screenshot");
     expect(shots.length).toBeGreaterThan(0);
     expect(shots.every((i) => i.screenshotRef?.redaction === "blurred")).toBe(true);
     expect(result.trace.redaction.screenshots).toBe("blurred");
-    // ...and what was persisted is the redacted thumbnail, not the raw frame.
-    expect(sink.written.length).toBe(shots.length);
+    // Persisted bytes are the redacted thumbnail, NOT the raw frame.
     expect(Buffer.compare(sink.written[0]!.bytes, executor.frame)).not.toBe(0);
+  });
+
+  it("scrubText scrubs a KNOWN provisioned value the MODEL narrates into reasoning/message (no shape for pattern redaction)", async () => {
+    // A DB password has no secret "shape" — redactText alone cannot catch it. The lab injects
+    // scrubText so a value the model transcribes into its narration never lands raw in the trace.
+    const provisionedValue = "shapeless-db-pw-7Q2x";
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false,
+        reasoning: `I see the config shows password ${provisionedValue} on screen`,
+        message: `noting ${provisionedValue} before continuing` },
+      { actions: [], pendingSafetyChecks: [], done: true, message: `done; the value was ${provisionedValue}` }
+    ]);
+    const executor = new SignatureExecutor(["s0", "s1"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      scrubText: (text) => text.split(provisionedValue).join("[REDACTED_SECRET]")
+    });
+
+    // The shapeless value never appears anywhere in the trace (reasoning, message, summary).
+    expect(JSON.stringify(result.trace)).not.toContain(provisionedValue);
+    expect(JSON.stringify(result.trace)).toContain("[REDACTED_SECRET]");
   });
 
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {

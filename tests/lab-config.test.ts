@@ -190,6 +190,29 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
         expect(result.ok, appUrl).toBe(true);
       }
     });
+
+    it("policies.allowPublicTargets demotes the loopback wall: a public appUrl parses with it, fails without it", () => {
+      const publicTarget = { ...validCua, subject: { source: "app-url", appUrl: "https://preview-123.vercel.app/" } };
+      // Without the policy: rejected (safe default).
+      const blocked = parseLabConfig(publicTarget);
+      expect(blocked.ok).toBe(false);
+      if (!blocked.ok) expect(blocked.error.message).toContain("allowPublicTargets");
+      // With the policy: the owner has declared the target — accepted.
+      const allowed = parseLabConfig({ ...publicTarget, policies: { allowPublicTargets: true } });
+      expect(allowed.ok).toBe(true);
+      if (allowed.ok) expect(allowed.config.subject.appUrl).toBe("https://preview-123.vercel.app/");
+      // A garbage non-URL is still rejected even with the policy (shape gate holds).
+      const garbage = parseLabConfig({ ...publicTarget, subject: { source: "app-url", appUrl: "not a url" }, policies: { allowPublicTargets: true } });
+      expect(garbage.ok).toBe(false);
+    });
+
+    it("policies.redactScreenshots parses on the cua route with zero warnings (it is consumed)", () => {
+      const result = parseLabConfig({ ...validCua, policies: { redactScreenshots: true } });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.policies?.redactScreenshots).toBe(true);
+      expect(result.warnings).toEqual([]);
+    });
   });
 
   describe("clone + serve (computer-use route)", () => {
@@ -208,6 +231,31 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       scenario: { mode: "live" }
     };
 
+    it("parses configurable install/build timeouts on serve (northstar-scale builds exceed the default)", () => {
+      const result = parseLabConfig({
+        ...validCloneCua,
+        subject: {
+          ...validCloneCua.subject,
+          serve: { ...validCloneCua.subject.serve, installTimeoutMs: 1_200_000, buildTimeoutMs: 1_800_000 }
+        }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.subject.serve?.installTimeoutMs).toBe(1_200_000);
+      expect(result.config.subject.serve?.buildTimeoutMs).toBe(1_800_000);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("serve.url stays loopback-only even with allowPublicTargets (the lab serves the clone in-sandbox)", () => {
+      const result = parseLabConfig({
+        ...validCloneCua,
+        subject: { ...validCloneCua.subject, serve: { ...validCloneCua.subject.serve, url: "https://preview.vercel.app/" } },
+        policies: { allowPublicTargets: true }
+      });
+      // allowPublicTargets governs app-url subjects, not where we serve a clone — serve.url must be loopback.
+      expect(result.ok).toBe(false);
+    });
+
     it("parses with ZERO warnings — serve, env, and clone.depth are all consumed on this route", () => {
       const result = parseLabConfig(validCloneCua);
       expect(result.ok).toBe(true);
@@ -217,15 +265,17 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("warns clone.keep/fanout as inert on the cua route (sandbox always killed; single lane)", () => {
+    it("warns clone.fanout as inert on the cua route (single lane) but NOT clone.keep (honored on failure)", () => {
       const result = parseLabConfig({
         ...validCloneCua,
         subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 1 } }
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.warnings[0]).toContain("subject.clone.keep");
       expect(result.warnings[0]).toContain("subject.clone.fanout");
+      // clone.keep IS consumed (honored on failure) — must NOT be warned inert, or the parser
+      // contradicts the engine.
+      expect(result.warnings[0]).not.toContain("subject.clone.keep");
       expect(result.warnings[0]).not.toContain("subject.clone.depth");
     });
 

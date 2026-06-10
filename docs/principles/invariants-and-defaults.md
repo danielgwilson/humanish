@@ -11,11 +11,23 @@ True on every route, enforced in code, never overridable by config. A feature th
 satisfy these does not ship; a third-party extension that cannot satisfy these does not
 certify (see the conformance suite).
 
-1. **Secret values never reach evidence.** No key, token, session content, or credential
-   value may appear in any persisted artifact (run bundle, review, events, traces,
-   screenshots, logs) or in any committed file. Names of provisioned environment variables
-   are evidence; their values never are. Harness-level errors pass through redaction before
-   persisting, because SDK error strings can echo secrets.
+1. **Secret values never reach PUBLISHED evidence.** No key, token, credential value, or
+   session-secret may appear in any artifact that leaves the operator's machine — a committed
+   file, a shared bundle, a feedback issue. Names of provisioned environment variables are
+   evidence; their values never are. Harness-level errors pass through redaction before
+   persisting, because SDK error strings can echo secrets. The enforcement point is the
+   PUBLISH/VERIFY boundary, not capture: a local run's text artifacts are scrubbed of
+   secret-shaped values unconditionally, and raw screenshots (which may render on-screen
+   content) are retained locally under gitignored `.mimetic/`, blocked from commit by the
+   binary-asset scan, and never emitted by a publish command (feedback/review carry path
+   strings, not pixels). To share a bundle as-is, set `policies.redactScreenshots: true` (blurs
+   at capture); a redact-on-export step for already-captured raw bundles is planned, not yet
+   shipped. (See "the capture-vs-publish rule" below — blurring frames at *capture* was a
+   default mistaken for this invariant.)
+   - Scope note: the literal scrub of KNOWN provisioned values runs on harness log-tails,
+     errors, AND model-authored narration (reasoning/message) before it persists; secret-SHAPED
+     values are caught everywhere by pattern redaction. The text artifacts are local
+     (gitignored) regardless.
 2. **Actors only drive harness-minted URLs.** A model with input control (mouse, keyboard,
    terminal) is only ever pointed at a URL the harness itself issued or validated under a
    declared policy (loopback entry, provisioned subject, declared external target). Never an
@@ -44,7 +56,8 @@ silently drifting from one is not.
 | Dry-run | Spend safety (invariant 3 sets the floor; dry-run keeps the floor far away) | `scenario.mode: live` |
 | Per-lane worlds | Isolation, attribution, reproducibility | Shared-world topology for scenarios that ARE about interaction between personas |
 | External key placement | Smallest blast radius: when the keyed process (e.g. a computer-use provider loop) runs outside the sandbox, its key never enters | In-sandbox placement when the keyed process runs inside (an agent harness under test); declared per actor type, with a spend budget |
-| Loopback entry URLs | Public-safety: never drive third-party sites | Provisioned subjects (the harness serves the app and mints the URL); explicitly declared external targets owned by the lab author |
+| Loopback entry URLs | Public-safety: never drive third-party sites unbidden | `policies.allowPublicTargets` for an owner-declared deployment/preview (a Vercel preview of your own app); provisioned clone subjects always serve in-sandbox on loopback |
+| Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.mimetic/`, blocked from commit by the binary-asset scan | `policies.redactScreenshots: true` blurs at capture for share-as-is bundles (a redact-on-export step for raw bundles is planned) |
 | Synthetic, seeded state | Pinned provenance; no real user data in evidence paths | Declared external state, recorded as UNPINNED in provenance |
 | Single lane | Cost + evidence simplicity | Declared fan-out where the backend supports it |
 
@@ -78,3 +91,31 @@ Two corollaries:
   password, an arbitrary token) has no detectable "shape," so the harness scrubs every value
   it provisioned by LITERAL match before any log tail or error can persist — pattern-based
   redaction is the second pass, not the only one.
+
+## The capture-vs-publish rule (worked example)
+
+"Every screenshot is blurred to a 128px thumbnail" was once enforced at *capture* — the
+loop never retained a usable frame. That destroyed the core deliverable for the common case
+(a developer watching a sim of their OWN app locally) to defend against a leak that can only
+happen at *publish*. The proof it was a default, not an invariant: the same product already
+shipped raw full-resolution frames on the meta route with only a "do not publish" warning +
+the `.mimetic/` gitignore + the binary-asset scan. Two routes, opposite policies, identical
+threat. The corrected principle:
+
+> **A default's enforcement point belongs at the PUBLISH/VERIFY boundary, never at
+> CAPTURE/RUNTIME — unless capture-time is the only physically possible point.**
+
+Consequences:
+
+- Screenshots are retained **raw and full-fidelity** by default, in gitignored `.mimetic/`.
+  `policies.redactScreenshots: true` blurs at capture for a share-as-is bundle; a
+  redact-on-export step for already-captured raw bundles is planned (not yet shipped). The
+  frame sent to the provider is always raw regardless — the model must see the screen to act.
+- The loopback wall and the synthetic-data stance were the same error: enforcing at
+  capture/runtime (rejecting a public target outright; banning realistic local input) what
+  belongs at publish (an owner-declared `allowPublicTargets`; redaction at the publish step). A genuine
+  capture-time invariant — shell-injection shape checks, id-shape validation — passes the test
+  because capture *is* the only point it can hold.
+
+Litmus: for any constraint, ask "is this true everywhere, or true by default? — and if a
+default, is it enforced at the boundary where the risk is actually realized?"

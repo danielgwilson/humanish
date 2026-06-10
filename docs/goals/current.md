@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-10
+Status date: 2026-06-10 (rev 2)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -116,6 +116,15 @@ Minimum acceptance:
   labs against real apps (0.5.0; see `docs/goals/proof-roadmap/goal.md` and
   `docs/principles/invariants-and-defaults.md` in the repository — repo-only
   docs, not shipped in the npm package). `done`
+- De-paranoia (0.6.0): the redaction redesign + demoted defaults. Screenshots are
+  full-fidelity by default (redaction binds the publish boundary, not capture —
+  `policies.redactScreenshots` opts back in); `policies.allowPublicTargets` lets an
+  owner drive a declared deployment/preview; `subject.clone.keep` is honored on
+  failure for debugging; `serve.installTimeoutMs`/`buildTimeoutMs` are configurable
+  for monorepo-scale builds. Doctrine updated with the capture-vs-publish rule. This
+  re-sequences the proof roadmap: a redaction redesign and an overridable
+  public-target policy are prerequisites for any decision-grade depth evidence, so
+  they land BEFORE the nobg/image-skill depth phases. `done`
 
 ### 5. Live Terminal And Codex Lanes
 
