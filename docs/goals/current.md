@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-10 (rev 2)
+Status date: 2026-06-10 (rev 3)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -124,7 +124,13 @@ Minimum acceptance:
   for monorepo-scale builds. Doctrine updated with the capture-vs-publish rule. This
   re-sequences the proof roadmap: a redaction redesign and an overridable
   public-target policy are prerequisites for any decision-grade depth evidence, so
-  they land BEFORE the nobg/image-skill depth phases. `done`
+  they land BEFORE the consumer-web-app / agent-skill depth phases. `done`
+- Device presets (0.6.1): viewport/device is a real dimension, with LITERAL values copied
+  from the in-house sims (mobile 414×896 … wide 1920×1080; default `desktop` 1440×950) —
+  not guessed. `execution.desktop.device` picks the per-run viewport; the guessed 1280×800
+  is gone. Honest fidelity: on the E2B route only width/height render (real mobile *layout*)
+  + the model is told its device, matching the sims' organic lanes; true touch/DPR/UA needs
+  the CDP actor. Per-*persona* device (N×devices) rides fan-out. `done`
 
 ### 5. Live Terminal And Codex Lanes
 

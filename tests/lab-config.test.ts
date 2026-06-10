@@ -213,6 +213,41 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.config.policies?.redactScreenshots).toBe(true);
       expect(result.warnings).toEqual([]);
     });
+
+    it("execution.desktop.device parses on the cua route with zero warnings (consumed)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { device: "mobile" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.execution?.desktop?.device).toBe("mobile");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("rejects an unknown device preset", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { device: "foldable" } }
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("execution.desktop.device");
+      expect(result.error.message).toContain("mobile");
+    });
+
+    it("warns execution.desktop.device as inert on a non-cua route", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "clone-smoke-device",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type: "mimetic-setup" }],
+        execution: { desktop: { device: "mobile" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("execution.desktop.device");
+    });
   });
 
   describe("clone + serve (computer-use route)", () => {
@@ -231,7 +266,7 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       scenario: { mode: "live" }
     };
 
-    it("parses configurable install/build timeouts on serve (northstar-scale builds exceed the default)", () => {
+    it("parses configurable install/build timeouts on serve (monorepo-scale builds exceed the default)", () => {
       const result = parseLabConfig({
         ...validCloneCua,
         subject: {

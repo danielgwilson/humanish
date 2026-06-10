@@ -18,6 +18,7 @@
 // bump the version honestly.
 
 import { actorRegistry } from "./actor-registry.js";
+import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 
 export const LAB_CONFIG_SCHEMA = "mimetic.lab.v2";
 
@@ -109,7 +110,14 @@ export interface LabActor {
 export type LabExecutionTarget = "local" | "e2b-desktop";
 
 export interface LabExecutionDesktop {
-  /** Desktop resolution [width, height]. Consumed on the app-url route; fixed on the meta route. */
+  /**
+   * Named device preset (mobile / small-mobile / narrow-mobile / tablet / desktop / wide) the
+   * run renders at. Consumed on the computer-use route; default `desktop` (1440x950). On that
+   * route only width/height physically render (the X screen is sized to the preset, so
+   * width-based responsive CSS fires) — touch/DPR/UA are sim-parity prompt signals, not rendered.
+   */
+  device?: string;
+  /** Raw desktop resolution [width, height] — an escape hatch that overrides `device`. */
   resolution?: [number, number];
   /** Sandbox server-side timeout. Consumed on the app-url route. */
   sandboxTimeoutMs?: number;
@@ -374,6 +382,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
   if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
   if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
+  if (!routesToCua && config.execution?.desktop?.device !== undefined) inert.push("execution.desktop.device");
   if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
   // codexAppServer is consumed only on the e2b-desktop (meta) route; flag it when it cannot reach there.
   const routesToDesktop = config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
@@ -602,6 +611,13 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
     return { ok: true, value: undefined };
   }
   const desktop: LabExecutionDesktop = {};
+  if (raw.device !== undefined) {
+    const device = str(raw.device);
+    if (!device || !isDevicePresetName(device)) {
+      return invalid(`\`execution.desktop.device\` must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`);
+    }
+    desktop.device = device;
+  }
   if (raw.resolution !== undefined) {
     const resolution = raw.resolution;
     if (!Array.isArray(resolution) || resolution.length !== 2 || !resolution.every((value) => Number.isInteger(value) && (value as number) > 0)) {

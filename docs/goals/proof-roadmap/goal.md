@@ -84,13 +84,14 @@ flowing from real labs first.
 
 ## Layer order (each forces the next, none skips ahead)
 
-Re-sequenced 2026-06-10 after a first-principles audit against the mature bespoke sims
-(northstar/nobg/image-skill). The audit found two value-destroying constraints sitting
-OUTSIDE the ladder that silently break every depth phase, and one prerequisite a rung too
-late. Blurred screenshots cannot support a product *decision* (the literal success bar), and
-image-skill's harness cannot run loopback-only at all — so the de-paranoia work precedes the
-depth phases, and a seed primitive joins layer 1. The middle (fan-out, scenario grammar,
-hybrid scripted+LLM actor) is load-bearing, not optional/late as originally framed.
+Re-sequenced 2026-06-10 after a first-principles audit against the three mature in-house
+bespoke sims (a consumer web app, an agent-facing skill product, a multi-party clinical
+platform). The audit found two value-destroying constraints sitting OUTSIDE the ladder that
+silently break every depth phase, and one prerequisite a rung too late. Blurred screenshots
+cannot support a product *decision* (the literal success bar), and the agent-skill target's
+harness cannot run loopback-only at all — so the de-paranoia work precedes the depth phases,
+and a seed primitive joins layer 1. The middle (fan-out, scenario grammar, hybrid
+scripted+LLM actor) is load-bearing, not optional/late as originally framed.
 
 0. **De-paranoia** (`0.6.0`, done): redaction binds the publish boundary not capture
    (raw screenshots local by default, `policies.redactScreenshots` opt-in);
@@ -102,17 +103,17 @@ hybrid scripted+LLM actor) is load-bearing, not optional/late as originally fram
    integration, not greenfield; gives hybrid scripted-auth + LLM-exploration so personas stop
    burning model turns on deterministic login).
 2. **Fan-out**: bounded-concurrency N lanes from one prepared sandbox (the core sim capability;
-   nobg default 3/8, northstar 16). Genuinely unbuilt.
-3. **Depth phase 1 — nobg**: parity labs → dual-run comparison → deletion branch.
+   the reference sims default to 3-16 lanes). Genuinely unbuilt.
+3. **Depth phase 1 — consumer-web-app target**: parity labs → dual-run comparison → deletion branch.
 4. **Scenario grammar + scoring** (lift the existing `run.ts` step grammar): graded, repeatable
    proof instead of a freeform-mission vibes verdict.
 5. **Snapshot reuse** (`reuse: snapshot`): memoized provisioning keyed by commit + source +
    env fingerprint; the cache key IS the provenance pin.
 6. **Extension seam**: out-of-tree actor/provider/scorer registration + conformance
-   certification. **Depth phase 2 — image-skill** proves it (cost-ledger + control-arm as a
-   thin in-repo extension), adding in-sandbox command-scoped key placement with per-lane
+   certification. **Depth phase 2 — agent-skill target** proves it (cost-ledger + control-arm
+   as a thin in-repo extension), adding in-sandbox command-scoped key placement with per-lane
    budgets/ledger.
 7. **Multi-actor + multi-service subject + shared-world topology** + PII/PHI gate →
-   **depth phase 3 — northstar** (the hardest target; its defining capabilities).
+   **depth phase 3 — clinical-platform target** (the hardest; its defining capabilities).
 8. **Breadth panel v1** (stratified repos, executable golden paths, triangulated attribution),
    then **evidence classes in schema**, then **calibration** as the asymptotic layer.

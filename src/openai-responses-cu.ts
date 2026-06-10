@@ -186,8 +186,19 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
       case "computer_call": {
         const callId = optionalString(item.call_id);
         if (callId !== undefined) callIds.push(callId);
-        const mapped = openAiActionToCua(item.action);
-        if (mapped !== null) actions.push(mapped);
+        // The live Responses API returns the actions as an ARRAY (`item.actions`); a single
+        // computer_call can carry several. (An older/alt shape used a singular `item.action` —
+        // supported as a fallback.) Reading only `item.action` silently dropped EVERY action,
+        // which made the loop see zero actions and stop on a false `goal_satisfied`.
+        const rawActions = Array.isArray(item.actions)
+          ? item.actions
+          : item.action !== undefined
+            ? [item.action]
+            : [];
+        for (const rawAction of rawActions) {
+          const mapped = openAiActionToCua(rawAction);
+          if (mapped !== null) actions.push(mapped);
+        }
         // Preserve the wire triple verbatim: the API matches acknowledgements on
         // `id`, so collapsing to a code string (and fabricating ids on echo)
         // would silently break the proceed path.

@@ -38,6 +38,12 @@ import {
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
+import {
+  DEFAULT_DEVICE_PRESET,
+  isDevicePresetName,
+  resolveDevicePreset,
+  type DevicePreset
+} from "./device-presets.js";
 import { isHttpUrl, isLoopbackUrl, type LabConfig, type LabSubjectServe } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
@@ -62,12 +68,14 @@ export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
 } as const;
 
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
-// One desktop per run, at a real standard laptop size. NOTE: viewport/device is a per-PERSONA
-// dimension in the mature bespoke sims (mobile/tablet/desktop, isMobile, deviceScaleFactor) —
-// a single fixed desktop cannot simulate a mobile user. Per-persona viewport (with device
-// emulation) is on the critical-path roadmap alongside fan-out; `execution.desktop.resolution`
-// overrides this per run until then.
-const DEFAULT_RESOLUTION: [number, number] = [1280, 800];
+// Settle after opening the browser, before the first screenshot — long enough for a cold
+// browser + page load to paint (2s captured a blank desktop; the render empirically needs ~6-9s).
+const BROWSER_SETTLE_MS = 8_000;
+// Device/viewport comes from the named-preset registry (device-presets.ts), selectable per run
+// via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
+// per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
+// fan-out. On this E2B-desktop route only width/height physically render — isMobile/DSF are
+// honest metadata + a prompt signal, not rendered (device-presets.ts FIDELITY NOTE).
 // Server-side reclamation buffer past the loop's own wall-clock stop.
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
@@ -249,10 +257,30 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const runId = options.runId ?? makeCuaRunId();
   const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
   const createdAt = new Date().toISOString();
-  const resolution = config.execution?.desktop?.resolution ?? DEFAULT_RESOLUTION;
+  // Device resolution order (most-specific wins): raw resolution escape hatch → named device
+  // preset → default preset. The preset also carries isMobile/DSF as honest metadata + a prompt
+  // signal (only width/height physically render on the E2B-desktop route — see device-presets.ts).
+  // Resolve ONE device — so the rendered resolution, the prompt, and the bundle's isMobile/DSF
+  // metadata can never contradict each other. A raw `resolution` override wins, but then it is
+  // an unnamed custom desktop (non-mobile, DSF 1): we will not claim a named preset's
+  // mobile/DPR for geometry the caller hand-set.
+  const rawResolution = config.execution?.desktop?.resolution;
+  let deviceName: string;
+  let devicePreset: DevicePreset;
+  if (rawResolution) {
+    deviceName = "custom";
+    devicePreset = { width: rawResolution[0], height: rawResolution[1], isMobile: false, deviceScaleFactor: 1 };
+  } else {
+    const presetName = isDevicePresetName(config.execution?.desktop?.device)
+      ? config.execution?.desktop?.device
+      : DEFAULT_DEVICE_PRESET;
+    deviceName = presetName;
+    devicePreset = resolveDevicePreset(presetName);
+  }
+  const resolution: [number, number] = [devicePreset.width, devicePreset.height];
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
 
-  const { instructions, persona } = composeInstructions(config);
+  const { instructions, persona } = composeInstructions(config, { name: deviceName, preset: devicePreset });
 
   // Read once into locals (names only; values never logged or persisted) — this also keeps
   // history clean for line-pattern secret scanners that flag inline `apiKey: env.X` reads.
@@ -403,8 +431,10 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       } else {
         await desktop.launch("google-chrome", appUrl);
       }
-      // Give the browser a beat to paint; the loop self-corrects via screenshots either way.
-      await desktop.wait(2000).catch(() => undefined);
+      // Let the browser cold-start AND paint the page before the first screenshot. 2s was
+      // empirically too short (a cold browser + page load needs ~6-9s; a 2s settle captured a
+      // blank desktop, which the model then "completed" with zero actions — a false pass).
+      await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
 
       try {
         await desktop.stream.start({ requireAuth: true });
@@ -481,6 +511,8 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     mission: instructions,
     persona,
     resolution,
+    deviceScaleFactor: devicePreset.deviceScaleFactor,
+    isMobile: devicePreset.isMobile,
     runId,
     screenshots,
     ...(session ? { session } : {}),
@@ -514,10 +546,23 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     warnings.push("Screenshots are full-fidelity (raw) for local use — gitignored under .mimetic and blocked from commit by the binary-asset scan. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
   }
 
+  // Honesty guard: a "goal_satisfied" with ZERO actions and ZERO messages is not a credible
+  // natural endpoint — the actor neither did nor said anything, which in practice means it saw a
+  // blank or still-loading screen and stopped. Such a run must NOT pass as a proof.
+  const noEngagement = !dryRun
+    && session !== undefined
+    && session.completionReason === "goal_satisfied"
+    && (session.trace.counts.actions ?? 0) === 0
+    && (session.trace.counts.messages ?? 0) === 0;
+  if (noEngagement) {
+    warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
+  }
+
   const observer = await render(cwd, runId, { open: options.open === true });
 
   const ok = observer.ok
     && sessionError === undefined
+    && !noEngagement
     && (dryRun || (session !== undefined && session.completionReason !== "harness_error"));
 
   return {
@@ -559,7 +604,9 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
             code: "MIMETIC_CUA_LAB_FAILED" as const,
             message: sessionError
               ?? (observer.ok
-                ? session?.completionReason === "harness_error"
+                ? noEngagement
+                  ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+                  : session?.completionReason === "harness_error"
                   ? `Computer-use session ended with a harness error: ${session.reason}`
                   : "Computer-use lab did not produce a terminal session."
                 : observer.error?.message ?? "Observer failed for the computer-use lab run.")
@@ -678,12 +725,22 @@ function tailOf(log: string): string {
 }
 
 /** Compose the actor prompt from config: persona line + mission + per-lane steer. */
-function composeInstructions(config: LabConfig): { instructions: string; persona: ActorPersonaRef } {
+function composeInstructions(
+  config: LabConfig,
+  device: { name: string; preset: DevicePreset }
+): { instructions: string; persona: ActorPersonaRef } {
   const actor = config.actors[0];
   const mission = actor?.mission
     ?? "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.";
+  // Device prompt signal (copied from the bespoke sims' organic lanes): only width/height
+  // physically render on this route, so the model is TOLD its device so it behaves accordingly
+  // (e.g. expects a mobile layout / touch targets on a phone preset).
+  const deviceLine = device.preset.isMobile
+    ? `You are a mobile user on a ${device.name} device (${device.preset.width}x${device.preset.height} @${device.preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
+    : `You are a desktop user (${device.name}, ${device.preset.width}x${device.preset.height}).`;
   const parts = [
     actor?.persona ? `Persona: ${actor.persona}.` : undefined,
+    deviceLine,
     mission,
     actor?.laneFocus?.instruction ? `Lane focus: ${actor.laneFocus.instruction}` : undefined
   ].filter((part): part is string => Boolean(part));
@@ -713,6 +770,9 @@ export function buildCuaBundle(args: {
   mission: string;
   persona: ActorPersonaRef;
   resolution: [number, number];
+  /** Device metadata for the stream viewport (honest; isMobile/DSF are not rendered on this route). */
+  deviceScaleFactor?: number;
+  isMobile?: boolean;
   runId: string;
   screenshots: string[];
   session?: CuaLoopResult;
@@ -766,7 +826,8 @@ export function buildCuaBundle(args: {
     viewport: {
       width: args.resolution[0],
       height: args.resolution[1],
-      deviceScaleFactor: 1
+      deviceScaleFactor: args.deviceScaleFactor ?? 1,
+      ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile })
     },
     ui: {
       route: args.appUrl,

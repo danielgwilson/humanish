@@ -72,7 +72,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
   it("T2: config → real provider → loop → real executor → trace actually flows (anti-theater)", async () => {
     const fetchFn = scriptedFetch([
-      { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", action: { type: "click", x: 11, y: 22 } }] },
+      { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
       { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
     ]);
     const desktop = makeFakeDesktop();
@@ -110,7 +110,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
   it("T4: typed secrets never reach the trace; screenshots default to RAW (full fidelity, local)", async () => {
     const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([
-      { id: "r1", output: [{ type: "computer_call", call_id: "c1", action: { type: "type", text: secret } }] },
+      { id: "r1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "type", text: secret }] }] },
       { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "typed" }] }] }
     ]);
     const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop: makeFakeDesktop() });
@@ -126,7 +126,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
   it("T4b: redactScreenshots: true blurs the persisted frames (publish-safe posture)", async () => {
     const fetchFn = scriptedFetch([
-      { id: "r1", output: [{ type: "computer_call", call_id: "c1", action: { type: "click", x: 5, y: 6 } }] },
+      { id: "r1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 5, y: 6 }] }] },
       { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }
     ]);
     const result = await runCuaActorSession({
@@ -148,7 +148,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
         output: [{
           type: "computer_call",
           call_id: "c1",
-          action: { type: "click", x: 1, y: 2 },
+          actions: [{ type: "click", x: 1, y: 2 }],
           pending_safety_checks: [{ id: "s1", code: "malicious_instructions", message: "blocked" }]
         }]
       }
@@ -171,7 +171,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
           output: [{
             type: "computer_call",
             call_id: "c1",
-            action: { type: "click", x: 1, y: 2 },
+            actions: [{ type: "click", x: 1, y: 2 }],
             pending_safety_checks: [{ id: "s1", code: "malicious_instructions", message: "be careful" }]
           }]
         },

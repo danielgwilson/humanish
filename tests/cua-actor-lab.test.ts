@@ -131,7 +131,7 @@ function makeFakeModule(sandbox: FakeSandbox): {
 }
 
 const TWO_TURN_SESSION = [
-  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", action: { type: "click", x: 11, y: 22 } }] },
+  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
   { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
 ];
 
@@ -463,6 +463,92 @@ describe("runCuaActorLab", () => {
     expect(killed).toEqual([]);
     expect(outcome.result.sandbox?.killed).toBe(false);
     expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
+  });
+
+  it("does NOT pass a goal_satisfied run with zero actions and zero messages (blank-screen honesty guard)", async () => {
+    // Model immediately returns done with no action and no message — i.e. it saw a blank/loading
+    // screen and stopped. This must NOT be reported as a pass.
+    const noEngagementSession = [
+      { id: "r1", output: [{ type: "message", content: [] }] } // no actions, no text
+    ];
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(noEngagementSession) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    // The session itself is goal_satisfied, but the LAB refuses to call zero-engagement a pass.
+    expect(result.session?.completionReason).toBe("goal_satisfied");
+    expect(result.ok).toBe(false);
+    expect(result.error?.message.toLowerCase()).toContain("no actions");
+    expect(result.warnings.some((w) => w.includes("ZERO actions"))).toBe(true);
+  });
+
+  it("device preset drives the E2B desktop resolution + tells the model it's mobile (sim-parity)", async () => {
+    const config = cuaConfig();
+    const mobileConfig: LabConfig = {
+      ...config,
+      execution: { ...config.execution, target: "e2b-desktop", desktop: { device: "mobile" } }
+    };
+    const sandbox = makeFakeSandbox();
+    const { module, created } = makeFakeModule(sandbox);
+    const sessionOptionsSeen: CuaActorSessionOptions[] = [];
+    const outcome = await runLab(mobileConfig, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          sessionOptionsSeen.push(options);
+          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    // The mobile preset (414x896, copied from the sims) sizes the E2B desktop — NOT 1280x800.
+    expect(created[0]?.resolution).toEqual([414, 896]);
+    // And the model is TOLD it's mobile (the sim-parity prompt signal, since touch/DPR can't render).
+    expect(sessionOptionsSeen[0]?.instructions).toContain("mobile user");
+    expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
+    // The bundle's stream viewport carries the honest device metadata.
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams[0].viewport).toMatchObject({ width: 414, height: 896, deviceScaleFactor: 3, isMobile: true });
+  });
+
+  it("device resolution order: raw resolution overrides the preset; default is desktop 1440x950", async () => {
+    const def = makeFakeSandbox();
+    const defMod = makeFakeModule(def);
+    const defConfig: LabConfig = { ...cuaConfig(), execution: { target: "e2b-desktop" } };
+    const r1 = await runLab(defConfig, {
+      cwd, cuaHooks: { env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" }, loadDesktopModule: async () => defMod.module,
+        runSession: async (o) => runCuaActorSession({ ...o, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }) }
+    });
+    if (r1.backend !== "cua") throw new Error("expected cua");
+    expect(defMod.created[0]?.resolution).toEqual([1440, 950]);
+
+    const ov = makeFakeSandbox();
+    const ovMod = makeFakeModule(ov);
+    const ovConfig: LabConfig = { ...cuaConfig(), execution: { target: "e2b-desktop", desktop: { device: "mobile", resolution: [1024, 768] } } };
+    const ovSeen: CuaActorSessionOptions[] = [];
+    const r2 = await runLab(ovConfig, {
+      cwd, cuaHooks: { env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" }, loadDesktopModule: async () => ovMod.module,
+        runSession: async (o) => { ovSeen.push(o); return runCuaActorSession({ ...o, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }); } }
+    });
+    if (r2.backend !== "cua") throw new Error("expected cua");
+    expect(ovMod.created[0]?.resolution).toEqual([1024, 768]);
+    // Consistency: a raw resolution override must NOT inherit a named preset's mobile/DSF — the
+    // prompt + bundle metadata reflect the actual (custom, non-mobile) geometry, not "mobile".
+    expect(ovSeen[0]?.instructions).not.toContain("mobile user");
+    const ovBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", r2.result.runId, "run.json"), "utf8"));
+    expect(ovBundle.streams[0].viewport).toMatchObject({ width: 1024, height: 768, deviceScaleFactor: 1, isMobile: false });
   });
 
   it("falls back to launching the browser explicitly when the SDK lacks open()", async () => {

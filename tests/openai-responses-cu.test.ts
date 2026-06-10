@@ -135,7 +135,7 @@ describe("parseOpenAiResponse", () => {
       output: [
         { type: "reasoning", summary: ["thinking about the login"], content: [{ text: "more thought" }] },
         { type: "message", content: [{ type: "output_text", text: "Clicking sign in." }] },
-        { type: "computer_call", call_id: "call_1", action: { type: "click", x: 100, y: 200 } }
+        { type: "computer_call", call_id: "call_1", actions: [{ type: "click", x: 100, y: 200 }] }
       ],
       usage: { input_tokens: 42, output_tokens: 9 }
     });
@@ -149,6 +149,36 @@ describe("parseOpenAiResponse", () => {
     expect(parsed.turn.message).toBe("Clicking sign in.");
     expect(parsed.turn.usage).toEqual({ input: 42, output: 9 });
     expect(parsed.outputItems.length).toBe(3);
+  });
+
+  it("maps the REAL Responses shape: computer_call.actions is an ARRAY (a call can carry several)", () => {
+    // This is the live API shape (verified against gpt-5.5). The parser previously read a
+    // singular `action`, dropping every action → the loop saw zero actions and false-passed.
+    const parsed = parseOpenAiResponse({
+      output: [
+        { type: "computer_call", call_id: "call_x", actions: [
+          { type: "screenshot" },
+          { type: "click", x: 11, y: 22 },
+          { type: "type", text: "hi" }
+        ] }
+      ]
+    });
+    expect(parsed.turn.actions).toEqual([
+      { kind: "screenshot" },
+      { kind: "click", x: 11, y: 22, button: "left" },
+      { kind: "type", text: "hi" }
+    ]);
+    expect(parsed.turn.done).toBe(false);
+    expect(parsed.callIds).toEqual(["call_x"]);
+  });
+
+  it("still maps a singular computer_call.action as a fallback (older/alt shape)", () => {
+    const parsed = parseOpenAiResponse({
+      output: [{ type: "computer_call", call_id: "c1", action: { type: "click", x: 5, y: 6 } }]
+    });
+    expect(parsed.turn.actions).toEqual([{ kind: "click", x: 5, y: 6, button: "left" }]);
+    expect(parsed.callIds).toEqual(["c1"]);
+    expect(parsed.turn.done).toBe(false);
   });
 
   it("marks a message-only response as done with no actions", () => {
@@ -168,7 +198,7 @@ describe("parseOpenAiResponse", () => {
         {
           type: "computer_call",
           call_id: "call_x",
-          action: { type: "click", x: 1, y: 1 },
+          actions: [{ type: "click", x: 1, y: 1 }],
           pending_safety_checks: [
             { id: "sc_1", code: "malicious_instructions", message: "be careful" },
             { code: "code_only" },
@@ -289,7 +319,7 @@ describe("createOpenAiResponsesProvider", () => {
 
   it("drives multiple turns and threads call output + previous_response_id", async () => {
     const { fetchFn, bodies } = scriptedFetch([
-      { id: "resp_1", output: [{ type: "computer_call", call_id: "call_1", action: { type: "click", x: 11, y: 22 } }] },
+      { id: "resp_1", output: [{ type: "computer_call", call_id: "call_1", actions: [{ type: "click", x: 11, y: 22 }] }] },
       { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }] }
     ]);
     const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn });
@@ -325,7 +355,7 @@ describe("createOpenAiResponsesProvider", () => {
           text: async () => "",
           json: async () => ({
             id: "resp_1",
-            output: [{ type: "computer_call", call_id: "call_1", action: { type: "click", x: 1, y: 1 } }]
+            output: [{ type: "computer_call", call_id: "call_1", actions: [{ type: "click", x: 1, y: 1 }] }]
           })
         };
       }

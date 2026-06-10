@@ -60,7 +60,11 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => 
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
 
-    expect(result.ok).toBe(true);
+    // The bundle verified, the sandbox is reclaimed, and the session reached a terminal verdict
+    // without a harness error. We do NOT assert result.ok===true: ok additionally requires the
+    // actor to have ENGAGED (>=1 action or message — the no-engagement honesty guard), which a
+    // trivial "look and report" mission against a static page may not elicit. Engagement is
+    // asserted explicitly below so a blank-screen no-op cannot masquerade as a live proof.
     expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.session?.status);
     expect(result.session?.completionReason).not.toBe("harness_error");
     expect(result.observer?.ok).toBe(true);
@@ -74,6 +78,10 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => 
     const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
+    // Engagement: the actor must have actually perceived/driven the app (>=1 action or message),
+    // not stopped on a blank/loading screen. This is what makes the run a real proof.
+    const counts = bundle.streams[0].actor.counts;
+    expect((counts.actions ?? 0) + (counts.messages ?? 0)).toBeGreaterThan(0);
     const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
     expect(provenance?.message).toContain("mdn/beginner-html-site-styled@");
     expect(bundle.cwd).toBe("[target-cwd]");

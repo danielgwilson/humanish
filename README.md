@@ -9,7 +9,7 @@ It creates committed simulation source under `mimetic/`, ignored run evidence
 under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.6.0)
+![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.6.1)
 
 ## Install
 
@@ -182,6 +182,18 @@ a redact-on-export step for sharing a raw bundle is planned. The frame sent to t
 model is always full-resolution regardless. (Doctrine:
 `docs/principles/invariants-and-defaults.md` — redaction binds the publish boundary,
 not capture.)
+
+**Device presets.** `execution.desktop.device` picks the viewport the run renders at —
+`mobile` (414×896), `small-mobile` (360×740), `narrow-mobile` (320×700), `tablet`
+(820×1180), `desktop` (1440×950, default), or `wide` (1920×1080). The values are copied
+from the mature in-house sims, not invented. **Honest fidelity:** on the computer-use /
+E2B-desktop route only width/height physically render — so a site's width-based responsive
+CSS fires (real mobile *layout*), and the model is *told* its device in the prompt, matching
+how those sims run organic mobile lanes. There is no touch input, the device-pixel-ratio
+isn't rendered, and the user-agent stays desktop on this route; true touch/DPR/UA emulation
+arrives with the deterministic CDP actor. Device is run-wide today; per-*persona* device
+(N personas × devices) lands with fan-out. `execution.desktop.resolution` is a raw escape
+hatch that overrides the preset.
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
 subject env provisioned — the same trust class as a repo's package.json scripts.

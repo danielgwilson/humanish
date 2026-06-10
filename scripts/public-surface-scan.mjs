@@ -42,7 +42,14 @@ const staleInternalContextNames = [
   ["agent", "product"].join("-"),
   ["private", "factory"].join("-"),
   ["source", "system"].join("-"),
-  ["tbrowser", "sim"].join("-")
+  ["tbrowser", "sim"].join("-"),
+  // Private product codenames — must never appear in the public repo/package. Built from
+  // joined fragments so this denylist file does not match itself. Use neutral descriptors
+  // ("a consumer web app", "the in-house ui-sim", etc.) in committed source/docs.
+  ["north", "star"].join(""),
+  ["no", "bg"].join(""),
+  ["image", "skill"].join("-"),
+  ["legion", "health"].join("")
 ];
 
 const privateResiduePatterns = [

@@ -115,6 +115,14 @@ export {
 export type { CuaActorLabHooks, CuaActorLabResult, RunCuaActorLabOptions } from "./cua-actor-lab.js";
 export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
+export {
+  DEFAULT_DEVICE_PRESET,
+  DEVICE_PRESETS,
+  DEVICE_PRESET_NAMES,
+  isDevicePresetName,
+  resolveDevicePreset
+} from "./device-presets.js";
+export type { DevicePreset, DevicePresetName } from "./device-presets.js";
 export { isHttpUrl, isLoopbackUrl, LAB_CONFIG_SCHEMA, parseLabConfig, routesToComputerUse } from "./lab-config.js";
 export type { LabActor, LabConfig, LabConfigParseResult, LabSubject, LabSubjectServe, LabSubjectSource } from "./lab-config.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";

@@ -49,7 +49,7 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
       actors: [{
         type: "openai-computer-use",
         persona: "synthetic-new-user",
-        mission: "Look at the page on screen. In your final message, state the main heading text exactly, then stop. Do not navigate anywhere else."
+        mission: "Look at the page on screen, scroll down once to see the rest of it, then in your final message state the main heading text exactly and stop. Do not navigate anywhere else."
       }],
       execution: { target: "e2b-desktop", timeoutMs: 120_000 },
       scenario: { mode: "live" }
@@ -79,13 +79,16 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
 
-    // The lab completed with a terminal session and a verified bundle (never asserts task
-    // success — that is flaky against a live model).
-    expect(result.ok).toBe(true);
+    // Verified bundle + terminal session + reclaimed sandbox + the actor ENGAGED (>=1 action or
+    // message — so a blank/loading screen no-op cannot pass as a live proof). We never assert
+    // task SUCCESS (flaky against a live model), only that it perceived and drove the app.
     expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.session?.status);
     expect(result.session?.completionReason).not.toBe("harness_error");
     expect(result.observer?.ok).toBe(true);
     expect(result.sandbox?.killed).toBe(true);
+    const liveBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const liveCounts = liveBundle.streams[0].actor.counts;
+    expect((liveCounts.actions ?? 0) + (liveCounts.messages ?? 0)).toBeGreaterThan(0);
 
     const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
