@@ -10,13 +10,18 @@
 // it (resolved through the actor registry in cua-actor-lab.ts).
 
 import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "./cua-actor-lab.js";
+import {
+  runScriptedBrowserLab,
+  type ScriptedBrowserLabHooks,
+  type ScriptedBrowserLabResult
+} from "./scripted-browser-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult } from "./run.js";
-import { routesToComputerUse, type LabConfig } from "./lab-config.js";
+import { routesToComputerUse, routesToScriptedBrowser, type LabConfig } from "./lab-config.js";
 
-export type LabBackend = "synthetic" | "smoke" | "meta" | "cua";
+export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted";
 
 /** Runtime overrides from CLI flags. Each wins over the config when provided. */
 export interface RunLabOptions {
@@ -35,13 +40,16 @@ export interface RunLabOptions {
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
   cuaHooks?: CuaActorLabHooks;
+  /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
+  scriptedHooks?: ScriptedBrowserLabHooks;
 }
 
 export type LabOutcome =
   | { backend: "synthetic"; result: RunResult }
   | { backend: "smoke"; result: OssLabResult }
   | { backend: "meta"; result: OssMetaLabResult }
-  | { backend: "cua"; result: CuaActorLabResult };
+  | { backend: "cua"; result: CuaActorLabResult }
+  | { backend: "scripted"; result: ScriptedBrowserLabResult };
 
 /**
  * Route a lab config to its execution backend from its declared composition.
@@ -50,9 +58,16 @@ export type LabOutcome =
  * actor LANE disambiguates — via routesToComputerUse, the single shared predicate.
  */
 export function selectLabBackend(config: LabConfig): LabBackend {
-  if (routesToComputerUse(config)) {
-    // app-url subjects, and clone x e2b-desktop subjects whose first actor resolves to a
-    // registered computer-use actor (the lab clones AND serves the app in-sandbox).
+  if (routesToScriptedBrowser(config)) {
+    // app-url subjects whose first actor resolves to a registered scripted-browser actor:
+    // deterministic local replay, no model.
+    return "scripted";
+  }
+  if (routesToComputerUse(config) || config.subject.source === "app-url") {
+    // app-url subjects with a computer-use actor, and clone x e2b-desktop subjects whose first
+    // actor resolves to a registered computer-use actor (the lab clones AND serves the app
+    // in-sandbox). The bare app-url fallback keeps library-API configs with unknown actor
+    // types routing to the cua backend's fail-closed MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED.
     return "cua";
   }
   if (config.subject.source === "clone") {
@@ -136,6 +151,23 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks })
+      });
+      return { backend, result };
+    }
+    case "scripted": {
+      // Same dry-run default. Provider spend is $0 on this route BY MECHANISM (no model in
+      // the loop), but `scenario.mode: live` is still the gate: a live scripted run actuates a
+      // real browser against a real running app (fills forms, clicks buttons — state-mutating
+      // effects on the operator's app), which deserves the same affirmative declaration as
+      // spend. This differs deliberately from `run --app-url`, which actuates on invocation.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runScriptedBrowserLab({
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks })
       });
       return { backend, result };
     }

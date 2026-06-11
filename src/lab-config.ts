@@ -6,13 +6,27 @@
 //   subject.source/repos/appUrl/serve/env/state/clone.{depth,fanout,keep}, actors[0].count,
 //   execution.target + execution.desktop.codexAppServer, scenario.mode,
 //   policies.redactRepos, defaults.open.
-// On the computer-use routes (app-url, and clone × e2b-desktop with a computer-use actor),
-// `actors[0].type` IS load-bearing: it must resolve to a registered computer-use actor, and
-// that descriptor runs the session. Those routes also consume actors[0].{mission,persona,
-// laneFocus.instruction,model}, execution.timeoutMs, execution.desktop.{resolution,
-// sandboxTimeoutMs}, and (clone) subject.{serve,env,state,clone.depth}. On the other routes those
-// fields remain FORWARD-DECLARED and NOT yet consumed — parseLabConfig emits a warning
-// listing any such field that is set, so `lab inspect` shows the truth.
+// On the computer-use routes (app-url × e2b-desktop, and clone × e2b-desktop with a
+// computer-use actor), `actors[0].type` IS load-bearing: it must resolve to a registered
+// computer-use actor, and that descriptor runs the session. Those routes also consume
+// actors[0].{mission,persona,laneFocus.instruction,model}, execution.timeoutMs,
+// execution.desktop.{resolution,sandboxTimeoutMs}, and (clone)
+// subject.{serve,env,state,clone.depth}.
+// On the scripted-browser route (app-url × local-or-absent with a registered scripted-browser
+// actor), `actors[0].type` is equally load-bearing, and the route consumes scenario.ref
+// (REQUIRED there — the committed scenario's browser steps ARE what the actor executes),
+// actors[0].{persona,count}, and execution.timeoutMs; actors[0].{mission,laneFocus,model}
+// are inert on that route because no model runs, and execution.desktop.* stays forward-declared
+// (device presets belong to the cua route — scripted surfaces are the driver's own
+// desktop/mobile viewports where isMobile/DSF genuinely RENDER via playwright emulation).
+// On the other routes those fields remain FORWARD-DECLARED and NOT yet consumed —
+// parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
+// the truth.
+//
+// NOTE on actors[0].count: it now carries ROUTE-SPECIFIC meanings — synthetic route: simCount;
+// scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
+// defaults-table single-lane row governs; count: 2 is the declared override); computer-use
+// routes: must be 1 until fan-out lands. A future fan-out slice owns unifying these.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -137,12 +151,14 @@ export interface LabActorLaneFocus {
 export interface LabActor {
   /**
    * The actor label. On app-url subjects this is a REAL dispatch key: it must resolve to a
-   * registered computer-use actor (e.g. openai-computer-use) and that descriptor runs the
-   * session. On other routes it remains a free-form label (built-ins use descriptive labels
-   * like synthetic-persona, mimetic-setup, codex-app-server).
+   * registered computer-use actor (e.g. openai-computer-use, paired with e2b-desktop) or a
+   * registered scripted-browser actor (e.g. scripted-browser, local execution), and that
+   * descriptor runs the session. On other routes it remains a free-form label (built-ins use
+   * descriptive labels like synthetic-persona, mimetic-setup, codex-app-server).
    */
   type: string;
-  /** Lane count. Consumed for the synthetic backend (actors[0].count → simCount); must be 1 on app-url. */
+  /** Lane count — route-specific (see HONEST SCOPE header): synthetic simCount; scripted
+   *  surface roster {1 = desktop, 2 = desktop + mobile, default 1}; computer-use must be 1. */
   count?: number;
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
@@ -186,7 +202,8 @@ export interface LabExecution {
 export type LabScenarioMode = "dry-run" | "live";
 
 export interface LabScenario {
-  /** Reference a committed/ignored scenario by id or path. FORWARD-DECLARED (PR #2). */
+  /** Reference a committed scenario by id (mimetic/scenarios/<ref>.yaml) or path. CONSUMED
+   *  (and REQUIRED) on the scripted-browser route; FORWARD-DECLARED elsewhere. */
   ref?: string;
   /** Or inline the scenario body. FORWARD-DECLARED (PR #2). */
   inline?: Record<string, unknown>;
@@ -325,23 +342,51 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
-  // Computer-use routes: the actor type is a REAL dispatch key (registry-resolved), and the
-  // substrate is a hosted desktop. Fail closed on mis-configs.
+  // app-url routes: the actor type is a REAL dispatch key (registry-resolved). The actor LANE
+  // picks the substrate: a scripted-browser actor runs locally against the declared loopback
+  // app; a computer-use actor drives a hosted desktop browser. Fail closed on mis-configs.
   if (config.subject.source === "app-url") {
-    if (config.execution?.target !== "e2b-desktop") {
-      return invalid("app-url subjects require `execution.target: e2b-desktop` — the computer-use actor drives a hosted desktop browser.");
-    }
     const type = config.actors[0]?.type ?? "";
-    if (!actorResolvesToComputerUse(type)) {
-      return invalid(`actors[0].type must be a registered computer-use actor for app-url subjects (one of: ${registeredComputerUseActors().join(", ")}); got "${type}".`);
+    if (actorResolvesToScriptedBrowser(type)) {
+      // Scripted-browser route (all fail-closed: invariant 6 — a field that cannot act on
+      // this route is rejected, never silently ignored).
+      if (config.execution?.target !== undefined && config.execution.target !== "local") {
+        return invalid("scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice.");
+      }
+      if (!config.scenario?.ref) {
+        return invalid("scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.");
+      }
+      if ((config.actors[0]?.count ?? 1) > 2) {
+        return invalid("scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.");
+      }
+      if (config.policies?.redactScreenshots === true) {
+        return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .mimetic; a silently ignored redaction policy would be a safety lie, so it is rejected.");
+      }
+      if (config.policies?.allowPublicTargets === true) {
+        return invalid("`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice.");
+      }
+      if (!isLoopbackUrl(config.subject.appUrl ?? "")) {
+        return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route.");
+      }
+    } else {
+      if (config.execution?.target !== "e2b-desktop") {
+        return invalid("app-url subjects require `execution.target: e2b-desktop` with a registered computer-use actor (the actor drives a hosted desktop browser), or a registered scripted-browser actor for local execution.");
+      }
+      if (!actorResolvesToComputerUse(type)) {
+        return invalid(`actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`);
+      }
+      if ((config.actors[0]?.count ?? 1) > 1) {
+        return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
+      }
+      // Loopback by default; an owner may declare a public/preview target via policies.
+      if (!config.policies?.allowPublicTargets && !isLoopbackUrl(config.subject.appUrl ?? "")) {
+        return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive a deployed/preview URL you own.");
+      }
     }
-    if ((config.actors[0]?.count ?? 1) > 1) {
-      return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
-    }
-    // Loopback by default; an owner may declare a public/preview target via policies.
-    if (!config.policies?.allowPublicTargets && !isLoopbackUrl(config.subject.appUrl ?? "")) {
-      return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive a deployed/preview URL you own.");
-    }
+  } else if (actorResolvesToScriptedBrowser(config.actors[0]?.type)) {
+    // clone/this-repo × scripted actor: rejected, never ignored (the scripted driver only
+    // drives a caller-declared running app).
+    return invalid("scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL); clone/this-repo subjects are not supported on this route.");
   }
 
   // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
@@ -382,18 +427,45 @@ function registeredComputerUseActors(): string[] {
     .map((entry) => entry.id);
 }
 
+function actorResolvesToScriptedBrowser(type: string | undefined): boolean {
+  if (!type) return false;
+  const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+  return Boolean(descriptor?.capabilities.lanes.includes("scripted-browser"));
+}
+
+function registeredScriptedBrowserActors(): string[] {
+  return Object.values(actorRegistry)
+    .filter((entry) => entry.capabilities.lanes.includes("scripted-browser"))
+    .map((entry) => entry.id);
+}
+
 /**
- * True when this config routes to the computer-use backend: an app-url subject, or a clone
- * subject on a hosted desktop whose first actor resolves to a registered computer-use actor.
- * Single source of truth — selectLabBackend and the warning logic both use it.
+ * True when this config routes to the computer-use backend: an app-url subject whose first
+ * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
+ * whose first actor does. Single source of truth — selectLabBackend and the warning logic
+ * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
+ * scripted-browser lane arrived. Behavior-preserving for every parse-valid config —
+ * selectLabBackend keeps a bare app-url fallback to the cua backend so library-API configs
+ * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
 export function routesToComputerUse(config: LabConfig): boolean {
   if (config.subject.source === "app-url") {
-    return true;
+    return actorResolvesToComputerUse(config.actors[0]?.type);
   }
   return config.subject.source === "clone"
     && config.execution?.target === "e2b-desktop"
     && actorResolvesToComputerUse(config.actors[0]?.type);
+}
+
+/**
+ * True when this config routes to the scripted-browser backend: an app-url subject whose
+ * first actor resolves to a registered scripted-browser actor (execution.target local or
+ * absent — the parse layer enforces that pairing). Mirror of routesToComputerUse; the single
+ * source of truth for selectLabBackend and the warning logic.
+ */
+export function routesToScriptedBrowser(config: LabConfig): boolean {
+  return config.subject.source === "app-url"
+    && actorResolvesToScriptedBrowser(config.actors[0]?.type);
 }
 
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
@@ -402,18 +474,27 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   const inert: string[] = [];
   // The computer-use routes consume the actor prompt fields, execution.timeoutMs,
   // execution.desktop.{resolution,sandboxTimeoutMs}, and (clone) subject.{serve,env,state,
-  // clone.depth}; on every other route those fields are inert.
+  // clone.depth}; the scripted-browser route consumes scenario.ref, actors[0].{persona,count},
+  // and execution.timeoutMs (mission/laneFocus/model are inert there: this actor runs no
+  // model); on every other route those fields are inert.
   const routesToCua = routesToComputerUse(config);
+  const routesToScripted = routesToScriptedBrowser(config);
   for (const [index, actor] of config.actors.entries()) {
-    if (!routesToCua) {
+    if (routesToCua) {
+      // The cua route consumes laneFocus.instruction ONLY; id/label remain inert there.
+      if (actor.laneFocus?.id) inert.push(`actors[${index}].laneFocus.id`);
+      if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
+    } else if (routesToScripted) {
+      // persona and count are consumed (trace/bundle provenance; surface roster). The prompt
+      // fields can never act here — the scripted actor runs no model.
+      if (actor.mission) inert.push(`actors[${index}].mission (the scripted-browser actor runs no model)`);
+      if (actor.laneFocus) inert.push(`actors[${index}].laneFocus (the scripted-browser actor runs no model)`);
+      if (actor.model) inert.push(`actors[${index}].model (the scripted-browser actor runs no model)`);
+    } else {
       if (actor.mission) inert.push(`actors[${index}].mission`);
       if (actor.laneFocus) inert.push(`actors[${index}].laneFocus`);
       if (actor.persona) inert.push(`actors[${index}].persona`);
       if (actor.model) inert.push(`actors[${index}].model`);
-    } else {
-      // The cua route consumes laneFocus.instruction ONLY; id/label remain inert there.
-      if (actor.laneFocus?.id) inert.push(`actors[${index}].laneFocus.id`);
-      if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
     }
   }
   if (config.subject.clone?.depth !== undefined && !routesToCua) inert.push("subject.clone.depth");
@@ -426,9 +507,12 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
     // the cua route is single-lane until fan-out lands.
     if (config.subject.clone?.fanout !== undefined) inert.push("subject.clone.fanout");
   }
-  if (!routesToCua && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
+  if (!routesToCua && !routesToScripted && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
   if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
+  // execution.desktop.* stays inert on the scripted route by design: device presets belong to
+  // the cua desktop; scripted surfaces are the driver's fixed desktop/mobile viewports, where
+  // isMobile/DSF genuinely render via playwright emulation.
   if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
   if (!routesToCua && config.execution?.desktop?.device !== undefined) inert.push("execution.desktop.device");
   if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
@@ -437,7 +521,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.execution?.desktop?.codexAppServer !== undefined && !routesToDesktop) {
     inert.push("execution.desktop.codexAppServer (needs subject.source: clone + execution.target: e2b-desktop)");
   }
-  if (config.scenario?.ref) inert.push("scenario.ref");
+  // scenario.ref is CONSUMED on the scripted-browser route (required there); forward-declared
+  // everywhere else.
+  if (config.scenario?.ref && !routesToScripted) inert.push("scenario.ref");
   if (config.scenario?.inline) inert.push("scenario.inline");
   if (config.review) inert.push("review");
   if (config.personas) inert.push("personas");

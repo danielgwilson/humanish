@@ -31,6 +31,7 @@ import type {
 } from "./labs.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
 import type { CuaActorLabResult } from "./cua-actor-lab.js";
+import type { ScriptedBrowserLabResult } from "./scripted-browser-lab.js";
 import type { LabConfig } from "./lab-config.js";
 import { renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
@@ -1311,6 +1312,9 @@ async function runLabCommand(args: {
     case "cua":
       await runCuaBackend({ ...args, config });
       return;
+    case "scripted":
+      await runScriptedBackend({ ...args, config });
+      return;
     default:
       // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
       throw new Error(`Unhandled lab backend: ${String(backend satisfies never)}`);
@@ -1417,6 +1421,69 @@ async function runCuaBackend(args: {
       ...(shouldOpen === undefined ? {} : { open: shouldOpen })
     });
   }
+}
+
+// Mirror of runCuaBackend: open semantics from defaults.open/--no-open/watch-mode, writeResult
+// with the scripted human formatter, exit code result.ok ? 0 : 2, watch-mode Observer follow.
+async function runScriptedBackend(args: {
+  command: Command;
+  io: CliIo;
+  config: LabConfig;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const wantsMachine = wantsJson(args.command);
+  const shouldOpen = args.options.open === false
+    ? false
+    : wantsMachine
+      ? args.options.open === true
+      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+
+  const outcome = await runLab(args.config, {
+    cwd: args.options.cwd,
+    // Watch mode opens the served Observer below instead of the static render.
+    open: args.mode === "watch" ? false : shouldOpen,
+    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+  if (outcome.backend !== "scripted") {
+    throw new Error(`Expected scripted backend, got ${outcome.backend}.`);
+  }
+  const result = outcome.result;
+  writeResult(args.command, args.io, result, formatScriptedLabHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
+
+  // Watch mode serves the freshly rendered Observer (and opens it unless told not to).
+  if (args.mode === "watch" && result.ok && !wantsMachine) {
+    await renderAndMaybeFollowObserver({
+      command: args.command,
+      cwd: args.options.cwd,
+      io: args.io,
+      port: args.options.port ?? "0",
+      runInput: result.runId,
+      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+    });
+  }
+}
+
+function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
+  return [
+    `mimetic lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+    `run: ${result.runId}`,
+    `lab: ${result.labId}`,
+    `actor: ${result.actor}`,
+    `subject: ${result.appUrl}`,
+    ...(result.scenario
+      ? [`scenario: ${result.scenario.id} @ ${result.scenario.sourceDigest.slice(0, 12)} (${result.scenario.source}, ${result.scenario.steps} step${result.scenario.steps === 1 ? "" : "s"})`]
+      : []),
+    ...result.sessions.map((session) =>
+      `session ${session.surface}: ${session.status} (${session.completionReason}) — ${session.reason} [${session.screenshots} screenshot${session.screenshots === 1 ? "" : "s"}]`),
+    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
 }
 
 function formatCuaLabHuman(result: CuaActorLabResult): string {

@@ -22,11 +22,17 @@ export type ActorCompletionReason =
   | "blocked_approval"
   | "timed_out"
   | "actor_error"
+  // A deterministic scripted step or expectation evaluated false: the scenario predicate
+  // failed. Distinct from actor_error/harness_error — the harness executed faithfully; the
+  // SUBJECT did not satisfy the script.
+  | "step_failed"
   | "harness_error";
 
-export type ActorLane = "code" | "app" | "computer-use";
+// "scripted-browser" is the deterministic, model-free browser-actuation lane — distinct from
+// "computer-use" (raw pixels + a model) and "app".
+export type ActorLane = "code" | "app" | "computer-use" | "scripted-browser";
 
-export type ActorProtocol = "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop";
+export type ActorProtocol = "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps";
 
 export type ActorTraceItemKind =
   | "message"
@@ -137,6 +143,20 @@ export const CLAUDE_AGENT_SDK_CAPABILITIES: ActorCapabilities = {
   preGrantableApprovals: true,
   inProcessTools: true,
   license: "open"
+};
+
+// Scripted browser driver (src/scripted-browser-actor.ts): deterministic Playwright step
+// replay against a loopback app. byoModel is false because there is NO model — the committed
+// scenario steps are the whole behavior; tokenUsage on its traces records zeros by mechanism.
+export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
+  headless: true,
+  structuredTrace: true,
+  lanes: ["scripted-browser"],
+  producesScreenshots: true,
+  byoModel: false,
+  preGrantableApprovals: false,
+  inProcessTools: false,
+  license: "open" // playwright-core (Apache-2.0), already a lazy-imported production dependency
 };
 
 // Codex app-server reports four terminal statuses but no explicit completion

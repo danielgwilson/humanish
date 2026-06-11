@@ -7,6 +7,7 @@ import {
   CLAUDE_AGENT_SDK_CAPABILITIES,
   CODEX_APP_SERVER_CAPABILITIES,
   PI_AGENT_CORE_CAPABILITIES,
+  SCRIPTED_BROWSER_CAPABILITIES,
   codexResultToActorTrace,
   type ActorCapabilities,
   type ActorPersonaRef,
@@ -23,10 +24,15 @@ import {
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "./openai-responses-cu.js";
+import {
+  runScriptedBrowserSession,
+  type ScriptedBrowserSessionOptions,
+  type ScriptedBrowserSessionResult
+} from "./scripted-browser-actor.js";
 
 // The set of pluggable actor harnesses. The union grows as adapters land
 // (stagehand-cua next). See docs/architecture/actor-contract.md.
-export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use";
+export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "scripted-browser";
 
 interface ActorDescriptorBase {
   id: ActorId;
@@ -66,7 +72,20 @@ export interface CuaActorDescriptor extends ActorDescriptorBase {
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
 }
 
-export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor | ClaudeActorDescriptor | CuaActorDescriptor;
+// The scripted descriptor exposes runSession ONLY (no toActorTrace): runScriptedBrowserSession
+// already returns a fully-formed ActorTrace at result.trace (the CUA shape), so a mapper would
+// be a no-op identity.
+export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
+  id: "scripted-browser";
+  runSession(options: ScriptedBrowserSessionOptions): Promise<ScriptedBrowserSessionResult>;
+}
+
+export type ActorDescriptor =
+  | CodexActorDescriptor
+  | PiActorDescriptor
+  | ClaudeActorDescriptor
+  | CuaActorDescriptor
+  | ScriptedBrowserActorDescriptor;
 
 /**
  * REGISTRY CONTRACT: an actor whose capabilities include the "computer-use" lane is a
@@ -76,6 +95,17 @@ export type ActorDescriptor = CodexActorDescriptor | PiActorDescriptor | ClaudeA
  */
 export function isCuaActorDescriptor(descriptor: ActorDescriptor): descriptor is CuaActorDescriptor {
   return descriptor.capabilities.lanes.includes("computer-use");
+}
+
+/**
+ * REGISTRY CONTRACT (mirror of isCuaActorDescriptor): an actor whose capabilities include the
+ * "scripted-browser" lane IS a ScriptedBrowserActorDescriptor — runSession takes
+ * ScriptedBrowserSessionOptions and returns ScriptedBrowserSessionResult (trace fully formed,
+ * like the CUA shape — no separate toActorTrace). Any future scripted driver (e.g. a HAR
+ * replayer) must keep this signature; it is what lets the lab dispatch on capabilities, not ids.
+ */
+export function isScriptedBrowserActorDescriptor(descriptor: ActorDescriptor): descriptor is ScriptedBrowserActorDescriptor {
+  return descriptor.capabilities.lanes.includes("scripted-browser");
 }
 
 export const actorRegistry: Record<ActorId, ActorDescriptor> = {
@@ -106,6 +136,15 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     label: "OpenAI Computer Use",
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
     runSession: runCuaActorSession
+  },
+  // Same naming convention: the ActorId names the slot; the trace's `provider` stays the
+  // concrete driver name "browser-persona" (matching the native
+  // mimetic.browser-persona-trace.v1 evidence it already emits).
+  "scripted-browser": {
+    id: "scripted-browser",
+    label: "Scripted Browser (deterministic Playwright steps)",
+    capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+    runSession: runScriptedBrowserSession
   }
 };
 
@@ -115,6 +154,7 @@ export function getActor(id: "codex-app-server"): CodexActorDescriptor;
 export function getActor(id: "pi-agent-core"): PiActorDescriptor;
 export function getActor(id: "claude-agent-sdk"): ClaudeActorDescriptor;
 export function getActor(id: "openai-computer-use"): CuaActorDescriptor;
+export function getActor(id: "scripted-browser"): ScriptedBrowserActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor {
   const actor = actorRegistry[id];

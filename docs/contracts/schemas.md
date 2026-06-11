@@ -58,13 +58,32 @@ A lab is a composition over code primitives, not a hardcoded kind:
   declares env var NAMES (each must also appear in `subject.env`) pointing at
   state the lab does not control, recorded as UNPINNED in provenance. Commands
   persist in evidence as sha256-16 digests only, never as text;
-- `actors`: who drives it. On the computer-use routes `actors[0].type` is a
-  real dispatch key resolved against the actor registry; elsewhere it is a
-  descriptive label (e.g. `synthetic-persona`) and `count` sets the lane count;
+- `actors`: who drives it. On the computer-use and scripted-browser routes
+  `actors[0].type` is a real dispatch key resolved against the actor registry;
+  elsewhere it is a descriptive label (e.g. `synthetic-persona`).
+  `actors[0].count` carries route-specific meanings: synthetic route lane
+  count (simCount); scripted-browser route surface roster (1 = desktop,
+  2 = desktop + mobile, default 1); computer-use routes must be 1 until
+  fan-out lands;
 - `execution`: where it runs — `local` or `e2b-desktop`, plus desktop
-  device/resolution and timeouts;
-- `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`;
+  device/resolution and timeouts. app-url subjects pair `e2b-desktop` with a
+  computer-use actor, or `local` (or absent) with a scripted-browser actor;
+- `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
+  `scenario.ref` is CONSUMED (and REQUIRED) on the scripted-browser route: it
+  resolves a committed scenario (`mimetic/scenarios/<ref>.yaml` or a repo
+  path) whose `browser.steps` ARE what the actor executes, digest-pinned into
+  bundle provenance; on other routes `ref`/`inline` stay forward-declared
+  warnings. On the scripted route `live` gates real browser ACTUATION against
+  the declared app — provider spend stays $0 by mechanism (no model runs);
 - `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`.
+  The scripted-browser route is loopback-only and rejects
+  `redactScreenshots: true` (blur unimplemented there) and
+  `allowPublicTargets: true` fail-closed rather than ignoring them.
+
+Lab backends report results in their own schemas (`mimetic.run-result.v1`,
+`mimetic.oss-lab-result.v1`, `mimetic.oss-meta-lab-result.v1`,
+`mimetic.cua-lab-result.v1`, `mimetic.scripted-lab-result.v1`); the evidence
+record stays `mimetic.run-bundle.v1` in every case.
 
 Manifests are human-authored `.yaml` source under `mimetic/labs/*.yaml` for
 committed public-safe labs, or ignored `.mimetic/labs/*.yaml` /
@@ -266,22 +285,25 @@ scenario:
 
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
 `mimetic.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,
-Claude Agent SDK blocks, pi events, and computer-use cycles all map onto one
-`ActorTrace`. Registered actors live in `src/actor-registry.ts`
-(`codex-app-server`, `pi-agent-core`, `claude-agent-sdk`,
-`openai-computer-use`). There is no `mimetic.actor.v1`; that name never
-shipped.
+Claude Agent SDK blocks, pi events, computer-use cycles, and scripted browser
+steps all map onto one `ActorTrace`. Registered actors live in
+`src/actor-registry.ts` (`codex-app-server`, `pi-agent-core`,
+`claude-agent-sdk`, `openai-computer-use`, `scripted-browser`). There is no
+`mimetic.actor.v1`; that name never shipped.
 
 Core-owned fields:
 
 - `schema`
 - `provider` / `providerVersion`
-- `protocol` (`json-rpc` | `json-stream` | `in-process-sdk` | `cua-loop`)
-- `lane` (`code` | `app` | `computer-use`)
+- `protocol` (`json-rpc` | `json-stream` | `in-process-sdk` | `cua-loop` |
+  `scripted-steps`)
+- `lane` (`code` | `app` | `computer-use` | `scripted-browser`)
 - `persona` (`id`, `traitsApplied`, `promptDigest`)
 - `redaction` (`status`, `screenshots: n/a|raw|blurred|ocr_scrubbed`, `notes`)
 - `startedAt` / `completedAt` / `durationMs`
-- `status` / `completionReason` / `reason`
+- `status` / `completionReason` / `reason` (`completionReason` includes
+  `step_failed`: a deterministic scripted step/expectation evaluated false —
+  the subject failed the script while the harness executed faithfully)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`
 
 Adapter-owned fields:

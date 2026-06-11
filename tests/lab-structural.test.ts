@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 
 import { parseLabConfig, LAB_CONFIG_SCHEMA } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
+import { resolveLabManifest } from "../src/labs.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../src/scripted-browser-actor.js";
+import { digestText } from "../src/redaction.js";
 
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
@@ -59,6 +63,29 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(selectLabBackend(result.config)).toBe("meta");
     // The mission is forward-declared today and surfaced as a warning, never silently consumed.
     expect(result.warnings.join(" ")).toContain("actors[0].mission");
+  });
+
+  it("the COMMITTED scripted-demo lab parses with zero warnings, routes to the scripted backend, and its scenario.ref resolves to executable committed steps", async () => {
+    const resolved = await resolveLabManifest(ROOT, "scripted-demo");
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    // Every field in the committed example is consumed on this route — zero warnings.
+    expect(resolved.warnings).toEqual([]);
+    expect(resolved.config.actors[0]?.type).toBe("scripted-browser");
+    expect(resolved.config.actors[0]?.count).toBe(2);
+    expect(resolved.config.scenario?.ref).toBe("scripted-first-run");
+    expect(selectLabBackend(resolved.config)).toBe("scripted");
+
+    // The referenced committed scenario is genuinely executable (4 browser steps).
+    const scenarioText = read("mimetic/scenarios/scripted-first-run.yaml");
+    const parsed = parseBrowserPersonaJourneyFromScenario({
+      raw: parseYaml(scenarioText),
+      relativePath: "mimetic/scenarios/scripted-first-run.yaml",
+      sourceDigest: digestText(scenarioText)
+    });
+    expect(parsed.failure).toBeUndefined();
+    expect(parsed.journey?.steps).toHaveLength(4);
+    expect(parsed.journey?.scenarioId).toBe("scripted-first-run");
   });
 
   it("synthetic behavior is a FUNCTION of config (actor count -> simCount), not just a parsed label", async () => {

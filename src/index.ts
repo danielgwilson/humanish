@@ -1,6 +1,7 @@
 export {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
+  SCRIPTED_BROWSER_CAPABILITIES,
   codexResultToActorTrace,
   codexStatusToCompletionReason
 } from "./actor-contract.js";
@@ -16,8 +17,8 @@ export type {
   ActorTraceItem,
   ActorTraceItemKind
 } from "./actor-contract.js";
-export { actorRegistry, getActor, isCuaActorDescriptor } from "./actor-registry.js";
-export type { ActorDescriptor, ActorId, CuaActorDescriptor } from "./actor-registry.js";
+export { actorRegistry, getActor, isCuaActorDescriptor, isScriptedBrowserActorDescriptor } from "./actor-registry.js";
+export type { ActorDescriptor, ActorId, CuaActorDescriptor, ScriptedBrowserActorDescriptor } from "./actor-registry.js";
 export {
   describeCuaAction,
   runComputerUseLoop
@@ -115,6 +116,31 @@ export {
   runCuaActorLab
 } from "./cua-actor-lab.js";
 export type { CuaActorLabHooks, CuaActorLabResult, RunCuaActorLabOptions } from "./cua-actor-lab.js";
+export {
+  SCRIPTED_BROWSER_PROVIDER,
+  runScriptedBrowserSession
+} from "./scripted-browser-actor.js";
+export type {
+  BrowserPersonaJourney,
+  BrowserSurface,
+  ScriptedBrowserLaunchArgs,
+  ScriptedBrowserLike,
+  ScriptedBrowserSessionOptions,
+  ScriptedBrowserSessionResult,
+  ScriptedLocatorLike,
+  ScriptedPageLike
+} from "./scripted-browser-actor.js";
+export {
+  SCRIPTED_BROWSER_LAB_SCHEMA,
+  buildScriptedLabBundle,
+  runScriptedBrowserLab
+} from "./scripted-browser-lab.js";
+export type {
+  RunScriptedBrowserLabOptions,
+  ScriptedBrowserLabHooks,
+  ScriptedBrowserLabResult,
+  ScriptedBrowserLabSession
+} from "./scripted-browser-lab.js";
 export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
 export {
@@ -125,7 +151,15 @@ export {
   resolveDevicePreset
 } from "./device-presets.js";
 export type { DevicePreset, DevicePresetName } from "./device-presets.js";
-export { isHttpUrl, isLoopbackUrl, LAB_CONFIG_SCHEMA, parseLabConfig, routesToComputerUse, subjectStateInvalidReason } from "./lab-config.js";
+export {
+  isHttpUrl,
+  isLoopbackUrl,
+  LAB_CONFIG_SCHEMA,
+  parseLabConfig,
+  routesToComputerUse,
+  routesToScriptedBrowser,
+  subjectStateInvalidReason
+} from "./lab-config.js";
 export type {
   LabActor,
   LabConfig,

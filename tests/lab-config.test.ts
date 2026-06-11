@@ -250,6 +250,146 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
     });
   });
 
+  describe("app-url (scripted-browser route)", () => {
+    const validScripted = {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "scripted-demo",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
+      actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 2 }],
+      scenario: { ref: "scripted-first-run" },
+      execution: { target: "local", timeoutMs: 60000 }
+    };
+
+    it("parses a scripted lab with ZERO warnings — every set field is consumed on this route", () => {
+      const result = parseLabConfig(validScripted);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.actors[0]?.type).toBe("scripted-browser");
+      expect(result.config.scenario?.ref).toBe("scripted-first-run");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("accepts an absent execution.target (absent means local on this route)", () => {
+      const result = parseLabConfig({ ...validScripted, execution: { timeoutMs: 60000 } });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("accepts surface counts 1 and 2 (desktop / desktop + mobile)", () => {
+      for (const count of [1, 2]) {
+        const result = parseLabConfig({ ...validScripted, actors: [{ type: "scripted-browser", count }] });
+        expect(result.ok, `count ${count}`).toBe(true);
+      }
+    });
+
+    it.each([
+      ["scripted actor on e2b-desktop", { ...validScripted, execution: { target: "e2b-desktop" } }],
+      ["scripted actor on a clone subject", { ...validScripted, subject: { source: "clone", repos: ["example-org/example-app"] } }],
+      ["scripted actor on this-repo", { ...validScripted, subject: { source: "this-repo" }, execution: undefined }],
+      ["count > 2 (fan-out is a later layer)", { ...validScripted, actors: [{ type: "scripted-browser", count: 3 }] }],
+      ["missing scenario.ref (the steps ARE the actor)", { ...validScripted, scenario: undefined }],
+      ["scenario.mode without ref", { ...validScripted, scenario: { mode: "live" } }],
+      ["policies.redactScreenshots: true (blur unimplemented here; no silent raw)", { ...validScripted, policies: { redactScreenshots: true } }],
+      ["policies.allowPublicTargets: true (driver enforces loopback per step)", { ...validScripted, policies: { allowPublicTargets: true } }],
+      ["public appUrl", { ...validScripted, subject: { source: "app-url", appUrl: "https://example.com/" } }],
+      ["two-actor scripted+LLM composition", { ...validScripted, actors: [{ type: "scripted-browser" }, { type: "openai-computer-use" }] }]
+    ])("fails closed on scripted mis-config: %s", (_label, input) => {
+      const result = parseLabConfig(input);
+      expect(result.ok, _label).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+    });
+
+    it("rejects subject.state on the scripted route (a clone-only field on an app-url subject)", () => {
+      const result = parseLabConfig({
+        ...validScripted,
+        subject: {
+          source: "app-url",
+          appUrl: "http://127.0.0.1:5173/",
+          state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
+        }
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("subject.state");
+      expect(result.error.message).toContain("clone subjects");
+    });
+
+    it("still rejects app-url × local with a computer-use actor (the cross-validation branch this route narrowed)", () => {
+      const result = parseLabConfig({
+        ...validScripted,
+        actors: [{ type: "openai-computer-use" }],
+        scenario: undefined
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      // The message must point at BOTH valid pairings so the mis-config is self-recovering.
+      expect(result.error.message).toContain("e2b-desktop");
+      expect(result.error.message).toContain("scripted-browser");
+    });
+
+    it("names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error", () => {
+      const result = parseLabConfig({
+        ...validScripted,
+        actors: [{ type: "codex-app-server" }],
+        execution: { target: "e2b-desktop" },
+        scenario: undefined
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("openai-computer-use");
+      expect(result.error.message).toContain("scripted-browser");
+    });
+
+    it("warns mission/laneFocus/model as inert on the scripted route (no model runs); persona/count/timeoutMs stay de-warned", () => {
+      const result = parseLabConfig({
+        ...validScripted,
+        actors: [{
+          type: "scripted-browser",
+          persona: "p1",
+          count: 1,
+          mission: "inert here",
+          laneFocus: { instruction: "inert here" },
+          model: "inert"
+        }]
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("actors[0].mission");
+      expect(result.warnings[0]).toContain("actors[0].laneFocus");
+      expect(result.warnings[0]).toContain("actors[0].model");
+      expect(result.warnings[0]).toContain("runs no model");
+      expect(result.warnings[0]).not.toContain("actors[0].persona");
+      expect(result.warnings[0]).not.toContain("execution.timeoutMs");
+      expect(result.warnings[0]).not.toContain("scenario.ref");
+    });
+
+    it("keeps warning scenario.ref as forward-declared on NON-scripted routes", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "synthetic-with-ref",
+        subject: { source: "this-repo" },
+        actors: [{ type: "synthetic-persona" }],
+        scenario: { ref: "scripted-first-run" }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("scenario.ref");
+    });
+
+    it("keeps warning execution.desktop.* on the scripted route (device presets are the cua route's)", () => {
+      const result = parseLabConfig({
+        ...validScripted,
+        execution: { target: "local", desktop: { device: "mobile" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("execution.desktop.device");
+    });
+  });
+
   describe("clone + serve (computer-use route)", () => {
     const validCloneCua = {
       schema: LAB_CONFIG_SCHEMA,

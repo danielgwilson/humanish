@@ -213,6 +213,7 @@ function statusForCompletion(reason: ActorCompletionReason): ActorStatus {
       return "blocked";
     case "gave_up":
     case "actor_error":
+    case "step_failed": // step_failed is the scripted-browser lane's reason; this loop never emits it
     case "harness_error":
       return "failed";
   }

@@ -3,14 +3,15 @@
 Date: 2026-06-06 (updated 2026-06-11)
 
 Status: accepted design, partially implemented. Shipped: the evidence schema
-`mimetic.actor-trace.v1` (`src/actor-contract.ts`) and a registry of four
+`mimetic.actor-trace.v1` (`src/actor-contract.ts`) and a registry of five
 actors (`src/actor-registry.ts`: `codex-app-server`, `pi-agent-core`,
-`claude-agent-sdk`, `openai-computer-use`), with `actors[0].type` a real
-dispatch key on the computer-use lab routes. Not yet shipped (roadmap, not
-near-term claims): the full `Actor.run(input)` interface, `RedactionHooks`
-injection, `ApprovalPolicy`, `StagehandCuaActor`, and the `persona-fidelity`
-verify check. Decision 6's capture-time screenshot stance was recanted in
-0.6.0; see the inline notes and the capture-vs-publish rule in
+`claude-agent-sdk`, `openai-computer-use`, `scripted-browser`), with
+`actors[0].type` a real dispatch key on the computer-use and scripted-browser
+lab routes. Not yet shipped (roadmap, not near-term claims): the full
+`Actor.run(input)` interface, `RedactionHooks` injection, `ApprovalPolicy`,
+`StagehandCuaActor`, and the `persona-fidelity` verify check. Decision 6's
+capture-time screenshot stance was recanted in 0.6.0; see the inline notes and
+the capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 
 ## Context
@@ -102,6 +103,9 @@ export type ActorCompletionReason =
   | "blocked_approval"    // an action was auto-declined and the actor could not proceed
   | "timed_out"
   | "actor_error"
+  | "step_failed"         // a deterministic scripted step/expectation evaluated false: the
+                          // SUBJECT failed the script; the harness executed faithfully
+                          // (distinct from actor_error/harness_error)
   | "harness_error";
 
 // One normalized evidence row. Codex item/*, Claude ToolUse/ToolResult,
@@ -123,7 +127,7 @@ export interface ActorTraceItem {
 export interface ActorCapabilities {
   headless: boolean;
   structuredTrace: boolean;
-  lanes: Array<"code" | "app" | "computer-use">;
+  lanes: Array<"code" | "app" | "computer-use" | "scripted-browser">;
   producesScreenshots: boolean;
   byoModel: boolean;
   preGrantableApprovals: boolean;   // can run unattended without a human prompt
@@ -133,10 +137,10 @@ export interface ActorCapabilities {
 
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
-  provider: string;              // "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu"
+  provider: string;              // "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu" | "browser-persona"
   providerVersion?: string;
-  protocol: "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop";
-  lane: "code" | "app" | "computer-use";
+  protocol: "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps";
+  lane: "code" | "app" | "computer-use" | "scripted-browser";
   persona: { id: string; traitsApplied: string[]; promptDigest: string };  // proves traits were threaded
   // "raw" = full-fidelity frames retained (valid for LOCAL use; redact before
   // publishing); "blurred"/"ocr_scrubbed" = publish-safe; "n/a" = none captured.
@@ -209,6 +213,31 @@ export interface Actor {
   per adapter.
 - **Capabilities.** Declare them honestly; the registry uses them to refuse
   unsuitable dispatch.
+
+## The scripted-browser lane (shipped)
+
+`scripted-browser` is the deterministic, model-free browser-actuation lane — distinct from
+`computer-use` (raw pixels + a model deciding actions) and `app`. The registered
+`scripted-browser` actor (`src/scripted-browser-actor.ts`) replays a committed scenario's
+browser steps with playwright against a loopback app; the steps ARE the behavior, so
+`byoModel: false` means there is NO model, and `tokenUsage` records zeros as an affirmative
+$0 declaration that is true by mechanism (no provider client is importable from that code
+path). Its trace keeps the concrete driver name `provider: "browser-persona"` (matching the
+native `mimetic.browser-persona-trace.v1` it also emits) with `protocol: "scripted-steps"`.
+
+Completion semantics: `goal_satisfied` means the scenario's `expect` blocks — the success
+predicate — all held ("the app still affords this exact journey", nothing about user
+behavior); `step_failed` means a deterministic step or expectation evaluated false (the
+subject failed the script; the harness ran faithfully); `timed_out` is the journey wall-clock
+budget; `harness_error` is a browser that could not launch. `gave_up` and `blocked_approval`
+are unreachable — no persona patience, no approvals exist on a deterministic replay.
+
+Actuation-vs-spend gate: on the scripted lab route `scenario.mode: live` is still required
+even though provider spend is $0 by mechanism. The gate's justification there is ACTUATION,
+not cost — a live scripted run drives a real browser against a real running app
+(state-mutating effects on the operator's app), which deserves the same affirmative
+declaration as spend. "Live" on this route must never silently come to mean "costs money";
+this paragraph is the record of that decision.
 
 ## Making personas load-bearing
 
