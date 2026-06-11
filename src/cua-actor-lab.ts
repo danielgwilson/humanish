@@ -607,11 +607,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       : {
           error: {
             code: "MIMETIC_CUA_LAB_FAILED" as const,
+            // noEngagement outranks the observer outcome: verifyRun now fails hollow bundles
+            // too (the observer renders on verified evidence), and the specific diagnosis must
+            // not be masked by the downstream "failed verification" it causes.
             message: sessionError
-              ?? (observer.ok
-                ? noEngagement
-                  ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-                  : session?.completionReason === "harness_error"
+              ?? (noEngagement
+                ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+                : observer.ok
+                ? session?.completionReason === "harness_error"
                   ? `Computer-use session ended with a harness error: ${session.reason}`
                   : "Computer-use lab did not produce a terminal session."
                 : observer.error?.message ?? "Observer failed for the computer-use lab run.")

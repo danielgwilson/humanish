@@ -358,6 +358,7 @@ Core-owned fields:
 - `bundlePath`
 - check names
 - check booleans
+- `warnings` (advisory postures, e.g. raw screenshots; never flip `ok`)
 - machine-readable error codes
 
 Adapter-owned fields:

@@ -14,7 +14,7 @@ import {
   type CodexAppServerTrace
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
-import type { ActorTrace } from "./actor-contract.js";
+import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
@@ -392,6 +392,9 @@ export interface VerifyResult {
     ok: boolean;
     message: string;
   }>;
+  // Advisory postures the operator must see (e.g. raw full-fidelity screenshots) that never
+  // flip ok: overriding a default is supported, but ok: true must not read as "share-ready".
+  warnings: string[];
   error?: {
     code: "MIMETIC_RUN_NOT_FOUND" | "MIMETIC_INVALID_RUN_BUNDLE";
     message: string;
@@ -3943,6 +3946,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       cwd,
       run: runInput,
       checks,
+      warnings: [],
       error: {
         code: "MIMETIC_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
@@ -4013,8 +4017,17 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       ? "live Codex app-server streams either are absent or include valid redacted trace evidence"
       : `codex app-server findings: ${codexAppServerFindings.join(", ")}`
   });
+  const noEngagementFindings = isRunBundle(bundle) ? noEngagementActorFindings(bundle) : [];
+  checks.push({
+    name: "actor engagement",
+    ok: noEngagementFindings.length === 0,
+    message: noEngagementFindings.length === 0
+      ? "live actor traces that claim goal_satisfied carry at least one action or message"
+      : `no-engagement findings: ${noEngagementFindings.join(", ")} — a hollow run is not credible evidence`
+  });
 
   const ok = checks.every((check) => check.ok);
+  const warnings = isRunBundle(bundle) ? rawScreenshotPostureWarnings(bundle) : [];
 
   return {
     schema: VERIFY_SCHEMA,
@@ -4023,6 +4036,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     run: runInput,
     bundlePath: path.relative(cwd, bundlePath),
     checks,
+    warnings,
     ...(ok
       ? {}
       : {
@@ -4766,6 +4780,78 @@ async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle
   }
 
   return findings;
+}
+
+// Trace item kinds that show the actor DID something (drove UI, ran a command, called a tool,
+// changed a file). reasoning/screenshot/plan/notice items are observation, not engagement.
+const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set(["ui_action", "command", "tool_call", "file_change"]);
+
+/**
+ * Independent mirror of the producer-side no-engagement guard (cua-actor-lab.ts): a LIVE actor
+ * trace claiming goal_satisfied while carrying zero action-bearing items AND zero message items
+ * is a hollow run — the actor neither did nor said anything — and must not verify as evidence
+ * (invariant 4: evidence verifies fail-closed). Live-vs-dry-run is judged exactly as the
+ * producer judges it, from bundle.mode alone; dry-run/contract bundles legitimately carry no
+ * actions and stay exempt. Engagement is accepted from EITHER surface — itemized trace items or
+ * the producer's counts — because providers differ in what they itemize; the hollow-run
+ * regression class (the 0.3.0–0.6.0 CUA parser bug) reports zero on both. The trace is read
+ * defensively: isRunStream does not validate the actor seam, and verify must not throw on a
+ * malformed one.
+ */
+function noEngagementActorFindings(bundle: RunBundle): string[] {
+  if (bundle.mode !== "live") {
+    return [];
+  }
+
+  const findings: string[] = [];
+  for (const stream of bundle.streams) {
+    const trace: unknown = stream.actor;
+    if (!isRecord(trace) || trace.schema !== ACTOR_TRACE_SCHEMA || trace.completionReason !== "goal_satisfied") {
+      continue;
+    }
+    const items = Array.isArray(trace.items) ? trace.items : [];
+    const counts = isRecord(trace.counts) ? trace.counts : {};
+    const countOf = (key: string): number => {
+      const value = counts[key];
+      return typeof value === "number" && Number.isFinite(value) ? value : 0;
+    };
+    const engaged = countOf("actions") > 0
+      || countOf("messages") > 0
+      || items.some((item) =>
+        isRecord(item)
+        && typeof item.kind === "string"
+        && (item.kind === "message" || ACTION_BEARING_ACTOR_ITEM_KINDS.has(item.kind)));
+    if (!engaged) {
+      const provider = typeof trace.provider === "string" ? trace.provider : "unknown provider";
+      findings.push(`${stream.id} live actor trace (${provider}) claims goal_satisfied with zero actions and zero messages`);
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * redaction.screenshots: "raw" is the SUPPORTED local default (full-fidelity frames in
+ * gitignored .mimetic), not a verify failure — but ok: true must never read as "share-ready",
+ * so verify surfaces the posture as a warning in both human and JSON output. Read defensively
+ * for the same reason as noEngagementActorFindings.
+ */
+function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
+  const rawStreamIds: string[] = [];
+  for (const stream of bundle.streams) {
+    const trace: unknown = stream.actor;
+    if (isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw") {
+      rawStreamIds.push(stream.id);
+    }
+  }
+
+  if (rawStreamIds.length === 0) {
+    return [];
+  }
+
+  return [
+    `Screenshots are FULL-FIDELITY (raw) on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`
+  ];
 }
 
 const riskyPublicArtifactPathSegments = new Set([

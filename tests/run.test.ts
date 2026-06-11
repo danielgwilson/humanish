@@ -4,12 +4,16 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
+import type { CuaLoopResult } from "../src/computer-use.js";
+import { buildCuaBundle } from "../src/cua-actor-lab.js";
 import { renderObserver } from "../src/observer.js";
 import { createProgram } from "../src/program.js";
 import { startCodexAppServerUi } from "../src/codex-app-server-ui.js";
 import {
   PUBLIC_TARGET_CWD,
   RUN_BUNDLE_SCHEMA,
+  buildRunSource,
   listRuns,
   readReview,
   runDryRun,
@@ -2134,6 +2138,168 @@ describe("dry-run bundles", () => {
       expect(verify.exitCode).toBe(0);
       const verifyResult = JSON.parse(verify.stdout) as { ok: boolean };
       expect(verifyResult.ok).toBe(true);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Verify hardening: the independent verifier upholds invariant 4 on its own.
+// It re-derives the producer-side no-engagement judgment from bundle data
+// alone (bundle.mode + the provider-neutral actor trace) instead of trusting
+// the producer's self-attested verdict, and it surfaces the raw-screenshot
+// posture so ok: true never reads as "share-ready". Fixtures are built with
+// the real producer's bundle builder so the shape tracks the producer.
+// ---------------------------------------------------------------------------
+
+function cuaActorTrace(args: {
+  screenshots?: ActorTrace["redaction"]["screenshots"];
+  counts?: Record<string, number>;
+  items?: ActorTrace["items"];
+}): ActorTrace {
+  return {
+    schema: ACTOR_TRACE_SCHEMA,
+    provider: "openai-responses-cu",
+    protocol: "cua-loop",
+    lane: "computer-use",
+    persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
+    redaction: {
+      status: "passed",
+      screenshots: args.screenshots ?? "blurred",
+      notes: "synthetic public-safe test trace"
+    },
+    startedAt: "2026-01-01T00:00:00.000Z",
+    completedAt: "2026-01-01T00:00:05.000Z",
+    durationMs: 5_000,
+    status: "passed",
+    completionReason: "goal_satisfied",
+    reason: "model reported a natural endpoint with no further action",
+    ids: { model: "computer-use-preview" },
+    counts: args.counts ?? { turns: 1, actions: 0, screenshots: 0, reasonings: 0, messages: 0, idleTurns: 0, noProgressTurns: 0 },
+    items: args.items ?? [],
+    capabilities: {
+      headless: true,
+      structuredTrace: true,
+      lanes: ["computer-use"],
+      producesScreenshots: true,
+      byoModel: false,
+      preGrantableApprovals: false,
+      inProcessTools: false,
+      license: "proprietary"
+    }
+  };
+}
+
+async function writeCuaRunFixture(
+  cwd: string,
+  runId: string,
+  args: { dryRun: boolean; trace?: ActorTrace }
+): Promise<void> {
+  const session: CuaLoopResult | undefined = args.trace
+    ? {
+        status: args.trace.status,
+        completionReason: args.trace.completionReason,
+        reason: args.trace.reason,
+        trace: args.trace
+      }
+    : undefined;
+  const bundle = buildCuaBundle({
+    actorId: "openai-computer-use",
+    appUrl: "http://127.0.0.1:3000/",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    dryRun: args.dryRun,
+    labId: "verify-hardening-proof",
+    mission: "Explore the app and stop.",
+    persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
+    resolution: [1440, 960],
+    runId,
+    screenshots: [],
+    ...(session ? { session, traceArtifactPath: "actor.json" } : {}),
+    source: await buildRunSource({ cwd, mimeticSource: "present", packageName: "mimetic-cli" })
+  });
+  const runDir = path.join(cwd, ".mimetic", "runs", runId);
+  await mkdir(runDir, { recursive: true });
+  await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeFile(path.join(runDir, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
+  await writeFile(path.join(runDir, "review.md"), `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`, "utf8");
+  await writeFile(path.join(runDir, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  if (session) {
+    await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+  }
+}
+
+describe("verify hardening (no-engagement + screenshot posture)", () => {
+  it("FAILS a live goal_satisfied bundle whose actor trace has zero actions and zero messages (hollow run)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      // Shape mirrors the preserved pre-0.6.1 hollow-run bundles: mode live, status passed,
+      // completionReason goal_satisfied, counts and items empty of actions and messages.
+      await writeCuaRunFixture(cwd, "hollow-live-regression", { dryRun: false, trace: cuaActorTrace({}) });
+
+      const verify = await verifyRun(cwd, "hollow-live-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      const check = verify.checks.find((entry) => entry.name === "actor engagement");
+      expect(check?.ok).toBe(false);
+      expect(check?.message).toContain("zero actions and zero messages");
+      // Blurred screenshots carry no raw-posture warning; the failure stands on its own.
+      expect(verify.warnings).toEqual([]);
+    });
+  });
+
+  it("passes an engaged live bundle and surfaces raw screenshots as a warning, not a failure", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "raw-posture-live", {
+        dryRun: false,
+        trace: cuaActorTrace({
+          screenshots: "raw",
+          counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+          items: [
+            { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
+            { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
+          ]
+        })
+      });
+
+      const verify = await verifyRun(cwd, "raw-posture-live");
+      expect(verify.ok).toBe(true);
+      expect(verify.checks.find((entry) => entry.name === "actor engagement")?.ok).toBe(true);
+      expect(verify.warnings).toHaveLength(1);
+      expect(verify.warnings[0]).toContain("FULL-FIDELITY (raw)");
+      expect(verify.warnings[0]).toContain("NOT publish-safe");
+
+      // The CLI must show the posture in BOTH output modes.
+      const json = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd, "--json"]);
+      expect(json.exitCode).toBe(0);
+      expect((JSON.parse(json.stdout) as { warnings: string[] }).warnings[0]).toContain("FULL-FIDELITY (raw)");
+      const human = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd]);
+      expect(human.exitCode).toBe(0);
+      expect(human.stdout).toContain("warning: Screenshots are FULL-FIDELITY (raw)");
+    });
+  });
+
+  it("a single message with zero actions is engagement (look-and-report missions stay valid)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "message-only-live", {
+        dryRun: false,
+        trace: cuaActorTrace({
+          counts: { turns: 1, actions: 0, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+          items: [{ id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "The heading reads: Example." }]
+        })
+      });
+
+      const verify = await verifyRun(cwd, "message-only-live");
+      expect(verify.ok).toBe(true);
+      expect(verify.checks.find((entry) => entry.name === "actor engagement")?.ok).toBe(true);
+    });
+  });
+
+  it("keeps passing dry-run/contract bundles that carry zero actions by design", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "dryrun-contract-cua", { dryRun: true });
+
+      const verify = await verifyRun(cwd, "dryrun-contract-cua");
+      expect(verify.ok).toBe(true);
+      expect(verify.checks.every((entry) => entry.ok)).toBe(true);
+      expect(verify.warnings).toEqual([]);
     });
   });
 });

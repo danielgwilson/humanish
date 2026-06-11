@@ -525,6 +525,12 @@ describe("runCuaActorLab", () => {
     expect(result.ok).toBe(false);
     expect(result.error?.message.toLowerCase()).toContain("no actions");
     expect(result.warnings.some((w) => w.includes("ZERO actions"))).toBe(true);
+
+    // The independent verifier reaches the same judgment from the persisted bundle alone —
+    // a hollow bundle must not verify ok even though the producer wrote redaction: passed.
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(false);
+    expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(false);
   });
 
   it("device preset drives the E2B desktop resolution + tells the model it's mobile (sim-parity)", async () => {
