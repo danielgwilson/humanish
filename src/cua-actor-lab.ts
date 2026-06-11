@@ -13,9 +13,13 @@
 //   the caller's environment and are never logged or persisted.
 // - The live stream URL is runtime-only (carries an auth key) and is never persisted into run
 //   artifacts — only its presence is recorded, mirroring the meta lab's convention.
-// - Evidence is redacted at the loop boundary (blurred screenshots, length-only typed text);
+// - Evidence redaction is mode-aware (docs/principles/invariants-and-defaults.md, the
+//   capture-vs-publish rule): screenshots persist RAW (full fidelity) by default into gitignored
+//   .mimetic/; `policies.redactScreenshots: true` opts into blur-at-capture for a share-as-is
+//   bundle. Length-only typed text and text redaction of reasoning/messages are UNCONDITIONAL;
 //   harness errors are redacted at THIS boundary; the bundle's `stream.actor` carries the
-//   conformant mimetic.actor-trace.v1 projection.
+//   conformant mimetic.actor-trace.v1 projection, whose `redaction.screenshots` records the
+//   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
 import { randomBytes, createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -515,6 +519,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     isMobile: devicePreset.isMobile,
     runId,
     screenshots,
+    captureRedaction: config.policies?.redactScreenshots === true ? "blurred" : "raw",
     ...(session ? { session } : {}),
     ...(sessionError ? { sessionError } : {}),
     source,
@@ -543,7 +548,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
   if (session?.trace.redaction.screenshots === "raw") {
-    warnings.push("Screenshots are full-fidelity (raw) for local use — gitignored under .mimetic and blocked from commit by the binary-asset scan. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+    warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .mimetic and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
   }
 
   // Honesty guard: a "goal_satisfied" with ZERO actions and ZERO messages is not a credible
@@ -775,6 +780,13 @@ export function buildCuaBundle(args: {
   isMobile?: boolean;
   runId: string;
   screenshots: string[];
+  /**
+   * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
+   * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
+   * wins; this fallback keeps labels honest for frames written before a mid-session failure
+   * (no trace exists to testify then). Defaults to "raw" — the engine default.
+   */
+  captureRedaction?: "raw" | "blurred";
   session?: CuaLoopResult;
   sessionError?: string;
   source: RunBundle["source"];
@@ -791,6 +803,15 @@ export function buildCuaBundle(args: {
     ?? args.sessionError
     ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
   const lastScreenshot = args.screenshots[args.screenshots.length - 1];
+
+  // Honest labels (invariant 6: claims match mechanism): every screenshot label names the
+  // run's ACTUAL mode. The session trace is the evidence-of-record; the capture policy covers
+  // frames written before a mid-session failure produced a trace.
+  const traceScreenshotMode = args.session?.trace.redaction.screenshots;
+  const screenshotMode: "raw" | "blurred" =
+    traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
+      ? traceScreenshotMode
+      : args.captureRedaction ?? "raw";
 
   const simulation: RunSimulation = {
     id: "sim-001",
@@ -821,7 +842,7 @@ export function buildCuaBundle(args: {
     transport: "snapshot",
     updatedAt: args.createdAt,
     embed: lastScreenshot
-      ? { kind: "screenshot", url: lastScreenshot, title: "CUA desktop (redacted)" }
+      ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
       : { kind: "placeholder", title: "CUA desktop" },
     viewport: {
       width: args.resolution[0],
@@ -846,7 +867,7 @@ export function buildCuaBundle(args: {
         ? [{ label: "actor trace", path: args.traceArtifactPath, kind: "trace" as const }]
         : []),
       ...args.screenshots.map((screenshot, index) => ({
-        label: `screenshot ${String(index + 1).padStart(2, "0")} (redacted)`,
+        label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
         path: screenshot,
         kind: "screenshot" as const
       }))
@@ -960,9 +981,13 @@ export function buildCuaBundle(args: {
     events,
     redaction: {
       status: "passed",
-      notes: args.session?.trace.redaction.screenshots === "raw"
+      notes: traceScreenshotMode === "raw"
         ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
-        : "Computer-use evidence is redacted at the loop boundary: screenshots are blurred fail-closed, typed text is recorded as length only, and reasoning/messages pass through text redaction."
+        : traceScreenshotMode === "blurred"
+          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
+          : args.screenshots.length > 0
+            ? `Session ended before a trace was recorded; ${args.screenshots.length} already-written frame(s) follow the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
+            : "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
     },
     artifacts: {
       run: "run.json",
@@ -1003,7 +1028,13 @@ function renderCuaReviewMarkdown(bundle: RunBundle): string {
     ...(trace
       ? [
           `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
-          `- evidence: ${trace.items.length} trace item(s), ${trace.counts.screenshots ?? 0} redacted screenshot(s)`
+          // Honest count: name the trace's actual screenshot mode ("raw" | "blurred"); say
+          // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
+          `- evidence: ${trace.items.length} trace item(s), ${trace.counts.screenshots ?? 0} ${
+            trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
+              ? `${trace.redaction.screenshots} screenshot(s)`
+              : "screenshot(s)"
+          }`
         ]
       : []),
     ...(bundle.review.gaps.length > 0 ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)] : []),

@@ -382,11 +382,34 @@ describe("runCuaActorLab", () => {
       }
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const runDir = path.join(cwd, ".mimetic", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("raw");
     expect(bundle.streams[0].actor.items.filter((i: { kind: string }) => i.kind === "screenshot")
       .every((i: { screenshotRef?: { redaction: string } }) => i.screenshotRef?.redaction === "none")).toBe(true);
     expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity") || w.toLowerCase().includes("raw"))).toBe(true);
+
+    // Honest labels (invariant 6): a raw run must never be labeled "redacted" anywhere.
+    expect(bundle.streams[0].embed.title).toBe("CUA desktop (raw)");
+    const screenshotLabels = bundle.streams[0].artifacts
+      .filter((a: { kind: string }) => a.kind === "screenshot")
+      .map((a: { label: string }) => a.label);
+    expect(screenshotLabels.length).toBeGreaterThan(0);
+    expect(screenshotLabels.every((label: string) => label.endsWith("(raw)"))).toBe(true);
+    expect(bundle.redaction.notes).toContain("FULL-FIDELITY (raw)");
+    const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
+    expect(reviewMd).toMatch(/\d+ raw screenshot\(s\)/);
+    for (const text of [JSON.stringify(bundle), reviewMd]) {
+      expect(text).not.toContain("(redacted)");
+      expect(text).not.toContain("redacted screenshot");
+    }
+    // The raw warning must not promise a commit-blocking scan downstream users do not have
+    // (the binary-asset scan is mimetic-cli's own CI, not part of the package).
+    const rawWarning = outcome.result.warnings.find((w) => w.includes("full-fidelity"));
+    expect(rawWarning).toContain(".mimetic");
+    expect(rawWarning).toContain("review");
+    expect(rawWarning).not.toContain("binary-asset scan");
+    expect(rawWarning).not.toContain("blocked from commit");
   });
 
   it("policies.redactScreenshots: true persists blurred screenshots and drops the raw warning", async () => {
@@ -404,9 +427,22 @@ describe("runCuaActorLab", () => {
       }
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const runDir = path.join(cwd, ".mimetic", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("blurred");
     expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity"))).toBe(false);
+
+    // Honest labels (invariant 6): the blurred mode is named as such, not a vague "redacted".
+    expect(bundle.streams[0].embed.title).toBe("CUA desktop (blurred)");
+    const screenshotLabels = bundle.streams[0].artifacts
+      .filter((a: { kind: string }) => a.kind === "screenshot")
+      .map((a: { label: string }) => a.label);
+    expect(screenshotLabels.length).toBeGreaterThan(0);
+    expect(screenshotLabels.every((label: string) => label.endsWith("(blurred)"))).toBe(true);
+    expect(bundle.redaction.notes).toContain("blurred at capture");
+    const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
+    expect(reviewMd).toMatch(/\d+ blurred screenshot\(s\)/);
+    expect(reviewMd).not.toContain("redacted screenshot");
   });
 
   it("policies.allowPublicTargets lets the engine drive a declared public app-url target", async () => {
@@ -1079,11 +1115,48 @@ describe("buildCuaBundle", () => {
     expect(bundle.review.gaps.length).toBeGreaterThan(0);
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simCount).toBe(1);
+    // Honest no-session notes: zero frames exist, so no redaction (blur OR raw) is claimed.
+    expect(bundle.redaction.notes).toContain("No screenshots captured");
+    expect(bundle.redaction.notes).not.toContain("blurred fail-closed");
     // Stream artifact references are unique and relative (verifyRun's evidence rules).
     const keys = bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
     expect(new Set(keys).size).toBe(keys.length);
     for (const artifact of bundle.streams[0]?.artifacts ?? []) {
       expect(path.isAbsolute(artifact.path)).toBe(false);
     }
+  });
+
+  it("labels mid-failure frames by capture policy when the session died before a trace existed", () => {
+    // A session can throw after frames were already written: no trace exists to testify, so
+    // the labels fall back to the capture-time policy the lab actually ran with.
+    const base = {
+      actorId: "openai-computer-use",
+      appUrl: "http://127.0.0.1:3000/",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      dryRun: false,
+      labId: "shape-proof",
+      mission: "Explore.",
+      persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
+      resolution: [1440, 960] as [number, number],
+      runId: "cua-test-run",
+      screenshots: ["screenshots/turn-001.png"],
+      sessionError: "provider exploded mid-loop",
+      source: {
+        packageName: "mimetic-cli",
+        mimeticSource: "present" as const,
+        git: { schema: "mimetic.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
+      }
+    };
+
+    const blurred = buildCuaBundle({ ...base, captureRedaction: "blurred" });
+    expect(blurred.streams[0]?.embed?.title).toBe("CUA desktop (blurred)");
+    expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(true);
+    expect(blurred.redaction.notes).toContain("capture policy (blurred)");
+
+    const raw = buildCuaBundle({ ...base, captureRedaction: "raw" });
+    expect(raw.streams[0]?.embed?.title).toBe("CUA desktop (raw)");
+    expect(raw.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (raw)")).toBe(true);
+    expect(raw.redaction.notes).toContain("capture policy (raw)");
+    expect(JSON.stringify(raw)).not.toContain("(redacted)");
   });
 });

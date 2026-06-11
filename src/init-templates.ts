@@ -152,8 +152,10 @@ defaults:
 id: cua-browser
 title: Computer-use browser lab
 description: >-
-  A registered computer-use actor drives your app in a hosted desktop browser and emits a
-  redacted evidence bundle. Dry-run by default; switch scenario.mode to live (with
+  A registered computer-use actor drives your app in a hosted desktop browser and emits an
+  evidence bundle into gitignored .mimetic/. Screenshots are full-fidelity (raw) by default;
+  set policies.redactScreenshots: true to blur at capture for a share-as-is bundle. Typed
+  text is recorded as length only. Dry-run by default; switch scenario.mode to live (with
   OPENAI_API_KEY + E2B_API_KEY via --env-file) for a real session. The clone subject below
   serves your repo INSIDE the sandbox; declared subject env NAMES are provisioned from
   --env-file (values are never persisted).

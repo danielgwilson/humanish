@@ -34,15 +34,27 @@ for skills.sh discovery.
 
 ## Public-Safety Boundary
 
-Mimetic is designed for public repositories and public issue queues.
+Mimetic is designed for public repositories and public issue queues. The
+boundary is three planks, each enforced where it actually holds:
 
-Do not commit, emit, paste, preserve, or generate PII, PHI, secrets, keys,
-tokens, raw private transcripts, private screenshots, private customer data,
-private patient data, or private source snippets.
+**1. This repo and the published package are kept public-safe by CI.** Every
+push runs a public-surface scan (secret/key/path shapes, a sha256 binary-asset
+allowlist, over both tracked files and the packed npm payload) plus a
+full-history gitleaks scan. That protects what we ship — it does not scan your
+repo.
 
-Use synthetic personas, synthetic examples, redacted evidence pointers, and
-env var names without values. Generated run bundles belong under ignored
-`.mimetic/`.
+**2. The harness never persists secret values into run artifacts.** On every
+route, values it provisioned are scrubbed by literal match (they have no shape
+for patterns to catch) and secret-shaped content is pattern-redacted before any
+log tail, harness error, or model narration lands on disk. Env var names are
+evidence; values never are. Pixels are the exception: a raw screenshot shows
+whatever was on screen, which is why plank 3 exists.
+
+**3. Run bundles are local by default.** Evidence lands under gitignored
+`.mimetic/`, and no command publishes it for you. Sharing evidence — committing
+screenshots, pasting transcripts, attaching bundles to issues — is a deliberate
+act, and reviewing what you share is on you. Use synthetic personas and
+synthetic data so there is nothing sensitive to capture in the first place.
 
 **What the automated gate enforces.** `mimetic verify` scans public-bound
 artifacts and fails closed on secret, key, and token shapes and on known local
@@ -131,9 +143,10 @@ or Observer data.
 
 A computer-use lab dispatches a **registered computer-use actor** (`actors[0].type`,
 resolved against the actor registry — e.g. `openai-computer-use`) to drive an app in
-a hosted E2B desktop browser and emit a redacted evidence bundle (blurred
-screenshots, length-only typed text, provider-neutral `mimetic.actor-trace.v1` on
-the stream). Two subjects route here:
+a hosted E2B desktop browser and emit an evidence bundle under gitignored
+`.mimetic/` (full-fidelity screenshots by default — see below; length-only typed
+text; provider-neutral `mimetic.actor-trace.v1` on the stream). Two subjects route
+here:
 
 - **`subject.source: clone`** (+ `execution.target: e2b-desktop` + a computer-use
   actor): the lab clones your repo INTO the sandbox, runs your declared
@@ -177,9 +190,9 @@ only declared subject env names do. `mimetic init` scaffolds an example at
 `.mimetic/`, so the Observer shows exactly what the persona saw — the point of
 simming your own app. Set `policies.redactScreenshots: true` to persist blurred
 thumbnails at capture instead (for unowned subjects, or bundles you intend to share
-as-is). Raw bundles are gitignored and blocked from commit by the binary-asset scan;
-a redact-on-export step for sharing a raw bundle is planned. The frame sent to the
-model is always full-resolution regardless. (Doctrine:
+as-is). Raw bundles stay local in gitignored `.mimetic/`; nothing scans the pixels,
+so review them before sharing anywhere — a redact-on-export step is planned. The
+frame sent to the model is always full-resolution regardless. (Doctrine:
 `docs/principles/invariants-and-defaults.md` — redaction binds the publish boundary,
 not capture.)
 
