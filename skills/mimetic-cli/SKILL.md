@@ -131,15 +131,24 @@ tokens into scenario files.
 Create reusable simulation runs as `.yaml` lab manifests:
 
 ```yaml
-schema: mimetic.lab.v1
+schema: mimetic.lab.v2
 id: first-run
-kind: synthetic
 title: First-run synthetic Observer
-sims: 4
+subject:
+  source: this-repo
+actors:
+  - type: synthetic-persona
+    count: 4
+scenario:
+  mode: dry-run
 defaults:
-  dryRun: true
   open: true
 ```
+
+A lab is a composition (`subject` × `actors` × `execution` × `scenario` ×
+`policies`), not a hardcoded kind; there is no v1 compatibility. Run
+`npx mimetic lab inspect <lab>` to see how a manifest parses, including
+warnings for fields the engine does not consume yet.
 
 Use committed `mimetic/labs/*.yaml` for public-safe, reproducible labs. Use
 ignored `.mimetic/labs/*.yaml` or `.mimetic/local/labs/*.yaml` for private repo
