@@ -2314,6 +2314,7 @@ async function runLocalCodexExec(options: RunOptions & {
     warnings.push("Committed mimetic/ source was not found; using built-in synthetic local actor defaults.");
   }
   warnings.push(...selection.warnings);
+  const verdictNonce = randomUUID().slice(0, 12);
   const events: RunEvent[] = [];
   const pushEvent = (
     type: string,
@@ -2359,7 +2360,7 @@ async function runLocalCodexExec(options: RunOptions & {
     const focus = localCodexExecFocus(index);
     const simId = `sim-${String(index + 1).padStart(2, "0")}`;
     const streamId = `${simId}-codex-exec`;
-    const prompt = buildLocalCodexExecPrompt(selection, {
+    const prompt = buildLocalCodexExecPrompt(selection, verdictNonce, {
       focus,
       index: index + 1,
       total: options.simCount
@@ -2451,7 +2452,8 @@ async function runLocalCodexExec(options: RunOptions & {
   const laneResults = await mapWithConcurrency(lanes, maxConcurrency, async (lane): Promise<ExecLaneResult> => {
     const actor = await executeLocalActorCommand(lane.command, {
       cwd: options.cwd,
-      timeoutMs
+      timeoutMs,
+      verdictNonce
     });
     const redactedTranscript = redactSensitiveText(actor.transcript);
     const tail = tailText(redactedTranscript, 6_000);
@@ -2470,6 +2472,7 @@ async function runLocalCodexExec(options: RunOptions & {
       commandName: lane.command.name,
       focusId: lane.focus.id,
       promptDigest: lane.promptDigest,
+      verdictNonce,
       startedAt: createdAt,
       completedAt: new Date().toISOString(),
       durationMs: actor.durationMs,
@@ -3313,7 +3316,7 @@ function executeLocalActorCommand(
   options: {
     cwd: string;
     timeoutMs: number;
-    verdictNonce?: string;
+    verdictNonce: string;
   }
 ): Promise<LocalActorCommandResult> {
   const startedAt = Date.now();
@@ -3351,7 +3354,7 @@ function executeLocalActorCommand(
         TERM: process.env.TERM ?? "xterm-256color",
         COLUMNS: process.env.COLUMNS ?? "120",
         LINES: process.env.LINES ?? "40",
-        ...(options.verdictNonce ? { MIMETIC_ACTOR_VERDICT_NONCE: options.verdictNonce } : {})
+        MIMETIC_ACTOR_VERDICT_NONCE: options.verdictNonce
       },
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -3481,14 +3484,15 @@ function normalizeLocalActorTranscript(transcript: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
-function extractLocalActorVerdict(transcript: string, verdictNonce?: string): LocalActorTerminalStatus | null {
+function extractLocalActorVerdict(transcript: string, verdictNonce: string): LocalActorTerminalStatus | null {
   const compactTranscript = transcript.replace(/\s+/g, "");
-  const match = verdictNonce
-    ? new RegExp(
-      `MIMETIC_ACTOR_VERDICT=(passed|blocked|failed)MIMETIC_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
-      "i"
-    ).exec(compactTranscript)
-    : /MIMETIC_ACTOR_VERDICT=(passed|blocked|failed)/i.exec(compactTranscript);
+  // The per-run nonce is mandatory: a bare MIMETIC_ACTOR_VERDICT=<status>
+  // marker echoed by an actor (or replayed from untrusted text) must never
+  // satisfy verdict extraction.
+  const match = new RegExp(
+    `MIMETIC_ACTOR_VERDICT=(passed|blocked|failed)MIMETIC_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
+    "i"
+  ).exec(compactTranscript);
   if (!match) {
     return null;
   }
@@ -3744,7 +3748,7 @@ function buildLocalCodexExecPrompt(selection: {
   persona: RunBundle["persona"];
   resolvedPersona: ResolvedPersona;
   scenario: RunBundle["scenario"];
-}, lane?: {
+}, verdictNonce: string, lane?: {
   focus: LocalCodexExecFocus;
   index: number;
   total: number;
@@ -3763,10 +3767,16 @@ function buildLocalCodexExecPrompt(selection: {
     `Suggested commands: \`${suggestedCommands[0]}\` and \`${suggestedCommands[1]}\`.`,
     "Do not edit files, do not run network commands, do not commit, do not push, do not open GitHub issues, and do not print secrets.",
     "Do not inspect additional files unless one suggested command fails.",
-    "Finish within three sentences with exactly one public-safe verdict line using passed, blocked, or failed."
+    "Finish within three public-safe sentences.",
+    `Then print exactly one final machine-readable line in this format: MIMETIC_ACTOR_VERDICT=<status> MIMETIC_ACTOR_NONCE=${verdictNonce}.`,
+    "Replace <status> with exactly one lowercase word: passed, blocked, or failed."
   ].join(" ");
 }
 
+// The app-server lane intentionally carries no verdict nonce: its verdict
+// comes from the structured turn/completed status on the app-server JSON-RPC
+// channel (see codex-app-server.ts), never from MIMETIC_ACTOR_VERDICT marker
+// extraction, so transcript text cannot set the run verdict on that lane.
 function buildLocalCodexAppServerPrompt(selection: {
   persona: RunBundle["persona"];
   resolvedPersona: ResolvedPersona;
