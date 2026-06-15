@@ -63,11 +63,15 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // deterministic local replay, no model.
     return "scripted";
   }
-  if (routesToComputerUse(config) || config.subject.source === "app-url") {
-    // app-url subjects with a computer-use actor, and clone x e2b-desktop subjects whose first
-    // actor resolves to a registered computer-use actor (the lab clones AND serves the app
-    // in-sandbox). The bare app-url fallback keeps library-API configs with unknown actor
-    // types routing to the cua backend's fail-closed MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED.
+  if (routesToComputerUse(config)
+    || config.subject.source === "app-url"
+    || config.subject.source === "local-app") {
+    // app-url subjects with a computer-use actor, local-app subjects (an already-running local
+    // dev server driven in-process via a custom executor), and clone x e2b-desktop subjects
+    // whose first actor resolves to a registered computer-use actor (the lab clones AND serves
+    // the app in-sandbox). The bare app-url/local-app fallback keeps library-API configs with
+    // unknown actor types routing to the cua backend's fail-closed MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED
+    // (and, for local-app without hooks, MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR).
     return "cua";
   }
   if (config.subject.source === "clone") {

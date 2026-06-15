@@ -5,7 +5,9 @@ import type { ActorCapabilities, ActorPersonaRef } from "../src/actor-contract.j
 import {
   describeCuaAction,
   runComputerUseLoop,
+  stableProgressKey,
   type CuaExecutor,
+  type CuaObservation,
   type CuaProvider,
   type CuaTurn,
   type CuaTurnRequest
@@ -431,5 +433,278 @@ describe("runComputerUseLoop", () => {
 
     expect(result.completionReason).toBe("harness_error");
     expect(result.status).toBe("failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Issue #148: state-driven (non-vision) executors. RUNG 2 (appState-preferred progress,
+// no-screenshot persistence, redaction.notes self-describes appState) and RUNG 3 (a
+// requiresFrame provider against a screenshot-less observation fails closed).
+// ---------------------------------------------------------------------------
+
+// A non-vision executor: returns NO screenshot and a (configurable) appState per turn, with a
+// constant stateSignature so progress can ONLY come from the appState delta.
+class StateExecutor implements CuaExecutor {
+  private i = 0;
+  readonly observed: CuaObservation[] = [];
+  constructor(
+    private readonly appStates: Array<Record<string, unknown>>,
+    private readonly stateSignature = "constant-sig"
+  ) {}
+  async observe(): Promise<CuaObservation> {
+    const appState = this.appStates[Math.min(this.i, this.appStates.length - 1)] ?? {};
+    this.i += 1;
+    const obs: CuaObservation = { stateSignature: this.stateSignature, appState };
+    this.observed.push(obs);
+    return obs;
+  }
+  async execute(): Promise<void> {}
+}
+
+// A state-reasoning provider: omits requiresFrame (defaults falsey) and reasons over appState.
+class StateProvider implements CuaProvider {
+  readonly id = "fake-state-brain";
+  readonly version = "state-1";
+  readonly capabilities = FAKE_CAPS;
+  private i = 0;
+  constructor(private readonly turns: CuaTurn[]) {}
+  async nextTurn(): Promise<CuaTurn> {
+    const turn = this.turns[this.i];
+    this.i += 1;
+    return turn ?? { actions: [], pendingSafetyChecks: [], done: true, message: "done (exhausted)" };
+  }
+}
+
+describe("stableProgressKey (issue #148)", () => {
+  it("is order-independent: shuffled key order maps to the SAME key (no fabricated progress)", () => {
+    const a = stableProgressKey({ route: "/home", turn: 3, modal: null, unread: 2 });
+    const b = stableProgressKey({ unread: 2, modal: null, turn: 3, route: "/home" });
+    expect(a).toBe(b);
+  });
+
+  it("distinguishes genuinely different states", () => {
+    expect(stableProgressKey({ route: "/home" })).not.toBe(stableProgressKey({ route: "/inbox" }));
+  });
+
+  it("does NOT throw on a cyclic appState — it degrades to a bounded value", () => {
+    const cyclic: Record<string, unknown> = { route: "/home" };
+    cyclic.self = cyclic;
+    const key = stableProgressKey(cyclic);
+    expect(typeof key).toBe("string");
+    expect(key).toContain("[Circular]");
+  });
+
+  it("does NOT throw on a huge/deep appState — it caps to a bounded value", () => {
+    const huge: Record<string, unknown> = {};
+    for (let i = 0; i < 5000; i += 1) huge[`k${i}`] = "x".repeat(64);
+    let deep: Record<string, unknown> = { leaf: true };
+    for (let i = 0; i < 200; i += 1) deep = { nested: deep };
+    expect(() => stableProgressKey(huge)).not.toThrow();
+    expect(() => stableProgressKey(deep)).not.toThrow();
+    expect(stableProgressKey(huge).length).toBeLessThanOrEqual(8200);
+  });
+});
+
+describe("runComputerUseLoop with a state-driven (non-vision) executor (issue #148)", () => {
+  it("persists ZERO frames, resolves redaction.screenshots to n/a, and self-describes appState in redaction.notes", async () => {
+    const provider = new StateProvider([
+      { actions: [{ kind: "type", text: "hi" }], pendingSafetyChecks: [], done: false },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done" }
+    ]);
+    // Distinct appState per turn → progress; constant stateSignature throughout. The route
+    // values are deliberately distinctive so the runtime-only assertion below cannot false-match.
+    const executor = new StateExecutor([
+      { route: "/appstate-marker-one", turn: 1 },
+      { route: "/appstate-marker-two", turn: 2 }
+    ]);
+    const sink = recorder();
+
+    const result = await runComputerUseLoop({
+      instructions: "drive via state",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      writeScreenshot: sink.writeScreenshot
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    // (a) zero frames written, zero screenshot trace items, no Buffer.alloc(0) on disk.
+    expect(sink.written.length).toBe(0);
+    expect(result.trace.items.filter((i) => i.kind === "screenshot").length).toBe(0);
+    expect(result.trace.counts.screenshots).toBe(0);
+    // (b) redaction resolves to n/a.
+    expect(result.trace.redaction.screenshots).toBe("n/a");
+    // (c) redaction.notes self-describes the appState stance (doctrine fix 1, invariant 6).
+    expect(result.trace.redaction.notes).toContain("App state was observed");
+    expect(result.trace.redaction.notes).toContain("NOT written to the trace");
+    // appState is runtime-only: it must NEVER appear in the serialized trace.
+    expect(JSON.stringify(result.trace)).not.toContain('"route"');
+    expect(JSON.stringify(result.trace)).not.toContain("appstate-marker");
+  });
+
+  it("an appState delta drives progress even when the stateSignature is CONSTANT", async () => {
+    // 8 actuating turns then stop; appState changes every turn → never trips no-progress.
+    const turns: CuaTurn[] = [];
+    for (let i = 0; i < 8; i += 1) turns.push({ actions: [{ kind: "click", x: i, y: i }], pendingSafetyChecks: [], done: false });
+    turns.push({ actions: [], pendingSafetyChecks: [], done: true, message: "done" });
+    const provider = new StateProvider(turns);
+    const appStates = Array.from({ length: 9 }, (_, i) => ({ turn: i }));
+    const executor = new StateExecutor(appStates, "frozen-sig");
+
+    const result = await runComputerUseLoop({
+      instructions: "drive",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      noProgressSteps: 3
+    });
+
+    // A constant stateSignature would have tripped gave_up at step 3; the appState delta saved it.
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.trace.counts.noProgressTurns ?? 0).toBe(0);
+  });
+
+  it("the inverse trips the backstop: a CONSTANT appState (and constant signature) gives up on no progress", async () => {
+    const provider = new RepeatProvider({ actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false });
+    // Same appState object every turn → progressKey never changes.
+    const executor = new StateExecutor([{ turn: "frozen" }], "frozen-sig");
+
+    const result = await runComputerUseLoop({
+      instructions: "drive",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      noProgressSteps: 3
+    });
+
+    expect(result.completionReason).toBe("gave_up");
+    expect(result.reason).toContain("no change");
+  });
+
+  it("shuffled-key-order appState across turns is NOT progress (gives up)", async () => {
+    const provider = new RepeatProvider({ actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false });
+    // Same content, different key insertion order each turn — must NOT register as progress.
+    const executor = new StateExecutor(
+      [
+        { route: "/x", turn: 1, modal: null },
+        { modal: null, turn: 1, route: "/x" },
+        { turn: 1, route: "/x", modal: null },
+        { route: "/x", modal: null, turn: 1 }
+      ],
+      "frozen-sig"
+    );
+
+    const result = await runComputerUseLoop({
+      instructions: "drive",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      noProgressSteps: 3
+    });
+
+    expect(result.completionReason).toBe("gave_up");
+  });
+
+  it("an oversized/cyclic appState does NOT crash the loop (bounded progress key)", async () => {
+    const provider = new StateProvider([
+      { actions: [{ kind: "type", text: "x" }], pendingSafetyChecks: [], done: false },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done" }
+    ]);
+    const cyclic: Record<string, unknown> = { route: "/home" };
+    cyclic.self = cyclic;
+    const huge: Record<string, unknown> = {};
+    for (let i = 0; i < 3000; i += 1) huge[`k${i}`] = i;
+    const executor = new StateExecutor([cyclic, huge], "frozen-sig");
+
+    const result = await runComputerUseLoop({
+      instructions: "drive",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock()
+    });
+
+    // No throw → the loop produced a terminal verdict.
+    expect(["goal_satisfied", "gave_up"]).toContain(result.completionReason);
+  });
+});
+
+describe("runComputerUseLoop vision-provider frame guard (issue #148, RUNG 3)", () => {
+  it("a requiresFrame provider against a screenshot-less observation fails closed with the named reason (not a crash)", async () => {
+    // A vision provider (requiresFrame: true) paired with a state-only executor (no screenshot).
+    class VisionProvider implements CuaProvider {
+      readonly id = "vision-needs-frame";
+      readonly version = "v1";
+      readonly capabilities = FAKE_CAPS;
+      readonly requiresFrame = true;
+      async nextTurn(): Promise<CuaTurn> {
+        return { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false };
+      }
+    }
+    const provider = new VisionProvider();
+    const executor = new StateExecutor([{ turn: 1 }]);
+    const sink = recorder();
+
+    const result = await runComputerUseLoop({
+      instructions: "drive",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      writeScreenshot: sink.writeScreenshot
+    });
+
+    expect(result.completionReason).toBe("harness_error");
+    expect(result.status).toBe("failed");
+    expect(result.reason).toContain("vision-needs-frame");
+    expect(result.reason).toContain("requires a screenshot frame");
+    // Failed before any frame was persisted.
+    expect(sink.written.length).toBe(0);
+  });
+
+  it("a requiresFrame provider WITH a screenshot behaves normally (no false trip)", async () => {
+    class VisionProvider implements CuaProvider {
+      readonly id = "vision-with-frame";
+      readonly version = "v1";
+      readonly capabilities = FAKE_CAPS;
+      readonly requiresFrame = true;
+      private i = 0;
+      async nextTurn(): Promise<CuaTurn> {
+        this.i += 1;
+        return this.i >= 2
+          ? { actions: [], pendingSafetyChecks: [], done: true, message: "done" }
+          : { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false };
+      }
+    }
+    const provider = new VisionProvider();
+    const executor = new SignatureExecutor(["s0", "s1"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "drive",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock()
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
   });
 });

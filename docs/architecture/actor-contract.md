@@ -239,6 +239,19 @@ not cost — a live scripted run drives a real browser against a real running ap
 declaration as spend. "Live" on this route must never silently come to mean "costs money";
 this paragraph is the record of that decision.
 
+## The state-driven executor seam (shipped — the transport-agnostic intent, made real)
+
+The `CuaExecutor` / `CuaProvider` ports are the concrete realization of the "plural harnesses /
+transport-agnostic" intent above: the computer-use loop does not require a screen or a vision
+model. A library caller can drive an **already-running local app** through its in-process JS
+contract (`window.app.getState()` etc.) with a custom `CuaExecutor` (screenshot optional,
+`appState` as the progress signal) paired with a **non-vision** `CuaProvider` (`requiresFrame`
+falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
+[`state-driven-executor.md`](./state-driven-executor.md) for the port, both entry points
+(`runComputerUseLoop` and `runLab` + `buildExecutor`/`buildProvider`), the `subject.source:
+local-app` config surface, the `requiresFrame` provider-authoring contract, and the
+appState-is-runtime-only stance.
+
 ## Making personas load-bearing
 
 The bug, grounded in code: `loadDryRunSelection` (`src/run.ts`) parses persona

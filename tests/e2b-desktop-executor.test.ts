@@ -250,8 +250,11 @@ describe("createE2BDesktopExecutor.observe", () => {
     const executor = createE2BDesktopExecutor(desktop);
     const obs = await executor.observe();
     expect(calls).toEqual([{ method: "screenshot", args: [] }]);
+    // The E2B (vision) executor always produces a frame, even though CuaObservation.screenshot
+    // is now optional for non-vision executors.
+    expect(obs.screenshot).toBeDefined();
     expect(Buffer.isBuffer(obs.screenshot)).toBe(true);
-    expect(Buffer.compare(obs.screenshot, SHOT)).toBe(0);
+    expect(Buffer.compare(obs.screenshot ?? Buffer.alloc(0), SHOT)).toBe(0);
     expect(typeof obs.stateSignature).toBe("string");
     expect(obs.stateSignature.length).toBeGreaterThan(0);
     expect(obs.stateSignature).toBe(perceptualSignature(SHOT));
@@ -262,8 +265,9 @@ describe("createE2BDesktopExecutor.observe", () => {
     const { desktop } = makeFakeDesktop(u8);
     const executor = createE2BDesktopExecutor(desktop);
     const obs = await executor.observe();
+    expect(obs.screenshot).toBeDefined();
     expect(Buffer.isBuffer(obs.screenshot)).toBe(true);
-    expect(Buffer.compare(obs.screenshot, SHOT)).toBe(0);
+    expect(Buffer.compare(obs.screenshot ?? Buffer.alloc(0), SHOT)).toBe(0);
   });
 });
 
@@ -282,8 +286,9 @@ describe("await-correctness across sync and async desktops", () => {
     const { desktop } = makeFakeDesktop(SHOT, { sync: true });
     const executor = createE2BDesktopExecutor(desktop);
     const obs = await executor.observe();
+    expect(obs.screenshot).toBeDefined();
     expect(Buffer.isBuffer(obs.screenshot)).toBe(true);
-    expect(Buffer.compare(obs.screenshot, SHOT)).toBe(0);
+    expect(Buffer.compare(obs.screenshot ?? Buffer.alloc(0), SHOT)).toBe(0);
   });
 
   it("awaits an async write (typed text completes before execute resolves)", async () => {

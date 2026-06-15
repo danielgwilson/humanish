@@ -43,17 +43,41 @@ export type CuaAction =
   | { kind: "wait"; ms?: number }
   | { kind: "screenshot" };
 
-/** A captured desktop state: the raw frame plus a coarse signature for progress. */
+/** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
 export interface CuaObservation {
-  /** Raw PNG bytes of the current desktop. Redacted by the engine before persisting. */
-  screenshot: Buffer;
+  /**
+   * Raw PNG bytes of the current desktop. Redacted by the engine before persisting.
+   * OPTIONAL: a non-vision (state-driven) executor omits it, and the loop persists no
+   * screenshot that turn (counts.screenshots stays 0 → redaction.screenshots resolves to
+   * "n/a", no Buffer.alloc(0) ever reaches disk). A VISION provider REQUIRES it — see
+   * CuaProvider.requiresFrame, which trips a per-turn fail-closed harness_error when a frame
+   * is required but absent.
+   */
+  screenshot?: Buffer;
   /**
    * A coarse, quantized signature of the visible UI used for no-progress
    * detection. Two observations with the same signature are "no progress". The
    * executor owns how it is computed (url, title, quantized scroll, focused
-   * element, visible controls, etc.).
+   * element, visible controls, etc.). STILL REQUIRED — the canonical fallback progress key
+   * when appState is absent.
    */
   stateSignature: string;
+  /**
+   * Structured app state (e.g. a window.app.getState() projection). When present, friction
+   * detection prefers a stable, deterministic, sorted-key JSON projection of it
+   * (stableProgressKey) as the progress key, so route/turn/modal deltas drive progress more
+   * reliably than a quantized screenshot signature can on a pixel-dense UI.
+   *
+   * RUNTIME-ONLY in this slice: appState is NEVER copied into any ActorTraceItem, reason, id,
+   * or count, and is NEVER persisted to the trace — only the in-memory progress key is derived
+   * from it and discarded. A structured app blob has no detectable secret "shape" (the
+   * published-evidence scan catches only secret-shaped patterns), so it is treated exactly like
+   * stateSignature, which is itself never written as text. A future "appState in evidence"
+   * slice must route a stringified projection through redaction.redactText (and the lab's
+   * scrubText) AND cap/whitelist fields before persisting — pattern+literal redaction alone
+   * cannot sanitize an arbitrary blob.
+   */
+  appState?: Record<string, unknown>;
 }
 
 /**
@@ -105,6 +129,19 @@ export interface CuaProvider {
   readonly id: string;
   readonly version?: string;
   readonly capabilities: ActorCapabilities;
+  /**
+   * True when nextTurn requires `observation.screenshot` to be present (a VISION model that
+   * reasons over pixels). The OpenAI computer-use provider sets this; a state-reasoning
+   * provider omits it (defaults falsey).
+   *
+   * PROVIDER-AUTHORING CONTRACT: a vision provider MUST set `requiresFrame: true`. The loop
+   * uses it to convert what would otherwise be a silent blank-frame crash into a structured
+   * per-turn fail-closed `harness_error` when a screenshot-less executor is paired with a
+   * vision provider. Default-false is a known third-party-author footgun this slice accepts
+   * (only one vision provider exists today) but records — see
+   * docs/architecture/state-driven-executor.md.
+   */
+  readonly requiresFrame?: boolean;
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
 }
 
@@ -178,6 +215,89 @@ function isIdleTurn(actions: CuaAction[]): boolean {
   return actions.length === 0 || actions.every(isIdleAction);
 }
 
+// Caps for stableProgressKey. The progress key is a coarse turn-over-turn comparison input,
+// not a faithful serialization, so it bounds depth, breadth, string length, and total output —
+// a huge or deeply nested appState can never blow up the comparison or the trace logging in
+// tests. The values are deliberately generous (real route/turn/modal projections are tiny) but
+// finite.
+const STABLE_KEY_MAX_DEPTH = 6;
+const STABLE_KEY_MAX_KEYS = 64;
+const STABLE_KEY_MAX_ARRAY = 64;
+const STABLE_KEY_MAX_STRING = 256;
+const STABLE_KEY_MAX_TOTAL = 8192;
+
+/**
+ * A deterministic, bounded, sorted-key projection of an appState object, used as the friction
+ * loop's progress key. Two structurally-equal states (regardless of key insertion order) map
+ * to the SAME string, so key reordering can never fabricate a progress delta; two different
+ * states map to different strings (within the caps).
+ *
+ * Correctness-load-bearing: it MUST NOT throw on a cyclic or huge input. Cycles are detected
+ * with a seen-set (a back-edge degrades to the marker "[Circular]"); depth, key count, array
+ * length, string length, and total output length are all capped so an adversarial or merely
+ * large appState degrades to a bounded value rather than crashing the loop. Pure: it never
+ * mutates the input. (See docs/architecture/state-driven-executor.md.)
+ */
+export function stableProgressKey(appState: Record<string, unknown>): string {
+  const seen = new Set<unknown>();
+  let truncated = false;
+  const encode = (value: unknown, depth: number): string => {
+    if (truncated) return '"…"';
+    if (value === null) return "null";
+    const type = typeof value;
+    if (type === "number") return Number.isFinite(value as number) ? JSON.stringify(value) : `"${String(value)}"`;
+    if (type === "boolean") return value ? "true" : "false";
+    if (type === "bigint") return `"${(value as bigint).toString()}"`;
+    if (type === "string") {
+      const s = value as string;
+      return JSON.stringify(s.length > STABLE_KEY_MAX_STRING ? `${s.slice(0, STABLE_KEY_MAX_STRING)}…` : s);
+    }
+    if (type === "function" || type === "symbol" || type === "undefined") return `"[${type}]"`;
+    // object or array
+    if (depth >= STABLE_KEY_MAX_DEPTH) return '"[MaxDepth]"';
+    if (seen.has(value)) return '"[Circular]"';
+    seen.add(value);
+    try {
+      if (Array.isArray(value)) {
+        const cap = Math.min(value.length, STABLE_KEY_MAX_ARRAY);
+        const parts: string[] = [];
+        for (let i = 0; i < cap; i += 1) {
+          parts.push(encode(value[i], depth + 1));
+          if (truncated) break;
+        }
+        if (value.length > STABLE_KEY_MAX_ARRAY) parts.push('"…"');
+        return `[${parts.join(",")}]`;
+      }
+      const record = value as Record<string, unknown>;
+      const keys = Object.keys(record).sort();
+      const cap = Math.min(keys.length, STABLE_KEY_MAX_KEYS);
+      const parts: string[] = [];
+      for (let i = 0; i < cap; i += 1) {
+        const key = keys[i] as string;
+        parts.push(`${JSON.stringify(key)}:${encode(record[key], depth + 1)}`);
+        if (truncated) break;
+      }
+      if (keys.length > STABLE_KEY_MAX_KEYS) parts.push('"…":"…"');
+      return `{${parts.join(",")}}`;
+    } finally {
+      // Leave the set so sibling subtrees that legitimately repeat a shared reference still
+      // serialize once per occurrence-path without false "Circular" hits across siblings.
+      seen.delete(value);
+    }
+  };
+  let out = encode(appState, 0);
+  if (out.length > STABLE_KEY_MAX_TOTAL) {
+    truncated = true;
+    out = `${out.slice(0, STABLE_KEY_MAX_TOTAL)}…`;
+  }
+  return out;
+}
+
+/** The friction progress key: a stable projection of appState when present, else stateSignature. */
+function progressKeyOf(observation: CuaObservation): string {
+  return observation.appState !== undefined ? stableProgressKey(observation.appState) : observation.stateSignature;
+}
+
 /** A public-safe one-line action label. Never includes raw typed text. */
 export function describeCuaAction(action: CuaAction): string {
   switch (action.kind) {
@@ -223,6 +343,10 @@ function statusForCompletion(reason: ActorCompletionReason): ActorStatus {
 // adapter failure when raceSettle rejects.
 class CuaDeadlineError extends Error {}
 class CuaAbortError extends Error {}
+// Internal control-flow signal: the per-turn frame guard already set completionReason/reason
+// to a structured harness_error; this just unwinds the loop without being misread as an adapter
+// failure in the catch block (it carries no message to persist).
+class CuaFrameGuardStop extends Error {}
 
 const neverAbort: AbortSignal = new AbortController().signal;
 
@@ -307,7 +431,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     counts[key] = (counts[key] ?? 0) + 1;
   };
 
-  const recordScreenshot = async (frame: Buffer, label: string): Promise<void> => {
+  // Whether any observation this run surfaced structured appState (a non-vision/state executor).
+  // RUNTIME-ONLY signal: used solely to self-describe in redaction.notes that app state drove
+  // progress detection and was NOT written to the trace — the appState itself never persists.
+  let observedAppState = false;
+
+  // Guarded screenshot persistence: a non-vision executor returns an observation with no
+  // screenshot, and the loop persists none that turn (counts.screenshots stays 0 → the existing
+  // "n/a" branch resolves redaction.screenshots). No Buffer.alloc(0) ever reaches disk.
+  const maybeRecordScreenshot = async (observation: CuaObservation, label: string): Promise<void> => {
+    const frame = observation.screenshot;
+    if (frame === undefined) return;
     // Default: persist the raw frame (full fidelity, local-only). redactScreenshots flips to the
     // publish-safe blurred thumbnail. Either way the bytes the model already saw were raw.
     const { bytes, method } = redactScreenshots
@@ -327,23 +461,43 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let completionReason: ActorCompletionReason = "goal_satisfied";
   let reason = "computer-use loop completed";
 
+  // A vision provider against a screenshot-less observation is a fail-closed harness error, not
+  // a silent crash: record it and break. Returns true when the run must stop. (The provider sets
+  // requiresFrame; a state-reasoning provider omits it.)
+  const frameGuardTripped = (observation: CuaObservation): boolean => {
+    if (provider.requiresFrame === true && observation.screenshot === undefined) {
+      completionReason = "harness_error";
+      reason = `provider ${provider.id} requires a screenshot frame but the executor returned an observation with no screenshot (vision provider against a state-only executor)`;
+      return true;
+    }
+    return false;
+  };
+
+  // Loop-local state. Declared here (before the try) so the initial observe + the per-turn
+  // frame guard can fail closed cleanly while these still scope across the loop.
+  let previousResponseId: string | undefined;
+  let consecutiveIdle = 0;
+  // One canonical "no progress" signal: turns that did not change the UI state
+  // signature (idle or not). The nudge, the stop threshold, and the reason all
+  // key off this counter, and it catches alternating idle/no-progress stalls
+  // that two separate counters would let slip past every backstop but the clock.
+  let consecutiveNoProgress = 0;
+  let lastSignature = "";
+  let contextHint: string | undefined;
+  // Acks granted for the previous turn's safety checks. They must ride the
+  // NEXT request (the one carrying that call's computer_call_output), so they
+  // are staged here rather than written onto the request already sent.
+  let pendingAcks: CuaSafetyCheck[] | undefined;
   try {
     let observation = await raceSettle(executor.observe(), remaining(), signal);
-    await recordScreenshot(observation.screenshot, "turn-00-start");
-
-    let previousResponseId: string | undefined;
-    let consecutiveIdle = 0;
-    // One canonical "no progress" signal: turns that did not change the UI state
-    // signature (idle or not). The nudge, the stop threshold, and the reason all
-    // key off this counter, and it catches alternating idle/no-progress stalls
-    // that two separate counters would let slip past every backstop but the clock.
-    let consecutiveNoProgress = 0;
-    let lastSignature = observation.stateSignature;
-    let contextHint: string | undefined;
-    // Acks granted for the previous turn's safety checks. They must ride the
-    // NEXT request (the one carrying that call's computer_call_output), so they
-    // are staged here rather than written onto the request already sent.
-    let pendingAcks: CuaSafetyCheck[] | undefined;
+    if (observation.appState !== undefined) observedAppState = true;
+    // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
+    if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
+    await maybeRecordScreenshot(observation, "turn-00-start");
+    // The progress key prefers a stable appState projection (route/turn/modal deltas drive
+    // progress) and falls back to the executor's stateSignature — so a state executor with a
+    // constant signature still registers progress, and a vision executor behaves exactly as before.
+    lastSignature = progressKeyOf(observation);
 
     // Bounded by wall-clock and the friction backstops, never a turn count.
     for (;;) {
@@ -441,10 +595,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
       if (signal?.aborted) throw new CuaAbortError();
       observation = await raceSettle(executor.observe(), remaining(), signal);
-      await recordScreenshot(observation.screenshot, `turn-${turnNumber.toString().padStart(2, "0")}`);
+      if (observation.appState !== undefined) observedAppState = true;
+      // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
+      if (frameGuardTripped(observation)) break;
+      await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
 
-      const progressed = observation.stateSignature !== lastSignature;
-      lastSignature = observation.stateSignature;
+      // Progress prefers the stable appState projection; a state executor with a constant
+      // stateSignature still registers progress when its appState changed (and vice versa).
+      const progressKey = progressKeyOf(observation);
+      const progressed = progressKey !== lastSignature;
+      lastSignature = progressKey;
 
       consecutiveIdle = idleThisTurn ? consecutiveIdle + 1 : 0;
       if (idleThisTurn) bump("idleTurns");
@@ -470,7 +630,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
     }
   } catch (error) {
-    if (error instanceof CuaDeadlineError) {
+    if (error instanceof CuaFrameGuardStop) {
+      // completionReason/reason were already set to the structured harness_error by the guard.
+    } else if (error instanceof CuaDeadlineError) {
       completionReason = "timed_out";
       reason = `wall-clock deadline reached after ${timeoutMs}ms`;
     } else if (error instanceof CuaAbortError) {
@@ -489,6 +651,19 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   // responseId is provider-authored and opaque; redact for defense-in-depth.
   if (lastResponseId !== undefined) ids.turnId = redaction.redactText(lastResponseId);
 
+  const screenshotNote = !(counts.screenshots && counts.screenshots > 0)
+    ? "no screenshots captured"
+    : redactScreenshots
+      ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
+      : `${counts.screenshots} full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle`;
+  // Self-describing artifact (invariant 6): when a non-vision executor surfaced structured app
+  // state, the trace declares HOW it handled that surface — app state drove progress detection
+  // each turn and was NOT written to the trace (it is a runtime-only progress input, like
+  // stateSignature). The appState itself never appears anywhere in this bundle.
+  const notes = observedAppState
+    ? `${screenshotNote}. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice.`
+    : screenshotNote;
+
   const trace: ActorTrace = {
     schema: ACTOR_TRACE_SCHEMA,
     provider: provider.id,
@@ -503,11 +678,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         : redactScreenshots
           ? "blurred"
           : "raw",
-      notes: !(counts.screenshots && counts.screenshots > 0)
-        ? "no screenshots captured"
-        : redactScreenshots
-          ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
-          : `${counts.screenshots} full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle`
+      notes
     },
     startedAt: new Date(startedAtMs).toISOString(),
     completedAt: new Date(completedAtMs).toISOString(),

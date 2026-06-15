@@ -310,8 +310,17 @@ export function buildInitialRequest(ctx: OpenAiCuContext): Record<string, unknow
  * Build one computer_call_output for a pending call id, carrying the latest
  * screenshot as an inline data URL. Acknowledged safety checks (if any) are
  * echoed back so the model can proceed past a check the harness approved.
+ *
+ * The screenshot param is `Buffer | undefined` because CuaObservation.screenshot is now
+ * optional (a non-vision executor omits it). This provider is a VISION model (it sets
+ * requiresFrame), so a missing frame is a hard error here — defense-in-depth: the loop's
+ * per-turn requiresFrame guard already fails closed before this is reached, but throwing keeps
+ * the mapper self-validating and isolable.
  */
-export function buildCallOutput(callId: string, screenshot: Buffer, acknowledged?: CuaSafetyCheck[]): Record<string, unknown> {
+export function buildCallOutput(callId: string, screenshot: Buffer | undefined, acknowledged?: CuaSafetyCheck[]): Record<string, unknown> {
+  if (screenshot === undefined) {
+    throw new Error("openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)");
+  }
   return {
     type: "computer_call_output",
     call_id: callId,
@@ -557,6 +566,10 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     id: "openai-responses-cu",
     version: model,
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+    // This is a VISION provider: nextTurn sends the screenshot as the computer_call_output, so
+    // it cannot reason over a screenshot-less observation. The loop reads this to fail closed
+    // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
+    requiresFrame: true,
     async nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn> {
       const ctx = buildContext(req.instructions);
       const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;

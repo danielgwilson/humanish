@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
+import {
+  LAB_CONFIG_SCHEMA,
+  parseLabConfig,
+  routesToComputerUse,
+  routesToScriptedBrowser
+} from "../src/lab-config.js";
+import { selectLabBackend } from "../src/lab-engine.js";
 
 describe("parseLabConfig (mimetic.lab.v2)", () => {
   it("parses an oss-meta-shaped lab (clone + e2b-desktop + codex actor)", () => {
@@ -627,5 +633,71 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(meta.warnings[0]).toContain("subject.state");
       expect(meta.warnings[0]).toContain("subject.serve");
     });
+  });
+});
+
+// RUNG 1 (#148): the local-app subject.source — an already-running local dev server driven
+// in-process via a custom CuaExecutor (no clone, no E2B desktop). Parse-validated fail-closed.
+describe("parseLabConfig (local-app subject — issue #148)", () => {
+  const validLocalApp = {
+    schema: LAB_CONFIG_SCHEMA,
+    id: "local-app-state",
+    subject: { source: "local-app", appUrl: "http://localhost:5173/" },
+    actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Drive the app via its state contract." }],
+    scenario: { mode: "live" }
+  };
+
+  it("parses a local-app + computer-use actor and routes to the cua backend", () => {
+    const result = parseLabConfig(validLocalApp);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject).toEqual({ source: "local-app", appUrl: "http://localhost:5173/" });
+    expect(routesToComputerUse(result.config)).toBe(true);
+    expect(routesToScriptedBrowser(result.config)).toBe(false);
+    expect(selectLabBackend(result.config)).toBe("cua");
+    // The actor prompt fields are consumed on this route (composeInstructions): no inert warning.
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("accepts execution.target: local explicitly (and absent), routing to cua either way", () => {
+    const explicit = parseLabConfig({ ...validLocalApp, execution: { target: "local", timeoutMs: 60000 } });
+    expect(explicit.ok).toBe(true);
+    if (explicit.ok) expect(selectLabBackend(explicit.config)).toBe("cua");
+  });
+
+  it("accepts loopback variants (127.0.0.1, [::1], https)", () => {
+    for (const appUrl of ["http://127.0.0.1:3000/", "https://localhost/", "http://[::1]:5173/"]) {
+      const result = parseLabConfig({ ...validLocalApp, subject: { source: "local-app", appUrl } });
+      expect(result.ok, appUrl).toBe(true);
+    }
+  });
+
+  it.each([
+    ["missing appUrl", { ...validLocalApp, subject: { source: "local-app" } }],
+    ["public URL (always loopback on this route)", { ...validLocalApp, subject: { source: "local-app", appUrl: "https://example.com/" } }],
+    ["non-http scheme", { ...validLocalApp, subject: { source: "local-app", appUrl: "file:///tmp/x.html" } }],
+    ["e2b-desktop target (the whole point is to skip the desktop)", { ...validLocalApp, execution: { target: "e2b-desktop" } }],
+    ["non-cua actor (codex-app-server)", { ...validLocalApp, actors: [{ type: "codex-app-server" }] }],
+    ["scripted-browser actor", { ...validLocalApp, actors: [{ type: "scripted-browser" }] }],
+    ["unregistered actor type", { ...validLocalApp, actors: [{ type: "not-a-real-actor" }] }],
+    ["fan-out count", { ...validLocalApp, actors: [{ type: "openai-computer-use", count: 2 }] }],
+    ["allowPublicTargets (no public target on this route)", { ...validLocalApp, policies: { allowPublicTargets: true } }],
+    ["clone-only field serve", { ...validLocalApp, subject: { source: "local-app", appUrl: "http://localhost:5173/", serve: { start: "pnpm dev", url: "http://localhost:5173/" } } }],
+    ["clone-only field env", { ...validLocalApp, subject: { source: "local-app", appUrl: "http://localhost:5173/", env: ["DATABASE_URL"] } }],
+    ["clone-only field state", { ...validLocalApp, subject: { source: "local-app", appUrl: "http://localhost:5173/", state: { seed: [{ name: "s", command: "x" }] } } }],
+    ["clone-only field repos", { ...validLocalApp, subject: { source: "local-app", appUrl: "http://localhost:5173/", repos: ["a/b"] } }]
+  ])("fails closed on local-app mis-config: %s", (_label, input) => {
+    const result = parseLabConfig(input);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+  });
+
+  it("the e2b-desktop rejection names the right remedy (app-url for the hosted desktop route)", () => {
+    const result = parseLabConfig({ ...validLocalApp, execution: { target: "e2b-desktop" } });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain("app-url");
+    expect(result.error.message.toLowerCase()).toContain("e2b-desktop");
   });
 });

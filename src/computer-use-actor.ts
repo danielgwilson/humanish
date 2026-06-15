@@ -43,7 +43,14 @@ export interface CuaActorSessionOptions {
   desktop?: E2BDesktopLike;
   executorOptions?: E2BDesktopExecutorOptions;
 
-  /** DI seams — inject to bypass live construction (CI uses these for zero-spend tests). */
+  /**
+   * DI seams — inject to bypass live construction (CI uses these for zero-spend tests; library
+   * callers use them to drive a state-driven, non-vision flow). NOTE: a STATE executor (one
+   * whose observe() returns no screenshot — see CuaObservation.screenshot optional) MUST be
+   * paired with a NON-vision provider (requiresFrame falsey). The default OpenAI provider is
+   * vision-based and would fail closed against a screenshot-less observation. See
+   * docs/architecture/state-driven-executor.md.
+   */
   provider?: CuaProvider;
   executor?: CuaExecutor;
   redaction?: RedactionHooks;

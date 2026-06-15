@@ -6,8 +6,16 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
+import type { ActorCapabilities } from "../src/actor-contract.js";
 import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
+import type {
+  CuaAction,
+  CuaExecutor,
+  CuaObservation,
+  CuaProvider,
+  CuaTurn
+} from "../src/computer-use.js";
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   buildCuaBundle,
@@ -1500,5 +1508,224 @@ describe("buildCuaBundle", () => {
     expect(raw.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (raw)")).toBe(true);
     expect(raw.redaction.notes).toContain("capture policy (raw)");
     expect(JSON.stringify(raw)).not.toContain("(redacted)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Issue #148: the in-process (state-driven, no-E2B) lab route. RUNG 4 (load-bearing) and RUNG 5.
+// ---------------------------------------------------------------------------
+
+const STATE_CAPS: ActorCapabilities = {
+  headless: true,
+  structuredTrace: true,
+  lanes: ["computer-use"],
+  producesScreenshots: false,
+  byoModel: true,
+  preGrantableApprovals: false,
+  inProcessTools: false,
+  license: "open"
+};
+
+// A fake state executor: drives an in-memory app (route advances each action), returns NO
+// screenshot and a distinct appState per turn so the REAL loop's friction keys off app state.
+function makeStateExecutor(): CuaExecutor & { actuated: CuaAction[] } {
+  const actuated: CuaAction[] = [];
+  let turn = 0;
+  return {
+    actuated,
+    async observe(): Promise<CuaObservation> {
+      turn += 1;
+      return { stateSignature: "frozen-sig", appState: { route: `/step-${turn}`, turn } };
+    },
+    async execute(action: CuaAction): Promise<void> {
+      actuated.push(action);
+    }
+  };
+}
+
+// A fake state "brain": reasons over appState, takes one real action, then stops (so the run
+// bumps counts.actions and passes the noEngagement honesty guard), with NO requiresFrame.
+function makeStateProvider(): CuaProvider {
+  let i = 0;
+  return {
+    id: "fake-state-brain",
+    version: "0.1.0",
+    requiresFrame: false,
+    capabilities: STATE_CAPS,
+    async nextTurn(): Promise<CuaTurn> {
+      i += 1;
+      return i >= 2
+        ? { actions: [], pendingSafetyChecks: [], done: true, message: "Reached the goal via getState()." }
+        : { actions: [{ kind: "type", text: "hello" }], pendingSafetyChecks: [], done: false, reasoning: "state looks right" };
+    }
+  };
+}
+
+function localAppConfig(appUrl = "http://localhost:5173/"): LabConfig {
+  const parsed = parseLabConfig({
+    schema: LAB_CONFIG_SCHEMA,
+    id: "pixel-bae-state",
+    title: "State-driven local app",
+    subject: { source: "local-app", appUrl },
+    actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Drive the app via its state contract." }],
+    scenario: { mode: "live" }
+  });
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.config;
+}
+
+describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "mimetic-cua-inproc-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  // RUNG 4 (load-bearing): live mode, custom executor + provider drive the REAL loop, a
+  // loadDesktopModule whose Sandbox.create pushes to created[]. Assert created.length === 0,
+  // result.sandbox === undefined, AND the produced bundle PASSES verifyRun (the hollow-pass net).
+  it("drives the REAL loop with NO E2B sandbox created, omits result.sandbox, and the bundle passes verifyRun", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module, created, killed } = makeFakeModule(sandbox);
+    const stateExecutor = makeStateExecutor();
+
+    const outcome = await runLab(localAppConfig(), {
+      cwd,
+      cuaHooks: {
+        // If anything on this route touched E2B, created[] would grow — this is the proof probe.
+        loadDesktopModule: async () => module,
+        buildExecutor: async () => stateExecutor,
+        buildProvider: async () => makeStateProvider()
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+
+    // The verifiable "no E2B SDK call" proof: no sandbox was ever created or killed.
+    expect(created).toHaveLength(0);
+    expect(killed).toHaveLength(0);
+    expect(result.sandbox).toBeUndefined();
+    expect("streamUrl" in result).toBe(false);
+
+    // The REAL loop ran: the state executor was actuated by the brain's action.
+    expect(stateExecutor.actuated).toContainEqual({ kind: "type", text: "hello" });
+
+    // The lab reached a terminal verdict and the bundle verified.
+    expect(result.dryRun).toBe(false);
+    expect(result.session?.completionReason).toBe("goal_satisfied");
+    expect(result.ok).toBe(true);
+    expect(result.observer?.ok).toBe(true);
+
+    // The trace's provider id is the INJECTED brain's id (no new lane needed); zero screenshots.
+    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.streams[0].actor.provider).toBe("fake-state-brain");
+    expect(bundle.streams[0].actor.lane).toBe("computer-use");
+    expect(bundle.streams[0].actor.redaction.screenshots).toBe("n/a");
+    expect(bundle.streams[0].actor.counts.screenshots).toBe(0);
+    expect(bundle.streams[0].actor.redaction.notes).toContain("App state was observed");
+    // No screenshots dir contents on disk.
+    const shotFiles = await readdir(path.join(runDir, "screenshots")).catch(() => [] as string[]);
+    expect(shotFiles).toHaveLength(0);
+
+    // Honest UNPINNED provenance (invariant 5): the bundle DECLARES the un-pinnable local app.
+    const subjectEvent = bundle.events.find((e: { type: string }) => e.type === "cua-lab.subject.declared");
+    expect(subjectEvent.message).toContain("UNPINNED");
+    expect(subjectEvent.message).toContain("NO E2B");
+    expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
+
+    // appState never persists anywhere in the bundle (runtime-only).
+    const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");
+    expect(bundleText).not.toContain("/step-1");
+    expect(bundleText).not.toContain('"appState"');
+
+    // The hollow-pass net: the independent verifier passes the REAL (action-bearing) bundle.
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+    expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
+  });
+
+  it("a hollow in-process run (zero actions/messages) still FAILS the honesty guard + verifyRun", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    const outcome = await runLab(localAppConfig(), {
+      cwd,
+      cuaHooks: {
+        loadDesktopModule: async () => module,
+        buildExecutor: async () => makeStateExecutor(),
+        // A brain that immediately reports done with no action and no message → hollow.
+        buildProvider: async (): Promise<CuaProvider> => ({
+          id: "hollow-brain",
+          capabilities: STATE_CAPS,
+          async nextTurn(): Promise<CuaTurn> {
+            return { actions: [], pendingSafetyChecks: [], done: true };
+          }
+        })
+      }
+    });
+    expect(created).toHaveLength(0);
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.session?.completionReason).toBe("goal_satisfied");
+    expect(result.ok).toBe(false);
+    expect(result.error?.message.toLowerCase()).toContain("no actions");
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(false);
+  });
+
+  // RUNG 5: the two boot-time fail-closed guards, both BEFORE any key check / any E2B touch.
+  it("buildExecutor WITHOUT buildProvider → EXECUTOR_NO_PROVIDER (before any key check)", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    const outcome = await runCuaActorLab({
+      cwd,
+      config: localAppConfig(),
+      dryRun: false,
+      hooks: {
+        env: {}, // NO keys — proves the guard precedes key-gating
+        loadDesktopModule: async () => module,
+        buildExecutor: async () => makeStateExecutor()
+        // buildProvider deliberately omitted
+      }
+    });
+    expect(created).toHaveLength(0);
+    expect(outcome.ok).toBe(false);
+    expect(outcome.error?.code).toBe("MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER");
+    expect(outcome.sandbox).toBeUndefined();
+  });
+
+  it("local-app subject with NO hooks → LOCAL_APP_NO_EXECUTOR (a structured error, never a desktop attempt, before key-gating)", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    const outcome = await runCuaActorLab({
+      cwd,
+      config: localAppConfig(),
+      dryRun: false,
+      hooks: {
+        env: {}, // NO keys — the local-app guard must win over KEYS_MISSING
+        loadDesktopModule: async () => module
+        // no buildExecutor / buildProvider
+      }
+    });
+    expect(created).toHaveLength(0);
+    expect(outcome.ok).toBe(false);
+    expect(outcome.error?.code).toBe("MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
+    expect(outcome.error?.message).toContain("buildExecutor");
+    expect(outcome.sandbox).toBeUndefined();
+  });
+
+  it("buildProvider ALONE (a model swap) does NOT take the in-process route — it still provisions E2B", async () => {
+    // buildProvider without buildExecutor is allowed and stays on the normal E2B route; with no
+    // keys/dry-run we just confirm it does NOT trip EXECUTOR_NO_PROVIDER and is NOT treated as
+    // in-process (a dry-run produces a contract bundle with no sandbox, the normal route).
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      dryRun: true,
+      cuaHooks: { buildProvider: async () => makeStateProvider() }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(outcome.result.error?.code).not.toBe("MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER");
   });
 });

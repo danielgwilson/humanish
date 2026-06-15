@@ -215,6 +215,18 @@ genuinely needs. (Since 0.5.0, a clone × e2b-desktop lab whose actor is a
 registered computer-use actor routes here and requires `serve`; on earlier
 versions that shape routed to the meta lab.)
 
+#### Adapters: drive a local app via its JS state contract (no E2B, no vision)
+
+The computer-use loop is provider- and substrate-agnostic. You can point a lab at an
+**already-running local dev server** (`subject.source: local-app`) and drive it
+through its in-process JS contract (`window.app.getState()` etc.) with a custom
+`CuaExecutor` (screenshot optional, `appState` as the progress signal) paired with a
+**non-vision** `CuaProvider` (`requiresFrame` falsey) — keeping personas, the
+Observer, the evidence bundle, redaction, and the friction loop, with **NO E2B
+desktop and NO clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
+`runLab` (a config-only run with no hooks fails closed with a structured error). See
+[State-driven executor](docs/architecture/state-driven-executor.md).
+
 ## Browser Scenario Manifests
 
 `mimetic run --app-url http://127.0.0.1:<port>` looks for executable browser
@@ -323,6 +335,7 @@ pnpm mimetic:lab:list
 - [Project layout](docs/architecture/project-layout.md)
 - [Observer architecture](docs/architecture/observer.md)
 - [Actor contract (pluggable harnesses)](docs/architecture/actor-contract.md)
+- [State-driven executor (drive a local app, no E2B/vision)](docs/architecture/state-driven-executor.md)
 - [OSS lab POC](docs/architecture/oss-lab-poc.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Open-source install experience](docs/product/open-source-install-experience.md)

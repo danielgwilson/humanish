@@ -26,9 +26,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace } from "./actor-contract.js";
-import { actorRegistry, isCuaActorDescriptor } from "./actor-registry.js";
+import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
-import type { CuaLoopResult } from "./computer-use.js";
+import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   loadE2BDesktopModule,
@@ -115,6 +115,23 @@ export interface CuaActorLabHooks {
   prepareDesktop?: (desktop: E2BDesktopSandbox) => Promise<void>;
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
+  /**
+   * Supply a custom executor (e.g. a window.* JS-contract bridge over an already-running local
+   * dev server). When present (with `buildProvider`), `runCuaActorLab` takes the IN-PROCESS
+   * branch: it NEVER loads the E2B module, creates a sandbox, runs prepareDesktop, provisions a
+   * clone, opens a browser, or starts a stream — so `result.sandbox` is omitted, the verifiable
+   * "no E2B SDK call" proof. The whole bundle/Observer/redaction composition below the session
+   * call is desktop-agnostic and runs unchanged. Receives the resolved config, the
+   * registry-resolved descriptor, and the entry appUrl.
+   */
+  buildExecutor?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; appUrl: string }) => Promise<CuaExecutor>;
+  /**
+   * Supply a custom provider (a "brain" reasoning over app STATE). REQUIRED alongside
+   * `buildExecutor` — the default OpenAI provider is vision-based (requiresFrame) and would fail
+   * closed against a state-only executor that returns no screenshot. (`buildProvider` ALONE is
+   * allowed — that is just a model swap on the normal E2B route.)
+   */
+  buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor }) => Promise<CuaProvider>;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock/sleep for the detached-step polling (tests only). */
@@ -177,7 +194,9 @@ export interface CuaActorLabResult {
       | "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING"
       | "MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED"
       | "MIMETIC_CUA_LAB_SUBJECT_INVALID"
-      | "MIMETIC_CUA_LAB_SUBJECT_UNSAFE";
+      | "MIMETIC_CUA_LAB_SUBJECT_UNSAFE"
+      | "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER"
+      | "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR";
     message: string;
   };
 }
@@ -221,6 +240,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     };
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
+
+  // The IN-PROCESS route: a library caller supplied a custom executor (e.g. a window.* JS
+  // contract over an already-running local dev server). On this route the lab NEVER touches E2B
+  // — no module load, no Sandbox.create, no prepareDesktop, no clone provisioning, no
+  // desktop.open, no stream.start — so result.sandbox is omitted (the verifiable "no E2B SDK
+  // call" proof). The whole bundle/Observer/redaction composition below is desktop-agnostic.
+  const inProcessRoute = hooks.buildExecutor !== undefined;
+  const localAppSubject = config.subject.source === "local-app";
 
   // Engine re-enforcement of the clone-route structure for configs arriving via the library
   // API (the parser rejects these too, but runCuaActorLab is itself exported npm surface).
@@ -273,10 +300,13 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   // Re-enforce the entry-target boundary for configs that arrive through the library API
   // (the parser rejects these too, but runCuaActorLab is itself exported npm surface). For a
-  // served clone the entry is always loopback (we serve it in-sandbox); for an app-url subject
-  // the owner may declare a public/preview target via policies.allowPublicTargets.
+  // served clone the entry is always loopback (we serve it in-sandbox); for a local-app subject
+  // the entry is always loopback (an in-process local dev server, no public-target option); for
+  // an app-url subject the owner may declare a public/preview target via
+  // policies.allowPublicTargets. The in-process route inherits this check exactly — it runs
+  // before any executor is built.
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
-  const entryTargetSafe = cloneRoute
+  const entryTargetSafe = cloneRoute || localAppSubject
     ? isLoopbackUrl(appUrl)
     : allowPublicTargets
       ? isHttpUrl(appUrl)
@@ -294,9 +324,53 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       warnings,
       error: {
         code: "MIMETIC_CUA_LAB_SUBJECT_UNSAFE",
-        message: cloneRoute || !allowPublicTargets
+        message: cloneRoute || localAppSubject || !allowPublicTargets
           ? "subject entry URL must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
           : "subject.appUrl must be a valid http(s) URL."
+      }
+    };
+  }
+
+  // In-process route pairing guard (boot-time, BEFORE key-gating): a custom executor needs a
+  // custom provider too. The default OpenAI provider is vision-based (requiresFrame) and would
+  // fail closed against a state-only executor that returns no screenshot. (buildProvider ALONE
+  // is fine — that is a model swap on the normal E2B route, handled below.)
+  if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined) {
+    return {
+      schema: CUA_ACTOR_LAB_SCHEMA,
+      ok: false,
+      cwd,
+      labId: config.id,
+      actor: descriptor.id,
+      appUrl,
+      dryRun,
+      runId: options.runId ?? "not-created",
+      warnings,
+      error: {
+        code: "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER",
+        message: "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+      }
+    };
+  }
+
+  // local-app fail-closed (BEFORE key-gating, so a CLI invocation never sees the misleading
+  // KEYS_MISSING error first): there is no built-in in-process driver. A library caller supplies
+  // buildExecutor (+ buildProvider); a config-only / CLI invocation gets a structured error, not
+  // a desktop provisioning attempt.
+  if (localAppSubject && !inProcessRoute) {
+    return {
+      schema: CUA_ACTOR_LAB_SCHEMA,
+      ok: false,
+      cwd,
+      labId: config.id,
+      actor: descriptor.id,
+      appUrl,
+      dryRun,
+      runId: options.runId ?? "not-created",
+      warnings,
+      error: {
+        code: "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+        message: "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)"
       }
     };
   }
@@ -351,7 +425,11 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
 
-  if (!dryRun) {
+  // Key-gating is route-aware: the in-process route uses the caller's OWN model (via
+  // buildProvider) and the caller's OWN executor — no OPENAI_API_KEY/E2B_API_KEY is read or
+  // needed, so requiring them would be a false gate. The subject-env channel is clone-only and
+  // is empty here regardless.
+  if (!dryRun && !inProcessRoute) {
     const missingKeys = [
       ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
       ...(e2bApiKey ? [] : ["E2B_API_KEY"])
@@ -422,7 +500,35 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // partial provenance survives a later step's failure. Unreached steps stay absent.
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
 
-  if (!dryRun) {
+  if (!dryRun && inProcessRoute) {
+    // IN-PROCESS branch: the caller's executor + provider drive the REAL computer-use loop with
+    // NO E2B. We never load the desktop module, create a sandbox, run prepareDesktop, provision
+    // a clone, open a browser, or start a stream — so sandboxId/streamUrl stay undefined and
+    // result.sandbox is omitted (the verifiable "no E2B SDK call" proof). No finally/teardown:
+    // there is nothing to tear down.
+    try {
+      const executor = await hooks.buildExecutor!({ config, actor: descriptor, appUrl });
+      const provider = await hooks.buildProvider!({ config, actor: descriptor });
+      const sessionOptions: CuaActorSessionOptions = {
+        instructions,
+        persona,
+        timeoutMs,
+        provider,
+        executor,
+        // Default raw (full fidelity, local .mimetic); opt into blur for unowned/shared bundles.
+        // A non-vision executor returns no screenshot, so the loop persists none regardless.
+        redactScreenshots: config.policies?.redactScreenshots === true,
+        // Close the narration hole: a provisioned VALUE the model transcribes into reasoning/
+        // message text is literal-scrubbed (it has no shape for pattern redaction to catch).
+        scrubText: scrubKnownValues,
+        writeScreenshot
+      };
+      session = await runSession(sessionOptions);
+    } catch (error) {
+      // Scrubbed + redacted at the lab boundary, exactly like the E2B branch.
+      sessionError = redactText(scrubKnownValues(compactError(error)));
+    }
+  } else if (!dryRun) {
     const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
     // The subject's serve steps (clone/install/build) and declared state steps need their
     // own room beyond the actor session budget; the sandbox deadline covers the whole lane.
@@ -589,6 +695,11 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     ...(sessionError ? { sessionError } : {}),
     source,
     ...(subjectProvenance === undefined ? {} : { subjectProvenance }),
+    // Provenance honesty (invariant 5): a local-app / in-process subject is an already-running
+    // LOCAL dev server that CANNOT be commit-pinned, so the bundle DECLARES that absence rather
+    // than silently omitting it — source app-url, state "undeclared" (the app-url "absence
+    // declared" marker), and an honest "caller-provisioned, unpinned, no E2B" event message.
+    ...(localAppSubject || inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(session ? { traceArtifactPath: "actor.json" } : {})
   });
 
@@ -986,6 +1097,12 @@ export function buildCuaBundle(args: {
   /** Clone-route provenance: what the actor actually drove (names + digests only, never
    * values or command text), including the subject's state story. */
   subjectProvenance?: { repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] };
+  /**
+   * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
+   * WAS). "local-app": an already-running LOCAL dev server driven in-process, un-pinnable —
+   * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
+   */
+  entryKind?: "local-app";
   traceArtifactPath?: string;
 }): RunBundle {
   const status: RunSimulationStatus = args.session
@@ -1099,7 +1216,13 @@ export function buildCuaBundle(args: {
           at: args.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.declared",
-          message: `Subject app declared at ${args.appUrl} (loopback inside the desktop sandbox).`,
+          // Invariant 5: declare what the subject WAS, including the ABSENCE of a pin. A
+          // local-app / in-process subject is an already-running LOCAL dev server the caller
+          // provisioned; it cannot be commit-pinned, so its provenance is honestly UNPINNED and
+          // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox.
+          message: args.entryKind === "local-app"
+            ? `Subject app declared at ${args.appUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
+            : `Subject app declared at ${args.appUrl} (loopback inside the desktop sandbox).`,
           simId: "sim-001",
           streamId: "stream-001"
         },

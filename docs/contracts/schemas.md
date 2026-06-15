@@ -49,8 +49,15 @@ deleted when labs became config.
 A lab is a composition over code primitives, not a hardcoded kind:
 
 - `subject`: what the run acts on — `this-repo`, `clone` (owner/repo slugs,
-  optional in-sandbox `serve` + env var names + `state`), or `app-url`
-  (loopback unless `policies.allowPublicTargets` declares an owned deployment);
+  optional in-sandbox `serve` + env var names + `state`), `app-url`
+  (loopback unless `policies.allowPublicTargets` declares an owned deployment),
+  or `local-app` (an already-running LOCAL dev server driven IN-PROCESS via a
+  custom `CuaExecutor`, NO clone and NO E2B desktop — always loopback). A
+  `local-app` subject pairs a computer-use actor with `execution.target: local`
+  (or absent) and is library-assisted: the caller supplies
+  `cuaHooks.buildExecutor` + `buildProvider`; with no hooks the engine fails
+  closed (`MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
+  [`docs/architecture/state-driven-executor.md`](../architecture/state-driven-executor.md);
 - `subject.state` (clone subjects, computer-use route): the subject's state
   story. `state.seed[]` declares ordered, bounded seed/migration/fixture steps
   (`{ name, command, when: before-build | before-start | after-ready,

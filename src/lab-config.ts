@@ -40,8 +40,16 @@ export const LAB_CONFIG_SCHEMA = "mimetic.lab.v2";
 // (a leading "." or "/" is read as a file path; a leading "-" collides with CLI flags).
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-/** Where the run acts: the host repo, a fresh clone, or a running app a browser actor drives. */
-export type LabSubjectSource = "this-repo" | "clone" | "app-url";
+/**
+ * Where the run acts: the host repo, a fresh clone, a running app a browser actor drives
+ * (`app-url`), or an already-running LOCAL dev server driven IN-PROCESS via a custom
+ * CuaExecutor with NO clone and NO E2B desktop (`local-app`). `local-app` routes to the cua
+ * backend and is library-assisted: a caller supplies `cuaHooks.buildExecutor` + `buildProvider`
+ * (no built-in driver exists yet), and the engine fails closed
+ * (MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them — a structured error, never a
+ * desktop attempt. See docs/architecture/state-driven-executor.md.
+ */
+export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app";
 
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
@@ -122,6 +130,10 @@ export interface LabSubject {
    * only — driving arbitrary public sites is not allowed). The URL must be reachable from
    * INSIDE the desktop sandbox; library callers provision it via the prepareDesktop hook.
    * For a config-only path use `clone` + `serve` — the lab serves the app itself.
+   *
+   * `local-app`: the loopback http(s) URL of an already-running LOCAL dev server the caller's
+   * custom CuaExecutor drives in-process (no sandbox, no public-target option — always
+   * loopback). Passed to `buildExecutor` so the bridge knows where the app lives.
    */
   appUrl?: string;
   /** `clone` (computer-use route): how the cloned app is served in-sandbox. */
@@ -335,10 +347,33 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
   if (config.subject.source === "this-repo") {
     if (config.execution?.target) {
-      return invalid("`execution.target` applies only to clone/app-url subjects; this-repo labs run locally.");
+      return invalid("`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally.");
     }
     if (config.scenario?.mode === "live") {
       return invalid("this-repo labs are dry-run only; use a clone or app-url subject for a live run.");
+    }
+  }
+
+  // local-app route: an already-running LOCAL dev server driven IN-PROCESS via a custom
+  // CuaExecutor (no clone, no E2B desktop). Parse-validated fail-closed: a computer-use actor
+  // only, execution.target local or absent (NEVER e2b-desktop — the whole point is to skip the
+  // desktop), and no public-target policy (it is always loopback; the loopback shape was already
+  // enforced in parseSubject). The actual "no buildExecutor hook supplied" case is inherently an
+  // engine-time decision (the parser cannot know whether a library caller will pass hooks), so
+  // it fails closed in runCuaActorLab with MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR.
+  if (config.subject.source === "local-app") {
+    const type = config.actors[0]?.type ?? "";
+    if (config.execution?.target !== undefined && config.execution.target !== "local") {
+      return invalid("local-app subjects drive an in-process LOCAL dev server with NO E2B desktop — set `execution.target: local` or omit it (absent means local); `e2b-desktop` is rejected (use an app-url subject for the hosted-desktop route).");
+    }
+    if (!actorResolvesToComputerUse(type)) {
+      return invalid(`actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`);
+    }
+    if ((config.actors[0]?.count ?? 1) > 1) {
+      return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
+    }
+    if (config.policies?.allowPublicTargets === true) {
+      return invalid("`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow.");
     }
   }
 
@@ -449,7 +484,9 @@ function registeredScriptedBrowserActors(): string[] {
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
 export function routesToComputerUse(config: LabConfig): boolean {
-  if (config.subject.source === "app-url") {
+  // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
+  // routes to the cua backend exactly like an app-url subject with a computer-use actor.
+  if (config.subject.source === "app-url" || config.subject.source === "local-app") {
     return actorResolvesToComputerUse(config.actors[0]?.type);
   }
   return config.subject.source === "clone"
@@ -537,8 +574,8 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone" && source !== "app-url") {
-    return invalid("`subject.source` must be one of: this-repo, clone, app-url.");
+  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app") {
+    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app.");
   }
   const subject: LabSubject = { source };
 
@@ -550,6 +587,15 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
   }
   if (source !== "clone" && raw.state !== undefined) {
     return invalid("`subject.state` applies only to clone subjects (the lab seeds the state it serves).");
+  }
+  // repos/clone are clone-only too (a fresh-clone subject's git inputs). Rejected, never
+  // silently dropped, on app-url/local-app/this-repo subjects (invariant 6: a field that cannot
+  // act on this route is an honest parse error).
+  if (source !== "clone" && raw.repos !== undefined) {
+    return invalid("`subject.repos` applies only to clone subjects (the owner/repo slugs to clone).");
+  }
+  if (source !== "clone" && raw.clone !== undefined) {
+    return invalid("`subject.clone` applies only to clone subjects (clone depth/fanout/keep).");
   }
 
   if (source === "clone") {
@@ -593,14 +639,20 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     }
   }
 
-  if (source === "app-url") {
+  if (source === "app-url" || source === "local-app") {
     const appUrl = str(raw.appUrl);
     if (!appUrl) {
-      return invalid("`subject.appUrl` is required when source is app-url.");
+      return invalid(`\`subject.appUrl\` is required when source is ${source}.`);
     }
-    // Shape-only here; the loopback-vs-public-target gate is applied in the cross-validation
-    // block below, where policies.allowPublicTargets is available.
-    if (!isHttpUrl(appUrl)) {
+    // app-url: shape-only here; the loopback-vs-public-target gate is applied in the
+    // cross-validation block below, where policies.allowPublicTargets is available.
+    // local-app: an in-process local dev server — ALWAYS loopback (no public-target option),
+    // so the loopback wall is enforced right here at parse.
+    if (source === "local-app") {
+      if (!isLoopbackUrl(appUrl)) {
+        return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on a local-app subject — it drives an already-running LOCAL dev server in-process; public targets are not supported on this route.");
+      }
+    } else if (!isHttpUrl(appUrl)) {
       return invalid("`subject.appUrl` must be an http(s) URL.");
     }
     subject.appUrl = appUrl;
