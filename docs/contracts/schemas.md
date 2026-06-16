@@ -108,8 +108,11 @@ A lab is a composition over code primitives, not a hardcoded kind:
 - `scenario.caps` (terminal-product route): `{ maxUsd, maxJobs, maxMinutes }`,
   all non-negative numbers (0 = no-spend, the default). The blast-radius budget
   that bounds the in-sandbox live key by MECHANISM, not by hope — the live key
-  is never exercised without a fail-closed cap in force (enforced in a later
-  slice); the no-spend proof is derived from a real ledger, never asserted.
+  is never exercised without a fail-closed cap in force. `maxMinutes` is the
+  wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
+  ledger (a run whose KNOWN spend exceeds the cap fails closed,
+  `MIMETIC_TERMINAL_LAB_CAPS_EXCEEDED`). The no-spend proof is derived from that
+  real ledger, never asserted (see Terminal Cost Ledger And No-Spend Proof).
   Inert (warned) on every other route;
 - `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`, and the
   terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
@@ -388,6 +391,70 @@ Reserved: `mimetic.substrate.v1` is named here for layering intent but has
 never shipped — no code emits or validates it. Substrate truth today lives
 inside run bundles (per-stream transport and status) and lab execution config
 (`execution.target: local | e2b-desktop`). Do not emit this schema.
+
+## Terminal Cost Ledger And No-Spend Proof
+
+The terminal-product lane (`src/e2b-terminal-lab.ts`) places a real provider key
+INSIDE the sandbox, so the no-spend claim must be REAL — derived from a ledger,
+never asserted. The live run writes both to `terminal-ledgers.json` (a `cost`
+block + a `noSpendProof` block, additive to `mimetic.terminal-ledgers.v1`).
+
+The cost ledger (`mimetic.terminal-cost-ledger.v1`) has one line per category —
+`product`, `media`, `payment`, `provider` — and follows a strict **null
+discipline** that distinguishes three states and never conflates them:
+
+- `usd: 0` — **known zero**: the category was metered and billed nothing.
+- `usd: null` — **not measured**: no spend signal exists for the category this
+  slice. `null` is written explicitly (never `undefined`-omitted, never guessed
+  to `0`). A line with `null` says "this category exists but we did not measure
+  it"; the no-spend proof reports it as unmeasured and does NOT claim it is zero.
+- line **absent** — **not applicable** (n/a) to the lane/run.
+
+`knownTotalUsd` sums ONLY the non-null lines (a `null` line contributes nothing
+and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
+This slice meters only the `provider` line, populated from the actor trace's
+`tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment` are
+`null` until the SLICE-4 adapter supplies them.
+
+```yaml
+schema: mimetic.terminal-cost-ledger.v1
+currency: usd
+lines:
+  product: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
+  media: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
+  payment: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
+  provider: { usd: null, source: unmeasured, note: "…no tokenUsage.costUsd this run…" }
+knownTotalUsd: 0
+fullyMeasured: false
+```
+
+The no-spend proof (`mimetic.terminal-no-spend-proof.v1`) is DERIVED from the
+ledger. It vouches only for what it measured: `knownZeroLines` (proven zero),
+`knownNonZeroLines` (break `satisfied`), and `unmeasuredLines` (the `null` lines
+it explicitly CANNOT vouch for). `satisfied` is true only when every KNOWN line
+is within `maxUsd` (for a no-spend run, `maxUsd: 0` ⇒ every known line is `0`);
+unmeasured lines never make it satisfied. A proof never claims zero on a `null`
+line — verification fails closed if it does.
+
+```yaml
+schema: mimetic.terminal-no-spend-proof.v1
+maxUsd: 0
+satisfied: true
+knownZeroLines: []
+knownNonZeroLines: []
+unmeasuredLines: [product, media, payment, provider]
+knownTotalUsd: 0
+statement: "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero…"
+```
+
+**Full caps enforcement (fail-closed, not advisory).** `scenario.caps.maxUsd`
+is enforced against the ledger: if the observed KNOWN spend exceeds `maxUsd`, the
+run fails closed (`MIMETIC_TERMINAL_LAB_CAPS_EXCEEDED`); `maxJobs` likewise when
+a known job count is present; `maxMinutes` is the wall-clock kill (unchanged).
+Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
+measure) and never grant a green pass (they surface as unmeasured). `verifyRun`
+fails closed when a live bundle lacks the cost ledger or no-spend proof, when the
+proof claims zero on a `null` line, or when known spend exceeds the declared cap.
 
 ## Evidence Streams
 

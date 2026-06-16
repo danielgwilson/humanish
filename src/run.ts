@@ -3300,7 +3300,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     name: "terminal-product evidence",
     ok: terminalProductFindings.length === 0,
     message: terminalProductFindings.length === 0
-      ? "live terminal-product streams either are absent or carry the substrate/cleanup/interventions ledgers + redacted terminal evidence, with proven teardown"
+      ? "live terminal-product streams either are absent or carry the substrate/cleanup/interventions/cost ledgers + a ledger-derived no-spend proof + redacted terminal evidence, with proven teardown and known spend within the declared cap"
       : `terminal-product findings: ${terminalProductFindings.join(", ")}`
   });
   const codexAppServerFindings = isRunBundle(bundle)
@@ -3925,6 +3925,88 @@ async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundl
     if (!isRecord(trace.redaction) || trace.redaction.status !== "passed") {
       findings.push(`${stream.id} actor trace redaction status must be passed`);
     }
+  }
+
+  // --- SLICE 3: the cost ledger + no-spend proof must be present + internally honest. ---
+  findings.push(...validateTerminalCostEvidence(ledgers));
+
+  return findings;
+}
+
+// The four cost categories the no-spend proof + cost ledger reason over. Kept in sync with
+// e2b-terminal-lab.ts COST_CATEGORIES (a missing category on either side is a finding).
+const TERMINAL_COST_CATEGORIES = ["product", "media", "payment", "provider"] as const;
+
+/**
+ * Verifier for the SLICE-3 cost ledger + no-spend proof (issue #154's cost/no-spend asks). A LIVE
+ * terminal-product bundle MUST carry both (fail closed if absent on a live run). The load-bearing
+ * honesty check: the no-spend proof may NOT claim zero on a line the ledger marks `null`
+ * (UNMEASURED) — a proof can never claim more than the ledger measured. And the observed KNOWN
+ * spend may not exceed the declared cap (the proof's own maxUsd) — fail-closed, not advisory.
+ * The null discipline is enforced here too: a present line's `usd` must be a number OR literally
+ * null (never undefined/omitted), so "not measured" can never be silently dropped.
+ */
+function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[] {
+  const findings: string[] = [];
+
+  const cost = isRecord(ledgers.cost) ? ledgers.cost : undefined;
+  if (!cost || cost.schema !== "mimetic.terminal-cost-ledger.v1") {
+    findings.push("missing or malformed cost ledger (mimetic.terminal-cost-ledger.v1) — a live terminal-product run must derive a cost ledger");
+    return findings;
+  }
+  const lines = isRecord(cost.lines) ? cost.lines : undefined;
+  if (!lines) {
+    findings.push("cost ledger has no lines block");
+    return findings;
+  }
+
+  // The null discipline: every applicable category line must be PRESENT with `usd` as a number or
+  // literally null. `undefined`/omitted is forbidden — that would silently lose the "not measured"
+  // distinction. Track which categories the ledger marks null so the no-spend proof cannot lie about them.
+  const nullCategories = new Set<string>();
+  for (const category of TERMINAL_COST_CATEGORIES) {
+    const line = isRecord(lines[category]) ? (lines[category] as Record<string, unknown>) : undefined;
+    if (!line || !("usd" in line)) {
+      findings.push(`cost ledger line "${category}" is missing its usd field (unknowns must be explicit null, never omitted)`);
+      continue;
+    }
+    const usd = line.usd;
+    if (usd === null) {
+      nullCategories.add(category);
+    } else if (typeof usd !== "number") {
+      findings.push(`cost ledger line "${category}" usd must be a number or null (got ${typeof usd})`);
+    }
+  }
+
+  const proof = isRecord(ledgers.noSpendProof) ? ledgers.noSpendProof : undefined;
+  if (!proof || proof.schema !== "mimetic.terminal-no-spend-proof.v1") {
+    findings.push("missing or malformed no-spend proof (mimetic.terminal-no-spend-proof.v1) — the no-spend proof must be derived from the ledger");
+    return findings;
+  }
+
+  // HONESTY CHECK: the no-spend proof must NOT claim zero on a line the ledger marks `null`. A
+  // knownZeroLines entry that is actually unmeasured in the ledger means the proof claimed more than
+  // it measured — fail closed.
+  const knownZeroLines = Array.isArray(proof.knownZeroLines) ? proof.knownZeroLines : [];
+  for (const category of knownZeroLines) {
+    if (nullCategories.has(String(category))) {
+      findings.push(`no-spend proof claims zero on line "${String(category)}" but the cost ledger marks it null (UNMEASURED); a proof may not claim zero on a line it did not measure`);
+    }
+  }
+
+  // FAIL-CLOSED CAP: observed KNOWN spend may not exceed the declared cap (the proof's maxUsd). The
+  // ledger's knownTotalUsd is the measured spend; null lines do not count toward it (and the proof
+  // reports them as unmeasured). A satisfied proof whose known total exceeds its cap is contradictory.
+  const knownTotalUsd = typeof cost.knownTotalUsd === "number" ? cost.knownTotalUsd : Number.NaN;
+  const maxUsd = typeof proof.maxUsd === "number" ? proof.maxUsd : null;
+  if (maxUsd !== null && Number.isFinite(knownTotalUsd) && knownTotalUsd > maxUsd) {
+    findings.push(`observed KNOWN spend ${knownTotalUsd} USD exceeds the declared cap maxUsd=${maxUsd}; the run must fail closed, not verify green`);
+  }
+  // A proof that asserts `satisfied:true` while a known line is non-zero (knownNonZeroLines) is
+  // self-contradictory — reject it (the proof's own derived state must be internally consistent).
+  const knownNonZeroLines = Array.isArray(proof.knownNonZeroLines) ? proof.knownNonZeroLines : [];
+  if (proof.satisfied === true && knownNonZeroLines.length > 0) {
+    findings.push(`no-spend proof claims satisfied:true but reports known non-zero spend lines (${knownNonZeroLines.map(String).join(", ")})`);
   }
 
   return findings;

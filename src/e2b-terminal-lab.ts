@@ -111,6 +111,14 @@ export interface TerminalProductLabHooks {
   renderObserverFn?: typeof renderObserver;
   /** Injected clock for deterministic timestamps + wall-clock arithmetic (tests only). */
   now?: () => number;
+  /**
+   * SLICE-3 DI seam for the cost ledger. The lane has NO real product-spend signal yet (that is the
+   * adapter's job in SLICE 4), so this slice populates only the provider line (from the trace's
+   * tokenUsage when present). This seam lets the deterministic test (and, later, a SLICE-4 adapter)
+   * inject KNOWN spend lines so the fail-closed cap enforcement can be exercised at $0 without a
+   * real billable run. Production callers never pass this — they get the null-discipline default.
+   */
+  costProbe?: (context: { tokenCostUsd?: number }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
 }
 
 export interface RunTerminalProductLabOptions {
@@ -150,6 +158,21 @@ export interface TerminalProductLabResult {
     /** Sandboxes still listed under this run's metadata after teardown (0 = proven reclaimed). */
     remaining: number;
   };
+  /** Live-only: the spend ledger surfaced on the result (SLICE 3) — unknowns are null, never guessed.
+   *  Lets a programmatic caller read spend without parsing the bundle. */
+  cost?: {
+    knownTotalUsd: number;
+    fullyMeasured: boolean;
+    /** Per-category USD: a known number, or null = NOT MEASURED (never coerced to 0). */
+    lines: Record<"product" | "media" | "payment" | "provider", number | null>;
+  };
+  /** Live-only: the no-spend proof DERIVED from the ledger (SLICE 3). */
+  noSpend?: {
+    satisfied: boolean;
+    maxUsd: number | null;
+    knownZeroLines: string[];
+    unmeasuredLines: string[];
+  };
   observer?: ObserverResult;
   warnings: string[];
   error?: {
@@ -160,6 +183,7 @@ export interface TerminalProductLabResult {
       | "MIMETIC_TERMINAL_LAB_KEYPLACEMENT_INVALID"
       | "MIMETIC_TERMINAL_LAB_RUNTIME_AUTH_MISSING"
       | "MIMETIC_TERMINAL_LAB_CAPS_MISSING"
+      | "MIMETIC_TERMINAL_LAB_CAPS_EXCEEDED"
       | "MIMETIC_TERMINAL_LAB_CREDENTIAL_DENIED"
       | "MIMETIC_TERMINAL_LAB_CLEANUP_UNPROVEN"
       | typeof TERMINAL_AGENT_NOT_IMPLEMENTED_CODE;
@@ -353,7 +377,79 @@ interface InterventionRecord {
   inputDigest: string;
 }
 
-/** The persisted terminal-product ledgers artifact (substrate lifecycle + command log + interventions + cleanup). */
+/**
+ * One cost line of the spend ledger. THE NULL DISCIPLINE (issue #154, the cost/no-spend asks):
+ * three distinct states are crisply modeled and NEVER conflated —
+ *   - `usd: 0`     => KNOWN to be zero. A measured-and-zero spend (we metered this category and it
+ *                     billed nothing). The no-spend proof may legitimately assert this is zero.
+ *   - `usd: null`  => NOT MEASURED. We carry NO spend signal for this category this slice. `null` is
+ *                     written explicitly (never undefined-omitted, never guessed to 0). The no-spend
+ *                     proof must list this line as UNMEASURED and must NOT claim it is zero.
+ *   - line ABSENT  => NOT APPLICABLE to this lane/run (n/a). The line simply does not appear in
+ *                     `lines`. (This slice always emits all four lines, so absence is reserved for
+ *                     future lanes that genuinely have no such category.)
+ * `null` vs missing-key is the load-bearing distinction: a missing key means "this category does not
+ * exist for this run"; a present key with `null` means "this category exists but we did not measure
+ * it". A no-spend proof that claimed zero on a `null` line would claim more than it measured.
+ */
+interface CostLine {
+  /** known zero (0) | not measured (null). The key is ALWAYS present when the line is applicable. */
+  usd: number | null;
+  /** Optional billable-unit count, same discipline: a known count, or null = not measured. */
+  count?: number | null;
+  /** How this line's value was established (provenance for the verifier + the human reviewer). */
+  source: "provider-token-usage" | "no-spend-signal" | "operator-cap" | "unmeasured";
+  /** A short, public-safe note (never a secret value). */
+  note: string;
+}
+
+/** The cost categories the lane meters. product/media/payment are adapter signals (SLICE 4); the
+ *  provider line can be populated this slice from the actor trace's tokenUsage.costUsd when present. */
+type CostCategory = "product" | "media" | "payment" | "provider";
+
+/**
+ * The spend ledger (a block of `TerminalLedgers`). The no-spend PROOF is DERIVED from this — never
+ * asserted independently. Every applicable category appears as a line; unknowns are `null`.
+ */
+interface TerminalCostLedger {
+  schema: "mimetic.terminal-cost-ledger.v1";
+  /** USD currency unit (recorded explicitly so a future multi-currency lane is unambiguous). */
+  currency: "usd";
+  lines: Record<CostCategory, CostLine>;
+  /** Sum of the KNOWN (non-null) lines. null lines contribute NOTHING and are NOT guessed as 0. */
+  knownTotalUsd: number;
+  /** True when every applicable line is measured (no null). When false, knownTotalUsd is a LOWER
+   *  bound, not the full spend — the no-spend proof says so honestly. */
+  fullyMeasured: boolean;
+}
+
+/**
+ * The no-spend proof, DERIVED from the cost ledger (issue #154: "derived from a ledger, not
+ * asserted"). It is honest about what it knows: it lists the KNOWN-zero lines it can vouch for and,
+ * separately, the UNMEASURED (null) lines it CANNOT vouch for. `satisfied` is true only when every
+ * KNOWN line is zero (a known non-zero line fails it); but a proof with unmeasured lines explicitly
+ * says it could not measure them — it never claims zero on a line the ledger marks null.
+ */
+interface NoSpendProof {
+  schema: "mimetic.terminal-no-spend-proof.v1";
+  /** The maxUsd cap this proof was evaluated against (the no-spend scenario declares maxUsd: 0). */
+  maxUsd: number | null;
+  /** True iff every KNOWN (measured) line is <= maxUsd (for a no-spend run, == 0). */
+  satisfied: boolean;
+  /** Categories the ledger MEASURED and found at (known) zero — the proof CAN vouch for these. */
+  knownZeroLines: CostCategory[];
+  /** Categories the ledger measured with a known NON-zero spend (these break `satisfied`). */
+  knownNonZeroLines: CostCategory[];
+  /** Categories the ledger marks `null` (NOT MEASURED). The proof explicitly lists these and does
+   *  NOT claim they are zero — it claims only that it could not measure them this slice. */
+  unmeasuredLines: CostCategory[];
+  /** Sum of the known lines (== 0 for a satisfied no-spend run). */
+  knownTotalUsd: number;
+  /** Human-readable honesty statement covering both what is proven and what is unmeasured. */
+  statement: string;
+}
+
+/** The persisted terminal-product ledgers artifact (substrate lifecycle + command log + interventions + cleanup + cost). */
 interface TerminalLedgers {
   schema: "mimetic.terminal-ledgers.v1";
   lifecycle: LifecycleRecord[];
@@ -368,6 +464,152 @@ interface TerminalLedgers {
     /** When list is unsupported by the SDK, remaining stays -1 and the reason is recorded honestly. */
     reason: string;
   };
+  /** The spend ledger (SLICE 3, additive). Unknowns are `null`, never guessed; the no-spend proof
+   *  below is DERIVED from it. */
+  cost: TerminalCostLedger;
+  /** The no-spend proof DERIVED from `cost` (SLICE 3). Never an independent assertion. */
+  noSpendProof: NoSpendProof;
+}
+
+/** The four cost categories, in a fixed order so the ledger shape is stable across runs. */
+const COST_CATEGORIES: readonly CostCategory[] = ["product", "media", "payment", "provider"] as const;
+
+/**
+ * Build the spend ledger from the captured session. THE NULL DISCIPLINE (issue #154):
+ *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
+ *     CARRIES it (a measured value, incl. a measured 0). When the trace carries NO costUsd, the
+ *     provider line is `null` = NOT MEASURED (never guessed to 0 just because no-spend was intended).
+ *   - product/media/payment are `null` this slice: the lane has NO product-spend signal yet (that is
+ *     the adapter's job in SLICE 4). The LEDGER SHAPE + the null discipline ship now; the signal does not.
+ * `injectedLines` lets a test (and, later, the SLICE-4 adapter) supply known spend for a category,
+ * exercising the fail-closed cap enforcement deterministically without a real billable run.
+ */
+function buildCostLedger(args: {
+  tokenCostUsd?: number;
+  injectedLines?: Partial<Record<CostCategory, CostLine>>;
+}): TerminalCostLedger {
+  const providerLine: CostLine =
+    typeof args.tokenCostUsd === "number"
+      ? {
+          usd: args.tokenCostUsd,
+          source: "provider-token-usage",
+          note: `Provider spend metered from the actor trace tokenUsage.costUsd (${args.tokenCostUsd} USD).`
+        }
+      : {
+          usd: null,
+          source: "unmeasured",
+          note: "Provider spend NOT MEASURED: the actor trace carried no tokenUsage.costUsd this run. Recorded null (not guessed to 0)."
+        };
+
+  const unmeasured = (category: CostCategory): CostLine => ({
+    usd: null,
+    count: null,
+    source: "unmeasured",
+    note: `${category} spend NOT MEASURED this slice: the terminal-product lane has no ${category}-spend signal yet (the adapter supplies it in SLICE 4). Recorded null (never guessed to 0).`
+  });
+
+  const lines: Record<CostCategory, CostLine> = {
+    product: args.injectedLines?.product ?? unmeasured("product"),
+    media: args.injectedLines?.media ?? unmeasured("media"),
+    payment: args.injectedLines?.payment ?? unmeasured("payment"),
+    provider: args.injectedLines?.provider ?? providerLine
+  };
+
+  // knownTotalUsd sums ONLY the non-null lines. A null line contributes NOTHING — it is never
+  // coerced to 0 (that would let an unmeasured category masquerade as a measured zero).
+  let knownTotalUsd = 0;
+  let fullyMeasured = true;
+  for (const category of COST_CATEGORIES) {
+    const usd = lines[category].usd;
+    if (usd === null) {
+      fullyMeasured = false;
+    } else {
+      knownTotalUsd += usd;
+    }
+  }
+  return {
+    schema: "mimetic.terminal-cost-ledger.v1",
+    currency: "usd",
+    lines,
+    knownTotalUsd: roundUsd(knownTotalUsd),
+    fullyMeasured
+  };
+}
+
+/** Derive the no-spend proof from the ledger. It is HONEST: it vouches for known-zero lines and
+ *  explicitly lists the unmeasured (null) lines it cannot vouch for — never claiming zero on null. */
+function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): NoSpendProof {
+  const knownZeroLines: CostCategory[] = [];
+  const knownNonZeroLines: CostCategory[] = [];
+  const unmeasuredLines: CostCategory[] = [];
+  for (const category of COST_CATEGORIES) {
+    const usd = ledger.lines[category].usd;
+    if (usd === null) unmeasuredLines.push(category);
+    else if (usd === 0) knownZeroLines.push(category);
+    else knownNonZeroLines.push(category);
+  }
+  // satisfied only when every KNOWN line is within the cap (for a no-spend run, maxUsd 0 => every
+  // known line must be exactly 0). Unmeasured lines do NOT make it satisfied — they are reported
+  // separately as the proof's honest blind spot.
+  const cap = maxUsd ?? 0;
+  const satisfied = knownNonZeroLines.length === 0 && ledger.knownTotalUsd <= cap;
+  const statement = [
+    satisfied
+      ? `No-spend proof SATISFIED for maxUsd=${cap}: every MEASURED spend line is zero (known total ${ledger.knownTotalUsd} USD).`
+      : `No-spend proof NOT satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`,
+    unmeasuredLines.length > 0
+      ? `UNMEASURED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these — they carry no spend signal this slice.`
+      : "All applicable spend lines were measured."
+  ].join(" ");
+  return {
+    schema: "mimetic.terminal-no-spend-proof.v1",
+    maxUsd,
+    satisfied,
+    knownZeroLines,
+    knownNonZeroLines,
+    unmeasuredLines,
+    knownTotalUsd: ledger.knownTotalUsd,
+    statement
+  };
+}
+
+/**
+ * Full caps enforcement (fail-closed, not advisory). Returns a structured violation when a KNOWN
+ * (measured) spend line exceeds maxUsd, or a known billable-job count exceeds maxJobs. Unknowns
+ * (`null`) NEVER trip the cap (we cannot claim a violation we did not measure) — but they also never
+ * grant a green pass: the no-spend proof reports them as unmeasured. maxMinutes is wall-clock and is
+ * enforced separately (runWithWallClock); it is not a ledger-derived cap.
+ */
+function evaluateCapsAgainstLedger(
+  ledger: TerminalCostLedger,
+  caps: LabScenarioCaps
+): { ok: true } | { ok: false; message: string } {
+  if (caps.maxUsd !== undefined && ledger.knownTotalUsd > caps.maxUsd) {
+    const overLines = COST_CATEGORIES.filter((c) => ledger.lines[c].usd !== null && (ledger.lines[c].usd as number) > 0);
+    return {
+      ok: false,
+      message: `Observed KNOWN spend ${ledger.knownTotalUsd} USD exceeds scenario.caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The run fails closed: the cap is a fail-closed mechanism, not an advisory.`
+    };
+  }
+  if (caps.maxJobs !== undefined) {
+    let knownJobs = 0;
+    for (const category of COST_CATEGORIES) {
+      const count = ledger.lines[category].count;
+      if (typeof count === "number") knownJobs += count;
+    }
+    if (knownJobs > caps.maxJobs) {
+      return {
+        ok: false,
+        message: `Observed KNOWN billable-job count ${knownJobs} exceeds scenario.caps.maxJobs=${caps.maxJobs}. The run fails closed.`
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/** Round a USD sum to 6 decimals so a float-accumulated total never carries spurious precision. */
+function roundUsd(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
 }
 
 /**
@@ -523,12 +765,15 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       { actor: descriptorId }
     );
   }
-  // maxUsd:0 means this lane asserts NO product/provider spend. SLICE 2 bounds spend by mechanism
-  // (the maxMinutes wall-clock kill + the no-billable-jobs posture); the full ledger is SLICE 3.
-  // A non-zero maxUsd is permitted but warned — this slice carries no spend-metering mechanism, so
-  // it cannot honor a positive budget and would be claiming a capability it lacks (invariant 6).
+  // SLICE 3: maxUsd is now ENFORCED fail-closed against the cost ledger (evaluateCapsAgainstLedger,
+  // after the session) — not advisory. A positive maxUsd is permitted, but the lane still has no
+  // PRODUCT-spend signal (product/media/payment lines are null = unmeasured; only the provider line
+  // is measurable, from tokenUsage). So a positive budget is honestly bounded by what is MEASURED:
+  // the known total (provider, when present) must stay <= maxUsd, and the no-spend proof reports the
+  // unmeasured lines rather than guessing them zero. Warn so the operator knows a positive budget is
+  // only as strong as the (currently provider-only) spend signal.
   if (maxUsd > 0) {
-    warnings.push(`scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget, but SLICE 2 has no spend-metering mechanism (the full cost ledger is SLICE 3). This run is bounded only by the maxMinutes wall-clock kill and asserts no billable-job spend; treat the spend assertion as maxUsd:0.`);
+    warnings.push(`scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget. SLICE 3 enforces maxUsd fail-closed against the cost ledger, but the only spend signal this slice meters is the provider line (from tokenUsage); product/media/payment are recorded null (UNMEASURED, never guessed zero) until the SLICE-4 adapter supplies them. The no-spend proof reports the unmeasured lines honestly.`);
   }
 
   // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
@@ -724,17 +969,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     });
   }
 
-  // Build + persist the ledgers, the redacted event stream, the normalized transcript, the agent
-  // report, the actor trace, and the run bundle.
-  const ledgers: TerminalLedgers = {
-    schema: "mimetic.terminal-ledgers.v1",
-    lifecycle,
-    commandLog,
-    interventions, // ALWAYS present, ALWAYS empty (no assisted-input path this slice).
-    cleanup
-  };
+  // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
   const normalizedTranscript = normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join(""));
-
   const trace = buildTerminalActorTrace({
     persona,
     productName: product.name,
@@ -748,6 +984,54 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     commandLog,
     transcriptTail: tailOf(normalizedTranscript)
   });
+
+  // --- SLICE 3: the spend ledger + no-spend proof + FULL caps enforcement (fail-closed). ---
+  // The cost ledger is DERIVED, with the null discipline: provider spend from the trace's
+  // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null this
+  // slice (no signal yet — SLICE 4). The costProbe hook lets the deterministic test inject KNOWN
+  // spend to exercise the fail-closed cap without a real billable run.
+  const injectedLines = hooks.costProbe?.({ ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }) });
+  const cost = buildCostLedger({
+    ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
+    ...(injectedLines ? { injectedLines } : {})
+  });
+  const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null);
+  recordLifecycle(
+    "terminal-lab.cost.measured",
+    `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : ` (lower bound; unmeasured: ${noSpendProof.unmeasuredLines.join(", ") || "none"})`}. No-spend proof ${noSpendProof.satisfied ? "satisfied" : "NOT satisfied"} for maxUsd=${maxUsd ?? "null"}.`
+  );
+
+  // FULL caps enforcement (fail-closed, NOT advisory): if a KNOWN spend line exceeds maxUsd (or a
+  // known job count exceeds maxJobs), the run fails closed — never a green pass. Unknowns (null) do
+  // NOT trip the cap (we cannot claim a violation we did not measure) but never grant a pass either
+  // (the no-spend proof reports them as unmeasured). maxMinutes is already wall-clock-enforced above.
+  const capCheck = evaluateCapsAgainstLedger(cost, caps);
+  let capsExceeded = false;
+  if (!capCheck.ok) {
+    capsExceeded = true;
+    sessionStatus = "failed";
+    completionReason = "harness_error";
+    sessionError = capCheck.message;
+    sessionReason = capCheck.message;
+    recordLifecycle("terminal-lab.caps.exceeded", capCheck.message);
+    // Reflect the fail-closed verdict in the trace the bundle/observer reads (so the run cannot show
+    // a passing agent verdict while the cap was blown).
+    trace.status = "failed";
+    trace.completionReason = "harness_error";
+    trace.reason = capCheck.message;
+  }
+
+  // Assemble + persist the ledgers (now carrying the cost block + no-spend proof), the redacted
+  // event stream, the normalized transcript, the actor trace, and the run bundle.
+  const ledgers: TerminalLedgers = {
+    schema: "mimetic.terminal-ledgers.v1",
+    lifecycle,
+    commandLog,
+    interventions, // ALWAYS present, ALWAYS empty (no assisted-input path this slice).
+    cleanup,
+    cost,
+    noSpendProof
+  };
 
   await writeFile(
     path.join(artifactRoot, TERMINAL_EVENTS_ARTIFACT),
@@ -815,6 +1099,22 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     ...(sandboxId
       ? { sandbox: { sandboxId, killed: cleanup.killed, remaining: cleanup.remaining } }
       : {}),
+    cost: {
+      knownTotalUsd: cost.knownTotalUsd,
+      fullyMeasured: cost.fullyMeasured,
+      lines: {
+        product: cost.lines.product.usd,
+        media: cost.lines.media.usd,
+        payment: cost.lines.payment.usd,
+        provider: cost.lines.provider.usd
+      }
+    },
+    noSpend: {
+      satisfied: noSpendProof.satisfied,
+      maxUsd: noSpendProof.maxUsd,
+      knownZeroLines: noSpendProof.knownZeroLines,
+      unmeasuredLines: noSpendProof.unmeasuredLines
+    },
     observer,
     warnings: [...warnings, ...observer.warnings],
     ...(ok
@@ -823,7 +1123,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
           error: {
             code: (!cleanupProven
               ? "MIMETIC_TERMINAL_LAB_CLEANUP_UNPROVEN"
-              : "MIMETIC_TERMINAL_LAB_FAILED") as NonNullable<TerminalProductLabResult["error"]>["code"],
+              : capsExceeded
+                ? "MIMETIC_TERMINAL_LAB_CAPS_EXCEEDED"
+                : "MIMETIC_TERMINAL_LAB_FAILED") as NonNullable<TerminalProductLabResult["error"]>["code"],
             message: !cleanupProven
               ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.`
               : sessionError ?? observer.error?.message ?? sessionReason
@@ -1312,12 +1614,26 @@ export function buildLiveTerminalProductBundle(args: {
   const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) => ({
     id: `event-${String(index).padStart(3, "0")}-${record.event}`,
     at: record.at,
-    level: record.event.includes("error") || record.event.includes("timed_out") ? "warn" : "info",
+    level: record.event.includes("error") || record.event.includes("timed_out") || record.event.includes("exceeded") ? "warn" : "info",
     type: record.event,
     message: record.message,
     simId: "sim-001",
     streamId: "stream-001"
   }));
+
+  // Surface the no-spend proof as a first-class bundle event so the Observer/review can SHOW it.
+  // It is DERIVED from the cost ledger (never asserted): it lists the known-zero lines it vouches
+  // for AND the unmeasured (null) lines it explicitly cannot vouch for.
+  const noSpend = args.ledgers.noSpendProof;
+  lifecycleEvents.push({
+    id: "event-cost-no-spend-proof",
+    at: args.trace.completedAt,
+    level: noSpend.satisfied ? "info" : "warn",
+    type: "terminal-lab.no-spend.proof",
+    message: noSpend.statement,
+    simId: "sim-001",
+    streamId: "stream-001"
+  });
 
   const verdict: ReviewSummary["verdict"] = args.trace.status === "passed"
     ? "pass"
@@ -1330,9 +1646,14 @@ export function buildLiveTerminalProductBundle(args: {
     schema: REVIEW_SCHEMA,
     verdict,
     summary: args.sessionReason,
-    gaps: args.trace.status === "passed"
-      ? []
-      : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]
+    gaps: [
+      ...(args.trace.status === "passed" ? [] : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
+      // Honesty gap: the no-spend proof always declares which spend lines it could NOT measure, so a
+      // green run never silently over-claims a fully-proven $0.
+      ...(noSpend.unmeasuredLines.length > 0
+        ? [`No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED this slice (recorded null, not claimed zero; the SLICE-4 adapter supplies these signals).`]
+        : [])
+    ]
   };
 
   return {
