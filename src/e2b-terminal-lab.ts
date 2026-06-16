@@ -61,6 +61,7 @@ import {
   type RunBundle,
   type RunEvent,
   type RunSimulation,
+  type RunSimulationStatus,
   type RunStream
 } from "./run.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
@@ -381,8 +382,8 @@ interface TerminalLedgers {
  * COMMAND-scoped env here; the caller passes it to commands.run({envs}), never Sandbox.create.
  */
 function buildCommandScopedRuntimeEnv(args: {
-  /** The runtimeAuth channel the lab declared ("openai-env"). */
-  runtimeAuth: LabConfig["execution"] extends infer E ? (E extends { runtimeAuth?: infer R } ? R : never) : never;
+  /** The runtimeAuth channel the lab declared ("openai-env"), or undefined if absent. */
+  runtimeAuth: string | undefined;
   /** The operator environment the key value is read from (process.env or a test fake). */
   env: Record<string, string | undefined>;
 }):
@@ -391,14 +392,18 @@ function buildCommandScopedRuntimeEnv(args: {
   // The "openai-env" channel declares OPENAI_API_KEY (preferred) or CODEX_API_KEY as the runtime
   // key. The ALLOWLIST is exactly these names; everything else is denied by construction.
   const ALLOWED_RUNTIME_KEY_NAMES = ["OPENAI_API_KEY", "CODEX_API_KEY"] as const;
-  // Names that must NEVER enter the sandbox (safety contract item 4). The allowlist already
-  // excludes them; this guard is a second, explicit fail-closed wall (so a future widening of the
-  // allowlist cannot silently let one through).
-  if (ALLOWED_RUNTIME_KEY_NAMES.some((name) => isBannedCredentialName(name))) {
+  // Tripwire (safety contract item 4): if a FUTURE widening of ALLOWED_RUNTIME_KEY_NAMES ever
+  // added a clearly-non-runtime credential (a GitHub/payment/deploy/db secret), fail closed. The
+  // generic `*_KEY` shape is deliberately NOT a tripwire here — a runtime key legitimately ends in
+  // _KEY (OPENAI_API_KEY), so testing it against the generic shape would false-positive on the very
+  // key this lane exists to inject. The positive allowlist itself is the real boundary: the command
+  // env is built from exactly these names and nothing else (so GITHUB_TOKEN/payment/db keys present
+  // in the operator env are never forwarded — proven by the deterministic test).
+  if (ALLOWED_RUNTIME_KEY_NAMES.some((name) => isNonRuntimeCredentialName(name))) {
     return {
       ok: false,
       code: "MIMETIC_TERMINAL_LAB_CREDENTIAL_DENIED",
-      message: "Internal invariant violated: a runtime-key allowlist entry is on the banned-credential denylist."
+      message: "Internal invariant violated: a runtime-key allowlist entry is a non-runtime credential (GitHub/payment/deploy/db)."
     };
   }
   const keyName = ALLOWED_RUNTIME_KEY_NAMES.find((name) => (args.env[name]?.trim() ?? "").length > 0);
@@ -419,26 +424,27 @@ function buildCommandScopedRuntimeEnv(args: {
   };
 }
 
-/** Credential NAME patterns that must never enter the sandbox (safety contract item 4). */
-const BANNED_CREDENTIAL_NAME_PATTERNS: RegExp[] = [
+// Clearly-non-runtime credential NAME shapes. Used as the runtime-key allowlist tripwire (a
+// runtime key must never be one of these). Deliberately EXCLUDES the generic `*_KEY` shape: the
+// runtime key this lane injects (OPENAI_API_KEY/CODEX_API_KEY) legitimately ends in _KEY, so the
+// generic shape would false-positive on it. The positive allowlist — not a denylist — is what
+// keeps every OTHER operator-env credential (GitHub/payment/deploy/db/media keys) out of the
+// sandbox: the command env is built from exactly the allowlisted runtime key and nothing else.
+const NON_RUNTIME_CREDENTIAL_NAME_PATTERNS: RegExp[] = [
   /^GITHUB_TOKEN$/i,
   /^GH_TOKEN$/i,
   /TOKEN$/i,        // deploy tokens, write tokens
   /SECRET/i,        // *_SECRET, payment secrets
   /PASSWORD/i,
-  /(^|_)KEY$/i,     // generic *_KEY (media/provider keys) — the runtime key is allowlisted ABOVE this guard
   /DATABASE_URL/i,
   /(^|_)DSN$/i,
   /STRIPE/i,
   /AWS_/i
 ];
 
-/** True when `name` matches a banned credential shape (deny-by-default item-4 guard). */
-function isBannedCredentialName(name: string): boolean {
-  return BANNED_CREDENTIAL_NAME_PATTERNS.some((pattern) => {
-    pattern.lastIndex = 0;
-    return pattern.test(name);
-  });
+/** True when `name` is a clearly-non-runtime credential (cannot be a runtime-key allowlist entry). */
+function isNonRuntimeCredentialName(name: string): boolean {
+  return NON_RUNTIME_CREDENTIAL_NAME_PATTERNS.some((pattern) => pattern.test(name));
 }
 
 /**
@@ -865,7 +871,7 @@ async function teardownSandbox(args: {
     return { killed, remaining: -1, reason: "killed; SDK does not expose Sandbox.list to re-verify (killed:true is the proof)" };
   }
   try {
-    const paginator = sandboxModule.Sandbox.list({ metadata: { runId: metadata.runId }, requestTimeoutMs });
+    const paginator = sandboxModule.Sandbox.list({ metadata: { runId: metadata.runId ?? "" }, requestTimeoutMs });
     let remaining = 0;
     let pages = 0;
     // nextItems() advances the paginator's internal cursor; hasNext reflects it after each call.
@@ -1193,6 +1199,166 @@ export function buildTerminalProductBundle(args: {
     redaction: {
       status: "passed",
       notes: "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. Live capture (scrubKnownValues then redactText, at the source) is SLICE 2."
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson"
+    },
+    review,
+    feedbackCandidates: []
+  };
+}
+
+/**
+ * Build the LIVE terminal-product run bundle (mode "live") from the captured session: the actor
+ * trace seam (stream.actor = trace), the substrate-lifecycle events, the terminal stream with the
+ * redacted transcript tail, and references to the written evidence artifacts (terminal event
+ * stream, transcript, ledgers, actor trace). verifyRun's terminal-product check (gated on
+ * mode==="live") enforces the ledgers + proven cleanup + interventions-present over this bundle.
+ */
+export function buildLiveTerminalProductBundle(args: {
+  actorId: string;
+  createdAt: string;
+  labId: string;
+  labTitle?: string;
+  mission: string;
+  persona: ActorPersonaRef;
+  productName: string;
+  publicSurfaces: string[];
+  caps?: LabScenarioCaps;
+  runtimeAuthKeyName: string;
+  policies: {
+    allowPrivateRepoAccess: boolean;
+    allowProviderCredentials: boolean;
+    allowPaymentCredentials: boolean;
+    allowGitHubMutation: boolean;
+  };
+  runId: string;
+  source: RunBundle["source"];
+  trace: ActorTrace;
+  ledgers: TerminalLedgers;
+  sandboxId?: string;
+  sessionError?: string;
+  sessionReason: string;
+}): RunBundle {
+  const simStatus: RunSimulationStatus = args.trace.status === "passed"
+    ? "passed"
+    : args.trace.status === "blocked"
+      ? "blocked"
+      : args.trace.status === "timed_out"
+        ? "timed_out"
+        : "failed";
+  const messageItem = args.trace.items.find((item) => item.kind === "message");
+  const tail = (messageItem?.text ?? args.trace.reason).slice(0, 2000);
+
+  const simulation: RunSimulation = {
+    id: "sim-001",
+    index: 1,
+    personaId: args.persona.id,
+    scenarioId: `terminal-${args.labId}`,
+    status: simStatus,
+    streamKind: "terminal",
+    mode: "cli-sim",
+    progress: 1,
+    currentStep: args.sessionReason,
+    summary: `Terminal agent (${args.actorId}) studied ${args.productName} from public surfaces (${args.trace.status}).`,
+    streamIds: ["stream-001"],
+    startedAt: args.createdAt,
+    updatedAt: args.trace.completedAt
+  };
+
+  // transport "snapshot": the persisted tail is a redacted snapshot of the captured exec output,
+  // NOT an interactive PTY (stdin disabled). The actor trace seam carries the structured evidence.
+  const stream: RunStream = {
+    id: "stream-001",
+    simId: "sim-001",
+    kind: "terminal",
+    label: `Terminal agent — ${args.labId}`,
+    status: simStatus,
+    transport: "snapshot",
+    updatedAt: args.trace.completedAt,
+    embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
+    terminal: {
+      title: `${args.actorId} exec (stdin disabled)`,
+      format: "plain",
+      stdin: "disabled",
+      tail
+    },
+    ui: {
+      intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
+      state: args.sessionReason
+    },
+    actor: args.trace,
+    artifacts: [
+      { label: "run bundle", path: "run.json", kind: "bundle" as const },
+      { label: "review", path: "review.md", kind: "review" as const },
+      { label: "event log", path: "events.ndjson", kind: "events" as const },
+      { label: "actor trace", path: "actor.json", kind: "trace" as const },
+      { label: "terminal event stream", path: TERMINAL_EVENTS_ARTIFACT, kind: "log" as const },
+      { label: "terminal transcript", path: TERMINAL_TRANSCRIPT_ARTIFACT, kind: "log" as const },
+      { label: "terminal ledgers", path: TERMINAL_LEDGERS_ARTIFACT, kind: "log" as const }
+    ]
+  };
+
+  // Substrate-lifecycle ledger -> bundle events (each already sanitized when recorded).
+  const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) => ({
+    id: `event-${String(index).padStart(3, "0")}-${record.event}`,
+    at: record.at,
+    level: record.event.includes("error") || record.event.includes("timed_out") ? "warn" : "info",
+    type: record.event,
+    message: record.message,
+    simId: "sim-001",
+    streamId: "stream-001"
+  }));
+
+  const verdict: ReviewSummary["verdict"] = args.trace.status === "passed"
+    ? "pass"
+    : args.trace.status === "blocked"
+      ? "blocked"
+      : args.trace.status === "timed_out"
+        ? "timed_out"
+        : "fail";
+  const review: ReviewSummary = {
+    schema: REVIEW_SCHEMA,
+    verdict,
+    summary: args.sessionReason,
+    gaps: args.trace.status === "passed"
+      ? []
+      : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]
+  };
+
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: "live",
+    simCount: 1,
+    createdAt: args.createdAt,
+    cwd: PUBLIC_TARGET_CWD,
+    artifactRoot: path.join(".mimetic", "runs", args.runId),
+    source: args.source,
+    persona: {
+      id: args.persona.id,
+      name: `Autonomous terminal agent (${args.persona.id})`,
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest
+    },
+    scenario: {
+      id: `terminal-${args.labId}`,
+      title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
+      goal: redactText(args.mission),
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest
+    },
+    lifecycle: args.ledgers.lifecycle.map((record) => ({ at: record.at, event: record.event, message: record.message })),
+    simulations: [simulation],
+    streams: [stream],
+    events: lifecycleEvents,
+    redaction: {
+      status: "passed",
+      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. The runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence. Subject provenance is UNPINNED (public-surface study).`
     },
     artifacts: {
       run: "run.json",

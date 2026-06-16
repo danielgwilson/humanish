@@ -3293,6 +3293,16 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
       : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
   });
+  const terminalProductFindings = isRunBundle(bundle)
+    ? await validateTerminalProductEvidence(resolved, bundle)
+    : [];
+  checks.push({
+    name: "terminal-product evidence",
+    ok: terminalProductFindings.length === 0,
+    message: terminalProductFindings.length === 0
+      ? "live terminal-product streams either are absent or carry the substrate/cleanup/interventions ledgers + redacted terminal evidence, with proven teardown"
+      : `terminal-product findings: ${terminalProductFindings.join(", ")}`
+  });
   const codexAppServerFindings = isRunBundle(bundle)
     ? await validateCodexAppServerEvidence(resolved, bundle)
     : [];
@@ -3823,6 +3833,101 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
     }
   }
   return findings.slice(0, 50);
+}
+
+// The fixed artifact filenames the terminal-product lane (src/e2b-terminal-lab.ts) persists.
+// Kept in sync with TERMINAL_LEDGERS_ARTIFACT / TERMINAL_EVENTS_ARTIFACT / TERMINAL_TRANSCRIPT_ARTIFACT.
+const TERMINAL_LEDGERS_FILE = "terminal-ledgers.json";
+const TERMINAL_EVENTS_FILE = "terminal-events.ndjson";
+const TERMINAL_TRANSCRIPT_FILE = "terminal-transcript.txt";
+
+/**
+ * Verifier for the terminal-product real-agent lane (issue #154, the in-sandbox command-scoped
+ * key route). A LIVE terminal stream must carry the durable proof the safety contract requires,
+ * and must FAIL CLOSED when any of it is missing — a blocked/failed agent run stays structurally
+ * verifiable (the failure is the evidence) ONLY when the substrate/cleanup/interventions ledgers
+ * are present; it must never become a hollow pass. Credential-shape leakage across every artifact
+ * file is already caught by scanRunPublicSafetyArtifacts; this check enforces the STRUCTURAL
+ * evidence + the proven-teardown invariant. Dry-run/contract bundles are exempt (mode !== live).
+ */
+async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundle): Promise<string[]> {
+  if (bundle.mode !== "live") {
+    return [];
+  }
+  const findings: string[] = [];
+  // Detect the terminal-PRODUCT lane by its unique actor-trace protocol ("terminal-exec"), NOT by
+  // the broad stream.kind "terminal" — the existing local codex-exec/TUI lanes also use terminal
+  // streams (with a different protocol) and must not be held to this lane's ledger contract.
+  const terminalStreams = bundle.streams.filter(
+    (stream) => stream.actor?.protocol === "terminal-exec" && stream.status !== "contract_proof_only"
+  );
+  if (terminalStreams.length === 0) {
+    return findings;
+  }
+
+  // The lane writes exactly one terminal run's ledgers/evidence at fixed paths in the run root.
+  const ledgers = await readJsonIfExists(path.join(runRoot, TERMINAL_LEDGERS_FILE));
+  if (!isRecord(ledgers) || ledgers.schema !== "mimetic.terminal-ledgers.v1") {
+    findings.push(`missing or malformed ${TERMINAL_LEDGERS_FILE} (mimetic.terminal-ledgers.v1)`);
+    return findings;
+  }
+
+  // Substrate lifecycle ledger: must record at least sandbox creation AND teardown.
+  const lifecycle = Array.isArray(ledgers.lifecycle) ? ledgers.lifecycle : [];
+  if (lifecycle.length === 0) {
+    findings.push("substrate lifecycle ledger is empty (expected create -> ready -> exec -> cleanup events)");
+  }
+
+  // Command log: present (an array; empty is allowed only if the session never reached exec, which
+  // the lifecycle/cleanup records still cover).
+  if (!Array.isArray(ledgers.commandLog)) {
+    findings.push("command log ledger is missing or not an array");
+  }
+
+  // Interventions ledger: must be PRESENT (an array). Empty is valid and expected (stdin disabled,
+  // no assisted-input path) — but absent fails, so an assisted run can never masquerade as one
+  // without an interventions record.
+  if (!Array.isArray(ledgers.interventions)) {
+    findings.push("interventions ledger is missing (an empty array is required-present, not optional)");
+  }
+
+  // Cleanup proof: the sandbox must be killed and proven reclaimed (remaining 0, or -1 when the
+  // SDK cannot list — the kill + server-side kill-on-timeout backstop). A live run that cannot
+  // prove teardown fails closed.
+  const cleanup = isRecord(ledgers.cleanup) ? ledgers.cleanup : undefined;
+  if (!cleanup) {
+    findings.push("cleanup proof is missing");
+  } else if (cleanup.killed !== true || !(cleanup.remaining === 0 || cleanup.remaining === -1)) {
+    findings.push(
+      `cleanup not proven (killed=${String(cleanup.killed)}, remaining=${String(cleanup.remaining)}); a run that cannot prove sandbox teardown fails closed`
+    );
+  }
+
+  // The redacted exec-stream + normalized transcript artifacts must be WRITTEN (the producer
+  // always writes them on the live path, even empty for a no-output blocked run — so absence is a
+  // real evidence gap, while emptiness is legitimate and keeps blocked runs verifiable).
+  if (!(await fileExists(path.join(runRoot, TERMINAL_EVENTS_FILE)))) {
+    findings.push(`missing terminal event stream artifact (${TERMINAL_EVENTS_FILE})`);
+  }
+  if (!(await fileExists(path.join(runRoot, TERMINAL_TRANSCRIPT_FILE)))) {
+    findings.push(`missing normalized terminal transcript artifact (${TERMINAL_TRANSCRIPT_FILE})`);
+  }
+
+  // The provider-neutral actor trace must be on the terminal lane with redaction passed.
+  for (const stream of terminalStreams) {
+    const traceArtifact = stream.artifacts.find((artifact) => artifact.kind === "trace");
+    const tracePath = traceArtifact?.path ?? "actor.json";
+    const trace = await readJsonIfExists(path.join(runRoot, tracePath));
+    if (!isRecord(trace) || trace.lane !== "terminal") {
+      findings.push(`${stream.id} missing terminal-lane actor trace`);
+      continue;
+    }
+    if (!isRecord(trace.redaction) || trace.redaction.status !== "passed") {
+      findings.push(`${stream.id} actor trace redaction status must be passed`);
+    }
+  }
+
+  return findings;
 }
 
 async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle): Promise<string[]> {
