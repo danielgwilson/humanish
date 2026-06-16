@@ -19,7 +19,6 @@ import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { createProgram } from "../src/program.js";
 import { verifyRun } from "../src/run.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
-import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../src/terminal-agent-actor.js";
 
 const ROOT = process.cwd();
 
@@ -374,15 +373,19 @@ describe("runTerminalProductLab (dry-run)", () => {
     }
   });
 
-  it("a LIVE (non-dry-run) call returns the structured not-yet-implemented failure (not a crash) and writes no run", async () => {
-    const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), { cwd });
+  it("a LIVE (non-dry-run) call with no runtime key fails closed BEFORE any sandbox (live backend wired in SLICE 2)", async () => {
+    // SLICE 2 implemented the live backend; without a runtime key in the (empty) env it fails
+    // closed at the credential-resolution step — no sandbox, no spend, no artifacts. (The full
+    // live path + credential boundary is covered deterministically in e2b-terminal-lab.test.ts.)
+    const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), { cwd, terminalHooks: { env: {} } });
     expect(outcome.backend).toBe("terminal");
     if (outcome.backend !== "terminal") return;
     const result = outcome.result;
     expect(result.ok).toBe(false);
     expect(result.dryRun).toBe(false);
-    expect(result.error?.code).toBe(TERMINAL_AGENT_NOT_IMPLEMENTED_CODE);
-    expect(result.error?.message).toContain("SLICE 2");
+    // It is NO LONGER the not-implemented stub — the live path is wired and fails closed on the
+    // missing runtime key (never reaching sandbox creation).
+    expect(result.error?.code).toBe("MIMETIC_TERMINAL_LAB_RUNTIME_AUTH_MISSING");
     expect(result.runId).toBe("not-created");
     // No sandbox, no spend, no artifacts.
     await expect(readdir(path.join(cwd, ".mimetic", "runs"))).rejects.toThrow();
