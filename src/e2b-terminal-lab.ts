@@ -58,8 +58,10 @@ import {
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
+  type RunAdapterScore,
   type RunBundle,
   type RunEvent,
+  type RunFeedbackCandidate,
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream
@@ -98,6 +100,30 @@ export const TERMINAL_PRODUCT_LAB_SCHEMA = "mimetic.terminal-lab-result.v1";
  * module) + env (the operator key source) + now (an injected clock); the live rung uses none of
  * them (it loads the real module and reads the real environment).
  */
+/**
+ * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam,
+ * issue #154 acceptance #8). It is the FULLY-ASSEMBLED, redacted, verifiable evidence — the live run
+ * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
+ * interventions/cleanup/cost/no-spend). Every member is an EXPORTED public type, so a thin adapter
+ * types against `import("mimetic-cli")` alone — never a deep `src/` import. The adapter reads this
+ * to score the product attempt and derive feedback; it cannot mutate core's evidence (the lane
+ * attaches only the namespaced `RunAdapterScore` it returns + the feedback candidates it derives).
+ */
+export interface TerminalProductScoringContext {
+  /** The assembled live run bundle (already redacted/scrubbed + verifiable). Read-only to the adapter. */
+  bundle: RunBundle;
+  /** The provider-neutral actor trace for the in-sandbox agent session. */
+  trace: ActorTrace;
+  /** The persisted terminal-product ledgers (lifecycle/command/interventions/cleanup/cost/no-spend). */
+  ledgers: TerminalLedgers;
+  /** The studied product name (public-safe). */
+  product: string;
+  /** The lab id (the run's scenario scope). */
+  labId: string;
+  /** The run id (for building namespaced idempotency keys + evidence pointers). */
+  runId: string;
+}
+
 export interface TerminalProductLabHooks {
   /** Lazy-load the E2B module (tests inject a fake; default loadE2BDesktopModule). */
   loadModule?: () => Promise<E2BDesktopModule>;
@@ -119,6 +145,26 @@ export interface TerminalProductLabHooks {
    * real billable run. Production callers never pass this — they get the null-discipline default.
    */
   costProbe?: (context: { tokenCostUsd?: number }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
+  /**
+   * THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8: "product-adapter hooks WITHOUT forking
+   * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The lane calls it
+   * (when provided) over the fully-assembled evidence and attaches the returned, ADAPTER-NAMESPACED
+   * `RunAdapterScore` to `bundle.adapterScore` WITHOUT core knowing any product noun (the score is
+   * namespaced + its component breakdown rides in `data`). When NO scorer is given, the default
+   * mission-based verdict (`review`) is unchanged. This is the SEAM the adopter's scorecard plugs
+   * into — NOT a built-in product scorer (that lives in the adopter's repo).
+   */
+  score?: (ctx: TerminalProductScoringContext) => RunAdapterScore | Promise<RunAdapterScore>;
+  /**
+   * Companion seam: derive product-feedback candidates from the same assembled evidence. The lane
+   * appends the returned candidates to `bundle.feedbackCandidates`. The adapter records its
+   * product-specific concepts (public CLI command observed, hosted success-or-blocker, feedback id,
+   * media/job ids, no-spend proof, defection/friction risk) under each candidate's ADAPTER-NAMESPACED
+   * `adapter` block — never as core enums (issue #154's "record product-specific concepts as
+   * NON-core nouns" list). The candidates must still satisfy core's feedback-candidate shape (which
+   * the bundle verifier enforces), so a malformed adapter candidate fails closed.
+   */
+  deriveFeedback?: (ctx: TerminalProductScoringContext) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
 }
 
 export interface RunTerminalProductLabOptions {
@@ -336,7 +382,7 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
 // ===========================================================================
 
 /** Substrate lifecycle ledger entry (create/readiness/exec/cleanup events with timestamps). */
-interface LifecycleRecord {
+export interface LifecycleRecord {
   at: string;
   event: string;
   /** Redacted+scrubbed before persisting (it never carries a secret, but the harness never trusts that). */
@@ -344,7 +390,7 @@ interface LifecycleRecord {
 }
 
 /** Command-log ledger entry: which command ran, with what exit/duration (NEVER its env values). */
-interface CommandLogRecord {
+export interface CommandLogRecord {
   at: string;
   /** A public-safe label for the command (e.g. "codex-exec"); the full argv is bound by digest only. */
   label: string;
@@ -370,7 +416,7 @@ interface TerminalEventRecord {
  * ledger is ALWAYS empty — but always PRESENT (the safety contract: empty-present is the contract,
  * an absent ledger fails verify). The shape is fixed now so an assisted path (deferred) can fill it.
  */
-interface InterventionRecord {
+export interface InterventionRecord {
   at: string;
   kind: "stdin";
   /** Redacted+scrubbed digest of the injected input (never the raw bytes). */
@@ -392,7 +438,7 @@ interface InterventionRecord {
  * exist for this run"; a present key with `null` means "this category exists but we did not measure
  * it". A no-spend proof that claimed zero on a `null` line would claim more than it measured.
  */
-interface CostLine {
+export interface CostLine {
   /** known zero (0) | not measured (null). The key is ALWAYS present when the line is applicable. */
   usd: number | null;
   /** Optional billable-unit count, same discipline: a known count, or null = not measured. */
@@ -405,13 +451,13 @@ interface CostLine {
 
 /** The cost categories the lane meters. product/media/payment are adapter signals (SLICE 4); the
  *  provider line can be populated this slice from the actor trace's tokenUsage.costUsd when present. */
-type CostCategory = "product" | "media" | "payment" | "provider";
+export type CostCategory = "product" | "media" | "payment" | "provider";
 
 /**
  * The spend ledger (a block of `TerminalLedgers`). The no-spend PROOF is DERIVED from this — never
  * asserted independently. Every applicable category appears as a line; unknowns are `null`.
  */
-interface TerminalCostLedger {
+export interface TerminalCostLedger {
   schema: "mimetic.terminal-cost-ledger.v1";
   /** USD currency unit (recorded explicitly so a future multi-currency lane is unambiguous). */
   currency: "usd";
@@ -430,7 +476,7 @@ interface TerminalCostLedger {
  * KNOWN line is zero (a known non-zero line fails it); but a proof with unmeasured lines explicitly
  * says it could not measure them — it never claims zero on a line the ledger marks null.
  */
-interface NoSpendProof {
+export interface NoSpendProof {
   schema: "mimetic.terminal-no-spend-proof.v1";
   /** The maxUsd cap this proof was evaluated against (the no-spend scenario declares maxUsd: 0). */
   maxUsd: number | null;
@@ -450,7 +496,7 @@ interface NoSpendProof {
 }
 
 /** The persisted terminal-product ledgers artifact (substrate lifecycle + command log + interventions + cleanup + cost). */
-interface TerminalLedgers {
+export interface TerminalLedgers {
   schema: "mimetic.terminal-ledgers.v1";
   lifecycle: LifecycleRecord[];
   commandLog: CommandLogRecord[];
@@ -1068,6 +1114,17 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     sessionReason: sanitize(sessionReason)
   });
 
+  // --- THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8). ---
+  // When a thin adapter registered a scorer / feedback strategy, the lane calls it over the
+  // FULLY-ASSEMBLED, redacted evidence and attaches the results to the bundle WITHOUT knowing any
+  // product noun: the namespaced RunAdapterScore lands on bundle.adapterScore, and the derived
+  // feedback candidates (each carrying its own namespaced product-noun block) are appended to
+  // bundle.feedbackCandidates. Core's mission-based verdict (bundle.review) is left UNCHANGED — the
+  // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
+  // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
+  // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
+  await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, product: product.name, labId: config.id, runId, sanitize, warnings });
+
   await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.md"), renderTerminalReviewMarkdown(bundle), "utf8");
@@ -1132,6 +1189,108 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
           }
         })
   };
+}
+
+/**
+ * Run the layer-6 product-adapter extension seam (issue #154 acceptance #8) over the assembled
+ * evidence and attach its results to the bundle IN PLACE — without core knowing any product noun.
+ *
+ *  - `score`: when present, the returned namespaced `RunAdapterScore` lands on `bundle.adapterScore`.
+ *    Core's mission-based verdict (`bundle.review`) is UNCHANGED — the adapter score is additive.
+ *  - `deriveFeedback`: when present, the returned candidates are appended to
+ *    `bundle.feedbackCandidates`; each carries its own namespaced `adapter` product-noun block.
+ *
+ * Defense in depth: the adapter's namespaced payloads are re-serialized through the run's scrub +
+ * redact (the adapter is trusted in-repo code, but the harness never relies on that for secret
+ * values), and any candidate / score that does not satisfy core's exported shape is DROPPED with a
+ * warning (a malformed adapter output never poisons a verifiable bundle). The bundle verifier
+ * re-checks the surviving shapes downstream, so the seam stays fail-closed end to end.
+ */
+async function applyAdapterExtensionSeam(args: {
+  hooks: TerminalProductLabHooks;
+  bundle: RunBundle;
+  trace: ActorTrace;
+  ledgers: TerminalLedgers;
+  product: string;
+  labId: string;
+  runId: string;
+  sanitize: (text: string) => string;
+  warnings: string[];
+}): Promise<void> {
+  const { hooks, bundle, trace, ledgers, product, labId, runId, sanitize, warnings } = args;
+  if (!hooks.score && !hooks.deriveFeedback) return;
+
+  const ctx: TerminalProductScoringContext = { bundle, trace, ledgers, product, labId, runId };
+  // Scrub + redact an arbitrary adapter payload by round-tripping it through the run's sanitizer.
+  // Strings are scrubbed individually so a planted secret in any nested string value is caught.
+  const scrubValue = <T>(value: T): T => JSON.parse(sanitize(JSON.stringify(value))) as T;
+
+  if (hooks.score) {
+    try {
+      const score = await hooks.score(ctx);
+      const cleaned = scrubValue(score);
+      if (isAdapterScoreShape(cleaned)) {
+        bundle.adapterScore = cleaned;
+      } else {
+        warnings.push("terminalHooks.score returned a value that is not a well-formed mimetic.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.");
+      }
+    } catch (error) {
+      warnings.push(`terminalHooks.score threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+    }
+  }
+
+  if (hooks.deriveFeedback) {
+    try {
+      const candidates = await hooks.deriveFeedback(ctx);
+      const accepted: RunFeedbackCandidate[] = [];
+      for (const candidate of Array.isArray(candidates) ? candidates : []) {
+        const cleaned = scrubValue(candidate);
+        if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
+        else warnings.push("terminalHooks.deriveFeedback returned a candidate that is not a well-formed mimetic.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.");
+      }
+      if (accepted.length > 0) {
+        bundle.feedbackCandidates = [...bundle.feedbackCandidates, ...accepted];
+      }
+    } catch (error) {
+      warnings.push(`terminalHooks.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+    }
+  }
+}
+
+/** Structural guard for an adapter-returned RunAdapterScore (mirrors run.ts isRunAdapterScore, kept
+ *  local so the lane fails closed at the seam BEFORE the bundle verifier re-checks it). */
+function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    && (value as RunAdapterScore).schema === "mimetic.adapter-score.v1"
+    && typeof (value as RunAdapterScore).namespace === "string"
+    && (value as RunAdapterScore).namespace.trim().length > 0
+    && ["pass", "partial", "fail"].includes((value as RunAdapterScore).status)
+    && typeof (value as RunAdapterScore).score === "number"
+    && Number.isFinite((value as RunAdapterScore).score)
+    && typeof (value as RunAdapterScore).summary === "string";
+}
+
+/** Structural guard for an adapter-returned feedback candidate. Requires the core shape AND (when an
+ *  adapter block is present) a non-empty namespace + data record — so a malformed product-noun block
+ *  fails closed at the seam. */
+function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const candidate = value as Partial<RunFeedbackCandidate>;
+  const baseOk = candidate.schema === "mimetic.feedback-candidate.v1"
+    && typeof candidate.id === "string"
+    && typeof candidate.summary === "string" && candidate.summary.trim().length > 0
+    && Array.isArray(candidate.evidence)
+    && typeof candidate.redaction === "object" && candidate.redaction !== null && candidate.redaction.status === "passed";
+  if (!baseOk) return false;
+  if (candidate.adapter !== undefined) {
+    const adapter = candidate.adapter;
+    if (typeof adapter !== "object" || adapter === null
+      || typeof adapter.namespace !== "string" || adapter.namespace.trim().length === 0
+      || typeof adapter.data !== "object" || adapter.data === null || Array.isArray(adapter.data)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

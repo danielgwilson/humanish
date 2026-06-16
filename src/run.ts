@@ -153,6 +153,22 @@ export interface RunSetupQualitySnapshot {
   };
 }
 
+/**
+ * The CLOSED set of core meaningful-use scoring components. Closed by design: these are the generic
+ * dimensions core itself meters (setup/filesystem/nested/actor/product/feedback). A product-specific
+ * scorecard does NOT extend this enum (that would be closed-taxonomy rot — every adopter's nouns
+ * leaking into core); it ships as a thin in-repo extension that emits a namespaced `RunAdapterScore`
+ * via the lane's `score` hook, leaving its own component breakdown in that score's `data`. Exported
+ * so a thin adapter can type against core's score shape without forking.
+ */
+export type RunMeaningfulUseComponentId =
+  | "setup-correctness"
+  | "filesystem-evidence"
+  | "nested-mimetic-evidence"
+  | "actor-activity"
+  | "product-surface"
+  | "feedback-quality";
+
 export interface RunMeaningfulUseScore {
   schema: "mimetic.meaningful-use-score.v1";
   status: "pass" | "partial" | "fail";
@@ -160,18 +176,34 @@ export interface RunMeaningfulUseScore {
   summary: string;
   hardFailures: string[];
   components: Array<{
-    id:
-      | "setup-correctness"
-      | "filesystem-evidence"
-      | "nested-mimetic-evidence"
-      | "actor-activity"
-      | "product-surface"
-      | "feedback-quality";
+    id: RunMeaningfulUseComponentId;
     label: string;
     status: "pass" | "partial" | "fail";
     score: number;
     detail: string;
   }>;
+}
+
+/**
+ * A namespaced, product-agnostic score a thin adapter attaches to the bundle via the terminal-product
+ * lane's `score` hook (the layer-6 extension seam, issue #154 acceptance #8). Core never reads its
+ * `data` and knows none of the adopter's nouns — the `namespace` (e.g. `"acme-pixelforge"`) scopes
+ * the whole record so core schemas stay product-agnostic and a future inert-field audit does not
+ * misfire on a noun core never owned. The adopter's real scorecard (component weights, product
+ * rubric) lives in ITS repo and is summarized into the generic status/score/summary; everything
+ * product-specific rides under `data`. This is NOT a built-in product scorer — it is the SEAM the
+ * adopter's scorer plugs into without forking core.
+ */
+export interface RunAdapterScore {
+  schema: "mimetic.adapter-score.v1";
+  /** The adapter's namespace — non-core, product-scoped (e.g. an adopter slug). Required + non-empty. */
+  namespace: string;
+  status: "pass" | "partial" | "fail";
+  /** A 0-100 summary the adapter derived from its own (off-core) rubric. */
+  score: number;
+  summary: string;
+  /** Arbitrary product-specific payload (the adopter's component breakdown / nouns). Core never reads it. */
+  data?: Record<string, unknown>;
 }
 
 export interface RunFeedbackCandidate {
@@ -183,7 +215,8 @@ export interface RunFeedbackCandidate {
   scenario_id: string;
   persona_id: string;
   actor: "codex-tui" | "codex-exec" | "codex-app-server" | "synthetic-dry-run" | "unknown";
-  substrate: "e2b-desktop" | "local-filesystem" | "codex-app-server" | "unknown";
+  // `e2b-terminal`: the in-sandbox command-scoped terminal-agent substrate (issue #154 / SLICE 4).
+  substrate: "e2b-desktop" | "e2b-terminal" | "local-filesystem" | "codex-app-server" | "unknown";
   failure_owner: "harness" | "target-app" | "actor" | "environment" | "unknown";
   summary: string;
   expected: string;
@@ -200,6 +233,23 @@ export interface RunFeedbackCandidate {
   idempotency_key: string;
   proposed_next_state: "watch" | "adapter-hardening" | "target-app-setup" | "actor-auth" | "setup-quality-review" | "study-quality-review";
   acceptance_proof: string[];
+  /**
+   * OPTIONAL, ADAPTER-NAMESPACED product-noun block (the layer-6 extension seam, issue #154
+   * acceptance #8 + the "record product-specific concepts as NON-core nouns" list). A thin adapter
+   * records product-specific concepts — public CLI/product command observed, hosted product
+   * success-or-blocker, feedback id/draft observed, media/job/asset ids, explicit
+   * no-media/no-provider-spend proof, defection/friction risk — WITHOUT making any of them core
+   * primitives. They ride under a single namespaced field so core's feedback enums
+   * (`evidence.kind`, `proposed_next_state`) stay product-agnostic and a future inert-field audit
+   * never misfires on a noun core never owned. Core validates only the SHAPE (a non-empty
+   * `namespace` + a `data` record); the keys inside `data` are the adapter's, never core's.
+   */
+  adapter?: {
+    /** Non-core, product-scoped namespace (e.g. an adopter slug). Required + non-empty. */
+    namespace: string;
+    /** The adapter's product nouns. Core never reads these keys — it stays product-agnostic. */
+    data: Record<string, unknown>;
+  };
 }
 
 export interface RunSimulation {
@@ -387,6 +437,13 @@ export interface RunBundle {
   /** Structured subject provenance (invariant 5). Optional and additive: emitted by the
    * computer-use backend; tolerated absent everywhere else. */
   subject?: RunSubjectProvenance;
+  /**
+   * OPTIONAL, ADAPTER-NAMESPACED product score (the layer-6 extension seam, issue #154 acceptance
+   * #8). A thin adapter's `score` hook returns a `RunAdapterScore`; the lane attaches it here
+   * WITHOUT core knowing any product noun (the score is namespaced + its breakdown lives in `data`).
+   * The default mission-based verdict (`review`) is unchanged when no scorer hook is given.
+   */
+  adapterScore?: RunAdapterScore;
 }
 
 export interface ReviewSummary {
@@ -4410,7 +4467,22 @@ function isRunBundle(value: unknown): value is RunBundle {
     && value.feedbackCandidates.every(isRunFeedbackCandidate)
     // Optional and additive: pre-existing bundles (and non-cua backends) carry no subject
     // block; when present it must be well-shaped (semantics are the verify check's job).
-    && (value.subject === undefined || isRunSubjectProvenance(value.subject));
+    && (value.subject === undefined || isRunSubjectProvenance(value.subject))
+    // Optional, adapter-namespaced product score (the extension seam). When present, validate only
+    // its SHAPE; core never reads the adapter's `data` payload.
+    && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore));
+}
+
+function isRunAdapterScore(value: unknown): value is RunAdapterScore {
+  return isRecord(value)
+    && value.schema === "mimetic.adapter-score.v1"
+    && typeof value.namespace === "string"
+    && value.namespace.trim().length > 0
+    && (value.status === "pass" || value.status === "partial" || value.status === "fail")
+    && typeof value.score === "number"
+    && Number.isFinite(value.score)
+    && typeof value.summary === "string"
+    && (value.data === undefined || isRecord(value.data));
 }
 
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {
@@ -4586,7 +4658,17 @@ function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCandidate {
     && typeof value.idempotency_key === "string"
     && isFeedbackNextState(value.proposed_next_state)
     && Array.isArray(value.acceptance_proof)
-    && value.acceptance_proof.every((item) => typeof item === "string");
+    && value.acceptance_proof.every((item) => typeof item === "string")
+    // Optional, adapter-namespaced product-noun block: when present, validate only its SHAPE
+    // (a non-empty namespace + a data record). Core never inspects the keys inside `data`.
+    && (value.adapter === undefined || isFeedbackAdapterBlock(value.adapter));
+}
+
+function isFeedbackAdapterBlock(value: unknown): value is NonNullable<RunFeedbackCandidate["adapter"]> {
+  return isRecord(value)
+    && typeof value.namespace === "string"
+    && value.namespace.trim().length > 0
+    && isRecord(value.data);
 }
 
 function isRunFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
@@ -4682,6 +4764,7 @@ function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"]
 
 function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
   return value === "e2b-desktop"
+    || value === "e2b-terminal"
     || value === "local-filesystem"
     || value === "codex-app-server"
     || value === "unknown";

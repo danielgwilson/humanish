@@ -105,8 +105,12 @@ export {
 export type {
   DoctorResult,
   ReviewSummary,
+  RunAdapterScore,
   RunBundle,
   RunEvent,
+  RunFeedbackCandidate,
+  RunMeaningfulUseComponentId,
+  RunMeaningfulUseScore,
   RunOptions,
   RunResult,
   RunSimulation,
@@ -155,9 +159,18 @@ export {
   runTerminalProductLab
 } from "./e2b-terminal-lab.js";
 export type {
+  CommandLogRecord,
+  CostCategory,
+  CostLine,
+  InterventionRecord,
+  LifecycleRecord,
+  NoSpendProof,
   RunTerminalProductLabOptions,
+  TerminalCostLedger,
+  TerminalLedgers,
   TerminalProductLabHooks,
-  TerminalProductLabResult
+  TerminalProductLabResult,
+  TerminalProductScoringContext
 } from "./e2b-terminal-lab.js";
 export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";

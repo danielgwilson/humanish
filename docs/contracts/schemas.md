@@ -39,6 +39,9 @@ workflow without leaking private upstream truth into core.
 | Verification | `mimetic.verify-result.v1` | `five-check-verify` |
 | Policy | `mimetic.policy.v1` (fixture-only; not engine-validated) | `public-safety-policy` |
 | Feedback | `mimetic.feedback.v1` | `public-safe-feedback` |
+| Terminal cost ledger | `mimetic.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
+| Terminal no-spend proof | `mimetic.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
+| Adapter score | `mimetic.adapter-score.v1` (additive `RunBundle.adapterScore`; namespaced) | see Product-Adapter Extension Seam below |
 
 ## Lab Manifest
 
@@ -455,6 +458,64 @@ Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
 measure) and never grant a green pass (they surface as unmeasured). `verifyRun`
 fails closed when a live bundle lacks the cost ledger or no-spend proof, when the
 proof claims zero on a `null` line, or when known spend exceeds the declared cap.
+
+## Product-Adapter Extension Seam
+
+The terminal-product lane is proof-roadmap **layer 6**: an adopter (e.g. a
+creative-CLI product) attaches product-specific scoring + feedback as a THIN
+in-repo extension WITHOUT forking core. The seam is the EXPORTED contract types
+plus a DI hook on `TerminalProductLabHooks` — never a built-in product scorer
+(the adopter's scorecard lives in the adopter's repo).
+
+Two product-agnostic carriers keep core's nouns closed while letting the adapter
+record its own:
+
+- **Adapter score** (`mimetic.adapter-score.v1`, additive `RunBundle.adapterScore`).
+  A namespaced summary the adapter's `score` hook returns: `{ schema, namespace,
+  status, score, summary, data? }`. Core never reads `data` — the adopter's
+  component rubric rides there; `namespace` (an adopter slug) scopes the whole
+  record so a future inert-field audit never misfires. The mission-based
+  `review` verdict is UNCHANGED — the adapter score is additive, not a replacement.
+- **Namespaced product-noun block** (`RunFeedbackCandidate.adapter`). The
+  adapter's `deriveFeedback` hook returns feedback candidates that satisfy core's
+  feedback-candidate shape; product-specific concepts (public CLI/product command
+  observed, hosted product success-or-blocker, feedback id/draft, media/job/asset
+  ids, explicit no-media/no-provider-spend proof, defection/friction risk) are
+  recorded ONLY under `adapter: { namespace, data }` — never as core enums. Core
+  validates the SHAPE (a non-empty `namespace` + a `data` record); the keys inside
+  `data` are the adapter's.
+
+```yaml
+# RunBundle.adapterScore (namespaced; data is the adopter's, core never reads it)
+schema: mimetic.adapter-score.v1
+namespace: adopter-slug
+status: pass
+score: 88
+summary: Product study scored by the adopter's own rubric.
+data: { productRubric: { discovery: 1, firstImage: 1 }, hostedProductSucceeded: true }
+```
+
+```yaml
+# RunFeedbackCandidate.adapter — product nouns stay NON-core under the namespace
+adapter:
+  namespace: adopter-slug
+  data:
+    publicCommandObserved: "product generate --prompt '…'"
+    hostedProductOutcome: success
+    feedbackId: null
+    mediaJobIds: []
+    noMediaSpendProof: { mediaUsd: null, providerUsd: 0 }
+    defectionFrictionRisk: low
+```
+
+The `e2b-terminal` substrate is added to `RunFeedbackCandidate.substrate` so a
+terminal-agent candidate names its substrate honestly. The lane invokes the hooks
+over the FULLY-ASSEMBLED, redacted evidence (`TerminalProductScoringContext`:
+`bundle`, `trace`, `ledgers`, `product`, `labId`, `runId` — all exported public
+types), scrubs+redacts the returned payloads, and DROPS any malformed score or
+candidate with a warning so a bad extension never poisons a verifiable bundle.
+Default behavior (no hook) is unchanged. `verifyRun` re-checks the surviving
+shapes fail-closed.
 
 ## Evidence Streams
 
