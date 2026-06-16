@@ -8,11 +8,17 @@ import {
   CODEX_APP_SERVER_CAPABILITIES,
   PI_AGENT_CORE_CAPABILITIES,
   SCRIPTED_BROWSER_CAPABILITIES,
+  TERMINAL_AGENT_CAPABILITIES,
   codexResultToActorTrace,
   type ActorCapabilities,
   type ActorPersonaRef,
   type ActorTrace
 } from "./actor-contract.js";
+import {
+  runTerminalAgentSession,
+  type TerminalAgentSessionOptions,
+  type TerminalAgentSessionResult
+} from "./terminal-agent-actor.js";
 import { piSessionToActorTrace, type PiSessionResult } from "./pi-agent-core.js";
 import {
   claudeSessionToActorTrace,
@@ -32,7 +38,7 @@ import {
 
 // The set of pluggable actor harnesses. The union grows as adapters land
 // (stagehand-cua next). See docs/architecture/actor-contract.md.
-export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "scripted-browser";
+export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "scripted-browser" | "codex-exec";
 
 interface ActorDescriptorBase {
   id: ActorId;
@@ -80,12 +86,22 @@ export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
   runSession(options: ScriptedBrowserSessionOptions): Promise<ScriptedBrowserSessionResult>;
 }
 
+// The terminal descriptor exposes runSession ONLY (no toActorTrace): the session returns a
+// fully-formed ActorTrace at result.trace, like the CUA / scripted shapes. SLICE 1 wires the
+// descriptor + capabilities (incl. keyPlacement) into the registry so routing and the contract
+// are honest; the live session is implemented in SLICE 2 (the dry-run path never calls it).
+export interface TerminalActorDescriptor extends ActorDescriptorBase {
+  id: "codex-exec";
+  runSession(options: TerminalAgentSessionOptions): Promise<TerminalAgentSessionResult>;
+}
+
 export type ActorDescriptor =
   | CodexActorDescriptor
   | PiActorDescriptor
   | ClaudeActorDescriptor
   | CuaActorDescriptor
-  | ScriptedBrowserActorDescriptor;
+  | ScriptedBrowserActorDescriptor
+  | TerminalActorDescriptor;
 
 /**
  * REGISTRY CONTRACT: an actor whose capabilities include the "computer-use" lane is a
@@ -106,6 +122,17 @@ export function isCuaActorDescriptor(descriptor: ActorDescriptor): descriptor is
  */
 export function isScriptedBrowserActorDescriptor(descriptor: ActorDescriptor): descriptor is ScriptedBrowserActorDescriptor {
   return descriptor.capabilities.lanes.includes("scripted-browser");
+}
+
+/**
+ * REGISTRY CONTRACT (mirror of isCuaActorDescriptor / isScriptedBrowserActorDescriptor): an actor
+ * whose capabilities include the "terminal" lane IS a TerminalActorDescriptor — runSession takes
+ * TerminalAgentSessionOptions and returns TerminalAgentSessionResult (trace fully formed). This is
+ * the guard the terminal-product lab dispatches on (capabilities, not ids). Any future terminal
+ * agent (a non-Codex coding agent) must keep this signature AND declare keyPlacement honestly.
+ */
+export function isTerminalActorDescriptor(descriptor: ActorDescriptor): descriptor is TerminalActorDescriptor {
+  return descriptor.capabilities.lanes.includes("terminal");
 }
 
 export const actorRegistry: Record<ActorId, ActorDescriptor> = {
@@ -145,6 +172,15 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     label: "Scripted Browser (deterministic Playwright steps)",
     capabilities: SCRIPTED_BROWSER_CAPABILITIES,
     runSession: runScriptedBrowserSession
+  },
+  // The ActorId names the dispatch slot #154 asks for; the trace's `provider` stays the concrete
+  // agent name ("codex") in SLICE 2. keyPlacement "in-sandbox-command-scoped" rides on the
+  // capabilities const — the registry-declared placement the engine enforces in SLICE 2.
+  "codex-exec": {
+    id: "codex-exec",
+    label: "Codex Exec (autonomous terminal agent, in-sandbox)",
+    capabilities: TERMINAL_AGENT_CAPABILITIES,
+    runSession: runTerminalAgentSession
   }
 };
 
@@ -155,6 +191,7 @@ export function getActor(id: "pi-agent-core"): PiActorDescriptor;
 export function getActor(id: "claude-agent-sdk"): ClaudeActorDescriptor;
 export function getActor(id: "openai-computer-use"): CuaActorDescriptor;
 export function getActor(id: "scripted-browser"): ScriptedBrowserActorDescriptor;
+export function getActor(id: "codex-exec"): TerminalActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor {
   const actor = actorRegistry[id];

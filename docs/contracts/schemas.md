@@ -51,13 +51,24 @@ A lab is a composition over code primitives, not a hardcoded kind:
 - `subject`: what the run acts on — `this-repo`, `clone` (owner/repo slugs,
   optional in-sandbox `serve` + env var names + `state`), `app-url`
   (loopback unless `policies.allowPublicTargets` declares an owned deployment),
-  or `local-app` (an already-running LOCAL dev server driven IN-PROCESS via a
-  custom `CuaExecutor`, NO clone and NO E2B desktop — always loopback). A
+  `local-app` (an already-running LOCAL dev server driven IN-PROCESS via a
+  custom `CuaExecutor`, NO clone and NO E2B desktop — always loopback), or
+  `terminal-product` (a CLI/product a real autonomous terminal agent studies
+  from PUBLIC surfaces only — see below). A
   `local-app` subject pairs a computer-use actor with `execution.target: local`
   (or absent) and is library-assisted: the caller supplies
   `cuaHooks.buildExecutor` + `buildProvider`; with no hooks the engine fails
   closed (`MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
   [`docs/architecture/state-driven-executor.md`](../architecture/state-driven-executor.md);
+- `subject.product` (terminal-product subjects): the product the agent studies.
+  `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
+  name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
+  skill manifest) that are the ONLY world the agent sees — the lab does not
+  clone/provision the product, so its provenance is recorded UNPINNED
+  (invariant 5). `serve`/`clone`/`state`/`repos`/`appUrl` are rejected on a
+  terminal-product subject (a field that cannot act on the route is a parse
+  error, not silently dropped). See
+  [`docs/architecture/terminal-product-lane.md`](../architecture/terminal-product-lane.md);
 - `subject.state` (clone subjects, computer-use route): the subject's state
   story. `state.seed[]` declares ordered, bounded seed/migration/fixture steps
   (`{ name, command, when: before-build | before-start | after-ready,
@@ -72,9 +83,21 @@ A lab is a composition over code primitives, not a hardcoded kind:
   count (simCount); scripted-browser route surface roster (1 = desktop,
   2 = desktop + mobile, default 1); computer-use routes must be 1 until
   fan-out lands;
-- `execution`: where it runs — `local` or `e2b-desktop`, plus desktop
-  device/resolution and timeouts. app-url subjects pair `e2b-desktop` with a
-  computer-use actor, or `local` (or absent) with a scripted-browser actor;
+- `execution`: where it runs — `local`, `e2b-desktop`, or `e2b-terminal`, plus
+  desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
+  with a computer-use actor, or `local` (or absent) with a scripted-browser
+  actor; terminal-product subjects pair `e2b-terminal` (or absent → implied)
+  with a registered terminal actor;
+- `execution.terminal` + `execution.runtimeAuth` (terminal-product route):
+  `terminal.transport` is `exec-stream` — captured NON-interactive exec output
+  (stdin disabled); `pty` is rejected because labeling captured exec output as
+  an interactive PTY would overstate the mechanism (invariant 6; a true duplex
+  PTY transport is a deferred slice). `terminal.stdin` defaults to `disabled`
+  (`sent`/assisted input is rejected until the interventions ledger + a
+  non-comparable marker exist). `runtimeAuth: openai-env` declares the agent's
+  runtime-auth channel — recorded as NAMES ONLY; the command-scoped injection
+  (`keyPlacement: in-sandbox-command-scoped`) is enforced by the engine in a
+  later slice;
 - `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
   `scenario.ref` is CONSUMED (and REQUIRED) on the scripted-browser route: it
   resolves a committed scenario (`mimetic/scenarios/<ref>.yaml` or a repo
@@ -82,15 +105,25 @@ A lab is a composition over code primitives, not a hardcoded kind:
   bundle provenance; on other routes `ref`/`inline` stay forward-declared
   warnings. On the scripted route `live` gates real browser ACTUATION against
   the declared app — provider spend stays $0 by mechanism (no model runs);
-- `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`.
-  The scripted-browser route is loopback-only and rejects
+- `scenario.caps` (terminal-product route): `{ maxUsd, maxJobs, maxMinutes }`,
+  all non-negative numbers (0 = no-spend, the default). The blast-radius budget
+  that bounds the in-sandbox live key by MECHANISM, not by hope — the live key
+  is never exercised without a fail-closed cap in force (enforced in a later
+  slice); the no-spend proof is derived from a real ledger, never asserted.
+  Inert (warned) on every other route;
+- `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`, and the
+  terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
+  `allowProviderCredentials`, `allowPaymentCredentials`, `allowGitHubMutation`
+  (all DEFAULT FALSE — deny-by-default; only the runtime LLM key enters, and
+  only command-scoped). The scripted-browser route is loopback-only and rejects
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
 
 Lab backends report results in their own schemas (`mimetic.run-result.v1`,
 `mimetic.oss-lab-result.v1`, `mimetic.oss-meta-lab-result.v1`,
-`mimetic.cua-lab-result.v1`, `mimetic.scripted-lab-result.v1`); the evidence
-record stays `mimetic.run-bundle.v1` in every case.
+`mimetic.cua-lab-result.v1`, `mimetic.scripted-lab-result.v1`,
+`mimetic.terminal-lab-result.v1`); the evidence record stays
+`mimetic.run-bundle.v1` in every case.
 
 Manifests are human-authored `.yaml` source under `mimetic/labs/*.yaml` for
 committed public-safe labs, or ignored `.mimetic/labs/*.yaml` /
@@ -292,20 +325,25 @@ scenario:
 
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
 `mimetic.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,
-Claude Agent SDK blocks, pi events, computer-use cycles, and scripted browser
-steps all map onto one `ActorTrace`. Registered actors live in
+Claude Agent SDK blocks, pi events, computer-use cycles, scripted browser
+steps, and in-sandbox terminal-agent exec output all map onto one `ActorTrace`.
+Registered actors live in
 `src/actor-registry.ts` (`codex-app-server`, `pi-agent-core`,
-`claude-agent-sdk`, `openai-computer-use`, `scripted-browser`). There is no
-`mimetic.actor.v1`; that name never shipped.
+`claude-agent-sdk`, `openai-computer-use`, `scripted-browser`, `codex-exec`).
+There is no `mimetic.actor.v1`; that name never shipped.
 
 Core-owned fields:
 
 - `schema`
 - `provider` / `providerVersion`
 - `protocol` (`json-rpc` | `json-stream` | `in-process-sdk` | `cua-loop` |
-  `scripted-steps`)
-- `lane` (`code` | `app` | `computer-use` | `scripted-browser`)
+  `scripted-steps` | `terminal-exec`)
+- `lane` (`code` | `app` | `computer-use` | `scripted-browser` | `terminal`)
 - `persona` (`id`, `traitsApplied`, `promptDigest`)
+- `capabilities.keyPlacement` (`external` | `in-sandbox-command-scoped`): WHERE
+  the actor's runtime key lives — registry metadata the engine enforces. The
+  terminal agent declares `in-sandbox-command-scoped` (the agent-under-test runs
+  inside the sandbox); every other actor is `external` (absent === external).
 - `redaction` (`status`, `screenshots: n/a|raw|blurred|ocr_scrubbed`, `notes`)
 - `startedAt` / `completedAt` / `durationMs`
 - `status` / `completionReason` / `reason` (`completionReason` includes

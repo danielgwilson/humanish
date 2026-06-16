@@ -2,6 +2,7 @@ export {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
   SCRIPTED_BROWSER_CAPABILITIES,
+  TERMINAL_AGENT_CAPABILITIES,
   codexResultToActorTrace,
   codexStatusToCompletionReason
 } from "./actor-contract.js";
@@ -17,8 +18,13 @@ export type {
   ActorTraceItem,
   ActorTraceItemKind
 } from "./actor-contract.js";
-export { actorRegistry, getActor, isCuaActorDescriptor, isScriptedBrowserActorDescriptor } from "./actor-registry.js";
-export type { ActorDescriptor, ActorId, CuaActorDescriptor, ScriptedBrowserActorDescriptor } from "./actor-registry.js";
+export { actorRegistry, getActor, isCuaActorDescriptor, isScriptedBrowserActorDescriptor, isTerminalActorDescriptor } from "./actor-registry.js";
+export type { ActorDescriptor, ActorId, CuaActorDescriptor, ScriptedBrowserActorDescriptor, TerminalActorDescriptor } from "./actor-registry.js";
+export {
+  TERMINAL_AGENT_NOT_IMPLEMENTED_CODE,
+  runTerminalAgentSession
+} from "./terminal-agent-actor.js";
+export type { TerminalAgentSessionOptions, TerminalAgentSessionResult } from "./terminal-agent-actor.js";
 export {
   describeCuaAction,
   runComputerUseLoop
@@ -141,6 +147,16 @@ export type {
   ScriptedBrowserLabResult,
   ScriptedBrowserLabSession
 } from "./scripted-browser-lab.js";
+export {
+  TERMINAL_PRODUCT_LAB_SCHEMA,
+  buildTerminalProductBundle,
+  runTerminalProductLab
+} from "./e2b-terminal-lab.js";
+export type {
+  RunTerminalProductLabOptions,
+  TerminalProductLabHooks,
+  TerminalProductLabResult
+} from "./e2b-terminal-lab.js";
 export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
 export {
@@ -152,24 +168,32 @@ export {
 } from "./device-presets.js";
 export type { DevicePreset, DevicePresetName } from "./device-presets.js";
 export {
+  actorResolvesToTerminal,
   isHttpUrl,
   isLoopbackUrl,
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
   routesToComputerUse,
   routesToScriptedBrowser,
+  routesToTerminalProduct,
   subjectStateInvalidReason
 } from "./lab-config.js";
 export type {
   LabActor,
   LabConfig,
   LabConfigParseResult,
+  LabExecutionTerminal,
+  LabRuntimeAuth,
+  LabScenarioCaps,
   LabStateStepWhen,
   LabSubject,
+  LabSubjectProduct,
   LabSubjectServe,
   LabSubjectSource,
   LabSubjectState,
-  LabSubjectStateStep
+  LabSubjectStateStep,
+  LabTerminalStdin,
+  LabTerminalTransport
 } from "./lab-config.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
 export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";

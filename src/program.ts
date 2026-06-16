@@ -32,6 +32,7 @@ import type {
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
 import type { CuaActorLabResult } from "./cua-actor-lab.js";
 import type { ScriptedBrowserLabResult } from "./scripted-browser-lab.js";
+import type { TerminalProductLabResult } from "./e2b-terminal-lab.js";
 import type { LabConfig } from "./lab-config.js";
 import { renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
@@ -1315,6 +1316,9 @@ async function runLabCommand(args: {
     case "scripted":
       await runScriptedBackend({ ...args, config });
       return;
+    case "terminal":
+      await runTerminalBackend({ ...args, config });
+      return;
     default:
       // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
       throw new Error(`Unhandled lab backend: ${String(backend satisfies never)}`);
@@ -1465,6 +1469,62 @@ async function runScriptedBackend(args: {
       ...(shouldOpen === undefined ? {} : { open: shouldOpen })
     });
   }
+}
+
+// Mirror of runCuaBackend/runScriptedBackend: open semantics from defaults.open/--no-open/watch,
+// writeResult with the terminal human formatter, exit code result.ok ? 0 : 2, watch-mode follow.
+async function runTerminalBackend(args: {
+  command: Command;
+  io: CliIo;
+  config: LabConfig;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const wantsMachine = wantsJson(args.command);
+  const shouldOpen = args.options.open === false
+    ? false
+    : wantsMachine
+      ? args.options.open === true
+      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+
+  const outcome = await runLab(args.config, {
+    cwd: args.options.cwd,
+    open: args.mode === "watch" ? false : shouldOpen,
+    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+  if (outcome.backend !== "terminal") {
+    throw new Error(`Expected terminal backend, got ${outcome.backend}.`);
+  }
+  const result = outcome.result;
+  writeResult(args.command, args.io, result, formatTerminalLabHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
+
+  if (args.mode === "watch" && result.ok && !wantsMachine) {
+    await renderAndMaybeFollowObserver({
+      command: args.command,
+      cwd: args.options.cwd,
+      io: args.io,
+      port: args.options.port ?? "0",
+      runInput: result.runId,
+      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+    });
+  }
+}
+
+function formatTerminalLabHuman(result: TerminalProductLabResult): string {
+  return [
+    `mimetic lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+    `run: ${result.runId}`,
+    `lab: ${result.labId}`,
+    `actor: ${result.actor}`,
+    `product: ${result.product}`,
+    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
 }
 
 function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {

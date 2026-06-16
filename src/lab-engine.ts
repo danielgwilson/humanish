@@ -15,13 +15,18 @@ import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult
 } from "./scripted-browser-lab.js";
+import {
+  runTerminalProductLab,
+  type TerminalProductLabHooks,
+  type TerminalProductLabResult
+} from "./e2b-terminal-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult } from "./run.js";
-import { routesToComputerUse, routesToScriptedBrowser, type LabConfig } from "./lab-config.js";
+import { routesToComputerUse, routesToScriptedBrowser, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
 
-export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted";
+export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "terminal";
 
 /** Runtime overrides from CLI flags. Each wins over the config when provided. */
 export interface RunLabOptions {
@@ -42,6 +47,8 @@ export interface RunLabOptions {
   cuaHooks?: CuaActorLabHooks;
   /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
   scriptedHooks?: ScriptedBrowserLabHooks;
+  /** Terminal-product route hooks: SLICE 2 sandbox/runtime-auth DI seams (mirror of cuaHooks). */
+  terminalHooks?: TerminalProductLabHooks;
 }
 
 export type LabOutcome =
@@ -49,7 +56,8 @@ export type LabOutcome =
   | { backend: "smoke"; result: OssLabResult }
   | { backend: "meta"; result: OssMetaLabResult }
   | { backend: "cua"; result: CuaActorLabResult }
-  | { backend: "scripted"; result: ScriptedBrowserLabResult };
+  | { backend: "scripted"; result: ScriptedBrowserLabResult }
+  | { backend: "terminal"; result: TerminalProductLabResult };
 
 /**
  * Route a lab config to its execution backend from its declared composition.
@@ -62,6 +70,13 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // app-url subjects whose first actor resolves to a registered scripted-browser actor:
     // deterministic local replay, no model.
     return "scripted";
+  }
+  if (routesToTerminalProduct(config) || config.subject.source === "terminal-product") {
+    // terminal-product subjects whose first actor resolves to a registered terminal actor: a real
+    // autonomous agent studying a CLI/product from public surfaces inside an E2B shell. The bare
+    // terminal-product fallback keeps library-API configs with unknown actor types routing to the
+    // terminal backend's fail-closed MIMETIC_TERMINAL_LAB_ACTOR_UNSUPPORTED.
+    return "terminal";
   }
   if (routesToComputerUse(config)
     || config.subject.source === "app-url"
@@ -172,6 +187,21 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks })
+      });
+      return { backend, result };
+    }
+    case "terminal": {
+      // Spend-safe default: a terminal-product lab places a live key inside the sandbox on the
+      // live path (SLICE 2), so it only goes live when the config (or CLI) affirmatively says so.
+      // SLICE 1 implements the dry-run contract bundle only; a live call fails closed.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runTerminalProductLab({
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks })
       });
       return { backend, result };
     }
