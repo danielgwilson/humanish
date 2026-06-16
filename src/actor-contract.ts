@@ -29,10 +29,17 @@ export type ActorCompletionReason =
   | "harness_error";
 
 // "scripted-browser" is the deterministic, model-free browser-actuation lane — distinct from
-// "computer-use" (raw pixels + a model) and "app".
-export type ActorLane = "code" | "app" | "computer-use" | "scripted-browser";
+// "computer-use" (raw pixels + a model) and "app". "terminal" is the autonomous-agent lane: a
+// real coding agent (Codex) driving a CLI/product from inside an E2B shell — distinct from
+// "code" (the local/app-server Codex lanes that run on the operator's machine).
+export type ActorLane = "code" | "app" | "computer-use" | "scripted-browser" | "terminal";
 
-export type ActorProtocol = "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps";
+// "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
+// disabled): `codex exec --json` launched via `commands.run`, output captured. It is NOT an
+// interactive duplex PTY — labeling captured exec output as an interactive transport would be a
+// claim/mechanism mismatch (invariant 6 + the goal packet's PTY ruling), so it gets its own
+// honest protocol label distinct from "cua-loop"/"scripted-steps".
+export type ActorProtocol = "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps" | "terminal-exec";
 
 export type ActorTraceItemKind =
   | "message"
@@ -67,6 +74,21 @@ export interface ActorCapabilities {
   preGrantableApprovals: boolean;
   inProcessTools: boolean;
   license: "open" | "source-available" | "proprietary";
+  /**
+   * WHERE this actor's runtime key lives, per the placement rule (invariants-and-defaults.md):
+   * "keys live where the keyed process runs — and nowhere else." Registry metadata the engine
+   * enforces, NOT a code convention.
+   *   - "external" (the implicit default for every existing actor): the keyed process (e.g. a
+   *     computer-use provider loop) runs OUTSIDE any sandbox, so its key never enters one.
+   *   - "in-sandbox-command-scoped": the keyed process is an agent-harness-under-test that runs
+   *     INSIDE the sandbox; its runtime key is injected ONLY into the per-command `envs` of that
+   *     invocation (never `Sandbox.create({envs})`, which is sandbox-global), the key is presumed
+   *     exfiltratable, and the blast radius is bounded by key scoping + a spend budget.
+   * Absent === "external". This field is DECLARED metadata in SLICE 1 (the contract is honest
+   * about where the key would go); the ENGINE enforcement of command-scoped injection lands with
+   * the live backend in SLICE 2.
+   */
+  keyPlacement?: "external" | "in-sandbox-command-scoped";
 }
 
 export interface ActorPersonaRef {
@@ -157,6 +179,26 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
   preGrantableApprovals: false,
   inProcessTools: false,
   license: "open" // playwright-core (Apache-2.0), already a lazy-imported production dependency
+};
+
+// Terminal agent (src/e2b-terminal-lab.ts): a real autonomous coding agent (Codex) discovering
+// and using a CLI/product from inside an E2B shell, capturing its non-interactive exec output as
+// a redacted event stream + normalized transcript. The "terminal" lane is the autonomous-agent
+// study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the
+// agent runs its own model via the command-scoped runtime auth, not a mimetic-supplied provider.
+// keyPlacement is "in-sandbox-command-scoped" — the load-bearing inversion of every existing
+// E2B route's external-key default (the agent is the keyed process and it runs INSIDE). DECLARED
+// here this slice; the engine enforcement of the command-scoped boundary lands in SLICE 2.
+export const TERMINAL_AGENT_CAPABILITIES: ActorCapabilities = {
+  headless: true,
+  structuredTrace: true,
+  lanes: ["terminal"],
+  producesScreenshots: false,
+  byoModel: false,
+  preGrantableApprovals: false,
+  inProcessTools: false,
+  license: "open", // the Codex CLI is invoked as a subprocess inside the sandbox; no peer dep here
+  keyPlacement: "in-sandbox-command-scoped"
 };
 
 // Codex app-server reports four terminal statuses but no explicit completion

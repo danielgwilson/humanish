@@ -53,7 +53,11 @@ describe("lab config expressiveness (rung 3)", () => {
       id: "migration-rehearsal",
       title: "bespoke-sim to mimetic migration",
       subject: { source: "clone", repos: ["example-org/private-app"], clone: { depth: 1, fanout: 1 } },
-      actors: [{ type: "codex-exec", mission: "Remove the bespoke UI sim package and adopt mimetic." }],
+      // A free-form (non-registered) actor label on the clone+e2b route stays a label and routes
+      // to meta. (codex-exec is now a REGISTERED terminal actor — it would be a mis-config here, so
+      // this expressiveness test uses a generic migrator label to keep its point: clone+e2b config
+      // routes config-only with the mission forward-declared.)
+      actors: [{ type: "codex-migrator", mission: "Remove the bespoke UI sim package and adopt mimetic." }],
       execution: { target: "e2b-desktop" },
       policies: { redactRepos: true }
     });

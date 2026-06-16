@@ -49,7 +49,7 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * (MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them — a structured error, never a
  * desktop attempt. See docs/architecture/state-driven-executor.md.
  */
-export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app";
+export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product";
 
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
@@ -120,6 +120,22 @@ export interface LabSubjectState {
   external?: string[];
 }
 
+/**
+ * `terminal-product`: the product-under-study a terminal agent must discover and use from PUBLIC
+ * SURFACES ONLY (the terminal-product route's subject). The subject is NOT provisioned/cloned —
+ * the agent drives the declared public surfaces, so provenance is UNPINNED (invariant 5). The
+ * concrete product name + surfaces are operator data; committed fixtures use a NEUTRAL mock name.
+ */
+export interface LabSubjectProduct {
+  /** Public-safe product label (shape-validated like a lab id; interpolates into evidence). */
+  name: string;
+  /**
+   * The product's PUBLIC surfaces — the only world the agent sees. Each must be an http(s) URL
+   * (e.g. a docs page, an llms.txt, a skill manifest). Validated at parse; recorded in evidence.
+   */
+  publicSurfaces: string[];
+}
+
 export interface LabSubject {
   source: LabSubjectSource;
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
@@ -151,6 +167,11 @@ export interface LabSubject {
    * UNPINNED for external state, declared-not-run for dry-run/failed provisioning.
    */
   state?: LabSubjectState;
+  /**
+   * `terminal-product` (terminal route): the product the terminal agent discovers + uses from
+   * PUBLIC surfaces only. Consumed on the terminal route; rejected on every other source.
+   */
+  product?: LabSubjectProduct;
 }
 
 export interface LabActorLaneFocus {
@@ -182,7 +203,33 @@ export interface LabActor {
   model?: string;
 }
 
-export type LabExecutionTarget = "local" | "e2b-desktop";
+export type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
+
+/** Terminal transport: the captured non-interactive exec stream (stdin disabled). NOT an
+ *  interactive duplex PTY — labeling captured exec output "pty" would be a claim/mechanism
+ *  mismatch (invariant 6 + the goal packet's PTY ruling), so this lane uses "exec-stream". */
+export type LabTerminalTransport = "exec-stream";
+
+/** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is
+ *  autonomous + comparable to an unassisted baseline). "planned" reserves the interventions-ledger
+ *  path SLICE 2 builds; "sent" (assisted input) is NOT shippable until the ledger + comparability
+ *  flag + verify check exist (the safety contract forbids an assisted run masquerading as green). */
+export type LabTerminalStdin = "disabled" | "planned" | "sent";
+
+export interface LabExecutionTerminal {
+  /** Transport label. Default (and only honest value this slice) is "exec-stream". */
+  transport?: LabTerminalTransport;
+  /** Operator stdin posture. Default "disabled". */
+  stdin?: LabTerminalStdin;
+}
+
+/**
+ * The runtime-auth channel for the in-sandbox agent (terminal route). "openai-env" declares that
+ * OPENAI_API_KEY/CODEX_API_KEY is the runtime key — to be injected ONLY into the command-scoped
+ * `codex` invocation (keyPlacement "in-sandbox-command-scoped"), never sandbox-global. DECLARED
+ * this slice (recorded as names-only evidence); the engine injection lands in SLICE 2.
+ */
+export type LabRuntimeAuth = "openai-env";
 
 export interface LabExecutionDesktop {
   /**
@@ -209,9 +256,29 @@ export interface LabExecution {
   /** FORWARD-DECLARED. */
   concurrency?: number;
   desktop?: LabExecutionDesktop;
+  /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
+  terminal?: LabExecutionTerminal;
+  /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Consumed (names-only
+   *  evidence this slice; command-scoped injection in SLICE 2). Inert on other routes. */
+  runtimeAuth?: LabRuntimeAuth;
 }
 
 export type LabScenarioMode = "dry-run" | "live";
+
+/**
+ * The blast-radius budget for a route that places a live key inside the sandbox (terminal route).
+ * Per the safety contract, the live key is never exercised without a fail-closed cap in force.
+ * All values are non-negative numbers (0 is the no-spend default). DECLARED + recorded this slice;
+ * SLICE 2 folds in a minimal fail-closed cap and SLICE 3 enforces the full ledger.
+ */
+export interface LabScenarioCaps {
+  /** Max USD the run may spend (provider + product). 0 = no-spend. */
+  maxUsd?: number;
+  /** Max billable product jobs the agent may trigger. 0 = none. */
+  maxJobs?: number;
+  /** Max wall-clock minutes for the agent session. */
+  maxMinutes?: number;
+}
 
 export interface LabScenario {
   /** Reference a committed scenario by id (mimetic/scenarios/<ref>.yaml) or path. CONSUMED
@@ -221,6 +288,9 @@ export interface LabScenario {
   inline?: Record<string, unknown>;
   /** dry-run = contract evidence (no provider spend); live = real run. Consumed. */
   mode?: LabScenarioMode;
+  /** Spend/job/time caps. Consumed (recorded in the bundle) on the terminal-product route;
+   *  inert (warned) elsewhere. */
+  caps?: LabScenarioCaps;
 }
 
 export interface LabPolicies {
@@ -245,6 +315,22 @@ export interface LabPolicies {
    * the owner declared" — setting this IS that declaration (e.g. a Vercel preview of your app).
    */
   allowPublicTargets?: boolean;
+  /**
+   * Terminal-product credential-boundary policies — all DEFAULT FALSE (deny-by-default). They are
+   * DECLARED + recorded this slice; the engine ENFORCES them by construction (what the sandbox is
+   * and is not given) + verifier checks in SLICE 2. Setting any to true is an affirmative,
+   * recorded declaration that widens the agent's blast radius.
+   */
+  /** Allow the in-sandbox agent to clone/inspect a private/downstream repo. Default FALSE — the
+   *  agent works from PUBLIC surfaces only (safety contract item 3). */
+  allowPrivateRepoAccess?: boolean;
+  /** Allow media/creative-provider keys into the sandbox. Default FALSE (only the runtime LLM key
+   *  enters, command-scoped — safety contract item 4). */
+  allowProviderCredentials?: boolean;
+  /** Allow payment-provider keys into the sandbox. Default FALSE. */
+  allowPaymentCredentials?: boolean;
+  /** Allow GitHub write tokens (mutating operations) into the sandbox. Default FALSE. */
+  allowGitHubMutation?: boolean;
 }
 
 export interface LabReview {
@@ -334,8 +420,11 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   const personas = parsePersonas(raw.personas);
   if (personas) config.personas = personas;
-  const scenario = parseScenario(raw.scenario);
-  if (scenario) config.scenario = scenario;
+  const scenarioResult = parseScenario(raw.scenario);
+  if (!scenarioResult.ok) {
+    return scenarioResult;
+  }
+  if (scenarioResult.value) config.scenario = scenarioResult.value;
   const policies = parsePolicies(raw.policies);
   if (policies) config.policies = policies;
   const review = parseReview(raw.review);
@@ -443,6 +532,32 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
+  // terminal-product route: a real autonomous agent studies a CLI/product from PUBLIC surfaces
+  // inside an E2B shell. Fail-closed (invariant 6 — a field that cannot act on this route is an
+  // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
+  // (absent defaults to e2b-terminal — the only honest target for an in-sandbox agent), single
+  // lane until fan-out lands.
+  if (config.subject.source === "terminal-product") {
+    const type = config.actors[0]?.type ?? "";
+    if (config.execution?.target !== undefined && config.execution.target !== "e2b-terminal") {
+      return invalid("terminal-product subjects run the agent inside an E2B shell — set `execution.target: e2b-terminal` or omit it (absent means e2b-terminal); `local`/`e2b-desktop` are rejected.");
+    }
+    if (!actorResolvesToTerminal(type)) {
+      return invalid(`actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`);
+    }
+    if ((config.actors[0]?.count ?? 1) > 1) {
+      return invalid("Multi-lane terminal fan-out is not supported yet; set actors[0].count to 1.");
+    }
+  } else if (config.execution?.target === "e2b-terminal") {
+    // e2b-terminal is the terminal-product substrate ONLY. Any other source declaring it is a
+    // mis-config — reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
+    return invalid("`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.");
+  } else if (actorResolvesToTerminal(config.actors[0]?.type)) {
+    // A registered terminal actor on a non-terminal-product subject: rejected, never ignored (the
+    // terminal agent only studies a declared terminal-product from public surfaces).
+    return invalid("terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route.");
+  }
+
   return { ok: true, config, warnings: forwardDeclaredWarnings(config) };
 }
 
@@ -471,6 +586,20 @@ function actorResolvesToScriptedBrowser(type: string | undefined): boolean {
 function registeredScriptedBrowserActors(): string[] {
   return Object.values(actorRegistry)
     .filter((entry) => entry.capabilities.lanes.includes("scripted-browser"))
+    .map((entry) => entry.id);
+}
+
+/** True when `type` resolves to a registered terminal actor (the "terminal" lane). Exported so
+ *  the engine + tests can resolve the dispatch the same way the parser does. */
+export function actorResolvesToTerminal(type: string | undefined): boolean {
+  if (!type) return false;
+  const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+  return Boolean(descriptor?.capabilities.lanes.includes("terminal"));
+}
+
+function registeredTerminalActors(): string[] {
+  return Object.values(actorRegistry)
+    .filter((entry) => entry.capabilities.lanes.includes("terminal"))
     .map((entry) => entry.id);
 }
 
@@ -505,6 +634,17 @@ export function routesToScriptedBrowser(config: LabConfig): boolean {
     && actorResolvesToScriptedBrowser(config.actors[0]?.type);
 }
 
+/**
+ * True when this config routes to the terminal-product backend: a terminal-product subject whose
+ * first actor resolves to a registered terminal actor (execution.target e2b-terminal or absent —
+ * the parse layer enforces that pairing). Mirror of routesToComputerUse/routesToScriptedBrowser;
+ * the single source of truth for selectLabBackend and the warning logic.
+ */
+export function routesToTerminalProduct(config: LabConfig): boolean {
+  return config.subject.source === "terminal-product"
+    && actorResolvesToTerminal(config.actors[0]?.type);
+}
+
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
 // setting that silently does nothing. Keeps the schema forward-correct AND honest.
 function forwardDeclaredWarnings(config: LabConfig): string[] {
@@ -516,9 +656,11 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // model); on every other route those fields are inert.
   const routesToCua = routesToComputerUse(config);
   const routesToScripted = routesToScriptedBrowser(config);
+  const routesToTerminal = routesToTerminalProduct(config);
   for (const [index, actor] of config.actors.entries()) {
-    if (routesToCua) {
-      // The cua route consumes laneFocus.instruction ONLY; id/label remain inert there.
+    if (routesToCua || routesToTerminal) {
+      // The cua + terminal routes consume mission/persona/model + laneFocus.instruction (they
+      // compose the agent prompt + bundle provenance); laneFocus.id/label remain inert.
       if (actor.laneFocus?.id) inert.push(`actors[${index}].laneFocus.id`);
       if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
     } else if (routesToScripted) {
@@ -544,9 +686,17 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
     // the cua route is single-lane until fan-out lands.
     if (config.subject.clone?.fanout !== undefined) inert.push("subject.clone.fanout");
   }
-  if (!routesToCua && !routesToScripted && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
+  if (!routesToCua && !routesToScripted && !routesToTerminal && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
   if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
+  // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}
+  // (recorded as evidence this slice — the agent prompt, the blast-radius budget, the transport +
+  // the names-only runtime-auth channel). On every OTHER route they are inert and must warn so a
+  // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
+  if (config.subject.product && !routesToTerminal) inert.push("subject.product (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.scenario?.caps && !routesToTerminal) inert.push("scenario.caps (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.execution?.terminal && !routesToTerminal) inert.push("execution.terminal (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.execution?.runtimeAuth !== undefined && !routesToTerminal) inert.push("execution.runtimeAuth (needs subject.source: terminal-product + a registered terminal actor)");
   // execution.desktop.* stays inert on the scripted route by design: device presets belong to
   // the cua desktop; scripted surfaces are the driver's fixed desktop/mobile viewports, where
   // isMobile/DSF genuinely render via playwright emulation.
@@ -574,10 +724,21 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app") {
-    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app.");
+  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app" && source !== "terminal-product") {
+    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product.");
   }
   const subject: LabSubject = { source };
+
+  // `product` is terminal-product-only; reject it elsewhere (invariant 6: a field that cannot act
+  // on this route is an honest parse error, not silently dropped).
+  if (source !== "terminal-product" && raw.product !== undefined) {
+    return invalid("`subject.product` applies only to terminal-product subjects (the CLI/product the terminal agent studies from public surfaces).");
+  }
+  // appUrl is app-url/local-app-only; a terminal-product subject drives PUBLIC surfaces, not a
+  // single loopback app — reject appUrl on it.
+  if (source === "terminal-product" && raw.appUrl !== undefined) {
+    return invalid("`subject.appUrl` does not apply to terminal-product subjects — declare `subject.product.publicSurfaces` (the agent works from public surfaces, not one loopback app).");
+  }
 
   if (source !== "clone" && raw.serve !== undefined) {
     return invalid("`subject.serve` applies only to clone subjects (the lab serves the cloned app in-sandbox).");
@@ -658,7 +819,38 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     subject.appUrl = appUrl;
   }
 
+  if (source === "terminal-product") {
+    const productResult = parseProduct(raw.product);
+    if (!productResult.ok) {
+      return productResult;
+    }
+    subject.product = productResult.value;
+  }
+
   return { ok: true, value: subject };
+}
+
+// The product name interpolates into evidence labels and the composed prompt; the public-safe
+// token shape is the same load-bearing constraint as a lab id.
+const PRODUCT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+
+function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | LabConfigParseFailure {
+  if (!isRecord(raw)) {
+    return invalid("`subject.product` is required on terminal-product subjects and must be an object ({ name, publicSurfaces }).");
+  }
+  const name = str(raw.name);
+  if (!name || !PRODUCT_NAME_PATTERN.test(name)) {
+    return invalid("`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).");
+  }
+  const publicSurfaces = strList(raw.publicSurfaces);
+  if (!publicSurfaces || publicSurfaces.length === 0) {
+    return invalid("`subject.product.publicSurfaces` must list at least one public surface URL.");
+  }
+  const badSurface = publicSurfaces.find((surface) => !isHttpUrl(surface));
+  if (badSurface) {
+    return invalid(`subject.product.publicSurfaces entries must be http(s) URLs (got "${badSurface}").`);
+  }
+  return { ok: true, value: { name, publicSurfaces } };
 }
 
 // Public-safe stance: a computer-use actor's ENTRY URL is always an app the lab owner runs on
@@ -883,8 +1075,8 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
   const execution: LabExecution = {};
   if (raw.target !== undefined) {
     const target = str(raw.target);
-    if (target !== "local" && target !== "e2b-desktop") {
-      return invalid("`execution.target` must be local or e2b-desktop.");
+    if (target !== "local" && target !== "e2b-desktop" && target !== "e2b-terminal") {
+      return invalid("`execution.target` must be local, e2b-desktop, or e2b-terminal.");
     }
     execution.target = target;
   }
@@ -899,7 +1091,53 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
     return desktopResult;
   }
   if (desktopResult.value) execution.desktop = desktopResult.value;
+  const terminalResult = parseTerminal(raw.terminal);
+  if (!terminalResult.ok) {
+    return terminalResult;
+  }
+  if (terminalResult.value) execution.terminal = terminalResult.value;
+  if (raw.runtimeAuth !== undefined) {
+    const runtimeAuth = str(raw.runtimeAuth);
+    if (runtimeAuth !== "openai-env") {
+      return invalid("`execution.runtimeAuth` must be openai-env (the in-sandbox agent's command-scoped runtime-auth channel).");
+    }
+    execution.runtimeAuth = runtimeAuth;
+  }
   return { ok: true, value: Object.keys(execution).length > 0 ? execution : undefined };
+}
+
+function parseTerminal(raw: unknown): { ok: true; value: LabExecutionTerminal | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!isRecord(raw)) {
+    return invalid("`execution.terminal` must be an object ({ transport?, stdin? }).");
+  }
+  const terminal: LabExecutionTerminal = {};
+  if (raw.transport !== undefined) {
+    const transport = str(raw.transport);
+    if (transport !== "exec-stream") {
+      // "pty" is deliberately rejected: stdin is disabled, so the capture is a non-interactive
+      // exec stream — an interactive-PTY label would overstate the mechanism (invariant 6 + the
+      // goal packet's PTY ruling). True duplex PTY is the deferred SLICE 5.
+      return invalid("`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; a true duplex PTY transport is a later slice.");
+    }
+    terminal.transport = transport;
+  }
+  if (raw.stdin !== undefined) {
+    const stdin = str(raw.stdin);
+    if (stdin !== "disabled" && stdin !== "planned" && stdin !== "sent") {
+      return invalid("`execution.terminal.stdin` must be disabled, planned, or sent.");
+    }
+    if (stdin === "sent") {
+      // Assisted input is forbidden until the interventions ledger + comparability flag + verify
+      // check exist (safety contract item 7) — shipping it now would let an assisted run pose as
+      // autonomous green proof.
+      return invalid("`execution.terminal.stdin: sent` (assisted input) is not supported yet — the interventions ledger + non-comparable marker land in SLICE 2. stdin is disabled by default.");
+    }
+    terminal.stdin = stdin;
+  }
+  return { ok: true, value: Object.keys(terminal).length > 0 ? terminal : undefined };
 }
 
 function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | undefined } | LabConfigParseFailure {
@@ -935,9 +1173,9 @@ function parsePersonas(raw: unknown): Record<string, unknown>[] | undefined {
   return personas.length > 0 ? personas : undefined;
 }
 
-function parseScenario(raw: unknown): LabScenario | undefined {
+function parseScenario(raw: unknown): { ok: true; value: LabScenario | undefined } | LabConfigParseFailure {
   if (!isRecord(raw)) {
-    return undefined;
+    return { ok: true, value: undefined };
   }
   const scenario: LabScenario = {};
   const ref = str(raw.ref);
@@ -945,7 +1183,36 @@ function parseScenario(raw: unknown): LabScenario | undefined {
   if (isRecord(raw.inline)) scenario.inline = raw.inline;
   const mode = str(raw.mode);
   if (mode === "dry-run" || mode === "live") scenario.mode = mode;
-  return Object.keys(scenario).length > 0 ? scenario : undefined;
+  const capsResult = parseCaps(raw.caps);
+  if (!capsResult.ok) {
+    return capsResult;
+  }
+  if (capsResult.value) scenario.caps = capsResult.value;
+  return { ok: true, value: Object.keys(scenario).length > 0 ? scenario : undefined };
+}
+
+/**
+ * Parse `scenario.caps`. Returns a parse failure on a malformed value rather than silently
+ * dropping a budget declaration (a cap that silently does nothing would be a safety lie —
+ * invariant 6). Each cap must be a non-negative finite number.
+ */
+function parseCaps(raw: unknown): { ok: true; value: LabScenarioCaps | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!isRecord(raw)) {
+    return invalid("`scenario.caps` must be an object ({ maxUsd?, maxJobs?, maxMinutes? }).");
+  }
+  const caps: LabScenarioCaps = {};
+  for (const key of ["maxUsd", "maxJobs", "maxMinutes"] as const) {
+    if (raw[key] === undefined) continue;
+    const value = nonNegNumber(raw[key]);
+    if (value === undefined) {
+      return invalid(`\`scenario.caps.${key}\` must be a non-negative number.`);
+    }
+    caps[key] = value;
+  }
+  return { ok: true, value: Object.keys(caps).length > 0 ? caps : undefined };
 }
 
 function parsePolicies(raw: unknown): LabPolicies | undefined {
@@ -956,6 +1223,10 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
   if (typeof raw.redactRepos === "boolean") policies.redactRepos = raw.redactRepos;
   if (typeof raw.redactScreenshots === "boolean") policies.redactScreenshots = raw.redactScreenshots;
   if (typeof raw.allowPublicTargets === "boolean") policies.allowPublicTargets = raw.allowPublicTargets;
+  if (typeof raw.allowPrivateRepoAccess === "boolean") policies.allowPrivateRepoAccess = raw.allowPrivateRepoAccess;
+  if (typeof raw.allowProviderCredentials === "boolean") policies.allowProviderCredentials = raw.allowProviderCredentials;
+  if (typeof raw.allowPaymentCredentials === "boolean") policies.allowPaymentCredentials = raw.allowPaymentCredentials;
+  if (typeof raw.allowGitHubMutation === "boolean") policies.allowGitHubMutation = raw.allowGitHubMutation;
   return Object.keys(policies).length > 0 ? policies : undefined;
 }
 
@@ -1020,6 +1291,19 @@ function posInt(value: unknown): number | undefined {
   if (typeof value === "string" && /^\d+$/.test(value)) {
     const parsed = Number.parseInt(value, 10);
     return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : undefined;
+  }
+  return undefined;
+}
+
+/** A non-negative finite number (0 allowed — caps default to 0 = no-spend). Accepts a numeric
+ *  string too, since YAML scalars can arrive as strings. */
+function nonNegNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+  if (typeof value === "string" && /^\d+(\.\d+)?$/.test(value.trim())) {
+    const parsed = Number.parseFloat(value.trim());
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   }
   return undefined;
 }
