@@ -93,6 +93,50 @@ The DI seams SLICE 2 needs (`loadModule`, `buildSandbox`, `runtimeAuthEnv`,
 `RunLabOptions.terminalHooks`, mirroring `cuaHooks` / `scriptedHooks` — but only
 the dry-run path is implemented this slice.
 
+## SLICE 4 — the product-adapter extension seam (layer 6)
+
+This lane is proof-roadmap **layer 6**: an adopter attaches product-specific
+scoring + feedback as a THIN in-repo extension WITHOUT forking core. SLICE 4
+ships the SEAM (not a built-in product scorer — the adopter's scorecard lives in
+the adopter's repo):
+
+- **Exported contract types** a thin adapter types against from the package
+  barrel (`mimetic-cli`) alone — never a deep `src/` import: `RunBundle`,
+  `RunFeedbackCandidate`, `RunAdapterScore`, `RunMeaningfulUseScore`
+  (+ `RunMeaningfulUseComponentId`), `ActorTrace`, and the terminal-lane
+  `TerminalProductScoringContext` / `TerminalLedgers` / `TerminalCostLedger` /
+  `NoSpendProof` / `CostLine` / record types. Before this slice these were not
+  exported — which FORCED a fork (a thin adapter could not type against the
+  bundle), the gap issue #154 acceptance #8 names.
+- **A registrable scorer / feedback DI hook** on `TerminalProductLabHooks`:
+  `score?(ctx: TerminalProductScoringContext) => RunAdapterScore | Promise<…>`
+  and `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`. The lane
+  calls the hooks over the FULLY-ASSEMBLED, redacted evidence and attaches the
+  results (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) WITHOUT
+  core knowing any product noun. Default (no hook) behavior is unchanged: the
+  mission-based verdict stands alone.
+- **Adapter-namespaced product nouns.** Product-specific concepts (public
+  CLI/product command observed, hosted product success-or-blocker, feedback
+  id/draft, media/job/asset ids, no-media/no-provider-spend proof,
+  defection/friction risk) ride ONLY under a single namespaced field
+  (`RunFeedbackCandidate.adapter: { namespace, data }` and
+  `RunAdapterScore.{namespace, data}`) so core's enums stay product-agnostic and
+  a future inert-field audit never misfires. No adopter noun is hardcoded into a
+  core enum (avoiding closed-taxonomy rot); `e2b-terminal` is added to the
+  substrate enum so a terminal-agent candidate names its substrate honestly.
+
+The seam is fail-closed: the lane scrubs+redacts the returned payloads and DROPS
+any malformed score/candidate with a warning, and `verifyRun` re-checks the
+surviving shapes — a bad extension never poisons a verifiable bundle. Proven by
+`tests/terminal-product-adapter-seam.test.ts` (a thin in-repo example adapter
+typing against the barrel only, registering a scorer, attaching namespaced nouns,
+emitting a candidate; the bundle verifies). No live rung — the seam is contract,
+not spend.
+
+The adopter's real scorecard is its OWN thin extension; the live receipt for the
+end-to-end lane is tracked under #159, and true duplex PTY replay is deferred to
+SLICE 5.
+
 ## The reference adopter (codename-neutral)
 
 The requesting adopter is a public creative-CLI product (see issue #154 for its

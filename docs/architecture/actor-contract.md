@@ -252,6 +252,21 @@ falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 
+## The product-adapter extension seam (shipped — terminal-product lane, layer 6)
+
+The terminal-product lane carries the proof-roadmap layer-6 deliverable: a product
+adopter attaches product-specific scoring + feedback as a THIN in-repo extension
+WITHOUT forking core. The seam is exported contract types (`RunBundle`,
+`RunFeedbackCandidate`, `RunAdapterScore`, `RunMeaningfulUseScore`, `ActorTrace`,
+the terminal-lane `TerminalProductScoringContext` / `TerminalLedgers` / ...) plus a
+registrable `score` / `deriveFeedback` DI hook on `TerminalProductLabHooks` (mirror
+of the `CuaActorLabHooks` DI seam). The adapter records its product nouns ONLY under
+an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
+`RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic — no
+adopter noun is hardcoded into a core enum. Default (no hook) behavior is unchanged.
+See [`terminal-product-lane.md`](./terminal-product-lane.md#slice-4--the-product-adapter-extension-seam-layer-6)
+for the full seam and the thin-adapter conformance proof.
+
 ## Making personas load-bearing
 
 The bug, grounded in code: `loadDryRunSelection` (`src/run.ts`) parses persona
