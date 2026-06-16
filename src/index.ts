@@ -95,7 +95,9 @@ export {
   RUN_BUNDLE_SCHEMA,
   VERIFY_SCHEMA,
   doctor,
+  extractLocalActorVerdict,
   listRuns,
+  normalizeLocalActorTranscript,
   readReview,
   runDryRun,
   verifyRun

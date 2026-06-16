@@ -2750,7 +2750,13 @@ function terminalColorResponse(slot: string): string {
   return `\x1b]${slot};rgb:ffff/ffff/ffff\x07`;
 }
 
-function normalizeLocalActorTranscript(transcript: string): string {
+/**
+ * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text.
+ * Pure (no IO). Exported so the terminal-product lane (src/e2b-terminal-lab.ts) normalizes its
+ * captured exec stream EXACTLY as the local-actor lanes do — the verdict-nonce scorer is only
+ * sound against the same normalization the marker is matched on, so the logic must not diverge.
+ */
+export function normalizeLocalActorTranscript(transcript: string): string {
   return transcript
     .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
     .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
@@ -2760,7 +2766,14 @@ function normalizeLocalActorTranscript(transcript: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
-function extractLocalActorVerdict(transcript: string, verdictNonce: string): LocalActorTerminalStatus | null {
+/**
+ * Extract the per-run verdict from a normalized transcript: the agent must print exactly
+ * `MIMETIC_ACTOR_VERDICT=<status> MIMETIC_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
+ * bare marker (echoed or replayed from untrusted text) can never forge a verdict. Pure (no IO).
+ * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the SAME marker
+ * — divergent verdict logic would let the two lanes disagree about what "passed" means.
+ */
+export function extractLocalActorVerdict(transcript: string, verdictNonce: string): LocalActorTerminalStatus | null {
   const compactTranscript = transcript.replace(/\s+/g, "");
   // The per-run nonce is mandatory: a bare MIMETIC_ACTOR_VERDICT=<status>
   // marker echoed by an actor (or replayed from untrusted text) must never
