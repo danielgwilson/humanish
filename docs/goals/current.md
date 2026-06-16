@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-10 (rev 3)
+Status date: 2026-06-16 (rev 4)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -145,6 +145,30 @@ Minimum acceptance:
 - verifier checks redaction status;
 - Observer polling reflects lane completion;
 - no raw private transcript or credential values.
+
+Terminal-product real-agent lane (0.8.0; depth-axis layer 6, so an adopter can delete a
+bespoke real-agent sim for mimetic + a thin adapter — see
+`docs/goals/terminal-product-lane/goal.md`):
+
+- `subject.source: terminal-product` + `execution.target: e2b-terminal` + the registered
+  `codex-exec` terminal actor route a config to a real Codex agent studying a product from
+  public surfaces inside an E2B shell. `done`
+- The credential-placement inversion is enforced by construction AND by verifier: the runtime
+  key is injected ONLY command-scoped into the `codex` invocation, never sandbox-global; a
+  deny-by-default allowlist excludes GitHub/payment/deploy/db creds; metadata is a positive
+  allowlist; stdin is disabled with an always-present interventions ledger; cleanup is proven
+  or the run fails closed. `done`
+- Cost/no-spend ledger with the null-vs-known-zero-vs-absent discipline (unknowns are `null`,
+  never guessed); the no-spend proof is DERIVED from the ledger, never asserted; `maxUsd`/
+  `maxJobs`/`maxMinutes` caps enforced fail-closed. `done`
+- Product-adapter extension seam: exported contract types + a scorer/feedback DI hook +
+  adapter-namespaced product nouns, so an adopter attaches scoring/feedback as a thin
+  in-repo extension without forking core. `done`
+- Honest gap: the lane's mechanics + credential boundary are proven DETERMINISTICALLY; a live
+  "real Codex agent completed a task" receipt is pending a dedicated test E2B key (isolated
+  from prod) and a sandbox image with the agent runtime installed
+  ([#159](https://github.com/danielgwilson/mimetic-cli/issues/159)). Duplex-PTY/xterm replay
+  is a deferred SLICE 5.
 
 ### 6. Lab Manifest Shape
 
