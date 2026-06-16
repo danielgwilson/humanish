@@ -460,6 +460,10 @@ async function firstExistingFile(cwd: string, candidates: string[]): Promise<str
 async function existingScreenshots(artifactRoot: string, result: ScriptedBrowserSessionResult): Promise<string[]> {
   const existing: string[] = [];
   for (const step of result.capture.steps) {
+    // Blocked steps whose evidence is the failure itself recorded no screenshot path.
+    if (!step.screenshotPath) {
+      continue;
+    }
     const stats = await stat(path.join(artifactRoot, step.screenshotPath)).catch(() => null);
     if (stats?.isFile() && stats.size > 0) {
       existing.push(step.screenshotPath);

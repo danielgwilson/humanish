@@ -25,6 +25,7 @@ import {
   type CodexAppServerTrace
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
+import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { buildObserverData } from "./observer-data.js";
@@ -857,7 +858,14 @@ async function runBrowserAppProof(options: RunOptions & {
     streams: captures.map((capture) => {
       const simId = `browser-${capture.surface.id}`;
       const streamId = `${simId}-stream`;
-      const screenshotUrl = `../${capture.screenshotPath}`;
+      // Never reference a screenshot the producer did not write (artifact-reference.ts).
+      // A blocked capture whose evidence IS the failure carries no surface screenshot, so
+      // we omit the embed URL + ui.screenshotUrl and keep the stream present with its
+      // blocked status — instead of claiming an artifact that verify would fail closed on.
+      // A capture that claims success but is missing its screenshot still keeps the
+      // reference so missingLocalEvidenceArtifacts can catch the broken producer.
+      const surfaceScreenshot = hasWrittenScreenshot(capture) ? capture.screenshotPath : undefined;
+      const screenshotUrl = surfaceScreenshot ? `../${surfaceScreenshot}` : undefined;
       return {
         id: streamId,
         simId,
@@ -866,18 +874,16 @@ async function runBrowserAppProof(options: RunOptions & {
         status: capture.ok ? "passed" : "blocked",
         transport: "snapshot",
         updatedAt: capture.capturedAt,
-        embed: {
-          kind: "screenshot",
-          url: screenshotUrl,
-          title: capture.surface.label
-        },
+        embed: screenshotUrl
+          ? { kind: "screenshot", url: screenshotUrl, title: capture.surface.label }
+          : { kind: "placeholder", title: `${capture.surface.label} (blocked — no screenshot captured)` },
         viewport: capture.surface.viewport,
         ui: {
           appStatus: capture.ok ? "running" : "blocked",
           appUrl,
           route: appUrl,
           intent: browserJourney.goal,
-          screenshotUrl,
+          ...(screenshotUrl ? { screenshotUrl } : {}),
           state: capture.reason,
           visualStatus: capture.ok ? "visible" : "blocked"
         },
@@ -892,11 +898,14 @@ async function runBrowserAppProof(options: RunOptions & {
           { label: "review", path: "review.md", kind: "review" },
           { label: "event log", path: "events.ndjson", kind: "events" },
           { label: `${capture.surface.id} browser trace`, path: capture.tracePath, kind: "trace" },
-          ...capture.steps.map((step) => ({
-            label: `${capture.surface.id} ${step.id} screenshot`,
-            path: step.screenshotPath,
-            kind: "screenshot" as const
-          }))
+          // Per-step screenshot artifacts only for steps whose screenshot was actually
+          // written; blocked-not-executed steps recorded no path and claim nothing.
+          ...capture.steps.flatMap((step) => {
+            const stepScreenshot = artifactReferenceIfWritten(step.screenshotPath, hasWrittenScreenshot(step));
+            return stepScreenshot
+              ? [{ label: `${capture.surface.id} ${step.id} screenshot`, path: stepScreenshot, kind: "screenshot" as const }]
+              : [];
+          })
         ]
       } satisfies RunStream;
     }),

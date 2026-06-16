@@ -131,6 +131,40 @@ async function writeFakeBrowserCommand(cwd: string): Promise<string> {
   return browser;
 }
 
+// A browser stub that answers --version but never writes a screenshot, so the capture's
+// catch path records honest blocked steps with no screenshot artifact (SLICE 0 fixture).
+async function writeNeverScreenshottingBrowserCommand(cwd: string): Promise<string> {
+  const browser = path.join(cwd, "never-screenshot-browser.cjs");
+  await writeFile(
+    browser,
+    [
+      "#!/usr/bin/env node",
+      "if (process.argv.includes('--version')) {",
+      "  process.stdout.write('Fake Chrome 1.0\\n');",
+      "  process.exit(0);",
+      "}",
+      "// Exit cleanly without ever writing the requested --screenshot file.",
+      "process.exit(0);"
+    ].join("\n"),
+    "utf8"
+  );
+  await chmod(browser, 0o755);
+  return browser;
+}
+
+function restoreBrowserEnv(previousBrowserCommand: string | undefined, previousBrowserPersonaDriver: string | undefined): void {
+  if (previousBrowserCommand === undefined) {
+    delete process.env.MIMETIC_BROWSER_COMMAND;
+  } else {
+    process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+  }
+  if (previousBrowserPersonaDriver === undefined) {
+    delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+  } else {
+    process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+  }
+}
+
 async function writeMimeticBrowserScenario(cwd: string, scenarioText: string): Promise<void> {
   await mkdir(path.join(cwd, "mimetic", "personas"), { recursive: true });
   await mkdir(path.join(cwd, "mimetic", "scenarios"), { recursive: true });
@@ -648,6 +682,101 @@ describe("dry-run bundles", () => {
           } else {
             process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
+        }
+      });
+    });
+  });
+
+  it("keeps a blocked browser run structurally verifiable without claiming screenshots it never wrote", async () => {
+    // SLICE 0 / issue #154 AC9: a blocked live browser run (the failure IS the evidence)
+    // must not reference screenshot artifacts that were never written, or verify fails
+    // closed on missing local evidence. The producer omits the screenshot embed/ui/per-step
+    // refs for blocked-not-executed steps while keeping the blocked stream present.
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        // A browser that exits cleanly but writes NO screenshot forces the capture's
+        // catch path (buildBlockedBrowserPersonaSteps) for every surface.
+        process.env.MIMETIC_BROWSER_COMMAND = await writeNeverScreenshottingBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          const result = await runDryRun({
+            appUrl,
+            cwd,
+            runId: "browser-blocked-test"
+          });
+
+          // The run honestly reports failure (allPassed === false) — fail-closed is intact.
+          expect(result.ok).toBe(false);
+          expect(result.mode).toBe("live");
+
+          const bundle = JSON.parse(
+            await readFile(path.join(cwd, ".mimetic/runs/browser-blocked-test/run.json"), "utf8")
+          ) as {
+            streams: Array<{
+              status: string;
+              embed: { kind: string; url?: string };
+              artifacts: Array<{ kind: string; path: string }>;
+              ui: { screenshotUrl?: string; visualStatus?: string };
+              completion?: { status: string };
+            }>;
+          };
+
+          // The blocked streams are still present with their blocked status — the failure
+          // is the recorded evidence — but they claim no screenshot artifact.
+          expect(bundle.streams.length).toBeGreaterThan(0);
+          for (const stream of bundle.streams) {
+            expect(stream.status).toBe("blocked");
+            expect(stream.completion?.status).toBe("blocked");
+            expect(stream.ui.visualStatus).toBe("blocked");
+            // No screenshot embed, no ui.screenshotUrl, no per-step screenshot artifact.
+            expect(stream.embed.kind).toBe("placeholder");
+            expect(stream.embed.url).toBeUndefined();
+            expect(stream.ui.screenshotUrl).toBeUndefined();
+            expect(stream.artifacts.some((artifact) => artifact.kind === "screenshot")).toBe(false);
+          }
+
+          // The bundle verifies ok with NO missing-artifact finding: the producer never
+          // referenced an artifact it did not write.
+          const verify = await verifyRun(cwd, "latest");
+          expect(verify.ok).toBe(true);
+          const localEvidenceCheck = verify.checks.find((check) => check.name === "local evidence artifacts exist");
+          expect(localEvidenceCheck?.ok).toBe(true);
+        } finally {
+          restoreBrowserEnv(previousBrowserCommand, previousBrowserPersonaDriver);
+        }
+      });
+    });
+  });
+
+  it("still fails verify when a stream claims a successful screenshot whose file is absent", async () => {
+    // Inverse of the blocked-run fix: the producer-side omission must NOT blanket-weaken
+    // verify. A stream that claims a written screenshot but whose file is missing/zero-byte
+    // must STILL fail closed, so a genuinely-broken producer gets no free pass.
+    await withFixtureCopy(async (cwd) => {
+      await withHttpServer(async (appUrl) => {
+        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+
+        try {
+          await runDryRun({ appUrl, cwd, runId: "browser-broken-success-test" });
+
+          const baseline = await verifyRun(cwd, "browser-broken-success-test");
+          expect(baseline.ok).toBe(true);
+
+          // Delete a referenced screenshot the bundle claims as evidence for a passed stream.
+          await rm(path.join(cwd, ".mimetic/runs/browser-broken-success-test/screenshots/desktop-step-02-interact.png"));
+
+          const verify = await verifyRun(cwd, "browser-broken-success-test");
+          expect(verify.ok).toBe(false);
+          expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+            .toContain("screenshots/desktop-step-02-interact.png");
+        } finally {
+          restoreBrowserEnv(previousBrowserCommand, previousBrowserPersonaDriver);
         }
       });
     });
