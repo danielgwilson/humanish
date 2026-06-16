@@ -871,17 +871,22 @@ async function teardownSandbox(args: {
     return { killed, remaining: -1, reason: "killed; SDK does not expose Sandbox.list to re-verify (killed:true is the proof)" };
   }
   try {
+    // Prove THIS run's reclamation: re-list and confirm OUR sandbox id is gone. We filter by our
+    // own sandboxId (not by counting every sandbox the metadata filter returns) — the E2B list
+    // metadata filter does not reliably isolate a single run, so counting all returned sandboxes
+    // would conflate unrelated concurrent sandboxes with this run's teardown. The kill API
+    // succeeding (killed) plus our sandbox being absent from the running list is the proof.
     const paginator = sandboxModule.Sandbox.list({ metadata: { runId: metadata.runId ?? "" }, requestTimeoutMs });
-    let remaining = 0;
+    let ours = 0;
     let pages = 0;
     // nextItems() advances the paginator's internal cursor; hasNext reflects it after each call.
-    while (paginator.hasNext && pages < 10) {
+    while (paginator.hasNext && pages < 20) {
       const items = await paginator.nextItems({ requestTimeoutMs });
-      remaining += items.filter((info) => (info.state ?? "running") !== "killed").length;
+      ours += items.filter((info) => info.sandboxId === sandbox.sandboxId && (info.state ?? "running") !== "killed").length;
       pages += 1;
     }
-    recordLifecycle("terminal-lab.cleanup.verified", `Sandbox ${sandbox.sandboxId} killed; re-listed ${remaining} remaining under this run's metadata.`);
-    return { killed, remaining, reason: remaining === 0 ? "killed; re-list confirms 0 remaining" : `killed; re-list found ${remaining} still present` };
+    recordLifecycle("terminal-lab.cleanup.verified", `Sandbox ${sandbox.sandboxId} killed; re-list confirms this run's sandbox is ${ours === 0 ? "no longer present" : "still present"}.`);
+    return { killed, remaining: ours, reason: ours === 0 ? "killed; re-list confirms this run's sandbox is reclaimed" : `killed; this run's sandbox still listed as running` };
   } catch (error) {
     recordLifecycle("terminal-lab.cleanup.list_error", `Sandbox ${sandbox.sandboxId} killed; re-list failed: ${sanitize(compactError(error))}`);
     return { killed, remaining: -1, reason: `killed; re-list to verify reclamation failed: ${sanitize(compactError(error))}` };

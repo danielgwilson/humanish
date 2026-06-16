@@ -81,11 +81,15 @@ function makeFakeModule(opts: {
       list(_options: unknown) {
         const remaining = opts.listRemaining ? opts.listRemaining() : 0;
         const paginator = {
-          hasNext: remaining > 0,
+          // When the test simulates an unproven teardown, OUR sandbox is still listed as running
+          // (plus an unrelated one, to prove the filter ignores other sandboxes). When 0, the list
+          // returns only an unrelated sandbox — which must NOT count as this run's teardown failing.
+          hasNext: true,
           async nextItems() {
-            const items = Array.from({ length: remaining }, (_v, i) => ({ sandboxId: `leftover-${i}`, metadata: {} }));
             paginator.hasNext = false; // single page, then exhausted (mirrors a real cursor advancing)
-            return items;
+            const unrelated = { sandboxId: "unrelated-other-run", state: "running" as const };
+            if (remaining > 0) return [{ sandboxId: `fake-sandbox-${counter}`, state: "running" as const }, unrelated];
+            return [unrelated];
           }
         };
         return paginator;
