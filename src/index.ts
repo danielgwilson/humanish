@@ -124,10 +124,23 @@ export type {
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   CUA_ACTOR_LAB_SCHEMA,
+  CUA_FANOUT_STRATEGY,
   buildCuaBundle,
+  buildCuaFanoutBundle,
+  resolveCuaLanePlan,
   runCuaActorLab
 } from "./cua-actor-lab.js";
-export type { CuaActorLabHooks, CuaActorLabResult, RunCuaActorLabOptions } from "./cua-actor-lab.js";
+export type {
+  CuaActorLabErrorCode,
+  CuaActorLabHooks,
+  CuaActorLabResult,
+  CuaLanePlan,
+  CuaLanePlanEntry,
+  CuaLaneResult,
+  CuaLaneSummary,
+  CuaSubjectProjection,
+  RunCuaActorLabOptions
+} from "./cua-actor-lab.js";
 export {
   SCRIPTED_BROWSER_PROVIDER,
   runScriptedBrowserSession
@@ -184,9 +197,12 @@ export {
 export type { DevicePreset, DevicePresetName } from "./device-presets.js";
 export {
   actorResolvesToTerminal,
+  cuaLaneCount,
+  cuaLaneValidationReason,
   isHttpUrl,
   isLoopbackUrl,
   LAB_CONFIG_SCHEMA,
+  MAX_CUA_LANES,
   parseLabConfig,
   routesToComputerUse,
   routesToScriptedBrowser,
@@ -195,6 +211,7 @@ export {
 } from "./lab-config.js";
 export type {
   LabActor,
+  LabActorLane,
   LabConfig,
   LabConfigParseResult,
   LabExecutionTerminal,

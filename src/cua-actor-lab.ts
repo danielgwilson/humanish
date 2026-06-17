@@ -49,14 +49,18 @@ import {
   type DevicePreset
 } from "./device-presets.js";
 import {
+  cuaLaneValidationReason,
   isHttpUrl,
   isLoopbackUrl,
+  MAX_CUA_LANES,
   subjectStateInvalidReason,
+  type LabActorLane,
   type LabConfig,
   type LabStateStepWhen,
   type LabSubjectServe,
   type LabSubjectState
 } from "./lab-config.js";
+import { mapWithConcurrency } from "./concurrency.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
 import {
@@ -74,7 +78,16 @@ import {
   type RunSubjectStateStepRecord
 } from "./run.js";
 
-export const CUA_ACTOR_LAB_SCHEMA = "mimetic.cua-lab-result.v1";
+export const CUA_ACTOR_LAB_SCHEMA = "mimetic.cua-lab-result.v2";
+
+// The only fan-out topology this slice ships: N lanes = N independent E2B desktop sandboxes,
+// each its own world (clone/serve + subject.state per lane). Shared-world is layer 7 (#164).
+export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
+// Default in-flight lane bound when the config does not declare execution.concurrency.
+const DEFAULT_CUA_CONCURRENCY = 3;
+// Env override that may only LOWER the effective concurrency (never raise concurrent paid
+// desktops — invariant 3). Read names-only into a local; the value never persists.
+const CUA_MAX_CONCURRENCY_ENV = "MIMETIC_CUA_MAX_CONCURRENCY";
 
 export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
   mode: "cua-actor-lab",
@@ -112,7 +125,18 @@ const ERROR_TAIL_CHARS = 2000;
  * DI seams so CI drives the full path with fakes at zero network/zero spend.
  */
 export interface CuaActorLabHooks {
-  prepareDesktop?: (desktop: E2BDesktopSandbox) => Promise<void>;
+  /**
+   * Runs after sandbox creation and before subject provisioning / browser launch. Widened
+   * back-compatibly with per-lane context so a library caller can provision the right app-url
+   * subject per lane (a one-arg `(desktop) => …` still satisfies the type). Called once per lane.
+   */
+  prepareDesktop?: (desktop: E2BDesktopSandbox, lane: { laneId: string; laneIndex: number; laneCount: number }) => Promise<void>;
+  /**
+   * Pre-flight hook: receives the resolved lane plan BEFORE any sandbox or provider call (dry-run
+   * AND live). The engine also prints the plan to stderr; this seam lets tests assert it without
+   * scraping stderr. Identical plan in dry-run, marked $0.
+   */
+  onPreflight?: (plan: CuaLanePlan) => void;
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /**
@@ -145,7 +169,109 @@ export interface RunCuaActorLabOptions {
   dryRun: boolean;
   open?: boolean;
   runId?: string;
+  /** CLI `--count` override for the homogeneous fan-out lane count (ignored when a `lanes`
+   *  roster is declared — a roster's length is authoritative). */
+  countOverride?: number;
   hooks?: CuaActorLabHooks;
+}
+
+/** A lane's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
+ *  text never leaks — only a sha256-16 digest of the composed instructions. */
+export interface CuaLanePlanEntry {
+  id: string;
+  /** 1-based display index. */
+  index: number;
+  persona: string;
+  device: string;
+  resolution: [number, number];
+  instructionDigest: string;
+}
+
+/** The pre-flight spend/lane plan (pure; printed to stderr + recorded as a bundle event before
+ *  any sandbox or provider call; identical in dry-run, marked $0). */
+export interface CuaLanePlan {
+  strategy: typeof CUA_FANOUT_STRATEGY;
+  laneCount: number;
+  /** Effective in-flight bound (config default min(N,3), only LOWERED by the env override). */
+  concurrency: number;
+  /** ceil(laneCount / concurrency). */
+  waves: number;
+  /** Per-lane session wall-clock budget (execution.timeoutMs); there is no run-level wall clock. */
+  perLaneSessionBudgetMs: number;
+  /** Worst-case TOTAL sandbox-minutes across all lanes (each lane's full sandbox deadline). */
+  worstCaseSandboxMinutes: number;
+  /** True for a dry-run plan (no spend); the same table appears live. */
+  dryRun: boolean;
+  lanes: CuaLanePlanEntry[];
+}
+
+/** One lane's outcome in the result projection. ALWAYS present in `result.lanes` (length 1 at
+ *  N=1). A `blocked` lane is one the pipeline-gate / fail-fast skipped before it ran. */
+export interface CuaLaneResult {
+  id: string;
+  index: number;
+  persona: string;
+  device: string;
+  resolution: [number, number];
+  /** Terminal lane status; "blocked" = skipped (gate/fail-fast); "contract_proof_only" = dry-run. */
+  status: ActorStatus | "blocked" | "contract_proof_only";
+  ok: boolean;
+  session?: {
+    status: ActorStatus;
+    completionReason: ActorCompletionReason;
+    reason: string;
+    screenshots: number;
+  };
+  sandbox?: {
+    sandboxId: string;
+    killed: boolean;
+    streamUrlPresent: boolean;
+  };
+  subject: CuaSubjectProjection;
+  /** Set when the lane was skipped (pinned reason string). */
+  skippedReason?: string;
+  error?: { code: CuaActorLabErrorCode; message: string };
+}
+
+/** Aggregate counts across lanes. */
+export interface CuaLaneSummary {
+  strategy: typeof CUA_FANOUT_STRATEGY;
+  total: number;
+  /** Lanes whose own verdict is ok (terminal, engaged, no harness error). */
+  passed: number;
+  /** Lanes skipped by the pipeline gate / fail-fast. */
+  skipped: number;
+  /** Lanes that ended in a harness error. */
+  harnessErrors: number;
+  /** Lanes that returned goal_satisfied with zero engagement (hollow). */
+  hollow: number;
+  concurrency: number;
+  waves: number;
+}
+
+export type CuaActorLabErrorCode =
+  | "MIMETIC_CUA_LAB_FAILED"
+  | "MIMETIC_CUA_LAB_KEYS_MISSING"
+  | "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING"
+  | "MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED"
+  | "MIMETIC_CUA_LAB_SUBJECT_INVALID"
+  | "MIMETIC_CUA_LAB_SUBJECT_UNSAFE"
+  | "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER"
+  | "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
+  | "MIMETIC_CUA_LAB_FANOUT_INVALID"
+  | "MIMETIC_CUA_LAB_DEVICE_GEOMETRY";
+
+/** Subject provenance projection (invariant 5): what the actor actually drove. */
+export interface CuaSubjectProjection {
+  source: "app-url" | "clone";
+  repo?: string;
+  /** Cloned commit SHA, when the clone route resolved one. */
+  commit?: string;
+  /** Declared env NAMES provisioned for the subject (values never surface anywhere). */
+  envNames?: string[];
+  /** The subject's state story (seeded digests / UNPINNED external / declared-not-run /
+   *  undeclared) — the same block the run bundle records. */
+  state: RunSubjectProvenance["state"];
 }
 
 export interface CuaActorLabResult {
@@ -173,422 +299,420 @@ export interface CuaActorLabResult {
      * surfaced on the result — the sandbox is already dead by the time the result exists. */
     streamUrlPresent: boolean;
   };
-  /** Subject provenance (invariant 5): what the actor actually drove. */
-  subject?: {
-    source: "app-url" | "clone";
-    repo?: string;
-    /** Cloned commit SHA, when the clone route resolved one. */
-    commit?: string;
-    /** Declared env NAMES provisioned for the subject (values never surface anywhere). */
-    envNames?: string[];
-    /** The subject's state story (seeded digests / UNPINNED external / declared-not-run /
-     * undeclared) — the same block the run bundle records. */
-    state: RunSubjectProvenance["state"];
-  };
+  /** Subject provenance (invariant 5): what the actor actually drove. At N>1 this is the
+   *  unanimity-gated aggregate (top-level `commit` only when every lane resolved the same one). */
+  subject?: CuaSubjectProjection;
+  /** The pre-flight lane plan (present once lanes resolve; absent on early validation errors). */
+  plan?: CuaLanePlan;
+  /** Per-lane results — ALWAYS present once lanes resolve (length 1 at N=1). */
+  lanes?: CuaLaneResult[];
+  /** Aggregate lane counts. */
+  laneSummary?: CuaLaneSummary;
   observer?: ObserverResult;
   warnings: string[];
   error?: {
-    code:
-      | "MIMETIC_CUA_LAB_FAILED"
-      | "MIMETIC_CUA_LAB_KEYS_MISSING"
-      | "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING"
-      | "MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED"
-      | "MIMETIC_CUA_LAB_SUBJECT_INVALID"
-      | "MIMETIC_CUA_LAB_SUBJECT_UNSAFE"
-      | "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER"
-      | "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR";
+    code: CuaActorLabErrorCode;
     message: string;
   };
 }
 
-export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
-  const { config, dryRun } = options;
-  const cwd = path.resolve(options.cwd);
-  const hooks = options.hooks ?? {};
-  const env = hooks.env ?? process.env;
-  const render = hooks.renderObserverFn ?? renderObserver;
-  const warnings: string[] = [];
+const DEFAULT_MISSION =
+  "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.";
 
-  // The entry URL: caller-provisioned for app-url subjects; serve-declared for clone subjects
-  // (the lab serves the app in-sandbox before the actor drives it).
-  const cloneRoute = config.subject.source === "clone";
-  const serve = config.subject.serve;
-  const appUrl = (cloneRoute ? serve?.url : config.subject.appUrl) ?? "";
-  const subjectRepo = cloneRoute ? config.subject.repos?.[0] ?? "" : undefined;
-  const subjectEnvNames = cloneRoute ? config.subject.env ?? [] : [];
-  const actor = config.actors[0];
-  const actorType = actor?.type ?? "";
+/** A fully-resolved fan-out lane: identity, the composed prompt, and the device geometry it
+ *  renders at. Internal — the public projection is CuaLanePlanEntry / CuaLaneResult. */
+interface CuaLaneSpec {
+  laneId: string;
+  /** 0-based. */
+  laneIndex: number;
+  simId: string;
+  streamId: string;
+  persona: ActorPersonaRef;
+  instructions: string;
+  deviceName: string;
+  devicePreset: DevicePreset;
+  resolution: [number, number];
+  /** "" for N=1 (screenshots/<name>); the laneId for N>1 (screenshots/<laneId>/<name>). */
+  screenshotDir: string;
+  /** "actor.json" for N=1; "actors/<streamId>.json" for N>1. */
+  traceArtifactPath: string;
+}
 
-  // Resolve the actor through the registry — the parse layer already validated this, but the
-  // engine fails closed rather than trusting a config that arrived through another door.
-  const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
-  if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return {
-      schema: CUA_ACTOR_LAB_SCHEMA,
-      ok: false,
-      cwd,
-      labId: config.id,
-      actor: actorType,
-      appUrl,
-      dryRun,
-      runId: options.runId ?? "not-created",
-      warnings,
-      error: {
-        code: "MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED",
-        message: `actors[0].type "${actorType}" is not a registered computer-use actor.`
-      }
-    };
-  }
-  const runSession = hooks.runSession ?? descriptor.runSession;
-
-  // The IN-PROCESS route: a library caller supplied a custom executor (e.g. a window.* JS
-  // contract over an already-running local dev server). On this route the lab NEVER touches E2B
-  // — no module load, no Sandbox.create, no prepareDesktop, no clone provisioning, no
-  // desktop.open, no stream.start — so result.sandbox is omitted (the verifiable "no E2B SDK
-  // call" proof). The whole bundle/Observer/redaction composition below is desktop-agnostic.
-  const inProcessRoute = hooks.buildExecutor !== undefined;
-  const localAppSubject = config.subject.source === "local-app";
-
-  // Engine re-enforcement of the clone-route structure for configs arriving via the library
-  // API (the parser rejects these too, but runCuaActorLab is itself exported npm surface).
-  if (cloneRoute && (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))) {
-    return {
-      schema: CUA_ACTOR_LAB_SCHEMA,
-      ok: false,
-      cwd,
-      labId: config.id,
-      actor: descriptor.id,
-      appUrl,
-      dryRun,
-      runId: options.runId ?? "not-created",
-      warnings,
-      error: {
-        code: "MIMETIC_CUA_LAB_SUBJECT_INVALID",
-        message: !serve
-          ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
-          : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`
-      }
-    };
-  }
-
-  // Engine re-enforcement of the state declaration for configs arriving via the library API
-  // (the parser rejects these too, but runCuaActorLab is itself exported npm surface): step
-  // names interpolate into in-sandbox file paths, and external must name a provisioned
-  // channel — same fail-closed pattern as the repo-slug re-check above.
-  if (config.subject.state) {
-    const stateReason = !cloneRoute
-      ? "`subject.state` applies only to clone subjects (the lab seeds the state it serves)."
-      : subjectStateInvalidReason(config.subject.state, config.subject.env);
-    if (stateReason) {
-      return {
-        schema: CUA_ACTOR_LAB_SCHEMA,
-        ok: false,
-        cwd,
-        labId: config.id,
-        actor: descriptor.id,
-        appUrl,
-        dryRun,
-        runId: options.runId ?? "not-created",
-        warnings,
-        error: {
-          code: "MIMETIC_CUA_LAB_SUBJECT_INVALID",
-          message: stateReason
-        }
-      };
+/** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
+ *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
+function composeLaneInstructions(args: {
+  mission: string;
+  persona?: string;
+  instruction?: string;
+  device: { name: string; preset: DevicePreset };
+}): { instructions: string; persona: ActorPersonaRef } {
+  const { name, preset } = args.device;
+  const deviceLine = preset.isMobile
+    ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
+    : `You are a desktop user (${name}, ${preset.width}x${preset.height}).`;
+  const parts = [
+    args.persona ? `Persona: ${args.persona}.` : undefined,
+    deviceLine,
+    args.mission,
+    args.instruction ? `Lane focus: ${args.instruction}` : undefined
+  ].filter((part): part is string => Boolean(part));
+  const instructions = parts.join("\n\n");
+  return {
+    instructions,
+    persona: {
+      id: args.persona ?? "cua-operator",
+      traitsApplied: [],
+      promptDigest: createHash("sha256").update(instructions).digest("hex").slice(0, 16)
     }
-  }
+  };
+}
 
-  // Re-enforce the entry-target boundary for configs that arrive through the library API
-  // (the parser rejects these too, but runCuaActorLab is itself exported npm surface). For a
-  // served clone the entry is always loopback (we serve it in-sandbox); for a local-app subject
-  // the entry is always loopback (an in-process local dev server, no public-target option); for
-  // an app-url subject the owner may declare a public/preview target via
-  // policies.allowPublicTargets. The in-process route inherits this check exactly — it runs
-  // before any executor is built.
-  const allowPublicTargets = config.policies?.allowPublicTargets === true;
-  const entryTargetSafe = cloneRoute || localAppSubject
-    ? isLoopbackUrl(appUrl)
-    : allowPublicTargets
-      ? isHttpUrl(appUrl)
-      : isLoopbackUrl(appUrl);
-  if (!entryTargetSafe) {
-    return {
-      schema: CUA_ACTOR_LAB_SCHEMA,
-      ok: false,
-      cwd,
-      labId: config.id,
-      actor: descriptor.id,
-      appUrl,
-      dryRun,
-      runId: options.runId ?? "not-created",
-      warnings,
-      error: {
-        code: "MIMETIC_CUA_LAB_SUBJECT_UNSAFE",
-        message: cloneRoute || localAppSubject || !allowPublicTargets
-          ? "subject entry URL must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
-          : "subject.appUrl must be a valid http(s) URL."
-      }
-    };
-  }
-
-  // In-process route pairing guard (boot-time, BEFORE key-gating): a custom executor needs a
-  // custom provider too. The default OpenAI provider is vision-based (requiresFrame) and would
-  // fail closed against a state-only executor that returns no screenshot. (buildProvider ALONE
-  // is fine — that is a model swap on the normal E2B route, handled below.)
-  if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined) {
-    return {
-      schema: CUA_ACTOR_LAB_SCHEMA,
-      ok: false,
-      cwd,
-      labId: config.id,
-      actor: descriptor.id,
-      appUrl,
-      dryRun,
-      runId: options.runId ?? "not-created",
-      warnings,
-      error: {
-        code: "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER",
-        message: "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
-      }
-    };
-  }
-
-  // local-app fail-closed (BEFORE key-gating, so a CLI invocation never sees the misleading
-  // KEYS_MISSING error first): there is no built-in in-process driver. A library caller supplies
-  // buildExecutor (+ buildProvider); a config-only / CLI invocation gets a structured error, not
-  // a desktop provisioning attempt.
-  if (localAppSubject && !inProcessRoute) {
-    return {
-      schema: CUA_ACTOR_LAB_SCHEMA,
-      ok: false,
-      cwd,
-      labId: config.id,
-      actor: descriptor.id,
-      appUrl,
-      dryRun,
-      runId: options.runId ?? "not-created",
-      warnings,
-      error: {
-        code: "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
-        message: "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)"
-      }
-    };
-  }
-
-  const runId = options.runId ?? makeCuaRunId();
-  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
-  const createdAt = new Date().toISOString();
-  // Device resolution order (most-specific wins): raw resolution escape hatch → named device
-  // preset → default preset. The preset also carries isMobile/DSF as honest metadata + a prompt
-  // signal (only width/height physically render on the E2B-desktop route — see device-presets.ts).
-  // Resolve ONE device — so the rendered resolution, the prompt, and the bundle's isMobile/DSF
-  // metadata can never contradict each other. A raw `resolution` override wins, but then it is
-  // an unnamed custom desktop (non-mobile, DSF 1): we will not claim a named preset's
-  // mobile/DPR for geometry the caller hand-set.
+/**
+ * Resolve a lane's device + rendered resolution (most-specific wins, exactly as the single-lane
+ * path always has): a raw execution.desktop.resolution escape hatch (only legal when no lane
+ * sets a device — XOR enforced at parse) → the lane's named device → the run-wide
+ * execution.desktop.device → the default preset. A raw resolution is an unnamed custom desktop
+ * (non-mobile, DSF 1): we never claim a named preset's mobile/DPR for hand-set geometry.
+ */
+function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefined): {
+  name: string;
+  preset: DevicePreset;
+  resolution: [number, number];
+} {
   const rawResolution = config.execution?.desktop?.resolution;
-  let deviceName: string;
-  let devicePreset: DevicePreset;
-  if (rawResolution) {
-    deviceName = "custom";
-    devicePreset = { width: rawResolution[0], height: rawResolution[1], isMobile: false, deviceScaleFactor: 1 };
-  } else {
-    const presetName = isDevicePresetName(config.execution?.desktop?.device)
-      ? config.execution?.desktop?.device
-      : DEFAULT_DEVICE_PRESET;
-    deviceName = presetName;
-    devicePreset = resolveDevicePreset(presetName);
+  if (lane?.device === undefined && rawResolution) {
+    const preset: DevicePreset = { width: rawResolution[0], height: rawResolution[1], isMobile: false, deviceScaleFactor: 1 };
+    return { name: "custom", preset, resolution: [rawResolution[0], rawResolution[1]] };
   }
-  const resolution: [number, number] = [devicePreset.width, devicePreset.height];
+  const candidate = lane?.device ?? config.execution?.desktop?.device;
+  const presetName = isDevicePresetName(candidate) ? candidate : DEFAULT_DEVICE_PRESET;
+  const preset = resolveDevicePreset(presetName);
+  return { name: presetName, preset, resolution: [preset.width, preset.height] };
+}
+
+/** Per-lane sandbox deadline (each lane owns its own desktop). Mirrors the single-lane formula
+ *  verbatim so N=1 stays byte-stable: explicit sandboxTimeoutMs, else session budget + (clone:
+ *  provision budget + Σ state-step budgets) + the server-side reclamation buffer. */
+function resolvePerLaneSandboxMs(config: LabConfig): number {
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const cloneRoute = config.subject.source === "clone";
+  const stateBudgetMs = cloneRoute
+    ? (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
+    : 0;
+  return config.execution?.desktop?.sandboxTimeoutMs
+    ?? timeoutMs + (cloneRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) + SANDBOX_TIMEOUT_BUFFER_MS;
+}
 
-  const { instructions, persona } = composeInstructions(config, { name: deviceName, preset: devicePreset });
+/**
+ * Effective in-flight lane bound. Default min(laneCount, 3); a declared execution.concurrency
+ * clamps to [1, laneCount]; the env override may only LOWER it (never raise concurrent paid
+ * desktops — invariant 3). Pure given (config, laneCount, env).
+ */
+function resolveCuaConcurrency(config: LabConfig, laneCount: number, env: Record<string, string | undefined>): number {
+  const declared = config.execution?.concurrency;
+  const base = declared !== undefined
+    ? Math.min(Math.max(1, declared), laneCount)
+    : Math.min(laneCount, DEFAULT_CUA_CONCURRENCY);
+  const envLower = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
+  if (envLower > 0) {
+    return Math.max(1, Math.min(base, envLower, laneCount));
+  }
+  return Math.max(1, base);
+}
 
-  // Read once into locals (names only; values never logged or persisted) — this also keeps
-  // history clean for line-pattern secret scanners that flag inline `apiKey: env.X` reads.
-  const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
-  const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
+interface LaneSpecsAndPlan {
+  lanes: CuaLaneSpec[];
+  plan: CuaLanePlan;
+}
 
-  // Pattern-based redaction cannot catch an ARBITRARY provisioned value (a DB password has
-  // no secret "shape"), so every value this lab knows is scrubbed by literal match before
-  // anything can persist — applied at the log-tail source (pre-truncation, so a cut tail can
-  // never split a value past the scrubber) and again at the catch boundary.
-  const knownSecretValues = [
-    openaiApiKey,
-    e2bApiKey,
-    ...subjectEnvNames.map((name) => env[name] ?? "")
-  ].filter((value) => value.length >= 4);
-  const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+/** Build the lane specs AND the public plan from a config (pure). countOverride is the CLI
+ *  --count for homogeneous fan-out (ignored when a `lanes` roster is declared). */
+function laneSpecsAndPlan(
+  config: LabConfig,
+  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean } = {}
+): LaneSpecsAndPlan {
+  const env = opts.env ?? {};
+  const actor = config.actors[0];
+  const mission = actor?.mission ?? DEFAULT_MISSION;
+  const roster = actor?.lanes;
+  const laneCount = roster ? roster.length : Math.max(1, opts.countOverride ?? actor?.count ?? 1);
 
-  // Provenance redaction: honor policies.redactRepos, and DEFAULT to redacting the slug when
-  // the clone authenticates (a token-bearing clone is a private repo until declared otherwise).
-  const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
-  const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
-
-  // Key-gating is route-aware: the in-process route uses the caller's OWN model (via
-  // buildProvider) and the caller's OWN executor — no OPENAI_API_KEY/E2B_API_KEY is read or
-  // needed, so requiring them would be a false gate. The subject-env channel is clone-only and
-  // is empty here regardless.
-  if (!dryRun && !inProcessRoute) {
-    const missingKeys = [
-      ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
-      ...(e2bApiKey ? [] : ["E2B_API_KEY"])
-    ];
-    if (missingKeys.length > 0) {
-      return {
-        schema: CUA_ACTOR_LAB_SCHEMA,
-        ok: false,
-        cwd,
-        labId: config.id,
-        actor: descriptor.id,
-        appUrl,
-        dryRun,
-        runId: options.runId ?? "not-created",
-        warnings,
-        error: {
-          code: "MIMETIC_CUA_LAB_KEYS_MISSING",
-          message: `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`
-        }
-      };
-    }
-
-    // The subject's declared env channel fails closed BEFORE any sandbox exists: every
-    // declared NAME must be present in the caller's environment.
-    const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
-    if (missingSubjectEnv.length > 0) {
-      return {
-        schema: CUA_ACTOR_LAB_SCHEMA,
-        ok: false,
-        cwd,
-        labId: config.id,
-        actor: descriptor.id,
-        appUrl,
-        dryRun,
-        runId: options.runId ?? "not-created",
-        warnings,
-        error: {
-          code: "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING",
-          message: `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`
-        }
-      };
-    }
+  const lanes: CuaLaneSpec[] = [];
+  for (let i = 0; i < laneCount; i += 1) {
+    const lane = roster?.[i];
+    const laneId = lane?.id ?? `lane-${String(i + 1).padStart(2, "0")}`;
+    const simId = `sim-${String(i + 1).padStart(3, "0")}`;
+    const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
+    const device = resolveLaneDevice(config, lane);
+    const composed = composeLaneInstructions({
+      mission,
+      ...(((roster ? lane?.persona : actor?.persona)) === undefined ? {} : { persona: (roster ? lane?.persona : actor?.persona) as string }),
+      ...(((roster ? lane?.instruction : actor?.laneFocus?.instruction)) === undefined ? {} : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
+      device: { name: device.name, preset: device.preset }
+    });
+    lanes.push({
+      laneId,
+      laneIndex: i,
+      simId,
+      streamId,
+      persona: composed.persona,
+      instructions: composed.instructions,
+      deviceName: device.name,
+      devicePreset: device.preset,
+      resolution: device.resolution,
+      screenshotDir: laneCount === 1 ? "" : laneId,
+      traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${streamId}.json`
+    });
   }
 
-  await mkdir(path.join(artifactRoot, "screenshots"), { recursive: true });
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd,
-    mimeticSource: "present",
-    packageName: "mimetic-cli"
-  });
+  const concurrency = resolveCuaConcurrency(config, laneCount, env);
+  const perLaneSessionBudgetMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const perLaneSandboxMs = resolvePerLaneSandboxMs(config);
+  const plan: CuaLanePlan = {
+    strategy: CUA_FANOUT_STRATEGY,
+    laneCount,
+    concurrency,
+    waves: Math.ceil(laneCount / concurrency),
+    perLaneSessionBudgetMs,
+    worstCaseSandboxMinutes: Math.round((laneCount * perLaneSandboxMs) / 60_000),
+    dryRun: opts.dryRun === true,
+    lanes: lanes.map((spec) => ({
+      id: spec.laneId,
+      index: spec.laneIndex + 1,
+      persona: spec.persona.id,
+      device: spec.deviceName,
+      resolution: spec.resolution,
+      instructionDigest: spec.persona.promptDigest
+    }))
+  };
+  return { lanes, plan };
+}
 
-  const screenshots: string[] = [];
-  const writeScreenshot = async (name: string, bytes: Buffer): Promise<string> => {
-    const rel = path.posix.join("screenshots", name);
-    await writeFile(path.join(artifactRoot, "screenshots", name), bytes);
+/**
+ * Pure pre-flight plan resolver (runs in dry-run AND live). Returns the lane table, the
+ * effective concurrency, the wave count, the per-lane session budget, and the worst-case total
+ * sandbox-minutes — BEFORE any sandbox or provider call. The same plan appears in dry-run,
+ * marked $0 (dryRun: true).
+ */
+export function resolveCuaLanePlan(
+  config: LabConfig,
+  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean } = {}
+): CuaLanePlan {
+  return laneSpecsAndPlan(config, opts).plan;
+}
+
+/** Print the lane plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
+ *  digests, and budgets only — no prompt text, no secrets). */
+function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
+  const lines: string[] = [];
+  lines.push(
+    `mimetic cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}, ${plan.waves} wave(s).`
+  );
+  lines.push(
+    `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`
+  );
+  for (const lane of plan.lanes) {
+    lines.push(
+      `  - ${lane.id}: persona=${lane.persona} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}`
+    );
+  }
+  process.stderr.write(`${lines.join("\n")}\n`);
+}
+
+/** Shared deps every lane runner needs (resolved once in the engine). */
+interface CuaLaneDeps {
+  config: LabConfig;
+  descriptor: CuaActorDescriptor;
+  appUrl: string;
+  cloneRoute: boolean;
+  serve?: LabSubjectServe;
+  subjectRepo?: string;
+  subjectEnvNames: string[];
+  hasGithubToken: boolean;
+  env: Record<string, string | undefined>;
+  openaiApiKey: string;
+  e2bApiKey: string;
+  requestTimeoutMs: number;
+  perLaneSandboxMs: number;
+  timeoutMs: number;
+  laneCount: number;
+  artifactRoot: string;
+  redactScreenshots: boolean;
+  scrubKnownValues: (text: string) => string;
+  runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
+  hooks: CuaActorLabHooks;
+  /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
+  signalProvisioned?: (ok: boolean) => void;
+}
+
+/** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
+interface LaneRunOutcome {
+  spec: CuaLaneSpec;
+  session?: CuaLoopResult;
+  sessionError?: string;
+  sandboxId?: string;
+  killed: boolean;
+  streamUrlPresent: boolean;
+  screenshots: string[];
+  subjectCommit?: string;
+  stateStepRecords: RunSubjectStateStepRecord[];
+  warnings: string[];
+  /** Set when the lane was skipped by the pipeline gate / fail-fast (a pinned reason). */
+  skippedReason?: string;
+  noEngagement: boolean;
+  harnessError: boolean;
+  failureCode?: CuaActorLabErrorCode;
+  entryKind?: "local-app";
+}
+
+/** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
+ *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
+ *  at N>1). */
+function makeLaneWriteScreenshot(
+  artifactRoot: string,
+  spec: CuaLaneSpec,
+  screenshots: string[]
+): (name: string, bytes: Buffer) => Promise<string> {
+  const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
+  const relPrefix = spec.screenshotDir ? path.posix.join("screenshots", spec.screenshotDir) : "screenshots";
+  return async (name: string, bytes: Buffer): Promise<string> => {
+    await mkdir(path.join(artifactRoot, ...dirParts), { recursive: true });
+    await writeFile(path.join(artifactRoot, ...dirParts, name), bytes);
+    const rel = path.posix.join(relPrefix, name);
     screenshots.push(rel);
     return rel;
   };
+}
 
+/**
+ * Verify the desktop geometry IN-SANDBOX (the per-lane device claim is checked, never assumed).
+ * Returns a fail-closed DEVICE_GEOMETRY message on a PARSEABLE mismatch. When xdpyinfo is
+ * unavailable or unparseable (only in fakes — a real E2B desktop always answers), it cannot be
+ * verified, so the lane proceeds with the requested geometry (no false failure).
+ */
+async function checkLaneGeometry(
+  desktop: E2BDesktopSandbox,
+  spec: CuaLaneSpec,
+  requestTimeoutMs: number
+): Promise<string | undefined> {
+  let out = "";
+  try {
+    const result = await desktop.commands.run("xdpyinfo 2>/dev/null | grep -i dimensions || true", { requestTimeoutMs });
+    out = (result.stdout ?? "").trim();
+  } catch {
+    return undefined;
+  }
+  const match = out.match(/(\d+)\s*x\s*(\d+)\s*pixels/i);
+  if (!match) {
+    return undefined;
+  }
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  const [expectedWidth, expectedHeight] = spec.resolution;
+  if (width === expectedWidth && height === expectedHeight) {
+    return undefined;
+  }
+  return `MIMETIC_CUA_LAB_DEVICE_GEOMETRY: lane ${spec.laneId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`;
+}
+
+/** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
+function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
+  return {
+    spec,
+    killed: false,
+    streamUrlPresent: false,
+    screenshots: [],
+    stateStepRecords: [],
+    warnings: [],
+    skippedReason: reason,
+    noEngagement: false,
+    harnessError: false
+  };
+}
+
+/**
+ * Run ONE E2B desktop lane end-to-end: create the sandbox (per-lane metadata + the lane's device
+ * resolution), prepareDesktop, verify geometry, (clone+serve+seed the subject per lane), open the
+ * browser, run the session, and ALWAYS tear down THIS lane's sandbox BY ID in a finally. Never
+ * enumerates sandboxes. Extracted from the former single-lane block; at N=1 it writes the exact
+ * same artifacts (actor.json, screenshots/<name>) the bundle has always referenced.
+ */
+async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
+  const { config, appUrl, cloneRoute, serve, subjectRepo, subjectEnvNames } = deps;
+  const env = deps.env;
+  const warnings: string[] = [];
+  const screenshots: string[] = [];
+  const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
+  const stateStepRecords: RunSubjectStateStepRecord[] = [];
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
+  let failureCode: CuaActorLabErrorCode | undefined;
   let sandboxId: string | undefined;
   let killed = false;
   let streamUrl: string | undefined;
   let subjectCommit: string | undefined;
-  // Per-step state provenance, pushed the moment each step finishes (mirrors onCommit) so
-  // partial provenance survives a later step's failure. Unreached steps stay absent.
-  const stateStepRecords: RunSubjectStateStepRecord[] = [];
-
-  if (!dryRun && inProcessRoute) {
-    // IN-PROCESS branch: the caller's executor + provider drive the REAL computer-use loop with
-    // NO E2B. We never load the desktop module, create a sandbox, run prepareDesktop, provision
-    // a clone, open a browser, or start a stream — so sandboxId/streamUrl stay undefined and
-    // result.sandbox is omitted (the verifiable "no E2B SDK call" proof). No finally/teardown:
-    // there is nothing to tear down.
-    try {
-      const executor = await hooks.buildExecutor!({ config, actor: descriptor, appUrl });
-      const provider = await hooks.buildProvider!({ config, actor: descriptor });
-      const sessionOptions: CuaActorSessionOptions = {
-        instructions,
-        persona,
-        timeoutMs,
-        provider,
-        executor,
-        // Default raw (full fidelity, local .mimetic); opt into blur for unowned/shared bundles.
-        // A non-vision executor returns no screenshot, so the loop persists none regardless.
-        redactScreenshots: config.policies?.redactScreenshots === true,
-        // Close the narration hole: a provisioned VALUE the model transcribes into reasoning/
-        // message text is literal-scrubbed (it has no shape for pattern redaction to catch).
-        scrubText: scrubKnownValues,
-        writeScreenshot
-      };
-      session = await runSession(sessionOptions);
-    } catch (error) {
-      // Scrubbed + redacted at the lab boundary, exactly like the E2B branch.
-      sessionError = redactText(scrubKnownValues(compactError(error)));
+  let provisioned = false;
+  let signaled = false;
+  const signal = (ok: boolean): void => {
+    if (!signaled && deps.signalProvisioned) {
+      signaled = true;
+      deps.signalProvisioned(ok);
     }
-  } else if (!dryRun) {
-    const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
-    // The subject's serve steps (clone/install/build) and declared state steps need their
-    // own room beyond the actor session budget; the sandbox deadline covers the whole lane.
-    const stateBudgetMs = cloneRoute
-      ? (config.subject.state?.seed ?? []).reduce(
-          (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-          0
-        )
-      : 0;
-    const sandboxTimeoutMs = config.execution?.desktop?.sandboxTimeoutMs
-      ?? timeoutMs + (cloneRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) + SANDBOX_TIMEOUT_BUFFER_MS;
-    // The module load lives INSIDE the try: a missing optional peer becomes a structured
-    // failed result + persisted failed bundle, never a raw stack out of the CLI.
-    let desktopModule: E2BDesktopModule | undefined;
-    let desktop: E2BDesktopSandbox | undefined;
-    try {
-      desktopModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-      desktop = await desktopModule.Sandbox.create({
-        apiKey: e2bApiKey,
-        requestTimeoutMs,
-        timeoutMs: sandboxTimeoutMs,
-        metadata: {
-          ...CUA_ACTOR_LAB_PROVIDER_METADATA,
-          labId: config.id,
-          simId: "sim-001"
-        },
-        // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model
-        // drives from outside). The SUBJECT's declared env NAMES are provisioned here on the
-        // clone route — values resolve from the caller's environment and are never persisted.
-        ...(subjectEnvNames.length > 0
-          ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
-          : {}),
-        resolution,
-        dpi: 96,
-        lifecycle: { onTimeout: "kill" }
-      });
-      sandboxId = desktop.sandboxId;
+  };
 
-      if (hooks.prepareDesktop) {
-        await hooks.prepareDesktop(desktop);
-      }
+  let desktopModule: E2BDesktopModule | undefined;
+  let desktop: E2BDesktopSandbox | undefined;
+  try {
+    desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+    desktop = await desktopModule.Sandbox.create({
+      apiKey: deps.e2bApiKey,
+      requestTimeoutMs: deps.requestTimeoutMs,
+      timeoutMs: deps.perLaneSandboxMs,
+      metadata: {
+        ...CUA_ACTOR_LAB_PROVIDER_METADATA,
+        labId: config.id,
+        simId: spec.simId,
+        laneId: spec.laneId,
+        laneIndex: String(spec.laneIndex),
+        laneCount: String(deps.laneCount)
+      },
+      // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model drives
+      // from outside). The SUBJECT's declared env NAMES are provisioned here on the clone route.
+      ...(subjectEnvNames.length > 0
+        ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
+        : {}),
+      resolution: spec.resolution,
+      dpi: 96,
+      lifecycle: { onTimeout: "kill" }
+    });
+    sandboxId = desktop.sandboxId;
 
+    if (deps.hooks.prepareDesktop) {
+      await deps.hooks.prepareDesktop(desktop, { laneId: spec.laneId, laneIndex: spec.laneIndex, laneCount: deps.laneCount });
+    }
+
+    // Per-lane geometry assertion (fail-closed) — the device claim is verified in-sandbox.
+    const geometryError = await checkLaneGeometry(desktop, spec, deps.requestTimeoutMs);
+    if (geometryError) {
+      sessionError = geometryError;
+      failureCode = "MIMETIC_CUA_LAB_DEVICE_GEOMETRY";
+    } else {
       if (cloneRoute && serve && subjectRepo) {
         subjectCommit = await provisionCloneSubject(desktop, {
           repo: subjectRepo,
           depth: config.subject.clone?.depth ?? 1,
           serve,
           ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
-          hasGithubToken: subjectEnvNames.includes("GITHUB_TOKEN"),
-          requestTimeoutMs,
-          scrub: scrubKnownValues,
-          // Provenance survives later-step failures: the commit is recorded the moment it
-          // resolves, not only when provisioning returns.
+          hasGithubToken: deps.hasGithubToken,
+          requestTimeoutMs: deps.requestTimeoutMs,
+          scrub: deps.scrubKnownValues,
           onCommit: (commit) => {
             subjectCommit = commit;
           },
           onStateStep: (record) => {
             stateStepRecords.push(record);
           },
-          ...(hooks.detachedTimers ?? {})
+          ...(deps.hooks.detachedTimers ?? {})
         });
       }
 
@@ -597,10 +721,11 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       } else {
         await desktop.launch("google-chrome", appUrl);
       }
-      // Let the browser cold-start AND paint the page before the first screenshot. 2s was
-      // empirically too short (a cold browser + page load needs ~6-9s; a 2s settle captured a
-      // blank desktop, which the model then "completed" with zero actions — a false pass).
       await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+
+      // World is ready: release the pipeline gate so the remaining lanes may start.
+      provisioned = true;
+      signal(true);
 
       try {
         await desktop.stream.start({ requireAuth: true });
@@ -611,106 +736,591 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           resize: "scale"
         });
       } catch (error) {
-        warnings.push(`Live desktop stream unavailable (run continues; evidence still captured): ${redactText(scrubKnownValues(compactError(error)))}`);
+        warnings.push(`Live desktop stream unavailable (run continues; evidence still captured): ${redactText(deps.scrubKnownValues(compactError(error)))}`);
       }
 
       const sessionOptions: CuaActorSessionOptions = {
-        instructions,
-        persona,
-        timeoutMs,
+        instructions: spec.instructions,
+        persona: spec.persona,
+        timeoutMs: deps.timeoutMs,
         openai: {
-          apiKey: openaiApiKey,
-          ...(actor?.model ? { model: actor.model } : {})
+          apiKey: deps.openaiApiKey,
+          ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
         },
         desktop: desktop as unknown as E2BDesktopLike,
-        // Default raw (full fidelity, local .mimetic); opt into blur for unowned/shared bundles.
-        redactScreenshots: config.policies?.redactScreenshots === true,
-        // Close the narration hole: a provisioned VALUE the model transcribes into reasoning/
-        // message text is literal-scrubbed (it has no shape for pattern redaction to catch).
-        scrubText: scrubKnownValues,
+        redactScreenshots: deps.redactScreenshots,
+        scrubText: deps.scrubKnownValues,
         writeScreenshot
       };
-      session = await runSession(sessionOptions);
-    } catch (error) {
-      // Scrubbed + redacted at the lab boundary: known provisioned VALUES are literal-scrubbed
-      // first (pattern redaction cannot catch them), then the pattern pass handles
-      // secret-shaped content. Flows into the bundle, review.md, and result.error.
-      sessionError = redactText(scrubKnownValues(compactError(error)));
-    } finally {
-      if (desktop && desktopModule) {
-        // Honor subject.clone.keep on FAILURE: leave the sandbox up so the operator can drop in
-        // and debug a failed install/build/boot (the smoke route honors keep; parity here). On
-        // success, or when keep is not set, always reclaim.
-        const failed = sessionError !== undefined || session === undefined;
-        const keepForDebug = config.subject.clone?.keep === true && failed;
-        if (keepForDebug) {
-          warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (subject.clone.keep on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
-        } else if (typeof desktopModule.Sandbox.kill === "function") {
-          try {
-            await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
-            killed = true;
-          } catch (error) {
-            warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(compactError(error)))}`);
-          }
-        } else {
-          warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
+      session = await deps.runSession(sessionOptions);
+    }
+  } catch (error) {
+    sessionError = redactText(deps.scrubKnownValues(compactError(error)));
+  } finally {
+    if (!provisioned) {
+      signal(false);
+    }
+    if (desktop && desktopModule) {
+      const failed = sessionError !== undefined || session === undefined;
+      const keepForDebug = config.subject.clone?.keep === true && failed;
+      if (keepForDebug) {
+        warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (subject.clone.keep on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
+      } else if (typeof desktopModule.Sandbox.kill === "function") {
+        try {
+          await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
+          killed = true;
+        } catch (error) {
+          warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(deps.scrubKnownValues(compactError(error)))}`);
         }
+      } else {
+        warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
       }
     }
   }
 
-  // The subject's state story (invariant 5): seeded with digests, UNPINNED for declared
-  // external state, declared-not-run for dry-run/failed provisioning, undeclared otherwise.
-  const subjectState = resolveSubjectState({
-    declared: cloneRoute ? config.subject.state : undefined,
-    dryRun,
-    executed: stateStepRecords
-  });
+  if (session) {
+    await mkdir(path.dirname(path.join(deps.artifactRoot, spec.traceArtifactPath)), { recursive: true });
+    await writeFile(path.join(deps.artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    if (session.trace.redaction.screenshots === "raw") {
+      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .mimetic and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+    }
+  }
 
-  const subjectProvenance = cloneRoute && publicRepo
-    ? {
-        repo: publicRepo,
-        ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
-        envNames: subjectEnvNames,
-        state: subjectState
-      }
-    : undefined;
+  const noEngagement = session !== undefined
+    && session.completionReason === "goal_satisfied"
+    && (session.trace.counts.actions ?? 0) === 0
+    && (session.trace.counts.messages ?? 0) === 0;
+  if (noEngagement) {
+    warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
+  }
 
-  const bundle = buildCuaBundle({
-    actorId: descriptor.id,
-    appUrl,
-    createdAt,
-    dryRun,
-    labId: config.id,
-    ...(config.title ? { labTitle: config.title } : {}),
-    mission: instructions,
-    persona,
-    resolution,
-    deviceScaleFactor: devicePreset.deviceScaleFactor,
-    isMobile: devicePreset.isMobile,
-    runId,
-    screenshots,
-    captureRedaction: config.policies?.redactScreenshots === true ? "blurred" : "raw",
+  const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
+
+  return {
+    spec,
     ...(session ? { session } : {}),
-    ...(sessionError ? { sessionError } : {}),
-    source,
-    ...(subjectProvenance === undefined ? {} : { subjectProvenance }),
-    // Provenance honesty (invariant 5): a local-app / in-process subject is an already-running
-    // LOCAL dev server that CANNOT be commit-pinned, so the bundle DECLARES that absence rather
-    // than silently omitting it — source app-url, state "undeclared" (the app-url "absence
-    // declared" marker), and an honest "caller-provisioned, unpinned, no E2B" event message.
-    ...(localAppSubject || inProcessRoute ? { entryKind: "local-app" as const } : {}),
-    ...(session ? { traceArtifactPath: "actor.json" } : {})
-  });
+    ...(sessionError === undefined ? {} : { sessionError }),
+    ...(sandboxId === undefined ? {} : { sandboxId }),
+    killed,
+    streamUrlPresent: streamUrl !== undefined,
+    screenshots,
+    ...(subjectCommit === undefined ? {} : { subjectCommit }),
+    stateStepRecords,
+    warnings,
+    noEngagement,
+    harnessError,
+    ...(failureCode === undefined ? {} : { failureCode })
+  };
+}
+
+/** Run the single IN-PROCESS lane (a custom executor + provider; NO E2B). Always one lane. */
+async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
+  const warnings: string[] = [];
+  const screenshots: string[] = [];
+  const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
+  let session: CuaLoopResult | undefined;
+  let sessionError: string | undefined;
+  try {
+    const executor = await deps.hooks.buildExecutor!({ config: deps.config, actor: deps.descriptor, appUrl: deps.appUrl });
+    const provider = await deps.hooks.buildProvider!({ config: deps.config, actor: deps.descriptor });
+    const sessionOptions: CuaActorSessionOptions = {
+      instructions: spec.instructions,
+      persona: spec.persona,
+      timeoutMs: deps.timeoutMs,
+      provider,
+      executor,
+      redactScreenshots: deps.redactScreenshots,
+      scrubText: deps.scrubKnownValues,
+      writeScreenshot
+    };
+    session = await deps.runSession(sessionOptions);
+  } catch (error) {
+    sessionError = redactText(deps.scrubKnownValues(compactError(error)));
+  }
 
   if (session) {
-    await writeFile(path.join(artifactRoot, "actor.json"), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    await mkdir(path.dirname(path.join(deps.artifactRoot, spec.traceArtifactPath)), { recursive: true });
+    await writeFile(path.join(deps.artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    if (session.trace.redaction.screenshots === "raw") {
+      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .mimetic and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+    }
   }
+
+  const noEngagement = session !== undefined
+    && session.completionReason === "goal_satisfied"
+    && (session.trace.counts.actions ?? 0) === 0
+    && (session.trace.counts.messages ?? 0) === 0;
+  if (noEngagement) {
+    warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
+  }
+
+  return {
+    spec,
+    ...(session ? { session } : {}),
+    ...(sessionError === undefined ? {} : { sessionError }),
+    killed: false,
+    streamUrlPresent: false,
+    screenshots,
+    stateStepRecords: [],
+    warnings,
+    noEngagement,
+    harnessError: sessionError !== undefined || session?.completionReason === "harness_error",
+    entryKind: "local-app"
+  };
+}
+
+/**
+ * Run N>1 E2B lanes with bounded concurrency, a pipeline gate (lane 1 provisions before the rest
+ * start), and session fail-fast on HARNESS errors only (queued lanes become `blocked` with a
+ * pinned reason + a fail-fast event; mission verdicts never trip it). Each lane tears down ITS
+ * OWN sandbox by id; nothing here ever enumerates.
+ */
+async function runCuaLanes(
+  laneSpecs: CuaLaneSpec[],
+  deps: Omit<CuaLaneDeps, "signalProvisioned">,
+  concurrency: number
+): Promise<{ outcomes: LaneRunOutcome[]; failFastReason?: string }> {
+  const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
+  let resolveGate: (() => void) | undefined;
+  let rejectGate: (() => void) | undefined;
+  const gate = new Promise<void>((resolve, reject) => {
+    resolveGate = resolve;
+    rejectGate = () => reject(new Error("gate"));
+  });
+  // The gate is rejected on lane-0 provisioning failure; swallow the unhandled rejection if no
+  // later lane ever awaits it (concurrency could let lane 0 finish alone).
+  gate.catch(() => undefined);
+
+  const outcomes = await mapWithConcurrency(laneSpecs, concurrency, async (spec, index): Promise<LaneRunOutcome> => {
+    if (index > 0) {
+      try {
+        await gate;
+      } catch {
+        return blockedLaneOutcome(spec, `skipped: lane ${laneSpecs[0]?.laneId ?? "lane-01"} failed to provision its world (pipeline gate)`);
+      }
+    }
+    if (failFast.tripped) {
+      return blockedLaneOutcome(spec, `skipped: ${failFast.reason}`);
+    }
+    const outcome = await runCuaLane(spec, {
+      ...deps,
+      ...(index === 0
+        ? {
+            signalProvisioned: (ok: boolean) => {
+              if (ok) {
+                resolveGate?.();
+              } else {
+                rejectGate?.();
+              }
+            }
+          }
+        : {})
+    });
+    if (outcome.harnessError && !failFast.tripped) {
+      failFast.tripped = true;
+      failFast.reason = `a prior lane (${outcome.spec.laneId}) ended in a harness error (fail-fast)`;
+    }
+    return outcome;
+  });
+
+  return { outcomes, ...(failFast.tripped ? { failFastReason: failFast.reason } : {}) };
+}
+
+/** Project one lane outcome (or a dry-run contract spec) into the public CuaLaneResult. */
+function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, subject: CuaSubjectProjection, dryRun: boolean): CuaLaneResult {
+  const base = {
+    id: spec.laneId,
+    index: spec.laneIndex + 1,
+    persona: spec.persona.id,
+    device: spec.deviceName,
+    resolution: spec.resolution,
+    subject
+  };
+  if (!outcome || dryRun) {
+    return { ...base, status: "contract_proof_only", ok: dryRun };
+  }
+  if (outcome.skippedReason !== undefined) {
+    return {
+      ...base,
+      status: "blocked",
+      ok: false,
+      skippedReason: outcome.skippedReason,
+      error: { code: "MIMETIC_CUA_LAB_FAILED", message: outcome.skippedReason }
+    };
+  }
+  const session = outcome.session;
+  const laneOk = session !== undefined
+    && session.completionReason !== "harness_error"
+    && outcome.sessionError === undefined
+    && !outcome.noEngagement;
+  const status: CuaLaneResult["status"] = session ? session.status : "failed";
+  return {
+    ...base,
+    status,
+    ok: laneOk,
+    ...(session
+      ? {
+          session: {
+            status: session.status,
+            completionReason: session.completionReason,
+            reason: session.reason,
+            screenshots: outcome.screenshots.length
+          }
+        }
+      : {}),
+    ...(outcome.sandboxId === undefined
+      ? {}
+      : { sandbox: { sandboxId: outcome.sandboxId, killed: outcome.killed, streamUrlPresent: outcome.streamUrlPresent } }),
+    ...(laneOk
+      ? {}
+      : {
+          error: {
+            code: outcome.failureCode ?? "MIMETIC_CUA_LAB_FAILED",
+            message: outcome.sessionError
+              ?? (outcome.noEngagement
+                ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+                : session?.completionReason === "harness_error"
+                  ? `Computer-use session ended with a harness error: ${session.reason}`
+                  : "Computer-use lab did not produce a terminal session.")
+          }
+        })
+  };
+}
+
+/** Build the per-lane subject projection (invariant 5). */
+function laneSubjectProjection(args: {
+  cloneRoute: boolean;
+  publicRepo?: string;
+  subjectEnvNames: string[];
+  subjectCommit?: string;
+  subjectState: RunSubjectProvenance["state"];
+}): CuaSubjectProjection {
+  return args.cloneRoute && args.publicRepo
+    ? {
+        source: "clone",
+        repo: args.publicRepo,
+        ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
+        envNames: args.subjectEnvNames,
+        state: args.subjectState
+      }
+    : { source: "app-url", state: args.subjectState };
+}
+
+export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+  const { config, dryRun } = options;
+  const cwd = path.resolve(options.cwd);
+  const hooks = options.hooks ?? {};
+  const env = hooks.env ?? process.env;
+  const render = hooks.renderObserverFn ?? renderObserver;
+
+  const cloneRoute = config.subject.source === "clone";
+  const serve = config.subject.serve;
+  const appUrl = (cloneRoute ? serve?.url : config.subject.appUrl) ?? "";
+  const subjectRepo = cloneRoute ? config.subject.repos?.[0] ?? "" : undefined;
+  const subjectEnvNames = cloneRoute ? config.subject.env ?? [] : [];
+  const actor = config.actors[0];
+  const actorType = actor?.type ?? "";
+
+  const fail = (code: CuaActorLabErrorCode, message: string, actorLabel?: string): CuaActorLabResult => ({
+    schema: CUA_ACTOR_LAB_SCHEMA,
+    ok: false,
+    cwd,
+    labId: config.id,
+    actor: actorLabel ?? actorType,
+    appUrl,
+    dryRun,
+    runId: options.runId ?? "not-created",
+    lanes: [],
+    warnings: [],
+    error: { code, message }
+  });
+
+  // Resolve the actor through the registry — the parse layer validated this, but the engine fails
+  // closed rather than trusting a config that arrived through another door.
+  const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
+  if (!descriptor || !isCuaActorDescriptor(descriptor)) {
+    return fail("MIMETIC_CUA_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
+  }
+  const runSession = hooks.runSession ?? descriptor.runSession;
+  const inProcessRoute = hooks.buildExecutor !== undefined;
+  const localAppSubject = config.subject.source === "local-app";
+
+  // Engine re-enforcement of the clone-route structure (library API surface).
+  if (cloneRoute && (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))) {
+    return fail(
+      "MIMETIC_CUA_LAB_SUBJECT_INVALID",
+      !serve
+        ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+        : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`,
+      descriptor.id
+    );
+  }
+
+  // Engine re-enforcement of the state declaration (library API surface).
+  if (config.subject.state) {
+    const stateReason = !cloneRoute
+      ? "`subject.state` applies only to clone subjects (the lab seeds the state it serves)."
+      : subjectStateInvalidReason(config.subject.state, config.subject.env);
+    if (stateReason) {
+      return fail("MIMETIC_CUA_LAB_SUBJECT_INVALID", stateReason, descriptor.id);
+    }
+  }
+
+  // Re-enforce the entry-target boundary (library API surface).
+  const allowPublicTargets = config.policies?.allowPublicTargets === true;
+  const entryTargetSafe = cloneRoute || localAppSubject
+    ? isLoopbackUrl(appUrl)
+    : allowPublicTargets
+      ? isHttpUrl(appUrl)
+      : isLoopbackUrl(appUrl);
+  if (!entryTargetSafe) {
+    return fail(
+      "MIMETIC_CUA_LAB_SUBJECT_UNSAFE",
+      cloneRoute || localAppSubject || !allowPublicTargets
+        ? "subject entry URL must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+        : "subject.appUrl must be a valid http(s) URL.",
+      descriptor.id
+    );
+  }
+
+  // In-process route pairing guard (boot-time, BEFORE key-gating): a custom executor needs a
+  // custom provider too (the default OpenAI provider is vision-based and would fail closed).
+  if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined) {
+    return fail(
+      "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
+      descriptor.id
+    );
+  }
+
+  // local-app fail-closed (BEFORE key-gating): there is no built-in in-process driver.
+  if (localAppSubject && !inProcessRoute) {
+    return fail(
+      "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)",
+      descriptor.id
+    );
+  }
+
+  // Re-enforce the fan-out cross-validation (library API surface): lanes XOR count/laneFocus,
+  // device XOR raw resolution, cap, unique ids, allowPublicTargets+N>1, clone.fanout.
+  const fanoutReason = cuaLaneValidationReason(config);
+  if (fanoutReason) {
+    return fail("MIMETIC_CUA_LAB_FANOUT_INVALID", fanoutReason, descriptor.id);
+  }
+
+  // Resolve the lane plan (pure) — the SAME table for dry-run and live.
+  const { lanes: laneSpecs, plan } = laneSpecsAndPlan(config, {
+    ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
+    env,
+    dryRun
+  });
+  const laneCount = laneSpecs.length;
+
+  if (laneCount > MAX_CUA_LANES) {
+    return fail(
+      "MIMETIC_CUA_LAB_FANOUT_INVALID",
+      `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (resolved ${laneCount}); N concurrent paid desktops is real spend.`,
+      descriptor.id
+    );
+  }
+  if (inProcessRoute && laneCount > 1) {
+    return fail(
+      "MIMETIC_CUA_LAB_FANOUT_INVALID",
+      "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
+      descriptor.id
+    );
+  }
+
+  // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). The hook fires for
+  // every N (observable + testable); the stderr table prints for fan-out (N>1) so single-lane
+  // runs stay as quiet as they always were.
+  if (laneCount > 1) {
+    emitPreflightPlan(plan, config.id);
+  }
+  hooks.onPreflight?.(plan);
+
+  // Read keys once into locals (names only; values never logged or persisted).
+  const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
+  const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
+
+  // Literal scrubber for every known provisioned value (no secret "shape" to pattern-match).
+  const knownSecretValues = [
+    openaiApiKey,
+    e2bApiKey,
+    ...subjectEnvNames.map((name) => env[name] ?? "")
+  ].filter((value) => value.length >= 4);
+  const scrubKnownValues = (text: string): string =>
+    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+
+  const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
+  const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
+  const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
+
+  // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor.
+  if (!dryRun && !inProcessRoute) {
+    const missingKeys = [
+      ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
+      ...(e2bApiKey ? [] : ["E2B_API_KEY"])
+    ];
+    if (missingKeys.length > 0) {
+      return fail(
+        "MIMETIC_CUA_LAB_KEYS_MISSING",
+        `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`,
+        descriptor.id
+      );
+    }
+    const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
+    if (missingSubjectEnv.length > 0) {
+      return fail(
+        "MIMETIC_CUA_LAB_SUBJECT_ENV_MISSING",
+        `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
+        descriptor.id
+      );
+    }
+  }
+
+  const runId = options.runId ?? makeCuaRunId();
+  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
+  const createdAt = new Date().toISOString();
+  const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const redactScreenshots = config.policies?.redactScreenshots === true;
+
+  await mkdir(path.join(artifactRoot, "screenshots"), { recursive: true });
+  const source = await buildRunSource({
+    capturedAt: createdAt,
+    cwd,
+    mimeticSource: "present",
+    packageName: "mimetic-cli"
+  });
+
+  const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
+    config,
+    descriptor,
+    appUrl,
+    cloneRoute,
+    ...(serve === undefined ? {} : { serve }),
+    ...(subjectRepo === undefined ? {} : { subjectRepo }),
+    subjectEnvNames,
+    hasGithubToken,
+    env,
+    openaiApiKey,
+    e2bApiKey,
+    requestTimeoutMs,
+    perLaneSandboxMs: resolvePerLaneSandboxMs(config),
+    timeoutMs,
+    laneCount,
+    artifactRoot,
+    redactScreenshots,
+    scrubKnownValues,
+    runSession,
+    hooks
+  };
+
+  // Run lanes (dry-run runs none). In-process is always one lane.
+  let outcomes: LaneRunOutcome[] | undefined;
+  let failFastReason: string | undefined;
+  if (!dryRun) {
+    if (inProcessRoute) {
+      outcomes = [await runInProcessLane(laneSpecs[0]!, deps)];
+    } else if (laneCount === 1) {
+      outcomes = [await runCuaLane(laneSpecs[0]!, deps)];
+    } else {
+      const ran = await runCuaLanes(laneSpecs, deps, plan.concurrency);
+      outcomes = ran.outcomes;
+      failFastReason = ran.failFastReason;
+    }
+  }
+
+  // Per-lane subject projections (invariant 5).
+  const laneSubjects = laneSpecs.map((_spec, index) => {
+    const outcome = outcomes?.[index];
+    const subjectState = resolveSubjectState({
+      declared: cloneRoute ? config.subject.state : undefined,
+      dryRun,
+      executed: outcome?.stateStepRecords ?? []
+    });
+    return laneSubjectProjection({
+      cloneRoute,
+      ...(publicRepo === undefined ? {} : { publicRepo }),
+      subjectEnvNames,
+      ...(outcome?.subjectCommit === undefined ? {} : { subjectCommit: outcome.subjectCommit }),
+      subjectState
+    });
+  });
+
+  // Aggregate subject (top-level + bundle): unanimity-gated commit (+ divergence warning).
+  const aggregateWarnings: string[] = [];
+  const aggregateSubject = ((): CuaSubjectProjection => {
+    const first = laneSubjects[0]!;
+    if (first.source !== "clone") {
+      return first;
+    }
+    const commits = (outcomes ?? []).map((outcome) => outcome.subjectCommit).filter((commit): commit is string => commit !== undefined);
+    const unanimous = !dryRun && commits.length === laneCount && new Set(commits).size === 1;
+    if (!dryRun && laneCount > 1 && new Set(commits).size > 1) {
+      aggregateWarnings.push("Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.");
+    }
+    // Build without commit, then add it only when unanimous (avoids an explicit commit:undefined
+    // under exactOptionalPropertyTypes).
+    return {
+      source: "clone",
+      ...(first.repo === undefined ? {} : { repo: first.repo }),
+      ...(first.envNames === undefined ? {} : { envNames: first.envNames }),
+      state: first.state,
+      ...(unanimous && commits[0] !== undefined ? { commit: commits[0] } : {})
+    };
+  })();
+
+  const bundle = laneCount === 1
+    ? buildSingleLaneBundle({
+        spec: laneSpecs[0]!,
+        outcome: outcomes?.[0],
+        descriptor,
+        appUrl,
+        createdAt,
+        dryRun,
+        config,
+        runId,
+        source,
+        redactScreenshots,
+        ...(aggregateSubject.source === "clone" && publicRepo
+          ? {
+              subjectProvenance: {
+                repo: publicRepo,
+                ...(aggregateSubject.commit === undefined ? {} : { commit: aggregateSubject.commit }),
+                envNames: subjectEnvNames,
+                state: aggregateSubject.state
+              }
+            }
+          : {}),
+        inProcessRoute,
+        localAppSubject
+      })
+    : buildCuaFanoutBundle({
+        specs: laneSpecs,
+        ...(outcomes === undefined ? {} : { outcomes }),
+        laneSubjects,
+        aggregateSubject,
+        descriptor,
+        appUrl,
+        createdAt,
+        dryRun,
+        config,
+        runId,
+        source,
+        plan,
+        ...(failFastReason === undefined ? {} : { failFastReason }),
+        cloneRoute,
+        ...(publicRepo === undefined ? {} : { publicRepo }),
+        subjectEnvNames
+      });
+
   await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.md"), renderCuaReviewMarkdown(bundle), "utf8");
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
   await writeFile(
     path.join(cwd, ".mimetic", "runs", "latest.json"),
     `${JSON.stringify({
@@ -722,29 +1332,53 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     "utf8"
   );
 
-  // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
-  if (session?.trace.redaction.screenshots === "raw") {
-    warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .mimetic and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
-  }
-
-  // Honesty guard: a "goal_satisfied" with ZERO actions and ZERO messages is not a credible
-  // natural endpoint — the actor neither did nor said anything, which in practice means it saw a
-  // blank or still-loading screen and stopped. Such a run must NOT pass as a proof.
-  const noEngagement = !dryRun
-    && session !== undefined
-    && session.completionReason === "goal_satisfied"
-    && (session.trace.counts.actions ?? 0) === 0
-    && (session.trace.counts.messages ?? 0) === 0;
-  if (noEngagement) {
-    warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
-  }
-
   const observer = await render(cwd, runId, { open: options.open === true });
 
-  const ok = observer.ok
-    && sessionError === undefined
-    && !noEngagement
-    && (dryRun || (session !== undefined && session.completionReason !== "harness_error"));
+  // Lane-level pass: dry-run lanes are contract-ok; live lanes need a terminal, engaged session.
+  const laneOk = (outcome: LaneRunOutcome | undefined): boolean => {
+    if (dryRun) return true;
+    if (!outcome || outcome.skippedReason !== undefined) return false;
+    return outcome.session !== undefined
+      && outcome.session.completionReason !== "harness_error"
+      && outcome.sessionError === undefined
+      && !outcome.noEngagement;
+  };
+  const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
+  const ok = observer.ok && allLanesOk;
+
+  const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
+  const warnings = [...laneWarnings, ...aggregateWarnings, ...observer.warnings];
+
+  const laneResults = laneSpecs.map((spec, index) => toLaneResult(spec, outcomes?.[index], laneSubjects[index]!, dryRun));
+  const laneSummary = buildLaneSummary(outcomes, laneCount, plan, dryRun);
+  const firstOutcome = outcomes?.[0];
+
+  const errorResult = ((): CuaActorLabResult["error"] | undefined => {
+    if (ok) return undefined;
+    if (laneCount === 1) {
+      const outcome = firstOutcome;
+      return {
+        code: outcome?.failureCode ?? "MIMETIC_CUA_LAB_FAILED",
+        message: outcome?.sessionError
+          ?? (outcome?.noEngagement
+            ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+            : observer.ok
+              ? outcome?.session?.completionReason === "harness_error"
+                ? `Computer-use session ended with a harness error: ${outcome.session.reason}`
+                : "Computer-use lab did not produce a terminal session."
+              : observer.error?.message ?? "Observer failed for the computer-use lab run.")
+      };
+    }
+    const failingLane = (outcomes ?? []).find((outcome) => !laneOk(outcome));
+    const geometryLane = (outcomes ?? []).find((outcome) => outcome.failureCode === "MIMETIC_CUA_LAB_DEVICE_GEOMETRY");
+    const code: CuaActorLabErrorCode = geometryLane?.failureCode ?? "MIMETIC_CUA_LAB_FAILED";
+    return {
+      code,
+      message: observer.ok
+        ? `Fan-out run failed: ${laneSummary.passed}/${laneCount} lane(s) passed (${laneSummary.skipped} skipped, ${laneSummary.harnessErrors} harness error(s), ${laneSummary.hollow} hollow)${failingLane?.sessionError ? `; first failure: ${failingLane.sessionError}` : ""}.`
+        : observer.error?.message ?? "Observer failed for the computer-use fan-out run."
+    };
+  })();
 
   return {
     schema: CUA_ACTOR_LAB_SCHEMA,
@@ -755,50 +1389,113 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     appUrl,
     dryRun,
     runId,
-    ...(session
+    ...(firstOutcome?.session
       ? {
           session: {
-            status: session.status,
-            completionReason: session.completionReason,
-            reason: session.reason,
-            screenshots: screenshots.length
+            status: firstOutcome.session.status,
+            completionReason: firstOutcome.session.completionReason,
+            reason: firstOutcome.session.reason,
+            screenshots: firstOutcome.screenshots.length
           }
         }
       : {}),
-    ...(sandboxId
-      ? { sandbox: { sandboxId, killed, streamUrlPresent: streamUrl !== undefined } }
+    ...(firstOutcome?.sandboxId
+      ? { sandbox: { sandboxId: firstOutcome.sandboxId, killed: firstOutcome.killed, streamUrlPresent: firstOutcome.streamUrlPresent } }
       : {}),
-    subject: cloneRoute && publicRepo
-      ? {
-          source: "clone",
-          repo: publicRepo,
-          ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
-          envNames: subjectEnvNames,
-          state: subjectState
-        }
-      : { source: "app-url", state: subjectState },
+    subject: aggregateSubject,
+    plan,
+    lanes: laneResults,
+    laneSummary,
     observer,
-    warnings: [...warnings, ...observer.warnings],
-    ...(ok
-      ? {}
-      : {
-          error: {
-            code: "MIMETIC_CUA_LAB_FAILED" as const,
-            // noEngagement outranks the observer outcome: verifyRun now fails hollow bundles
-            // too (the observer renders on verified evidence), and the specific diagnosis must
-            // not be masked by the downstream "failed verification" it causes.
-            message: sessionError
-              ?? (noEngagement
-                ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-                : observer.ok
-                ? session?.completionReason === "harness_error"
-                  ? `Computer-use session ended with a harness error: ${session.reason}`
-                  : "Computer-use lab did not produce a terminal session."
-                : observer.error?.message ?? "Observer failed for the computer-use lab run.")
-          }
-        })
+    warnings,
+    ...(errorResult === undefined ? {} : { error: errorResult })
   };
 }
+
+/** Aggregate lane counts for the result projection. */
+function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: number, plan: CuaLanePlan, dryRun: boolean): CuaLaneSummary {
+  if (dryRun || !outcomes) {
+    return {
+      strategy: CUA_FANOUT_STRATEGY,
+      total: laneCount,
+      passed: 0,
+      skipped: 0,
+      harnessErrors: 0,
+      hollow: 0,
+      concurrency: plan.concurrency,
+      waves: plan.waves
+    };
+  }
+  let passed = 0;
+  let skipped = 0;
+  let harnessErrors = 0;
+  let hollow = 0;
+  for (const outcome of outcomes) {
+    if (outcome.skippedReason !== undefined) {
+      skipped += 1;
+      continue;
+    }
+    if (outcome.harnessError) harnessErrors += 1;
+    if (outcome.noEngagement) hollow += 1;
+    const laneOk = outcome.session !== undefined
+      && outcome.session.completionReason !== "harness_error"
+      && outcome.sessionError === undefined
+      && !outcome.noEngagement;
+    if (laneOk) passed += 1;
+  }
+  return {
+    strategy: CUA_FANOUT_STRATEGY,
+    total: laneCount,
+    passed,
+    skipped,
+    harnessErrors,
+    hollow,
+    concurrency: plan.concurrency,
+    waves: plan.waves
+  };
+}
+
+/** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
+function buildSingleLaneBundle(args: {
+  spec: CuaLaneSpec;
+  outcome: LaneRunOutcome | undefined;
+  descriptor: CuaActorDescriptor;
+  appUrl: string;
+  createdAt: string;
+  dryRun: boolean;
+  config: LabConfig;
+  runId: string;
+  source: RunBundle["source"];
+  redactScreenshots: boolean;
+  subjectProvenance?: { repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] };
+  inProcessRoute: boolean;
+  localAppSubject: boolean;
+}): RunBundle {
+  const { spec, outcome, config } = args;
+  return buildCuaBundle({
+    actorId: args.descriptor.id,
+    appUrl: args.appUrl,
+    createdAt: args.createdAt,
+    dryRun: args.dryRun,
+    labId: config.id,
+    ...(config.title ? { labTitle: config.title } : {}),
+    mission: spec.instructions,
+    persona: spec.persona,
+    resolution: spec.resolution,
+    deviceScaleFactor: spec.devicePreset.deviceScaleFactor,
+    isMobile: spec.devicePreset.isMobile,
+    runId: args.runId,
+    screenshots: outcome?.screenshots ?? [],
+    captureRedaction: args.redactScreenshots ? "blurred" : "raw",
+    ...(outcome?.session ? { session: outcome.session } : {}),
+    ...(outcome?.sessionError ? { sessionError: outcome.sessionError } : {}),
+    source: args.source,
+    ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
+    ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
+    ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {})
+  });
+}
+
 
 /**
  * Provision a clone subject inside the sandbox: clone → (install) → state(before-build) →
@@ -1031,37 +1728,6 @@ function tailOf(log: string): string {
   // (The in-sandbox `tail -c` upstream is a fundamental log-tail limit we cannot redact past.)
   const trimmed = redactText(log).trim();
   return trimmed.length > ERROR_TAIL_CHARS ? `…${trimmed.slice(-ERROR_TAIL_CHARS)}` : trimmed || "(no output)";
-}
-
-/** Compose the actor prompt from config: persona line + mission + per-lane steer. */
-function composeInstructions(
-  config: LabConfig,
-  device: { name: string; preset: DevicePreset }
-): { instructions: string; persona: ActorPersonaRef } {
-  const actor = config.actors[0];
-  const mission = actor?.mission
-    ?? "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.";
-  // Device prompt signal (copied from the bespoke sims' organic lanes): only width/height
-  // physically render on this route, so the model is TOLD its device so it behaves accordingly
-  // (e.g. expects a mobile layout / touch targets on a phone preset).
-  const deviceLine = device.preset.isMobile
-    ? `You are a mobile user on a ${device.name} device (${device.preset.width}x${device.preset.height} @${device.preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
-    : `You are a desktop user (${device.name}, ${device.preset.width}x${device.preset.height}).`;
-  const parts = [
-    actor?.persona ? `Persona: ${actor.persona}.` : undefined,
-    deviceLine,
-    mission,
-    actor?.laneFocus?.instruction ? `Lane focus: ${actor.laneFocus.instruction}` : undefined
-  ].filter((part): part is string => Boolean(part));
-  const instructions = parts.join("\n\n");
-  return {
-    instructions,
-    persona: {
-      id: actor?.persona ?? "cua-operator",
-      traitsApplied: [],
-      promptDigest: createHash("sha256").update(instructions).digest("hex").slice(0, 16)
-    }
-  };
 }
 
 /**
@@ -1326,6 +1992,322 @@ export function buildCuaBundle(args: {
           state: args.subjectProvenance.state
         }
       : { source: "app-url", state: { provenance: "undeclared" } }
+  };
+}
+
+/**
+ * Project N>1 fan-out lanes into a mimetic.run-bundle.v1 (the evidence schema is unchanged; this
+ * is a new producer for the multi-stream shape). One sim + one stream per lane; per-lane
+ * provenance/session events; a recorded `cua-lab.fanout.plan` event (and a `cua-lab.fanout.fail-fast`
+ * event when a harness error skipped queued lanes). N-ary verify/Observer already handle multiple
+ * streams. The N=1 path NEVER reaches here (buildCuaBundle owns it, byte-stable).
+ */
+export function buildCuaFanoutBundle(args: {
+  specs: CuaLaneSpec[];
+  outcomes?: LaneRunOutcome[];
+  laneSubjects: CuaSubjectProjection[];
+  aggregateSubject: CuaSubjectProjection;
+  descriptor: CuaActorDescriptor;
+  appUrl: string;
+  createdAt: string;
+  dryRun: boolean;
+  config: LabConfig;
+  runId: string;
+  source: RunBundle["source"];
+  plan: CuaLanePlan;
+  failFastReason?: string;
+  cloneRoute: boolean;
+  publicRepo?: string;
+  subjectEnvNames: string[];
+}): RunBundle {
+  const { specs, outcomes, config } = args;
+  const simulations: RunSimulation[] = [];
+  const streams: RunStream[] = [];
+  const events: RunEvent[] = [];
+
+  events.push({
+    id: "event-000-created",
+    at: args.createdAt,
+    level: "info",
+    type: "cua-lab.run.created",
+    message: `Created computer-use fan-out run for ${config.id} (actor ${args.descriptor.id}, ${specs.length} lanes, per-lane worlds).`
+  });
+  events.push({
+    id: "event-001-fanout-plan",
+    at: args.createdAt,
+    level: "info",
+    type: "cua-lab.fanout.plan",
+    message: `Fan-out plan: ${args.plan.laneCount} lane(s) (${args.plan.strategy}), concurrency ${args.plan.concurrency}, ${args.plan.waves} wave(s); per-lane session budget ${Math.round(args.plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${args.plan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Lanes: ${args.plan.lanes.map((lane) => `${lane.id}[${lane.persona}/${lane.device} ${lane.resolution[0]}x${lane.resolution[1]}]`).join(", ")}.`
+  });
+
+  let eventSeq = 2;
+  const nextEventId = (suffix: string): string => `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
+
+  specs.forEach((spec, index) => {
+    const outcome = outcomes?.[index];
+    const subject = args.laneSubjects[index]!;
+    const session = outcome?.session;
+    const screenshots = outcome?.screenshots ?? [];
+    const lastScreenshot = screenshots[screenshots.length - 1];
+    const status: RunSimulationStatus = outcome?.skippedReason !== undefined
+      ? "blocked"
+      : session
+        ? session.status
+        : outcome?.sessionError
+          ? "failed"
+          : "contract_proof_only";
+    const reason = outcome?.skippedReason
+      ?? session?.reason
+      ?? outcome?.sessionError
+      ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
+
+    const traceScreenshotMode = session?.trace.redaction.screenshots;
+    const screenshotMode: "raw" | "blurred" =
+      traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
+        ? traceScreenshotMode
+        : config.policies?.redactScreenshots === true ? "blurred" : "raw";
+
+    simulations.push({
+      id: spec.simId,
+      index: index + 1,
+      personaId: spec.persona.id,
+      scenarioId: `cua-${config.id}`,
+      status,
+      streamKind: "browser",
+      mode: "browser-sim",
+      progress: session || outcome?.sessionError ? 1 : outcome?.skippedReason !== undefined ? 1 : 0.25,
+      currentStep: reason,
+      summary: session
+        ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
+        : outcome?.skippedReason !== undefined
+          ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
+          : outcome?.sessionError
+            ? `Lane ${spec.laneId} failed before a terminal session verdict: ${outcome.sessionError}`
+            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${args.appUrl}.`,
+      streamIds: [spec.streamId],
+      startedAt: args.createdAt,
+      updatedAt: args.createdAt
+    });
+
+    streams.push({
+      id: spec.streamId,
+      simId: spec.simId,
+      kind: "browser",
+      label: `CUA lane ${spec.laneId} — ${config.id}`,
+      status,
+      transport: "snapshot",
+      updatedAt: args.createdAt,
+      embed: lastScreenshot
+        ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop ${spec.laneId} (${screenshotMode})` }
+        : { kind: "placeholder", title: `CUA desktop ${spec.laneId}` },
+      viewport: {
+        width: spec.resolution[0],
+        height: spec.resolution[1],
+        deviceScaleFactor: spec.devicePreset.deviceScaleFactor,
+        isMobile: spec.devicePreset.isMobile
+      },
+      ui: {
+        route: args.appUrl,
+        intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
+        state: reason,
+        ...(session ? { actorStatus: session.status } : {}),
+        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {})
+      },
+      ...(session ? { actor: session.trace } : {}),
+      artifacts: [
+        { label: "run bundle", path: "run.json", kind: "bundle" as const },
+        { label: "review", path: "review.md", kind: "review" as const },
+        { label: "events", path: "events.ndjson", kind: "events" as const },
+        ...(session
+          ? [{ label: `lane ${spec.laneId} actor trace`, path: spec.traceArtifactPath, kind: "trace" as const }]
+          : []),
+        ...screenshots.map((screenshot, screenshotIndex) => ({
+          label: `lane ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
+          path: screenshot,
+          kind: "screenshot" as const
+        }))
+      ]
+    });
+
+    // Per-lane subject provenance (invariant 5).
+    if (args.cloneRoute && args.publicRepo) {
+      events.push({
+        id: nextEventId(`subject-${spec.laneId}`),
+        at: args.createdAt,
+        level: "info",
+        type: "cua-lab.subject.provenance",
+        message: `Lane ${spec.laneId}: ${args.dryRun
+          ? `subject declared — clone of ${args.publicRepo}, served at ${args.appUrl} in-sandbox (dry-run contract; nothing cloned)`
+          : subject.commit
+            ? session
+              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${args.appUrl} in-sandbox`
+              : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
+            : `subject clone attempted from ${args.publicRepo}; commit unresolved`
+        } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    } else {
+      events.push({
+        id: nextEventId(`subject-${spec.laneId}`),
+        at: args.createdAt,
+        level: "info",
+        type: "cua-lab.subject.declared",
+        message: `Lane ${spec.laneId}: subject app declared at ${args.appUrl} (loopback inside the lane's own desktop sandbox).`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    }
+
+    // Per-lane session event.
+    if (session) {
+      events.push({
+        id: nextEventId(`session-${spec.laneId}`),
+        at: args.createdAt,
+        level: session.status === "passed" ? "info" : "warn",
+        type: `cua-lab.session.${session.completionReason}`,
+        message: `Lane ${spec.laneId}: ${session.status} — ${session.reason}`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    } else if (outcome?.skippedReason !== undefined) {
+      events.push({
+        id: nextEventId(`blocked-${spec.laneId}`),
+        at: args.createdAt,
+        level: "warn",
+        type: "cua-lab.session.blocked",
+        message: `Lane ${spec.laneId} ${outcome.skippedReason}.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    } else if (outcome?.sessionError) {
+      events.push({
+        id: nextEventId(`session-error-${spec.laneId}`),
+        at: args.createdAt,
+        level: "error",
+        type: "cua-lab.session.error",
+        message: `Lane ${spec.laneId}: ${outcome.sessionError}`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    } else {
+      events.push({
+        id: nextEventId(`contract-${spec.laneId}`),
+        at: args.createdAt,
+        level: "info",
+        type: "cua-lab.contract.ready",
+        message: `Lane ${spec.laneId}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    }
+  });
+
+  if (args.failFastReason) {
+    events.push({
+      id: nextEventId("fanout-fail-fast"),
+      at: args.createdAt,
+      level: "warn",
+      type: "cua-lab.fanout.fail-fast",
+      message: `Fan-out fail-fast: ${args.failFastReason}. In-flight lanes finished; queued lanes were skipped (blocked) — completed evidence is retained.`
+    });
+  }
+
+  // Worst-of review verdict across lanes.
+  const verdict: ReviewSummary["verdict"] = args.dryRun
+    ? "contract_proof_only"
+    : (() => {
+        const list = outcomes ?? [];
+        const anyFail = list.some((outcome) =>
+          outcome.skippedReason !== undefined
+          || outcome.harnessError
+          || outcome.noEngagement
+          || outcome.sessionError !== undefined
+          || outcome.session === undefined
+          || outcome.session.status === "failed"
+          || outcome.session.status === "blocked");
+        if (anyFail) return "fail";
+        if (list.some((outcome) => outcome.session?.status === "timed_out")) return "timed_out";
+        return "pass";
+      })();
+
+  const passedLanes = (outcomes ?? []).filter((outcome) =>
+    outcome.skippedReason === undefined
+    && outcome.session !== undefined
+    && outcome.session.completionReason !== "harness_error"
+    && outcome.sessionError === undefined
+    && !outcome.noEngagement).length;
+  const review: ReviewSummary = {
+    schema: REVIEW_SCHEMA,
+    verdict,
+    summary: args.dryRun
+      ? `Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
+      : `Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict.`,
+    gaps: args.dryRun
+      ? ["Live fan-out session not yet run (dry-run contract only)."]
+      : (outcomes ?? [])
+          .filter((outcome) =>
+            outcome.skippedReason !== undefined
+            || outcome.sessionError !== undefined
+            || outcome.noEngagement
+            || outcome.session === undefined
+            || outcome.session.status !== "passed")
+          .map((outcome) => `${outcome.spec.laneId}: ${outcome.skippedReason ?? outcome.sessionError ?? outcome.session?.reason ?? "did not pass"}`)
+  };
+
+  const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
+  const ranLive = (outcomes ?? []).some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
+
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: args.dryRun ? "dry-run" : "live",
+    simCount: specs.length,
+    createdAt: args.createdAt,
+    cwd: PUBLIC_TARGET_CWD,
+    artifactRoot: path.join(".mimetic", "runs", args.runId),
+    source: args.source,
+    persona: {
+      id: specs[0]!.persona.id,
+      name: `Computer-use fan-out (${specs.length} lanes)`,
+      source: `lab:${config.id}`,
+      sourceDigest: specs[0]!.persona.promptDigest
+    },
+    scenario: {
+      id: `cua-${config.id}`,
+      title: config.title ?? `Computer-use fan-out: ${config.id}`,
+      goal: specs[0]!.instructions,
+      source: `lab:${config.id}`,
+      sourceDigest: specs[0]!.persona.promptDigest
+    },
+    lifecycle: [
+      {
+        at: args.createdAt,
+        event: "cua-lab.run.created",
+        message: `Created computer-use fan-out run with ${specs.length} per-lane desktop browser lanes (actor ${args.descriptor.id}).`
+      }
+    ],
+    simulations,
+    streams,
+    events,
+    redaction: {
+      status: "passed",
+      notes: ranLive
+        ? anyRaw
+          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some lanes captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+          : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
+        : "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson"
+    },
+    review,
+    feedbackCandidates: [],
+    subject: args.aggregateSubject
   };
 }
 

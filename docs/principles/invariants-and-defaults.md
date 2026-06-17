@@ -61,7 +61,7 @@ silently drifting from one is not.
 | Loopback entry URLs | Public-safety: never drive third-party sites unbidden | `policies.allowPublicTargets` for an owner-declared deployment/preview (a Vercel preview of your own app); provisioned clone subjects always serve in-sandbox on loopback |
 | Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.mimetic/` (this repo's CI adds a binary-asset commit scan; downstream projects rely on the scaffolded `.gitignore` and their own review) | `policies.redactScreenshots: true` blurs at capture for share-as-is bundles (a redact-on-export step for raw bundles is planned) |
 | Synthetic, seeded state | Pinned provenance; no real user data in evidence paths | Declared external state, recorded as UNPINNED in provenance |
-| Single lane | Cost + evidence simplicity | Declared fan-out where the backend supports it |
+| Single lane | Cost + evidence simplicity | Declared fan-out where the backend supports it — `actors[0].count: N` (homogeneous) or an `actors[0].lanes[]` roster (differentiated persona/device/instruction) on the computer-use E2B route (per-lane worlds, cap 16; `execution.concurrency` bounds concurrent paid lanes) |
 
 ## The placement rule (worked example)
 

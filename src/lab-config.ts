@@ -26,7 +26,17 @@
 // NOTE on actors[0].count: it now carries ROUTE-SPECIFIC meanings — synthetic route: simCount;
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
 // defaults-table single-lane row governs; count: 2 is the declared override); computer-use
-// routes: must be 1 until fan-out lands. A future fan-out slice owns unifying these.
+// E2B route: the HOMOGENEOUS fan-out lane count (N identical lanes, each its own E2B desktop),
+// capped at 16; the in-process/local-app cua route stays single lane (no E2B to fan out).
+//
+// NOTE on actors[0].lanes (computer-use E2B route, this slice): a DIFFERENTIATED fan-out
+// roster — each `{ id?, persona?, device?, instruction? }` becomes one independent E2B desktop
+// (per-lane worlds, the only topology this layer; shared-world is #164). `lanes` XOR `count`
+// (declare a roster OR a homogeneous count, never both); `lanes` XOR `actors[0].laneFocus`
+// (per-lane `instruction` is the roster's steer); `lanes[].device` XOR raw
+// `execution.desktop.resolution`. `execution.concurrency` bounds in-flight lanes (default
+// min(laneCount, 3); env MIMETIC_CUA_MAX_CONCURRENCY may only LOWER it — invariant 3). On every
+// non-cua route `lanes` is inert (warned). subject.clone.fanout is REJECTED on the cua route.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -181,6 +191,24 @@ export interface LabActorLaneFocus {
   instruction?: string;
 }
 
+/**
+ * One differentiated fan-out lane on the computer-use E2B route (per-lane worlds). Each lane
+ * becomes an independent E2B desktop sandbox with its own persona/device/starting-steer. All
+ * fields optional: an omitted persona/device/instruction inherits the actor-level default. `id`
+ * defaults to `lane-01`..`lane-NN` and must be a public-safe token (it names per-lane evidence
+ * paths). Consumed ONLY on the computer-use E2B route (inert/warned elsewhere).
+ */
+export interface LabActorLane {
+  /** Public-safe lane label (interpolates into per-lane evidence paths). Default lane-NN. */
+  id?: string;
+  /** Persona id/label threaded into this lane's actor prompt. Default: actors[0].persona. */
+  persona?: string;
+  /** Named device preset this lane renders at. XOR raw execution.desktop.resolution. */
+  device?: string;
+  /** Per-lane steer appended to this lane's mission (the roster's per-lane focus). */
+  instruction?: string;
+}
+
 export interface LabActor {
   /**
    * The actor label. On app-url subjects this is a REAL dispatch key: it must resolve to a
@@ -191,11 +219,15 @@ export interface LabActor {
    */
   type: string;
   /** Lane count — route-specific (see HONEST SCOPE header): synthetic simCount; scripted
-   *  surface roster {1 = desktop, 2 = desktop + mobile, default 1}; computer-use must be 1. */
+   *  surface roster {1 = desktop, 2 = desktop + mobile, default 1}; computer-use E2B route the
+   *  HOMOGENEOUS fan-out lane count (cap 16). XOR `lanes`. */
   count?: number;
+  /** Computer-use E2B route: a DIFFERENTIATED fan-out roster (per-lane worlds). XOR `count` and
+   *  XOR `laneFocus`. Cap 16 lanes. Consumed only on the cua E2B route (inert/warned elsewhere). */
+  lanes?: LabActorLane[];
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
-  /** Consumed on the app-url route (laneFocus.instruction appended to the mission). */
+  /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
   laneFocus?: LabActorLaneFocus;
   /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. */
   mission?: string;
@@ -458,8 +490,11 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     if (!actorResolvesToComputerUse(type)) {
       return invalid(`actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`);
     }
-    if ((config.actors[0]?.count ?? 1) > 1) {
-      return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
+    if (cuaLaneCount(config) > 1) {
+      return invalid("Multi-lane fan-out is not supported on the in-process/local-app route — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips; set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).");
+    }
+    if (config.actors[0]?.lanes !== undefined) {
+      return invalid("`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route — it provisions one E2B desktop per lane, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.");
     }
     if (config.policies?.allowPublicTargets === true) {
       return invalid("`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow.");
@@ -499,9 +534,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       if (!actorResolvesToComputerUse(type)) {
         return invalid(`actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`);
       }
-      if ((config.actors[0]?.count ?? 1) > 1) {
-        return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
-      }
+      // Multi-lane fan-out is CONSUMED on this route (per-lane worlds; the shared cua-lane
+      // cross-validation below enforces lanes/count XOR rules, the 16 cap, and the
+      // allowPublicTargets+N>1 rejection).
       // Loopback by default; an owner may declare a public/preview target via policies.
       if (!config.policies?.allowPublicTargets && !isLoopbackUrl(config.subject.appUrl ?? "")) {
         return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive a deployed/preview URL you own.");
@@ -527,8 +562,19 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     if (!REPO_SLUG_PATTERN.test(repo)) {
       return invalid(`subject.repos[0] must be an owner/repo slug (got "${repo}").`);
     }
-    if ((config.actors[0]?.count ?? 1) > 1) {
-      return invalid("Multi-lane computer-use fan-out is not supported yet; set actors[0].count to 1.");
+    // Fan-out is CONSUMED here: N lanes each clone the SAME single repo into their own E2B
+    // desktop (per-lane worlds). The shared cua-lane cross-validation below enforces the
+    // lanes/count rules and the 16 cap; the single-repo rule above is unchanged.
+  }
+
+  // Shared computer-use fan-out cross-validation (per-lane worlds, the only topology this
+  // slice). Runs for every route that resolves to the cua backend (app-url, clone, local-app).
+  // The in-process/local-app route already forced a single lane above, so this is a no-op there
+  // beyond rejecting the same fields; on the E2B routes it enforces the roster contract.
+  if (routesToComputerUse(config)) {
+    const reason = cuaLaneValidationReason(config);
+    if (reason) {
+      return invalid(reason);
     }
   }
 
@@ -564,6 +610,13 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 // The slug interpolates into an in-sandbox shell command; the strict shape is load-bearing.
 const REPO_SLUG_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+// A lane id interpolates into per-lane evidence paths (screenshots/<id>/, actors/<id>.json), so
+// it must be a public-safe path token, same shape as a lab id.
+const LANE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+const LANE_ID_MAX_CHARS = 40;
+// Hard cap on fan-out lanes (per the ratified design). No MIMETIC_MAX_LANES escape above this
+// until a reference panel demands it — N concurrent paid desktops is real money.
+export const MAX_CUA_LANES = 16;
 
 function actorResolvesToComputerUse(type: string | undefined): boolean {
   if (!type) return false;
@@ -612,6 +665,56 @@ function registeredTerminalActors(): string[] {
  * selectLabBackend keeps a bare app-url fallback to the cua backend so library-API configs
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
+/**
+ * The declared fan-out lane count on the computer-use route: a `lanes[]` roster's length, else
+ * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
+ * and the pre-flight plan so the lane count is computed ONE way everywhere.
+ */
+export function cuaLaneCount(config: LabConfig): number {
+  const actor = config.actors[0];
+  if (actor?.lanes !== undefined) {
+    return actor.lanes.length;
+  }
+  return actor?.count ?? 1;
+}
+
+/**
+ * Cross-validate the computer-use fan-out declaration (per-lane worlds). Returns the failure
+ * message, or null when valid. Enforced at parse AND re-enforced in the engine (runCuaActorLab
+ * is itself exported npm surface). Structural lane shape (id/device validity, id uniqueness) is
+ * already checked in parseLanes; this is the route-scoped XOR/cap/policy layer.
+ */
+export function cuaLaneValidationReason(config: LabConfig): string | null {
+  const actor = config.actors[0];
+  const lanes = actor?.lanes;
+  // clone.fanout is a DECLARED behavior change: rejected on the cua route (was inert-warned).
+  // Fan-out is declared via actors[0].count/lanes; subject.clone.fanout never applied here.
+  if (config.subject.clone?.fanout !== undefined) {
+    return "`subject.clone.fanout` is not used on the computer-use route — declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a per-lane roster). (clone.fanout drives the OSS smoke/meta routes only.)";
+  }
+  if (lanes !== undefined) {
+    if (actor?.count !== undefined) {
+      return "Declare EITHER actors[0].count (a homogeneous lane count) OR actors[0].lanes (a differentiated roster), not both.";
+    }
+    if (actor?.laneFocus !== undefined) {
+      return "actors[0].laneFocus and actors[0].lanes are mutually exclusive — a roster's per-lane `instruction` is the fan-out steer; laneFocus is the single-lane steer.";
+    }
+    if (config.execution?.desktop?.resolution !== undefined && lanes.some((lane) => lane.device !== undefined)) {
+      return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive — a per-lane device preset and a single hand-set resolution cannot both govern lane geometry.";
+    }
+  }
+  const laneCount = cuaLaneCount(config);
+  if (laneCount > MAX_CUA_LANES) {
+    return `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (declared ${laneCount}); N concurrent paid desktops is real spend — there is no override above the cap this slice.`;
+  }
+  // Public targets fan out into N independent worlds driving the SAME public app — that is the
+  // shared-world topology (layer 7, #164), not per-lane worlds. Reject the combination.
+  if (laneCount > 1 && config.policies?.allowPublicTargets === true) {
+    return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Fan out against a loopback/provisioned subject, or run a single public-target lane.";
+  }
+  return null;
+}
+
 export function routesToComputerUse(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the cua backend exactly like an app-url subject with a computer-use actor.
@@ -660,35 +763,38 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   for (const [index, actor] of config.actors.entries()) {
     if (routesToCua || routesToTerminal) {
       // The cua + terminal routes consume mission/persona/model + laneFocus.instruction (they
-      // compose the agent prompt + bundle provenance); laneFocus.id/label remain inert.
+      // compose the agent prompt + bundle provenance); laneFocus.id/label remain inert. On the
+      // cua E2B route actors[0].lanes is CONSUMED (the fan-out roster).
       if (actor.laneFocus?.id) inert.push(`actors[${index}].laneFocus.id`);
       if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
+      if (routesToTerminal && actor.lanes) inert.push(`actors[${index}].lanes (fan-out is a computer-use route capability; terminal fan-out is a later slice)`);
     } else if (routesToScripted) {
       // persona and count are consumed (trace/bundle provenance; surface roster). The prompt
       // fields can never act here — the scripted actor runs no model.
       if (actor.mission) inert.push(`actors[${index}].mission (the scripted-browser actor runs no model)`);
       if (actor.laneFocus) inert.push(`actors[${index}].laneFocus (the scripted-browser actor runs no model)`);
       if (actor.model) inert.push(`actors[${index}].model (the scripted-browser actor runs no model)`);
+      if (actor.lanes) inert.push(`actors[${index}].lanes (the scripted-browser route fans out via actors[0].count, not a lane roster)`);
     } else {
       if (actor.mission) inert.push(`actors[${index}].mission`);
       if (actor.laneFocus) inert.push(`actors[${index}].laneFocus`);
       if (actor.persona) inert.push(`actors[${index}].persona`);
       if (actor.model) inert.push(`actors[${index}].model`);
+      if (actor.lanes) inert.push(`actors[${index}].lanes`);
     }
   }
   if (config.subject.clone?.depth !== undefined && !routesToCua) inert.push("subject.clone.depth");
   if (config.subject.serve && !routesToCua) inert.push("subject.serve");
   if (config.subject.env && !routesToCua) inert.push("subject.env");
   if (config.subject.state && !routesToCua) inert.push("subject.state");
-  if (routesToCua) {
-    // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to
-    // debug a failed install/boot; otherwise always killed). clone.fanout is still inert here —
-    // the cua route is single-lane until fan-out lands.
-    if (config.subject.clone?.fanout !== undefined) inert.push("subject.clone.fanout");
-  }
+  // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
+  // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
+  // (a hard parse error above), so it can never reach this warning list there.
   if (!routesToCua && !routesToScripted && !routesToTerminal && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
   if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
-  if (config.execution?.concurrency !== undefined) inert.push("execution.concurrency");
+  // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out lanes);
+  // inert (warned) everywhere else.
+  if (config.execution?.concurrency !== undefined && !routesToCua) inert.push("execution.concurrency");
   // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}
   // (recorded as evidence this slice — the agent prompt, the blast-radius budget, the transport +
   // the names-only runtime-auth channel). On every OTHER route they are inert and must warn so a
@@ -1038,6 +1144,11 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     const actor: LabActor = { type };
     const count = posInt(entry.count);
     if (count !== undefined) actor.count = count;
+    const lanesResult = parseLanes(entry.lanes, index);
+    if (!lanesResult.ok) {
+      return lanesResult;
+    }
+    if (lanesResult.value) actor.lanes = lanesResult.value;
     const persona = str(entry.persona);
     if (persona) actor.persona = persona;
     const mission = str(entry.mission);
@@ -1063,6 +1174,54 @@ function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
   const instruction = str(raw.instruction);
   if (instruction) laneFocus.instruction = instruction;
   return Object.keys(laneFocus).length > 0 ? laneFocus : undefined;
+}
+
+/**
+ * Parse `actors[index].lanes` into a fan-out roster (computer-use E2B route). Structural only:
+ * each lane is `{ id?, persona?, device?, instruction? }`. Lane ids (when declared) must be
+ * public-safe path tokens and unique; a lane device must be a known preset name. The
+ * route-scoped cross-validation (lanes XOR count/laneFocus, device XOR raw resolution, cap 16)
+ * runs in parseLabConfig where the route is known.
+ */
+function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return invalid(`actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, persona?, device?, instruction? }) when set.`);
+  }
+  const lanes: LabActorLane[] = [];
+  const seenIds = new Set<string>();
+  for (const [laneIndex, entry] of raw.entries()) {
+    if (!isRecord(entry)) {
+      return invalid(`actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, persona?, device?, instruction? }).`);
+    }
+    const lane: LabActorLane = {};
+    const id = str(entry.id);
+    if (id !== undefined) {
+      if (!LANE_ID_PATTERN.test(id) || id.length > LANE_ID_MAX_CHARS) {
+        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS} chars (it names per-lane evidence paths); got "${id}".`);
+      }
+      if (seenIds.has(id)) {
+        return invalid(`actors[${actorIndex}].lanes ids must be unique (duplicate "${id}").`);
+      }
+      seenIds.add(id);
+      lane.id = id;
+    }
+    const device = str(entry.device);
+    if (device !== undefined) {
+      if (!isDevicePresetName(device)) {
+        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`);
+      }
+      lane.device = device;
+    }
+    const persona = str(entry.persona);
+    if (persona !== undefined) lane.persona = persona;
+    const instruction = str(entry.instruction);
+    if (instruction !== undefined) lane.instruction = instruction;
+    lanes.push(lane);
+  }
+  return { ok: true, value: lanes };
 }
 
 function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefined } | LabConfigParseFailure {

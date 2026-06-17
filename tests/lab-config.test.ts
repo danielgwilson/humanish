@@ -132,12 +132,24 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("still warns about genuinely inert fields on the cua route (e.g. execution.concurrency)", () => {
-      const result = parseLabConfig({ ...validCua, execution: { ...validCua.execution, concurrency: 2 } });
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      expect(result.warnings[0]).toContain("execution.concurrency");
-      expect(result.warnings[0]).not.toContain("timeoutMs");
+    it("CONSUMES execution.concurrency on the cua route (no warning) but still warns it elsewhere", () => {
+      // Consumed here (bounds in-flight fan-out lanes) → zero warnings.
+      const onCua = parseLabConfig({ ...validCua, execution: { ...validCua.execution, concurrency: 2 } });
+      expect(onCua.ok).toBe(true);
+      if (!onCua.ok) return;
+      expect(onCua.warnings).toEqual([]);
+
+      // Still inert (warned) on a route that does not consume it (regression guard).
+      const offCua = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "synthetic-concurrency",
+        subject: { source: "this-repo" },
+        actors: [{ type: "synthetic-persona" }],
+        execution: { concurrency: 2 }
+      });
+      expect(offCua.ok).toBe(true);
+      if (!offCua.ok) return;
+      expect(offCua.warnings[0]).toContain("execution.concurrency");
     });
 
     it("warns about laneFocus.id/label on the cua route — only laneFocus.instruction is consumed there", () => {
@@ -173,13 +185,79 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       ["missing e2b-desktop target", { ...validCua, execution: { timeoutMs: 1000 } }],
       ["local target", { ...validCua, execution: { target: "local" } }],
       ["unregistered actor type", { ...validCua, actors: [{ type: "not-a-real-actor" }] }],
-      ["registered but not computer-use", { ...validCua, actors: [{ type: "codex-app-server" }] }],
-      ["fan-out count", { ...validCua, actors: [{ type: "openai-computer-use", count: 2 }] }]
+      ["registered but not computer-use", { ...validCua, actors: [{ type: "codex-app-server" }] }]
     ])("fails closed on cua mis-config: %s", (_label, input) => {
       const result = parseLabConfig(input);
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+    });
+
+    describe("multi-lane fan-out (#163)", () => {
+      it("ACCEPTS a homogeneous count > 1 on the cua route (lifted rejection), default concurrency min(N,3)", () => {
+        const result = parseLabConfig({ ...validCua, actors: [{ type: "openai-computer-use", count: 4 }] });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.config.actors[0]?.count).toBe(4);
+        expect(result.warnings).toEqual([]);
+      });
+
+      it("ACCEPTS a differentiated lanes roster (per-lane persona/device/instruction)", () => {
+        const result = parseLabConfig({
+          ...validCua,
+          actors: [{
+            type: "openai-computer-use",
+            mission: "Explore the app.",
+            lanes: [
+              { id: "mobile-newcomer", persona: "first-time-visitor", device: "mobile", instruction: "Sign up from a phone." },
+              { id: "desktop-power", persona: "power-user", device: "wide", instruction: "Find advanced settings." }
+            ]
+          }],
+          execution: { target: "e2b-desktop", timeoutMs: 120000, concurrency: 2 }
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.config.actors[0]?.lanes).toHaveLength(2);
+        expect(result.warnings).toEqual([]);
+      });
+
+      it.each([
+        ["lanes XOR count", { ...validCua, actors: [{ type: "openai-computer-use", count: 2, lanes: [{ id: "a" }, { id: "b" }] }] }],
+        ["lanes XOR laneFocus", { ...validCua, actors: [{ type: "openai-computer-use", laneFocus: { instruction: "x" }, lanes: [{ id: "a" }, { id: "b" }] }] }],
+        ["lanes[].device XOR raw resolution", {
+          ...validCua,
+          actors: [{ type: "openai-computer-use", lanes: [{ id: "a", device: "mobile" }, { id: "b" }] }],
+          execution: { target: "e2b-desktop", desktop: { resolution: [1280, 800] } }
+        }],
+        ["over the 16-lane cap (count)", { ...validCua, actors: [{ type: "openai-computer-use", count: 17 }] }],
+        ["over the 16-lane cap (lanes)", { ...validCua, actors: [{ type: "openai-computer-use", lanes: Array.from({ length: 17 }, (_v, i) => ({ id: `lane-${i}` })) }] }],
+        ["duplicate lane ids", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "dup" }, { id: "dup" }] }] }],
+        ["bad lane id shape", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "Bad Id!" }, { id: "ok" }] }] }],
+        ["unknown lane device", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", device: "phablet" }, { id: "b" }] }] }],
+        ["allowPublicTargets + N>1", {
+          ...validCua,
+          subject: { source: "app-url", appUrl: "https://preview.example.com/" },
+          actors: [{ type: "openai-computer-use", count: 2 }],
+          policies: { allowPublicTargets: true }
+        }]
+      ])("fails closed on fan-out mis-config: %s", (_label, input) => {
+        const result = parseLabConfig(input);
+        expect(result.ok, _label).toBe(false);
+        if (result.ok) return;
+        expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+      });
+
+      it("warns actors[0].lanes as inert on a non-cua route (regression: other routes' rules fire)", () => {
+        const result = parseLabConfig({
+          schema: LAB_CONFIG_SCHEMA,
+          id: "synthetic-lanes",
+          subject: { source: "this-repo" },
+          actors: [{ type: "synthetic-persona", lanes: [{ id: "a" }, { id: "b" }] }]
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.warnings.join(" ")).toContain("actors[0].lanes");
+      });
     });
 
     it("names the registered computer-use actors in the unsupported-actor error", () => {
@@ -446,18 +524,33 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it("warns clone.fanout as inert on the cua route (single lane) but NOT clone.keep (honored on failure)", () => {
-      const result = parseLabConfig({
+    it("REJECTS clone.fanout on the cua route (declared behavior change) but accepts clone.keep/depth", () => {
+      // clone.fanout is now a hard parse error on the cua route — fan-out is declared via
+      // actors[0].count/lanes, not subject.clone.fanout (which drives the OSS smoke/meta routes).
+      const rejected = parseLabConfig({
         ...validCloneCua,
-        subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 1 } }
+        subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 2 } }
       });
+      expect(rejected.ok).toBe(false);
+      if (rejected.ok) return;
+      expect(rejected.error.code).toBe("MIMETIC_LAB_INVALID");
+      expect(rejected.error.message).toContain("subject.clone.fanout");
+
+      // clone.keep + depth alone parse clean (keep is honored on failure; depth is consumed).
+      const accepted = parseLabConfig({
+        ...validCloneCua,
+        subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true } }
+      });
+      expect(accepted.ok).toBe(true);
+      if (!accepted.ok) return;
+      expect(accepted.warnings).toEqual([]);
+    });
+
+    it("ACCEPTS a homogeneous count > 1 on the clone cua route (each lane clones the same repo)", () => {
+      const result = parseLabConfig({ ...validCloneCua, actors: [{ type: "openai-computer-use", count: 3 }] });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.warnings[0]).toContain("subject.clone.fanout");
-      // clone.keep IS consumed (honored on failure) — must NOT be warned inert, or the parser
-      // contradicts the engine.
-      expect(result.warnings[0]).not.toContain("subject.clone.keep");
-      expect(result.warnings[0]).not.toContain("subject.clone.depth");
+      expect(result.config.actors[0]?.count).toBe(3);
     });
 
     it("warns serve/env/depth as inert on clone routes that do NOT serve (smoke/meta)", () => {
@@ -495,7 +588,8 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       ["cua-clone without serve", { ...validCloneCua, subject: { source: "clone", repos: ["example-org/example-app"] } }],
       ["two repos on cua-clone", { ...validCloneCua, subject: { ...validCloneCua.subject, repos: ["a/b", "c/d"] } }],
       ["bad repo slug", { ...validCloneCua, subject: { ...validCloneCua.subject, repos: ["not a slug; rm -rf"] } }],
-      ["fan-out count", { ...validCloneCua, actors: [{ type: "openai-computer-use", count: 2 }] }]
+      ["clone.fanout (declared behavior change: rejected on cua)", { ...validCloneCua, subject: { ...validCloneCua.subject, clone: { fanout: 2 } } }],
+      ["over the 16-lane cap", { ...validCloneCua, actors: [{ type: "openai-computer-use", count: 17 }] }]
     ])("fails closed on clone+serve mis-config: %s", (_label, input) => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);

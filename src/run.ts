@@ -28,6 +28,7 @@ import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
+import { mapWithConcurrency } from "./concurrency.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { containsSensitive, digestText, redactToSecretLabel } from "./redaction.js";
@@ -2966,34 +2967,6 @@ function readEnvInteger(name: string): number | undefined {
   }
 
   return /^\d+$/.test(value) ? Number.parseInt(value, 10) : Number.NaN;
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  mapper: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIndex = 0;
-  const workerCount = Math.min(concurrency, items.length);
-
-  await Promise.all(Array.from({ length: workerCount }, async () => {
-    while (true) {
-      const index = nextIndex;
-      nextIndex += 1;
-      if (index >= items.length) {
-        return;
-      }
-
-      const item = items[index];
-      if (item === undefined) {
-        return;
-      }
-      results[index] = await mapper(item, index);
-    }
-  }));
-
-  return results;
 }
 
 function personaPromptLine(selection: { resolvedPersona: ResolvedPersona }): string {

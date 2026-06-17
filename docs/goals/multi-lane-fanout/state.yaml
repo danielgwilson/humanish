@@ -1,25 +1,30 @@
 objective: "Multi-lane fan-out for the computer-use lab (#163): N differentiated persona lanes in one verified run bundle, per-lane-worlds default, bounded concurrency, proven deterministically at $0."
-active_task: "not started — execute goal.md"
+active_task: "PR-1 (per-lane worlds) implemented + deterministic proof green; PR open, awaiting maintainer review/merge"
 tasks:
-  - "config + routing: actors[0].lanes roster (persona/device/starting-surface) XOR count; execution.concurrency consumed; fail-closed cross-validation; routes to cua backend"
-  - "orchestration: extract a per-lane runner, bounded concurrency (mapWithConcurrency), per-lane provenance, pre-flight spend/lane plan event, per-lane teardown kill-by-id"
-  - "evidence: one N-stream run-bundle.v1, per-lane verify coverage, honest result projection; N=1 byte-stable golden"
-  - "deterministic proof: fake-substrate test (N sandboxes, bounded concurrency, per-lane cleanup, fail-fast, hollow-lane caught) + dry-run fixture + verify"
-  - "docs + fixture; open PR (do not merge)"
-receipts: []
+  - "DONE config + routing: actors[0].lanes roster XOR count; lanes XOR laneFocus; lanes[].device XOR raw resolution; cap 16; unique ids; execution.concurrency consumed (env may only LOWER); allowPublicTargets+N>1 rejected; clone.fanout rejected on cua; count>1 rejections lifted on the E2B cua route; other routes' rules/warnings unchanged"
+  - "DONE orchestration: mapWithConcurrency hoisted to src/concurrency.ts; resolveCuaLanePlan (pure pre-flight) + onPreflight + cua-lab.fanout.plan event; runCuaLane per-lane runner (per-lane metadata, device, geometry assertion, teardown kill-by-id in finally); pipeline gate (lane 1 provisions first); session fail-fast on harness errors only; per-lane session budget (execution.timeoutMs)"
+  - "DONE evidence: N-stream mimetic.run-bundle.v1 (per-lane sims/streams/traces/screenshots); per-lane verify coverage; result bumped to mimetic.cua-lab-result.v2 with plan/lanes[]/laneSummary; N=1 byte-stable"
+  - "DONE deterministic proof: tests/cua-actor-lab.fanout.test.ts (dry-run 4-lane + live-with-fakes N=4/conc 2: bounded concurrency, per-lane cleanup-by-id, pipeline gate, fail-fast, hollow-lane, geometry mismatch, secret scrub) + parser matrix additions in tests/lab-config.test.ts"
+  - "DONE docs + fixture (mimetic/labs/fanout-demo.yaml) + receipt; PR opened (do not merge)"
+  - "WRITTEN-NOT-RUN: tests/cua-actor-lab.fanout.live.test.ts (MIMETIC_LIVE_CUA=1) — separately-authorized paid receipt"
+receipts:
+  - "docs/goals/multi-lane-fanout/receipts/deterministic-fanout-proof-2026-06-17.md"
 verification:
-  status: pending
-  last_command: null
-  last_artifact: null
+  status: passed
+  last_command: "pnpm check && node scripts/public-surface-scan.mjs"
+  last_artifact: "tests/cua-actor-lab.fanout.test.ts (10 passed); mimetic/labs/fanout-demo.yaml dry-run → verifyRun ok"
 evidence:
-  environment_state: []
-  independent_checks: []
-  screenshots_or_traces: []
+  environment_state:
+    - "Dry-run fanout-demo: ONE run-bundle.v1, simCount 4, per-lane viewports [414x896,360x740,1440x950,1920x1080], cua-lab.fanout.plan event, contract statuses; verifyRun ok"
+    - "Live-with-fakes N=4/concurrency 2: 4 sandboxes with per-lane metadata, peak in-flight 2, teardown kills exactly the created ids by id, verifyRun ok"
+  independent_checks:
+    - "verifyRun over the produced 4-stream bundle (ok: true), not just file presence"
+    - "pnpm check exit 0 (636 passed / 8 skipped); node scripts/public-surface-scan.mjs exit 0"
+  screenshots_or_traces:
+    - "Per-lane actors/<streamId>.json + screenshots/<laneId>/ written and present (asserted in the live-with-fakes rung)"
   usage_receipts: []
   missing:
-    - "deterministic fan-out test"
-    - "dry-run N-stream bundle + verifyRun ok"
-    - "N=1 golden byte-stable"
-    - "green required CI"
+    - "live fan-out rung run (separately authorized; WRITTEN + gated, deferred per Provider Spend Policy)"
 completion_audit:
-  status: pending
+  status: deterministic-merge-gate-met
+  note: "All Success Invariants map to deterministic environment-state evidence (dry-run N-stream bundle + verifyRun, fake-substrate orchestration incl. cleanup-by-id/fail-fast/hollow-caught, byte-stable N=1). The live rung is a separately-authorized follow-up and is NOT required for this goal's completion."

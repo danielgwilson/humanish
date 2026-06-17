@@ -84,8 +84,28 @@ A lab is a composition over code primitives, not a hardcoded kind:
   elsewhere it is a descriptive label (e.g. `synthetic-persona`).
   `actors[0].count` carries route-specific meanings: synthetic route lane
   count (simCount); scripted-browser route surface roster (1 = desktop,
-  2 = desktop + mobile, default 1); computer-use routes must be 1 until
-  fan-out lands;
+  2 = desktop + mobile, default 1); computer-use **E2B** route the HOMOGENEOUS
+  fan-out lane count (N identical lanes, each its own E2B desktop — per-lane
+  worlds, cap 16). The in-process/local-app computer-use route stays single
+  lane (no E2B to fan out);
+- `actors[0].lanes[]` (computer-use E2B route): a DIFFERENTIATED fan-out roster,
+  each `{ id?, persona?, device?, instruction? }` becoming one independent E2B
+  desktop. `lanes` is XOR with `count` (declare a roster OR a homogeneous count)
+  and XOR with `actors[0].laneFocus` (a roster's per-lane `instruction` is the
+  steer); `lanes[].device` is XOR with a raw `execution.desktop.resolution`. Lane
+  ids default `lane-01`..`lane-NN`, must be unique, and name per-lane evidence
+  paths (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 lanes. On
+  every non-cua route `lanes` is inert (warned). `subject.clone.fanout` is
+  REJECTED on the cua route (declare fan-out via `count`/`lanes`; `clone.fanout`
+  drives the OSS smoke/meta routes only);
+- `execution.concurrency` (computer-use E2B route): bounds in-flight (paid)
+  fan-out lanes; default `min(laneCount, 3)`. The env override
+  `MIMETIC_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never raise
+  concurrent paid desktops (invariant 3). Inert (warned) on other routes.
+  `execution.timeoutMs` is the PER-LANE session budget on this route (semantics
+  change: it was the single-session budget pre-fan-out); there is no run-level
+  wall clock. `policies.allowPublicTargets` cannot combine with N>1 (N lanes
+  against one public target is the shared-world topology, layer 7 / #164);
 - `execution`: where it runs — `local`, `e2b-desktop`, or `e2b-terminal`, plus
   desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
   with a computer-use actor, or `local` (or absent) with a scripted-browser
@@ -127,9 +147,20 @@ A lab is a composition over code primitives, not a hardcoded kind:
 
 Lab backends report results in their own schemas (`mimetic.run-result.v1`,
 `mimetic.oss-lab-result.v1`, `mimetic.oss-meta-lab-result.v1`,
-`mimetic.cua-lab-result.v1`, `mimetic.scripted-lab-result.v1`,
+`mimetic.cua-lab-result.v2`, `mimetic.scripted-lab-result.v1`,
 `mimetic.terminal-lab-result.v1`); the evidence record stays
-`mimetic.run-bundle.v1` in every case.
+`mimetic.run-bundle.v1` in every case. The computer-use result bumped to v2 for
+fan-out: it carries `plan` (the pre-flight lane table — concurrency, waves,
+per-lane session budget, worst-case sandbox-minutes), `lanes[]` (ALWAYS present,
+length 1 at N=1; per-lane status/session/sandbox/subject), and `laneSummary`
+(passed/skipped/harnessError/hollow counts). The top-level `session`/`sandbox`
+mirror the first lane and `subject.commit` is unanimity-gated across lanes
+(omitted with a divergence warning when lanes resolve different commits). At N=1
+the run bundle is byte-stable with the pre-fan-out output; only the result
+projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event
+(and a `cua-lab.fanout.fail-fast` event when a harness error skips queued lanes);
+`ok = observer.ok ∧ no skipped lane ∧ all lanes terminal ∧ no harness error ∧ no
+hollow lane`.
 
 Manifests are human-authored `.yaml` source under `mimetic/labs/*.yaml` for
 committed public-safe labs, or ignored `.mimetic/labs/*.yaml` /

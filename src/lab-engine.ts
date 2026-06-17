@@ -167,6 +167,9 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         cwd: options.cwd,
         config,
         dryRun,
+        // CLI --count overrides the HOMOGENEOUS fan-out lane count (ignored when a lanes roster
+        // is declared — the roster length is authoritative).
+        ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks })
