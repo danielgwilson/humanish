@@ -1,14 +1,16 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { parse } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, type ActorCompletionReason, type ActorStatus, type ActorTrace } from "../src/actor-contract.js";
 import type { CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { concurrentSharedWorldValidationReason, LAB_CONFIG_SCHEMA, parseLabConfig, routesToConcurrentSharedWorld, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
@@ -457,5 +459,69 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
       sw.laneWindows[0]!.routeHostDigest = "ffffffffffffffff"; // a different host than plane.hostDigest
     });
     expect(ok).toBe(false);
+  });
+});
+
+// --- The committed live-fixture lab: deterministic $0 wiring proof (#164) ----------------------
+// Proves the live rung's lab + synthetic fixture are wired correctly BEFORE any spend: the
+// committed mimetic/labs/shared-world-concurrent-live.yaml parses, routes to the concurrent
+// backend, passes the synthetic/seeded/0.0.0.0 validations, dry-runs to a verified bundle, AND
+// drives the REAL orchestrator on the fake N+1 substrate at $0.
+describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
+  function loadLiveLab(): LabConfig {
+    const raw = parse(readFileSync(path.join(process.cwd(), "mimetic/labs/shared-world-concurrent-live.yaml"), "utf8"));
+    const parsed = parseLabConfig(raw);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  it("is well-formed: parses, routes to concurrent, and passes the synthetic/seeded/0.0.0.0 validations", () => {
+    const config = loadLiveLab();
+    expect(routesToConcurrentSharedWorld(config)).toBe(true);
+    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    expect(concurrentSharedWorldValidationReason(config)).toBeNull();
+    expect(config.subject.exposure).toBe("synthetic");
+    expect(config.subject.serve?.start).toContain("0.0.0.0");
+    expect(config.subject.serve?.start).toContain("mimetic/fixtures/shared-world-app/server.js");
+    expect(config.subject.repos).toEqual(["danielgwilson/mimetic-cli"]);
+    expect((config.subject.state?.seed ?? []).length).toBeGreaterThan(0);
+    expect((config.subject.state?.checkpoint ?? []).length).toBeGreaterThan(0);
+    expect(config.actors[0]?.lanes).toHaveLength(3);
+    expect(config.execution?.concurrency).toBe(3);
+  });
+
+  it("dry-runs this exact committed config to a verified concurrent shared-world bundle at $0", async () => {
+    const outcome = await runLab(loadLiveLab(), { cwd, dryRun: true });
+    expect(outcome.backend).toBe("concurrent-shared-world");
+    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.attributionClass).toBe("shared-world");
+    expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
+    const verify = await verifyRun(cwd, outcome.result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("drives this exact committed config through the REAL orchestrator on a fake N+1 substrate ($0): one plane, real overlap, a state delta, verify ok", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, created, killed, sandboxes } = baseHooks(state, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({ cwd, config: loadLiveLab(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    // ONE subject sandbox + 3 actor sandboxes, ALL torn down BY id (N+1).
+    expect(created).toHaveLength(4);
+    expect([...killed].sort()).toEqual(sandboxes.map((s) => s.sandboxId).sort());
+    expect(result.subjectSandbox?.killed).toBe(true);
+    expect(result.overlapProven).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
+    expect(bundle.sharedWorld.outcomes).toHaveLength(3);
+    const series = bundle.sharedWorld.stateSeries as Array<{ digest: string }>;
+    expect(series.some((s, i) => i > 0 && s.digest !== series[i - 1]!.digest)).toBe(true);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
   });
 });
