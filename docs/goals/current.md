@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-16 (rev 4)
+Status date: 2026-06-17 (rev 5)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -169,6 +169,22 @@ bespoke real-agent sim for mimetic + a thin adapter — see
   from prod) and a sandbox image with the agent runtime installed
   ([#159](https://github.com/danielgwilson/mimetic-cli/issues/159)). Duplex-PTY/xterm replay
   is a deferred SLICE 5.
+
+Multi-lane fan-out for the computer-use lab (0.9.0; proof-roadmap layer 2, the prerequisite
+for multi-actor shared-state work — #163, see `docs/goals/multi-lane-fanout/goal.md`):
+
+- `actors[0].lanes[]` (differentiated roster: per-lane persona/device/starting-surface) XOR
+  `actors[0].count` (homogeneous) fan out N independent E2B desktops in ONE run bundle;
+  `per-lane worlds` is the only topology this slice (shared-world is #164). `done`
+- `execution.concurrency` bounds in-flight paid desktops (default min(N,3); env may only
+  lower it); a pre-flight spend/lane plan prints before any sandbox/provider call and at $0
+  in dry-run; per-lane teardown reclaims ONLY each lane's own sandbox by id (never
+  account-wide). `done`
+- Proven deterministically (fake substrate: bounded concurrency, by-id teardown, fail-fast,
+  hollow-lane caught) AND with a kept live rung (2 lanes, two distinct desktops, both
+  reclaimed by id, bundle verifies — `docs/goals/multi-lane-fanout/receipts/`). `done`
+- Deferred: seed-fork provisioning (PR-2), in-process-route fan-out, shared-world topology
+  (#164).
 
 ### 6. Lab Manifest Shape
 
