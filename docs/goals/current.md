@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-17 (rev 5)
+Status date: 2026-06-17 (rev 6)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -185,6 +185,30 @@ for multi-actor shared-state work — #163, see `docs/goals/multi-lane-fanout/go
   reclaimed by id, bundle verifies — `docs/goals/multi-lane-fanout/receipts/`). `done`
 - Deferred: seed-fork provisioning (PR-2), in-process-route fan-out, shared-world topology
   (#164).
+
+Shared-world topology — multi-actor against ONE shared mutable service (0.10.0; proof-roadmap
+layer 7; #164; `docs/goals/shared-world-topology/`). The north-star sim leverage: MANY personas,
+ONE shared world.
+
+- Sequential (`topology: shared-world`, concurrency 1): one sandbox, N role seats take turns
+  against the shared DB; a checkpoint timeline proves role B acted on a world already containing
+  role A's mutation. `done`
+- **Concurrent (`topology: shared-world` + `concurrency > 1`): one subject sandbox served +
+  `getHost`-exposed, N actor desktop sandboxes drive that one URL SIMULTANEOUSLY** (reuses fan-out
+  orchestration; all N+1 reclaimed by id). Honest attribution under concurrency: per-persona
+  outcomes + harness-clocked `laneWindows` proving real overlap + a `stateSeries` of the shared
+  world under load; causation is structurally inexpressible (independent series, no
+  per-delta→actor field). `done`
+- A new `attributionClass: isolated | shared-world` honesty axis + verify FAIL-CLOSED on the
+  required/forbidden `attributionLimits` sets + a concurrency-on-pass gate (a passed concurrent
+  run must show real overlap AND a state delta coincident with it). `getHost` URLs are
+  internet-reachable → the route is gated (verify) to synthetic+seeded subjects; the raw URL is
+  digest-only in evidence. `done`
+- Honest gap: the concurrency CAPABILITY AT SCALE is proven DETERMINISTICALLY (a rendezvous-latch
+  $0 gate proves overlap is produced + the overclaim-fails-closed matrix); a LIVE concurrent
+  receipt needs a real seeded multi-role app (≥3 concurrent personas on the team E2B key) — it is
+  written + gated, and is the first real downstream sim-migration test. Per-action causation,
+  cross-sandbox concurrency beyond getHost, and #108 PII/PHI remain out of scope.
 
 ### 6. Lab Manifest Shape
 
