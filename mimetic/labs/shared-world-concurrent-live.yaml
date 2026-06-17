@@ -27,22 +27,23 @@ subject:
     depth: 1 # shallow; the recorded HEAD commit is the plane provenance pin
   serve:
     # Pure Node built-ins — NO install/build step. Bind 0.0.0.0 (FIX-4): getHost only routes to a
-    # port bound on all interfaces; the readiness probe below stays loopback.
-    start: HOST=0.0.0.0 PORT=3000 node mimetic/fixtures/shared-world-app/server.js
+    # port bound on all interfaces; the readiness probe below stays loopback. Python stdlib (the
+    # E2B desktop image ships python3, not node) — NO install/build step.
+    start: HOST=0.0.0.0 PORT=3000 python3 mimetic/fixtures/shared-world-app/server.py
     url: http://127.0.0.1:3000/ # loopback readiness-probe target; getHost exposes the 0.0.0.0 port
     readyTimeoutMs: 60000
   state:
     # Seed the shared plane ONCE, before the server starts. Persisted as a command DIGEST only.
     seed:
       - name: seed-tasks
-        command: node mimetic/fixtures/shared-world-app/seed.js
+        command: python3 mimetic/fixtures/shared-world-app/seed.py
         when: before-start
     # Read-only digest probe the background prober runs on a cadence (baseline + periodic + final).
     # Prints an AGGREGATE (count + hash), never row contents; only sha256-16(scrubbed stdout)
     # persists. The task count GROWING as actors add tasks IS the observed stateSeries delta.
     checkpoint:
       - name: task-count
-        command: node mimetic/fixtures/shared-world-app/checkpoint.js
+        command: python3 mimetic/fixtures/shared-world-app/checkpoint.py
 actors:
   - type: openai-computer-use # REAL dispatch key: resolves in the actor registry
     mission: >-

@@ -482,7 +482,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(concurrentSharedWorldValidationReason(config)).toBeNull();
     expect(config.subject.exposure).toBe("synthetic");
     expect(config.subject.serve?.start).toContain("0.0.0.0");
-    expect(config.subject.serve?.start).toContain("mimetic/fixtures/shared-world-app/server.js");
+    expect(config.subject.serve?.start).toContain("mimetic/fixtures/shared-world-app/server.py");
     expect(config.subject.repos).toEqual(["danielgwilson/mimetic-cli"]);
     expect((config.subject.state?.seed ?? []).length).toBeGreaterThan(0);
     expect((config.subject.state?.checkpoint ?? []).length).toBeGreaterThan(0);
