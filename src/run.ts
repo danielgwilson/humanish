@@ -34,6 +34,7 @@ import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, 
 import { containsSensitive, digestText, redactToSecretLabel } from "./redaction.js";
 
 export const RUN_BUNDLE_SCHEMA = "mimetic.run-bundle.v1";
+export const SHARED_WORLD_SCHEMA = "mimetic.shared-world.v1";
 export const REVIEW_SCHEMA = "mimetic.review.v1";
 export const VERIFY_SCHEMA = "mimetic.verify-result.v1";
 export const RUNS_SCHEMA = "mimetic.runs-result.v1";
@@ -388,6 +389,78 @@ export interface RunSubjectProvenance {
   };
 }
 
+/**
+ * How well a run attributed INTERACTION between actors — a new, ORTHOGONAL honesty axis to the
+ * persona-sampling evidence classes (which answer "how representative is the actor?"). Absent ==
+ * `isolated` (every existing bundle byte-stable). `shared-world` means N roles drove ONE mutable
+ * plane and their per-role attribution is weaker (its ceiling is pinned in `sharedWorld.attributionLimits`).
+ */
+export type RunAttributionClass = "isolated" | "shared-world";
+
+/** The ONE shared service-plane provenance for a shared-world run (#164): single commit + a
+ *  seed-recipe digest + the provisioned env NAMES (values never). */
+export interface SharedWorldPlane {
+  /** The cloned commit SHA of the shared plane (when the clone resolved one). */
+  commit?: string;
+  /** sha256-16 over the ordered seed-step command digests — the seeded-state RECIPE identity
+   *  (not the runtime state). Pins "same seed recipe" across bundles. */
+  seedDigest: string;
+  /** Declared env NAMES provisioned for the shared plane (values never surface). */
+  envNames: string[];
+}
+
+/** A timeline checkpoint: a read-only digest probe of the shared plane at one moment. Persisted
+ *  DIGEST-ONLY — `digest` is sha256-16(scrub+redact(stdout)); no raw value ever lands. */
+export interface SharedWorldCheckpoint {
+  kind: "checkpoint";
+  /** "cp-baseline" for the baseline snapshot; "cp-after-<roleId>" after each role's turn. */
+  name: string;
+  /** sha256-16 of the (scrubbed, redacted) combined probe output at this snapshot. */
+  digest: string;
+  /** True when this snapshot's digest differs from the previous checkpoint's — the observed
+   *  state changed across the intervening turn (delta attributed to the TURN, not an action). */
+  deltaFromPrev: boolean;
+}
+
+/** A timeline turn: one role's seat session against the shared plane. Carries the plane
+ *  provenance it observed (identical across turns by construction — the single-plane proof). */
+export interface SharedWorldTurn {
+  kind: "turn";
+  roleId: string;
+  /** Resolves to a real RunSimulation in this bundle. */
+  simId: string;
+  /** Resolves to a real RunStream (the role's actor trace) in this bundle. */
+  streamId: string;
+  /** The shared plane's commit the role observed (omitted when unresolved). */
+  commit?: string;
+  /** The shared plane's seed-recipe digest the role observed. */
+  seedDigest: string;
+}
+
+export type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
+
+/**
+ * The shared-world evidence block (`mimetic.shared-world.v1`): ONE plane, the declared executed
+ * `sequence` of role ids, a harness-clocked alternating `timeline` (cp-baseline → turn → cp → … →
+ * cp), and the mandatory `attributionLimits` (verify FAILS CLOSED if any is absent). Additive +
+ * optional on `mimetic.run-bundle.v1` — absent on every non-shared-world bundle.
+ */
+export interface SharedWorldEvidence {
+  schema: typeof SHARED_WORLD_SCHEMA;
+  topology: "shared-world";
+  /** The DECLARED number of role seats. */
+  roleCount: number;
+  plane: SharedWorldPlane;
+  /** The role ids that actually took a turn, in declared order. */
+  sequence: string[];
+  timeline: SharedWorldTimelineEntry[];
+  /**
+   * The pinned, verify-enforced attribution ceiling. MUST contain `sequential-only`,
+   * `no-concurrent-races`, and `delta-attributed-to-turn-not-action` — omission == overclaim == fail.
+   */
+  attributionLimits: string[];
+}
+
 export interface RunBundle {
   schema: typeof RUN_BUNDLE_SCHEMA;
   runId: string;
@@ -438,6 +511,16 @@ export interface RunBundle {
   /** Structured subject provenance (invariant 5). Optional and additive: emitted by the
    * computer-use backend; tolerated absent everywhere else. */
   subject?: RunSubjectProvenance;
+  /**
+   * The interaction-attribution honesty axis (#164). Absent == `isolated` (every existing bundle
+   * byte-stable). Set to `shared-world` by the shared-world backend, paired with `sharedWorld`.
+   */
+  attributionClass?: RunAttributionClass;
+  /**
+   * Shared-world evidence block (`mimetic.shared-world.v1`). Optional + additive; present only on
+   * shared-world runs. Verified fail-closed by validateSharedWorldEvidence.
+   */
+  sharedWorld?: SharedWorldEvidence;
   /**
    * OPTIONAL, ADAPTER-NAMESPACED product score (the layer-6 extension seam, issue #154 acceptance
    * #8). A thin adapter's `score` hook returns a `RunAdapterScore`; the lane attaches it here
@@ -3359,6 +3442,14 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       ? "subject state claims match the recorded seed/external evidence (or the subject block is honestly absent)"
       : `subject state findings: ${stateFindings.join(", ")}`
   });
+  const sharedWorldFindings = isRunBundle(bundle) ? sharedWorldEvidenceFindings(bundle) : [];
+  checks.push({
+    name: "shared-world evidence",
+    ok: sharedWorldFindings.length === 0,
+    message: sharedWorldFindings.length === 0
+      ? "live shared-world runs either are absent or carry a well-formed alternating timeline (cp-baseline → turn → cp), single-plane provenance, digest-only checkpoints, the mandatory attributionLimits, and a checkpoint delta on a passed run"
+      : `shared-world findings: ${sharedWorldFindings.join(", ")}`
+  });
 
   const ok = checks.every((check) => check.ok);
   const warnings = isRunBundle(bundle)
@@ -4248,6 +4339,157 @@ function subjectStateFindings(bundle: RunBundle): string[] {
   return findings;
 }
 
+// The three disclosures a shared-world bundle MUST pin (verify fails closed if any is absent —
+// omission overclaims): sequential turns only, no concurrency/races handled, and a checkpoint
+// delta is attributed to the TURN it followed, not to a specific action (correlation, not causation).
+const MANDATORY_ATTRIBUTION_LIMITS = [
+  "sequential-only",
+  "no-concurrent-races",
+  "delta-attributed-to-turn-not-action"
+] as const;
+
+// A shared-world checkpoint record persists DIGEST-ONLY: exactly these keys, nothing value-shaped.
+const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "deltaFromPrev"]);
+
+/**
+ * The `shared-world evidence` check (#164; invariant 4 + invariant 6): a LIVE shared-world bundle's
+ * interaction CLAIM must match its recorded timeline + plane provenance, and its attribution
+ * ceiling must be pinned. Mirrors validateTerminalProductEvidence: live-only (dry-run contract
+ * bundles are skipped, exactly like the other live-only checks). Fail-closed on every overclaim.
+ */
+function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
+  if (bundle.mode !== "live") {
+    return [];
+  }
+  const sw = bundle.sharedWorld;
+  if (!sw) {
+    // A live bundle that DECLARES shared-world attribution but carries no evidence block is a
+    // hollow claim — fail closed. (Absent attributionClass + absent block == an ordinary bundle.)
+    return bundle.attributionClass === "shared-world"
+      ? ["attributionClass is shared-world but the sharedWorld evidence block is missing"]
+      : [];
+  }
+
+  const findings: string[] = [];
+  // Read the raw record so an injected value-shaped field on a checkpoint is visible (the typed
+  // view would hide unexpected keys).
+  const rawTimeline: unknown[] = Array.isArray((sw as { timeline?: unknown }).timeline)
+    ? ((sw as { timeline: unknown[] }).timeline)
+    : [];
+
+  if (sw.schema !== SHARED_WORLD_SCHEMA) {
+    findings.push(`sharedWorld.schema must be ${SHARED_WORLD_SCHEMA}`);
+  }
+  if (bundle.attributionClass !== "shared-world") {
+    findings.push("a sharedWorld evidence block requires attributionClass: shared-world");
+  }
+
+  // Attribution ceiling: every mandatory limit MUST be present (omission overclaims → fail).
+  const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
+  for (const required of MANDATORY_ATTRIBUTION_LIMITS) {
+    if (!limits.includes(required)) {
+      findings.push(`attributionLimits is missing the mandatory disclosure "${required}" — an absent ceiling overclaims`);
+    }
+  }
+
+  const checkpoints = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "checkpoint");
+  const turns = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "turn");
+
+  // Phantom/dropped role: sequence length == roleCount == executed-turn count.
+  if (!(sw.sequence.length === sw.roleCount && turns.length === sw.roleCount)) {
+    findings.push(`phantom/dropped role: sequence length (${sw.sequence.length}), roleCount (${sw.roleCount}), and timeline turn count (${turns.length}) must all match`);
+  }
+
+  // Timeline well-formed: starts with cp-baseline, strictly alternates checkpoint → turn →
+  // checkpoint, ends on a checkpoint, and turn order == sequence.
+  if (rawTimeline.length === 0) {
+    findings.push("timeline is empty");
+  } else {
+    const first = rawTimeline[0];
+    if (!isRecord(first) || first.kind !== "checkpoint" || first.name !== "cp-baseline") {
+      findings.push('timeline must start with the "cp-baseline" checkpoint');
+    }
+    const last = rawTimeline[rawTimeline.length - 1];
+    if (!isRecord(last) || last.kind !== "checkpoint") {
+      findings.push("timeline must end on a checkpoint");
+    }
+    rawTimeline.forEach((entry, index) => {
+      const expected = index % 2 === 0 ? "checkpoint" : "turn";
+      if (!isRecord(entry) || entry.kind !== expected) {
+        findings.push(`timeline must strictly alternate checkpoint → turn → checkpoint (index ${index} is not a ${expected})`);
+      }
+    });
+    if (rawTimeline.length !== 1 + 2 * turns.length) {
+      findings.push("timeline length must be 1 baseline checkpoint + 2 entries (turn + checkpoint) per role");
+    }
+  }
+  turns.forEach((turn, index) => {
+    if (turn.roleId !== sw.sequence[index]) {
+      findings.push(`turn order does not match the declared sequence at position ${index} (turn "${String(turn.roleId)}" vs sequence "${String(sw.sequence[index])}")`);
+    }
+  });
+
+  // Checkpoints: digest is sha256-16 and the record carries NO value-shaped field (digest-only).
+  for (const checkpoint of checkpoints) {
+    const name = typeof checkpoint.name === "string" ? checkpoint.name : "(unnamed)";
+    if (typeof checkpoint.digest !== "string" || !COMMAND_DIGEST_PATTERN.test(checkpoint.digest)) {
+      findings.push(`checkpoint "${name}" digest is not a sha256-16 value (a value-shaped checkpoint field is rejected)`);
+    }
+    for (const key of Object.keys(checkpoint)) {
+      if (!SHARED_WORLD_CHECKPOINT_KEYS.has(key)) {
+        findings.push(`checkpoint "${name}" carries an unexpected field "${key}" — checkpoints persist digest-only`);
+      }
+    }
+  }
+
+  // Turns: simId/streamId resolve to a real sim/stream.
+  for (const turn of turns) {
+    const roleId = typeof turn.roleId === "string" ? turn.roleId : "(unnamed)";
+    if (!bundle.simulations.some((sim) => sim.id === turn.simId)) {
+      findings.push(`turn "${roleId}" references unknown simId "${String(turn.simId)}"`);
+    }
+    if (!bundle.streams.some((stream) => stream.id === turn.streamId)) {
+      findings.push(`turn "${roleId}" references unknown streamId "${String(turn.streamId)}"`);
+    }
+  }
+
+  // Single-plane provenance: every turn shares ONE (commit, seedDigest), matching sharedWorld.plane.
+  const plane = sw.plane;
+  if (!isRecord(plane) || typeof plane.seedDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.seedDigest)) {
+    findings.push("sharedWorld.plane.seedDigest must be a sha256-16 value");
+  }
+  if (isRecord(plane) && Array.isArray(plane.envNames)) {
+    for (const name of plane.envNames) {
+      if (typeof name !== "string" || !SUBJECT_ENV_NAME_PATTERN.test(name)) {
+        // Does NOT echo the entry: a malformed entry may BE a value.
+        findings.push("sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)");
+      }
+    }
+  }
+  const planeKeys = new Set(turns.map((turn) => `${String(turn.commit ?? "")}::${String(turn.seedDigest ?? "")}`));
+  if (planeKeys.size > 1) {
+    findings.push("turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane");
+  }
+  if (isRecord(plane)) {
+    for (const turn of turns) {
+      if (String(turn.seedDigest ?? "") !== String(plane.seedDigest ?? "")
+        || String(turn.commit ?? "") !== String(plane.commit ?? "")) {
+        const roleId = typeof turn.roleId === "string" ? turn.roleId : "(unnamed)";
+        findings.push(`turn "${roleId}" plane provenance diverges from sharedWorld.plane`);
+        break;
+      }
+    }
+  }
+
+  // The delta-on-pass gate: a PASSED shared-world run MUST show at least one checkpoint delta —
+  // otherwise the roles never interacted through shared state and the claim is hollow.
+  if (bundle.review.verdict === "pass" && !checkpoints.some((checkpoint) => checkpoint.deltaFromPrev === true)) {
+    findings.push("review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)");
+  }
+
+  return findings;
+}
+
 /**
  * Advisory (never flips ok): a LIVE clone bundle whose subject env is provisioned while its
  * state story is undeclared probably points at state the lab does not control. Emitted at
@@ -4441,6 +4683,10 @@ function isRunBundle(value: unknown): value is RunBundle {
     // Optional and additive: pre-existing bundles (and non-cua backends) carry no subject
     // block; when present it must be well-shaped (semantics are the verify check's job).
     && (value.subject === undefined || isRunSubjectProvenance(value.subject))
+    // Optional + additive shared-world fields (#164). Tolerant SHAPE guard only — the interaction
+    // semantics (timeline well-formedness, single-plane, delta-on-pass) are the verify check's job.
+    && (value.attributionClass === undefined || value.attributionClass === "isolated" || value.attributionClass === "shared-world")
+    && (value.sharedWorld === undefined || isSharedWorldEvidence(value.sharedWorld))
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
     // its SHAPE; core never reads the adapter's `data` payload.
     && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore));
@@ -4456,6 +4702,45 @@ function isRunAdapterScore(value: unknown): value is RunAdapterScore {
     && Number.isFinite(value.score)
     && typeof value.summary === "string"
     && (value.data === undefined || isRecord(value.data));
+}
+
+/**
+ * Tolerant SHAPE guard for the shared-world evidence block (#164). Validates required fields +
+ * types but TOLERATES extra keys (additive): the strict value-shape/timeline checks are
+ * sharedWorldEvidenceFindings' job (an injected value-shaped checkpoint field must pass the shape
+ * guard so verify can catch it fail-closed, not silently bounce off isRunBundle).
+ */
+function isSharedWorldEvidence(value: unknown): value is SharedWorldEvidence {
+  if (!isRecord(value)) return false;
+  if (value.schema !== SHARED_WORLD_SCHEMA) return false;
+  if (value.topology !== "shared-world") return false;
+  if (!isNonNegativeSafeInteger(value.roleCount)) return false;
+  const plane = value.plane;
+  if (!isRecord(plane)) return false;
+  if (plane.commit !== undefined && typeof plane.commit !== "string") return false;
+  if (typeof plane.seedDigest !== "string") return false;
+  if (!(Array.isArray(plane.envNames) && plane.envNames.every((name) => typeof name === "string"))) return false;
+  if (!(Array.isArray(value.sequence) && value.sequence.every((id) => typeof id === "string"))) return false;
+  if (!(Array.isArray(value.attributionLimits) && value.attributionLimits.every((limit) => typeof limit === "string"))) return false;
+  if (!Array.isArray(value.timeline) || !value.timeline.every(isSharedWorldTimelineEntry)) return false;
+  return true;
+}
+
+function isSharedWorldTimelineEntry(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (value.kind === "checkpoint") {
+    return typeof value.name === "string"
+      && typeof value.digest === "string"
+      && typeof value.deltaFromPrev === "boolean";
+  }
+  if (value.kind === "turn") {
+    return typeof value.roleId === "string"
+      && typeof value.simId === "string"
+      && typeof value.streamId === "string"
+      && typeof value.seedDigest === "string"
+      && (value.commit === undefined || typeof value.commit === "string");
+  }
+  return false;
 }
 
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {

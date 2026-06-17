@@ -102,10 +102,12 @@ export {
   runDryRun,
   verifyRun
 } from "./run.js";
+export { SHARED_WORLD_SCHEMA } from "./run.js";
 export type {
   DoctorResult,
   ReviewSummary,
   RunAdapterScore,
+  RunAttributionClass,
   RunBundle,
   RunEvent,
   RunFeedbackCandidate,
@@ -119,6 +121,11 @@ export type {
   RunSubjectProvenance,
   RunSubjectStateStepRecord,
   RunsResult,
+  SharedWorldCheckpoint,
+  SharedWorldEvidence,
+  SharedWorldPlane,
+  SharedWorldTimelineEntry,
+  SharedWorldTurn,
   VerifyResult
 } from "./run.js";
 export {
@@ -185,6 +192,19 @@ export type {
   TerminalProductLabResult,
   TerminalProductScoringContext
 } from "./e2b-terminal-lab.js";
+export {
+  SHARED_WORLD_LAB_PROVIDER_METADATA,
+  SHARED_WORLD_LAB_SCHEMA,
+  buildSharedWorldBundle,
+  runSharedWorldLab
+} from "./shared-world-lab.js";
+export type {
+  RunSharedWorldLabOptions,
+  SharedWorldLabErrorCode,
+  SharedWorldLabHooks,
+  SharedWorldLabResult,
+  SharedWorldRoleResult
+} from "./shared-world-lab.js";
 export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
 export {
@@ -204,9 +224,12 @@ export {
   LAB_CONFIG_SCHEMA,
   MAX_CUA_LANES,
   parseLabConfig,
+  resolveSeatUrl,
   routesToComputerUse,
   routesToScriptedBrowser,
+  routesToSharedWorld,
   routesToTerminalProduct,
+  sharedWorldValidationReason,
   subjectStateInvalidReason
 } from "./lab-config.js";
 export type {
@@ -223,7 +246,9 @@ export type {
   LabSubjectServe,
   LabSubjectSource,
   LabSubjectState,
+  LabSubjectStateCheckpoint,
   LabSubjectStateStep,
+  LabSubjectTopology,
   LabTerminalStdin,
   LabTerminalTransport
 } from "./lab-config.js";

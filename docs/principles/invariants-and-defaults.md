@@ -56,7 +56,7 @@ silently drifting from one is not.
 | Default | Why it is the default | Legitimate override |
 |---|---|---|
 | Dry-run | Spend safety (invariant 3 sets the floor; dry-run keeps the floor far away) | `scenario.mode: live` |
-| Per-lane worlds | Isolation, attribution, reproducibility | Shared-world topology for scenarios that ARE about interaction between personas |
+| Per-lane worlds | Isolation, attribution, reproducibility | `subject.topology: shared-world` — N role seats take turns against ONE provisioned, mutable plane for scenarios that ARE about interaction between roles (#164). The bundle declares the weaker `attributionClass: shared-world` + a verify-enforced `attributionLimits` ceiling, so the looser per-role attribution is honest, not hidden. |
 | External key placement | Smallest blast radius: when the keyed process (e.g. a computer-use provider loop) runs outside the sandbox, its key never enters | In-sandbox placement when the keyed process runs inside (an agent harness under test); declared per actor type, with a spend budget |
 | Loopback entry URLs | Public-safety: never drive third-party sites unbidden | `policies.allowPublicTargets` for an owner-declared deployment/preview (a Vercel preview of your own app); provisioned clone subjects always serve in-sandbox on loopback |
 | Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.mimetic/` (this repo's CI adds a binary-asset commit scan; downstream projects rely on the scaffolded `.gitignore` and their own review) | `policies.redactScreenshots: true` blurs at capture for share-as-is bundles (a redact-on-export step for raw bundles is planned) |

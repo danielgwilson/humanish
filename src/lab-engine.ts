@@ -20,13 +20,18 @@ import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult
 } from "./e2b-terminal-lab.js";
+import {
+  runSharedWorldLab,
+  type SharedWorldLabHooks,
+  type SharedWorldLabResult
+} from "./shared-world-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult } from "./run.js";
-import { routesToComputerUse, routesToScriptedBrowser, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
+import { routesToComputerUse, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
 
-export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "terminal";
+export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "terminal" | "shared-world";
 
 /** Runtime overrides from CLI flags. Each wins over the config when provided. */
 export interface RunLabOptions {
@@ -49,6 +54,8 @@ export interface RunLabOptions {
   scriptedHooks?: ScriptedBrowserLabHooks;
   /** Terminal-product route hooks: SLICE 2 sandbox/runtime-auth DI seams (mirror of cuaHooks). */
   terminalHooks?: TerminalProductLabHooks;
+  /** Shared-world route hooks: ONE-sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
+  sharedWorldHooks?: SharedWorldLabHooks;
 }
 
 export type LabOutcome =
@@ -57,7 +64,8 @@ export type LabOutcome =
   | { backend: "meta"; result: OssMetaLabResult }
   | { backend: "cua"; result: CuaActorLabResult }
   | { backend: "scripted"; result: ScriptedBrowserLabResult }
-  | { backend: "terminal"; result: TerminalProductLabResult };
+  | { backend: "terminal"; result: TerminalProductLabResult }
+  | { backend: "shared-world"; result: SharedWorldLabResult };
 
 /**
  * Route a lab config to its execution backend from its declared composition.
@@ -77,6 +85,12 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // terminal-product fallback keeps library-API configs with unknown actor types routing to the
     // terminal backend's fail-closed MIMETIC_TERMINAL_LAB_ACTOR_UNSUPPORTED.
     return "terminal";
+  }
+  if (routesToSharedWorld(config)) {
+    // clone × e2b-desktop × a computer-use actor that DECLARES topology: shared-world (#164): ONE
+    // provisioned plane, N role seats taking sequential turns. Checked BEFORE the cua route — the
+    // same composition without the topology declaration stays per-lane-worlds (cua).
+    return "shared-world";
   }
   if (routesToComputerUse(config)
     || config.subject.source === "app-url"
@@ -205,6 +219,21 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks })
+      });
+      return { backend, result };
+    }
+    case "shared-world": {
+      // Spend-safe default: a shared-world lab provisions a real sandbox + plane on the live path,
+      // so it only goes live when the config (or CLI) affirmatively says so. The deterministic PoC
+      // proof is fully $0 via the sharedWorldHooks DI seam.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runSharedWorldLab({
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks })
       });
       return { backend, result };
     }

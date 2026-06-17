@@ -42,6 +42,7 @@ workflow without leaking private upstream truth into core.
 | Terminal cost ledger | `mimetic.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
 | Terminal no-spend proof | `mimetic.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
 | Adapter score | `mimetic.adapter-score.v1` (additive `RunBundle.adapterScore`; namespaced) | see Product-Adapter Extension Seam below |
+| Shared-world evidence | `mimetic.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`) | see Shared-World Evidence below |
 
 ## Lab Manifest
 
@@ -216,6 +217,14 @@ Core-owned fields:
   pre-existing and other backends' bundles. `commandDigest` is the sha256-16 of
   the exact seed command — command text and env values never appear. Verified
   by the `subject state provenance` check in `mimetic verify`.
+- `attributionClass` (optional, additive): `isolated | shared-world`. Absent ==
+  `isolated`, so every existing bundle is byte-stable. The interaction-attribution
+  honesty axis (#164) — ORTHOGONAL to the persona-sampling evidence classes. Set
+  to `shared-world` by the shared-world backend, paired with `sharedWorld`.
+- `sharedWorld` (optional, additive): the shared-world evidence block
+  (`mimetic.shared-world.v1`) — see [Shared-World Evidence](#shared-world-evidence)
+  below. Present only on shared-world runs; verified fail-closed by the
+  `shared-world evidence` check in `mimetic verify`.
 
 Adapter-owned fields:
 
@@ -281,6 +290,58 @@ review:
   gaps: []
 feedbackCandidates: []
 ```
+
+## Shared-World Evidence
+
+The shared-world topology (#164) is the DECLARED override of the per-lane-worlds
+default: N distinct actor ROLES drive ONE provisioned, mutable service plane (one
+app + one seeded DB) so their actions interact through shared state. A shared-world
+bundle adds TWO additive, optional fields to `mimetic.run-bundle.v1` (absent on
+every other bundle, so they stay byte-stable):
+
+- `attributionClass: isolated | shared-world` — a new, ORTHOGONAL honesty axis
+  ("how well did the run attribute INTERACTION?"), distinct from the persona-sampling
+  evidence classes ("how representative is the actor?"). Absent == `isolated`.
+- `sharedWorld` (`mimetic.shared-world.v1`):
+  - `topology: shared-world`
+  - `roleCount` — the DECLARED number of role seats.
+  - `plane: { commit?, seedDigest, envNames }` — the ONE shared-plane provenance.
+    `seedDigest` is the sha256-16 of the ordered seed-step command digests (the
+    seed RECIPE identity, not the runtime state); `envNames` are NAMES only.
+  - `sequence: [roleId, …]` — the role ids that actually took a turn, in declared order.
+  - `timeline: (checkpoint | turn)[]` — a harness-clocked, strictly alternating
+    timeline that starts `cp-baseline`, alternates checkpoint → turn → checkpoint,
+    and ends on a checkpoint:
+    - checkpoint = `{ kind: checkpoint, name, digest, deltaFromPrev }` — `digest` is
+      sha256-16(scrub+redact(probe stdout)); the record is DIGEST-ONLY (no
+      value-shaped field). `deltaFromPrev` is true when the observed state changed
+      across the intervening turn.
+    - turn = `{ kind: turn, roleId, simId, streamId, commit?, seedDigest }` — references
+      a real RunSimulation/RunStream; carries the plane provenance it observed
+      (identical across turns by construction — the single-plane proof).
+  - `attributionLimits: [...]` — the verify-enforced attribution ceiling. MUST contain
+    `sequential-only`, `no-concurrent-races`, and `delta-attributed-to-turn-not-action`.
+
+The `shared-world evidence` check in `mimetic verify` is fail-closed (live runs only;
+dry-run contract bundles are skipped): the timeline must be well-formed (start
+`cp-baseline`, strictly alternate, end on a checkpoint, turn order == sequence,
+sequence length == roleCount == turn count); every turn's simId/streamId must resolve;
+every checkpoint digest must be sha256-16 with NO value-shaped field; all turns must
+share ONE plane provenance; the mandatory `attributionLimits` must all be present
+(omission == overclaim == fail); and a PASSED run must show at least one checkpoint
+`deltaFromPrev` (the delta-on-pass gate — otherwise the interaction is hollow). The
+per-role no-engagement guard still applies (a role trace claiming `goal_satisfied`
+with zero actions and zero messages fails). Checkpoints persist digest-only by
+DEFAULT (the seed-step lockdown) until the #108 PII/PHI detector lands.
+
+WHAT THE BUNDLE CAN / CANNOT CLAIM: each role's own behavior at full fidelity
+(unchanged actor-trace attribution); the OBSERVED system outcome as an ordered,
+harness-clocked sequence of state-slice DIGEST changes; and the SEQUENCED-INTERACTION
+proof (role B demonstrably entered a world already containing role A's mutation — the
+checkpoint after A strictly precedes B's turn). It CANNOT claim action-granular
+causation (a delta attributes to the TURN, not a specific action), concurrency/races
+(sequential-only), sub-checkpoint granularity, or exact-state determinism (digests,
+not values). The concurrent (`getHost`) N+1 topology is the named PR2+ phase.
 
 ## Adapter
 

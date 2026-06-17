@@ -107,7 +107,7 @@ const BROWSER_SETTLE_MS = 8_000;
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
-const SUBJECT_DIR = "/home/user/subject";
+export const SUBJECT_DIR = "/home/user/subject";
 const CLONE_TIMEOUT_MS = 5 * 60_000;
 const INSTALL_TIMEOUT_MS = 10 * 60_000;
 const BUILD_TIMEOUT_MS = 10 * 60_000;
@@ -340,7 +340,7 @@ interface CuaLaneSpec {
 
 /** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
  *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
-function composeLaneInstructions(args: {
+export function composeLaneInstructions(args: {
   mission: string;
   persona?: string;
   instruction?: string;
@@ -374,7 +374,7 @@ function composeLaneInstructions(args: {
  * execution.desktop.device → the default preset. A raw resolution is an unnamed custom desktop
  * (non-mobile, DSF 1): we never claim a named preset's mobile/DPR for hand-set geometry.
  */
-function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefined): {
+export function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefined): {
   name: string;
   preset: DevicePreset;
   resolution: [number, number];
@@ -568,9 +568,9 @@ interface LaneRunOutcome {
 /** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
  *  at N>1). */
-function makeLaneWriteScreenshot(
+export function makeLaneWriteScreenshot(
   artifactRoot: string,
-  spec: CuaLaneSpec,
+  spec: { screenshotDir: string },
   screenshots: string[]
 ): (name: string, bytes: Buffer) => Promise<string> {
   const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
@@ -1514,7 +1514,7 @@ function buildSingleLaneBundle(args: {
  * appears in the script text, the process argv beyond the transient git call, the clone URL,
  * or .git/config.
  */
-async function provisionCloneSubject(
+export async function provisionCloneSubject(
   desktop: E2BDesktopSandbox,
   args: {
     repo: string;
@@ -1658,7 +1658,7 @@ async function provisionCloneSubject(
 }
 
 /** sha256 hex of the exact command string, first 16 chars (the promptDigest convention). */
-function commandDigestOf(command: string): string {
+export function commandDigestOf(command: string): string {
   return createHash("sha256").update(command).digest("hex").slice(0, 16);
 }
 
@@ -1669,7 +1669,7 @@ function commandDigestOf(command: string): string {
  * every declared step executed ok on a live run, otherwise "declared-not-run" (dry-run
  * contract bundles and failed live provisioning); no declaration → "undeclared".
  */
-function resolveSubjectState(args: {
+export function resolveSubjectState(args: {
   declared: LabSubjectState | undefined;
   dryRun: boolean;
   executed: RunSubjectStateStepRecord[];

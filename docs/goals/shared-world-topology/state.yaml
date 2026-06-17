@@ -1,0 +1,31 @@
+objective: "Shared-world (shared-service) topology PR1 (#164): the SEQUENTIAL deterministic proof-of-concept — ONE provisioned mutable plane, N role seats taking turns IN DECLARED ORDER against it, a checkpoint timeline proving role B acted on role A's mutation, declared via a verify-enforced attributionClass: shared-world + attributionLimits ceiling. Proven deterministically at $0."
+active_task: "PR1 (sequential shared-world PoC) implemented + deterministic proof green; PR open, awaiting maintainer review/merge"
+tasks:
+  - "DONE config + routing (src/lab-config.ts): subject.topology (per-lane-worlds default | shared-world); LabActorLane.entry (per-role same-origin loopback route); LabSubjectState.checkpoint[] (reuses the seed-step validation shape); routesToSharedWorld predicate (mirrors routesToComputerUse); fail-closed cross-validation (shared-world REQUIRES clone + e2b-desktop + a computer-use actor + subject.serve + a ≥2 lane roster + ≥1 checkpoint; entry same-origin re-enforced); forward-declared warnings (topology/entry/checkpoint warn inert off-route). resolveSeatUrl helper."
+  - "DONE orchestration (src/shared-world-lab.ts): runSharedWorldLab — ONE Sandbox.create (metadata.topology=shared-world, roleCount=N); provisionCloneSubject ONCE (one shared provenance); one baseline checkpoint via runDetachedStep; sequential per-role loop (fresh Chrome --user-data-dir=/tmp/seat-<id> per seat, open serve.url+entry, runSession reuse, per-role trace, then a checkpoint); fail-fast on a role HARNESS error (remaining roles blocked + pinned reason) but a MISSION failure is data; ONE teardown BY exact sandboxId in a finally — NEVER Sandbox.list; honors subject.clone.keep on failure. sharedWorldHooks DI seam (loadDesktopModule/runSession/detachedTimers/env). selectLabBackend routes routesToSharedWorld first."
+  - "DONE evidence (src/run.ts): RunBundle.attributionClass (isolated default | shared-world) + RunBundle.sharedWorld (mimetic.shared-world.v1: topology, roleCount, plane{commit?,seedDigest,envNames}, sequence[], timeline(checkpoint|turn)[], attributionLimits[]). validateSharedWorldEvidence wired into verifyRun (live-only, mirror of validateTerminalProductEvidence): timeline well-formed (cp-baseline start, strict alternation, checkpoint end, turn order == sequence, sequence==roleCount==turn-count); turn sim/stream resolve; digest sha256-16 + NO value-shaped checkpoint field; single-plane provenance; mandatory attributionLimits; delta-on-pass gate; per-role no-engagement guard reused. isSharedWorldEvidence guard into isRunBundle (additive, tolerant). Checkpoints persist digest-only (scrubKnownValues + redactText before sha256-16)."
+  - "DONE deterministic proof: tests/shared-world-lab.test.ts (12 tests — real runSharedWorldLab vs fake desktop with NO list method + fake runSession + stateful checkpoint stdout: ONE sandbox by-id, provision-once, sequential distinct profiles, interaction proof after-A-delta-before-B, fail-fast vs mission-failure, literal scrub, dry-run verify ok, and the 6-case overclaim-fails-closed matrix) + parser matrix in tests/lab-config.test.ts (routing, cross-validation rejections, entry same-origin, checkpoint validation, off-route warnings, every existing route byte-stable)."
+  - "DONE docs + fixture (mimetic/labs/shared-world-demo.yaml, dry-run default, neutral collab app) + schemas.md (shared-world.v1 block + attributionClass) + invariants-and-defaults per-lane-worlds override column + this state.yaml + receipt."
+  - "WRITTEN-NOT-RUN: tests/shared-world-lab.live.test.ts (MIMETIC_LIVE_SHARED_WORLD=1 + keys) — deferred to a separately-authorized receipt (needs a real stateful seeded app)."
+receipts:
+  - "docs/goals/shared-world-topology/receipts/deterministic-shared-world-proof-2026-06-17.md"
+verification:
+  status: passed
+  last_command: "pnpm check && node scripts/public-surface-scan.mjs"
+  last_artifact: "tests/shared-world-lab.test.ts (12 passed); tests/lab-config.test.ts (shared-world matrix); shared-world-demo.yaml dry-run → verifyRun ok"
+evidence:
+  environment_state:
+    - "Dry-run shared-world-demo: ONE run-bundle.v1, mode dry-run, attributionClass shared-world, sharedWorld block (mimetic.shared-world.v1) with the mandatory attributionLimits and a well-formed declared timeline; verifyRun ok at $0."
+    - "Live-with-FAKE-substrate (the heart): ONE sandbox created (metadata.topology=shared-world, roleCount=2) + torn down BY its exact id (killed-set == {createdId}); provisionCloneSubject called EXACTLY once; 2 seats sequential with DISTINCT --user-data-dir (/tmp/seat-role-author before /tmp/seat-role-reviewer); checkpoint at baseline + after each turn; the cp-after-role-author checkpoint carries deltaFromPrev==true AND precedes role-reviewer's turn; verifyRun ok."
+  independent_checks:
+    - "verifyRun over the produced shared-world bundle (ok: true), exercising the new shared-world evidence check — not just file presence."
+    - "verifyRun FAILS CLOSED on each of 6 hand-mutated overclaims: missing no-concurrent-races, a value-shaped checkpoint field, divergent plane provenance, a dropped role, a hollow (no-delta) passed run, a role with goal_satisfied+zero engagement."
+    - "pnpm check exit 0 (660 passed / 9 skipped); node scripts/public-surface-scan.mjs exit 0 (367 text files, 1 binary asset)."
+  screenshots_or_traces:
+    - "Per-role actors/<streamId>.json written; the harness-clocked timeline (cp-baseline -> turn -> cp -> turn -> cp) recorded in bundle.sharedWorld.timeline."
+  usage_receipts: []
+  missing:
+    - "live shared-world rung run (separately authorized; WRITTEN + gated, deferred per Provider Spend Policy — also needs a real stateful seeded app)."
+completion_audit:
+  status: deterministic-merge-gate-met
+  note: "Every PR1 invariant maps to deterministic environment-state evidence (dry-run sharedWorld bundle + verifyRun; the fake-substrate interaction-proof test incl. one-sandbox-by-id, provision-once, sequential distinct profiles, after-A-delta-before-B, fail-fast vs mission-failure, the overclaim-fails-closed matrix incl. the hollow-no-delta gate, and the literal scrub; byte-stable existing routes). The live rung and the concurrent (getHost) topology are NOT required for PR1 completion."

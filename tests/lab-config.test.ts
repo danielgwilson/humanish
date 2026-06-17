@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
+  resolveSeatUrl,
   routesToComputerUse,
-  routesToScriptedBrowser
+  routesToScriptedBrowser,
+  routesToSharedWorld,
+  sharedWorldValidationReason
 } from "../src/lab-config.js";
 import { selectLabBackend } from "../src/lab-engine.js";
 
@@ -793,5 +796,147 @@ describe("parseLabConfig (local-app subject — issue #148)", () => {
     if (result.ok) return;
     expect(result.error.message).toContain("app-url");
     expect(result.error.message.toLowerCase()).toContain("e2b-desktop");
+  });
+});
+
+// --- Shared-world topology (#164) parser matrix ------------------------------------------------
+function validSharedWorld(overrides?: { subject?: Record<string, unknown>; actors?: unknown; execution?: Record<string, unknown> }): Record<string, unknown> {
+  return {
+    schema: LAB_CONFIG_SCHEMA,
+    id: "shared-world-proof",
+    subject: {
+      source: "clone",
+      topology: "shared-world",
+      repos: ["example-org/collab-app"],
+      env: ["DATABASE_URL"],
+      serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+      state: {
+        seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+        checkpoint: [{ name: "notes-count", command: "echo count" }]
+      },
+      ...(overrides?.subject ?? {})
+    },
+    actors: overrides?.actors ?? [
+      {
+        type: "openai-computer-use",
+        mission: "Use the shared app.",
+        lanes: [
+          { id: "role-author", persona: "author", entry: "/compose", instruction: "Create a note." },
+          { id: "role-reviewer", persona: "reviewer", entry: "/inbox", instruction: "Review the note." }
+        ]
+      }
+    ],
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000 }
+  };
+}
+
+describe("shared-world topology routing + cross-validation (#164)", () => {
+  it("parses a valid shared-world lab, routes to the shared-world backend, no warnings", () => {
+    const result = parseLabConfig(validSharedWorld());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.topology).toBe("shared-world");
+    expect(routesToSharedWorld(result.config)).toBe(true);
+    expect(selectLabBackend(result.config)).toBe("shared-world");
+    expect(sharedWorldValidationReason(result.config)).toBeNull();
+    expect(result.warnings).toEqual([]);
+    // The roster IS the role roster (no parallel roles[] field).
+    expect(result.config.actors[0]?.lanes?.map((lane) => lane.id)).toEqual(["role-author", "role-reviewer"]);
+    expect(result.config.subject.state?.checkpoint?.map((probe) => probe.name)).toEqual(["notes-count"]);
+  });
+
+  it("the SAME composition WITHOUT topology stays per-lane-worlds (cua), proving topology is the switch", () => {
+    const sw = validSharedWorld();
+    const subject = { ...(sw.subject as Record<string, unknown>) };
+    delete subject.topology;
+    const result = parseLabConfig({ ...sw, subject });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(routesToSharedWorld(result.config)).toBe(false);
+    expect(routesToComputerUse(result.config)).toBe(true);
+    expect(selectLabBackend(result.config)).toBe("cua");
+    // entry is now inert (per-lane-worlds has no per-role entry) and warns.
+    expect(result.warnings.join("\n")).toContain("actors[0].lanes[].entry");
+    expect(result.warnings.join("\n")).toContain("subject.state.checkpoint");
+  });
+
+  it.each([
+    ["missing serve", validSharedWorld({ subject: { serve: undefined } })],
+    ["roster < 2 roles", validSharedWorld({ actors: [{ type: "openai-computer-use", lanes: [{ id: "only-role", entry: "/x" }] }] })],
+    ["wrong source (this-repo)", { schema: LAB_CONFIG_SCHEMA, id: "sw-src", subject: { source: "this-repo", topology: "shared-world" }, actors: [{ type: "synthetic-persona" }] }],
+    ["wrong target (no e2b-desktop)", validSharedWorld({ execution: { timeoutMs: 60000 } })],
+    ["missing checkpoint", validSharedWorld({ subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } } })],
+    ["entry not same-origin with serve.url", validSharedWorld({ actors: [{ type: "openai-computer-use", lanes: [{ id: "role-a", entry: "http://evil.example.com/x" }, { id: "role-b", entry: "/inbox" }] }] })]
+  ])("fails closed on shared-world mis-config: %s", (_label, input) => {
+    const result = parseLabConfig(input as Record<string, unknown>);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+  });
+
+  it("each fail-closed reason names its requirement precisely", () => {
+    const noServe = parseLabConfig(validSharedWorld({ subject: { serve: undefined } }));
+    expect(noServe.ok).toBe(false);
+    if (!noServe.ok) expect(noServe.error.message).toContain("subject.serve");
+    const oneRole = parseLabConfig(validSharedWorld({ actors: [{ type: "openai-computer-use", lanes: [{ id: "only", entry: "/x" }] }] }));
+    expect(oneRole.ok).toBe(false);
+    if (!oneRole.ok) expect(oneRole.error.message).toContain("at least 2 roles");
+    const noCheckpoint = parseLabConfig(validSharedWorld({ subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } } }));
+    expect(noCheckpoint.ok).toBe(false);
+    if (!noCheckpoint.ok) expect(noCheckpoint.error.message).toContain("subject.state.checkpoint");
+    const badEntry = parseLabConfig(validSharedWorld({ actors: [{ type: "openai-computer-use", lanes: [{ id: "role-a", entry: "http://evil.example.com/x" }, { id: "role-b", entry: "/inbox" }] }] }));
+    expect(badEntry.ok).toBe(false);
+    if (!badEntry.ok) expect(badEntry.error.message).toContain("same-origin");
+  });
+
+  it("entry validation accepts same-origin paths + absolute loopback URLs, rejects cross-origin/non-loopback", () => {
+    expect(resolveSeatUrl("http://127.0.0.1:3000/", "/compose")).toBe("http://127.0.0.1:3000/compose");
+    expect(resolveSeatUrl("http://127.0.0.1:3000/", "http://127.0.0.1:3000/inbox")).toBe("http://127.0.0.1:3000/inbox");
+    expect(resolveSeatUrl("http://127.0.0.1:3000/", undefined)).toBe("http://127.0.0.1:3000/");
+    expect(resolveSeatUrl("http://127.0.0.1:3000/", "http://127.0.0.1:4000/x")).toBeNull(); // different port → cross-origin
+    expect(resolveSeatUrl("http://127.0.0.1:3000/", "http://example.com/x")).toBeNull(); // cross-origin
+  });
+
+  it("rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)", () => {
+    const noCommand = parseLabConfig(validSharedWorld({ subject: { state: { checkpoint: [{ name: "c1" }] } } }));
+    expect(noCommand.ok).toBe(false);
+    const dupName = parseLabConfig(validSharedWorld({ subject: { state: { checkpoint: [{ name: "c1", command: "echo a" }, { name: "c1", command: "echo b" }] } } }));
+    expect(dupName.ok).toBe(false);
+    if (!dupName.ok) expect(dupName.error.message).toContain("unique");
+    const badRedact = parseLabConfig(validSharedWorld({ subject: { state: { checkpoint: [{ name: "c1", command: "echo a", redact: "not-a-list" }] } } }));
+    expect(badRedact.ok).toBe(false);
+  });
+
+  it("topology + checkpoint warn as inert off the shared-world route, and the other routes are byte-stable", () => {
+    // topology on an app-url cua route warns inert.
+    const appUrl = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "sw-warn",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", topology: "per-lane-worlds" },
+      actors: [{ type: "openai-computer-use", mission: "x" }],
+      execution: { target: "e2b-desktop" }
+    });
+    expect(appUrl.ok).toBe(true);
+    if (appUrl.ok) {
+      expect(appUrl.warnings.join("\n")).toContain("subject.topology");
+      expect(routesToSharedWorld(appUrl.config)).toBe(false);
+      expect(selectLabBackend(appUrl.config)).toBe("cua");
+    }
+
+    // Every existing route still parses + routes unchanged (regression guard).
+    const synthetic = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "s", subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] });
+    const smoke = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "mimetic-setup" }] });
+    const meta = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "m", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "codex-app-server" }], execution: { target: "e2b-desktop" } });
+    const scripted = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "sc", subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" }, actors: [{ type: "scripted-browser" }], scenario: { ref: "scripted-first-run" } });
+    const terminal = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "t", subject: { source: "terminal-product", product: { name: "widgetsmith", publicSurfaces: ["https://example.com/x"] } }, actors: [{ type: "codex-exec" }] });
+    for (const result of [synthetic, smoke, meta, scripted, terminal]) {
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(routesToSharedWorld(result.config)).toBe(false);
+    }
+    if (synthetic.ok) expect(selectLabBackend(synthetic.config)).toBe("synthetic");
+    if (smoke.ok) expect(selectLabBackend(smoke.config)).toBe("smoke");
+    if (meta.ok) expect(selectLabBackend(meta.config)).toBe("meta");
+    if (scripted.ok) expect(selectLabBackend(scripted.config)).toBe("scripted");
+    if (terminal.ok) expect(selectLabBackend(terminal.config)).toBe("terminal");
   });
 });

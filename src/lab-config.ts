@@ -61,6 +61,16 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  */
 export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product";
 
+/**
+ * How a subject's WORLD relates across actor lanes. `per-lane-worlds` (the default; absent ==
+ * this) is the only fan-out topology the computer-use route ships — N lanes, N independent
+ * worlds, isolation + per-lane attribution. `shared-world` (#164) is the DECLARED override: ONE
+ * provisioned, mutable service plane that N role SEATS take turns against IN DECLARED ORDER, so
+ * their actions interact through shared state. Consumed ONLY on the shared-world route (clone ×
+ * e2b-desktop × a computer-use actor); inert/warned everywhere else (invariant 6).
+ */
+export type LabSubjectTopology = "per-lane-worlds" | "shared-world";
+
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
   depth?: number;
@@ -118,6 +128,34 @@ export interface LabSubjectStateStep {
   timeoutMs?: number;
 }
 
+/**
+ * A shared-world state CHECKPOINT: an author-trusted, READ-ONLY, AGGREGATE/DIGEST probe command
+ * (counts, max-timestamps, hashes) run at baseline and after each role's turn. Reuses the
+ * seed-step validation shape (name [a-z0-9-] ≤40, unique; command required). Persisted DIGEST-ONLY
+ * (only sha256-16(scrub+redact(stdout)) ever lands — never the raw value), same lockdown as the
+ * seed surface. Consumed ONLY on the shared-world route (#164); inert/warned elsewhere.
+ */
+export interface LabSubjectStateCheckpoint {
+  /**
+   * [a-z0-9-] probe label (must start alphanumeric), <=40 chars, unique across checkpoints;
+   * names the detached step (`checkpoint-<snapshot>-<name>`) — load-bearing shape, validated at
+   * parse AND re-enforced in the engine.
+   */
+  name: string;
+  /**
+   * Author-trusted READ-ONLY shell command (same trust class as serve/seed — the "serve commands
+   * are author-trusted" corollary). Its stdout is scrubbed + pattern-redacted, then digested
+   * (sha256-16); the raw value never persists.
+   */
+  command: string;
+  /**
+   * Optional extra literal values to scrub from this probe's stdout before digesting (author-known
+   * values that may appear in the probe output, beyond the harness-provisioned env values which are
+   * always scrubbed). Names/values are NEVER persisted — only the digest is.
+   */
+  redact?: string[];
+}
+
 /** The subject's STATE story (clone subjects): seeded in-sandbox, or declared external. */
 export interface LabSubjectState {
   /** Ordered seed/migration/fixture steps. Order within a phase is declaration order. */
@@ -128,6 +166,12 @@ export interface LabSubjectState {
    * provisioned name, not a vibe). Flips state provenance to "unpinned".
    */
   external?: string[];
+  /**
+   * Shared-world state checkpoints (#164): read-only digest probes run at baseline + after each
+   * role's turn to produce the harness-clocked interaction timeline. Consumed ONLY on the
+   * shared-world route; inert/warned elsewhere (invariant 6). Shape-validated everywhere.
+   */
+  checkpoint?: LabSubjectStateCheckpoint[];
 }
 
 /**
@@ -148,6 +192,13 @@ export interface LabSubjectProduct {
 
 export interface LabSubject {
   source: LabSubjectSource;
+  /**
+   * WORLD topology across actor lanes. Absent == `per-lane-worlds` (the isolation default; every
+   * existing lab is byte-stable). `shared-world` is the declared override (#164): one mutable
+   * service plane, N role seats taking turns. Consumed ONLY on the shared-world route (clone ×
+   * e2b-desktop × a computer-use actor + a roster of ≥2 lanes); inert/warned elsewhere.
+   */
+  topology?: LabSubjectTopology;
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
   repos?: string[];
   clone?: LabSubjectClone;
@@ -207,6 +258,13 @@ export interface LabActorLane {
   device?: string;
   /** Per-lane steer appended to this lane's mission (the roster's per-lane focus). */
   instruction?: string;
+  /**
+   * Shared-world ONLY (#164): this role's per-seat loopback entry route, resolved against
+   * `subject.serve.url` and REQUIRED to be same-origin (loopback) with it — the seat opens
+   * `serve.url + entry`. Validated at parse AND re-enforced in the engine. Inert/warned on every
+   * non-shared-world route (the per-lane-worlds fan-out roster has no per-lane entry).
+   */
+  entry?: string;
 }
 
 export interface LabActor {
@@ -578,6 +636,16 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
+  // Shared-world topology cross-validation (#164). Runs whenever shared-world is DECLARED (not just
+  // when it routes), so a half-declared shared-world fails closed with a precise reason rather than
+  // silently downgrading to a per-lane-worlds cua run.
+  if (config.subject.topology === "shared-world") {
+    const reason = sharedWorldValidationReason(config);
+    if (reason) {
+      return invalid(reason);
+    }
+  }
+
   // terminal-product route: a real autonomous agent studies a CLI/product from PUBLIC surfaces
   // inside an E2B shell. Fail-closed (invariant 6 — a field that cannot act on this route is an
   // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
@@ -715,6 +783,44 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   return null;
 }
 
+/**
+ * Cross-validate a `topology: shared-world` declaration (#164). Returns the failure message, or
+ * null when valid. Enforced at parse AND re-enforced in the engine (runSharedWorldLab is exported
+ * npm surface). The shared-world override REQUIRES: clone source + e2b-desktop target + a
+ * computer-use actor + a `subject.serve` block + an `actors[0].lanes` roster of ≥2 roles (the
+ * roster IS the role roster — no parallel roles[] field), and every role `entry` must resolve
+ * same-origin (loopback) with serve.url. Fail-closed: a half-declared shared-world is rejected,
+ * never silently downgraded.
+ */
+export function sharedWorldValidationReason(config: LabConfig): string | null {
+  if (config.subject.source !== "clone") {
+    return "`subject.topology: shared-world` requires `subject.source: clone` — the shared world is ONE provisioned, served, seeded plane (#164).";
+  }
+  if (config.execution?.target !== "e2b-desktop") {
+    return "`subject.topology: shared-world` requires `execution.target: e2b-desktop` — the role seats drive hosted desktop browsers against one in-sandbox app.";
+  }
+  if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
+    return `\`subject.topology: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
+  }
+  const serve = config.subject.serve;
+  if (!serve) {
+    return "`subject.topology: shared-world` requires `subject.serve` (start + url) — the lab serves ONE shared app in-sandbox that every role drives.";
+  }
+  const lanes = config.actors[0]?.lanes;
+  if (!lanes || lanes.length < 2) {
+    return "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction).";
+  }
+  if (!config.subject.state?.checkpoint || config.subject.state.checkpoint.length === 0) {
+    return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint timeline IS the interaction-attribution mechanism; without it the run cannot prove role B acted on role A's mutation.";
+  }
+  for (const lane of lanes) {
+    if (lane.entry !== undefined && resolveSeatUrl(serve.url, lane.entry) === null) {
+      return `actors[0].lanes role "${lane.id ?? "(unnamed)"}".entry must resolve same-origin (loopback) with subject.serve.url (${serve.url}); got "${lane.entry}".`;
+    }
+  }
+  return null;
+}
+
 export function routesToComputerUse(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the cua backend exactly like an app-url subject with a computer-use actor.
@@ -724,6 +830,45 @@ export function routesToComputerUse(config: LabConfig): boolean {
   return config.subject.source === "clone"
     && config.execution?.target === "e2b-desktop"
     && actorResolvesToComputerUse(config.actors[0]?.type);
+}
+
+/**
+ * True when this config routes to the SHARED-WORLD backend (#164): a clone subject on a hosted
+ * desktop whose first actor resolves to a computer-use actor AND that declares the
+ * `shared-world` topology. Mirror of routesToComputerUse; the single source of truth shared by
+ * selectLabBackend (which checks it BEFORE the cua route) and the warning logic. The same clone ×
+ * e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
+ * (the cua route) — the topology declaration is the override switch.
+ */
+export function routesToSharedWorld(config: LabConfig): boolean {
+  return config.subject.source === "clone"
+    && config.subject.topology === "shared-world"
+    && config.execution?.target === "e2b-desktop"
+    && actorResolvesToComputerUse(config.actors[0]?.type);
+}
+
+/**
+ * Resolve a shared-world seat's entry URL from `serve.url` + a role's `entry` (relative path or
+ * same-origin absolute URL). Returns null when the combination is not a same-origin loopback URL
+ * (the load-bearing public-safety boundary — a seat only ever drives the in-sandbox app).
+ */
+export function resolveSeatUrl(serveUrl: string, entry: string | undefined): string | null {
+  if (entry === undefined || entry === "") {
+    return isLoopbackUrl(serveUrl) ? serveUrl : null;
+  }
+  let base: URL;
+  let resolved: URL;
+  try {
+    base = new URL(serveUrl);
+    resolved = new URL(entry, serveUrl);
+  } catch {
+    return null;
+  }
+  if (resolved.origin !== base.origin) {
+    return null;
+  }
+  const value = resolved.toString();
+  return isLoopbackUrl(value) ? value : null;
 }
 
 /**
@@ -760,7 +905,12 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routesToCua = routesToComputerUse(config);
   const routesToScripted = routesToScriptedBrowser(config);
   const routesToTerminal = routesToTerminalProduct(config);
+  const routesToShared = routesToSharedWorld(config);
   for (const [index, actor] of config.actors.entries()) {
+    // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
+    if (actor.lanes?.some((lane) => lane.entry !== undefined) && !routesToShared) {
+      inert.push(`actors[${index}].lanes[].entry (the per-role loopback entry is a shared-world capability; needs subject.topology: shared-world)`);
+    }
     if (routesToCua || routesToTerminal) {
       // The cua + terminal routes consume mission/persona/model + laneFocus.instruction (they
       // compose the agent prompt + bundle provenance); laneFocus.id/label remain inert. On the
@@ -787,6 +937,14 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.subject.serve && !routesToCua) inert.push("subject.serve");
   if (config.subject.env && !routesToCua) inert.push("subject.env");
   if (config.subject.state && !routesToCua) inert.push("subject.state");
+  // topology + checkpoint act ONLY on the shared-world route (#164); a set-but-unconsumed value
+  // (incl. an explicit per-lane-worlds, which the cua route already is by mechanism) warns inert.
+  if (config.subject.topology !== undefined && !routesToShared) {
+    inert.push("subject.topology (drives behavior only on the shared-world route; needs subject.topology: shared-world + clone × e2b-desktop × a computer-use actor + a ≥2 lane roster)");
+  }
+  if (config.subject.state?.checkpoint !== undefined && !routesToShared) {
+    inert.push("subject.state.checkpoint (the shared-world state-checkpoint probe; needs subject.topology: shared-world)");
+  }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
   // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
   // (a hard parse error above), so it can never reach this warning list there.
@@ -834,6 +992,17 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product.");
   }
   const subject: LabSubject = { source };
+
+  // topology is enum-validated everywhere; its SEMANTICS (shared-world requires clone × e2b-desktop
+  // × a ≥2 roster) are enforced in the shared-world cross-validation below, and a set-but-unconsumed
+  // topology warns as inert off the shared-world route (invariant 6).
+  if (raw.topology !== undefined) {
+    const topology = str(raw.topology);
+    if (topology !== "per-lane-worlds" && topology !== "shared-world") {
+      return invalid("`subject.topology` must be per-lane-worlds (the default) or shared-world.");
+    }
+    subject.topology = topology;
+  }
 
   // `product` is terminal-product-only; reject it elsewhere (invariant 6: a field that cannot act
   // on this route is an honest parse error, not silently dropped).
@@ -1048,6 +1217,18 @@ function parseState(raw: unknown): { ok: true; value: LabSubjectState | undefine
     }
     state.external = external;
   }
+  if (raw.checkpoint !== undefined) {
+    if (!Array.isArray(raw.checkpoint) || !raw.checkpoint.every(isRecord)) {
+      return invalid("`subject.state.checkpoint` must be an array of probe objects ({ name, command, redact? }).");
+    }
+    state.checkpoint = raw.checkpoint.map((probe) => ({
+      name: typeof probe.name === "string" ? probe.name.trim() : "",
+      command: typeof probe.command === "string" ? probe.command.trim() : "",
+      // Preserve the redact list verbatim (literal secret values may contain commas, so do NOT
+      // run it through the comma-splitting strList); subjectStateInvalidReason validates the shape.
+      ...(probe.redact === undefined ? {} : { redact: probe.redact as string[] })
+    }));
+  }
   return { ok: true, value: state };
 }
 
@@ -1066,8 +1247,11 @@ const STATE_STEP_WHENS: readonly LabStateStepWhen[] = ["before-build", "before-s
 export function subjectStateInvalidReason(state: LabSubjectState, env: readonly string[] | undefined): string | null {
   const seed = state.seed;
   const external = state.external;
-  if ((seed === undefined || seed.length === 0) && (external === undefined || external.length === 0)) {
-    return "`subject.state` must declare seed steps and/or external env names (an empty state block would be inert).";
+  const checkpoint = state.checkpoint;
+  if ((seed === undefined || seed.length === 0)
+    && (external === undefined || external.length === 0)
+    && (checkpoint === undefined || checkpoint.length === 0)) {
+    return "`subject.state` must declare seed steps, external env names, and/or checkpoints (an empty state block would be inert).";
   }
   if (seed !== undefined) {
     if (!Array.isArray(seed) || seed.length === 0) {
@@ -1104,6 +1288,30 @@ export function subjectStateInvalidReason(state: LabSubjectState, env: readonly 
       }
       if (!env?.includes(name)) {
         return "subject.state.external names must also be declared in subject.env (the declaration must name a provisioned channel).";
+      }
+    }
+  }
+  if (checkpoint !== undefined) {
+    if (!Array.isArray(checkpoint) || checkpoint.length === 0) {
+      return "`subject.state.checkpoint` must be a non-empty array of probes when set.";
+    }
+    const names = new Set<string>();
+    for (const [index, probe] of checkpoint.entries()) {
+      const name = typeof probe?.name === "string" ? probe.name : "";
+      if (!STATE_STEP_NAME_PATTERN.test(name) || name.length > STATE_STEP_NAME_MAX_CHARS) {
+        return `subject.state.checkpoint[${index}].name must match ${STATE_STEP_NAME_PATTERN} and be at most ${STATE_STEP_NAME_MAX_CHARS} chars (it names in-sandbox file paths); got "${name}".`;
+      }
+      if (names.has(name)) {
+        return `subject.state.checkpoint names must be unique (duplicate "${name}").`;
+      }
+      names.add(name);
+      if (typeof probe.command !== "string" || probe.command.trim().length === 0) {
+        return `subject.state.checkpoint[${index}].command is required (the read-only digest probe command).`;
+      }
+      if (probe.redact !== undefined) {
+        if (!Array.isArray(probe.redact) || !probe.redact.every((value) => typeof value === "string" && value.length > 0)) {
+          return `subject.state.checkpoint[${index}].redact must be a list of non-empty literal strings when set.`;
+        }
       }
     }
   }
@@ -1219,6 +1427,10 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     if (persona !== undefined) lane.persona = persona;
     const instruction = str(entry.instruction);
     if (instruction !== undefined) lane.instruction = instruction;
+    // `entry` is shape-captured here; the same-origin-with-serve.url check needs serve context, so
+    // it runs in sharedWorldValidationReason (where the route + serve.url are known).
+    const laneEntry = str(entry.entry);
+    if (laneEntry !== undefined) lane.entry = laneEntry;
     lanes.push(lane);
   }
   return { ok: true, value: lanes };
