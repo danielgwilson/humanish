@@ -112,6 +112,15 @@ export interface SharedWorldLabHooks {
   renderObserverFn?: typeof renderObserver;
   /** Injected clock/sleep for the detached-step polling (tests only). */
   detachedTimers?: DetachedTimers;
+  /**
+   * CONCURRENT route only (#164 phase 2): the harness clock used to MEASURE each actor's laneWindow
+   * [start,end] (default Date.now). The deterministic heart test does NOT override this — overlap is
+   * produced by a rendezvous latch in the fake runSession + measured by the REAL clock (FIX-1), so
+   * the windows are real, not injected. (A test may override only for non-overlap assertions.)
+   */
+  now?: () => number;
+  /** CONCURRENT route only: the background stateSeries prober cadence (ms). Default 1000. */
+  proberCadenceMs?: number;
 }
 
 export interface RunSharedWorldLabOptions {
@@ -248,7 +257,7 @@ async function launchSeatBrowser(
 }
 
 /** Combine a snapshot's per-probe digests into ONE sha256-16 (digest-only; no raw value). */
-function combineCheckpointDigest(parts: string[]): string {
+export function combineCheckpointDigest(parts: string[]): string {
   return commandDigestOf(parts.join("\n"));
 }
 
@@ -259,7 +268,7 @@ function combineCheckpointDigest(parts: string[]): string {
  * persists — never the raw value (the seed-step lockdown). Unique step names per snapshot prevent
  * stale-status reuse across snapshots.
  */
-async function runCheckpointSnapshot(args: {
+export async function runCheckpointSnapshot(args: {
   desktop: E2BDesktopSandbox;
   snapshotIndex: number;
   name: string;
@@ -292,13 +301,13 @@ async function runCheckpointSnapshot(args: {
 }
 
 /** The DECLARED (dry-run) checkpoint snapshot: digest the probe RECIPE (command digests), no run. */
-function declaredCheckpointSnapshot(name: string, checkpoints: LabSubjectStateCheckpoint[]): SharedWorldCheckpoint {
+export function declaredCheckpointSnapshot(name: string, checkpoints: LabSubjectStateCheckpoint[]): SharedWorldCheckpoint {
   const parts = checkpoints.map((probe) => `${probe.name}=${commandDigestOf(probe.command)}`);
   return { kind: "checkpoint", name, digest: combineCheckpointDigest(parts), deltaFromPrev: false };
 }
 
 /** sha256-16 over the ordered seed-step command digests — the seeded-state RECIPE identity. */
-function seedRecipeDigest(config: LabConfig): string {
+export function seedRecipeDigest(config: LabConfig): string {
   const seed = config.subject.state?.seed ?? [];
   return commandDigestOf(seed.map((step) => `${step.name}:${commandDigestOf(step.command)}`).join("\n"));
 }
@@ -965,6 +974,7 @@ export function buildSharedWorldBundle(args: {
   const sharedWorld: SharedWorldEvidence = {
     schema: SHARED_WORLD_SCHEMA,
     topology: "shared-world",
+    topologyMode: "sequential",
     roleCount: roleSpecs.length,
     plane: {
       ...(planeCommit === undefined ? {} : { commit: planeCommit }),

@@ -1,0 +1,461 @@
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { ACTOR_TRACE_SCHEMA, type ActorCompletionReason, type ActorStatus, type ActorTrace } from "../src/actor-contract.js";
+import type { CuaActorSessionOptions } from "../src/computer-use-actor.js";
+import type { CuaLoopResult } from "../src/computer-use.js";
+import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { runLab, selectLabBackend } from "../src/lab-engine.js";
+import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
+import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
+import { verifyRun } from "../src/run.js";
+
+// ---------------------------------------------------------------------------
+// Fakes for the N+1 substrate. The module records create/kill BY id and exposes
+// NO `list` (enumerate-and-kill is impossible by construction). Each fake sandbox
+// has getHost(port) → a tokenless URL keyed on its id. The command handler drives
+// the detached primitive (provisioning + checkpoints) and returns STATEFUL
+// checkpoint output (a shared worldVersion the fake runSession bumps per turn).
+//
+// FIX-1: overlap is PRODUCED, not injected. The fake runSession blocks on a
+// RENDEZVOUS LATCH until all N actors have entered, so N lane fns are genuinely
+// in-flight while the REAL orchestrator clock (Date.now — NOT overridden) measures
+// the wrapped [start,end] laneWindows. The windows therefore overlap for real.
+// ---------------------------------------------------------------------------
+
+interface FakeSandbox extends E2BDesktopSandbox {
+  calls: Array<[string, ...unknown[]]>;
+}
+
+function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdout?: string } | undefined): FakeSandbox {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const sandbox = {
+    calls,
+    sandboxId: id,
+    commands: {
+      run: async (command: string) => {
+        calls.push(["commands.run", command]);
+        return commandHandler(command) ?? { exitCode: 0, stdout: "" };
+      }
+    },
+    files: {
+      write: async (filePath: string, data: string | ArrayBuffer) => {
+        calls.push(["files.write", filePath, String(data)]);
+        return undefined;
+      }
+    },
+    launch: async (application: string, uri?: string) => { calls.push(["launch", application, uri]); },
+    open: async (fileOrUrl: string) => { calls.push(["open", fileOrUrl]); },
+    getHost: (port: number) => `https://${port}-${id}.e2b.app`,
+    async screenshot() { return new Uint8Array([1, 2, 3, 4]); },
+    async wait(ms: number) { calls.push(["wait", ms]); },
+    stream: {
+      getAuthKey: () => "fake-auth-key",
+      getUrl: () => "https://stream.invalid/fake-auth-key",
+      start: async () => undefined
+    }
+  };
+  return sandbox as unknown as FakeSandbox;
+}
+
+function makeFakeModule(commandHandler: (command: string) => { stdout?: string } | undefined): {
+  module: E2BDesktopModule;
+  created: E2BDesktopCreateOptions[];
+  killed: string[];
+  sandboxes: FakeSandbox[];
+} {
+  const created: E2BDesktopCreateOptions[] = [];
+  const killed: string[] = [];
+  const sandboxes: FakeSandbox[] = [];
+  let n = 0;
+  const module: E2BDesktopModule = {
+    Sandbox: {
+      create: async (createOptions) => {
+        n += 1;
+        const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, commandHandler);
+        created.push(createOptions);
+        sandboxes.push(sandbox);
+        return sandbox;
+      },
+      kill: async (sandboxId) => { killed.push(sandboxId); return undefined; }
+      // NOTE: NO `list` method.
+    }
+  };
+  return { module, created, killed, sandboxes };
+}
+
+function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string } | undefined {
+  return (command: string): { stdout?: string } | undefined => {
+    if (command.includes("/status")) return { stdout: "0" };
+    if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" };
+    if (command.includes("curl")) return { stdout: "READY" };
+    if (command.includes("checkpoint-") && command.includes("tail -c")) return { stdout: `world=${state.worldVersion}\n` };
+    if (command.includes("tail -c")) return { stdout: "" };
+    return undefined;
+  };
+}
+
+/** A rendezvous latch: the returned fn blocks until `count` callers have entered, then releases
+ *  them all — so `count` lane fns are genuinely in-flight at once (real overlap). */
+function makeRendezvous(count: number): () => Promise<void> {
+  let arrived = 0;
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  return async () => {
+    arrived += 1;
+    if (arrived >= count) release();
+    await gate;
+  };
+}
+
+function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promptDigest: string }; status: ActorStatus; completionReason: ActorCompletionReason; actions: number; messages: number }): ActorTrace {
+  return {
+    schema: ACTOR_TRACE_SCHEMA,
+    provider: "fake-cua",
+    protocol: "cua-loop",
+    lane: "computer-use",
+    persona: args.persona,
+    redaction: { status: "passed", screenshots: "n/a", notes: "fake trace (no frames captured)" },
+    startedAt: "2026-01-01T00:00:00.000Z",
+    completedAt: "2026-01-01T00:00:01.000Z",
+    durationMs: 1000,
+    status: args.status,
+    completionReason: args.completionReason,
+    reason: `${args.status} (${args.completionReason})`,
+    ids: {},
+    counts: { actions: args.actions, messages: args.messages, screenshots: 0 },
+    items: [
+      ...(args.messages > 0 ? [{ id: "i-msg", kind: "message" as const, lifecycle: "completed" as const, title: "message", text: "did my task" }] : []),
+      ...(args.actions > 0 ? [{ id: "i-act", kind: "ui_action" as const, lifecycle: "completed" as const, title: "click" }] : [])
+    ],
+    capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: true, byoModel: false, preGrantableApprovals: false, inProcessTools: false, license: "proprietary" }
+  };
+}
+
+/** A runSession fake: rendezvous (real overlap) → bump the shared world → engaged passed trace,
+ *  unless a per-call override (harness throw / mission failure) applies. */
+function makeRunSession(
+  state: { worldVersion: number },
+  rendezvous: () => Promise<void>,
+  override?: (index: number) => { throwMessage?: string; status?: ActorStatus; completionReason?: ActorCompletionReason } | undefined
+): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
+  let index = -1;
+  return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
+    index += 1;
+    const myIndex = index;
+    await rendezvous(); // all actors are in-flight here → their windows overlap on the real clock
+    // All lanes were released together; hold them concurrently for a measurable interval so the
+    // REAL orchestrator clock records overlapping [start,end] windows (Date.now is ms-resolution —
+    // without this the instant fake collapses every window to a zero-width point). The overlap is
+    // genuinely produced (all lanes are in this delay at once), not injected.
+    await new Promise<void>((resolve) => { setTimeout(resolve, 15); });
+    state.worldVersion += 1; // each actor's turn mutates the shared world
+    const o = override?.(myIndex);
+    if (o?.throwMessage) {
+      throw new Error(o.throwMessage);
+    }
+    const status = o?.status ?? "passed";
+    const completionReason = o?.completionReason ?? "goal_satisfied";
+    const trace = makeTrace({ persona: options.persona, status, completionReason, actions: 1, messages: 1 });
+    return { status, completionReason, reason: trace.reason, trace };
+  };
+}
+
+function concurrentConfig(roleCount = 3, concurrency = 3): LabConfig {
+  const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
+    id: `persona-${String(i + 1).padStart(2, "0")}`,
+    persona: `persona-${i + 1}`,
+    entry: `/seat-${i + 1}`
+  }));
+  const parsed = parseLabConfig({
+    schema: LAB_CONFIG_SCHEMA,
+    id: "concurrent-shared-world-proof",
+    title: "Concurrent shared-world proof",
+    subject: {
+      source: "clone",
+      topology: "shared-world",
+      exposure: "synthetic",
+      repos: ["example-org/collab-app"],
+      env: ["DATABASE_URL"],
+      serve: { install: "pnpm install", start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+      state: {
+        seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+        checkpoint: [
+          { name: "notes-count", command: "psql query notes" },
+          { name: "reviews-count", command: "psql query reviews" }
+        ]
+      }
+    },
+    actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
+    execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency },
+    scenario: { mode: "live" }
+  });
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.config;
+}
+
+function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<void>, override?: Parameters<typeof makeRunSession>[2]): {
+  hooks: SharedWorldLabHooks;
+  created: E2BDesktopCreateOptions[];
+  killed: string[];
+  sandboxes: FakeSandbox[];
+} {
+  const { module, created, killed, sandboxes } = makeFakeModule(makeCommandHandler(state));
+  const hooks: SharedWorldLabHooks = {
+    env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+    loadDesktopModule: async () => module,
+    runSession: makeRunSession(state, rendezvous, override),
+    detachedTimers: { now: () => 0, sleep: async () => {} },
+    proberCadenceMs: 100_000 // large: no periodic snapshot fires in the fast test (baseline+final carry the gate)
+  };
+  return { hooks, created, killed, sandboxes };
+}
+
+let cwd: string;
+beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "mimetic-concurrent-sw-")); });
+afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous latch, $0)", () => {
+  it("dry-run produces a verified contract bundle (concurrent shape + attributionClass + limits), no sandboxes", async () => {
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(), dryRun: true });
+    expect(result.ok).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.subjectSandbox).toBeUndefined();
+    expect(result.topologyMode).toBe("concurrent");
+    expect(result.roleCount).toBe(3);
+    expect(result.concurrency).toBe(3);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.attributionClass).toBe("shared-world");
+    expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
+    expect(bundle.sharedWorld.timeline).toBeUndefined();
+    expect(bundle.sharedWorld.attributionLimits).toEqual(
+      expect.arrayContaining(["concurrent", "best-effort-causal-attribution", "non-deterministic-shared-state", "window-and-snapshot-granularity", "contention-observed-not-proven-safe", "state-change-not-isolated-to-actors"])
+    );
+    expect(bundle.sharedWorld.attributionLimits).not.toContain("sequential-only");
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("GOOD run: ONE subject + N actors all torn down BY id (killed==created, N+1), same getHost URL, REAL overlap, state delta, verify ok", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, created, killed, sandboxes } = baseHooks(state, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(result.error).toBeUndefined();
+
+    // ONE subject sandbox + 3 actor sandboxes = 4 created; ALL torn down BY exact id (no list).
+    expect(created).toHaveLength(4);
+    expect(sandboxes).toHaveLength(4);
+    expect(created[0]?.metadata?.role).toBe("subject");
+    expect(created[0]?.metadata?.topologyMode).toBe("concurrent");
+    const createdIds = sandboxes.map((s) => s.sandboxId).sort();
+    expect([...killed].sort()).toEqual(createdIds); // killed-set == created-set (N+1)
+    expect(result.subjectSandbox).toEqual({ sandboxId: "fake-sandbox-001", killed: true });
+
+    // Subject creds entered ONLY the subject sandbox (FIX-10): actor creates carry no envs.
+    expect(created[0]?.envs).toEqual({ DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" });
+    for (const createOpts of created.slice(1)) {
+      expect(createOpts.envs).toBeUndefined();
+    }
+
+    // provisionCloneSubject ran EXACTLY once, on the SUBJECT sandbox only (one git clone written).
+    const cloneWrites = sandboxes.flatMap((s) => s.calls).filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    expect(cloneWrites).toHaveLength(1);
+
+    // Every actor ACTUALLY opened the SAME harness-minted getHost URL (FIX-2): one shared plane.
+    // (The raw URL appears only in the in-memory fake's recorded calls — never in the bundle.)
+    const getHostUrl = `https://3000-fake-sandbox-001.e2b.app`;
+    const actorSandboxes = sandboxes.slice(1);
+    expect(actorSandboxes).toHaveLength(3);
+    for (const actor of actorSandboxes) {
+      const opened = actor.calls.find(([name]) => name === "open");
+      expect(opened, "each actor opens a seat URL").toBeTruthy();
+      expect(new URL(String(opened![1])).origin).toBe(new URL(getHostUrl).origin);
+    }
+    // The published bundle records the host as a DIGEST (public-safe), never the raw e2b URL; the
+    // raw tokenless URL is surfaced only on the ephemeral result.
+    expect(result.host).toBe(getHostUrl);
+    const runText = await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8");
+    expect(runText).not.toContain("e2b.app");
+
+    const bundle = JSON.parse(runText);
+    expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
+    expect(bundle.sharedWorld.plane.hostDigest).toMatch(/^[0-9a-f]{16}$/);
+    expect(bundle.sharedWorld.plane.exposure).toBe("synthetic");
+
+    // PROVEN CONCURRENCY (FIX-1): the laneWindows the REAL clock measured overlap (≥2 in flight).
+    const windows = bundle.sharedWorld.laneWindows as Array<{ startedAt: number; endedAt: number; routeHostDigest: string }>;
+    expect(windows).toHaveLength(3);
+    const overlapping = windows.some((a, i) => windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt));
+    expect(overlapping).toBe(true);
+    expect(result.overlapProven).toBe(true);
+    // Every actor drove EXACTLY the harness-minted host (FIX-2): routeHostDigest == plane.hostDigest.
+    for (const w of windows) {
+      expect(w.routeHostDigest).toBe(bundle.sharedWorld.plane.hostDigest);
+    }
+
+    // A stateSeries delta occurred under load (the world changed; FIX-6).
+    const series = bundle.sharedWorld.stateSeries as Array<{ timestamp: number; digest: string }>;
+    expect(series.length).toBeGreaterThanOrEqual(2);
+    expect(series.some((s, i) => i > 0 && s.digest !== series[i - 1]!.digest)).toBe(true);
+
+    // Per-persona outcomes recorded (the "M of N" headline).
+    expect(bundle.sharedWorld.outcomes).toHaveLength(3);
+    expect((bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).every((o) => o.ok)).toBe(true);
+
+    // verifyRun ok on the GOOD concurrent bundle (incl. the concurrency-on-pass gate).
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+
+    // Per-actor traces written.
+    const actorsDir = await readdir(path.join(cwd, ".mimetic", "runs", result.runId, "actors"));
+    expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json", "stream-003.json"]);
+  });
+
+  it("routes through runLab(sharedWorldHooks) to the concurrent backend", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const config = concurrentConfig(3, 3);
+    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    const outcome = await runLab(config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+    expect(outcome.backend).toBe("concurrent-shared-world");
+    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.result.ok).toBe(true);
+  });
+
+  it("INDEPENDENT actors (FIX-11): one actor's harness error does NOT block the swarm or suppress overlap", async () => {
+    const state = { worldVersion: 0 };
+    // Actor index 1 throws AFTER entering the rendezvous (so all 3 windows still overlap).
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (index === 1 ? { throwMessage: "boom in actor 1" } : undefined));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+
+    // The swarm did not run fully coherently → ok false, but the other actors STILL ran (no gate).
+    expect(result.ok).toBe(false);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    // All 3 windows + outcomes intact (no pipeline-gate / fail-fast corrupting the "M of N").
+    expect(bundle.sharedWorld.laneWindows).toHaveLength(3);
+    expect(bundle.sharedWorld.outcomes).toHaveLength(3);
+    const windows = bundle.sharedWorld.laneWindows as Array<{ startedAt: number; endedAt: number }>;
+    expect(windows.some((a, i) => windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt))).toBe(true);
+    // 2 of 3 reached their goal; the failed one is recorded as data, not a swarm-blocker.
+    const okCount = (bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).filter((o) => o.ok).length;
+    expect(okCount).toBe(2);
+  });
+
+  it("literal-scrubs a provisioned value injected into a forced error before persist", async () => {
+    const state = { worldVersion: 0 };
+    const secret = "opaque-pw-7f3a9c2e-do-not-leak";
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (index === 0 ? { throwMessage: `connection failed using ${secret}` } : undefined));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    expect(result.ok).toBe(false);
+    for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
+      const text = await readFile(path.join(cwd, ".mimetic", "runs", result.runId, file), "utf8");
+      expect(text, file).not.toContain(secret);
+    }
+  });
+});
+
+describe("verifyRun fails closed on each injected concurrent overclaim", () => {
+  async function goodBundlePath(): Promise<{ runId: string; bundlePath: string }> {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+    const baseline = await verifyRun(cwd, result.runId);
+    expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
+    return { runId: result.runId, bundlePath: path.join(cwd, ".mimetic", "runs", result.runId, "run.json") };
+  }
+
+  async function mutateAndVerify(mutate: (bundle: Record<string, unknown>) => void): Promise<boolean> {
+    const { runId, bundlePath } = await goodBundlePath();
+    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
+    mutate(bundle);
+    await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+    return (await verifyRun(cwd, runId)).ok;
+  }
+
+  it("(a) a 'concurrent' bundle whose laneWindows do NOT overlap", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { laneWindows: Array<{ startedAt: number; endedAt: number }> };
+      sw.laneWindows.forEach((w, i) => { w.startedAt = i * 1000; w.endedAt = i * 1000 + 10; }); // sequential, no overlap
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(b) missing best-effort-causal-attribution", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { attributionLimits: string[] };
+      sw.attributionLimits = sw.attributionLimits.filter((l) => l !== "best-effort-causal-attribution");
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(b2) a FORBIDDEN limit present (sequential-only)", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { attributionLimits: string[] };
+      sw.attributionLimits = [...sw.attributionLimits, "sequential-only"];
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(c) a value-shaped stateSeries field (allowed-keys tripwire)", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { stateSeries: Array<Record<string, unknown>> };
+      sw.stateSeries[0]!.rawCount = "42"; // a non-allowed field; the series is digest-only
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(d) divergent plane provenance across laneWindows", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { laneWindows: Array<Record<string, unknown>> };
+      sw.laneWindows[0]!.commit = "deadbeefdeadbeef0000";
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(e) a PASSED run with no stateSeries delta", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { stateSeries: Array<{ digest: string }> };
+      const d = sw.stateSeries[0]!.digest;
+      for (const s of sw.stateSeries) s.digest = d; // flatten → no delta
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(f) a persona with goal_satisfied + zero engagement", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const streams = bundle.streams as Array<{ actor?: { completionReason?: string; counts?: Record<string, number>; items?: unknown[] } }>;
+      const stream = streams.find((s) => s.actor)!;
+      stream.actor!.completionReason = "goal_satisfied";
+      stream.actor!.counts = { actions: 0, messages: 0, screenshots: 0 };
+      stream.actor!.items = [];
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(g) the topologyMode discriminator is enforced (sequential timeline smuggled onto a concurrent bundle)", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as Record<string, unknown>;
+      sw.timeline = [{ kind: "checkpoint", name: "cp-baseline", digest: "abc123def4567890", deltaFromPrev: false }];
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("(h) an actor that drove a host OTHER than the harness-minted plane (FIX-2 / invariant 2)", async () => {
+    const ok = await mutateAndVerify((bundle) => {
+      const sw = bundle.sharedWorld as { laneWindows: Array<{ routeHostDigest: string }> };
+      sw.laneWindows[0]!.routeHostDigest = "ffffffffffffffff"; // a different host than plane.hostDigest
+    });
+    expect(ok).toBe(false);
+  });
+});

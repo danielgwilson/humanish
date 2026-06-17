@@ -407,6 +407,70 @@ export interface SharedWorldPlane {
   seedDigest: string;
   /** Declared env NAMES provisioned for the shared plane (values never surface). */
   envNames: string[];
+  /**
+   * CONCURRENT route only (#164 phase 2): sha256-16 of the harness-minted `getHost` URL's ORIGIN
+   * (the first-class provisioned-subject target every actor drove — invariant 2). A DIGEST, not the
+   * raw URL: a getHost URL embeds the (live) sandbox id and matches the publish-safety e2b-URL
+   * redaction, so — like the stream URL and like sandbox ids — it never lands raw in a published
+   * bundle (the raw tokenless URL is surfaced only on the ephemeral lab result). The orchestrator
+   * confirms the URL is TOKENLESS (no authKey — invariant 1) before digesting. verify proves every
+   * actor drove this host by digest equality. Absent on the sequential route.
+   */
+  hostDigest?: string;
+  /**
+   * CONCURRENT route only: the author's REQUIRED attestation that the subject behind the
+   * internet-reachable getHost URL is synthetic seeded data (FIX-3). This is author-trust + a
+   * provenance gate, NOT a no-real-data guarantee. Verify fails closed if absent on the concurrent route.
+   */
+  exposure?: "synthetic";
+}
+
+/**
+ * CONCURRENT shape (#164 phase 2): one actor's harness-clocked activity window against the ONE
+ * shared plane. OVERLAPPING windows mechanically prove ≥2 personas were active simultaneously.
+ * `laneWindows` and `stateSeries` are INDEPENDENT series — there is deliberately NO per-delta→actor
+ * field (causation under concurrency is structurally inexpressible — FIX-7).
+ */
+export interface SharedWorldLaneWindow {
+  roleId: string;
+  /** Resolves to a real RunSimulation in this bundle. */
+  simId: string;
+  /** Resolves to a real RunStream (the actor's trace) in this bundle. */
+  streamId: string;
+  /** ms on the ONE harness clock — the wrapped [start,end] the orchestrator MEASURED (FIX-1). */
+  startedAt: number;
+  endedAt: number;
+  /** The actor's terminal session verdict (per-persona). */
+  verdict: string;
+  /** sha256-16 of the ORIGIN of the getHost seat URL this actor drove. verify confirms it equals
+   *  plane.hostDigest — i.e. the actor drove EXACTLY the harness-minted host (invariant 2; FIX-2).
+   *  A digest, not the raw URL (a getHost URL is not publish-safe — see SharedWorldPlane.hostDigest). */
+  routeHostDigest: string;
+  /** The shared plane's commit this actor observed (omitted when unresolved). */
+  commit?: string;
+  /** The shared plane's seed-recipe digest this actor observed. */
+  seedDigest: string;
+}
+
+/** CONCURRENT shape: one cadence checkpoint of the shared world under load. DIGEST-ONLY — the
+ *  allowed-keys tripwire (SHARED_WORLD_STATESERIES_KEYS) permits ONLY {timestamp, digest}. */
+export interface SharedWorldStateSnapshot {
+  /** ms on the ONE harness clock. */
+  timestamp: number;
+  /** sha256-16 of the (scrubbed, redacted) combined probe output at this snapshot. */
+  digest: string;
+}
+
+/** CONCURRENT shape: one persona's OUTCOME against the contended world (the "M of N" headline). */
+export interface SharedWorldOutcome {
+  roleId: string;
+  simId: string;
+  streamId: string;
+  /** Terminal session status. */
+  status: string;
+  completionReason?: string;
+  /** Reached its goal (terminal, engaged, no harness error). */
+  ok: boolean;
 }
 
 /** A timeline checkpoint: a read-only digest probe of the shared plane at one moment. Persisted
@@ -440,25 +504,39 @@ export interface SharedWorldTurn {
 export type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
 
 /**
- * The shared-world evidence block (`mimetic.shared-world.v1`): ONE plane, the declared executed
- * `sequence` of role ids, a harness-clocked alternating `timeline` (cp-baseline → turn → cp → … →
- * cp), and the mandatory `attributionLimits` (verify FAILS CLOSED if any is absent). Additive +
- * optional on `mimetic.run-bundle.v1` — absent on every non-shared-world bundle.
+ * The shared-world evidence block (`mimetic.shared-world.v1`). TWO variants discriminated by
+ * `topologyMode` (FIX-8 — renamed off `RunBundle.mode` to avoid the dry-run|live collision):
+ *
+ * - SEQUENTIAL (`topologyMode: "sequential"`, the PoC): `sequence` + an alternating `timeline`
+ *   (cp-baseline → turn → cp → … → cp); limits `sequential-only` etc.
+ * - CONCURRENT (`topologyMode: "concurrent"`, #164 phase 2): `laneWindows` + `stateSeries` +
+ *   `outcomes`; limits `concurrent` etc. NO `timeline`.
+ *
+ * Additive + optional on `mimetic.run-bundle.v1` — absent on every non-shared-world bundle.
+ * The mandatory `attributionLimits` are verify-enforced (FAIL CLOSED on a missing required or a
+ * present forbidden limit).
  */
 export interface SharedWorldEvidence {
   schema: typeof SHARED_WORLD_SCHEMA;
   topology: "shared-world";
+  /** The substrate discriminator (FIX-8). Branched on FIRST by validateSharedWorldEvidence. */
+  topologyMode: "sequential" | "concurrent";
   /** The DECLARED number of role seats. */
   roleCount: number;
   plane: SharedWorldPlane;
-  /** The role ids that actually took a turn, in declared order. */
-  sequence: string[];
-  timeline: SharedWorldTimelineEntry[];
-  /**
-   * The pinned, verify-enforced attribution ceiling. MUST contain `sequential-only`,
-   * `no-concurrent-races`, and `delta-attributed-to-turn-not-action` — omission == overclaim == fail.
-   */
+  /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode). */
   attributionLimits: string[];
+  // --- SEQUENTIAL shape ---
+  /** The role ids that actually took a turn, in declared order. */
+  sequence?: string[];
+  timeline?: SharedWorldTimelineEntry[];
+  // --- CONCURRENT shape ---
+  /** Per-actor harness-clocked windows (overlap proves simultaneity). */
+  laneWindows?: SharedWorldLaneWindow[];
+  /** Cadence digests of the shared world under load (baseline + periodic + final). */
+  stateSeries?: SharedWorldStateSnapshot[];
+  /** Per-persona outcomes (the "M of N succeeded" headline). */
+  outcomes?: SharedWorldOutcome[];
 }
 
 export interface RunBundle {
@@ -4339,17 +4417,33 @@ function subjectStateFindings(bundle: RunBundle): string[] {
   return findings;
 }
 
-// The three disclosures a shared-world bundle MUST pin (verify fails closed if any is absent —
-// omission overclaims): sequential turns only, no concurrency/races handled, and a checkpoint
-// delta is attributed to the TURN it followed, not to a specific action (correlation, not causation).
+// SEQUENTIAL: the three disclosures a sequential shared-world bundle MUST pin (verify fails closed
+// if any is absent — omission overclaims): sequential turns only, no concurrency/races handled, and
+// a checkpoint delta is attributed to the TURN it followed, not a specific action (correlation).
 const MANDATORY_ATTRIBUTION_LIMITS = [
   "sequential-only",
   "no-concurrent-races",
   "delta-attributed-to-turn-not-action"
 ] as const;
 
+// CONCURRENT (#164 phase 2, FIX-5): the REQUIRED set (all must be present) AND a FORBIDDEN set (any
+// present == a sequential claim leaking into a concurrent bundle == overclaim). verify needs BOTH
+// checks — presence-only would let an incoherent union pass.
+const CONCURRENT_REQUIRED_LIMITS = [
+  "concurrent",
+  "best-effort-causal-attribution",
+  "non-deterministic-shared-state",
+  "window-and-snapshot-granularity",
+  "contention-observed-not-proven-safe",
+  "state-change-not-isolated-to-actors"
+] as const;
+const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
+
 // A shared-world checkpoint record persists DIGEST-ONLY: exactly these keys, nothing value-shaped.
 const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "deltaFromPrev"]);
+// CONCURRENT stateSeries record is DIGEST-ONLY too (FIX-7): permit ONLY a numeric timestamp + the
+// sha256-16 digest; any other key is a value-shaped leak / a smuggled per-delta→actor field.
+const SHARED_WORLD_STATESERIES_KEYS = new Set(["timestamp", "digest"]);
 
 /**
  * The `shared-world evidence` check (#164; invariant 4 + invariant 6): a LIVE shared-world bundle's
@@ -4369,20 +4463,60 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
       ? ["attributionClass is shared-world but the sharedWorld evidence block is missing"]
       : [];
   }
+  // FIX-8: dispatch on topologyMode FIRST; unknown/missing → fail closed.
+  const topologyMode = (sw as { topologyMode?: unknown }).topologyMode;
+  if (topologyMode === "sequential") {
+    return sequentialSharedWorldFindings(bundle, sw);
+  }
+  if (topologyMode === "concurrent") {
+    return concurrentSharedWorldFindings(bundle, sw);
+  }
+  return ['sharedWorld.topologyMode must be "sequential" or "concurrent" (missing/unknown → fail closed)'];
+}
 
+/** Common shape findings shared by both topologyMode branches. */
+function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
   const findings: string[] = [];
-  // Read the raw record so an injected value-shaped field on a checkpoint is visible (the typed
-  // view would hide unexpected keys).
-  const rawTimeline: unknown[] = Array.isArray((sw as { timeline?: unknown }).timeline)
-    ? ((sw as { timeline: unknown[] }).timeline)
-    : [];
-
   if (sw.schema !== SHARED_WORLD_SCHEMA) {
     findings.push(`sharedWorld.schema must be ${SHARED_WORLD_SCHEMA}`);
   }
   if (bundle.attributionClass !== "shared-world") {
     findings.push("a sharedWorld evidence block requires attributionClass: shared-world");
   }
+  const plane = sw.plane;
+  if (!isRecord(plane) || typeof plane.seedDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.seedDigest)) {
+    findings.push("sharedWorld.plane.seedDigest must be a sha256-16 value");
+  }
+  if (isRecord(plane) && Array.isArray(plane.envNames)) {
+    for (const name of plane.envNames) {
+      if (typeof name !== "string" || !SUBJECT_ENV_NAME_PATTERN.test(name)) {
+        // Does NOT echo the entry: a malformed entry may BE a value.
+        findings.push("sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)");
+      }
+    }
+  }
+  return findings;
+}
+
+/**
+ * SEQUENTIAL branch (the PoC #164): the alternating timeline must be well-formed, single-plane,
+ * digest-only, and carry the sequential attributionLimits. FIX-8: a sequential bundle must NOT
+ * carry concurrent fields (laneWindows).
+ */
+function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
+  const findings: string[] = sharedWorldCommonFindings(bundle, sw);
+  // Read the raw record so an injected value-shaped field on a checkpoint is visible (the typed
+  // view would hide unexpected keys).
+  const rawTimeline: unknown[] = Array.isArray((sw as { timeline?: unknown }).timeline)
+    ? ((sw as { timeline: unknown[] }).timeline)
+    : [];
+  if (!Array.isArray((sw as { timeline?: unknown }).timeline)) {
+    findings.push("a sequential shared-world bundle must carry a timeline");
+  }
+  if (Array.isArray((sw as { laneWindows?: unknown }).laneWindows)) {
+    findings.push("a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch)");
+  }
+  const sequence = Array.isArray(sw.sequence) ? sw.sequence : [];
 
   // Attribution ceiling: every mandatory limit MUST be present (omission overclaims → fail).
   const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
@@ -4396,8 +4530,8 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   const turns = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "turn");
 
   // Phantom/dropped role: sequence length == roleCount == executed-turn count.
-  if (!(sw.sequence.length === sw.roleCount && turns.length === sw.roleCount)) {
-    findings.push(`phantom/dropped role: sequence length (${sw.sequence.length}), roleCount (${sw.roleCount}), and timeline turn count (${turns.length}) must all match`);
+  if (!(sequence.length === sw.roleCount && turns.length === sw.roleCount)) {
+    findings.push(`phantom/dropped role: sequence length (${sequence.length}), roleCount (${sw.roleCount}), and timeline turn count (${turns.length}) must all match`);
   }
 
   // Timeline well-formed: starts with cp-baseline, strictly alternates checkpoint → turn →
@@ -4424,8 +4558,8 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
     }
   }
   turns.forEach((turn, index) => {
-    if (turn.roleId !== sw.sequence[index]) {
-      findings.push(`turn order does not match the declared sequence at position ${index} (turn "${String(turn.roleId)}" vs sequence "${String(sw.sequence[index])}")`);
+    if (turn.roleId !== sequence[index]) {
+      findings.push(`turn order does not match the declared sequence at position ${index} (turn "${String(turn.roleId)}" vs sequence "${String(sequence[index])}")`);
     }
   });
 
@@ -4454,18 +4588,8 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   }
 
   // Single-plane provenance: every turn shares ONE (commit, seedDigest), matching sharedWorld.plane.
+  // (plane.seedDigest + plane.envNames shape are checked in sharedWorldCommonFindings.)
   const plane = sw.plane;
-  if (!isRecord(plane) || typeof plane.seedDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.seedDigest)) {
-    findings.push("sharedWorld.plane.seedDigest must be a sha256-16 value");
-  }
-  if (isRecord(plane) && Array.isArray(plane.envNames)) {
-    for (const name of plane.envNames) {
-      if (typeof name !== "string" || !SUBJECT_ENV_NAME_PATTERN.test(name)) {
-        // Does NOT echo the entry: a malformed entry may BE a value.
-        findings.push("sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)");
-      }
-    }
-  }
   const planeKeys = new Set(turns.map((turn) => `${String(turn.commit ?? "")}::${String(turn.seedDigest ?? "")}`));
   if (planeKeys.size > 1) {
     findings.push("turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane");
@@ -4485,6 +4609,169 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   // otherwise the roles never interacted through shared state and the claim is hollow.
   if (bundle.review.verdict === "pass" && !checkpoints.some((checkpoint) => checkpoint.deltaFromPrev === true)) {
     findings.push("review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)");
+  }
+
+  return findings;
+}
+
+/**
+ * CONCURRENT branch (#164 phase 2): N personas drove ONE getHost-exposed plane at once. Verify
+ * fail-closed: the shape (laneWindows + stateSeries + outcomes, NO timeline — FIX-8); the
+ * corrected required + forbidden attributionLimits (FIX-5); the harness-minted getHost target every
+ * actor drove (FIX-2); the synthetic-subject provenance gate (FIX-3); digest-only state series with
+ * the allowed-keys tripwire (FIX-7); single-plane provenance; and the concurrency-on-pass gate
+ * (genuine overlap + a state delta AT/AFTER an overlap start — FIX-6).
+ */
+function concurrentSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
+  const findings: string[] = sharedWorldCommonFindings(bundle, sw);
+
+  // FIX-8: shape coherence — concurrent carries laneWindows/stateSeries/outcomes, NOT a timeline.
+  if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
+    findings.push("a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)");
+  }
+  const laneWindows = Array.isArray(sw.laneWindows) ? (sw.laneWindows as unknown[]).filter(isRecord) : null;
+  const stateSeries = Array.isArray(sw.stateSeries) ? (sw.stateSeries as unknown[]).filter(isRecord) : null;
+  const outcomes = Array.isArray(sw.outcomes) ? (sw.outcomes as unknown[]).filter(isRecord) : null;
+  if (laneWindows === null) findings.push("a concurrent shared-world bundle must carry laneWindows");
+  if (stateSeries === null) findings.push("a concurrent shared-world bundle must carry stateSeries");
+  if (outcomes === null) findings.push("a concurrent shared-world bundle must carry outcomes");
+  if (laneWindows === null || stateSeries === null || outcomes === null) {
+    return findings; // can't reason further without the core series
+  }
+
+  // FIX-5: required limits all present AND forbidden limits all absent.
+  const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
+  for (const required of CONCURRENT_REQUIRED_LIMITS) {
+    if (!limits.includes(required)) {
+      findings.push(`attributionLimits is missing the mandatory concurrent disclosure "${required}" — an absent ceiling overclaims`);
+    }
+  }
+  for (const forbidden of CONCURRENT_FORBIDDEN_LIMITS) {
+    if (limits.includes(forbidden)) {
+      findings.push(`attributionLimits carries the forbidden disclosure "${forbidden}" — a concurrent run cannot claim a sequential guarantee`);
+    }
+  }
+
+  // Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount (actors are
+  // INDEPENDENT — none are blocked by another, so all N produce a window + outcome).
+  if (laneWindows.length !== sw.roleCount) {
+    findings.push(`phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`);
+  }
+  if (outcomes.length !== sw.roleCount) {
+    findings.push(`phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`);
+  }
+
+  // laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present.
+  for (const window of laneWindows) {
+    const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+    const startedAt = window.startedAt;
+    const endedAt = window.endedAt;
+    if (typeof startedAt !== "number" || typeof endedAt !== "number" || !(startedAt <= endedAt)) {
+      findings.push(`laneWindow "${roleId}" must carry numeric startedAt <= endedAt on one clock`);
+    }
+    if (typeof window.routeHostDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)) {
+      findings.push(`laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the host it drove`);
+    }
+    if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
+      findings.push(`laneWindow "${roleId}" references unknown simId "${String(window.simId)}"`);
+    }
+    if (!bundle.streams.some((stream) => stream.id === window.streamId)) {
+      findings.push(`laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`);
+    }
+  }
+
+  // FIX-2: the harness-minted getHost target. plane.hostDigest present (sha256-16) + every actor's
+  // routeHostDigest equals it (every actor drove EXACTLY the harness-minted host — invariant 2).
+  const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
+  const hostDigest = typeof plane.hostDigest === "string" ? plane.hostDigest : undefined;
+  if (!hostDigest || !COMMAND_DIGEST_PATTERN.test(hostDigest)) {
+    findings.push("sharedWorld.plane.hostDigest (sha256-16 of the harness-minted getHost origin) is required on the concurrent route");
+  } else {
+    for (const window of laneWindows) {
+      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+      if (typeof window.routeHostDigest === "string" && window.routeHostDigest !== hostDigest) {
+        findings.push(`laneWindow "${roleId}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`);
+      }
+    }
+  }
+
+  // FIX-3: synthetic-subject provenance gate (a getHost URL is internet-reachable; real/external
+  // data behind it is the hazard). Author attestation + a seeded provenance check.
+  if (plane.exposure !== "synthetic") {
+    findings.push('sharedWorld.plane.exposure must be "synthetic" — the getHost route requires the author attestation that the subject is synthetic seeded data (author-trust + provenance gate, not a no-real-data guarantee)');
+  }
+  if (bundle.subject?.state.provenance !== "seeded") {
+    findings.push(`the concurrent getHost route requires subject.state.provenance == "seeded" (got "${bundle.subject?.state.provenance ?? "absent"}") — external/unpinned/undeclared data behind an internet-reachable URL is rejected`);
+  }
+
+  // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane.
+  const planeKeys = new Set(laneWindows.map((window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`));
+  if (planeKeys.size > 1) {
+    findings.push("laneWindows reference divergent plane provenance (commit/seedDigest) — a concurrent run drives ONE plane");
+  }
+  for (const window of laneWindows) {
+    if (String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "")
+      || String(window.commit ?? "") !== String(plane.commit ?? "")) {
+      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+      findings.push(`laneWindow "${roleId}" plane provenance diverges from sharedWorld.plane`);
+      break;
+    }
+  }
+
+  // FIX-7: stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field).
+  for (const snapshot of stateSeries) {
+    if (typeof snapshot.timestamp !== "number") {
+      findings.push("a stateSeries snapshot must carry a numeric timestamp");
+    }
+    if (typeof snapshot.digest !== "string" || !COMMAND_DIGEST_PATTERN.test(snapshot.digest)) {
+      findings.push("a stateSeries snapshot digest is not a sha256-16 value (a value-shaped field is rejected)");
+    }
+    for (const key of Object.keys(snapshot)) {
+      if (!SHARED_WORLD_STATESERIES_KEYS.has(key)) {
+        findings.push(`a stateSeries snapshot carries an unexpected field "${key}" — the series is digest-only (no per-delta attribution)`);
+      }
+    }
+  }
+
+  // The concurrency-on-pass gate (FIX-6): a PASSED concurrent run MUST show genuine overlap (≥2
+  // laneWindows overlapping in time) AND a stateSeries delta whose timestamp is AT/AFTER the start
+  // of an overlap interval — otherwise it was not actually concurrent, or the world never changed
+  // under contention (a hollow concurrent claim).
+  if (bundle.review.verdict === "pass") {
+    const overlapStarts: number[] = [];
+    for (let i = 0; i < laneWindows.length; i += 1) {
+      for (let j = i + 1; j < laneWindows.length; j += 1) {
+        const a = laneWindows[i]!;
+        const b = laneWindows[j]!;
+        const aStart = a.startedAt as number;
+        const aEnd = a.endedAt as number;
+        const bStart = b.startedAt as number;
+        const bEnd = b.endedAt as number;
+        if (typeof aStart === "number" && typeof aEnd === "number" && typeof bStart === "number" && typeof bEnd === "number"
+          && aStart < bEnd && bStart < aEnd) {
+          overlapStarts.push(Math.max(aStart, bStart));
+        }
+      }
+    }
+    if (overlapStarts.length === 0) {
+      findings.push("review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent");
+    } else {
+      const earliestOverlapStart = Math.min(...overlapStarts);
+      const sorted = [...stateSeries]
+        .map((snapshot) => ({ timestamp: snapshot.timestamp as number, digest: String(snapshot.digest) }))
+        .filter((snapshot) => typeof snapshot.timestamp === "number")
+        .sort((x, y) => x.timestamp - y.timestamp);
+      let deltaInWindow = false;
+      for (let i = 1; i < sorted.length; i += 1) {
+        if (sorted[i]!.digest !== sorted[i - 1]!.digest && sorted[i]!.timestamp >= earliestOverlapStart) {
+          deltaInWindow = true;
+          break;
+        }
+      }
+      if (!deltaInWindow) {
+        findings.push("review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)");
+      }
+    }
   }
 
   return findings;
@@ -4720,9 +5007,18 @@ function isSharedWorldEvidence(value: unknown): value is SharedWorldEvidence {
   if (plane.commit !== undefined && typeof plane.commit !== "string") return false;
   if (typeof plane.seedDigest !== "string") return false;
   if (!(Array.isArray(plane.envNames) && plane.envNames.every((name) => typeof name === "string"))) return false;
-  if (!(Array.isArray(value.sequence) && value.sequence.every((id) => typeof id === "string"))) return false;
+  if (plane.hostDigest !== undefined && typeof plane.hostDigest !== "string") return false;
+  if (plane.exposure !== undefined && typeof plane.exposure !== "string") return false;
   if (!(Array.isArray(value.attributionLimits) && value.attributionLimits.every((limit) => typeof limit === "string"))) return false;
-  if (!Array.isArray(value.timeline) || !value.timeline.every(isSharedWorldTimelineEntry)) return false;
+  // Tolerant: validate the TYPE of each present field only (the coherence + topologyMode dispatch
+  // are validateSharedWorldEvidence's job — an injected value-shaped field must pass this guard so
+  // verify catches it fail-closed). A bundle must carry at least one of the two shapes.
+  if (value.sequence !== undefined && !(Array.isArray(value.sequence) && value.sequence.every((id) => typeof id === "string"))) return false;
+  if (value.timeline !== undefined && !(Array.isArray(value.timeline) && value.timeline.every(isSharedWorldTimelineEntry))) return false;
+  if (value.laneWindows !== undefined && !(Array.isArray(value.laneWindows) && value.laneWindows.every(isSharedWorldLaneWindow))) return false;
+  if (value.stateSeries !== undefined && !(Array.isArray(value.stateSeries) && value.stateSeries.every(isSharedWorldStateSnapshot))) return false;
+  if (value.outcomes !== undefined && !(Array.isArray(value.outcomes) && value.outcomes.every(isSharedWorldOutcome))) return false;
+  if (value.timeline === undefined && value.laneWindows === undefined) return false;
   return true;
 }
 
@@ -4741,6 +5037,34 @@ function isSharedWorldTimelineEntry(value: unknown): boolean {
       && (value.commit === undefined || typeof value.commit === "string");
   }
   return false;
+}
+
+// Tolerant shape guards for the CONCURRENT series (extra keys tolerated — the digest-only /
+// allowed-keys tripwires are validateSharedWorldEvidence's strict job).
+function isSharedWorldLaneWindow(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.roleId === "string"
+    && typeof value.simId === "string"
+    && typeof value.streamId === "string"
+    && typeof value.startedAt === "number"
+    && typeof value.endedAt === "number"
+    && typeof value.verdict === "string"
+    && typeof value.routeHostDigest === "string"
+    && typeof value.seedDigest === "string"
+    && (value.commit === undefined || typeof value.commit === "string");
+}
+
+function isSharedWorldStateSnapshot(value: unknown): boolean {
+  return isRecord(value) && typeof value.timestamp === "number" && typeof value.digest === "string";
+}
+
+function isSharedWorldOutcome(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.roleId === "string"
+    && typeof value.simId === "string"
+    && typeof value.streamId === "string"
+    && typeof value.status === "string"
+    && typeof value.ok === "boolean";
 }
 
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {

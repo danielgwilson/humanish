@@ -42,7 +42,7 @@ workflow without leaking private upstream truth into core.
 | Terminal cost ledger | `mimetic.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
 | Terminal no-spend proof | `mimetic.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
 | Adapter score | `mimetic.adapter-score.v1` (additive `RunBundle.adapterScore`; namespaced) | see Product-Adapter Extension Seam below |
-| Shared-world evidence | `mimetic.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`) | see Shared-World Evidence below |
+| Shared-world evidence | `mimetic.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
 
 ## Lab Manifest
 
@@ -302,12 +302,20 @@ every other bundle, so they stay byte-stable):
 - `attributionClass: isolated | shared-world` — a new, ORTHOGONAL honesty axis
   ("how well did the run attribute INTERACTION?"), distinct from the persona-sampling
   evidence classes ("how representative is the actor?"). Absent == `isolated`.
-- `sharedWorld` (`mimetic.shared-world.v1`):
+- `sharedWorld` (`mimetic.shared-world.v1`): TWO variants discriminated by
+  `topologyMode: "sequential" | "concurrent"` (validateSharedWorldEvidence branches on
+  it FIRST; unknown/missing or a mismatched shape fails closed). Common fields:
   - `topology: shared-world`
-  - `roleCount` — the DECLARED number of role seats.
-  - `plane: { commit?, seedDigest, envNames }` — the ONE shared-plane provenance.
-    `seedDigest` is the sha256-16 of the ordered seed-step command digests (the
-    seed RECIPE identity, not the runtime state); `envNames` are NAMES only.
+  - `topologyMode: sequential | concurrent`
+  - `roleCount` — the DECLARED number of role/persona seats.
+  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure? }` — the ONE
+    shared-plane provenance. `seedDigest` is the sha256-16 of the ordered seed-step
+    command digests (the seed RECIPE identity, not the runtime state); `envNames` are
+    NAMES only. `hostDigest`/`exposure` are CONCURRENT-only (below).
+  - `attributionLimits: [...]` — the verify-enforced attribution ceiling (the set
+    differs per `topologyMode`, below).
+
+  SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1):
   - `sequence: [roleId, …]` — the role ids that actually took a turn, in declared order.
   - `timeline: (checkpoint | turn)[]` — a harness-clocked, strictly alternating
     timeline that starts `cp-baseline`, alternates checkpoint → turn → checkpoint,
@@ -319,29 +327,68 @@ every other bundle, so they stay byte-stable):
     - turn = `{ kind: turn, roleId, simId, streamId, commit?, seedDigest }` — references
       a real RunSimulation/RunStream; carries the plane provenance it observed
       (identical across turns by construction — the single-plane proof).
-  - `attributionLimits: [...]` — the verify-enforced attribution ceiling. MUST contain
-    `sequential-only`, `no-concurrent-races`, and `delta-attributed-to-turn-not-action`.
+  - Sequential `attributionLimits` MUST contain `sequential-only`, `no-concurrent-races`,
+    and `delta-attributed-to-turn-not-action`.
+
+  CONCURRENT shape (`topologyMode: concurrent`, #164 phase 2 — N personas drive ONE
+  getHost-exposed plane AT ONCE; NO `timeline`/`sequence`):
+  - `plane.hostDigest` — sha256-16 of the harness-minted `getHost` ORIGIN every actor
+    drove (a first-class provisioned-subject target — invariant 2). A DIGEST, not the raw
+    URL: a getHost URL embeds the live sandbox id and matches the publish-safety e2b-URL
+    redaction, so it never lands raw in a published bundle (the raw tokenless URL is
+    surfaced only on the ephemeral lab result). The orchestrator confirms the URL is
+    TOKENLESS (no authKey — invariant 1) before digesting.
+  - `plane.exposure: synthetic` — the REQUIRED author attestation that the subject behind
+    the internet-reachable getHost URL is synthetic seeded data (author-trust + a
+    provenance gate, NOT a no-real-data guarantee).
+  - `laneWindows: [{ roleId, simId, streamId, startedAt, endedAt, verdict, routeHostDigest,
+    commit?, seedDigest }]` — one harness-clocked window per actor; OVERLAPPING windows
+    prove ≥2 personas were active simultaneously. `routeHostDigest` == `plane.hostDigest`
+    (every actor drove exactly the harness-minted host).
+  - `stateSeries: [{ timestamp, digest }]` — cadence digests of the shared world under
+    load (baseline + periodic + final). DIGEST-ONLY: the allowed-keys tripwire permits
+    ONLY `timestamp` + `digest` (no per-delta→actor field — causation under concurrency is
+    structurally inexpressible).
+  - `outcomes: [{ roleId, simId, streamId, status, completionReason?, ok }]` — per-persona
+    OUTCOME (the "M of N succeeded" headline).
+  - Concurrent `attributionLimits` MUST contain `concurrent`,
+    `best-effort-causal-attribution`, `non-deterministic-shared-state`,
+    `window-and-snapshot-granularity`, `contention-observed-not-proven-safe`,
+    `state-change-not-isolated-to-actors`, and MUST NOT contain `sequential-only` or
+    `no-concurrent-races` (a sequential guarantee on a concurrent run is an overclaim).
 
 The `shared-world evidence` check in `mimetic verify` is fail-closed (live runs only;
-dry-run contract bundles are skipped): the timeline must be well-formed (start
-`cp-baseline`, strictly alternate, end on a checkpoint, turn order == sequence,
-sequence length == roleCount == turn count); every turn's simId/streamId must resolve;
-every checkpoint digest must be sha256-16 with NO value-shaped field; all turns must
-share ONE plane provenance; the mandatory `attributionLimits` must all be present
-(omission == overclaim == fail); and a PASSED run must show at least one checkpoint
-`deltaFromPrev` (the delta-on-pass gate — otherwise the interaction is hollow). The
-per-role no-engagement guard still applies (a role trace claiming `goal_satisfied`
-with zero actions and zero messages fails). Checkpoints persist digest-only by
-DEFAULT (the seed-step lockdown) until the #108 PII/PHI detector lands.
+dry-run contract bundles are skipped). It dispatches on `topologyMode` FIRST.
+SEQUENTIAL: the timeline must be well-formed (start `cp-baseline`, strictly alternate,
+end on a checkpoint, turn order == sequence, sequence length == roleCount == turn
+count, no `laneWindows`); every turn's simId/streamId resolves; every checkpoint digest
+is sha256-16 with NO value-shaped field; all turns share ONE plane provenance; the
+mandatory limits are present; and a PASSED run shows ≥1 checkpoint `deltaFromPrev` (the
+delta-on-pass gate). CONCURRENT: no `timeline`; laneWindows + stateSeries + outcomes
+cover exactly roleCount; the required limits are present AND the forbidden ones absent;
+`plane.hostDigest` present and every `routeHostDigest` equals it (invariant 2);
+`plane.exposure == synthetic` AND `subject.state.provenance == seeded` (the
+synthetic-subject gate); stateSeries snapshots are digest-only (allowed-keys tripwire);
+all laneWindows share ONE plane provenance; and the CONCURRENCY-ON-PASS gate — a PASSED
+run MUST show ≥2 overlapping laneWindows AND a stateSeries delta whose timestamp is
+AT/AFTER an overlap interval start (otherwise it was not actually concurrent, or the
+world never changed under load). The per-role no-engagement guard applies to both.
+Checkpoints / stateSeries persist digest-only by DEFAULT until the #108 PII/PHI
+detector lands.
 
-WHAT THE BUNDLE CAN / CANNOT CLAIM: each role's own behavior at full fidelity
-(unchanged actor-trace attribution); the OBSERVED system outcome as an ordered,
-harness-clocked sequence of state-slice DIGEST changes; and the SEQUENCED-INTERACTION
-proof (role B demonstrably entered a world already containing role A's mutation — the
-checkpoint after A strictly precedes B's turn). It CANNOT claim action-granular
-causation (a delta attributes to the TURN, not a specific action), concurrency/races
-(sequential-only), sub-checkpoint granularity, or exact-state determinism (digests,
-not values). The concurrent (`getHost`) N+1 topology is the named PR2+ phase.
+WHAT THE BUNDLE CAN / CANNOT CLAIM. SEQUENTIAL: each role's own behavior at full
+fidelity; the OBSERVED system outcome as an ordered DIGEST sequence; and the
+SEQUENCED-INTERACTION proof (role B entered a world already containing role A's mutation
+— the checkpoint after A strictly precedes B's turn). It CANNOT claim action-granular
+causation, concurrency/races (sequential-only), or exact-state determinism. CONCURRENT:
+each persona's own behavior at full fidelity; per-persona OUTCOME against the contended
+world ("M of N"); PROVEN CONCURRENCY (overlapping windows); and system-state evolution
+under load (the stateSeries) with best-effort temporal correlation. It CANNOT claim
+strict causal attribution of a delta to an actor (concurrent ⇒ ambiguous), determinism
+of exact state, per-action granularity, or concurrency-SAFETY (races are OBSERVED, never
+PROVEN absent). HONESTY: the deterministic $0 gate proves the plumbing + the attribution
+contract; the concurrency CAPABILITY at scale is backed only by a separately-authorized
+live receipt.
 
 ## Adapter
 

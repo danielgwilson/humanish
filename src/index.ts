@@ -123,7 +123,10 @@ export type {
   RunsResult,
   SharedWorldCheckpoint,
   SharedWorldEvidence,
+  SharedWorldLaneWindow,
+  SharedWorldOutcome,
   SharedWorldPlane,
+  SharedWorldStateSnapshot,
   SharedWorldTimelineEntry,
   SharedWorldTurn,
   VerifyResult
@@ -205,6 +208,19 @@ export type {
   SharedWorldLabResult,
   SharedWorldRoleResult
 } from "./shared-world-lab.js";
+export {
+  CONCURRENT_ATTRIBUTION_LIMITS,
+  CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+  CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
+  buildConcurrentSharedWorldBundle,
+  runConcurrentSharedWorld
+} from "./concurrent-shared-world-lab.js";
+export type {
+  ConcurrentSharedWorldLabErrorCode,
+  ConcurrentSharedWorldLabResult,
+  ConcurrentSharedWorldRoleResult,
+  RunConcurrentSharedWorldLabOptions
+} from "./concurrent-shared-world-lab.js";
 export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
 export {
@@ -223,9 +239,11 @@ export {
   isLoopbackUrl,
   LAB_CONFIG_SCHEMA,
   MAX_CUA_LANES,
+  concurrentSharedWorldValidationReason,
   parseLabConfig,
   resolveSeatUrl,
   routesToComputerUse,
+  routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,

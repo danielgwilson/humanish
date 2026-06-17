@@ -81,6 +81,14 @@ export interface E2BDesktopSandbox {
   launch(application: string, uri?: string): Promise<void>;
   /** Open a file or URL with the desktop's default application (present on @e2b/desktop >= 1.x). */
   open?(fileOrUrl: string): Promise<void>;
+  /**
+   * Map an in-sandbox port to a reachable host URL — `https://<port>-<sandboxId>.e2b.app`,
+   * TOKENLESS (no authKey, unlike `stream.getUrl`). The base `e2b` SDK (v2.27.0) implements this;
+   * the wrapper just exposes it. Used by the CONCURRENT shared-world topology (#164 phase 2) to
+   * expose the ONE subject service plane to N actor sandboxes. Optional: older SDKs may lack it, so
+   * the concurrent backend fails closed when it is absent rather than calling a missing method.
+   */
+  getHost?(port: number): string;
   screenshot(format?: "bytes"): Promise<Uint8Array>;
   wait(ms: number): Promise<void>;
   stream: {

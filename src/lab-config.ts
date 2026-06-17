@@ -199,6 +199,15 @@ export interface LabSubject {
    * e2b-desktop × a computer-use actor + a roster of ≥2 lanes); inert/warned elsewhere.
    */
   topology?: LabSubjectTopology;
+  /**
+   * CONCURRENT shared-world route ONLY (#164 phase 2): the author's REQUIRED attestation that the
+   * subject behind the internet-reachable `getHost` URL is SYNTHETIC seeded data. The concurrent
+   * route exposes the subject on a tokenless public URL for the run's duration, so real/external
+   * data must never sit behind it. This is author-trust + a provenance gate (verify also requires
+   * `subject.state.provenance == "seeded"`), NOT a no-real-data guarantee. Required when
+   * `topology: shared-world` + `execution.concurrency > 1`; inert/warned elsewhere.
+   */
+  exposure?: "synthetic";
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
   repos?: string[];
   clone?: LabSubjectClone;
@@ -638,9 +647,12 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   // Shared-world topology cross-validation (#164). Runs whenever shared-world is DECLARED (not just
   // when it routes), so a half-declared shared-world fails closed with a precise reason rather than
-  // silently downgrading to a per-lane-worlds cua run.
+  // silently downgrading to a per-lane-worlds cua run. With `execution.concurrency > 1` the
+  // concurrent extras (synthetic-subject attestation, 0.0.0.0 serve bind, no clone.keep) also apply.
   if (config.subject.topology === "shared-world") {
-    const reason = sharedWorldValidationReason(config);
+    const reason = (config.execution?.concurrency ?? 1) > 1
+      ? concurrentSharedWorldValidationReason(config)
+      : sharedWorldValidationReason(config);
     if (reason) {
       return invalid(reason);
     }
@@ -848,6 +860,44 @@ export function routesToSharedWorld(config: LabConfig): boolean {
 }
 
 /**
+ * True when this config routes to the CONCURRENT shared-world backend (#164 phase 2): a shared-world
+ * config with `execution.concurrency > 1` (N actor seats driving ONE getHost-exposed plane AT ONCE).
+ * `concurrency` absent or 1 stays the sequential PoC (`routesToSharedWorld` → the sequential
+ * backend). selectLabBackend checks this BEFORE routesToSharedWorld.
+ */
+export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
+  return routesToSharedWorld(config) && (config.execution?.concurrency ?? 1) > 1;
+}
+
+/**
+ * Cross-validate a CONCURRENT shared-world declaration (#164 phase 2). Returns the failure message,
+ * or null when valid. Includes the base shared-world checks PLUS the concurrent extras: a synthetic
+ * subject attestation (FIX-3), a 0.0.0.0 serve bind (FIX-4 — getHost only routes to a port bound on
+ * all interfaces), and no `subject.clone.keep` (FIX-9 — it would orphan actor sandboxes). Enforced
+ * at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
+ */
+export function concurrentSharedWorldValidationReason(config: LabConfig): string | null {
+  const base = sharedWorldValidationReason(config);
+  if (base) {
+    return base;
+  }
+  if ((config.execution?.concurrency ?? 1) <= 1) {
+    return "the concurrent shared-world route requires `execution.concurrency > 1` (N concurrent actor seats); concurrency 1 is the sequential PoC.";
+  }
+  if (config.subject.exposure !== "synthetic") {
+    return "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL).";
+  }
+  const serve = config.subject.serve;
+  if (!serve || !serve.start.includes("0.0.0.0")) {
+    return "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)";
+  }
+  if (config.subject.clone?.keep === true) {
+    return "`subject.clone.keep` is not supported on the concurrent shared-world route — it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id.";
+  }
+  return null;
+}
+
+/**
  * Resolve a shared-world seat's entry URL from `serve.url` + a role's `entry` (relative path or
  * same-origin absolute URL). Returns null when the combination is not a same-origin loopback URL
  * (the load-bearing public-safety boundary — a seat only ever drives the in-sandbox app).
@@ -906,6 +956,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routesToScripted = routesToScriptedBrowser(config);
   const routesToTerminal = routesToTerminalProduct(config);
   const routesToShared = routesToSharedWorld(config);
+  const routesToConcurrent = routesToConcurrentSharedWorld(config);
   for (const [index, actor] of config.actors.entries()) {
     // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
     if (actor.lanes?.some((lane) => lane.entry !== undefined) && !routesToShared) {
@@ -944,6 +995,11 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   }
   if (config.subject.state?.checkpoint !== undefined && !routesToShared) {
     inert.push("subject.state.checkpoint (the shared-world state-checkpoint probe; needs subject.topology: shared-world)");
+  }
+  // exposure (the synthetic-subject attestation) acts ONLY on the CONCURRENT shared-world route
+  // (the getHost-exposed plane); inert on the sequential shared-world route (loopback) and elsewhere.
+  if (config.subject.exposure !== undefined && !routesToConcurrent) {
+    inert.push("subject.exposure (the synthetic-subject attestation for the getHost-exposed plane; needs subject.topology: shared-world + execution.concurrency > 1)");
   }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
   // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
@@ -1002,6 +1058,15 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       return invalid("`subject.topology` must be per-lane-worlds (the default) or shared-world.");
     }
     subject.topology = topology;
+  }
+  // exposure is enum-validated everywhere; it is REQUIRED on the concurrent shared-world route (the
+  // getHost synthetic-subject attestation) and warns inert elsewhere.
+  if (raw.exposure !== undefined) {
+    const exposure = str(raw.exposure);
+    if (exposure !== "synthetic") {
+      return invalid("`subject.exposure` must be `synthetic` (the author attestation that the getHost-exposed subject is synthetic seeded data).");
+    }
+    subject.exposure = exposure;
   }
 
   // `product` is terminal-product-only; reject it elsewhere (invariant 6: a field that cannot act
