@@ -447,11 +447,14 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       if (typeof subjectDesktop.getHost !== "function") {
         throw new Error("the installed @e2b/desktop SDK does not expose getHost(port); the concurrent shared-world route requires it to reach the subject plane");
       }
-      const host = subjectDesktop.getHost(servePort(serve.url));
-      if (!isTokenlessHost(host)) {
+      // getHost returns a BARE host (e.g. "3000-<sandboxId>.e2b.app", no scheme); e2b exposes the
+      // port over https. Normalize to a full URL before the tokenless check + before persisting.
+      const rawHost = subjectDesktop.getHost(servePort(serve.url));
+      const hostUrl = /^https?:\/\//i.test(rawHost) ? rawHost : `https://${rawHost}`;
+      if (!isTokenlessHost(hostUrl)) {
         throw new Error("getHost returned a non-tokenless URL; refusing to persist a host URL that may carry a credential (invariant 1)");
       }
-      getHostUrl = host;
+      getHostUrl = hostUrl;
 
       // Baseline state snapshot, then start the background cadence prober.
       await proberSnapshot();

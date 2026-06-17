@@ -19,7 +19,8 @@ import { verifyRun } from "../src/run.js";
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill BY id and exposes
 // NO `list` (enumerate-and-kill is impossible by construction). Each fake sandbox
-// has getHost(port) → a tokenless URL keyed on its id. The command handler drives
+// has getHost(port) → a BARE tokenless host keyed on its id (no scheme, exactly as
+// the real @e2b SDK returns it — the orchestrator normalizes it to https://). The command handler drives
 // the detached primitive (provisioning + checkpoints) and returns STATEFUL
 // checkpoint output (a shared worldVersion the fake runSession bumps per turn).
 //
@@ -52,7 +53,7 @@ function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdo
     },
     launch: async (application: string, uri?: string) => { calls.push(["launch", application, uri]); },
     open: async (fileOrUrl: string) => { calls.push(["open", fileOrUrl]); },
-    getHost: (port: number) => `https://${port}-${id}.e2b.app`,
+    getHost: (port: number) => `${port}-${id}.e2b.app`, // BARE host (no scheme) — matches the real @e2b SDK
     async screenshot() { return new Uint8Array([1, 2, 3, 4]); },
     async wait(ms: number) { calls.push(["wait", ms]); },
     stream: {
