@@ -34,6 +34,7 @@ import type { CuaActorLabResult } from "./cua-actor-lab.js";
 import type { ScriptedBrowserLabResult } from "./scripted-browser-lab.js";
 import type { TerminalProductLabResult } from "./e2b-terminal-lab.js";
 import type { SharedWorldLabResult } from "./shared-world-lab.js";
+import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-lab.js";
 import type { LabConfig } from "./lab-config.js";
 import { renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
@@ -1323,6 +1324,9 @@ async function runLabCommand(args: {
     case "shared-world":
       await runSharedWorldBackend({ ...args, config });
       return;
+    case "concurrent-shared-world":
+      await runConcurrentSharedWorldBackend({ ...args, config });
+      return;
     default:
       // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
       throw new Error(`Unhandled lab backend: ${String(backend satisfies never)}`);
@@ -1570,6 +1574,66 @@ function formatSharedWorldLabHuman(result: SharedWorldLabResult): string {
     ...result.roles.map((role) =>
       `role ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""}${role.skippedReason ? ` — ${role.skippedReason}` : ""}`),
     ...(result.sandbox ? [`sandbox: ${result.sandbox.sandboxId} killed=${result.sandbox.killed ? "yes" : "no"}`] : []),
+    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+async function runConcurrentSharedWorldBackend(args: {
+  command: Command;
+  io: CliIo;
+  config: LabConfig;
+  mode: "run" | "watch";
+  options: LabCommandOptions;
+}): Promise<void> {
+  const wantsMachine = wantsJson(args.command);
+  const shouldOpen = args.options.open === false
+    ? false
+    : wantsMachine
+      ? args.options.open === true
+      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+
+  const outcome = await runLab(args.config, {
+    cwd: args.options.cwd,
+    open: args.mode === "watch" ? false : shouldOpen,
+    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+  });
+  if (outcome.backend !== "concurrent-shared-world") {
+    throw new Error(`Expected concurrent-shared-world backend, got ${outcome.backend}.`);
+  }
+  const result = outcome.result;
+  writeResult(args.command, args.io, result, formatConcurrentSharedWorldLabHuman);
+  args.io.setExitCode(result.ok ? 0 : 2);
+
+  if (args.mode === "watch" && result.ok && !wantsMachine) {
+    await renderAndMaybeFollowObserver({
+      command: args.command,
+      cwd: args.options.cwd,
+      io: args.io,
+      port: args.options.port ?? "0",
+      runInput: result.runId,
+      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+    });
+  }
+}
+
+function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabResult): string {
+  return [
+    `mimetic lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+    `run: ${result.runId}`,
+    `lab: ${result.labId}`,
+    `actor: ${result.actor}`,
+    `topology: ${result.topology}/${result.topologyMode} (${result.roleCount} persona${result.roleCount === 1 ? "" : "s"}, concurrency ${result.concurrency})`,
+    ...(result.host ? [`host: ${result.host}`] : []),
+    ...(result.subject?.commit ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`] : []),
+    ...(result.overlapProven === undefined ? [] : [`overlap: ${result.overlapProven ? "proven" : "not observed"} (capability at scale is live-backed only)`]),
+    ...result.roles.map((role) =>
+      `persona ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""} ${role.ok ? "ok" : "not-ok"}`),
+    ...(result.subjectSandbox ? [`subject sandbox: ${result.subjectSandbox.sandboxId} killed=${result.subjectSandbox.killed ? "yes" : "no"}`] : []),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
     ...result.warnings.map((warning) => `warning: ${warning}`)

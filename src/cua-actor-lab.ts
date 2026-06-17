@@ -321,7 +321,7 @@ const DEFAULT_MISSION =
 
 /** A fully-resolved fan-out lane: identity, the composed prompt, and the device geometry it
  *  renders at. Internal — the public projection is CuaLanePlanEntry / CuaLaneResult. */
-interface CuaLaneSpec {
+export interface CuaLaneSpec {
   laneId: string;
   /** 0-based. */
   laneIndex: number;
@@ -520,7 +520,7 @@ function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
 }
 
 /** Shared deps every lane runner needs (resolved once in the engine). */
-interface CuaLaneDeps {
+export interface CuaLaneDeps {
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   appUrl: string;
@@ -546,7 +546,7 @@ interface CuaLaneDeps {
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
-interface LaneRunOutcome {
+export interface LaneRunOutcome {
   spec: CuaLaneSpec;
   session?: CuaLoopResult;
   sessionError?: string;
@@ -637,7 +637,7 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
  * enumerates sandboxes. Extracted from the former single-lane block; at N=1 it writes the exact
  * same artifacts (actor.json, screenshots/<name>) the bundle has always referenced.
  */
-async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
+export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, serve, subjectRepo, subjectEnvNames } = deps;
   const env = deps.env;
   const warnings: string[] = [];

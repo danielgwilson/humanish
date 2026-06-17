@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  concurrentSharedWorldValidationReason,
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
   resolveSeatUrl,
   routesToComputerUse,
+  routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   sharedWorldValidationReason
@@ -938,5 +940,121 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     if (meta.ok) expect(selectLabBackend(meta.config)).toBe("meta");
     if (scripted.ok) expect(selectLabBackend(scripted.config)).toBe("scripted");
     if (terminal.ok) expect(selectLabBackend(terminal.config)).toBe("terminal");
+  });
+});
+
+// --- CONCURRENT shared-world topology (#164 phase 2) parser matrix ------------------------------
+function validConcurrent(overrides?: { subject?: Record<string, unknown>; actors?: unknown; execution?: Record<string, unknown> }): Record<string, unknown> {
+  return {
+    schema: LAB_CONFIG_SCHEMA,
+    id: "concurrent-shared-world-proof",
+    subject: {
+      source: "clone",
+      topology: "shared-world",
+      exposure: "synthetic",
+      repos: ["example-org/collab-app"],
+      env: ["DATABASE_URL"],
+      serve: { start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+      state: {
+        seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+        checkpoint: [{ name: "notes-count", command: "echo count" }]
+      },
+      ...(overrides?.subject ?? {})
+    },
+    actors: overrides?.actors ?? [
+      {
+        type: "openai-computer-use",
+        mission: "Use the shared app.",
+        lanes: [
+          { id: "persona-a", persona: "author", entry: "/compose" },
+          { id: "persona-b", persona: "reviewer", entry: "/inbox" },
+          { id: "persona-c", persona: "skimmer", entry: "/feed" }
+        ]
+      }
+    ],
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000, concurrency: 3 }
+  };
+}
+
+describe("concurrent shared-world routing + cross-validation (#164 phase 2)", () => {
+  it("routes shared-world + concurrency>1 to the concurrent backend; no warnings", () => {
+    const result = parseLabConfig(validConcurrent());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(routesToConcurrentSharedWorld(result.config)).toBe(true);
+    expect(routesToSharedWorld(result.config)).toBe(true); // concurrent is a shared-world subtype
+    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(concurrentSharedWorldValidationReason(result.config)).toBeNull();
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("the SAME shared-world config with concurrency 1 (or absent) stays SEQUENTIAL", () => {
+    const seq1 = parseLabConfig(validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 } }));
+    expect(seq1.ok).toBe(true);
+    if (seq1.ok) {
+      expect(routesToConcurrentSharedWorld(seq1.config)).toBe(false);
+      expect(selectLabBackend(seq1.config)).toBe("shared-world");
+      // exposure is inert on the sequential route → warns.
+      expect(seq1.warnings.join("\n")).toContain("subject.exposure");
+    }
+    const seqAbsent = parseLabConfig(validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }));
+    expect(seqAbsent.ok).toBe(true);
+    if (seqAbsent.ok) expect(selectLabBackend(seqAbsent.config)).toBe("shared-world");
+  });
+
+  it.each([
+    ["missing synthetic-subject attestation", validConcurrent({ subject: { exposure: undefined } })],
+    ["serve.start does not bind 0.0.0.0", validConcurrent({ subject: { serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } } })],
+    ["subject.clone.keep on the concurrent route", validConcurrent({ subject: { clone: { keep: true } } })],
+    ["roster < 2 personas", validConcurrent({ actors: [{ type: "openai-computer-use", lanes: [{ id: "only", entry: "/x" }] }] })],
+    ["missing checkpoint", validConcurrent({ subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } } })]
+  ])("fails closed on concurrent mis-config: %s", (_label, input) => {
+    const result = parseLabConfig(input as Record<string, unknown>);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("MIMETIC_LAB_INVALID");
+  });
+
+  it("each concurrent fail-closed reason names its requirement precisely", () => {
+    const noExposure = parseLabConfig(validConcurrent({ subject: { exposure: undefined } }));
+    expect(noExposure.ok).toBe(false);
+    if (!noExposure.ok) expect(noExposure.error.message).toContain("subject.exposure: synthetic");
+    const badBind = parseLabConfig(validConcurrent({ subject: { serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } } }));
+    expect(badBind.ok).toBe(false);
+    if (!badBind.ok) expect(badBind.error.message).toContain("0.0.0.0");
+    const keep = parseLabConfig(validConcurrent({ subject: { clone: { keep: true } } }));
+    expect(keep.ok).toBe(false);
+    if (!keep.ok) expect(keep.error.message).toContain("subject.clone.keep");
+  });
+
+  it("exposure: synthetic is enum-validated and inert (warned) off the concurrent route", () => {
+    const badExposure = parseLabConfig(validConcurrent({ subject: { exposure: "real" } }));
+    expect(badExposure.ok).toBe(false);
+    // exposure on a plain app-url cua route warns inert.
+    const offRoute = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "exp-warn",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", exposure: "synthetic" },
+      actors: [{ type: "openai-computer-use", mission: "x" }],
+      execution: { target: "e2b-desktop" }
+    });
+    expect(offRoute.ok).toBe(true);
+    if (offRoute.ok) {
+      expect(routesToConcurrentSharedWorld(offRoute.config)).toBe(false);
+      expect(offRoute.warnings.join("\n")).toContain("subject.exposure");
+    }
+  });
+
+  it("existing routes stay byte-stable (none route to concurrent shared-world)", () => {
+    const synthetic = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "s", subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] });
+    const smoke = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "mimetic-setup" }] });
+    const meta = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "m", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "codex-app-server" }], execution: { target: "e2b-desktop" } });
+    // A plain cua fan-out (concurrency>1 but NO shared-world topology) stays cua, NOT concurrent shared-world.
+    const fanout = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "f", subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" }, actors: [{ type: "openai-computer-use", count: 3 }], execution: { target: "e2b-desktop", concurrency: 2 } });
+    for (const result of [synthetic, smoke, meta, fanout]) {
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(routesToConcurrentSharedWorld(result.config)).toBe(false);
+    }
+    if (fanout.ok) expect(selectLabBackend(fanout.config)).toBe("cua");
   });
 });
