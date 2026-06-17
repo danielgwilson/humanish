@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-17 (rev 6)
+Status date: 2026-06-17 (rev 7)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -204,10 +204,12 @@ ONE shared world.
   run must show real overlap AND a state delta coincident with it). `getHost` URLs are
   internet-reachable → the route is gated (verify) to synthetic+seeded subjects; the raw URL is
   digest-only in evidence. `done`
-- Honest gap: the concurrency CAPABILITY AT SCALE is proven DETERMINISTICALLY (a rendezvous-latch
-  $0 gate proves overlap is produced + the overclaim-fails-closed matrix); a LIVE concurrent
-  receipt needs a real seeded multi-role app (≥3 concurrent personas on the team E2B key) — it is
-  written + gated, and is the first real downstream sim-migration test. Per-action causation,
+- **LIVE-PROVEN (0.10.1):** a kept live receipt ran 3 personas concurrently against ONE
+  getHost-exposed synthetic plane — all 3 passed, all 3 lane-windows overlapped on the real clock,
+  the shared stateSeries evolved under load, N+1=4 sandboxes reclaimed by id, verify ok
+  (`docs/goals/shared-world-topology/receipts/concurrent-live-rung-2026-06-17.md`). One trial =
+  phase-change proof, not scale. The next step is the real downstream sim migration (a
+  synthetic-seeded multi-role app in the adopter's domain). Per-action causation,
   cross-sandbox concurrency beyond getHost, and #108 PII/PHI remain out of scope.
 
 ### 6. Lab Manifest Shape
