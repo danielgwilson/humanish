@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Command, Option } from "commander";
@@ -36,8 +36,9 @@ import type { TerminalProductLabResult } from "./e2b-terminal-lab.js";
 import type { SharedWorldLabResult } from "./shared-world-lab.js";
 import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-lab.js";
 import type { LabConfig } from "./lab-config.js";
-import { renderObserver, serveObserver } from "./observer.js";
+import { openTarget, renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
+import { serveObserverStatic } from "./observer-static.js";
 import {
   DEFAULT_OSS_REPOS,
   runOssLab
@@ -273,6 +274,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
+  registerObserveCommand(program, cliIo);
   registerCodexCommands(program, cliIo);
   registerLabCommands(program, cliIo);
 
@@ -824,6 +826,147 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
         await followObserver(io, result, server);
       }
     });
+}
+
+function registerObserveCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("observe")
+    .description("Serve a finished run's Observer over loopback http://127.0.0.1 instead of a file:// path.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--port <port>", "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.", "0")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--open", "Open the observer in the default browser.")
+    .option("--no-open", "Serve without opening a browser.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .addHelpText(
+      "after",
+      [
+        "",
+        "Examples:",
+        "  mimetic observe",
+        "  mimetic observe --run latest",
+        "  mimetic observe --run <runId> --port 8732",
+        "  mimetic observe --no-open --json",
+        "",
+        "The server binds 127.0.0.1 only and exposes just the run's bundle directory.",
+        "It stays attached until Ctrl-C; file:// security policy and live refresh are why",
+        "loopback http is preferred over opening the index.html path directly."
+      ].join("\n")
+    )
+    .action(async (options: {
+      cwd: string;
+      json?: boolean;
+      open?: boolean;
+      port: string;
+      run: string;
+    }, command) => {
+      const port = parseObserverPort(options.port);
+      if (port === null) {
+        const result: RunResult = {
+          schema: "mimetic.run-result.v1",
+          ok: false,
+          cwd: options.cwd,
+          warnings: [],
+          error: {
+            code: "MIMETIC_INVALID_PORT",
+            message: "--port must be an integer between 0 and 65535."
+          }
+        };
+        writeResult(command, io, result, formatRunHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      const rendered = await renderObserver(options.cwd, options.run, { open: false });
+      if (!rendered.ok || !rendered.observerPath) {
+        writeResult(command, io, rendered, formatObserverHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      // Serve the run's bundle directory so the Observer's relative artifact
+      // links (../run.json, ../review.json, ../events.ndjson) resolve, then land
+      // visitors on observer/index.html. The loopback root is the run dir; the
+      // traversal guard still refuses anything above it (sibling runs, the
+      // .mimetic/runs/ parent, etc.).
+      const observerIndexAbs = join(resolve(options.cwd), rendered.observerPath);
+      const runDir = dirname(dirname(observerIndexAbs));
+
+      const wantsMachine = wantsJson(command);
+      const shouldOpen = options.open === false
+        ? false
+        : options.open === true
+          ? true
+          : !wantsMachine && process.stdout.isTTY === true;
+
+      const server = await serveObserverStatic({ root: runDir, port, entryPath: "observer/index.html" });
+      const openResult: { opened: boolean; command?: string; warning?: string } =
+        shouldOpen ? openTarget(server.url) : { opened: false };
+
+      const result: ObserverResult = {
+        ...rendered,
+        observerUrl: server.url,
+        serverUrl: server.url,
+        opened: openResult.opened,
+        ...(openResult.command ? { openCommand: openResult.command } : {}),
+        warnings: [
+          ...rendered.warnings,
+          "Observer is served read-only over loopback http on 127.0.0.1; only this run's bundle directory is exposed.",
+          ...(openResult.warning ? [openResult.warning] : [])
+        ]
+      };
+
+      writeResult(command, io, result, formatObserverHuman);
+      io.setExitCode(0);
+
+      await serveObserveUntilSignal(io, server, { json: wantsMachine });
+    });
+}
+
+async function serveObserveUntilSignal(
+  io: CliIo,
+  server: { close: () => Promise<void>; url: string },
+  options: { json: boolean }
+): Promise<void> {
+  // Keep the JSON envelope on stdout clean: route attach/stop chatter to stderr
+  // for machine output, and to stdout for humans.
+  const note = options.json ? io.writeErr : io.writeOut;
+  note(`serving: ${server.url}\n`);
+  note("serving: press Ctrl-C to stop\n");
+  await new Promise<void>((resolveWait) => {
+    const signals: WatchStopSignal[] = ["SIGINT", "SIGTERM", "SIGHUP"];
+    const handlers = new Map<WatchStopSignal, () => void>();
+    let stopping = false;
+
+    const stop = (signal: WatchStopSignal) => {
+      if (stopping) {
+        return;
+      }
+
+      stopping = true;
+      for (const [registeredSignal, handler] of handlers.entries()) {
+        process.removeListener(registeredSignal, handler);
+      }
+      io.setExitCode(exitCodeForSignal(signal));
+
+      void (async () => {
+        try {
+          await server.close();
+        } catch (error: unknown) {
+          io.writeErr(`observe cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+        }
+
+        note("observe stopped\n");
+        resolveWait();
+      })();
+    };
+
+    for (const signal of signals) {
+      const handler = () => stop(signal);
+      handlers.set(signal, handler);
+      process.once(signal, handler);
+    }
+  });
 }
 
 function registerFeedbackCommands(parent: Command, io: CliIo): void {

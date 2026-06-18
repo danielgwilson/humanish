@@ -78,8 +78,20 @@ export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
 export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
 export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer-data.js";
 export type { ObserverData, ObserverStream } from "./observer-data.js";
-export { OBSERVER_SCHEMA, renderObserver, serveObserver } from "./observer.js";
+export { OBSERVER_SCHEMA, openTarget, renderObserver, serveObserver } from "./observer.js";
 export type { ObserverOptions, ObserverResult, ObserverServeOptions, ObserverServer } from "./observer.js";
+export {
+  OBSERVER_STATIC_HOST,
+  createObserverStaticHandler,
+  observerStaticContentType,
+  respondToObserverStaticRequest,
+  serveObserverStatic
+} from "./observer-static.js";
+export type {
+  ObserverStaticHandlerOptions,
+  ObserverStaticServeOptions,
+  ObserverStaticServer
+} from "./observer-static.js";
 export {
   DEFAULT_OSS_REPOS,
   OSS_LAB_SCHEMA,

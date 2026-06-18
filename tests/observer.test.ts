@@ -783,6 +783,28 @@ describe("observer rendering", () => {
     });
   });
 
+  it("rejects an out-of-range observe port before binding a server", async () => {
+    await withRunBundle(async (cwd) => {
+      const result = await runCli(["observe", "--run", "latest", "--cwd", cwd, "--port", "99999", "--no-open", "--json"]);
+
+      expect(result.exitCode).toBe(2);
+      const envelope = JSON.parse(result.stdout) as { error?: { code: string }; ok: boolean };
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error?.code).toBe("MIMETIC_INVALID_PORT");
+    });
+  });
+
+  it("fails observe with a structured error when the run is missing", async () => {
+    await withRunBundle(async (cwd) => {
+      const result = await runCli(["observe", "--run", "no-such-run", "--cwd", cwd, "--no-open", "--json"]);
+
+      expect(result.exitCode).toBe(2);
+      const envelope = JSON.parse(result.stdout) as { error?: { code: string }; ok: boolean };
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error?.code).toBe("MIMETIC_RUN_NOT_FOUND");
+    });
+  });
+
   it("can start a fresh four-sim run and render the observer with the default watch command", async () => {
     await withRunBundle(async (cwd) => {
       const result = await runCli([

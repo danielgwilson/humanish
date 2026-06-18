@@ -376,7 +376,7 @@ function contentTypeForPath(filePath: string): string {
   }
 }
 
-function openTarget(target: string): { opened: boolean; command?: string; warning?: string } {
+export function openTarget(target: string): { opened: boolean; command?: string; warning?: string } {
   const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
   const args = process.platform === "win32" ? ["/c", "start", "", target] : [target];
 
