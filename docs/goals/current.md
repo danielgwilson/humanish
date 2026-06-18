@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-17 (rev 7)
+Status date: 2026-06-18 (rev 8)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -211,6 +211,18 @@ ONE shared world.
   phase-change proof, not scale. The next step is the real downstream sim migration (a
   synthetic-seeded multi-role app in the adopter's domain). Per-action causation,
   cross-sandbox concurrency beyond getHost, and #108 PII/PHI remain out of scope.
+
+Adopter-driven engine features (0.11.0; surfaced by real bespoke-sim migrations):
+
+- `execution.desktop.template` — run a lab on a CUSTOM E2B desktop image (name/ID) instead of the
+  stock `desktop` template, threaded to `Sandbox.create(template, opts)` via one
+  `createDesktopSandbox` seam across every desktop route (cua single+fan-out, sequential +
+  concurrent shared-world subject+actors). Absent == the byte-stable stock-template call; recorded
+  as `RunBundle.desktopTemplate`. Lets a Node/bun/DB-bearing adopter image run without
+  installing the runtime per lane. `done`
+- `mimetic observe --run <id>` — serves a run's Observer over `http://127.0.0.1:<port>` (loopback
+  only, path-traversal-guarded to the run dir, `/`->`/observer/index.html`) instead of `file://`,
+  so browsers/automation can open it and artifact links resolve. `done`
 
 ### 6. Lab Manifest Shape
 
