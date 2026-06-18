@@ -590,6 +590,14 @@ export interface RunBundle {
    * computer-use backend; tolerated absent everywhere else. */
   subject?: RunSubjectProvenance;
   /**
+   * The custom E2B desktop TEMPLATE (image) the run's sandbox(es) actually launched on, from
+   * `execution.desktop.template` — so the evidence shows WHICH image ran (a subject needing
+   * runtimes the stock `desktop` image lacks runs on an adopter's template). Optional + additive:
+   * present only when a template was configured (absent == the stock `desktop` template, every
+   * pre-existing bundle byte-stable). A template name is public-safe (not a secret).
+   */
+  desktopTemplate?: string;
+  /**
    * The interaction-attribution honesty axis (#164). Absent == `isolated` (every existing bundle
    * byte-stable). Set to `shared-world` by the shared-world backend, paired with `sharedWorld`.
    */

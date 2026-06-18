@@ -40,6 +40,7 @@ import {
 } from "./cua-actor-lab.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
+  createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox
@@ -466,8 +467,10 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     try {
       desktopModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
       // ONE Sandbox.create for the whole run (metadata.topology + roleCount; the SUBJECT env is
-      // provisioned here on the clone route — the ACTOR key never enters the sandbox).
-      desktop = await desktopModule.Sandbox.create({
+      // provisioned here on the clone route — the ACTOR key never enters the sandbox). An optional
+      // custom desktop template (image) selects Sandbox.create(template, opts); absent keeps the
+      // byte-stable Sandbox.create(opts) default.
+      desktop = await createDesktopSandbox(desktopModule, {
         apiKey: e2bApiKey,
         requestTimeoutMs,
         timeoutMs: perRunSandboxMs,
@@ -483,7 +486,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         resolution: sandboxResolution,
         dpi: 96,
         lifecycle: { onTimeout: "kill" }
-      });
+      }, config.execution?.desktop?.template);
       sandboxId = desktop.sandboxId;
 
       if (hooks.prepareDesktop) {
@@ -1096,6 +1099,8 @@ export function buildSharedWorldBundle(args: {
     },
     review,
     feedbackCandidates: [],
+    // Custom desktop image provenance (the ONE shared plane launched on it); omitted on the default.
+    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
     subject: args.subject,
     attributionClass: "shared-world",
     sharedWorld

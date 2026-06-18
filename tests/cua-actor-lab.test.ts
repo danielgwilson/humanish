@@ -120,13 +120,21 @@ function makeFakeSandbox(options: {
 function makeFakeModule(sandbox: FakeSandbox): {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
+  templates: (string | undefined)[];
   killed: string[];
 } {
   const created: E2BDesktopCreateOptions[] = [];
+  // Parallel to `created`: the custom desktop template each create() was called with, or undefined
+  // when called with NO template arg (the byte-stable default). Mirrors the real @e2b/desktop
+  // overload: create(opts) OR create(template, opts).
+  const templates: (string | undefined)[] = [];
   const killed: string[] = [];
   const module: E2BDesktopModule = {
     Sandbox: {
-      create: async (createOptions) => {
+      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+        const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
+        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        templates.push(template);
         created.push(createOptions);
         return sandbox;
       },
@@ -136,7 +144,7 @@ function makeFakeModule(sandbox: FakeSandbox): {
       }
     }
   };
-  return { module, created, killed };
+  return { module, created, templates, killed };
 }
 
 const TWO_TURN_SESSION = [
@@ -1105,6 +1113,70 @@ describe("runCuaActorLab", () => {
       await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")
     );
     expect(bundle.simulations[0].status).toBe("failed");
+  });
+});
+
+describe("execution.desktop.template (custom E2B desktop image, single-lane cua route)", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "mimetic-cua-template-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  function templatedConfig(template?: string): LabConfig {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-template-proof",
+      title: "CUA template proof",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { resolution: [1280, 800], ...(template === undefined ? {} : { template }) }
+      },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  async function runWith(config: LabConfig) {
+    const sandbox = makeFakeSandbox();
+    const { module, created, templates } = makeFakeModule(sandbox);
+    const hooks: CuaActorLabHooks = {
+      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+      loadDesktopModule: async () => module,
+      runSession: async (options) =>
+        runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+    };
+    const outcome = await runLab(config, { cwd, cuaHooks: hooks });
+    if (outcome.backend !== "cua") throw new Error("expected the cua backend");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    return { created, templates, bundle };
+  }
+
+  it("threads the template into Sandbox.create(template, opts) and records it in the bundle (provenance)", async () => {
+    const { created, templates, bundle } = await runWith(templatedConfig("acme-desktop-with-runtimes"));
+    expect(created).toHaveLength(1);
+    // The desktop create received the configured template as its first (template) argument.
+    expect(templates).toEqual(["acme-desktop-with-runtimes"]);
+    // The options object is otherwise unchanged — the template is an ADDED selector, not a rewrite.
+    expect(created[0]?.resolution).toEqual([1280, 800]);
+    expect(created[0]?.lifecycle).toEqual({ onTimeout: "kill" });
+    // Evidence shows WHICH image ran (public-safe: a template name is not a secret).
+    expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
+  });
+
+  it("byte-stable default: NO template → Sandbox.create called with NO template arg, bundle omits desktopTemplate", async () => {
+    const { created, templates, bundle } = await runWith(templatedConfig());
+    expect(created).toHaveLength(1);
+    // undefined == create(opts): the historical single-argument call shape, unchanged.
+    expect(templates).toEqual([undefined]);
+    expect(bundle.desktopTemplate).toBeUndefined();
+    expect("desktopTemplate" in bundle).toBe(false);
   });
 });
 

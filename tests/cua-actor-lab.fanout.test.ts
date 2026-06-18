@@ -62,6 +62,8 @@ interface FanoutModuleOptions {
 interface FanoutModuleHandle {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
+  /** Parallel to `created`: the custom template each lane's create() got (undefined == default). */
+  templates: (string | undefined)[];
   killed: string[];
   createdIds: string[];
   /** Peak count of simultaneously-live (created, not yet killed) sandboxes. */
@@ -70,6 +72,7 @@ interface FanoutModuleHandle {
 
 function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle {
   const created: E2BDesktopCreateOptions[] = [];
+  const templates: (string | undefined)[] = [];
   const createdIds: string[] = [];
   const killed: string[] = [];
   let serial = 0;
@@ -119,11 +122,15 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
 
   const module: E2BDesktopModule = {
     Sandbox: {
-      create: async (createOptions) => {
+      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
+      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+        const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
+        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         serial += 1;
         live += 1;
         maxLive = Math.max(maxLive, live);
         const id = `fake-sandbox-${String(serial).padStart(2, "0")}`;
+        templates.push(template);
         created.push(createOptions);
         createdIds.push(id);
         return makeSandbox(id, createOptions);
@@ -137,11 +144,11 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
     }
   };
 
-  return { module, created, killed, createdIds, maxLive: () => maxLive };
+  return { module, created, templates, killed, createdIds, maxLive: () => maxLive };
 }
 
 /** A 4-lane differentiated roster on a loopback app-url subject. */
-function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["actors"][0]["lanes"] }): LabConfig {
+function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["actors"][0]["lanes"]; template?: string }): LabConfig {
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
     id: "fanout-proof",
@@ -157,7 +164,12 @@ function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["act
         { id: "wide-researcher", persona: "comparison-shopper", device: "wide", instruction: "Compare the plans." }
       ]
     }],
-    execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: overrides?.concurrency ?? 2 },
+    execution: {
+      target: "e2b-desktop",
+      timeoutMs: 60_000,
+      concurrency: overrides?.concurrency ?? 2,
+      ...(overrides?.template === undefined ? {} : { desktop: { template: overrides.template } })
+    },
     scenario: { mode: "live" }
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
@@ -250,6 +262,35 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ...extra
     };
   }
+
+  it("execution.desktop.template: EVERY fan-out lane's Sandbox.create gets the template; bundle records it", async () => {
+    const handle = makeFanoutModule();
+    const outcome = await runLab(fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }), { cwd, cuaHooks: passingHooks(handle) });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    expect(outcome.result.ok).toBe(true);
+    // All four per-lane desktops launched on the custom template (subject + every lane is uniform).
+    expect(handle.created).toHaveLength(4);
+    expect(handle.templates).toEqual([
+      "acme-desktop-with-runtimes",
+      "acme-desktop-with-runtimes",
+      "acme-desktop-with-runtimes",
+      "acme-desktop-with-runtimes"
+    ]);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
+  });
+
+  it("byte-stable default: NO template → every fan-out lane's create gets NO template arg, bundle omits desktopTemplate", async () => {
+    const handle = makeFanoutModule();
+    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), { cwd, cuaHooks: passingHooks(handle) });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    expect(handle.created).toHaveLength(4);
+    expect(handle.templates).toEqual([undefined, undefined, undefined, undefined]);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopTemplate).toBeUndefined();
+  });
 
   it("runs the REAL orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills ONLY each lane's own id, verifyRun ok", async () => {
     const handle = makeFanoutModule();

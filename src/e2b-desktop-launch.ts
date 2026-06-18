@@ -13,7 +13,16 @@
 
 export interface E2BDesktopModule {
   Sandbox: {
+    /** Default `desktop` template (no custom image). The historical, byte-stable call shape. */
     create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
+    /**
+     * Launch on a CUSTOM E2B desktop template (image) by NAME or ID — the SDK's
+     * `Sandbox.create(template, opts)` overload. Lets a lab run on an adopter-maintained image
+     * with extra runtimes baked in (e.g. node/bun/a local Postgres the stock `desktop` template
+     * lacks), instead of the stock template. The base @e2b/desktop SDK implements this; the
+     * wrapper just exposes it. Threaded from `execution.desktop.template`.
+     */
+    create(template: string, options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
     kill?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<unknown>;
     list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
   };
@@ -123,4 +132,25 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
 export function isMissingE2BDesktopDependency(error: unknown): boolean {
   const value = error as { code?: string; message?: string };
   return value.code === "ERR_MODULE_NOT_FOUND" && value.message?.includes("@e2b/desktop") === true;
+}
+
+/**
+ * Create an E2B desktop sandbox, optionally on a CUSTOM template (image). The ONE seam every
+ * desktop-creating route calls so the default and custom-template paths are decided in a single
+ * place.
+ *
+ * When `template` is undefined (the default — no `execution.desktop.template` configured), this is
+ * BYTE-STABLE with the historical `Sandbox.create(options)` call: the stock `desktop` template, the
+ * options object passed as the sole argument. When `template` is a non-empty name/id, it selects
+ * the SDK's `Sandbox.create(template, options)` overload so the lab runs on an adopter's image.
+ * The template (when set) is a public-safe label, never a secret.
+ */
+export async function createDesktopSandbox(
+  module: E2BDesktopModule,
+  options: E2BDesktopCreateOptions,
+  template?: string
+): Promise<E2BDesktopSandbox> {
+  return template === undefined
+    ? module.Sandbox.create(options)
+    : module.Sandbox.create(template, options);
 }

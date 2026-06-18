@@ -337,6 +337,56 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       if (!result.ok) return;
       expect(result.warnings[0]).toContain("execution.desktop.device");
     });
+
+    it("execution.desktop.template parses + trims on the cua route with zero warnings (consumed; any string is a valid name/id)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { template: "  acme-desktop-with-runtimes  " } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.execution?.desktop?.template).toBe("acme-desktop-with-runtimes");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("rejects a blank/whitespace execution.desktop.template (set-but-empty is a mistake, not a template)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { template: "   " } }
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("execution.desktop.template");
+    });
+
+    it("warns execution.desktop.template as inert on the meta route (e2b-desktop, but no desktop-creating cua actor consumes it)", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "meta-template",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type: "codex-app-server" }],
+        execution: { target: "e2b-desktop", desktop: { template: "acme-desktop-with-runtimes" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings.join(" ")).toContain("execution.desktop.template");
+    });
+
+    it("warns execution.desktop.template as inert on the local-app route (routes to cua but creates NO desktop)", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "local-app-template",
+        subject: { source: "local-app", appUrl: "http://localhost:5173/" },
+        actors: [{ type: "openai-computer-use", mission: "Drive the app." }],
+        execution: { target: "local", desktop: { template: "acme-desktop-with-runtimes" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // It routes to the cua backend, but the in-process route launches no E2B desktop, so the
+      // template can never be consumed here → it must warn, never be silently ignored.
+      expect(routesToComputerUse(result.config)).toBe(true);
+      expect(result.warnings.join(" ")).toContain("execution.desktop.template");
+    });
   });
 
   describe("app-url (scripted-browser route)", () => {

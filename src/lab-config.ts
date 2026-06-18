@@ -342,6 +342,17 @@ export interface LabExecutionDesktop {
   resolution?: [number, number];
   /** Sandbox server-side timeout. Consumed on the app-url route. */
   sandboxTimeoutMs?: number;
+  /**
+   * Custom E2B desktop TEMPLATE (image) the run launches on — a non-empty template NAME or ID —
+   * instead of the stock `desktop` template. Lets a subject that needs runtimes the stock image
+   * lacks (e.g. node/bun/a local Postgres baked into an adopter-maintained image) run as-is. Any
+   * string is a valid template name/id (there is no allowlist). Consumed ONLY on the
+   * `execution.target: e2b-desktop` computer-use routes (the cua/shared-world/concurrent backends
+   * that call `Sandbox.create`); inert/warned on every route that creates no desktop. Threaded to
+   * `Sandbox.create(template, opts)`; absent leaves the byte-stable `Sandbox.create(opts)` default.
+   * A template name is public-safe (not a secret) and is recorded in the run bundle.
+   */
+  template?: string;
   /** Use the Codex app-server client mode for headed desktop actor surfaces. Consumed (meta). */
   codexAppServer?: boolean;
 }
@@ -1023,6 +1034,15 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
   if (!routesToCua && config.execution?.desktop?.device !== undefined) inert.push("execution.desktop.device");
   if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
+  // execution.desktop.template (the custom E2B desktop image) is consumed ONLY where a desktop is
+  // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
+  // concurrent). It is INERT on every other route (incl. the in-process local-app cua route, which
+  // creates no desktop, and the meta route): warn so an unconsumed template is never silently
+  // ignored (invariant 6).
+  const createsE2BDesktop = routesToCua && config.execution?.target === "e2b-desktop";
+  if (config.execution?.desktop?.template !== undefined && !createsE2BDesktop) {
+    inert.push("execution.desktop.template (the custom E2B desktop image is consumed only on execution.target: e2b-desktop computer-use routes that create a desktop; needs a computer-use actor on e2b-desktop)");
+  }
   // codexAppServer is consumed only on the e2b-desktop (meta) route; flag it when it cannot reach there.
   const routesToDesktop = config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
   if (config.execution?.desktop?.codexAppServer !== undefined && !routesToDesktop) {
@@ -1597,6 +1617,16 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
   }
   const sandboxTimeoutMs = posInt(raw.sandboxTimeoutMs);
   if (sandboxTimeoutMs !== undefined) desktop.sandboxTimeoutMs = sandboxTimeoutMs;
+  // A custom E2B desktop template NAME or ID. Trimmed non-empty when present; deliberately NOT
+  // allowlisted (any string is a valid template name/id — over-restricting would reject real
+  // adopter images). An explicitly-set but blank/whitespace value is a mistake, not a template.
+  if (raw.template !== undefined) {
+    const template = str(raw.template);
+    if (template === undefined) {
+      return invalid("`execution.desktop.template` must be a non-empty E2B desktop template NAME or ID when set (any string is accepted; there is no allowlist).");
+    }
+    desktop.template = template;
+  }
   if (typeof raw.codexAppServer === "boolean") desktop.codexAppServer = raw.codexAppServer;
   return { ok: true, value: Object.keys(desktop).length > 0 ? desktop : undefined };
 }

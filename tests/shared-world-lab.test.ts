@@ -64,12 +64,18 @@ function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string;
   return sandbox as unknown as FakeSandbox;
 }
 
-function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; created: E2BDesktopCreateOptions[]; killed: string[] } {
+function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; created: E2BDesktopCreateOptions[]; templates: (string | undefined)[]; killed: string[] } {
   const created: E2BDesktopCreateOptions[] = [];
+  // Parallel to `created`: the custom template each create() got (undefined == byte-stable default).
+  const templates: (string | undefined)[] = [];
   const killed: string[] = [];
   const module: E2BDesktopModule = {
     Sandbox: {
-      create: async (createOptions) => {
+      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
+      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+        const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
+        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        templates.push(template);
         created.push(createOptions);
         return sandbox;
       },
@@ -80,7 +86,7 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
       // NOTE: NO `list` method — enumerate-and-kill is impossible here by construction.
     }
   };
-  return { module, created, killed };
+  return { module, created, templates, killed };
 }
 
 /** A scripted command handler whose checkpoint output reflects the shared world version. */
@@ -164,7 +170,7 @@ function makeRunSession(
   };
 }
 
-function sharedWorldConfig(overrides?: { env?: string[] }): LabConfig {
+function sharedWorldConfig(overrides?: { env?: string[]; template?: string }): LabConfig {
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
     id: "shared-world-proof",
@@ -193,23 +199,27 @@ function sharedWorldConfig(overrides?: { env?: string[] }): LabConfig {
         ]
       }
     ],
-    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+    execution: {
+      target: "e2b-desktop",
+      timeoutMs: 60_000,
+      ...(overrides?.template === undefined ? {} : { desktop: { template: overrides.template } })
+    },
     scenario: { mode: "live" }
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
 
-function baseHooks(state: { worldVersion: number }): { hooks: SharedWorldLabHooks; created: E2BDesktopCreateOptions[]; killed: string[]; sandbox: FakeSandbox } {
+function baseHooks(state: { worldVersion: number }): { hooks: SharedWorldLabHooks; created: E2BDesktopCreateOptions[]; templates: (string | undefined)[]; killed: string[]; sandbox: FakeSandbox } {
   const sandbox = makeFakeSandbox(makeCommandHandler(state));
-  const { module, created, killed } = makeFakeModule(sandbox);
+  const { module, created, templates, killed } = makeFakeModule(sandbox);
   const hooks: SharedWorldLabHooks = {
     env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
     loadDesktopModule: async () => module,
     runSession: makeRunSession(state),
     detachedTimers: { now: () => 0, sleep: async () => {} }
   };
-  return { hooks, created, killed, sandbox };
+  return { hooks, created, templates, killed, sandbox };
 }
 
 let cwd: string;
@@ -240,6 +250,27 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("execution.desktop.template: the ONE shared-plane Sandbox.create gets the template; bundle records it; absent stays byte-stable", async () => {
+    // With a custom template configured.
+    const withState = { worldVersion: 0 };
+    const withTemplate = baseHooks(withState);
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig({ template: "acme-desktop-with-runtimes" }), dryRun: false, hooks: withTemplate.hooks });
+    expect(result.ok).toBe(true);
+    expect(withTemplate.created).toHaveLength(1);
+    expect(withTemplate.templates).toEqual(["acme-desktop-with-runtimes"]);
+    const withBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
+
+    // Byte-stable default: NO template → create called with NO template arg, bundle omits the field.
+    const noState = { worldVersion: 0 };
+    const noTemplate = baseHooks(noState);
+    const result2 = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks: noTemplate.hooks });
+    expect(result2.ok).toBe(true);
+    expect(noTemplate.templates).toEqual([undefined]);
+    const noBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result2.runId, "run.json"), "utf8"));
+    expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
   it("GOOD run: ONE sandbox by-id, plane provisioned ONCE, sequential distinct profiles, interaction proof, verify ok", async () => {

@@ -42,7 +42,13 @@ function makeFakeModule(opts: {
   let counter = 0;
   return {
     Sandbox: {
-      async create(options: { envs?: Record<string, string>; metadata?: Record<string, string> }) {
+      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts). The terminal
+      // route never passes a template, but the fake must accept the overload to type-check.
+      async create(
+        templateOrOptions: string | { envs?: Record<string, string>; metadata?: Record<string, string> },
+        maybeOptions?: { envs?: Record<string, string>; metadata?: Record<string, string> }
+      ) {
+        const options = typeof templateOrOptions === "string" ? (maybeOptions ?? {}) : templateOrOptions;
         counter += 1;
         opts.creates.push({ ...(options.envs ? { envs: options.envs } : {}), ...(options.metadata ? { metadata: options.metadata } : {}) });
         const sandboxId = `fake-sandbox-${counter}`;

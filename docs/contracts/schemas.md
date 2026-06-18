@@ -112,6 +112,19 @@ A lab is a composition over code primitives, not a hardcoded kind:
   with a computer-use actor, or `local` (or absent) with a scripted-browser
   actor; terminal-product subjects pair `e2b-terminal` (or absent → implied)
   with a registered terminal actor;
+- `execution.desktop.template` (e2b-desktop computer-use routes): a custom E2B
+  desktop TEMPLATE (image) NAME or ID the run launches on — for a subject that
+  needs runtimes the stock `desktop` image lacks (e.g. node/bun/a local Postgres
+  baked into an adopter-maintained image). Any non-empty string is a valid
+  name/id (no allowlist); a blank/whitespace value is rejected. Threaded to the
+  SDK's `Sandbox.create(template, opts)` on EVERY desktop-creating route (the
+  single-lane + fan-out cua lanes, the sequential shared-world plane, and the
+  concurrent shared-world subject AND every actor sandbox); when absent the call
+  stays the byte-stable `Sandbox.create(opts)` default (the stock template). The
+  template actually used is recorded in the run bundle as `desktopTemplate`
+  (public-safe — a template name is not a secret). Inert (warned) on every route
+  that creates no desktop, incl. the in-process `local-app` cua route and the
+  meta route — never silently ignored (invariant 6);
 - `execution.terminal` + `execution.runtimeAuth` (terminal-product route):
   `terminal.transport` is `exec-stream` — captured NON-interactive exec output
   (stdin disabled); `pty` is rejected because labeling captured exec output as
@@ -217,6 +230,11 @@ Core-owned fields:
   pre-existing and other backends' bundles. `commandDigest` is the sha256-16 of
   the exact seed command — command text and env values never appear. Verified
   by the `subject state provenance` check in `mimetic verify`.
+- `desktopTemplate` (optional, additive): the custom E2B desktop TEMPLATE (image)
+  the run's sandbox(es) launched on, from `execution.desktop.template` — so the
+  evidence shows WHICH image ran. Present only when a template was configured;
+  absent == the stock `desktop` template, so every pre-existing bundle is
+  byte-stable. Public-safe (a template name is not a secret).
 - `attributionClass` (optional, additive): `isolated | shared-world`. Absent ==
   `isolated`, so every existing bundle is byte-stable. The interaction-attribution
   honesty axis (#164) — ORTHOGONAL to the persona-sampling evidence classes. Set

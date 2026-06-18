@@ -52,6 +52,7 @@ import {
   type LaneRunOutcome
 } from "./cua-actor-lab.js";
 import {
+  createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox
@@ -402,8 +403,10 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     try {
       subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
       // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
-      // HERE; the actor sandboxes get NONE of it (FIX-10).
-      subjectDesktop = await subjectModule.Sandbox.create({
+      // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
+      // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaLane, which
+      // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default.
+      subjectDesktop = await createDesktopSandbox(subjectModule, {
         apiKey: e2bApiKey,
         requestTimeoutMs,
         timeoutMs: timeoutMs + SUBJECT_PROVISION_BUDGET_MS
@@ -422,7 +425,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
           : {}),
         dpi: 96,
         lifecycle: { onTimeout: "kill" }
-      });
+      }, config.execution?.desktop?.template);
       subjectSandboxId = subjectDesktop.sandboxId;
 
       if (hooks.prepareDesktop) {
@@ -997,6 +1000,8 @@ export function buildConcurrentSharedWorldBundle(args: {
     },
     review,
     feedbackCandidates: [],
+    // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.
+    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
     subject: args.subject,
     attributionClass: "shared-world",
     sharedWorld

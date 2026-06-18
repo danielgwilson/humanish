@@ -68,18 +68,26 @@ function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdo
 function makeFakeModule(commandHandler: (command: string) => { stdout?: string } | undefined): {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
+  templates: (string | undefined)[];
   killed: string[];
   sandboxes: FakeSandbox[];
 } {
   const created: E2BDesktopCreateOptions[] = [];
+  // Parallel to `created`: the custom template each create() got — subject AND every actor sandbox.
+  // undefined == called with NO template arg (the byte-stable default).
+  const templates: (string | undefined)[] = [];
   const killed: string[] = [];
   const sandboxes: FakeSandbox[] = [];
   let n = 0;
   const module: E2BDesktopModule = {
     Sandbox: {
-      create: async (createOptions) => {
+      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
+      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+        const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
+        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         n += 1;
         const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, commandHandler);
+        templates.push(template);
         created.push(createOptions);
         sandboxes.push(sandbox);
         return sandbox;
@@ -88,7 +96,7 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
       // NOTE: NO `list` method.
     }
   };
-  return { module, created, killed, sandboxes };
+  return { module, created, templates, killed, sandboxes };
 }
 
 function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string } | undefined {
@@ -168,7 +176,7 @@ function makeRunSession(
   };
 }
 
-function concurrentConfig(roleCount = 3, concurrency = 3): LabConfig {
+function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): LabConfig {
   const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
     id: `persona-${String(i + 1).padStart(2, "0")}`,
     persona: `persona-${i + 1}`,
@@ -194,7 +202,12 @@ function concurrentConfig(roleCount = 3, concurrency = 3): LabConfig {
       }
     },
     actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
-    execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency },
+    execution: {
+      target: "e2b-desktop",
+      timeoutMs: 60_000,
+      concurrency,
+      ...(template === undefined ? {} : { desktop: { template } })
+    },
     scenario: { mode: "live" }
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
@@ -204,10 +217,11 @@ function concurrentConfig(roleCount = 3, concurrency = 3): LabConfig {
 function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<void>, override?: Parameters<typeof makeRunSession>[2]): {
   hooks: SharedWorldLabHooks;
   created: E2BDesktopCreateOptions[];
+  templates: (string | undefined)[];
   killed: string[];
   sandboxes: FakeSandbox[];
 } {
-  const { module, created, killed, sandboxes } = makeFakeModule(makeCommandHandler(state));
+  const { module, created, templates, killed, sandboxes } = makeFakeModule(makeCommandHandler(state));
   const hooks: SharedWorldLabHooks = {
     env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
     loadDesktopModule: async () => module,
@@ -215,7 +229,7 @@ function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<vo
     detachedTimers: { now: () => 0, sleep: async () => {} },
     proberCadenceMs: 100_000 // large: no periodic snapshot fires in the fast test (baseline+final carry the gate)
   };
-  return { hooks, created, killed, sandboxes };
+  return { hooks, created, templates, killed, sandboxes };
 }
 
 let cwd: string;
@@ -244,6 +258,29 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("execution.desktop.template: BOTH the subject AND every actor sandbox launch on the template; bundle records it; absent stays byte-stable", async () => {
+    // With a custom template: all N+1 creates (subject + N actors) get it.
+    const withState = { worldVersion: 0 };
+    const withTemplate = baseHooks(withState, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3, "acme-desktop-with-runtimes"), dryRun: false, hooks: withTemplate.hooks });
+    expect(result.ok).toBe(true);
+    expect(withTemplate.created).toHaveLength(4); // 1 subject + 3 actors
+    expect(withTemplate.templates).toHaveLength(4);
+    expect(withTemplate.templates.every((t) => t === "acme-desktop-with-runtimes")).toBe(true);
+    const withBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
+
+    // Byte-stable default: NO template → every create called with NO template arg, bundle omits it.
+    const noState = { worldVersion: 0 };
+    const noTemplate = baseHooks(noState, makeRendezvous(3));
+    const result2 = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks: noTemplate.hooks });
+    expect(result2.ok).toBe(true);
+    expect(noTemplate.templates).toHaveLength(4);
+    expect(noTemplate.templates.every((t) => t === undefined)).toBe(true);
+    const noBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result2.runId, "run.json"), "utf8"));
+    expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
   it("GOOD run: ONE subject + N actors all torn down BY id (killed==created, N+1), same getHost URL, REAL overlap, state delta, verify ok", async () => {

@@ -31,6 +31,7 @@ import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
+  createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox
@@ -664,7 +665,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let desktop: E2BDesktopSandbox | undefined;
   try {
     desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-    desktop = await desktopModule.Sandbox.create({
+    // Optional custom desktop template (image): present → Sandbox.create(template, opts); absent →
+    // the byte-stable Sandbox.create(opts) default (stock `desktop` template).
+    desktop = await createDesktopSandbox(desktopModule, {
       apiKey: deps.e2bApiKey,
       requestTimeoutMs: deps.requestTimeoutMs,
       timeoutMs: deps.perLaneSandboxMs,
@@ -684,7 +687,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       resolution: spec.resolution,
       dpi: 96,
       lifecycle: { onTimeout: "kill" }
-    });
+    }, config.execution?.desktop?.template);
     sandboxId = desktop.sandboxId;
 
     if (deps.hooks.prepareDesktop) {
@@ -1491,6 +1494,7 @@ function buildSingleLaneBundle(args: {
     ...(outcome?.sessionError ? { sessionError: outcome.sessionError } : {}),
     source: args.source,
     ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
+    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {})
   });
@@ -1769,6 +1773,8 @@ export function buildCuaBundle(args: {
    * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
    */
   entryKind?: "local-app";
+  /** The custom E2B desktop template (image) this lane launched on, when configured (provenance). */
+  desktopTemplate?: string;
   traceArtifactPath?: string;
 }): RunBundle {
   const status: RunSimulationStatus = args.session
@@ -1981,6 +1987,8 @@ export function buildCuaBundle(args: {
     },
     review,
     feedbackCandidates: [],
+    // Custom desktop image provenance (omitted on the stock-template default → byte-stable).
+    ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
     // Structured subject provenance (invariant 5): code pin + state story. Uniform and
     // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
     subject: args.subjectProvenance
@@ -2307,6 +2315,8 @@ export function buildCuaFanoutBundle(args: {
     },
     review,
     feedbackCandidates: [],
+    // Custom desktop image provenance (every lane launched on it); omitted on the stock default.
+    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
     subject: args.aggregateSubject
   };
 }
