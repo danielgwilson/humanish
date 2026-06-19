@@ -50,6 +50,13 @@ artifacts:
 review:
   schema: mimetic.review.v1
   verdict: "contract_proof_only|pass|fail|blocked|timed_out"
+adapterScore:
+  schema: mimetic.adapter-score.v1
+  namespace: "<adapter namespace>"
+  status: "pass|partial|fail"
+  score: 0
+  summary: "<public-safe adapter score summary>"
+  data: {}
 feedbackCandidates:
   - schema: mimetic.feedback-candidate.v1
     id: "<stable candidate id>"
@@ -62,6 +69,20 @@ feedbackCandidates:
 Persisted `run.json` files must not contain absolute local target paths. Runtime
 commands may return the caller's working directory in process-local JSON
 responses, but durable run bundles use the public-safe `[target-cwd]` marker.
+
+## Adapter Score
+
+`adapterScore` is optional and namespaced. It lets a downstream adapter summarize
+its own product-specific rubric without adding product nouns to core schemas.
+Core validates only `schema`, `namespace`, `status`, `score`, `summary`, and
+that optional `data` is a record.
+
+Terminal-product runs record `adapterScore` additively. Browser/computer-use
+runs treat `status: fail` as product-red: the route result returns `ok: false`,
+the persisted `review.verdict` becomes `fail` when it was pass-like, and a
+generic adapter gap is appended. The bundle remains valid evidence for
+`mimetic verify` because the failure is an observed product-acceptance outcome,
+not corrupt evidence.
 
 ## Completion And Meaningful-Use Verdicts
 

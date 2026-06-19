@@ -16,6 +16,7 @@ import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } fro
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab } from "../src/lab-engine.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
+import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -51,6 +52,21 @@ const TWO_TURN_SESSION = [
   { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
 ];
 const HOLLOW_SESSION = [{ id: "r1", output: [{ type: "message", content: [] }] }];
+const FANOUT_ADAPTER_NAMESPACE = "fanout-browser-adapter-proof";
+
+function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+  return {
+    schema: "mimetic.adapter-score.v1",
+    namespace: FANOUT_ADAPTER_NAMESPACE,
+    status: "fail",
+    score: 15,
+    summary: `${ctx.backend} fan-out adapter found no product-level success evidence.`,
+    data: {
+      backend: ctx.backend,
+      laneCount: ctx.laneCount
+    }
+  };
+}
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -340,6 +356,31 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(traceFiles).toHaveLength(4);
     // Per-lane provider-neutral actor seam filled per stream.
     expect(bundle.streams.every((s: { actor?: { lane: string } }) => s.actor?.lane === "computer-use")).toBe(true);
+  });
+
+  it("adapter fail score turns an otherwise green CUA fan-out run red while preserving the verified bundle", async () => {
+    const handle = makeFanoutModule();
+    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
+      cwd,
+      cuaHooks: passingHooks(handle, { score: fanoutFailScore })
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.laneSummary).toMatchObject({ total: 4, passed: 4, skipped: 0, harnessErrors: 0, hollow: 0 });
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("Adapter scorer failed the run");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.adapterScore?.namespace).toBe(FANOUT_ADAPTER_NAMESPACE);
+    expect(bundle.adapterScore?.status).toBe("fail");
+    expect(bundle.adapterScore?.data?.laneCount).toBe(4);
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
   });
 
   it("pipeline gate: lane-1 provisioning failure ⇒ the remaining lanes never start a sandbox", async () => {

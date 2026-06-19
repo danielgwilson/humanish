@@ -15,6 +15,7 @@ import type {
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runSharedWorldLab, type SharedWorldLabHooks } from "../src/shared-world-lab.js";
+import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -222,6 +223,22 @@ function baseHooks(state: { worldVersion: number }): { hooks: SharedWorldLabHook
   return { hooks, created, templates, killed, sandbox };
 }
 
+const SHARED_WORLD_ADAPTER_NAMESPACE = "shared-world-adapter-proof";
+
+function sharedWorldFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+  return {
+    schema: "mimetic.adapter-score.v1",
+    namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
+    status: "fail",
+    score: 18,
+    summary: `${ctx.backend} adapter found no product-level shared-world success evidence.`,
+    data: {
+      backend: ctx.backend,
+      laneCount: ctx.laneCount
+    }
+  };
+}
+
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "mimetic-shared-world-"));
@@ -333,6 +350,27 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // Per-role actor traces written.
     const actorsDir = await readdir(path.join(cwd, ".mimetic", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json"]);
+  });
+
+  it("adapter fail score turns a coherent shared-world run red while keeping shared-world evidence verifiable", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state);
+    hooks.score = sharedWorldFailScore;
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("Adapter scorer failed the run");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.adapterScore?.namespace).toBe(SHARED_WORLD_ADAPTER_NAMESPACE);
+    expect(bundle.adapterScore?.status).toBe("fail");
+    expect(bundle.adapterScore?.data?.backend).toBe("shared-world");
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
   it("routes through runLab(sharedWorldHooks) to the shared-world backend", async () => {

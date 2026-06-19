@@ -52,6 +52,16 @@ export {
   createOpenAiResponsesProvider
 } from "./openai-responses-cu.js";
 export type { FetchLike, OpenAiResponsesProviderOptions } from "./openai-responses-cu.js";
+export {
+  adapterScoreFailureMessage,
+  applyAdapterScoreFailureToReview,
+  applyBrowserAdapterHooks
+} from "./adapter-extension.js";
+export type {
+  BrowserAdapterBackend,
+  BrowserLabAdapterHooks,
+  BrowserLabScoringContext
+} from "./adapter-extension.js";
 export type { RedactionHooks } from "./redaction.js";
 export { normalizeCliArgv } from "./argv.js";
 export {

@@ -26,6 +26,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace } from "./actor-contract.js";
+import {
+  adapterScoreFailureMessage,
+  applyBrowserAdapterHooks,
+  type BrowserLabAdapterHooks
+} from "./adapter-extension.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
@@ -125,7 +130,7 @@ const ERROR_TAIL_CHARS = 2000;
  * what `subject.serve` declares (or to provision an app-url subject entirely). The rest are
  * DI seams so CI drives the full path with fakes at zero network/zero spend.
  */
-export interface CuaActorLabHooks {
+export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   /**
    * Runs after sandbox creation and before subject provisioning / browser launch. Widened
    * back-compatibly with per-lane context so a library caller can provision the right app-url
@@ -1320,6 +1325,24 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         subjectEnvNames
       });
 
+  const adapterWarnings: string[] = [];
+  await applyBrowserAdapterHooks({
+    hooks,
+    bundle,
+    context: {
+      bundle,
+      labId: config.id,
+      runId,
+      actor: descriptor.id,
+      backend: "cua",
+      dryRun,
+      laneCount
+    },
+    sanitize: (text) => redactText(scrubKnownValues(text)),
+    warnings: adapterWarnings,
+    hookLabel: "cuaHooks"
+  });
+
   await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.md"), renderCuaReviewMarkdown(bundle), "utf8");
@@ -1347,10 +1370,11 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       && !outcome.noEngagement;
   };
   const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
-  const ok = observer.ok && allLanesOk;
+  const adapterFailure = adapterScoreFailureMessage(bundle);
+  const ok = observer.ok && allLanesOk && adapterFailure === undefined;
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
-  const warnings = [...laneWarnings, ...aggregateWarnings, ...observer.warnings];
+  const warnings = [...laneWarnings, ...aggregateWarnings, ...adapterWarnings, ...observer.warnings];
 
   const laneResults = laneSpecs.map((spec, index) => toLaneResult(spec, outcomes?.[index], laneSubjects[index]!, dryRun));
   const laneSummary = buildLaneSummary(outcomes, laneCount, plan, dryRun);
@@ -1358,6 +1382,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   const errorResult = ((): CuaActorLabResult["error"] | undefined => {
     if (ok) return undefined;
+    if (adapterFailure !== undefined) {
+      return {
+        code: "MIMETIC_CUA_LAB_FAILED",
+        message: adapterFailure
+      };
+    }
     if (laneCount === 1) {
       const outcome = firstOutcome;
       return {

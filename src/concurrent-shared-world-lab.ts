@@ -37,6 +37,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 
+import {
+  adapterScoreFailureMessage,
+  applyBrowserAdapterHooks
+} from "./adapter-extension.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import {
@@ -572,6 +576,24 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     ...(runError === undefined ? {} : { runError })
   });
 
+  const adapterWarnings: string[] = [];
+  await applyBrowserAdapterHooks({
+    hooks,
+    bundle,
+    context: {
+      bundle,
+      labId: config.id,
+      runId,
+      actor: descriptor.id,
+      backend: "concurrent-shared-world",
+      dryRun,
+      laneCount: roles.length
+    },
+    sanitize: (text) => redactText(scrubKnownValues(text)),
+    warnings: adapterWarnings,
+    hookLabel: "sharedWorldHooks"
+  });
+
   await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.md"), renderConcurrentReviewMarkdown(bundle), "utf8");
@@ -600,7 +622,8 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       && result.outcome.session.completionReason !== "harness_error"
       && result.outcome.sessionError === undefined
       && !result.outcome.noEngagement);
-  const ok = observer.ok && runError === undefined && (dryRun || swarmRan);
+  const adapterFailure = adapterScoreFailureMessage(bundle);
+  const ok = observer.ok && runError === undefined && (dryRun || swarmRan) && adapterFailure === undefined;
 
   const overlapProven = !dryRun && actorWindowsOverlap(actorResults);
 
@@ -647,6 +670,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     if (runError) {
       return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: runError };
     }
+    if (adapterFailure !== undefined) {
+      return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
+    }
     const passed = roleResults.filter((role) => role.ok).length;
     return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: `Concurrent shared-world run did not run coherently: ${passed}/${roles.length} actor(s) reached a terminal, engaged session.` };
   })();
@@ -669,7 +695,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     subject,
     roles: roleResults,
     observer,
-    warnings: [...warnings, ...observer.warnings],
+    warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult })
   };
 }

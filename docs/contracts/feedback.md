@@ -96,7 +96,15 @@ mimetic_feedback:
   proposed_next_state: "watch|adapter-hardening|target-app-setup|actor-auth|setup-quality-review|study-quality-review"
   acceptance_proof:
     - "<command or artifact that would close this>"
+  adapter:
+    namespace: "<adapter namespace>"
+    data: {}
 ```
+
+`adapter` is optional and namespaced. Adapters may place product-specific
+concepts there (for example route groups, milestone ids, product acceptance
+details, or adopter-owned rubric data). Core validates only that `namespace` is
+non-empty and `data` is a record; keys inside `data` are never core enums.
 
 ## Failure Owners
 

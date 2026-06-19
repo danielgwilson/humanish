@@ -14,6 +14,7 @@ import { concurrentSharedWorldValidationReason, LAB_CONFIG_SCHEMA, parseLabConfi
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
+import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -232,6 +233,22 @@ function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<vo
   return { hooks, created, templates, killed, sandboxes };
 }
 
+const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
+
+function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+  return {
+    schema: "mimetic.adapter-score.v1",
+    namespace: CONCURRENT_ADAPTER_NAMESPACE,
+    status: "fail",
+    score: 20,
+    summary: `${ctx.backend} adapter found no product-level concurrent success evidence.`,
+    data: {
+      backend: ctx.backend,
+      laneCount: ctx.laneCount
+    }
+  };
+}
+
 let cwd: string;
 beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "mimetic-concurrent-sw-")); });
 afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
@@ -359,6 +376,28 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // Per-actor traces written.
     const actorsDir = await readdir(path.join(cwd, ".mimetic", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json", "stream-003.json"]);
+  });
+
+  it("adapter fail score turns a coherent concurrent shared-world run red while keeping evidence verifiable", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    hooks.score = concurrentFailScore;
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("Adapter scorer failed the run");
+    expect(result.overlapProven).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.adapterScore?.namespace).toBe(CONCURRENT_ADAPTER_NAMESPACE);
+    expect(bundle.adapterScore?.status).toBe("fail");
+    expect(bundle.adapterScore?.data?.backend).toBe("concurrent-shared-world");
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
   it("routes through runLab(sharedWorldHooks) to the concurrent backend", async () => {

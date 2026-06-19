@@ -26,6 +26,11 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "./actor-contract.js";
+import {
+  adapterScoreFailureMessage,
+  applyBrowserAdapterHooks,
+  type BrowserLabAdapterHooks
+} from "./adapter-extension.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
@@ -101,7 +106,7 @@ const DEFAULT_MISSION =
  * orchestration with fakes at $0/zero-network. The fake desktop module records create/kill BY id
  * and exposes NO `list` method (the by-id teardown rail is then provable by construction).
  */
-export interface SharedWorldLabHooks {
+export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   /** Lazy-load the E2B desktop module (tests inject a fake; default loadE2BDesktopModule). */
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   /** Runs once after sandbox creation, before subject provisioning (library setup seam). */
@@ -663,6 +668,24 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     ...(failFastReason === undefined ? {} : { failFastReason })
   });
 
+  const adapterWarnings: string[] = [];
+  await applyBrowserAdapterHooks({
+    hooks,
+    bundle,
+    context: {
+      bundle,
+      labId: config.id,
+      runId,
+      actor: descriptor.id,
+      backend: "shared-world",
+      dryRun,
+      laneCount: roleSpecs.length
+    },
+    sanitize: (text) => redactText(scrubKnownValues(text)),
+    warnings: adapterWarnings,
+    hookLabel: "sharedWorldHooks"
+  });
+
   await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeFile(path.join(artifactRoot, "review.md"), renderSharedWorldReviewMarkdown(bundle), "utf8");
@@ -684,8 +707,9 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
       && !outcome.noEngagement;
   };
   const allRolesOk = roleSpecs.every((_, index) => roleOk(roleOutcomes[index]));
-  const ok = observer.ok && allRolesOk && failFastReason === undefined;
-  const allWarnings = [...warnings, ...observer.warnings];
+  const adapterFailure = adapterScoreFailureMessage(bundle);
+  const ok = observer.ok && allRolesOk && failFastReason === undefined && adapterFailure === undefined;
+  const allWarnings = [...warnings, ...adapterWarnings, ...observer.warnings];
 
   const roles: SharedWorldRoleResult[] = roleSpecs.map((spec, index) => {
     const outcome = roleOutcomes[index];
@@ -735,6 +759,9 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     if (ok) return undefined;
     if (!observer.ok) {
       return { code: "MIMETIC_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the shared-world run." };
+    }
+    if (adapterFailure !== undefined) {
+      return { code: "MIMETIC_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
     }
     const passed = roles.filter((role) => role.ok).length;
     return {

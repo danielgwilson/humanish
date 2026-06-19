@@ -41,7 +41,7 @@ workflow without leaking private upstream truth into core.
 | Feedback | `mimetic.feedback.v1` | `public-safe-feedback` |
 | Terminal cost ledger | `mimetic.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
 | Terminal no-spend proof | `mimetic.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
-| Adapter score | `mimetic.adapter-score.v1` (additive `RunBundle.adapterScore`; namespaced) | see Product-Adapter Extension Seam below |
+| Adapter score | `mimetic.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
 | Shared-world evidence | `mimetic.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
 
 ## Lab Manifest
@@ -618,21 +618,22 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 
 ## Product-Adapter Extension Seam
 
-The terminal-product lane is proof-roadmap **layer 6**: an adopter (e.g. a
-creative-CLI product) attaches product-specific scoring + feedback as a THIN
-in-repo extension WITHOUT forking core. The seam is the EXPORTED contract types
-plus a DI hook on `TerminalProductLabHooks` — never a built-in product scorer
-(the adopter's scorecard lives in the adopter's repo).
+The terminal-product and browser/computer-use lanes let an adopter attach
+product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
+core. The seam is the EXPORTED contract types plus DI hooks:
+`TerminalProductLabHooks` for terminal-product runs, and the browser adapter
+hooks inherited by `CuaActorLabHooks` / `SharedWorldLabHooks` for CUA,
+sequential shared-world, and concurrent shared-world runs. This is never a
+built-in product scorer (the adopter's scorecard lives in the adopter's repo).
 
 Two product-agnostic carriers keep core's nouns closed while letting the adapter
 record its own:
 
-- **Adapter score** (`mimetic.adapter-score.v1`, additive `RunBundle.adapterScore`).
+- **Adapter score** (`mimetic.adapter-score.v1`, `RunBundle.adapterScore`).
   A namespaced summary the adapter's `score` hook returns: `{ schema, namespace,
   status, score, summary, data? }`. Core never reads `data` — the adopter's
   component rubric rides there; `namespace` (an adopter slug) scopes the whole
-  record so a future inert-field audit never misfires. The mission-based
-  `review` verdict is UNCHANGED — the adapter score is additive, not a replacement.
+  record so a future inert-field audit never misfires.
 - **Namespaced product-noun block** (`RunFeedbackCandidate.adapter`). The
   adapter's `deriveFeedback` hook returns feedback candidates that satisfy core's
   feedback-candidate shape; product-specific concepts (public CLI/product command
@@ -665,14 +666,26 @@ adapter:
     defectionFrictionRisk: low
 ```
 
+Acceptance semantics are route-specific:
+
+- Terminal-product runs keep the mission-based `review` verdict unchanged; the
+  adapter score is additive because the route is a public-product study lane.
+- Browser/computer-use runs treat `adapterScore.status: fail` as product-red:
+  the bundle keeps the adapter score, `review.verdict` becomes `fail` when it
+  was pass-like, a generic adapter gap is appended, and the route result returns
+  `ok: false`. This closes the false-positive class where a generic actor reaches
+  a terminal session but an adopter scorer finds no product-visible completion
+  evidence.
+
 The `e2b-terminal` substrate is added to `RunFeedbackCandidate.substrate` so a
-terminal-agent candidate names its substrate honestly. The lane invokes the hooks
-over the FULLY-ASSEMBLED, redacted evidence (`TerminalProductScoringContext`:
-`bundle`, `trace`, `ledgers`, `product`, `labId`, `runId` — all exported public
-types), scrubs+redacts the returned payloads, and DROPS any malformed score or
-candidate with a warning so a bad extension never poisons a verifiable bundle.
-Default behavior (no hook) is unchanged. `verifyRun` re-checks the surviving
-shapes fail-closed.
+terminal-agent candidate names its substrate honestly; browser candidates use
+the existing `e2b-desktop` substrate. Lanes invoke hooks over FULLY-ASSEMBLED,
+redacted evidence (`TerminalProductScoringContext` or
+`BrowserLabScoringContext`: `bundle`, run identifiers, actor/backend metadata;
+all exported public types), scrub+redact returned payloads, and DROP any
+malformed score or candidate with a warning so a bad extension never poisons a
+verifiable bundle. Default behavior (no hook) is unchanged. `verifyRun`
+re-checks the surviving shapes fail-closed.
 
 ## Evidence Streams
 

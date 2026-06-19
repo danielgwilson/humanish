@@ -30,6 +30,12 @@ import type {
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
+import type {
+  BrowserLabScoringContext,
+  RunAdapterScore,
+  RunBundle,
+  RunFeedbackCandidate
+} from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -151,6 +157,52 @@ const TWO_TURN_SESSION = [
   { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
   { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
 ];
+const BROWSER_ADAPTER_NAMESPACE = "browser-adapter-proof";
+
+function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
+  return {
+    schema: "mimetic.adapter-score.v1",
+    namespace: BROWSER_ADAPTER_NAMESPACE,
+    status: "fail",
+    score: 12,
+    summary: `${ctx.backend} actor stopped before product evidence.`,
+    data: {
+      backend: ctx.backend,
+      laneCount: ctx.laneCount,
+      productAcceptance: "missing"
+    }
+  };
+}
+
+function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] {
+  return [{
+    schema: "mimetic.feedback-candidate.v1",
+    id: `${BROWSER_ADAPTER_NAMESPACE}-${ctx.runId}`,
+    run_id: ctx.runId,
+    stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
+    adapter_id: BROWSER_ADAPTER_NAMESPACE,
+    scenario_id: ctx.labId,
+    persona_id: ctx.bundle.simulations[0]?.personaId ?? "unknown",
+    actor: "unknown",
+    substrate: "e2b-desktop",
+    failure_owner: "actor",
+    summary: "Browser actor reached a terminal session but did not provide product-visible completion evidence.",
+    expected: "The actor completes the declared browser task and leaves product-visible evidence.",
+    actual: "The generic actor session was terminal, but the adapter rubric found no product completion evidence.",
+    evidence: [{ path: "review.md", kind: "review", note: "Review summary includes the adapter-owned product acceptance gap." }],
+    redaction: { status: "passed", notes: "Synthetic adapter feedback references local public-safe artifacts only." },
+    idempotency_key: `${BROWSER_ADAPTER_NAMESPACE}:${ctx.runId}:missing-product-evidence`,
+    proposed_next_state: "actor-auth",
+    acceptance_proof: [`mimetic verify --run ${ctx.runId} --json`],
+    adapter: {
+      namespace: BROWSER_ADAPTER_NAMESPACE,
+      data: {
+        productAcceptance: "missing",
+        suggestedOwner: "adopter-adapter"
+      }
+    }
+  }];
+}
 
 function cuaConfig(appUrl = "http://127.0.0.1:3000/"): LabConfig {
   const parsed = parseLabConfig({
@@ -385,6 +437,79 @@ describe("runCuaActorLab", () => {
       expect(text, file).not.toContain("test-openai-key");
       expect(text, file).not.toContain("test-e2b-key");
     }
+  });
+
+  it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        score: failingBrowserScore,
+        deriveFeedback: browserFeedback
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.session?.completionReason).toBe("goal_satisfied");
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("Adapter scorer failed the run");
+
+    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.adapterScore?.namespace).toBe(BROWSER_ADAPTER_NAMESPACE);
+    expect(bundle.adapterScore?.status).toBe("fail");
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("Adapter scorer failed the run");
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+    expect(bundle.feedbackCandidates).toHaveLength(1);
+    expect(bundle.feedbackCandidates[0]?.adapter?.namespace).toBe(BROWSER_ADAPTER_NAMESPACE);
+    expect(bundle.feedbackCandidates[0]?.substrate).toBe("e2b-desktop");
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("malformed browser adapter outputs are dropped, preserving default green behavior", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        score: () => ({ schema: "mimetic.adapter-score.v1", namespace: "", status: "fail", score: 0, summary: "bad" }) as RunAdapterScore,
+        deriveFeedback: () => ([{
+          schema: "mimetic.feedback-candidate.v1",
+          id: "bad",
+          summary: "Malformed candidate missing required run fields.",
+          evidence: [],
+          redaction: { status: "passed", notes: "shape test" }
+        }] as unknown as RunFeedbackCandidate[])
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.ok).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("adapter-score.v1") || warning.includes("feedback-candidate.v1"))).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.adapterScore).toBeUndefined();
+    expect(bundle.feedbackCandidates).toHaveLength(0);
+    expect(bundle.review.verdict).toBe("pass");
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
   });
 
   it("DEFAULT persists RAW screenshots (full fidelity, local) and warns the bundle is not publish-safe as-is", async () => {
