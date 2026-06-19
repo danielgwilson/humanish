@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type {
   RunAdapterScore,
   RunBundle,
@@ -125,24 +127,95 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
 }
 
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  if (!isRecord(value)) return false;
   const candidate = value as Partial<RunFeedbackCandidate>;
-  const baseOk = candidate.schema === "mimetic.feedback-candidate.v1"
-    && typeof candidate.id === "string"
-    && typeof candidate.summary === "string"
-    && candidate.summary.trim().length > 0
-    && Array.isArray(candidate.evidence)
-    && typeof candidate.redaction === "object"
-    && candidate.redaction !== null
-    && candidate.redaction.status === "passed";
-  if (!baseOk) return false;
+  if (candidate.schema !== "mimetic.feedback-candidate.v1"
+    || typeof candidate.id !== "string"
+    || typeof candidate.run_id !== "string"
+    || (candidate.stream_id !== undefined && typeof candidate.stream_id !== "string")
+    || typeof candidate.adapter_id !== "string"
+    || typeof candidate.scenario_id !== "string"
+    || typeof candidate.persona_id !== "string"
+    || !isFeedbackActor(candidate.actor)
+    || !isFeedbackSubstrate(candidate.substrate)
+    || !isFeedbackFailureOwner(candidate.failure_owner)
+    || typeof candidate.summary !== "string"
+    || candidate.summary.trim().length === 0
+    || typeof candidate.expected !== "string"
+    || typeof candidate.actual !== "string"
+    || !Array.isArray(candidate.evidence)
+    || !candidate.evidence.every(isFeedbackEvidence)
+    || !isRecord(candidate.redaction)
+    || candidate.redaction.status !== "passed"
+    || typeof candidate.redaction.notes !== "string"
+    || typeof candidate.idempotency_key !== "string"
+    || !isFeedbackNextState(candidate.proposed_next_state)
+    || !Array.isArray(candidate.acceptance_proof)
+    || !candidate.acceptance_proof.every((item) => typeof item === "string")) {
+    return false;
+  }
   if (candidate.adapter !== undefined) {
     const adapter = candidate.adapter;
-    if (typeof adapter !== "object" || adapter === null
+    if (!isRecord(adapter)
       || typeof adapter.namespace !== "string" || adapter.namespace.trim().length === 0
-      || typeof adapter.data !== "object" || adapter.data === null || Array.isArray(adapter.data)) {
+      || !isRecord(adapter.data)) {
       return false;
     }
   }
   return true;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {
+  return value === "codex-tui"
+    || value === "codex-exec"
+    || value === "codex-app-server"
+    || value === "synthetic-dry-run"
+    || value === "unknown";
+}
+
+function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
+  return value === "e2b-desktop"
+    || value === "e2b-terminal"
+    || value === "local-filesystem"
+    || value === "codex-app-server"
+    || value === "unknown";
+}
+
+function isFeedbackFailureOwner(value: unknown): value is RunFeedbackCandidate["failure_owner"] {
+  return value === "harness"
+    || value === "target-app"
+    || value === "actor"
+    || value === "environment"
+    || value === "unknown";
+}
+
+function isFeedbackNextState(value: unknown): value is RunFeedbackCandidate["proposed_next_state"] {
+  return value === "watch"
+    || value === "adapter-hardening"
+    || value === "target-app-setup"
+    || value === "actor-auth"
+    || value === "setup-quality-review"
+    || value === "study-quality-review";
+}
+
+function isFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
+  if (!isRecord(value)) return false;
+  return typeof value.path === "string"
+    && value.path.length > 0
+    && !path.isAbsolute(value.path)
+    && !value.path.includes("://")
+    && !value.path.includes("..")
+    && (
+      value.kind === "review"
+      || value.kind === "state"
+      || value.kind === "log"
+      || value.kind === "trace"
+      || value.kind === "screenshot"
+      || value.kind === "filesystem"
+    )
+    && typeof value.note === "string";
 }

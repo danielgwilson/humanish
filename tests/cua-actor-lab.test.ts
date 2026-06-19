@@ -487,7 +487,13 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
         score: () => ({ schema: "mimetic.adapter-score.v1", namespace: "", status: "fail", score: 0, summary: "bad" }) as RunAdapterScore,
-        deriveFeedback: () => ([{ schema: "mimetic.feedback-candidate.v1", id: "bad", summary: "   ", evidence: [], redaction: { status: "passed" } }] as unknown as RunFeedbackCandidate[])
+        deriveFeedback: () => ([{
+          schema: "mimetic.feedback-candidate.v1",
+          id: "bad",
+          summary: "Malformed candidate missing required run fields.",
+          evidence: [],
+          redaction: { status: "passed", notes: "shape test" }
+        }] as unknown as RunFeedbackCandidate[])
       }
     });
 
