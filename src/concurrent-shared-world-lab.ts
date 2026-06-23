@@ -608,20 +608,13 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
 
   const roleOk = (result: ActorLaneResult | undefined): boolean => {
     if (dryRun) return true;
-    if (!result) return false;
-    return result.outcome.session !== undefined
-      && result.outcome.session.completionReason !== "harness_error"
-      && result.outcome.sessionError === undefined
-      && !result.outcome.noEngagement;
+    return actorLanePassed(result);
   };
-  // Concurrent "ok": the swarm ran coherently (every actor produced a terminal, engaged session
-  // with no harness error). Per-persona MISSION success is the "M of N" headline (in roles[]),
-  // NOT the run's exit code.
+  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session. Per-persona
+  // mission success is still the "M of N" headline, but a failed actor trace cannot make the
+  // route green just because the harness got a terminal.
   const swarmRan = !dryRun && actorResults.length === roles.length
-    && actorResults.every((result) => result.outcome.session !== undefined
-      && result.outcome.session.completionReason !== "harness_error"
-      && result.outcome.sessionError === undefined
-      && !result.outcome.noEngagement);
+    && actorResults.every(actorLanePassed);
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok = observer.ok && runError === undefined && (dryRun || swarmRan) && adapterFailure === undefined;
 
@@ -674,7 +667,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
     }
     const passed = roleResults.filter((role) => role.ok).length;
-    return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: `Concurrent shared-world run did not run coherently: ${passed}/${roles.length} actor(s) reached a terminal, engaged session.` };
+    return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: `Concurrent shared-world run did not run coherently: ${passed}/${roles.length} actor(s) reached a terminal, engaged passed session.` };
   })();
 
   return {
@@ -712,6 +705,16 @@ function actorWindowsOverlap(results: ActorLaneResult[]): boolean {
     }
   }
   return false;
+}
+
+function actorLanePassed(result: ActorLaneResult | undefined): boolean {
+  if (!result) return false;
+  const session = result.outcome.session;
+  return session !== undefined
+    && session.status === "passed"
+    && session.completionReason !== "harness_error"
+    && result.outcome.sessionError === undefined
+    && !result.outcome.noEngagement;
 }
 
 /** Project the concurrent run into a mimetic.run-bundle.v1 with the CONCURRENT shared-world block. */
@@ -904,12 +907,7 @@ export function buildConcurrentSharedWorldBundle(args: {
   const outcomes: SharedWorldOutcome[] = actorSpecs.map((spec, index) => {
     const result = actorResults[index];
     const session = result?.outcome.session;
-    const ok = !dryRun
-      && session !== undefined
-      && session.completionReason !== "harness_error"
-      && result?.outcome.sessionError === undefined
-      && !result?.outcome.noEngagement
-      && session.status === "passed";
+    const ok = !dryRun && actorLanePassed(result);
     return {
       roleId: spec.laneId,
       simId: spec.simId,
@@ -948,15 +946,12 @@ export function buildConcurrentSharedWorldBundle(args: {
     message: `Concurrency: ${laneWindows.length} actor window(s)${dryRun ? " (dry-run contract; $0)" : `, overlap ${overlaps ? "PROVEN" : "not observed"}`}; stateSeries ${stateSeries.length} snapshot(s), ${deltas} delta(s). Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. CAPABILITY at scale is backed only by the deferred live receipt.`
   });
 
-  // Concurrent verdict: dryRun → contract; else the swarm ran coherently (no harness error / no
-  // hollow actor) → pass; otherwise fail. Per-persona MISSION success is the M-of-N in outcomes[].
+  // Concurrent verdict: dryRun → contract; else every actor produced a terminal, engaged PASSED
+  // session → pass; otherwise fail. Per-persona mission success is the M-of-N in outcomes[].
   const verdict: ReviewSummary["verdict"] = dryRun
     ? "contract_proof_only"
     : (actorResults.length === actorSpecs.length
-        && actorResults.every((result) => result.outcome.session !== undefined
-          && result.outcome.session.completionReason !== "harness_error"
-          && result.outcome.sessionError === undefined
-          && !result.outcome.noEngagement)
+        && actorResults.every(actorLanePassed)
         ? "pass"
         : "fail");
   const passedMissions = outcomes.filter((outcome) => outcome.ok).length;

@@ -400,6 +400,27 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
   });
 
+  it("fails review when a lane returns a terminal failed actor trace", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (
+      index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined
+    ));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("2/3 actor(s) reached a terminal, engaged passed session");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("2/3 reached their goal");
+    expect(bundle.review.gaps.some((gap) => gap.includes("persona-02"))).toBe(true);
+    expect(bundle.sharedWorld?.outcomes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ roleId: "persona-02", status: "failed", completionReason: "actor_error", ok: false })
+      ])
+    );
+  });
+
   it("routes through runLab(sharedWorldHooks) to the concurrent backend", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
