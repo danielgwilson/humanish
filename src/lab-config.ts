@@ -12,13 +12,15 @@
 // actors[0].{mission,persona,laneFocus.instruction,model}, execution.timeoutMs,
 // execution.desktop.{resolution,sandboxTimeoutMs}, and (clone)
 // subject.{serve,env,state,clone.depth}.
-// On the scripted-browser route (app-url × local-or-absent with a registered scripted-browser
-// actor), `actors[0].type` is equally load-bearing, and the route consumes scenario.ref
-// (REQUIRED there — the committed scenario's browser steps ARE what the actor executes),
-// actors[0].{persona,count}, and execution.timeoutMs; actors[0].{mission,laneFocus,model}
-// are inert on that route because no model runs, and execution.desktop.* stays forward-declared
-// (device presets belong to the cua route — scripted surfaces are the driver's own
-// desktop/mobile viewports where isMobile/DSF genuinely RENDER via playwright emulation).
+// On the scripted-browser route (app-url × local-or-absent, or clone × e2b-desktop, with a
+// registered scripted-browser actor), `actors[0].type` is equally load-bearing, and the route
+// consumes scenario.ref (REQUIRED there — the committed scenario's browser steps ARE what the
+// actor executes), actors[0].{persona,count}, and execution.timeoutMs. On the provisioned
+// clone slice it also consumes subject.{repos,serve,env,state,exposure,clone.depth} and
+// execution.desktop.template. actors[0].{mission,laneFocus,model} are inert on that route
+// because no model runs, and most execution.desktop.* fields remain forward-declared (device
+// presets belong to the cua route — scripted surfaces are the driver's own desktop/mobile
+// viewports where isMobile/DSF genuinely RENDER via playwright emulation).
 // On the other routes those fields remain FORWARD-DECLARED and NOT yet consumed —
 // parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
 // the truth.
@@ -621,9 +623,52 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       }
     }
   } else if (actorResolvesToScriptedBrowser(config.actors[0]?.type)) {
-    // clone/this-repo × scripted actor: rejected, never ignored (the scripted driver only
-    // drives a caller-declared running app).
-    return invalid("scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL); clone/this-repo subjects are not supported on this route.");
+    if (config.subject.source !== "clone") {
+      return invalid("scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject).");
+    }
+    if (config.execution?.target !== "e2b-desktop") {
+      return invalid("clone subjects with scripted-browser actors require `execution.target: e2b-desktop` — the lab provisions the clone in E2B, exposes it with getHost, then drives deterministic browser steps.");
+    }
+    if (!config.subject.serve) {
+      return invalid("clone subjects with scripted-browser actors require `subject.serve` (start + url) — the lab serves the app in-sandbox before the scripted browser drives it.");
+    }
+    if ((config.subject.repos?.length ?? 0) !== 1) {
+      return invalid("clone scripted-browser labs require exactly one repo in subject.repos.");
+    }
+    const repo = config.subject.repos?.[0] ?? "";
+    if (!REPO_SLUG_PATTERN.test(repo)) {
+      return invalid(`subject.repos[0] must be an owner/repo slug (got "${repo}").`);
+    }
+    if (config.subject.topology !== undefined) {
+      return invalid("clone scripted-browser labs do not support `subject.topology` yet — this slice provisions one synthetic subject and one deterministic scripted actor roster, not a shared-world run.");
+    }
+    if (config.subject.clone?.fanout !== undefined || config.subject.clone?.keep === true) {
+      return invalid("clone scripted-browser labs do not support `subject.clone.fanout` or `subject.clone.keep` yet — the provisioned subject is always a single disposable E2B sandbox.");
+    }
+    if (!config.scenario?.ref) {
+      return invalid("scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.");
+    }
+    if ((config.actors[0]?.count ?? 1) > 2) {
+      return invalid("scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.");
+    }
+    if (config.actors[0]?.lanes !== undefined) {
+      return invalid("`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster.");
+    }
+    if (config.policies?.redactScreenshots === true) {
+      return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .mimetic; a silently ignored redaction policy would be a safety lie, so it is rejected.");
+    }
+    if (config.policies?.allowPublicTargets === true) {
+      return invalid("`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject.");
+    }
+    if (config.subject.exposure !== "synthetic") {
+      return invalid("clone scripted-browser labs require `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data.");
+    }
+    if (!config.subject.state?.seed || config.subject.state.seed.length === 0 || (config.subject.state.external?.length ?? 0) > 0) {
+      return invalid("clone scripted-browser labs require `subject.state.seed` and do not allow `subject.state.external` — getHost-exposed subjects must be synthetic seeded data, not external/unpinned state.");
+    }
+    if (!config.subject.serve.start.includes("0.0.0.0")) {
+      return invalid("clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback.");
+    }
   }
 
   // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
@@ -939,7 +984,17 @@ export function resolveSeatUrl(serveUrl: string, entry: string | undefined): str
  * source of truth for selectLabBackend and the warning logic.
  */
 export function routesToScriptedBrowser(config: LabConfig): boolean {
+  return routesToLocalScriptedBrowser(config) || routesToProvisionedScriptedBrowser(config);
+}
+
+export function routesToLocalScriptedBrowser(config: LabConfig): boolean {
   return config.subject.source === "app-url"
+    && actorResolvesToScriptedBrowser(config.actors[0]?.type);
+}
+
+export function routesToProvisionedScriptedBrowser(config: LabConfig): boolean {
+  return config.subject.source === "clone"
+    && config.execution?.target === "e2b-desktop"
     && actorResolvesToScriptedBrowser(config.actors[0]?.type);
 }
 
@@ -995,10 +1050,10 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
       if (actor.lanes) inert.push(`actors[${index}].lanes`);
     }
   }
-  if (config.subject.clone?.depth !== undefined && !routesToCua) inert.push("subject.clone.depth");
-  if (config.subject.serve && !routesToCua) inert.push("subject.serve");
-  if (config.subject.env && !routesToCua) inert.push("subject.env");
-  if (config.subject.state && !routesToCua) inert.push("subject.state");
+  if (config.subject.clone?.depth !== undefined && !routesToCua && !routesToScripted) inert.push("subject.clone.depth");
+  if (config.subject.serve && !routesToCua && !routesToScripted) inert.push("subject.serve");
+  if (config.subject.env && !routesToCua && !routesToScripted) inert.push("subject.env");
+  if (config.subject.state && !routesToCua && !routesToScripted) inert.push("subject.state");
   // topology + checkpoint act ONLY on the shared-world route (#164); a set-but-unconsumed value
   // (incl. an explicit per-lane-worlds, which the cua route already is by mechanism) warns inert.
   if (config.subject.topology !== undefined && !routesToShared) {
@@ -1009,8 +1064,8 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   }
   // exposure (the synthetic-subject attestation) acts ONLY on the CONCURRENT shared-world route
   // (the getHost-exposed plane); inert on the sequential shared-world route (loopback) and elsewhere.
-  if (config.subject.exposure !== undefined && !routesToConcurrent) {
-    inert.push("subject.exposure (the synthetic-subject attestation for the getHost-exposed plane; needs subject.topology: shared-world + execution.concurrency > 1)");
+  if (config.subject.exposure !== undefined && !routesToConcurrent && !(routesToScripted && config.subject.source === "clone")) {
+    inert.push("subject.exposure (the synthetic-subject attestation for a getHost-exposed plane; needs concurrent shared-world or clone × e2b-desktop × scripted-browser)");
   }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
   // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
@@ -1039,7 +1094,8 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // concurrent). It is INERT on every other route (incl. the in-process local-app cua route, which
   // creates no desktop, and the meta route): warn so an unconsumed template is never silently
   // ignored (invariant 6).
-  const createsE2BDesktop = routesToCua && config.execution?.target === "e2b-desktop";
+  const createsE2BDesktop = (routesToCua || (routesToScripted && config.subject.source === "clone"))
+    && config.execution?.target === "e2b-desktop";
   if (config.execution?.desktop?.template !== undefined && !createsE2BDesktop) {
     inert.push("execution.desktop.template (the custom E2B desktop image is consumed only on execution.target: e2b-desktop computer-use routes that create a desktop; needs a computer-use actor on e2b-desktop)");
   }

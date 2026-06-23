@@ -295,6 +295,38 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
     expect(result.trace.counts.screenshots).toBe(0);
   });
 
+  it("redacts provisioned subject URLs from persisted evidence while driving the raw app URL", async () => {
+    await withHttpServer(async (appUrl) => {
+      const { browser, state } = makeFakeBrowser({ bodyAfterClick: "Welcome aboard" });
+      const result = await runScriptedBrowserSession({
+        appUrl,
+        evidenceAppUrl: "[provisioned-subject]",
+        urlPolicy: { kind: "provisioned-subject", evidenceOrigin: "[provisioned-subject]" },
+        journey: demoJourney(),
+        surface,
+        persona,
+        timeoutMs: 10_000,
+        artifactRoot,
+        launchBrowser: async () => browser
+      });
+
+      expect(state.url).toBe(appUrl);
+      expect(result.status).toBe("passed");
+      expect(result.capture.reason).toContain("[provisioned-subject]");
+      expect(result.capture.steps.map((step) => step.url)).toEqual([
+        "[provisioned-subject]/",
+        "[provisioned-subject]/",
+        "[provisioned-subject]/",
+        "[provisioned-subject]/"
+      ]);
+
+      const nativeText = await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8");
+      expect(nativeText).toContain("[provisioned-subject]");
+      expect(nativeText).not.toContain("127.0.0.1");
+      expect(nativeText).not.toContain("localhost");
+    });
+  });
+
   it("gave_up and blocked_approval are UNREACHABLE from this actor (no persona patience, no approvals)", () => {
     const source = readFileSync(path.resolve("src/scripted-browser-actor.ts"), "utf8");
     expect(source).not.toContain('"gave_up"');

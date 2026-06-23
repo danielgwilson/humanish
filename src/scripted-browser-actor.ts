@@ -77,6 +77,12 @@ export interface ScriptedBrowserLaunchArgs {
   timeoutMs: number;
 }
 
+export type ScriptedBrowserEvidenceUrlPolicy =
+  | { kind: "loopback" }
+  | { kind: "provisioned-subject"; evidenceOrigin: string };
+
+const LOOPBACK_EVIDENCE_URL_POLICY: ScriptedBrowserEvidenceUrlPolicy = { kind: "loopback" };
+
 /** Production default: lazy playwright-core import + chromium.launch, exactly as the driver
  *  always did. Kept in ONE place so the optional peer is touched by exactly one code path. */
 export async function launchPlaywrightChromium(args: ScriptedBrowserLaunchArgs): Promise<ScriptedBrowserLike> {
@@ -489,12 +495,14 @@ export async function executeBrowserPersonaStep(args: {
   step: BrowserPersonaStepManifest;
   surface: BrowserSurface;
   timeoutMs: number;
+  urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
 }): Promise<BrowserPersonaStepCapture> {
   const started = Date.now();
-  const beforeState = await browserPersonaPageState(args.page);
+  const urlPolicy = args.urlPolicy ?? LOOPBACK_EVIDENCE_URL_POLICY;
+  const beforeState = await browserPersonaPageState(args.page, urlPolicy);
   const stepTimeoutMs = Math.min(args.timeoutMs, 8_000);
   if (args.step.action === "goto") {
-    await args.page.goto(resolveBrowserStepUrl(args.appUrl, args.step.path ?? args.browserJourney.startPath), {
+    await args.page.goto(resolveBrowserStepUrlForPolicy(args.appUrl, args.step.path ?? args.browserJourney.startPath, urlPolicy), {
       waitUntil: "domcontentloaded",
       timeout: args.timeoutMs
     });
@@ -536,7 +544,7 @@ export async function executeBrowserPersonaStep(args: {
     throw new Error(`Unsupported browser persona action: ${exhaustive}`);
   }
 
-  const afterState = await browserPersonaPageState(args.page);
+  const afterState = await browserPersonaPageState(args.page, urlPolicy);
   const screenshotPath = screenshotPathForBrowserStep(args.surface, args.step);
   await args.page.screenshot({
     path: path.join(args.absoluteArtifactRoot, screenshotPath),
@@ -560,7 +568,7 @@ export async function executeBrowserPersonaStep(args: {
     reason: blockedAssertion?.reason ?? `${args.step.action} completed for ${args.step.label}.`,
     screenshotPath,
     status: blockedAssertion ? "blocked" : "passed",
-    url: sanitizeLoopbackUrl(args.page.url())
+    url: sanitizeBrowserEvidenceUrl(args.page.url(), urlPolicy)
   };
 }
 
@@ -655,6 +663,7 @@ export function buildBlockedBrowserPersonaSteps(args: {
   reason: string;
   surface: BrowserSurface;
   timestamp: string;
+  urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
 }): BrowserPersonaStepCapture[] {
   // The journey never ran, so no screenshot was written for these steps. The
   // failure IS the evidence: keep the blocked status + reason, but omit the
@@ -669,7 +678,7 @@ export function buildBlockedBrowserPersonaSteps(args: {
     label: step.label,
     reason: args.reason,
     status: "blocked" as const,
-    url: sanitizeLoopbackUrl(args.currentUrl)
+    url: sanitizeBrowserEvidenceUrl(args.currentUrl, args.urlPolicy)
   }));
 }
 
@@ -714,7 +723,22 @@ export function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): strin
 }
 
 export function resolveBrowserStepUrl(appUrl: string, value: string | undefined): string {
+  return resolveBrowserStepUrlForPolicy(appUrl, value, LOOPBACK_EVIDENCE_URL_POLICY);
+}
+
+export function resolveBrowserStepUrlForPolicy(
+  appUrl: string,
+  value: string | undefined,
+  urlPolicy: ScriptedBrowserEvidenceUrlPolicy = LOOPBACK_EVIDENCE_URL_POLICY
+): string {
   const url = new URL(value?.trim() || "", appUrl);
+  if (urlPolicy.kind === "provisioned-subject") {
+    const subjectOrigin = new URL(appUrl).origin;
+    if (url.origin !== subjectOrigin) {
+      throw new Error("browser step URL must resolve within the provisioned subject origin");
+    }
+    return url.toString();
+  }
   const normalized = normalizeLocalAppUrl(url.toString());
   if (!normalized) {
     throw new Error("browser step URL must resolve to a loopback HTTP URL");
@@ -725,11 +749,11 @@ export function resolveBrowserStepUrl(appUrl: string, value: string | undefined)
 async function browserPersonaPageState(page: {
   evaluate<T>(pageFunction: string): Promise<T>;
   url(): string;
-}): Promise<{ bodyDigest: string; url: string }> {
+}, urlPolicy: ScriptedBrowserEvidenceUrlPolicy = LOOPBACK_EVIDENCE_URL_POLICY): Promise<{ bodyDigest: string; url: string }> {
   const bodyText = await page.evaluate<string>("document.body ? document.body.innerText : ''");
   return {
     bodyDigest: digestText(bodyText.slice(0, 4_000)),
-    url: sanitizeLoopbackUrl(page.url())
+    url: sanitizeBrowserEvidenceUrl(page.url(), urlPolicy)
   };
 }
 
@@ -782,6 +806,25 @@ export function sanitizeLoopbackUrl(value: string): string {
   } catch {}
 
   return "[redacted-url]";
+}
+
+export function sanitizeBrowserEvidenceUrl(
+  value: string,
+  urlPolicy: ScriptedBrowserEvidenceUrlPolicy = LOOPBACK_EVIDENCE_URL_POLICY
+): string {
+  if (urlPolicy.kind === "loopback") {
+    return sanitizeLoopbackUrl(value);
+  }
+  const evidenceOrigin = urlPolicy.evidenceOrigin.trim() || "[provisioned-subject]";
+  try {
+    const parsed = new URL(value);
+    const pathname = parsed.pathname || "/";
+    const search = parsed.search ? "?[redacted-query]" : "";
+    const hash = parsed.hash ? "#[redacted-hash]" : "";
+    return `${evidenceOrigin}${pathname}${search}${hash}`;
+  } catch {
+    return evidenceOrigin;
+  }
 }
 
 export async function captureScreenshotWithBrowser(args: {
@@ -1133,8 +1176,12 @@ export function builtinBrowserPersonaJourney(): BrowserPersonaJourney {
 export const SCRIPTED_BROWSER_PROVIDER = "browser-persona";
 
 export interface ScriptedBrowserSessionOptions {
-  /** Pre-normalized loopback URL (the backend runs normalizeLocalAppUrl before this). */
+  /** Pre-normalized loopback URL, or a harness-minted provisioned subject URL. */
   appUrl: string;
+  /** Stable redacted URL label persisted in public-safe evidence when appUrl is private. */
+  evidenceAppUrl?: string;
+  /** Defaults to loopback. Provisioned subjects drive a private URL but persist redacted labels. */
+  urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
   /** Parsed + validated by the backend (scenario.ref is consumed there, fail-closed). */
   journey: BrowserPersonaJourney;
   /** ONE session per surface lane. */
@@ -1192,6 +1239,8 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
   const startedAt = new Date(startedAtMs).toISOString();
   const launch = options.launchBrowser ?? launchPlaywrightChromium;
   const browserCommand = options.browserCommand ?? (options.launchBrowser ? "injected-browser" : "");
+  const evidenceAppUrl = options.evidenceAppUrl ?? options.appUrl;
+  const urlPolicy = options.urlPolicy ?? LOOPBACK_EVIDENCE_URL_POLICY;
 
   await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
   await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
@@ -1236,9 +1285,11 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
       appUrl: options.appUrl,
       artifactRoot: options.artifactRoot,
       browserCommand,
+      evidenceAppUrl,
       journey: options.journey,
       reason,
-      surface: options.surface
+      surface: options.surface,
+      urlPolicy
     });
     return finish({ capture, executedSteps: 0, status: "failed", completionReason: "harness_error", reason });
   }
@@ -1248,9 +1299,11 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
     artifactRoot: options.artifactRoot,
     browser,
     browserCommand,
+    evidenceAppUrl,
     journey: options.journey,
     surface: options.surface,
-    timeoutMs: options.timeoutMs
+    timeoutMs: options.timeoutMs,
+    urlPolicy
   });
 
   if (journeyRun.timedOut) {
@@ -1290,9 +1343,11 @@ async function runScriptedJourney(args: {
   artifactRoot: string;
   browser: ScriptedBrowserLike;
   browserCommand: string;
+  evidenceAppUrl: string;
   journey: BrowserPersonaJourney;
   surface: BrowserSurface;
   timeoutMs: number;
+  urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
 }): Promise<{ capture: BrowserSurfaceCapture; executedSteps: number; timedOut: boolean }> {
   const started = Date.now();
   const deadline = started + args.timeoutMs;
@@ -1325,7 +1380,8 @@ async function runScriptedJourney(args: {
           page,
           step,
           surface: args.surface,
-          timeoutMs: args.timeoutMs
+          timeoutMs: args.timeoutMs,
+          urlPolicy: args.urlPolicy
         }),
         deadline,
         args.timeoutMs
@@ -1341,7 +1397,8 @@ async function runScriptedJourney(args: {
         currentUrl: args.appUrl,
         reason,
         surface: args.surface,
-        timestamp: now
+        timestamp: now,
+        urlPolicy: args.urlPolicy
       }));
     } else if (steps.length < args.journey.steps.length) {
       const nextStep = args.journey.steps[steps.length];
@@ -1361,7 +1418,7 @@ async function runScriptedJourney(args: {
           reason,
           ...(blockedShotWritten ? { screenshotPath } : {}),
           status: "blocked",
-          url: page ? sanitizeLoopbackUrl(page.url()) : args.appUrl
+          url: page ? sanitizeBrowserEvidenceUrl(page.url(), args.urlPolicy) : args.evidenceAppUrl
         });
       }
     }
@@ -1373,12 +1430,12 @@ async function runScriptedJourney(args: {
   const durationMs = Date.now() - started;
   const ok = !timedOut && httpProbe.ok && steps.length === args.journey.steps.length && steps.every((step) => step.status === "passed");
   const reason = ok
-    ? `${args.surface.label} completed ${steps.length}/${steps.length} scripted browser steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
+    ? `${args.surface.label} completed ${steps.length}/${steps.length} scripted browser steps from ${args.evidenceAppUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
     : `${args.surface.label} scripted browser journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
   const scriptedScreenshotPath = surfaceScreenshotPath(steps);
 
   await writeJson(absoluteTracePath, buildBrowserTrace({
-    appUrl: args.appUrl,
+    appUrl: args.evidenceAppUrl,
     browserCommand: path.basename(args.browserCommand || "injected-browser"),
     browserJourney: args.journey,
     capturedAt: completedAt,
@@ -1439,9 +1496,11 @@ async function persistScriptedFailureCapture(args: {
   appUrl: string;
   artifactRoot: string;
   browserCommand: string;
+  evidenceAppUrl: string;
   journey: BrowserPersonaJourney;
   reason: string;
   surface: BrowserSurface;
+  urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
 }): Promise<BrowserSurfaceCapture> {
   const capturedAt = new Date().toISOString();
   const tracePath = path.join("traces", `${args.surface.id}.json`);
@@ -1450,13 +1509,14 @@ async function persistScriptedFailureCapture(args: {
     currentUrl: args.appUrl,
     reason: args.reason,
     surface: args.surface,
-    timestamp: capturedAt
+    timestamp: capturedAt,
+    urlPolicy: args.urlPolicy
   });
   // Pre-actuation failure: no screenshots were written, so the surface omits the
   // screenshot reference and the failure itself stands as the evidence.
   const screenshotPath = surfaceScreenshotPath(blockedSteps);
   await writeJson(path.join(args.artifactRoot, tracePath), buildBrowserTrace({
-    appUrl: args.appUrl,
+    appUrl: args.evidenceAppUrl,
     browserCommand: path.basename(args.browserCommand || "injected-browser"),
     browserJourney: args.journey,
     capturedAt,

@@ -1,21 +1,24 @@
-// The scripted-browser lab backend: an app-url subject (a loopback app the operator already
-// runs) driven by the REGISTRY-RESOLVED scripted-browser actor on the operator's machine.
+// The scripted-browser lab backend: either an app-url subject (a loopback app the operator
+// already runs) or one provisioned synthetic clone subject (served in E2B and exposed through
+// getHost) driven by the REGISTRY-RESOLVED scripted-browser actor.
 // Mirrors cua-actor-lab.ts: the descriptor returned by the registry runs the session; this
 // backend consumes `scenario.ref` (resolves the committed scenario whose browser steps ARE the
 // actor's behavior — no built-in fallback on the lab route, unlike `run --app-url`), composes
 // the per-surface sessions, persists the evidence bundle, and renders the Observer.
 //
-// Spend posture: $0 provider spend BY MECHANISM — nothing on this code path can construct a
-// provider client, and every projected trace records tokenUsage zeros. `scenario.mode: live`
-// is still required for a real run because the gate's justification here is ACTUATION, not
-// cost: a live scripted run drives a real browser against a real running app (fills forms,
-// clicks buttons — state-mutating effects on the operator's app), which deserves the same
-// affirmative declaration as spend. Dry-run (the default) parses and digest-pins the scenario
-// and emits the contract bundle without touching anything.
+// Spend posture: no model/provider-token spend BY MECHANISM — nothing on this code path can
+// construct a provider client, and every projected trace records tokenUsage zeros. Local
+// app-url runs also spend no sandbox minutes; live provisioned clone runs can spend E2B
+// sandbox minutes to clone/serve the synthetic subject. `scenario.mode: live` is still
+// required because the gate's justification here is ACTUATION: a live scripted run drives a
+// real browser against a real running app (fills forms, clicks buttons — state-mutating
+// effects), which deserves the same affirmative declaration as spend. Dry-run (the default)
+// parses and digest-pins the scenario and emits the contract bundle without touching anything.
 //
-// Subject provenance (invariant 5): the lab does NOT provision the subject, so the bundle
-// declares the absence explicitly — subject build/commit provenance is UNPINNED; the evidence
-// binds to the scenario digest instead.
+// Subject provenance (invariant 5): local app-url runs declare that the lab did NOT provision
+// the subject, so build/commit provenance is UNPINNED and the evidence binds to the scenario
+// digest instead. Provisioned clone runs persist structured commit/env-name/state provenance
+// plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -25,6 +28,18 @@ import { parse as parseYaml } from "yaml";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace } from "./actor-contract.js";
 import { actorRegistry, isScriptedBrowserActorDescriptor } from "./actor-registry.js";
+import {
+  commandDigestOf,
+  provisionCloneSubject,
+  resolveSubjectState
+} from "./cua-actor-lab.js";
+import {
+  createDesktopSandbox,
+  loadE2BDesktopModule,
+  type E2BDesktopModule,
+  type E2BDesktopSandbox
+} from "./e2b-desktop-launch.js";
+import type { DetachedTimers } from "./e2b-detached.js";
 import type { LabConfig } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { digestText, redactText } from "./redaction.js";
@@ -37,7 +52,9 @@ import {
   type RunBundle,
   type RunEvent,
   type RunSimulation,
-  type RunStream
+  type RunStream,
+  type RunSubjectProvenance,
+  type RunSubjectStateStepRecord
 } from "./run.js";
 import {
   browserSurfaces,
@@ -46,6 +63,7 @@ import {
   resolveBrowserCommand,
   type BrowserPersonaJourney,
   type BrowserSurface,
+  type ScriptedBrowserEvidenceUrlPolicy,
   type ScriptedBrowserLaunchArgs,
   type ScriptedBrowserLike,
   type ScriptedBrowserSessionOptions,
@@ -56,6 +74,9 @@ export const SCRIPTED_BROWSER_LAB_SCHEMA = "mimetic.scripted-lab-result.v1";
 
 // Journey wall-clock budget per surface — same default as `run --app-url`.
 const DEFAULT_SESSION_TIMEOUT_MS = 60_000;
+const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
+const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
 // Default surface roster is 1 (desktop only): the defaults-table single-lane row governs;
 // `count: 2` is the declared override that adds the mobile surface.
 const DEFAULT_SURFACE_COUNT = 1;
@@ -71,6 +92,14 @@ export interface ScriptedBrowserLabHooks {
   runSession?: (options: ScriptedBrowserSessionOptions) => Promise<ScriptedBrowserSessionResult>;
   /** Injected browser factory — forwarded to every session; skips browser-binary resolution. */
   launchBrowser?: (args: ScriptedBrowserLaunchArgs) => Promise<ScriptedBrowserLike>;
+  /** Test/library env seam; CLI passes process.env. Values are scrubbed, names only persist. */
+  env?: Record<string, string | undefined>;
+  /** E2B DI seam for clone × e2b-desktop × scripted-browser. */
+  loadDesktopModule?: () => Promise<E2BDesktopModule>;
+  /** Optional adopter hook after subject sandbox creation, before clone provisioning. */
+  prepareDesktop?: (desktop: E2BDesktopSandbox) => Promise<void>;
+  /** Detached-step timers for deterministic tests around clone/seed/start provisioning. */
+  detachedTimers?: DetachedTimers;
   /** Override the resolved browser binary (tests; operators use MIMETIC_BROWSER_COMMAND). */
   browserCommand?: string;
   renderObserverFn?: typeof renderObserver;
@@ -108,6 +137,9 @@ export interface ScriptedBrowserLabResult {
   appUrl: string;
   dryRun: boolean;
   runId: string;
+  subject?: RunSubjectProvenance;
+  subjectSandbox?: { sandboxId: string; killed: boolean };
+  hostDigest?: string;
   /** The consumed scenario.ref: digest-pinned provenance of the executable steps. */
   scenario?: {
     id: string;
@@ -124,7 +156,10 @@ export interface ScriptedBrowserLabResult {
       | "MIMETIC_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
       | "MIMETIC_SCRIPTED_LAB_SCENARIO_INVALID"
       | "MIMETIC_SCRIPTED_LAB_SUBJECT_UNSAFE"
-      | "MIMETIC_SCRIPTED_LAB_BROWSER_MISSING";
+      | "MIMETIC_SCRIPTED_LAB_BROWSER_MISSING"
+      | "MIMETIC_SCRIPTED_LAB_KEYS_MISSING"
+      | "MIMETIC_SCRIPTED_LAB_SUBJECT_ENV_MISSING"
+      | "MIMETIC_SCRIPTED_LAB_GETHOST_UNAVAILABLE";
     message: string;
   };
 }
@@ -166,15 +201,41 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     );
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
+  const provisionedRoute = config.subject.source === "clone";
+  const evidenceAppUrl = provisionedRoute ? "[provisioned-subject]" : normalizeLocalAppUrl(config.subject.appUrl ?? "") ?? "";
+  const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = provisionedRoute
+    ? { kind: "provisioned-subject", evidenceOrigin: evidenceAppUrl }
+    : { kind: "loopback" };
+  const serve = config.subject.serve;
+  const subjectRepo = provisionedRoute ? config.subject.repos?.[0] ?? "" : undefined;
+  const subjectEnvNames = provisionedRoute ? config.subject.env ?? [] : [];
+  const env = hooks.env ?? process.env;
+  const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
+  const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
+  const redactRepoLabel = config.policies?.redactRepos ?? hasGithubToken;
+  const publicRepo = provisionedRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
+  const scrubSourceValues = [
+    ...(subjectRepo ? [subjectRepo] : []),
+    ...subjectEnvNames.map((name) => env[name] ?? "")
+  ].filter(Boolean);
+  const scrubKnownValues = (text: string): string =>
+    scrubSourceValues.reduce((acc, value) => acc.split(value).join("[redacted]"), text);
 
-  // Re-enforce the loopback entry boundary at the engine. The scripted route is loopback-ONLY
-  // (no allowPublicTargets escape hatch here): the step driver re-enforces it per navigation.
-  const appUrl = normalizeLocalAppUrl(config.subject.appUrl ?? "");
-  if (!appUrl) {
+  // Re-enforce the local loopback entry boundary at the engine. The provisioned clone route
+  // mints its own getHost URL later and persists only evidenceAppUrl.
+  let appUrl = provisionedRoute ? serve?.url ?? "" : evidenceAppUrl;
+  if (!provisionedRoute && !appUrl) {
     return failed(
       "MIMETIC_SCRIPTED_LAB_SUBJECT_UNSAFE",
       "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route.",
       { actor: descriptor.id }
+    );
+  }
+  if (provisionedRoute && (!serve || !subjectRepo || !publicRepo)) {
+    return failed(
+      "MIMETIC_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config.",
+      { actor: descriptor.id, appUrl: evidenceAppUrl }
     );
   }
 
@@ -182,9 +243,27 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   // built-in journey fallback on the lab route).
   const scenario = await resolveScriptedScenario(cwd, config.scenario?.ref);
   if (!scenario.ok) {
-    return failed("MIMETIC_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, { actor: descriptor.id, appUrl });
+    return failed("MIMETIC_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
   }
   const journey = scenario.journey;
+
+  if (!dryRun && provisionedRoute) {
+      if (!e2bApiKey) {
+      return failed(
+        "MIMETIC_SCRIPTED_LAB_KEYS_MISSING",
+        "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject).",
+        { actor: descriptor.id, appUrl: evidenceAppUrl }
+      );
+    }
+    const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
+    if (missingSubjectEnv.length > 0) {
+      return failed(
+        "MIMETIC_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
+        `Subject env values missing for live clone scripted-browser lab: ${missingSubjectEnv.join(", ")}.`,
+        { actor: descriptor.id, appUrl: evidenceAppUrl }
+      );
+    }
+  }
 
   const surfaces = browserSurfaces.slice(0, config.actors[0]?.count ?? DEFAULT_SURFACE_COUNT);
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
@@ -204,7 +283,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
       return failed(
         "MIMETIC_SCRIPTED_LAB_BROWSER_MISSING",
         "No Chrome/Chromium browser command was found for the scripted-browser actor. Set MIMETIC_BROWSER_COMMAND to a browser binary playwright-core can launch.",
-        { actor: descriptor.id, appUrl }
+        { actor: descriptor.id, appUrl: evidenceAppUrl }
       );
     }
     browserCommand = resolved;
@@ -223,12 +302,79 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
 
   let sessionResults: ScriptedBrowserSessionResult[] = [];
   let sessionError: string | undefined;
+  const stateStepRecords: RunSubjectStateStepRecord[] = [];
+  let subjectCommit: string | undefined;
+  let subjectSandboxId: string | undefined;
+  let subjectKilled = false;
+  let hostDigest: string | undefined;
 
   if (!dryRun) {
+    let subjectModule: E2BDesktopModule | undefined;
+    let subjectDesktop: E2BDesktopSandbox | undefined;
     try {
+      if (provisionedRoute) {
+        const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+        const timers: DetachedTimers = hooks.detachedTimers ?? {};
+        subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+        subjectDesktop = await createDesktopSandbox(subjectModule, {
+          apiKey: e2bApiKey,
+          requestTimeoutMs,
+          timeoutMs: timeoutMs + SUBJECT_PROVISION_BUDGET_MS
+            + (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
+            + SANDBOX_TIMEOUT_BUFFER_MS,
+          metadata: {
+            mode: "scripted-browser-lab",
+            tool: "mimetic-cli",
+            labId: config.id,
+            role: "subject",
+            actor: descriptor.id
+          },
+          ...(subjectEnvNames.length > 0
+            ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
+            : {}),
+          dpi: 96,
+          lifecycle: { onTimeout: "kill" }
+        }, config.execution?.desktop?.template);
+        subjectSandboxId = subjectDesktop.sandboxId;
+
+        if (hooks.prepareDesktop) {
+          await hooks.prepareDesktop(subjectDesktop);
+        }
+
+        subjectCommit = await provisionCloneSubject(subjectDesktop, {
+          repo: subjectRepo!,
+          depth: config.subject.clone?.depth ?? 1,
+          serve: serve!,
+          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          hasGithubToken,
+          requestTimeoutMs,
+          scrub: scrubKnownValues,
+          onCommit: (commit) => {
+            subjectCommit = commit;
+          },
+          onStateStep: (record) => {
+            stateStepRecords.push(record);
+          },
+          ...timers
+        });
+
+        if (typeof subjectDesktop.getHost !== "function") {
+          throw new Error("the installed @e2b/desktop SDK does not expose getHost(port); clone scripted-browser labs require it to reach the provisioned subject");
+        }
+        const rawHost = subjectDesktop.getHost(servePort(serve!.url));
+        const hostUrl = /^https?:\/\//i.test(rawHost) ? rawHost : `https://${rawHost}`;
+        if (!isTokenlessHost(hostUrl)) {
+          throw new Error("getHost returned a non-tokenless URL; refusing to persist or drive a host URL that may carry a credential");
+        }
+        appUrl = hostUrl;
+        hostDigest = hostOriginDigest(hostUrl);
+      }
+
       // One session per surface, in parallel — parity with `run --app-url`.
       sessionResults = await Promise.all(surfaces.map((surface) => runSession({
         appUrl,
+        evidenceAppUrl,
+        urlPolicy,
         journey,
         surface,
         persona,
@@ -241,7 +387,20 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     } catch (error) {
       // The session itself maps launch failures to harness_error; reaching here means the
       // harness around it failed. Redacted at this boundary before persisting anywhere.
-      sessionError = redactText(compactError(error));
+      sessionError = redactText(scrubKnownValues(compactError(error)));
+    } finally {
+      if (subjectDesktop && subjectModule) {
+        if (typeof subjectModule.Sandbox.kill === "function") {
+          try {
+            await subjectModule.Sandbox.kill(subjectDesktop.sandboxId, { requestTimeoutMs: 60_000 });
+            subjectKilled = true;
+          } catch (error) {
+            warnings.push(`Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(compactError(error)))}`);
+          }
+        } else {
+          warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.");
+        }
+      }
     }
 
     for (const result of sessionResults) {
@@ -262,10 +421,19 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
       await existingScreenshots(artifactRoot, result)
     );
   }
+  const subject: RunSubjectProvenance | undefined = provisionedRoute
+    ? {
+        source: "clone",
+        repo: publicRepo!,
+        ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
+        envNames: subjectEnvNames,
+        state: resolveSubjectState({ declared: config.subject.state, dryRun, executed: stateStepRecords })
+      }
+    : undefined;
 
   const bundle = buildScriptedLabBundle({
     actorId: descriptor.id,
-    appUrl,
+    appUrl: evidenceAppUrl,
     createdAt,
     dryRun,
     journey,
@@ -279,7 +447,10 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     sessionResults,
     ...(sessionError === undefined ? {} : { sessionError }),
     source,
-    surfaces
+    surfaces,
+    ...(subject === undefined ? {} : { subject }),
+    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(hostDigest === undefined ? {} : { hostDigest })
   });
 
   await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -316,9 +487,12 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     cwd,
     labId: config.id,
     actor: descriptor.id,
-    appUrl,
+    appUrl: evidenceAppUrl,
     dryRun,
     runId,
+    ...(subject === undefined ? {} : { subject }),
+    ...(subjectSandboxId === undefined ? {} : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
+    ...(hostDigest === undefined ? {} : { hostDigest }),
     scenario: {
       id: journey.scenarioId,
       source: scenario.source,
@@ -482,7 +656,9 @@ export function buildScriptedLabBundle(args: {
   actorId: string;
   appUrl: string;
   createdAt: string;
+  desktopTemplate?: string;
   dryRun: boolean;
+  hostDigest?: string;
   journey: BrowserPersonaJourney;
   labId: string;
   labTitle?: string;
@@ -494,6 +670,7 @@ export function buildScriptedLabBundle(args: {
   sessionResults: ScriptedBrowserSessionResult[];
   sessionError?: string;
   source: RunBundle["source"];
+  subject?: RunSubjectProvenance;
   surfaces: BrowserSurface[];
 }): RunBundle {
   const resultBySurface = new Map(args.sessionResults.map((result) => [result.capture.surface.id, result]));
@@ -591,15 +768,19 @@ export function buildScriptedLabBundle(args: {
       level: "info",
       type: "scripted-lab.subject.declared",
       // Invariant 5: provenance recorded or its absence DECLARED. The lab did not provision
-      // this subject, so its build/commit provenance is explicitly UNPINNED.
-      message: `Subject app declared at ${args.appUrl}; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest ${args.scenarioSourceDigest}.`
+      // this subject on app-url routes; clone routes carry structured subject provenance below.
+      message: args.subject
+        ? `Provisioned synthetic subject: clone of ${args.subject.repo}${args.subject.commit ? `@${args.subject.commit}` : ""}, served + getHost-exposed in-sandbox; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted); state provenance: ${args.subject.state.provenance}; evidence host digest: ${args.hostDigest ?? "dry-run"}.`
+        : `Subject app declared at ${args.appUrl}; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest ${args.scenarioSourceDigest}.`
     },
     {
       id: "event-002-spend",
       at: args.createdAt,
       level: "info",
       type: "scripted-lab.spend",
-      message: "$0 provider spend by construction (no model in the loop); scenario.mode: live gates real browser actuation against the declared app, not cost."
+      message: args.subject
+        ? "No model spend by construction; live provisioned scripted runs may spend E2B sandbox minutes to clone/serve the synthetic subject, then drive deterministic browser steps."
+        : "$0 provider spend by construction (no model and no sandbox in the loop); scenario.mode: live gates real browser actuation against the declared app, not cost."
     }
   ];
 
@@ -682,7 +863,9 @@ export function buildScriptedLabBundle(args: {
       events: "events.ndjson"
     },
     review,
-    feedbackCandidates: []
+    feedbackCandidates: [],
+    ...(args.subject === undefined ? {} : { subject: args.subject }),
+    ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate })
   };
 }
 
@@ -755,6 +938,35 @@ function renderScriptedReviewMarkdown(bundle: RunBundle): string {
 function makeScriptedRunId(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   return `scripted-${stamp}-${randomBytes(4).toString("hex")}`;
+}
+
+function readPositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function servePort(serveUrl: string): number {
+  const url = new URL(serveUrl);
+  if (url.port) return Number(url.port);
+  return url.protocol === "https:" ? 443 : 80;
+}
+
+function isTokenlessHost(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.username === "" && url.password === "" && url.search === "";
+  } catch {
+    return false;
+  }
+}
+
+function hostOriginDigest(url: string): string {
+  try {
+    return commandDigestOf(new URL(url).origin);
+  } catch {
+    return commandDigestOf(url);
+  }
 }
 
 function compactError(error: unknown): string {

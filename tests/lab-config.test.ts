@@ -7,6 +7,7 @@ import {
   resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
+  routesToProvisionedScriptedBrowser,
   routesToScriptedBrowser,
   routesToSharedWorld,
   sharedWorldValidationReason
@@ -424,7 +425,6 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
 
     it.each([
       ["scripted actor on e2b-desktop", { ...validScripted, execution: { target: "e2b-desktop" } }],
-      ["scripted actor on a clone subject", { ...validScripted, subject: { source: "clone", repos: ["example-org/example-app"] } }],
       ["scripted actor on this-repo", { ...validScripted, subject: { source: "this-repo" }, execution: undefined }],
       ["count > 2 (fan-out is a later layer)", { ...validScripted, actors: [{ type: "scripted-browser", count: 3 }] }],
       ["missing scenario.ref (the steps ARE the actor)", { ...validScripted, scenario: undefined }],
@@ -526,6 +526,70 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.warnings[0]).toContain("execution.desktop.device");
+    });
+
+    it("parses clone × e2b-desktop × scripted-browser as a provisioned synthetic scripted route", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "provisioned-scripted",
+        subject: {
+          source: "clone",
+          exposure: "synthetic",
+          repos: ["example-org/example-app"],
+          clone: { depth: 1 },
+          serve: {
+            install: "pnpm install --frozen-lockfile",
+            build: "pnpm build",
+            start: "pnpm start --host 0.0.0.0",
+            url: "http://127.0.0.1:3000/"
+          },
+          env: ["GITHUB_TOKEN"],
+          state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
+        },
+        actors: [{ type: "scripted-browser", persona: "provider-reviewer", count: 1 }],
+        scenario: { ref: "provider-order-request-proof", mode: "live" },
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { template: "adopter-ui-sim-base" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(routesToScriptedBrowser(result.config)).toBe(true);
+      expect(routesToProvisionedScriptedBrowser(result.config)).toBe(true);
+      expect(selectLabBackend(result.config)).toBe("scripted");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it.each([
+      ["missing synthetic exposure", { subject: { exposure: undefined } }, "subject.exposure: synthetic"],
+      ["missing seed", { subject: { state: undefined } }, "subject.state.seed"],
+      ["external state", { subject: { env: ["DATABASE_URL"], state: { seed: [{ name: "seed", command: "pnpm db:seed" }], external: ["DATABASE_URL"] } } }, "do not allow `subject.state.external`"],
+      ["loopback-only start", { subject: { serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } } }, "0.0.0.0"],
+      ["lane roster", { actors: [{ type: "scripted-browser", lanes: [{ id: "provider" }] }] }, "actors[0].lanes"]
+    ])("fails closed on unsafe provisioned scripted config: %s", (_label, patch, expected) => {
+      const base = {
+        schema: LAB_CONFIG_SCHEMA,
+        id: "provisioned-scripted-invalid",
+        subject: {
+          source: "clone",
+          exposure: "synthetic",
+          repos: ["example-org/example-app"],
+          serve: { start: "pnpm start --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
+          state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
+        },
+        actors: [{ type: "scripted-browser" }],
+        scenario: { ref: "provider-order-request-proof" },
+        execution: { target: "e2b-desktop" }
+      };
+      const typedPatch = patch as { subject?: Record<string, unknown>; actors?: unknown[] };
+      const input = {
+        ...base,
+        ...patch,
+        subject: { ...base.subject, ...(typedPatch.subject ?? {}) },
+        actors: typedPatch.actors ?? base.actors
+      };
+      const result = parseLabConfig(input);
+      expect(result.ok, _label).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain(expected);
     });
   });
 

@@ -7,7 +7,8 @@ import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
+import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../src/actor-contract.js";
+import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { createProgram } from "../src/program.js";
@@ -72,6 +73,78 @@ function makeFakeBrowser(options: {
   };
 }
 
+interface FakeSubjectSandbox extends E2BDesktopSandbox {
+  calls: Array<[string, ...unknown[]]>;
+}
+
+function makeFakeSubjectSandbox(id: string): FakeSubjectSandbox {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const sandbox = {
+    calls,
+    sandboxId: id,
+    commands: {
+      run: async (command: string) => {
+        calls.push(["commands.run", command]);
+        if (command.includes("/status")) return { exitCode: 0, stdout: "0\n" };
+        if (command.includes("rev-parse")) return { exitCode: 0, stdout: "abc123def4567890abc1\n" };
+        if (command.includes("curl")) return { exitCode: 0, stdout: "READY\n" };
+        if (command.includes("tail -c")) return { exitCode: 0, stdout: "" };
+        return { exitCode: 0, stdout: "" };
+      }
+    },
+    files: {
+      write: async (filePath: string, data: string | ArrayBuffer) => {
+        calls.push(["files.write", filePath, String(data)]);
+        return undefined;
+      }
+    },
+    launch: async (application: string, uri?: string) => { calls.push(["launch", application, uri]); },
+    open: async (fileOrUrl: string) => { calls.push(["open", fileOrUrl]); },
+    getHost: (port: number) => `${port}-${id}.e2b.app`,
+    async screenshot() { return new Uint8Array([1, 2, 3, 4]); },
+    async wait(ms: number) { calls.push(["wait", ms]); },
+    stream: {
+      getAuthKey: () => "fake-auth-key",
+      getUrl: () => "https://stream.invalid/fake-auth-key",
+      start: async () => undefined
+    }
+  };
+  return sandbox as unknown as FakeSubjectSandbox;
+}
+
+function makeFakeE2BModule(): {
+  module: E2BDesktopModule;
+  created: E2BDesktopCreateOptions[];
+  templates: (string | undefined)[];
+  killed: string[];
+  sandboxes: FakeSubjectSandbox[];
+} {
+  const created: E2BDesktopCreateOptions[] = [];
+  const templates: (string | undefined)[] = [];
+  const killed: string[] = [];
+  const sandboxes: FakeSubjectSandbox[] = [];
+  let n = 0;
+  const module: E2BDesktopModule = {
+    Sandbox: {
+      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+        const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
+        const options = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        n += 1;
+        const sandbox = makeFakeSubjectSandbox(`fake-subject-${String(n).padStart(3, "0")}`);
+        templates.push(template);
+        created.push(options);
+        sandboxes.push(sandbox);
+        return sandbox;
+      },
+      kill: async (sandboxId: string) => {
+        killed.push(sandboxId);
+        return undefined;
+      }
+    }
+  };
+  return { module, created, templates, killed, sandboxes };
+}
+
 async function withHttpServer<T>(callback: (appUrl: string) => Promise<T>): Promise<T> {
   const server: Server = createServer((_request, response) => {
     response.writeHead(200, { "content-type": "text/html" });
@@ -109,6 +182,33 @@ function scriptedConfig(overrides?: {
     actors: [{ type: "scripted-browser", persona: "synthetic-new-user", ...(overrides?.count === undefined ? {} : { count: overrides.count }) }],
     scenario: { ref: overrides?.ref ?? "scripted-first-run", ...(overrides?.mode === undefined ? {} : { mode: overrides.mode }) },
     execution: { ...(overrides && "target" in overrides ? (overrides.target ? { target: overrides.target } : {}) : { target: "local" }), timeoutMs: 30_000 }
+  });
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.config;
+}
+
+function provisionedScriptedConfig(): LabConfig {
+  const parsed = parseLabConfig({
+    schema: LAB_CONFIG_SCHEMA,
+    id: "provisioned-scripted-routing-proof",
+    title: "Provisioned scripted routing proof",
+    subject: {
+      source: "clone",
+      exposure: "synthetic",
+      repos: ["example-org/example-app"],
+      clone: { depth: 1 },
+      serve: {
+        install: "pnpm install --frozen-lockfile",
+        build: "pnpm build",
+        start: "pnpm start --host 0.0.0.0",
+        url: "http://127.0.0.1:3000/"
+      },
+      env: ["GITHUB_TOKEN"],
+      state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
+    },
+    actors: [{ type: "scripted-browser", persona: "synthetic-provider", count: 1 }],
+    scenario: { ref: "scripted-first-run", mode: "live" },
+    execution: { target: "e2b-desktop", timeoutMs: 30_000, desktop: { template: "adopter-ui-sim-base" } }
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -305,6 +405,147 @@ describe("runScriptedBrowserLab", () => {
         expect(text, file).not.toContain(tmpdir());
       }
     });
+  });
+
+  it("live provisioned clone: provisions one synthetic subject, drives getHost, and persists only public-safe URL labels", async () => {
+    await writeCommittedScenario(cwd);
+    const fakeE2B = makeFakeE2BModule();
+    const rawSessionUrls: string[] = [];
+    const hooks: ScriptedBrowserLabHooks = {
+      env: {
+        E2B_API_KEY: "fake-e2b-key-for-test",
+        GITHUB_TOKEN: "github-token-test"
+      },
+      loadDesktopModule: async () => fakeE2B.module,
+      runSession: async (options) => {
+        rawSessionUrls.push(options.appUrl);
+        expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
+        expect(options.urlPolicy).toEqual({ kind: "provisioned-subject", evidenceOrigin: "[provisioned-subject]" });
+        const capturedAt = "2026-06-19T00:00:00.000Z";
+        const screenshotPath = `screenshots/${options.surface.id}-step-01-load.png`;
+        const tracePath = `traces/${options.surface.id}.json`;
+        await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
+        await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
+        await writeFile(path.join(options.artifactRoot, screenshotPath), Buffer.from("fake-frame"));
+        const reason = `${options.surface.label} completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.`;
+        const capture = {
+          capturedAt,
+          durationMs: 1,
+          httpStatus: 200,
+          ok: true,
+          reason,
+          screenshotPath,
+          steps: [{
+            action: "goto" as const,
+            completedAt: capturedAt,
+            durationMs: 1,
+            id: "step-01-load",
+            label: "Load landing page",
+            reason: "goto completed for Load landing page.",
+            screenshotPath,
+            status: "passed" as const,
+            url: "[provisioned-subject]/"
+          }],
+          surface: options.surface,
+          tracePath
+        };
+        await writeFile(path.join(options.artifactRoot, tracePath), `${JSON.stringify({
+          schema: "mimetic.browser-persona-trace.v1",
+          capturedAt,
+          appUrl: "[provisioned-subject]",
+          browserCommand: "injected-browser",
+          durationMs: 1,
+          httpStatus: 200,
+          ok: true,
+          reason,
+          screenshotPath,
+          steps: capture.steps,
+          surface: options.surface,
+          redaction: "passed"
+        }, null, 2)}\n`);
+        return {
+          status: "passed",
+          completionReason: "goal_satisfied",
+          reason,
+          capture,
+          trace: {
+            schema: ACTOR_TRACE_SCHEMA,
+            provider: "browser-persona",
+            protocol: "scripted-steps",
+            lane: "scripted-browser",
+            persona: options.persona,
+            redaction: { status: "passed", screenshots: "raw", notes: "fake provisioned scripted trace" },
+            startedAt: capturedAt,
+            completedAt: capturedAt,
+            durationMs: 1,
+            status: "passed",
+            completionReason: "goal_satisfied",
+            reason,
+            ids: {},
+            counts: { steps: 1, actions: 1, assertions: 0, blocked: 0, screenshots: 1 },
+            items: [{
+              id: "step-01-load",
+              kind: "ui_action",
+              lifecycle: "completed",
+              status: "passed",
+              title: "Load landing page",
+              screenshotRef: { path: screenshotPath, redaction: "none" }
+            }],
+            tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
+            capabilities: SCRIPTED_BROWSER_CAPABILITIES
+          }
+        };
+      },
+      detachedTimers: {
+        now: () => Date.now(),
+        sleep: async () => undefined
+      }
+    };
+
+    const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
+    expect(outcome.backend).toBe("scripted");
+    if (outcome.backend !== "scripted") return;
+    const result = outcome.result;
+
+    expect(result.ok).toBe(true);
+    expect(result.appUrl).toBe("[provisioned-subject]");
+    expect(result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: true });
+    expect(result.hostDigest).toMatch(/^[a-f0-9]{16}$/);
+    expect(fakeE2B.created).toHaveLength(1);
+    expect(fakeE2B.templates).toEqual(["adopter-ui-sim-base"]);
+    expect(fakeE2B.created[0]?.envs).toEqual({ GITHUB_TOKEN: "github-token-test" });
+    expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
+    expect(rawSessionUrls).toEqual(["https://3000-fake-subject-001.e2b.app"]);
+
+    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");
+    const bundle = JSON.parse(bundleText);
+    expect(bundle.subject).toMatchObject({
+      source: "clone",
+      repo: "repo-01",
+      commit: "abc123def4567890abc1",
+      envNames: ["GITHUB_TOKEN"],
+      state: { provenance: "seeded" }
+    });
+    expect(bundle.desktopTemplate).toBe("adopter-ui-sim-base");
+    expect(bundle.streams[0].ui.route).toBe("[provisioned-subject]");
+    expect(bundle.streams[0].actor.reason).toContain("[provisioned-subject]");
+    expect(bundle.events.find((event: { type: string }) => event.type === "scripted-lab.subject.declared")?.message)
+      .toContain("Provisioned synthetic subject");
+    expect(bundle.events.find((event: { type: string }) => event.type === "scripted-lab.spend")?.message)
+      .toContain("E2B sandbox minutes");
+
+    for (const file of ["run.json", "review.json", "review.md", "events.ndjson", "actor-desktop.json", path.join("traces", "desktop.json")]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text, file).toContain("[provisioned-subject]");
+      expect(text, file).not.toContain("e2b.app");
+      expect(text, file).not.toContain("fake-subject-001");
+      expect(text, file).not.toContain("github-token-test");
+      expect(text, file).not.toContain("example-org/example-app");
+    }
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
   });
 
   it("the subject failing the script is successful EVIDENCE: lab ok stays true, review verdict is fail", async () => {
