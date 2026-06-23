@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-18 (rev 8)
+Status date: 2026-06-22 (rev 9)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -223,6 +223,14 @@ Adopter-driven engine features (0.11.0; surfaced by real bespoke-sim migrations)
 - `mimetic observe --run <id>` — serves a run's Observer over `http://127.0.0.1:<port>` (loopback
   only, path-traversal-guarded to the run dir, `/`->`/observer/index.html`) instead of `file://`,
   so browsers/automation can open it and artifact links resolve. `done`
+
+Patch hardening (0.11.1):
+
+- concurrent shared-world review now fails closed when any actor lane records a failed terminal
+  trace; a lane can remain evidence without making the aggregate review green. `done`
+- scripted-browser labs can provision a single cloned synthetic subject, expose it through a
+  tokenless sandbox host, and drive deterministic scripted steps while persisting only public-safe
+  provenance and host digests. `done`
 
 ### 6. Lab Manifest Shape
 
