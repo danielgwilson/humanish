@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-22 (rev 9)
+Status date: 2026-06-23 (rev 10)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -232,7 +232,7 @@ Patch hardening (0.11.1):
   tokenless sandbox host, and drive deterministic scripted steps while persisting only public-safe
   provenance and host digests. `done`
 
-Adopter-driven roster/readback ergonomics (candidate 0.12.0):
+Adopter-driven roster/readback ergonomics (0.12.0):
 
 - Lane grouping metadata (`actorType`, `surface`, `caseGroup`) is adapter-owned and projected into
   Observer `laneGroups[]` plus stream labels, so downstream projects can group simulated users
