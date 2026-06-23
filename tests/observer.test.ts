@@ -162,7 +162,7 @@ function browserLabObserverData(): Record<string, unknown> {
           appUrl: "https://app.example/it-tools",
           nestedObserverUrl: "https://observer.example/nested/index.html",
           route: "e2b://desktop/it-tools",
-          screenshotUrl: "../screenshots/oss-01-desktop.png",
+          screenshotUrl: "screenshots/oss-01-desktop.png",
           state: "bootstrap terminal launched"
         },
         terminal: {

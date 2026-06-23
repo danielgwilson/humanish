@@ -1324,6 +1324,16 @@ export function observerClientJs(): string {
     if (raw.charAt(0) === "/" || raw.indexOf("..") >= 0) return "";
     return artifactPath ? ("../" + raw) : raw;
   }
+  function runArtifactHref(v) {
+    var raw = String(v == null ? "" : v).trim();
+    var low = raw.toLowerCase();
+    if (!raw) return "";
+    if (low.indexOf("http://") === 0 || low.indexOf("https://") === 0 || low.indexOf("file:") === 0) return raw;
+    if (raw.indexOf("://") >= 0 || raw.charAt(0) === "/") return "";
+    if (raw.indexOf("../") === 0 && raw.indexOf("../..") !== 0 && raw.indexOf("/../") < 0) return raw;
+    if (raw.indexOf("..") >= 0) return "";
+    return "../" + raw;
+  }
   function firstArtifactKind(s, kind) {
     var arts = laneArtifacts(s);
     for (var i = 0; i < arts.length; i += 1) {
@@ -1395,7 +1405,10 @@ export function observerClientJs(): string {
   }
   function browserShot(s) {
     var art = firstArtifactKind(s, "screenshot");
-    return (s.ui && s.ui.screenshotUrl) || (s.embed && s.embed.kind === "screenshot" && s.embed.url) || (art && linkHref(art.path, true)) || "";
+    return runArtifactHref(s.ui && s.ui.screenshotUrl)
+      || runArtifactHref(s.embed && s.embed.kind === "screenshot" && s.embed.url)
+      || runArtifactHref(art && art.path)
+      || "";
   }
   function browserHasLabSignals(s) {
     var ui = s.ui || {};
@@ -1418,7 +1431,7 @@ export function observerClientJs(): string {
     if (completion) chips.push(labChip("completion", "status", completionText(completion), "", completionTone(completion)));
     if (completion && completion.meaningfulUse) chips.push(labChip("meaningful-use", "score", meaningfulUseText(completion.meaningfulUse), "", meaningfulUseTone(completion.meaningfulUse)));
     if (tail) chips.push(labChip("terminal", "terminal", tail, "", "info"));
-    if (shot || shotArt) chips.push(labChip("screenshot", "shot", shot ? (S.media === "screenshot" ? "viewing fallback" : "fallback ready") : "artifact", shot ? linkHref(shot, false) : linkHref(shotArt.path, true), "info"));
+    if (shot || shotArt) chips.push(labChip("screenshot", "shot", shot ? (S.media === "screenshot" ? "viewing fallback" : "fallback ready") : "artifact", shot || runArtifactHref(shotArt.path), "info"));
     if (arts.length) chips.push(labChip("artifact", "files", arts.length + " " + artifactKinds(arts), "", "info"));
     if (ui.state && !completion) chips.push(labChip("state", "state", clip(ui.state, 72), "", "info"));
     if (!chips.length) return "";
