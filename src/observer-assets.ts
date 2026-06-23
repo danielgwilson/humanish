@@ -937,6 +937,16 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .dd-sep { height: 1px; background: var(--line); margin: 5px 4px; }
 
 .tb-result { font-family: var(--mono); font-size: 11px; color: var(--text-3); flex: none; padding-left: 2px; }
+.lane-groups { display: inline-flex; align-items: center; gap: 5px; flex: none; min-width: 0; }
+.lane-group-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 8px; border-radius: var(--radius-pill);
+  border: 1px solid var(--line); color: var(--text-2); background: var(--surface-1);
+  font-size: 10.5px; white-space: nowrap; max-width: 170px;
+}
+.lane-group-k { color: var(--text-4); font-family: var(--mono); }
+.lane-group-v { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+.lane-group-n { color: var(--text-3); font-family: var(--mono); }
 
 /* compact icon-only segmented controls on the right */
 .seg.view-seg button, .seg.media-seg button, .seg.density-seg button { width: 30px; padding: 0; justify-content: center; }
@@ -988,6 +998,7 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 
 @media (max-width: 720px) {
   .tb-result { display: none; }
+  .lane-groups { display: none; }
   .dd-trigger-inner span { max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
   .console { height: 200px !important; }
 }
@@ -1062,6 +1073,7 @@ export function observerClientJs(): string {
   if (!currentData.run) currentData.run = {};
   if (!currentData.streams) currentData.streams = [];
   if (!currentData.events) currentData.events = [];
+  if (!currentData.laneGroups) currentData.laneGroups = [];
 
   var app = document.getElementById("app");
   var historyIndex = null;
@@ -1807,6 +1819,7 @@ export function observerClientJs(): string {
       + '<label class="tb-search">' + icon("search", 14)
       + '<input data-role="search" type="text" placeholder="Filter lanes…" value="' + esc(S.query) + '" aria-label="Filter lanes by name or persona"/></label>'
       + '<span class="tb-result mono">' + shown + ' / ' + total + '</span>'
+      + buildLaneGroupSummary()
       + '<div class="tb-spacer"></div>'
       + '<div class="seg view-seg" role="group" aria-label="View mode">'
       + '<button aria-pressed="' + (S.view === "grid" ? "true" : "false") + '" title="Grid view" data-action="view:grid">' + icon("grid", 15) + '</button>'
@@ -1818,6 +1831,36 @@ export function observerClientJs(): string {
       + '<button aria-pressed="' + (S.density === "comfortable" ? "true" : "false") + '" title="Comfortable" data-action="density:comfortable">' + icon("comfy", 15) + '</button>'
       + '<button aria-pressed="' + (S.density === "compact" ? "true" : "false") + '" title="Compact" data-action="density:compact">' + icon("compact", 15) + '</button>'
       + '<button aria-pressed="' + (S.density === "dense" ? "true" : "false") + '" title="Dense" data-action="density:dense">' + icon("dense", 15) + '</button></div>'
+      + '</div>';
+  }
+  function buildLaneGroupSummary() {
+    var groups = currentData.laneGroups || [];
+    if (!groups.length) return "";
+    var rows = [];
+    function add(key, value) {
+      if (!value) return;
+      var found = null;
+      for (var i = 0; i < rows.length; i += 1) {
+        if (rows[i].key === key && rows[i].value === value) { found = rows[i]; break; }
+      }
+      if (found) found.count += 1;
+      else rows.push({ key: key, value: value, count: 1 });
+    }
+    groups.forEach(function (group) {
+      add("actorType", group.actorType);
+      add("surface", group.surface);
+      add("caseGroup", group.caseGroup);
+    });
+    if (!rows.length) return "";
+    return '<div class="lane-groups" aria-label="Lane groups">'
+      + rows.slice(0, 6).map(function (row) {
+        var title = row.key + ": " + row.value + " (" + row.count + ")";
+        return '<span class="lane-group-chip" data-lane-group="' + esc(row.key) + '" title="' + esc(title) + '">'
+          + '<span class="lane-group-k">' + esc(row.key) + '</span>'
+          + '<span class="lane-group-v">' + esc(row.value) + '</span>'
+          + '<span class="lane-group-n">' + row.count + '</span>'
+          + '</span>';
+      }).join("")
       + '</div>';
   }
   function buildFocusToolbar() {
@@ -2529,6 +2572,7 @@ export function observerClientJs(): string {
     return JSON.stringify({
       run: [run.runId, run.status, (run.lifecycle || []).length, (run.knownGaps || []).length],
       summary: d.summary || {},
+      laneGroups: (d.laneGroups || []).map(function (g) { return [g.roleId, g.simId, g.streamId, g.status, g.actorType, g.surface, g.caseGroup]; }),
       streams: streams,
       events: events
     });
@@ -2544,6 +2588,7 @@ export function observerClientJs(): string {
         if (!currentData.run) currentData.run = {};
         if (!currentData.streams) currentData.streams = [];
         if (!currentData.events) currentData.events = [];
+        if (!currentData.laneGroups) currentData.laneGroups = [];
         if (dataKey(currentData) !== prev) render();
       });
     }).catch(function () {});
