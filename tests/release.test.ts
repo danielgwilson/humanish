@@ -69,11 +69,13 @@ describe("release readiness", () => {
     expect(readiness).toContain("explicitly allowlisted by SHA-256");
     expect(readiness).toContain("skills/mimetic-cli/SKILL.md");
     expect(readiness).toContain("pnpm skill:check");
-    expect(readiness).toContain("pnpm release:check && npm publish --access public");
+    expect(readiness).toContain("Prefer the tag-gated GitHub Actions workflow");
+    expect(readiness).toContain("npm version patch --no-git-tag-version");
+    expect(readiness).toContain("The release tag must point at a commit already reachable from `origin/main`.");
     expect(readiness).toContain("Trusted Publishing Setup");
     expect(readiness).toContain("workflow filename: `publish.yml`");
     expect(readiness).toContain("npm pack --dry-run");
-    expect(readiness).toContain("No agent should run that command without explicit human approval");
+    expect(readiness).toContain("No agent should run `npm publish` locally without explicit human approval");
     expect(readiness).toContain("`.mimetic/`");
     expect(readiness).toContain("`.npmrc`");
     expect(readiness).toContain("unapproved durable commit email metadata");
@@ -130,6 +132,9 @@ describe("release readiness", () => {
     expect(publish).toContain("registry-url: \"https://registry.npmjs.org\"");
     expect(publish).toContain("package-manager-cache: false");
     expect(publish).toContain("if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')");
+    expect(publish).toContain("Verify release tag is on main and matches package version");
+    expect(publish).toContain("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main");
+    expect(publish).toContain("[ \"v${PACKAGE_VERSION}\" != \"$GITHUB_REF_NAME\" ]");
     expect(publish).toContain("pnpm release:check");
     expect(publish).toContain("npm publish --access public");
     expect(ci).toContain("pnpm/action-setup@v6");

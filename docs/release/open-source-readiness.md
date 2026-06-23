@@ -135,14 +135,30 @@ the scanner allowlist and keep their approved checksum.
 
 ## Publish Procedure
 
-Only after maintainer approval:
+Only after maintainer approval. Prefer the tag-gated GitHub Actions workflow
+over local publication:
 
 ```bash
-pnpm release:check && npm publish --access public
+pnpm release:check
+npm version patch --no-git-tag-version
+# Open and merge the release PR.
+git fetch origin main --tags
+git switch main
+git pull --ff-only origin main
+VERSION="$(node -p "require('./package.json').version")"
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
-No agent should run that command without explicit human approval in the current
-thread. That approval must come from the maintainer responsible for the release.
+No agent should run `npm publish` locally without explicit human approval in the
+current thread. That approval must come from the maintainer responsible for the
+release.
+
+The release tag must point at a commit already reachable from `origin/main`.
+Tagging a local release commit before the release PR merges can publish a
+correct package from a commit that is not in main history. The publish workflow
+therefore fails closed unless the tag commit is an ancestor of `origin/main` and
+the tag name exactly matches `package.json`'s version.
 
 ## Trusted Publishing Setup
 
@@ -169,8 +185,14 @@ Future automated release flow after trusted publishing is configured:
 
 ```bash
 pnpm release:check
-npm version patch -m "Release %s"
-git push origin main --tags
+npm version patch --no-git-tag-version
+# Open and merge the release PR, then tag the pulled main commit.
+git fetch origin main --tags
+git switch main
+git pull --ff-only origin main
+VERSION="$(node -p "require('./package.json').version")"
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
 The publish job is tag-gated and only publishes when running on a `v*` tag.
