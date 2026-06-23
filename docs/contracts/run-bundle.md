@@ -98,6 +98,26 @@ actors:
         caseGroup: case-001
 ```
 
+For repeated lanes, authors can use compact roster groups. The parser expands
+each group into deterministic `lanes[]` before the engine runs:
+
+```yaml
+actors:
+  - type: openai-computer-use
+    roster:
+      - id: viewer
+        count: 3
+        actorType: viewer
+        surface: review-queue
+        caseGroup: case-001
+        persona: curious-reviewer
+        device: desktop
+```
+
+The generated lane ids are `<group.id>-01`, `<group.id>-02`, and so on. `roster`
+is mutually exclusive with explicit `lanes`, homogeneous `count`, and
+`laneFocus`; it is an authoring convenience, not a second runtime shape.
+
 These fields are adapter-owned labels, not core enums. They let downstream
 projects express "N actors of M app-defined types across S surfaces" without
 teaching Mimetic private product nouns. Values must be public-safe tokens and

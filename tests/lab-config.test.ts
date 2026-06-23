@@ -227,9 +227,60 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
         expect(result.warnings).toEqual([]);
       });
 
+      it("expands compact roster groups into deterministic lanes", () => {
+        const result = parseLabConfig({
+          ...validCua,
+          actors: [{
+            type: "openai-computer-use",
+            mission: "Exercise each app surface.",
+            roster: [
+              {
+                id: "viewer",
+                count: 3,
+                actorType: "viewer",
+                surface: "review-queue",
+                caseGroup: "case-001",
+                persona: "curious-reviewer",
+                device: "desktop",
+                instruction: "Review one assigned item."
+              },
+              {
+                id: "manager",
+                count: 1,
+                actorType: "manager",
+                surface: "dashboard",
+                caseGroup: "case-001",
+                persona: "operations-lead",
+                device: "wide",
+                instruction: "Check the dashboard summary."
+              }
+            ]
+          }],
+          execution: { target: "e2b-desktop", timeoutMs: 120000, concurrency: 2 }
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.config.actors[0]?.lanes?.map((lane) => lane.id)).toEqual([
+          "viewer-01",
+          "viewer-02",
+          "viewer-03",
+          "manager-01"
+        ]);
+        expect(result.config.actors[0]?.lanes?.map((lane) => [lane.actorType, lane.surface, lane.caseGroup, lane.device])).toEqual([
+          ["viewer", "review-queue", "case-001", "desktop"],
+          ["viewer", "review-queue", "case-001", "desktop"],
+          ["viewer", "review-queue", "case-001", "desktop"],
+          ["manager", "dashboard", "case-001", "wide"]
+        ]);
+        expect(result.warnings).toEqual([]);
+      });
+
       it.each([
         ["lanes XOR count", { ...validCua, actors: [{ type: "openai-computer-use", count: 2, lanes: [{ id: "a" }, { id: "b" }] }] }],
+        ["roster XOR count", { ...validCua, actors: [{ type: "openai-computer-use", count: 2, roster: [{ id: "a", count: 2 }] }] }],
+        ["roster XOR lanes", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "a", count: 2 }], lanes: [{ id: "b" }] }] }],
         ["lanes XOR laneFocus", { ...validCua, actors: [{ type: "openai-computer-use", laneFocus: { instruction: "x" }, lanes: [{ id: "a" }, { id: "b" }] }] }],
+        ["roster XOR laneFocus", { ...validCua, actors: [{ type: "openai-computer-use", laneFocus: { instruction: "x" }, roster: [{ id: "a", count: 2 }] }] }],
         ["lanes[].device XOR raw resolution", {
           ...validCua,
           actors: [{ type: "openai-computer-use", lanes: [{ id: "a", device: "mobile" }, { id: "b" }] }],
@@ -237,9 +288,14 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
         }],
         ["over the 16-lane cap (count)", { ...validCua, actors: [{ type: "openai-computer-use", count: 17 }] }],
         ["over the 16-lane cap (lanes)", { ...validCua, actors: [{ type: "openai-computer-use", lanes: Array.from({ length: 17 }, (_v, i) => ({ id: `lane-${i}` })) }] }],
+        ["over the 16-lane cap (roster)", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "viewer", count: 17 }] }] }],
         ["duplicate lane ids", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "dup" }, { id: "dup" }] }] }],
+        ["duplicate roster group ids", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "dup", count: 1 }, { id: "dup", count: 1 }] }] }],
         ["bad lane id shape", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "Bad Id!" }, { id: "ok" }] }] }],
+        ["bad roster id shape", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "Bad Id!", count: 1 }] }] }],
+        ["missing roster count", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "viewer" }] }] }],
         ["unknown lane device", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", device: "phablet" }, { id: "b" }] }] }],
+        ["unknown roster device", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "viewer", count: 1, device: "phablet" }] }] }],
         ["allowPublicTargets + N>1", {
           ...validCua,
           subject: { source: "app-url", appUrl: "https://preview.example.com/" },
@@ -977,6 +1033,28 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     }));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toContain("actorType");
+  });
+
+  it("expands compact roster groups before shared-world validation", () => {
+    const result = parseLabConfig(validSharedWorld({
+      actors: [{
+        type: "openai-computer-use",
+        mission: "Use the shared app.",
+        roster: [
+          { id: "author", count: 2, actorType: "author", surface: "studio", caseGroup: "case-001", persona: "writer", entry: "/compose", instruction: "Create a note." },
+          { id: "reviewer", count: 1, actorType: "reviewer", surface: "queue", caseGroup: "case-001", persona: "reviewer", entry: "/inbox", instruction: "Review the note." }
+        ]
+      }]
+    }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(routesToSharedWorld(result.config)).toBe(true);
+    expect(sharedWorldValidationReason(result.config)).toBeNull();
+    expect(result.config.actors[0]?.lanes?.map((lane) => [lane.id, lane.actorType, lane.surface, lane.caseGroup, lane.entry])).toEqual([
+      ["author-01", "author", "studio", "case-001", "/compose"],
+      ["author-02", "author", "studio", "case-001", "/compose"],
+      ["reviewer-01", "reviewer", "queue", "case-001", "/inbox"]
+    ]);
   });
 
   it("the SAME composition WITHOUT topology stays per-lane-worlds (cua), proving topology is the switch", () => {

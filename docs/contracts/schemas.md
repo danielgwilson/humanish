@@ -90,15 +90,26 @@ A lab is a composition over code primitives, not a hardcoded kind:
   worlds, cap 16). The in-process/local-app computer-use route stays single
   lane (no E2B to fan out);
 - `actors[0].lanes[]` (computer-use E2B route): a DIFFERENTIATED fan-out roster,
-  each `{ id?, persona?, device?, instruction? }` becoming one independent E2B
-  desktop. `lanes` is XOR with `count` (declare a roster OR a homogeneous count)
-  and XOR with `actors[0].laneFocus` (a roster's per-lane `instruction` is the
-  steer); `lanes[].device` is XOR with a raw `execution.desktop.resolution`. Lane
-  ids default `lane-01`..`lane-NN`, must be unique, and name per-lane evidence
-  paths (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 lanes. On
-  every non-cua route `lanes` is inert (warned). `subject.clone.fanout` is
-  REJECTED on the cua route (declare fan-out via `count`/`lanes`; `clone.fanout`
-  drives the OSS smoke/meta routes only);
+  each `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
+  instruction?, entry? }` becoming one independent E2B desktop (or, on the
+  shared-world routes, one role/seat against the shared plane). `actorType`,
+  `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
+  simulated users; they are not core enums, and `actorType` is deliberately
+  separate from the execution dispatch key `actors[0].type`. `lanes` is XOR with
+  `count` (declare a roster OR a homogeneous count) and XOR with
+  `actors[0].laneFocus` (a roster's per-lane `instruction` is the steer);
+  `lanes[].device` is XOR with a raw `execution.desktop.resolution`. Lane ids
+  default `lane-01`..`lane-NN`, must be unique, and name per-lane evidence paths
+  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 lanes. On every
+  non-cua route `lanes` is inert (warned). `subject.clone.fanout` is REJECTED on
+  the cua route (declare fan-out via `count`/`lanes`; `clone.fanout` drives the
+  OSS smoke/meta routes only);
+- `actors[0].roster[]` (computer-use E2B route): compact authoring sugar for
+  repeated lane groups, each `{ id, count, actorType?, surface?, caseGroup?,
+  persona?, device?, instruction?, entry? }`. The parser expands it into
+  deterministic `lanes[]` before the engine runs (`viewer-01`, `viewer-02`,
+  ...), so the runtime and run bundle keep one normalized lane shape. `roster`
+  is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
 - `execution.concurrency` (computer-use E2B route): bounds in-flight (paid)
   fan-out lanes; default `min(laneCount, 3)`. The env override
   `MIMETIC_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never raise

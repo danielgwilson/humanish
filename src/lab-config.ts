@@ -31,14 +31,16 @@
 // E2B route: the HOMOGENEOUS fan-out lane count (N identical lanes, each its own E2B desktop),
 // capped at 16; the in-process/local-app cua route stays single lane (no E2B to fan out).
 //
-// NOTE on actors[0].lanes (computer-use E2B route, this slice): a DIFFERENTIATED fan-out
-// roster — each `{ id?, persona?, device?, instruction? }` becomes one independent E2B desktop
-// (per-lane worlds, the only topology this layer; shared-world is #164). `lanes` XOR `count`
-// (declare a roster OR a homogeneous count, never both); `lanes` XOR `actors[0].laneFocus`
-// (per-lane `instruction` is the roster's steer); `lanes[].device` XOR raw
-// `execution.desktop.resolution`. `execution.concurrency` bounds in-flight lanes (default
+// NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route, this slice): a
+// DIFFERENTIATED fan-out roster — each `{ id?, persona?, device?, instruction? }` becomes one
+// independent E2B desktop (per-lane worlds, the default topology). `roster[]` is parser sugar for
+// repeated groups and is normalized into `lanes[]` before the engine sees it. `lanes|roster` XOR
+// `count` (declare a differentiated roster OR a homogeneous count, never both); `lanes|roster`
+// XOR `actors[0].laneFocus` (per-lane `instruction` is the roster's steer); `lanes[].device` XOR
+// raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight lanes (default
 // min(laneCount, 3); env MIMETIC_CUA_MAX_CONCURRENCY may only LOWER it — invariant 3). On every
-// non-cua route `lanes` is inert (warned). subject.clone.fanout is REJECTED on the cua route.
+// non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is REJECTED on the cua
+// route.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -288,6 +290,18 @@ export interface LabActorLane {
   entry?: string;
 }
 
+/**
+ * Compact authoring sugar for repeated lane groups. The parser expands each group into concrete
+ * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
+ * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
+ */
+export interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
+  /** Public-safe group id; prefixes generated lane ids. */
+  id: string;
+  /** Number of lanes to generate for this group. */
+  count: number;
+}
+
 export interface LabActor {
   /**
    * The actor label. On app-url subjects this is a REAL dispatch key: it must resolve to a
@@ -301,8 +315,9 @@ export interface LabActor {
    *  surface roster {1 = desktop, 2 = desktop + mobile, default 1}; computer-use E2B route the
    *  HOMOGENEOUS fan-out lane count (cap 16). XOR `lanes`. */
   count?: number;
-  /** Computer-use E2B route: a DIFFERENTIATED fan-out roster (per-lane worlds). XOR `count` and
-   *  XOR `laneFocus`. Cap 16 lanes. Consumed only on the cua E2B route (inert/warned elsewhere). */
+  /** Computer-use E2B route: a DIFFERENTIATED fan-out roster (per-lane worlds). XOR `count`,
+   *  `roster`, and `laneFocus`. Cap 16 lanes. Consumed only on the cua E2B route
+   *  (inert/warned elsewhere). */
   lanes?: LabActorLane[];
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
@@ -1504,7 +1519,18 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     const actor: LabActor = { type };
     const count = posInt(entry.count);
     if (count !== undefined) actor.count = count;
-    const lanesResult = parseLanes(entry.lanes, index);
+    if (entry.lanes !== undefined && entry.roster !== undefined) {
+      return invalid(`actors[${index}].lanes and actors[${index}].roster are mutually exclusive — use explicit lanes OR compact roster groups, not both.`);
+    }
+    if (entry.roster !== undefined && count !== undefined) {
+      return invalid(`actors[${index}].roster and actors[${index}].count are mutually exclusive — use compact differentiated groups OR a homogeneous count, not both.`);
+    }
+    if (entry.roster !== undefined && entry.laneFocus !== undefined) {
+      return invalid(`actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive — a roster group's instruction is the per-lane steer.`);
+    }
+    const lanesResult = entry.roster !== undefined
+      ? parseRosterGroups(entry.roster, index)
+      : parseLanes(entry.lanes, index);
     if (!lanesResult.ok) {
       return lanesResult;
     }
@@ -1534,6 +1560,53 @@ function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
   const instruction = str(raw.instruction);
   if (instruction) laneFocus.instruction = instruction;
   return Object.keys(laneFocus).length > 0 ? laneFocus : undefined;
+}
+
+/**
+ * Parse `actors[index].roster` compact groups into concrete lanes. This is authoring sugar for
+ * "N users of M adapter-owned types across S surfaces"; the runtime receives only `lanes[]`.
+ */
+function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return invalid(`actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, entry? }) when set.`);
+  }
+
+  const expanded: LabActorLane[] = [];
+  const seenGroupIds = new Set<string>();
+  for (const [groupIndex, entry] of raw.entries()) {
+    if (!isRecord(entry)) {
+      return invalid(`actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, entry? }).`);
+    }
+    const groupId = str(entry.id);
+    if (groupId === undefined) {
+      return invalid(`actors[${actorIndex}].roster[${groupIndex}].id is required and must be a public-safe token matching ${LANE_ID_PATTERN}.`);
+    }
+    if (!LANE_ID_PATTERN.test(groupId) || groupId.length > LANE_ID_MAX_CHARS - 3) {
+      return invalid(`actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS - 3} chars (generated lanes use <id>-NN); got "${groupId}".`);
+    }
+    if (seenGroupIds.has(groupId)) {
+      return invalid(`actors[${actorIndex}].roster group ids must be unique (duplicate "${groupId}").`);
+    }
+    seenGroupIds.add(groupId);
+    const count = posInt(entry.count);
+    if (count === undefined) {
+      return invalid(`actors[${actorIndex}].roster[${groupIndex}].count is required and must be a positive integer.`);
+    }
+    const groupLaneInput: Record<string, unknown> = { ...entry };
+    delete groupLaneInput.id;
+    delete groupLaneInput.count;
+    for (let i = 1; i <= count; i += 1) {
+      expanded.push({
+        ...groupLaneInput,
+        id: `${groupId}-${String(i).padStart(2, "0")}`
+      });
+    }
+  }
+
+  return parseLanes(expanded, actorIndex);
 }
 
 /**

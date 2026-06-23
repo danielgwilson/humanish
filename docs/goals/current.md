@@ -232,6 +232,15 @@ Patch hardening (0.11.1):
   tokenless sandbox host, and drive deterministic scripted steps while persisting only public-safe
   provenance and host digests. `done`
 
+Adopter-driven roster/readback ergonomics (candidate 0.12.0):
+
+- Lane grouping metadata (`actorType`, `surface`, `caseGroup`) is adapter-owned and projected into
+  Observer `laneGroups[]` plus stream labels, so downstream projects can group simulated users
+  without teaching Mimetic private role names. `done`
+- `actors[0].roster[]` is compact authoring sugar for repeated lane groups. The parser expands it
+  into deterministic `lanes[]` (`<group.id>-01`, `<group.id>-02`, ...) before the engine runs, so
+  the runtime and run bundle keep one normalized lane shape. `done`
+
 ### 6. Lab Manifest Shape
 
 Make reusable simulations feel like source artifacts, not hardcoded command
