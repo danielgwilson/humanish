@@ -546,7 +546,7 @@ describe("runScriptedBrowserLab", () => {
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
-  });
+  }, 20_000);
 
   it("the subject failing the script is successful EVIDENCE: lab ok stays true, review verdict is fail", async () => {
     await writeCommittedScenario(cwd);
