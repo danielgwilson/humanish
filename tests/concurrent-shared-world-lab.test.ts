@@ -61,7 +61,7 @@ function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdo
     stream: {
       getAuthKey: () => "fake-auth-key",
       getUrl: () => "https://stream.invalid/fake-auth-key",
-      start: async () => undefined
+      start: async (options?: unknown) => { calls.push(["stream.start", options]); }
     }
   };
   return sandbox as unknown as FakeSandbox;
@@ -107,6 +107,7 @@ function makeCommandHandler(state: { worldVersion: number }): (command: string) 
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" };
     if (command.includes("curl")) return { stdout: "READY" };
     if (command.includes("checkpoint-") && command.includes("tail -c")) return { stdout: `world=${state.worldVersion}\n` };
+    if (command.includes("find_chrome_window")) return { stdout: "WINDOW_ID=424242\n" };
     if (command.includes("tail -c")) return { stdout: "" };
     return undefined;
   };
@@ -134,7 +135,7 @@ async function waitForCondition(label: string, condition: () => boolean | Promis
   throw new Error(`Timed out waiting for ${label}`);
 }
 
-function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promptDigest: string }; status: ActorStatus; completionReason: ActorCompletionReason; actions: number; messages: number }): ActorTrace {
+function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promptDigest: string }; status: ActorStatus; completionReason: ActorCompletionReason; actions: number; messages: number; reason?: string }): ActorTrace {
   return {
     schema: ACTOR_TRACE_SCHEMA,
     provider: "fake-cua",
@@ -147,7 +148,7 @@ function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promp
     durationMs: 1000,
     status: args.status,
     completionReason: args.completionReason,
-    reason: `${args.status} (${args.completionReason})`,
+    reason: args.reason ?? `${args.status} (${args.completionReason})`,
     ids: {},
     counts: { actions: args.actions, messages: args.messages, screenshots: 0 },
     items: [
@@ -163,7 +164,7 @@ function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promp
 function makeRunSession(
   state: { worldVersion: number },
   rendezvous: () => Promise<void>,
-  override?: (index: number) => { throwMessage?: string; status?: ActorStatus; completionReason?: ActorCompletionReason } | undefined
+  override?: (index: number) => { throwMessage?: string; status?: ActorStatus; completionReason?: ActorCompletionReason; reason?: string } | undefined
 ): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
   let index = -1;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
@@ -182,7 +183,7 @@ function makeRunSession(
     }
     const status = o?.status ?? "passed";
     const completionReason = o?.completionReason ?? "goal_satisfied";
-    const trace = makeTrace({ persona: options.persona, status, completionReason, actions: 1, messages: 1 });
+    const trace = makeTrace({ persona: options.persona, status, completionReason, actions: 1, messages: 1, ...(o?.reason === undefined ? {} : { reason: o.reason }) });
     return { status, completionReason, reason: trace.reason, trace };
   };
 }
@@ -411,7 +412,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
   it("publishes an attached live Observer while concurrent actors are still running", async () => {
     const state = { worldVersion: 0 };
-    const { hooks } = baseHooks(state, async () => {});
+    const { hooks, sandboxes } = baseHooks(state, async () => {});
     const runId = "concurrent-shared-world-live-observer";
     const runRoot = path.join(cwd, ".mimetic", "runs", runId);
     let actorSessionsStarted = 0;
@@ -449,6 +450,11 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       await waitForCondition("observer server", () => observerServer !== undefined);
       await actorsStarted;
       await waitForCondition("all actor sessions started", () => actorSessionsStarted === 3);
+      const streamStarts = sandboxes.flatMap((sandbox) =>
+        sandbox.calls.filter(([name]) => name === "stream.start")
+      );
+      expect(streamStarts).toHaveLength(3);
+      expect(streamStarts.every(([, options]) => (options as { windowId?: string }).windowId === "424242")).toBe(true);
 
       const persistedRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
       expect(persistedRunText).not.toContain("fake-auth-key");
@@ -538,6 +544,31 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         expect.objectContaining({ roleId: "persona-02", status: "failed", completionReason: "actor_error", ok: false })
       ])
     );
+  });
+
+  it("fails review when a lane self-reports a blocker while claiming goal_satisfied", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (
+      index === 0
+        ? {
+            status: "passed",
+            completionReason: "goal_satisfied",
+            reason: "I cannot complete the approval because the app shows an error: DOSESPOT_USER_ID is not set."
+          }
+        : undefined
+    ));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(false);
+    expect(result.roles[0]?.ok).toBe(false);
+    expect(result.roles[0]?.error?.message).toContain("not a credible pass");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.gaps.some((gap) => gap.includes("DOSESPOT_USER_ID is not set"))).toBe(true);
+    expect(bundle.events.some((event) =>
+      event.level === "warn" && event.message.includes("NOT counted as a pass")
+    )).toBe(true);
   });
 
   it("routes through runLab(sharedWorldHooks) to the concurrent backend", async () => {

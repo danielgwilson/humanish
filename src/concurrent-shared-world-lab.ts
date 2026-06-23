@@ -756,6 +756,8 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
               message: result.outcome.sessionError
                 ?? (result.outcome.noEngagement
                   ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+                  : result.outcome.selfReportedBlocker
+                    ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
                   : session?.completionReason === "harness_error"
                     ? `Actor seat ended with a harness error: ${session.reason}`
                     : "Actor did not produce a terminal session.")
@@ -823,7 +825,8 @@ function actorLanePassed(result: ActorLaneResult | undefined): boolean {
     && session.status === "passed"
     && session.completionReason !== "harness_error"
     && result.outcome.sessionError === undefined
-    && !result.outcome.noEngagement;
+    && !result.outcome.noEngagement
+    && !result.outcome.selfReportedBlocker;
 }
 
 /** Project the concurrent run into a mimetic.run-bundle.v1 with the CONCURRENT shared-world block. */
@@ -965,6 +968,18 @@ export function buildConcurrentSharedWorldBundle(args: {
       ]
     });
 
+    for (const warning of outcome?.warnings ?? []) {
+      events.push({
+        id: nextEventId(`warning-${spec.laneId}`),
+        at: createdAt,
+        level: "warn",
+        type: "concurrent-shared-world.actor.warning",
+        message: `Persona ${spec.laneId}: ${warning}`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    }
+
     if (session) {
       events.push({
         id: nextEventId(`session-${spec.laneId}`),
@@ -1105,7 +1120,12 @@ export function buildConcurrentSharedWorldBundle(args: {
       : inProgress
         ? ["Final actor traces, screenshots, state deltas, and verification are pending; this Observer is for live watch only."]
       : actorResults
-          .filter((result) => result.outcome.sessionError !== undefined || result.outcome.noEngagement || result.outcome.session === undefined || result.outcome.session.status !== "passed")
+          .filter((result) =>
+            result.outcome.sessionError !== undefined
+            || result.outcome.noEngagement
+            || result.outcome.selfReportedBlocker
+            || result.outcome.session === undefined
+            || result.outcome.session.status !== "passed")
           .map((result) => `${result.spec.laneId}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`)
   };
 

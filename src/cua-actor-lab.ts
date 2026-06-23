@@ -599,6 +599,7 @@ export interface LaneRunOutcome {
   /** Set when the lane was skipped by the pipeline gate / fail-fast (a pinned reason). */
   skippedReason?: string;
   noEngagement: boolean;
+  selfReportedBlocker: boolean;
   harnessError: boolean;
   failureCode?: CuaActorLabErrorCode;
   entryKind?: "local-app";
@@ -665,8 +666,61 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
     warnings: [],
     skippedReason: reason,
     noEngagement: false,
+    selfReportedBlocker: false,
     harnessError: false
   };
+}
+
+async function findVisibleBrowserWindowId(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number
+): Promise<string | undefined> {
+  const result = await desktop.commands.run([
+    "set -euo pipefail",
+    "export DISPLAY=\"${DISPLAY:-:0}\"",
+    "find_chrome_window() {",
+    "  timeout 2s xdotool search --onlyvisible --class 'google-chrome|Google-chrome|chromium|Chromium|chrome|Chrome' 2>/dev/null | tail -n 1 || true",
+    "}",
+    "find_named_window() {",
+    "  timeout 2s xdotool search --onlyvisible --name 'Google Chrome|Chromium|127[.]0[.]0[.]1|localhost' 2>/dev/null | tail -n 1 || true",
+    "}",
+    "window_id=",
+    "for _ in $(seq 1 10); do",
+    "  window_id=\"$(find_chrome_window)\"",
+    "  if [ -z \"$window_id\" ]; then window_id=\"$(find_named_window)\"; fi",
+    "  if [ -n \"$window_id\" ]; then break; fi",
+    "  sleep 0.5",
+    "done",
+    "if [ -n \"$window_id\" ]; then printf 'WINDOW_ID=%s\\n' \"$window_id\"; fi"
+  ].join("\n"), {
+    requestTimeoutMs,
+    timeoutMs: 15_000
+  });
+  return (result.stdout ?? "").match(/^WINDOW_ID=(\S+)$/m)?.[1];
+}
+
+async function startDesktopStream(
+  desktop: E2BDesktopSandbox,
+  browserWindowId: string | undefined
+): Promise<void> {
+  if (!browserWindowId) {
+    await desktop.stream.start({ requireAuth: true });
+    return;
+  }
+
+  try {
+    await desktop.stream.start({ requireAuth: true, windowId: browserWindowId });
+  } catch {
+    await desktop.stream.start({ requireAuth: true });
+  }
+}
+
+function completionReasonContradictsGoal(reason: string): boolean {
+  const text = reason.toLowerCase();
+  return /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text)
+    || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
+    || /\berror[:.]/.test(text)
+    || /what would you like me to do|please tell me|need (the )?(task|credentials|instructions)/.test(text);
 }
 
 /**
@@ -769,20 +823,30 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       signal(true);
 
       try {
-        await desktop.stream.start({ requireAuth: true });
-        streamUrl = desktop.stream.getUrl({
+        const browserWindowId = await findVisibleBrowserWindowId(desktop, deps.requestTimeoutMs)
+          .catch((error: unknown) => {
+            warnings.push(`Browser window lookup failed before live stream start (falling back to desktop stream): ${redactText(deps.scrubKnownValues(compactError(error)))}`);
+            return undefined;
+          });
+        await startDesktopStream(desktop, browserWindowId);
+        const candidateStreamUrl: unknown = desktop.stream.getUrl({
           authKey: desktop.stream.getAuthKey(),
           autoConnect: true,
           viewOnly: true,
           resize: "scale"
         });
-        await deps.hooks.onRuntimeStreamReady?.({
-          laneId: spec.laneId,
-          sandboxId: desktop.sandboxId,
-          simId: spec.simId,
-          streamId: spec.streamId,
-          url: streamUrl
-        });
+        if (typeof candidateStreamUrl === "string" && candidateStreamUrl.trim().length > 0) {
+          streamUrl = candidateStreamUrl;
+          await deps.hooks.onRuntimeStreamReady?.({
+            laneId: spec.laneId,
+            sandboxId: desktop.sandboxId,
+            simId: spec.simId,
+            streamId: spec.streamId,
+            url: streamUrl
+          });
+        } else {
+          warnings.push("Live desktop stream started but did not return a usable watch URL; Observer will fall back to screenshots.");
+        }
       } catch (error) {
         warnings.push(`Live desktop stream unavailable (run continues; evidence still captured): ${redactText(deps.scrubKnownValues(compactError(error)))}`);
       }
@@ -842,6 +906,14 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
   }
 
+  const blockerReason = session?.completionReason === "goal_satisfied" && completionReasonContradictsGoal(session.reason)
+    ? session.reason
+    : undefined;
+  const selfReportedBlocker = blockerReason !== undefined;
+  if (selfReportedBlocker) {
+    warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`);
+  }
+
   const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
 
   return {
@@ -856,6 +928,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     stateStepRecords,
     warnings,
     noEngagement,
+    selfReportedBlocker,
     harnessError,
     ...(failureCode === undefined ? {} : { failureCode })
   };
@@ -901,6 +974,13 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   if (noEngagement) {
     warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
   }
+  const blockerReason = session?.completionReason === "goal_satisfied" && completionReasonContradictsGoal(session.reason)
+    ? session.reason
+    : undefined;
+  const selfReportedBlocker = blockerReason !== undefined;
+  if (selfReportedBlocker) {
+    warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${blockerReason}`);
+  }
 
   return {
     spec,
@@ -912,6 +992,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     stateStepRecords: [],
     warnings,
     noEngagement,
+    selfReportedBlocker,
     harnessError: sessionError !== undefined || session?.completionReason === "harness_error",
     entryKind: "local-app"
   };
@@ -1003,7 +1084,8 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
   const laneOk = session !== undefined
     && session.completionReason !== "harness_error"
     && outcome.sessionError === undefined
-    && !outcome.noEngagement;
+    && !outcome.noEngagement
+    && !outcome.selfReportedBlocker;
   const status: CuaLaneResult["status"] = session ? session.status : "failed";
   return {
     ...base,
@@ -1030,6 +1112,8 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
             message: outcome.sessionError
               ?? (outcome.noEngagement
                 ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+                : outcome.selfReportedBlocker
+                  ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
                 : session?.completionReason === "harness_error"
                   ? `Computer-use session ended with a harness error: ${session.reason}`
                   : "Computer-use lab did not produce a terminal session.")
@@ -1410,7 +1494,8 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     return outcome.session !== undefined
       && outcome.session.completionReason !== "harness_error"
       && outcome.sessionError === undefined
-      && !outcome.noEngagement;
+      && !outcome.noEngagement
+      && !outcome.selfReportedBlocker;
   };
   const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
@@ -1516,7 +1601,8 @@ function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: num
     const laneOk = outcome.session !== undefined
       && outcome.session.completionReason !== "harness_error"
       && outcome.sessionError === undefined
-      && !outcome.noEngagement;
+      && !outcome.noEngagement
+      && !outcome.selfReportedBlocker;
     if (laneOk) passed += 1;
   }
   return {
@@ -2313,6 +2399,7 @@ export function buildCuaFanoutBundle(args: {
           outcome.skippedReason !== undefined
           || outcome.harnessError
           || outcome.noEngagement
+          || outcome.selfReportedBlocker
           || outcome.sessionError !== undefined
           || outcome.session === undefined
           || outcome.session.status === "failed"
@@ -2327,7 +2414,8 @@ export function buildCuaFanoutBundle(args: {
     && outcome.session !== undefined
     && outcome.session.completionReason !== "harness_error"
     && outcome.sessionError === undefined
-    && !outcome.noEngagement).length;
+    && !outcome.noEngagement
+    && !outcome.selfReportedBlocker).length;
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
@@ -2341,6 +2429,7 @@ export function buildCuaFanoutBundle(args: {
             outcome.skippedReason !== undefined
             || outcome.sessionError !== undefined
             || outcome.noEngagement
+            || outcome.selfReportedBlocker
             || outcome.session === undefined
             || outcome.session.status !== "passed")
           .map((outcome) => `${outcome.spec.laneId}: ${outcome.skippedReason ?? outcome.sessionError ?? outcome.session?.reason ?? "did not pass"}`)
