@@ -76,4 +76,24 @@ describe("shared redaction helpers", () => {
     expect(out).not.toContain("/tmp/x/y");
     expect(out).not.toContain("[REDACTED_LOCAL_PATH]");
   });
+
+  it("detects and redacts deterministic PII/PHI shapes without flagging synthetic fixtures", () => {
+    const syntheticEmail = ["patient", "example.test"].join("@");
+    const syntheticPhone = ["+1", "415", "555", "0137"].join("-");
+    const syntheticSsn = ["123", "45", "6789"].join("-");
+    const syntheticDob = ["DOB", ["1987", "04", "23"].join("-")].join(": ");
+    const syntheticMrn = ["MRN", "A1234567"].join(": ");
+    const syntheticIp = ["8", "8", "8", "8"].join(".");
+    const syntheticCard = ["4242", "4242", "4242", "4242"].join(" ");
+
+    for (const text of [syntheticEmail, syntheticPhone, syntheticSsn, syntheticDob, syntheticMrn, syntheticIp, syntheticCard]) {
+      expect(containsSensitive(text)).toBe(true);
+      expect(redactText(text)).not.toContain(text);
+      expect(redactToSecretLabel(text)).toBe("[REDACTED_SECRET]");
+    }
+
+    expect(containsSensitive("synthetic persona pat visits the onboarding page")).toBe(false);
+    expect(containsSensitive("fixture user test-account-001 completes checkout")).toBe(false);
+    expect(containsSensitive("version 1.2.3 and port 5173 are not an IPv4 address")).toBe(false);
+  });
 });

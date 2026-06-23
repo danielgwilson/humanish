@@ -37,6 +37,18 @@ export const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"]
 ];
 
+export const PII_PHI_PATTERNS: Array<[RegExp, string]> = [
+  [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_PII]"],
+  [/(?:\+\d{1,3}[-.\s()]*(?:\d{3}[-.\s()]*){2}\d{4}\b|\b(?:phone|tel|mobile|contact)\s*[:=]?\s*(?:\+?\d{1,3}[-.\s()]*)?(?:\d{3}[-.\s()]*){2}\d{4}\b)/gi, "[REDACTED_PII]"],
+  [/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED_PII]"],
+  [/\b(?:DOB|date of birth|birth date)\s*[:=]?\s*(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/gi, "[REDACTED_PII]"],
+  [/\b(?:MRN|medical record(?: number)?|patient id|member id|insurance id)\s*[:#=]?\s*[A-Z0-9-]{6,}\b/gi, "[REDACTED_PHI]"],
+  [/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, "[REDACTED_PII]"]
+];
+
+const CREDIT_CARD_CANDIDATE_PATTERN = /\b(?:\d{4}[ -]){3}\d{4}\b|\b(?:card|credit card|cc)\s*[:=]?\s*\d{13,19}\b/gi;
+const IPV4_CANDIDATE_PATTERN = /\b(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}\b/g;
+
 // Sticky/global regexes carry lastIndex state across .test() calls. Always reset
 // before a detection test so the shared singletons are safe to reuse.
 function matchesPattern(pattern: RegExp, text: string): boolean {
@@ -44,36 +56,109 @@ function matchesPattern(pattern: RegExp, text: string): boolean {
   return pattern.test(text);
 }
 
-/** True if the text contains any secret-shaped token or known local path. */
+/** True if the text contains any secret-shaped token, PII/PHI shape, or known local path. */
 export function containsSensitive(text: string): boolean {
   return (
     SECRET_PATTERNS.some((pattern) => matchesPattern(pattern, text)) ||
+    PII_PHI_PATTERNS.some(([pattern]) => matchesPattern(pattern, text)) ||
+    containsPublicIpv4(text) ||
+    containsLuhnCard(text) ||
     LOCAL_PATH_PATTERNS.some(([pattern]) => matchesPattern(pattern, text))
   );
 }
 
-/** Redact secrets to [REDACTED_SECRET] and local paths to their path labels. */
+/** Redact secrets to [REDACTED_SECRET], PII/PHI to class labels, and local paths to their path labels. */
 export function redactText(text: string): string {
   const withoutSecrets = SECRET_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
     text
   );
-  return LOCAL_PATH_PATTERNS.reduce(
+  const withoutPiiPhi = PII_PHI_PATTERNS.reduce(
     (current, [pattern, replacement]) => current.replace(pattern, replacement),
     withoutSecrets
+  )
+    .replace(IPV4_CANDIDATE_PATTERN, (candidate) => (isPublicIpv4(candidate) ? "[REDACTED_PII]" : candidate))
+    .replace(CREDIT_CARD_CANDIDATE_PATTERN, (candidate) => (isLuhnCard(candidate) ? "[REDACTED_PII]" : candidate));
+  return LOCAL_PATH_PATTERNS.reduce(
+    (current, [pattern, replacement]) => current.replace(pattern, replacement),
+    withoutPiiPhi
   );
 }
 
-/** Redact every sensitive match (secrets and paths) to a single [REDACTED_SECRET] label. */
+/** Redact every sensitive match (secrets, PII/PHI, and paths) to a single [REDACTED_SECRET] label. */
 export function redactToSecretLabel(text: string): string {
   const withoutSecrets = SECRET_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
     text
   );
-  return LOCAL_PATH_PATTERNS.reduce(
+  const withoutPiiPhi = PII_PHI_PATTERNS.reduce(
     (current, [pattern]) => current.replace(pattern, "[REDACTED_SECRET]"),
     withoutSecrets
+  )
+    .replace(IPV4_CANDIDATE_PATTERN, (candidate) => (isPublicIpv4(candidate) ? "[REDACTED_SECRET]" : candidate))
+    .replace(CREDIT_CARD_CANDIDATE_PATTERN, (candidate) => (isLuhnCard(candidate) ? "[REDACTED_SECRET]" : candidate));
+  return LOCAL_PATH_PATTERNS.reduce(
+    (current, [pattern]) => current.replace(pattern, "[REDACTED_SECRET]"),
+    withoutPiiPhi
   );
+}
+
+function containsPublicIpv4(text: string): boolean {
+  IPV4_CANDIDATE_PATTERN.lastIndex = 0;
+  for (const match of text.matchAll(IPV4_CANDIDATE_PATTERN)) {
+    const candidate = match[0];
+    if (candidate !== undefined && isPublicIpv4(candidate)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isPublicIpv4(candidate: string): boolean {
+  const octets = candidate.split(".").map((part) => Number(part));
+  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const [a, b] = octets as [number, number, number, number];
+  if (a === 10 || a === 127 || a === 0 || a === 255) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 169 && b === 254) return false;
+  return true;
+}
+
+function containsLuhnCard(text: string): boolean {
+  CREDIT_CARD_CANDIDATE_PATTERN.lastIndex = 0;
+  for (const match of text.matchAll(CREDIT_CARD_CANDIDATE_PATTERN)) {
+    const candidate = match[0];
+    if (candidate !== undefined && isLuhnCard(candidate)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isLuhnCard(candidate: string): boolean {
+  const digits = candidate.replace(/[^0-9]/g, "");
+  if (digits.length < 13 || digits.length > 19) {
+    return false;
+  }
+  let sum = 0;
+  let doubleDigit = false;
+  for (let i = digits.length - 1; i >= 0; i -= 1) {
+    const digit = Number(digits[i]);
+    if (!Number.isInteger(digit)) {
+      return false;
+    }
+    let value = digit;
+    if (doubleDigit) {
+      value *= 2;
+      if (value > 9) value -= 9;
+    }
+    sum += value;
+    doubleDigit = !doubleDigit;
+  }
+  return sum % 10 === 0;
 }
 
 function canonicalizePath(value: string): string {

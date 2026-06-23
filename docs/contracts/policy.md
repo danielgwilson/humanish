@@ -137,14 +137,16 @@ redaction result is `passed`.
 ### Enforcement scope
 
 Be precise about what the automated gate does. `mimetic verify` runs a
-public-safety scan that detects secret/key/token shapes and known local-path
-shapes, and fails closed on a match. It does **not** detect free-form PII/PHI
-(names, emails, phone numbers, dates of birth, MRNs, medical detail); avoiding
-those depends on using synthetic data and on reviewer judgment. Accordingly,
-`redaction: passed` means the automated secret/path scan found no matches, not a
-certification that the artifact is free of every class in the policy below. A
-first-class PII/PHI detector is planned (issue #108) and would move the listed
-PII classes from author-responsibility to enforced.
+public-safety scan that detects secret/key/token shapes, known local-path
+shapes, and deterministic high-precision PII/PHI shapes. Covered PII/PHI classes
+include emails, phone numbers, SSN-shaped identifiers, DOB-labeled dates,
+MRN/patient/member/insurance-id shapes, IPv4 addresses, IBAN-shaped values, and
+Luhn-valid credit-card candidates. It still does **not** certify free-form names,
+addresses, medical narratives, or every possible identifier; those remain
+synthetic-data and reviewer-judgment responsibilities. Accordingly,
+`redaction: passed` means the automated secret/path plus deterministic PII/PHI
+scan found no matches in the covered classes, not that the artifact is free of
+every conceivable PII/PHI value.
 
 Required redaction gates:
 

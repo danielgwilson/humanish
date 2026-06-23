@@ -465,6 +465,29 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("scans non-bundle text artifacts for deterministic PII/PHI leaks", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "events-pii-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const syntheticEmail = ["patient", "example.test"].join("@");
+      await writeFile(
+        path.join(cwd, ".mimetic/runs/events-pii-regression/events.ndjson"),
+        `{\"message\":\"contact ${syntheticEmail}\"}\n`,
+        "utf8"
+      );
+
+      const verify = await verifyRun(cwd, "events-pii-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message)
+        .toContain("events.ndjson");
+    });
+  });
+
   it("rejects run bundles that persist raw local cwd paths", async () => {
     await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({
