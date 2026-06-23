@@ -40,6 +40,7 @@ describe("release readiness", () => {
       "docs/ramp",
       "docs/release",
       "docs/roadmap",
+      "examples",
       "skills",
       "README.md",
       "LICENSE",
@@ -111,6 +112,23 @@ describe("release readiness", () => {
     for (const term of forbidden) {
       expect(`${ramp}\n${goals}`).not.toContain(term);
     }
+  });
+
+  it("ships a runnable state-driven local-app example for npm consumers", async () => {
+    const readme = await readFile("examples/state-driven-local-app/README.md", "utf8");
+    const example = await readFile("examples/state-driven-local-app/run-state-driven-local-app.ts", "utf8");
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { files?: string[] };
+
+    expect(packageJson.files).toContain("examples");
+    expect(readme).toContain("state-driven local-app example");
+    expect(readme).toContain("npx tsx examples/state-driven-local-app/run-state-driven-local-app.ts");
+    expect(example).toContain("parseLabConfig");
+    expect(example).toContain("runLab");
+    expect(example).toContain("verifyRun");
+    expect(example).toContain("buildExecutor");
+    expect(example).toContain("buildProvider");
+    expect(example).toContain("result.sandbox === undefined");
+    expect(example).toContain("No E2B sandbox");
   });
 
   it("ships the npm README screenshot asset", async () => {
