@@ -1559,7 +1559,7 @@ function buildSingleLaneBundle(args: {
 /**
  * Provision a clone subject inside the sandbox: clone → (install) → state(before-build) →
  * (build) → state(before-start) → start → readiness probe → state(after-ready). Returns the
- * cloned commit SHA. Throws (with a capped log tail for the caller to redact) on any failing
+ * latest subject HEAD after successful provisioning. Throws (with a capped log tail for the caller to redact) on any failing
  * step — the lab persists that as a failed-evidence bundle.
  *
  * State steps run through the same detached primitive as serve steps (author-trusted, the
@@ -1594,6 +1594,18 @@ export async function provisionCloneSubject(
   const timers: DetachedTimers = {
     ...(args.now === undefined ? {} : { now: args.now }),
     ...(args.sleep === undefined ? {} : { sleep: args.sleep })
+  };
+  let latestCommit: string | undefined;
+  const refreshCommit = async (): Promise<void> => {
+    const head = await desktop.commands.run(
+      `git -C ${SUBJECT_DIR} rev-parse HEAD 2>/dev/null || true`,
+      { requestTimeoutMs: args.requestTimeoutMs }
+    );
+    const commit = (head.stdout ?? "").trim() || undefined;
+    if (commit) {
+      latestCommit = commit;
+      args.onCommit?.(commit);
+    }
   };
   const stateSteps = args.state?.seed ?? [];
   const runStateSteps = async (when: LabStateStepWhen): Promise<void> => {
@@ -1645,14 +1657,7 @@ export async function provisionCloneSubject(
     throw new Error(`subject clone ${clone.timedOut ? "timed out" : `failed (exit ${clone.exitCode})`}: ${tailOf(args.scrub(clone.logTail))}`);
   }
 
-  const head = await desktop.commands.run(
-    `git -C ${SUBJECT_DIR} rev-parse HEAD 2>/dev/null || true`,
-    { requestTimeoutMs: args.requestTimeoutMs }
-  );
-  const commit = (head.stdout ?? "").trim() || undefined;
-  if (commit) {
-    args.onCommit?.(commit);
-  }
+  await refreshCommit();
 
   if (args.serve.install) {
     const install = await runDetachedStep(desktop, {
@@ -1666,11 +1671,13 @@ export async function provisionCloneSubject(
     if (!install.ok) {
       throw new Error(`subject install ${install.timedOut ? "timed out" : `failed (exit ${install.exitCode})`}: ${tailOf(args.scrub(install.logTail))}`);
     }
+    await refreshCommit();
   }
 
   // before-build: after install, before build (builds that read seeded state, e.g. SSG).
   // When no build is declared this simply precedes start — equivalent to before-start.
   await runStateSteps("before-build");
+  await refreshCommit();
 
   if (args.serve.build) {
     const build = await runDetachedStep(desktop, {
@@ -1684,12 +1691,14 @@ export async function provisionCloneSubject(
     if (!build.ok) {
       throw new Error(`subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${tailOf(args.scrub(build.logTail))}`);
     }
+    await refreshCommit();
   }
 
   // before-start (the default phase): migrations, SQL/file fixtures, an in-sandbox DB server
   // (`sudo service postgresql start && pg_isready` is a bounded step; the daemon it forks is
   // reclaimed by the sandbox lifecycle like everything else).
   await runStateSteps("before-start");
+  await refreshCommit();
 
   await startDetachedProcess(desktop, {
     name: "subject-start",
@@ -1712,8 +1721,9 @@ export async function provisionCloneSubject(
   // steps are author-trusted provisioning, not actors, so no new URL policy surface). These
   // complete before the caller opens the browser and the session timer starts.
   await runStateSteps("after-ready");
+  await refreshCommit();
 
-  return commit;
+  return latestCommit;
 }
 
 /** sha256 hex of the exact command string, first 16 chars (the promptDigest convention). */

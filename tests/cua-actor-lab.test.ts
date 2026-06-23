@@ -914,7 +914,16 @@ describe("runCuaActorLab", () => {
 
   it("clone route: clones, installs, builds, serves, probes, and drives the subject — with provenance and zero value leaks", async () => {
     const config = cloneCuaConfig({ env: ["DATABASE_URL"] });
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const cloneHead = "8758a953415e1f60091d";
+    const servedHead = "859043fc8dec448d2ac3";
+    let revParseCount = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (!command.includes("rev-parse")) return undefined;
+        revParseCount += 1;
+        return { stdout: `${revParseCount === 1 ? cloneHead : servedHead}\n` };
+      })
+    });
     const { module, created, killed } = makeFakeModule(sandbox);
 
     const outcome = await runLab(config, {
@@ -972,17 +981,20 @@ describe("runCuaActorLab", () => {
     expect(result.subject).toEqual({
       source: "clone",
       repo: "example-org/example-app",
-      commit: "abc123def4567890abc1",
+      commit: servedHead,
       envNames: ["DATABASE_URL"],
       state: { provenance: "undeclared" }
     });
     const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(revParseCount).toBeGreaterThan(1);
+    expect(bundle.subject.commit).toBe(servedHead);
+    expect(JSON.stringify(bundle.subject)).not.toContain(cloneHead);
     const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
-    expect(provenance?.message).toContain("example-org/example-app@abc123def4567890abc1");
+    expect(provenance?.message).toContain(`example-org/example-app@${servedHead}`);
     expect(provenance?.message).toContain("DATABASE_URL");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
-    expect(reviewMd).toContain("Subject cloned from example-org/example-app@");
+    expect(reviewMd).toContain(`Subject cloned from example-org/example-app@${servedHead}`);
 
     // Values never persist: not the subject env value, not the actor keys.
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson", "actor.json"]) {
