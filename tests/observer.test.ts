@@ -610,6 +610,26 @@ describe("observer rendering", () => {
     expect(client.html()).toContain("Static file view cannot hydrate artifacts inline");
   });
 
+  it("renders generic lane grouping metadata in the toolbar", () => {
+    const client = renderObserverClientForTest({
+      ...browserLabObserverData(),
+      laneGroups: [
+        { roleId: "role-a", simId: "sim-01", streamId: "lane-01", status: "passed", actorType: "viewer", surface: "review-queue", caseGroup: "case-001" },
+        { roleId: "role-b", simId: "sim-02", streamId: "lane-02", status: "passed", actorType: "viewer", surface: "review-queue", caseGroup: "case-001" },
+        { roleId: "role-c", simId: "sim-03", streamId: "lane-03", status: "blocked", actorType: "manager", surface: "dashboard", caseGroup: "case-001" }
+      ]
+    });
+
+    expect(client.html()).toContain('class="lane-groups"');
+    expect(client.html()).toContain('data-lane-group="actorType"');
+    expect(client.html()).toContain('title="actorType: viewer (2)"');
+    expect(client.html()).toContain('title="surface: review-queue (2)"');
+    expect(client.html()).toContain('title="caseGroup: case-001 (3)"');
+    expect(client.html()).toContain("manager");
+    expect(client.html()).not.toContain("provider");
+    expect(client.html()).not.toContain("patient");
+  });
+
   it("projects Codex app-server trace metadata into chips, event lanes, and artifact links", () => {
     const client = renderObserverClientForTest(codexAppServerTraceObserverData(), "#focus=codex-lane-01");
 
