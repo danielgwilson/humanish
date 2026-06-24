@@ -32,7 +32,7 @@
 // capped at 16; the in-process/local-app cua route stays single lane (no E2B to fan out).
 //
 // NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route, this slice): a
-// DIFFERENTIATED fan-out roster — each `{ id?, persona?, device?, instruction? }` becomes one
+// DIFFERENTIATED fan-out roster — each `{ id?, persona?, device?, instruction?, target? }` becomes one
 // independent E2B desktop (per-lane worlds, the default topology). `roster[]` is parser sugar for
 // repeated groups and is normalized into `lanes[]` before the engine sees it. `lanes|roster` XOR
 // `count` (declare a differentiated roster OR a homogeneous count, never both); `lanes|roster`
@@ -40,7 +40,9 @@
 // raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight lanes (default
 // min(laneCount, 3); env MIMETIC_CUA_MAX_CONCURRENCY may only LOWER it — invariant 3). On every
 // non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is REJECTED on the cua
-// route.
+// route. `lanes[].target` is app-url × computer-use ONLY: an absolute browser URL this lane opens
+// instead of `subject.appUrl`; it is the generic setup-produced-target handoff, not a service
+// topology primitive.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
@@ -281,6 +283,14 @@ export interface LabActorLane {
   device?: string;
   /** Per-lane steer appended to this lane's mission (the roster's per-lane focus). */
   instruction?: string;
+  /**
+   * App-url computer-use ONLY: absolute browser URL this lane opens instead of `subject.appUrl`.
+   * This is the generic setup-produced-target handoff for crawler/swarm labs: product adapters may
+   * start any topology they need, then hand Mimetic explicit lane targets. Public/non-loopback
+   * targets still require `policies.allowPublicTargets: true`. Inert/rejected on clone, local-app,
+   * shared-world, scripted-browser, and terminal routes.
+   */
+  target?: string;
   /**
    * Shared-world ONLY (#164): this role's per-seat loopback entry route, resolved against
    * `subject.serve.url` and REQUIRED to be same-origin (loopback) with it — the seat opens
@@ -641,10 +651,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       }
       // Multi-lane fan-out is CONSUMED on this route (per-lane worlds; the shared cua-lane
       // cross-validation below enforces lanes/count XOR rules, the 16 cap, and the
-      // allowPublicTargets+N>1 rejection).
+      // lane-level target gates, and the allowPublicTargets+N>1 rejection for ambiguous one-target
+      // fan-out).
       // Loopback by default; an owner may declare a public/preview target via policies.
-      if (!config.policies?.allowPublicTargets && !isLoopbackUrl(config.subject.appUrl ?? "")) {
-        return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive a deployed/preview URL you own.");
+      const laneTargets = declaredLaneTargets(config);
+      const declaredTargets = [config.subject.appUrl ?? "", ...laneTargets];
+      const unsafeTarget = declaredTargets.find((target) => !config.policies?.allowPublicTargets && !isLoopbackUrl(target));
+      if (unsafeTarget !== undefined) {
+        return invalid("`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own.");
       }
     }
   } else if (actorResolvesToScriptedBrowser(config.actors[0]?.type)) {
@@ -864,17 +878,36 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
     if (config.execution?.desktop?.resolution !== undefined && lanes.some((lane) => lane.device !== undefined)) {
       return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive — a per-lane device preset and a single hand-set resolution cannot both govern lane geometry.";
     }
+    const targeted = lanes.filter((lane) => lane.target !== undefined);
+    if (targeted.length > 0) {
+      if (config.subject.source !== "app-url") {
+        return "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism.";
+      }
+      if (lanes.some((lane) => lane.entry !== undefined)) {
+        return "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive — target is an app-url fan-out browser URL; entry is a shared-world same-origin seat path.";
+      }
+      if (targeted.length !== lanes.length) {
+        return "When any actors[0].lanes[].target is declared, every lane in the roster must declare target — this keeps the setup-produced target contract explicit and prevents accidental mixed worlds.";
+      }
+    }
   }
   const laneCount = cuaLaneCount(config);
   if (laneCount > MAX_CUA_LANES) {
     return `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (declared ${laneCount}); N concurrent paid desktops is real spend — there is no override above the cap this slice.`;
   }
-  // Public targets fan out into N independent worlds driving the SAME public app — that is the
-  // shared-world topology (layer 7, #164), not per-lane worlds. Reject the combination.
-  if (laneCount > 1 && config.policies?.allowPublicTargets === true) {
+  // Public targets fan out into N independent worlds driving the SAME public app — that is an
+  // ambiguous shared-world-ish shape, not a per-lane target swarm. Permit N>1 public runs only when
+  // every roster lane declares its own target, making the adapter-owned topology explicit.
+  if (laneCount > 1 && config.policies?.allowPublicTargets === true && declaredLaneTargets(config).length === 0) {
     return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Fan out against a loopback/provisioned subject, or run a single public-target lane.";
   }
   return null;
+}
+
+function declaredLaneTargets(config: LabConfig): string[] {
+  return (config.actors[0]?.lanes ?? [])
+    .map((lane) => lane.target)
+    .filter((target): target is string => target !== undefined);
 }
 
 /**
@@ -1571,14 +1604,14 @@ function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value:
     return { ok: true, value: undefined };
   }
   if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid(`actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, entry? }) when set.`);
+    return invalid(`actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`);
   }
 
   const expanded: LabActorLane[] = [];
   const seenGroupIds = new Set<string>();
   for (const [groupIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
-      return invalid(`actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, entry? }).`);
+      return invalid(`actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`);
     }
     const groupId = str(entry.id);
     if (groupId === undefined) {
@@ -1611,7 +1644,7 @@ function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value:
 
 /**
  * Parse `actors[index].lanes` into a fan-out roster (computer-use E2B route). Structural only:
- * each lane is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction? }`.
+ * each lane is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }`.
  * Lane ids (when declared) must be public-safe path tokens and unique; lane grouping metadata
  * must be public-safe tokens; a lane device must be a known preset name. The
  * route-scoped cross-validation (lanes XOR count/laneFocus, device XOR raw resolution, cap 16)
@@ -1622,13 +1655,13 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     return { ok: true, value: undefined };
   }
   if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid(`actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction? }) when set.`);
+    return invalid(`actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`);
   }
   const lanes: LabActorLane[] = [];
   const seenIds = new Set<string>();
   for (const [laneIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
-      return invalid(`actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction? }).`);
+      return invalid(`actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`);
     }
     const lane: LabActorLane = {};
     const id = str(entry.id);
@@ -1662,6 +1695,13 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     if (caseGroup.value !== undefined) lane.caseGroup = caseGroup.value;
     const instruction = str(entry.instruction);
     if (instruction !== undefined) lane.instruction = instruction;
+    const target = str(entry.target);
+    if (target !== undefined) {
+      if (!isHttpUrl(target)) {
+        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].target must be an absolute http(s) URL.`);
+      }
+      lane.target = target;
+    }
     // `entry` is shape-captured here; the same-origin-with-serve.url check needs serve context, so
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const laneEntry = str(entry.entry);

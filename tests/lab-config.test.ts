@@ -227,6 +227,29 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
         expect(result.warnings).toEqual([]);
       });
 
+      it("ACCEPTS explicit per-lane public targets when every lane declares one and the owner opts in", () => {
+        const result = parseLabConfig({
+          ...validCua,
+          subject: { source: "app-url", appUrl: "https://fallback.preview.example.test/" },
+          actors: [{
+            type: "openai-computer-use",
+            mission: "Exercise each declared target.",
+            lanes: [
+              { id: "role-a", target: "https://role-a.preview.example.test/app", persona: "role-a" },
+              { id: "role-b", target: "https://role-b.preview.example.test/app", persona: "role-b" }
+            ]
+          }],
+          policies: { allowPublicTargets: true }
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.config.actors[0]?.lanes?.map((lane) => lane.target)).toEqual([
+          "https://role-a.preview.example.test/app",
+          "https://role-b.preview.example.test/app"
+        ]);
+        expect(result.warnings).toEqual([]);
+      });
+
       it("expands compact roster groups into deterministic lanes", () => {
         const result = parseLabConfig({
           ...validCua,
@@ -296,6 +319,10 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
         ["missing roster count", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "viewer" }] }] }],
         ["unknown lane device", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", device: "phablet" }, { id: "b" }] }] }],
         ["unknown roster device", { ...validCua, actors: [{ type: "openai-computer-use", roster: [{ id: "viewer", count: 1, device: "phablet" }] }] }],
+        ["bad lane target URL", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", target: "not-a-url" }, { id: "b", target: "http://127.0.0.1:3001/" }] }] }],
+        ["mixed target/no-target roster", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", target: "http://127.0.0.1:3001/" }, { id: "b" }] }] }],
+        ["target mixed with shared-world entry", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", target: "http://127.0.0.1:3001/", entry: "/a" }, { id: "b", target: "http://127.0.0.1:3002/" }] }] }],
+        ["public lane target without allowPublicTargets", { ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "a", target: "https://role-a.preview.example.test/" }, { id: "b", target: "https://role-b.preview.example.test/" }] }] }],
         ["allowPublicTargets + N>1", {
           ...validCua,
           subject: { source: "app-url", appUrl: "https://preview.example.com/" },

@@ -205,6 +205,8 @@ export interface CuaLanePlanEntry {
   device: string;
   resolution: [number, number];
   instructionDigest: string;
+  /** Present only when a lane overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
+  targetDigest?: string;
 }
 
 /** The pre-flight spend/lane plan (pure; printed to stderr + recorded as a bundle event before
@@ -355,6 +357,8 @@ export interface CuaLaneSpec {
   streamId: string;
   persona: ActorPersonaRef;
   instructions: string;
+  /** App-url fan-out only: this lane's explicit browser target; absent falls back to deps.appUrl. */
+  targetUrl?: string;
   deviceName: string;
   devicePreset: DevicePreset;
   resolution: [number, number];
@@ -486,6 +490,7 @@ function laneSpecsAndPlan(
       streamId,
       persona: composed.persona,
       instructions: composed.instructions,
+      ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
       deviceName: device.name,
       devicePreset: device.preset,
       resolution: device.resolution,
@@ -514,7 +519,8 @@ function laneSpecsAndPlan(
       persona: spec.persona.id,
       device: spec.deviceName,
       resolution: spec.resolution,
-      instructionDigest: spec.persona.promptDigest
+      instructionDigest: spec.persona.promptDigest,
+      ...(spec.targetUrl === undefined ? {} : { targetDigest: digestUrl(spec.targetUrl) })
     }))
   };
   return { lanes, plan };
@@ -555,7 +561,7 @@ function formatLanePlanEntry(lane: CuaLanePlanEntry): string {
     lane.surface ? `surface=${lane.surface}` : undefined,
     lane.caseGroup ? `case=${lane.caseGroup}` : undefined
   ].filter((part): part is string => part !== undefined);
-  return `${lane.id}: persona=${lane.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}`;
+  return `${lane.id}: persona=${lane.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}${lane.targetDigest ? ` target#${lane.targetDigest}` : ""}`;
 }
 
 /** Shared deps every lane runner needs (resolved once in the engine). */
@@ -732,6 +738,7 @@ function completionReasonContradictsGoal(reason: string): boolean {
  */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, serve, subjectRepo, subjectEnvNames } = deps;
+  const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
   const warnings: string[] = [];
   const screenshots: string[] = [];
@@ -812,9 +819,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       }
 
       if (desktop.open) {
-        await desktop.open(appUrl);
+        await desktop.open(targetUrl);
       } else {
-        await desktop.launch("google-chrome", appUrl);
+        await desktop.launch("google-chrome", targetUrl);
       }
       await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
 
@@ -1203,17 +1210,19 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   // Re-enforce the entry-target boundary (library API surface).
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
-  const entryTargetSafe = cloneRoute || localAppSubject
-    ? isLoopbackUrl(appUrl)
-    : allowPublicTargets
-      ? isHttpUrl(appUrl)
-      : isLoopbackUrl(appUrl);
+  const declaredTargets = [appUrl, ...(actor?.lanes ?? []).map((lane) => lane.target).filter((target): target is string => target !== undefined)];
+  const entryTargetSafe = declaredTargets.every((target) =>
+    cloneRoute || localAppSubject
+      ? isLoopbackUrl(target)
+      : allowPublicTargets
+        ? isHttpUrl(target)
+        : isLoopbackUrl(target));
   if (!entryTargetSafe) {
     return fail(
       "MIMETIC_CUA_LAB_SUBJECT_UNSAFE",
       cloneRoute || localAppSubject || !allowPublicTargets
-        ? "subject entry URL must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
-        : "subject.appUrl must be a valid http(s) URL.",
+        ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+        : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
       descriptor.id
     );
   }
@@ -1413,7 +1422,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         spec: laneSpecs[0]!,
         outcome: outcomes?.[0],
         descriptor,
-        appUrl,
+        appUrl: laneSpecs[0]!.targetUrl ?? appUrl,
         createdAt,
         dryRun,
         config,
@@ -2222,6 +2231,7 @@ export function buildCuaFanoutBundle(args: {
 
   specs.forEach((spec, index) => {
     const outcome = outcomes?.[index];
+    const laneAppUrl = spec.targetUrl ?? args.appUrl;
     const subject = args.laneSubjects[index]!;
     const session = outcome?.session;
     const screenshots = outcome?.screenshots ?? [];
@@ -2260,7 +2270,7 @@ export function buildCuaFanoutBundle(args: {
           ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
           : outcome?.sessionError
             ? `Lane ${spec.laneId} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${args.appUrl}.`,
+            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${laneAppUrl}.`,
       streamIds: [spec.streamId],
       startedAt: args.createdAt,
       updatedAt: args.createdAt
@@ -2284,7 +2294,7 @@ export function buildCuaFanoutBundle(args: {
         isMobile: spec.devicePreset.isMobile
       },
       ui: {
-        route: args.appUrl,
+        route: laneAppUrl,
         intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
         state: reason,
         ...(session ? { actorStatus: session.status } : {}),
@@ -2314,10 +2324,10 @@ export function buildCuaFanoutBundle(args: {
         level: "info",
         type: "cua-lab.subject.provenance",
         message: `Lane ${spec.laneId}: ${args.dryRun
-          ? `subject declared — clone of ${args.publicRepo}, served at ${args.appUrl} in-sandbox (dry-run contract; nothing cloned)`
+          ? `subject declared — clone of ${args.publicRepo}, served at ${laneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
           : subject.commit
             ? session
-              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${args.appUrl} in-sandbox`
+              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${laneAppUrl} in-sandbox`
               : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
             : `subject clone attempted from ${args.publicRepo}; commit unresolved`
         } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
@@ -2330,7 +2340,7 @@ export function buildCuaFanoutBundle(args: {
         at: args.createdAt,
         level: "info",
         type: "cua-lab.subject.declared",
-        message: `Lane ${spec.laneId}: subject app declared at ${args.appUrl} (loopback inside the lane's own desktop sandbox).`,
+        message: `Lane ${spec.laneId}: subject app declared at ${laneAppUrl} (loopback inside the lane's own desktop sandbox).`,
         simId: spec.simId,
         streamId: spec.streamId
       });
@@ -2537,6 +2547,10 @@ function renderCuaReviewMarkdown(bundle: RunBundle): string {
 function makeCuaRunId(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   return `cua-${stamp}-${randomBytes(4).toString("hex")}`;
+}
+
+function digestUrl(url: string): string {
+  return createHash("sha256").update(url).digest("hex").slice(0, 16);
 }
 
 function readPositiveInt(value: string | undefined, fallback: number): number {

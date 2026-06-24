@@ -80,6 +80,7 @@ interface FanoutModuleHandle {
   created: E2BDesktopCreateOptions[];
   /** Parallel to `created`: the custom template each lane's create() got (undefined == default). */
   templates: (string | undefined)[];
+  opened: string[];
   killed: string[];
   createdIds: string[];
   /** Peak count of simultaneously-live (created, not yet killed) sandboxes. */
@@ -89,6 +90,7 @@ interface FanoutModuleHandle {
 function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle {
   const created: E2BDesktopCreateOptions[] = [];
   const templates: (string | undefined)[] = [];
+  const opened: string[] = [];
   const createdIds: string[] = [];
   const killed: string[] = [];
   let serial = 0;
@@ -113,7 +115,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
       },
       files: { write: async () => undefined },
       launch: record("launch") as (application: string, uri?: string) => Promise<void>,
-      open: (async () => undefined) as (fileOrUrl: string) => Promise<void>,
+      open: (async (fileOrUrl: string) => { opened.push(fileOrUrl); }) as (fileOrUrl: string) => Promise<void>,
       async screenshot() {
         frame += 1;
         return makePng(frame);
@@ -160,7 +162,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
     }
   };
 
-  return { module, created, templates, killed, createdIds, maxLive: () => maxLive };
+  return { module, created, templates, opened, killed, createdIds, maxLive: () => maxLive };
 }
 
 /** A 4-lane differentiated roster on a loopback app-url subject. */
@@ -356,6 +358,52 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(traceFiles).toHaveLength(4);
     // Per-lane provider-neutral actor seam filled per stream.
     expect(bundle.streams.every((s: { actor?: { lane: string } }) => s.actor?.lane === "computer-use")).toBe(true);
+  });
+
+  it("opens each lane's explicit target and records per-lane routes in the bundle", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 2,
+      lanes: [
+        {
+          id: "role-a",
+          persona: "role-a",
+          target: "http://127.0.0.1:3001/role-a",
+          instruction: "Start from target A."
+        },
+        {
+          id: "role-b",
+          persona: "role-b",
+          target: "http://127.0.0.1:3002/role-b",
+          instruction: "Start from target B."
+        }
+      ]
+    });
+    const planSeen: CuaLanePlan[] = [];
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: passingHooks(handle, { onPreflight: (plan) => planSeen.push(plan) })
+    });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+
+    expect(outcome.result.ok).toBe(true);
+    expect(handle.opened).toEqual([
+      "http://127.0.0.1:3001/role-a",
+      "http://127.0.0.1:3002/role-b"
+    ]);
+    expect(planSeen[0]?.lanes.map((lane) => lane.targetDigest)).toEqual([
+      expect.stringMatching(/^[a-f0-9]{16}$/),
+      expect.stringMatching(/^[a-f0-9]{16}$/)
+    ]);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams.map((stream: { ui: { route: string } }) => stream.ui.route)).toEqual([
+      "http://127.0.0.1:3001/role-a",
+      "http://127.0.0.1:3002/role-b"
+    ]);
+    const verified = await verifyRun(cwd, outcome.result.runId);
+    expect(verified.ok).toBe(true);
   });
 
   it("adapter fail score turns an otherwise green CUA fan-out run red while preserving the verified bundle", async () => {

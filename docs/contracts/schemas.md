@@ -1,6 +1,6 @@
 # Contract Schema Index
 
-Date: 2026-06-02 (updated 2026-06-11)
+Date: 2026-06-02 (updated 2026-06-24)
 
 Status: schema map aligned to the shipped v0.6.x surface. Rows marked
 "reserved" name layering intent only — no code emits or validates them yet.
@@ -91,7 +91,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   lane (no E2B to fan out);
 - `actors[0].lanes[]` (computer-use E2B route): a DIFFERENTIATED fan-out roster,
   each `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
-  instruction?, entry? }` becoming one independent E2B desktop (or, on the
+  instruction?, target?, entry? }` becoming one independent E2B desktop (or, on the
   shared-world routes, one role/seat against the shared plane). `actorType`,
   `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
   simulated users; they are not core enums, and `actorType` is deliberately
@@ -104,9 +104,17 @@ A lab is a composition over code primitives, not a hardcoded kind:
   non-cua route `lanes` is inert (warned). `subject.clone.fanout` is REJECTED on
   the cua route (declare fan-out via `count`/`lanes`; `clone.fanout` drives the
   OSS smoke/meta routes only);
+- `actors[0].lanes[].target` (app-url × computer-use E2B route only): an
+  absolute browser URL that lane opens instead of `subject.appUrl`. This is the
+  setup-produced-target handoff for crawler/swarm labs: an adapter may start any
+  topology it needs, then declare exactly which target each actor should drive.
+  If any lane declares `target`, every lane in that roster must declare one.
+  Public/non-loopback targets still require `policies.allowPublicTargets: true`.
+  `target` is mutually exclusive with `entry`: `target` is an absolute app-url
+  browser target; `entry` is a shared-world same-origin seat path;
 - `actors[0].roster[]` (computer-use E2B route): compact authoring sugar for
   repeated lane groups, each `{ id, count, actorType?, surface?, caseGroup?,
-  persona?, device?, instruction?, entry? }`. The parser expands it into
+  persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   deterministic `lanes[]` before the engine runs (`viewer-01`, `viewer-02`,
   ...), so the runtime and run bundle keep one normalized lane shape. `roster`
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
@@ -116,8 +124,10 @@ A lab is a composition over code primitives, not a hardcoded kind:
   concurrent paid desktops (invariant 3). Inert (warned) on other routes.
   `execution.timeoutMs` is the PER-LANE session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level
-  wall clock. `policies.allowPublicTargets` cannot combine with N>1 (N lanes
-  against one public target is the shared-world topology, layer 7 / #164);
+  wall clock. `policies.allowPublicTargets` cannot combine with N>1 against one
+  implicit public `subject.appUrl` (ambiguous shared-world-ish topology); it may
+  combine with N>1 only when the roster declares explicit `lanes[].target` for
+  every lane;
 - `execution`: where it runs — `local`, `e2b-desktop`, or `e2b-terminal`, plus
   desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
   with a computer-use actor, or `local` (or absent) with a scripted-browser
