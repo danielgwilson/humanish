@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { runInNewContext } from "node:vm";
@@ -9,6 +9,11 @@ import { createProgram } from "../src/program.js";
 import { attachObserverRuntimeStreamUrls, renderObserver, serveObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
 import { runDryRun } from "../src/run.js";
+
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-observer-fixture-"));
@@ -25,6 +30,27 @@ async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<
   } finally {
     await rm(tempRoot, { force: true, recursive: true });
   }
+}
+
+async function attachScreenshotToObserverProofRun(cwd: string, screenshotPath: string): Promise<void> {
+  await mkdir(path.join(cwd, ".mimetic/runs/observer-proof/screenshots"), { recursive: true });
+  await writeFile(path.join(cwd, ".mimetic/runs/observer-proof", screenshotPath), PNG_1X1);
+
+  const bundlePath = path.join(cwd, ".mimetic/runs/observer-proof/run.json");
+  const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+    streams: Array<{
+      artifacts: Array<{ label: string; path: string; kind: string }>;
+      embed?: { kind: string; url?: string; title?: string };
+      ui?: { screenshotUrl?: string };
+    }>;
+  };
+  const stream = bundle.streams[0];
+  if (!stream) throw new Error("observer fixture has no stream");
+
+  stream.embed = { kind: "screenshot", url: screenshotPath, title: "Synthetic screenshot evidence" };
+  stream.ui = { ...(stream.ui ?? {}), screenshotUrl: screenshotPath };
+  stream.artifacts.push({ label: "synthetic screenshot evidence", path: screenshotPath, kind: "screenshot" });
+  await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 }
 
 async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -736,7 +762,22 @@ describe("observer rendering", () => {
 
   it("serves observer artifacts over a live localhost server", async () => {
     await withRunBundle(async (cwd) => {
+      const screenshotPath = "screenshots/observer-proof.png";
+      await attachScreenshotToObserverProofRun(cwd, screenshotPath);
       const rendered = await renderObserver(cwd, "latest");
+      await writeFile(
+        path.join(cwd, ".mimetic/runs/observer-proof/observer/observer-data.json"),
+        `${JSON.stringify({
+          schema: OBSERVER_DATA_SCHEMA,
+          run: { runId: "observer-proof" },
+          streams: [{
+            id: "stream-001",
+            embed: { kind: "screenshot", url: "screenshots/stale-missing.png" },
+            ui: { screenshotUrl: "screenshots/stale-missing.png" }
+          }]
+        }, null, 2)}\n`,
+        "utf8"
+      );
       const server = await serveObserver(rendered, { port: 0 });
 
       try {
@@ -746,8 +787,18 @@ describe("observer rendering", () => {
         expect(html).toContain("statusbar");
 
         const dataUrl = new URL("observer-data.json", server.url);
-        const data = await (await fetch(dataUrl)).json() as { schema: string };
+        const data = await (await fetch(dataUrl)).json() as {
+          schema: string;
+          streams: Array<{ ui?: { screenshotUrl?: string } }>;
+        };
         expect(data.schema).toBe(OBSERVER_DATA_SCHEMA);
+        expect(data.streams[0]?.ui?.screenshotUrl).toBe(screenshotPath);
+
+        const screenshotUrl = new URL(`../${screenshotPath}`, server.url);
+        const screenshotResponse = await fetch(screenshotUrl);
+        expect(screenshotResponse.status).toBe(200);
+        expect(screenshotResponse.headers.get("content-type")).toBe("image/png");
+        expect(Buffer.from(await screenshotResponse.arrayBuffer()).subarray(0, 8)).toEqual(PNG_1X1.subarray(0, 8));
       } finally {
         await server.close();
       }

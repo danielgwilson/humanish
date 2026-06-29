@@ -18,6 +18,11 @@ import {
   type ScriptedPageLike
 } from "../src/scripted-browser-actor.js";
 
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
+  "base64"
+);
+
 // ---------------------------------------------------------------------------
 // Fake browser: a tiny in-memory "app" behind the structural seams, driven by
 // the REAL step executor and expectation evaluator. screenshot() writes real
@@ -76,7 +81,7 @@ function makeFakeBrowser(options: FakeAppOptions = {}): { browser: ScriptedBrows
       throw new Error(`Timeout waiting for text ${String(needle)}`);
     },
     screenshot: async ({ path: screenshotPath }) => {
-      await writeFile(screenshotPath, Buffer.from(`fake-frame:${state.body}`));
+      await writeFile(screenshotPath, PNG_1X1);
       return undefined;
     },
     url: () => state.url,

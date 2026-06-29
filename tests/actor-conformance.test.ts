@@ -17,6 +17,11 @@ import {
 } from "../src/scripted-browser-actor.js";
 import { buildClaudeSession, buildCodexResult, buildPiSession, fixturePersona } from "./actor-fixtures.js";
 
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
+  "base64"
+);
+
 // The shared contract every adapter's ActorTrace must satisfy. This is what makes
 // the harnesses interchangeable (ADR step 7): one persona run through codex and pi
 // yields the same trace shape, completion vocabulary, and redaction status.
@@ -210,7 +215,7 @@ function makeConformanceFakeBrowser(): ScriptedBrowserLike {
     waitForTimeout: async () => undefined,
     waitForFunction: async () => undefined,
     screenshot: async ({ path: screenshotPath }) => {
-      await writeFile(screenshotPath, Buffer.from(`frame:${state.body}`));
+      await writeFile(screenshotPath, PNG_1X1);
       return undefined;
     },
     url: () => state.url,

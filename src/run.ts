@@ -29,6 +29,7 @@ import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-ref
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { containsSensitive, digestText, redactToSecretLabel } from "./redaction.js";
@@ -3982,35 +3983,49 @@ async function writeRunBundleArtifacts(absoluteArtifactRoot: string, bundle: Run
 }
 
 async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle): Promise<string[]> {
-  const requiredPaths = new Set<string>();
+  const requiredPaths = new Map<string, { screenshot: boolean }>();
+  const addRequiredPath = (artifactPath: string, options: { screenshot?: boolean } = {}): void => {
+    const existing = requiredPaths.get(artifactPath);
+    requiredPaths.set(artifactPath, { screenshot: Boolean(existing?.screenshot || options.screenshot) });
+  };
+
   for (const stream of bundle.streams) {
     for (const artifact of stream.artifacts) {
       if (isLocalEvidenceArtifactPath(artifact.path)) {
-        requiredPaths.add(artifact.path);
+        addRequiredPath(artifact.path, { screenshot: artifact.kind === "screenshot" });
       }
     }
 
     const embedPath = normalizeLocalEvidenceReference(stream.embed?.kind === "screenshot" ? stream.embed.url : undefined);
     if (embedPath) {
-      requiredPaths.add(embedPath);
+      addRequiredPath(embedPath, { screenshot: true });
     }
 
     const uiScreenshotPath = normalizeLocalEvidenceReference(stream.ui?.screenshotUrl);
     if (uiScreenshotPath) {
-      requiredPaths.add(uiScreenshotPath);
+      addRequiredPath(uiScreenshotPath, { screenshot: true });
     }
 
     if (stream.ui?.nestedObserverPath && isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)) {
-      requiredPaths.add(stream.ui.nestedObserverPath);
+      addRequiredPath(stream.ui.nestedObserverPath);
     }
   }
 
   const missing: string[] = [];
-  for (const artifactPath of requiredPaths) {
+  for (const [artifactPath, requirements] of requiredPaths) {
     const absolutePath = path.join(runRoot, artifactPath);
     const stats = await stat(absolutePath).catch(() => null);
     if (!stats?.isFile() || stats.size <= 0) {
       missing.push(artifactPath);
+      continue;
+    }
+
+    if (requirements.screenshot) {
+      const bytes = await readFile(absolutePath).catch(() => null);
+      const imageError = bytes ? screenshotEvidenceError(artifactPath, bytes) : "could not read screenshot bytes";
+      if (imageError) {
+        missing.push(`${artifactPath} (${imageError})`);
+      }
     }
   }
 
