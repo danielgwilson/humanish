@@ -1943,9 +1943,12 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(result.session?.status).toBe("failed");
     expect(result.session?.completionReason).toBe("gave_up");
     expect(result.ok).toBe(false);
-    expect(result.lanes[0]?.status).toBe("failed");
-    expect(result.lanes[0]?.ok).toBe(false);
-    expect(result.laneSummary.passed).toBe(0);
+    const lanes = result.lanes ?? [];
+    const laneSummary = result.laneSummary;
+    if (!laneSummary) throw new Error("expected lane summary");
+    expect(lanes[0]?.status).toBe("failed");
+    expect(lanes[0]?.ok).toBe(false);
+    expect(laneSummary.passed).toBe(0);
     expect(result.error?.message).toContain("failed");
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
