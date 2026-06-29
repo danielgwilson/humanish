@@ -367,12 +367,18 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       lanes: [
         {
           id: "role-a",
+          actorType: "reviewer",
+          surface: "review-queue",
+          caseGroup: "case-001",
           persona: "role-a",
           target: "http://127.0.0.1:3001/role-a",
           instruction: "Start from target A."
         },
         {
           id: "role-b",
+          actorType: "operator",
+          surface: "dashboard",
+          caseGroup: "case-001",
           persona: "role-b",
           target: "http://127.0.0.1:3002/role-b",
           instruction: "Start from target B."
@@ -401,6 +407,15 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(bundle.streams.map((stream: { ui: { route: string } }) => stream.ui.route)).toEqual([
       "http://127.0.0.1:3001/role-a",
       "http://127.0.0.1:3002/role-b"
+    ]);
+    expect(bundle.streams.map((stream: { actorType?: string; caseGroup?: string; laneId?: string; surface?: string }) => ({
+      laneId: stream.laneId,
+      actorType: stream.actorType,
+      surface: stream.surface,
+      caseGroup: stream.caseGroup
+    }))).toEqual([
+      { laneId: "role-a", actorType: "reviewer", surface: "review-queue", caseGroup: "case-001" },
+      { laneId: "role-b", actorType: "operator", surface: "dashboard", caseGroup: "case-001" }
     ]);
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(verified.ok).toBe(true);

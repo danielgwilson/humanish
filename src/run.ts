@@ -274,6 +274,14 @@ export interface RunSimulation {
 export interface RunStream {
   id: string;
   simId: string;
+  /** Adapter-owned lane id for fan-out / target-swarm runs. Safe categorical metadata only. */
+  laneId?: string;
+  /** Adapter-owned actor class for grouping lanes, e.g. viewer/reviewer/admin. */
+  actorType?: string;
+  /** Adapter-owned product surface label for grouping lanes without parsing URLs. */
+  surface?: string;
+  /** Adapter-owned scenario/case grouping label. */
+  caseGroup?: string;
   kind: RunStreamKind;
   label: string;
   status: RunSimulationStatus;

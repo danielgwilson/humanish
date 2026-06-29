@@ -2281,6 +2281,10 @@ export function buildCuaFanoutBundle(args: {
     streams.push({
       id: spec.streamId,
       simId: spec.simId,
+      laneId: spec.laneId,
+      ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
+      ...(spec.surface === undefined ? {} : { surface: spec.surface }),
+      ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
       kind: "browser",
       label: `CUA lane ${spec.laneId} — ${config.id}`,
       status,
