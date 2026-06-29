@@ -398,6 +398,28 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
+    it("execution.desktop.browser parses on the cua route with zero warnings (consumed)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { browser: "chrome" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.execution?.desktop?.browser).toBe("chrome");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("rejects an unknown desktop browser", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { browser: "safari" } }
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("execution.desktop.browser");
+      expect(result.error.message).toContain("chrome");
+    });
+
     it("rejects an unknown device preset", () => {
       const result = parseLabConfig({
         ...validCua,
@@ -420,6 +442,19 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.warnings[0]).toContain("execution.desktop.device");
+    });
+
+    it("warns execution.desktop.browser as inert on a non-cua route", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "clone-smoke-browser",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type: "mimetic-setup" }],
+        execution: { desktop: { browser: "chrome" } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings[0]).toContain("execution.desktop.browser");
     });
 
     it("execution.desktop.template parses + trims on the cua route with zero warnings (consumed; any string is a valid name/id)", () => {
@@ -1046,6 +1081,16 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
       ["reviewer", "queue", "case-001"]
     ]);
     expect(result.config.subject.state?.checkpoint?.map((probe) => probe.name)).toEqual(["notes-count"]);
+  });
+
+  it("warns execution.desktop.browser as inert on sequential shared-world", () => {
+    const result = parseLabConfig(validSharedWorld({
+      execution: { target: "e2b-desktop", timeoutMs: 60000, desktop: { browser: "chrome" } }
+    }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(selectLabBackend(result.config)).toBe("shared-world");
+    expect(result.warnings.join("\n")).toContain("execution.desktop.browser");
   });
 
   it("rejects malformed lane grouping metadata instead of persisting arbitrary labels", () => {

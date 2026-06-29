@@ -130,7 +130,7 @@ function expectSafeBrowserOpen(calls: Array<[string, ...unknown[]]>, url: string
     (call) =>
       call[0] === "commands.run" &&
       String(call[1]).includes(`target_url='${quotedUrl}'`) &&
-      String(call[1]).includes("xdg-open \"$target_url\"")
+      String(call[1]).includes("launch_browser xdg-open xdg-open")
   );
   expect(index).toBeGreaterThan(-1);
   return index;
@@ -769,6 +769,41 @@ describe("runCuaActorLab", () => {
     expect(openCommand).toContain("&scenario=alpha&redirect=");
     expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
     expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
+  });
+
+  it("launches the requested desktop browser and records browser provenance", async () => {
+    const targetUrl = "http://127.0.0.1:3000/api/bootstrap?scenario=chrome-proof&redirect=%2Fdashboard";
+    const config: LabConfig = {
+      ...cuaConfig(targetUrl),
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800], browser: "chrome" } }
+    };
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) =>
+        command.includes("browser_preference='chrome'")
+          ? { stdout: "MIMETIC_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 }
+          : undefined
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    const openIndex = expectSafeBrowserOpen(sandbox.calls, targetUrl);
+    const openCommand = String(sandbox.calls[openIndex]?.[1] ?? "");
+    expect(openCommand).toContain("browser_preference='chrome'");
+    expect(openCommand).toContain("launch_browser google-chrome google-chrome");
+    expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
+    expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopBrowser).toEqual({ requested: "chrome", resolved: "google-chrome" });
   });
 
   it("live with missing keys fails closed, names the variables, and never creates a sandbox", async () => {

@@ -62,6 +62,7 @@ import {
   subjectStateInvalidReason,
   type LabActorLane,
   type LabConfig,
+  type LabDesktopBrowser,
   type LabStateStepWhen,
   type LabSubjectServe,
   type LabSubjectState
@@ -105,6 +106,12 @@ const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 // Settle after opening the browser, before the first screenshot — long enough for a cold
 // browser + page load to paint (2s captured a blank desktop; the render empirically needs ~6-9s).
 const BROWSER_SETTLE_MS = 8_000;
+
+export interface DesktopBrowserEvidence {
+  requested: LabDesktopBrowser;
+  resolved?: string;
+}
+
 // Device/viewport comes from the named-preset registry (device-presets.ts), selectable per run
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
 // per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
@@ -601,6 +608,7 @@ export interface LaneRunOutcome {
   streamUrlPresent: boolean;
   screenshots: string[];
   subjectCommit?: string;
+  desktopBrowser?: DesktopBrowserEvidence;
   stateStepRecords: RunSubjectStateStepRecord[];
   warnings: string[];
   /** Set when the lane was skipped by the pipeline gate / fail-fast (a pinned reason). */
@@ -714,25 +722,55 @@ async function findVisibleBrowserWindowId(
 async function openDesktopBrowserTarget(
   desktop: E2BDesktopSandbox,
   targetUrl: string,
-  requestTimeoutMs: number
-): Promise<void> {
+  requestTimeoutMs: number,
+  browserPreference: LabDesktopBrowser | undefined
+): Promise<DesktopBrowserEvidence | undefined> {
+  const requestedBrowser = browserPreference ?? "default";
   if (isHttpUrl(targetUrl)) {
     const result = await desktop.commands.run([
       "set -euo pipefail",
       `target_url=${shellSingleQuote(targetUrl)}`,
-      "open_target() {",
-      "  if command -v xdg-open >/dev/null 2>&1; then",
-      "    nohup xdg-open \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
-      "  elif command -v firefox >/dev/null 2>&1; then",
-      "    nohup firefox \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
-      "  elif command -v google-chrome >/dev/null 2>&1; then",
-      "    nohup google-chrome \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
-      "  elif command -v chromium >/dev/null 2>&1; then",
-      "    nohup chromium \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
-      "  else",
-      "    echo 'no browser opener found' >&2",
-      "    return 127",
+      `browser_preference=${shellSingleQuote(requestedBrowser)}`,
+      "launch_browser() {",
+      "  local label=\"$1\"",
+      "  local binary=\"$2\"",
+      "  shift 2",
+      "  if command -v \"$binary\" >/dev/null 2>&1; then",
+      "    nohup \"$binary\" \"$@\" \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
+      "    printf 'MIMETIC_BROWSER_RESOLVED=%s\\n' \"$label\"",
+      "    return 0",
       "  fi",
+      "  return 1",
+      "}",
+      "open_target() {",
+      "  case \"$browser_preference\" in",
+      "    chrome)",
+      "      launch_browser google-chrome google-chrome --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      launch_browser google-chrome-stable google-chrome-stable --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      echo 'requested browser chrome was not found' >&2",
+      "      return 127",
+      "      ;;",
+      "    chromium)",
+      "      launch_browser chromium chromium --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      launch_browser chromium-browser chromium-browser --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      echo 'requested browser chromium was not found' >&2",
+      "      return 127",
+      "      ;;",
+      "    firefox)",
+      "      launch_browser firefox firefox --new-window && return 0",
+      "      echo 'requested browser firefox was not found' >&2",
+      "      return 127",
+      "      ;;",
+      "    default)",
+      "      launch_browser xdg-open xdg-open && return 0",
+      "      launch_browser firefox firefox --new-window && return 0",
+      "      launch_browser google-chrome google-chrome --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      launch_browser chromium chromium --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      launch_browser chromium-browser chromium-browser --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      echo 'no browser opener found' >&2",
+      "      return 127",
+      "      ;;",
+      "  esac",
       "}",
       "open_target"
     ].join("\n"), {
@@ -742,14 +780,28 @@ async function openDesktopBrowserTarget(
     if (result.exitCode !== undefined && result.exitCode !== 0) {
       throw new Error(`browser launch failed with exit ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
     }
-    return;
+    const resolved = (result.stdout ?? "").match(/^MIMETIC_BROWSER_RESOLVED=(\S+)$/m)?.[1];
+    return browserPreference === undefined ? undefined : {
+      requested: requestedBrowser,
+      ...(resolved === undefined ? {} : { resolved })
+    };
   }
 
-  if (desktop.open) {
-    await desktop.open(targetUrl);
-  } else {
-    await desktop.launch("google-chrome", targetUrl);
+  if (browserPreference === undefined || browserPreference === "default") {
+    if (desktop.open) {
+      await desktop.open(targetUrl);
+    } else {
+      await desktop.launch("google-chrome", targetUrl);
+    }
+    return browserPreference === undefined ? undefined : { requested: requestedBrowser };
   }
+
+  const launchTarget = requestedBrowser === "chrome" ? "google-chrome"
+    : requestedBrowser === "chromium" ? "chromium"
+      : requestedBrowser === "firefox" ? "firefox"
+        : "google-chrome";
+  await desktop.launch(launchTarget, targetUrl);
+  return { requested: requestedBrowser, resolved: launchTarget };
 }
 
 function shellSingleQuote(value: string): string {
@@ -802,6 +854,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let killed = false;
   let streamUrl: string | undefined;
   let subjectCommit: string | undefined;
+  let desktopBrowser: DesktopBrowserEvidence | undefined;
   let provisioned = false;
   let signaled = false;
   const signal = (ok: boolean): void => {
@@ -869,7 +922,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         });
       }
 
-      await openDesktopBrowserTarget(desktop, targetUrl, deps.requestTimeoutMs);
+      desktopBrowser = await openDesktopBrowserTarget(
+        desktop,
+        targetUrl,
+        deps.requestTimeoutMs,
+        config.execution?.desktop?.browser
+      );
       await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
 
       // World is ready: release the pipeline gate so the remaining lanes may start.
@@ -979,6 +1037,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     streamUrlPresent: streamUrl !== undefined,
     screenshots,
     ...(subjectCommit === undefined ? {} : { subjectCommit }),
+    ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
     stateStepRecords,
     warnings,
     noEngagement,
@@ -1728,6 +1787,7 @@ function buildSingleLaneBundle(args: {
     source: args.source,
     ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
     ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {})
   });
@@ -2022,6 +2082,8 @@ export function buildCuaBundle(args: {
   entryKind?: "local-app";
   /** The custom E2B desktop template (image) this lane launched on, when configured (provenance). */
   desktopTemplate?: string;
+  /** The configured browser choice and the command that opened, when explicitly configured. */
+  desktopBrowser?: DesktopBrowserEvidence;
   traceArtifactPath?: string;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
@@ -2241,6 +2303,7 @@ export function buildCuaBundle(args: {
     feedbackCandidates: [],
     // Custom desktop image provenance (omitted on the stock-template default → byte-stable).
     ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
+    ...(args.desktopBrowser === undefined ? {} : { desktopBrowser: args.desktopBrowser }),
     // Structured subject provenance (invariant 5): code pin + state story. Uniform and
     // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
     subject: args.subjectProvenance
@@ -2517,6 +2580,13 @@ export function buildCuaFanoutBundle(args: {
 
   const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
   const ranLive = (outcomes ?? []).some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
+  const configuredBrowser = config.execution?.desktop?.browser;
+  const resolvedBrowsers = (outcomes ?? [])
+    .map((outcome) => outcome.desktopBrowser?.resolved)
+    .filter((value): value is string => value !== undefined);
+  const unanimousResolvedBrowser = resolvedBrowsers.length > 0 && new Set(resolvedBrowsers).size === 1
+    ? resolvedBrowsers[0]
+    : undefined;
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
@@ -2569,6 +2639,9 @@ export function buildCuaFanoutBundle(args: {
     feedbackCandidates: [],
     // Custom desktop image provenance (every lane launched on it); omitted on the stock default.
     ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(configuredBrowser === undefined
+      ? {}
+      : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),
     subject: args.aggregateSubject
   };
 }

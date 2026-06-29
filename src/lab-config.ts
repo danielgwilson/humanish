@@ -10,7 +10,7 @@
 // computer-use actor), `actors[0].type` IS load-bearing: it must resolve to a registered
 // computer-use actor, and that descriptor runs the session. Those routes also consume
 // actors[0].{mission,persona,laneFocus.instruction,model}, execution.timeoutMs,
-// execution.desktop.{resolution,sandboxTimeoutMs}, and (clone)
+// execution.desktop.{browser,resolution,sandboxTimeoutMs}, and (clone)
 // subject.{serve,env,state,clone.depth}.
 // On the scripted-browser route (app-url × local-or-absent, or clone × e2b-desktop, with a
 // registered scripted-browser actor), `actors[0].type` is equally load-bearing, and the route
@@ -367,6 +367,8 @@ export interface LabExecutionTerminal {
  */
 export type LabRuntimeAuth = "openai-env";
 
+export type LabDesktopBrowser = "default" | "chrome" | "chromium" | "firefox";
+
 export interface LabExecutionDesktop {
   /**
    * Named device preset (mobile / small-mobile / narrow-mobile / tablet / desktop / wide) the
@@ -377,6 +379,12 @@ export interface LabExecutionDesktop {
   device?: string;
   /** Raw desktop resolution [width, height] — an escape hatch that overrides `device`. */
   resolution?: [number, number];
+  /**
+   * Browser family to launch for hosted desktop actor lanes. Absent/default preserves the
+   * historical desktop opener behavior. A concrete value means "launch this browser or fail"
+   * instead of silently accepting the template's default URL opener.
+   */
+  browser?: LabDesktopBrowser;
   /** Sandbox server-side timeout. Consumed on the app-url route. */
   sandboxTimeoutMs?: number;
   /**
@@ -1082,6 +1090,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routesToTerminal = routesToTerminalProduct(config);
   const routesToShared = routesToSharedWorld(config);
   const routesToConcurrent = routesToConcurrentSharedWorld(config);
+  const routesToHostedCuaBrowser = config.execution?.target === "e2b-desktop"
+    && routesToCua
+    && (!routesToShared || routesToConcurrent);
   for (const [index, actor] of config.actors.entries()) {
     // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
     if (actor.lanes?.some((lane) => lane.entry !== undefined) && !routesToShared) {
@@ -1147,6 +1158,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // isMobile/DSF genuinely render via playwright emulation.
   if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
   if (!routesToCua && config.execution?.desktop?.device !== undefined) inert.push("execution.desktop.device");
+  if (!routesToHostedCuaBrowser && config.execution?.desktop?.browser !== undefined) inert.push("execution.desktop.browser");
   if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
   // execution.desktop.template (the custom E2B desktop image) is consumed ONLY where a desktop is
   // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
@@ -1818,6 +1830,13 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
   }
   const sandboxTimeoutMs = posInt(raw.sandboxTimeoutMs);
   if (sandboxTimeoutMs !== undefined) desktop.sandboxTimeoutMs = sandboxTimeoutMs;
+  if (raw.browser !== undefined) {
+    const browser = str(raw.browser);
+    if (browser !== "default" && browser !== "chrome" && browser !== "chromium" && browser !== "firefox") {
+      return invalid("`execution.desktop.browser` must be default, chrome, chromium, or firefox.");
+    }
+    desktop.browser = browser;
+  }
   // A custom E2B desktop template NAME or ID. Trimmed non-empty when present; deliberately NOT
   // allowlisted (any string is a valid template name/id — over-restricting would reject real
   // adopter images). An explicitly-set but blank/whitespace value is a mistake, not a template.
