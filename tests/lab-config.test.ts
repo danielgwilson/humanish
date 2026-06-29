@@ -1083,14 +1083,15 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     expect(result.config.subject.state?.checkpoint?.map((probe) => probe.name)).toEqual(["notes-count"]);
   });
 
-  it("warns execution.desktop.browser as inert on sequential shared-world", () => {
+  it("execution.desktop.browser parses on sequential shared-world with zero warnings", () => {
     const result = parseLabConfig(validSharedWorld({
       execution: { target: "e2b-desktop", timeoutMs: 60000, desktop: { browser: "chrome" } }
     }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(selectLabBackend(result.config)).toBe("shared-world");
-    expect(result.warnings.join("\n")).toContain("execution.desktop.browser");
+    expect(result.config.execution?.desktop?.browser).toBe("chrome");
+    expect(result.warnings).toEqual([]);
   });
 
   it("rejects malformed lane grouping metadata instead of persisting arbitrary labels", () => {

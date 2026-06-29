@@ -208,11 +208,11 @@ arrives with the deterministic CDP actor. Device is run-wide today; per-*persona
 (N personas × devices) lands with fan-out. `execution.desktop.resolution` is a raw escape
 hatch that overrides the preset.
 
-**Desktop browser choice.** Plain hosted computer-use lanes use the desktop image's default
-URL opener unless you set `execution.desktop.browser` to `chrome`, `chromium`, or `firefox`.
-A concrete value means "launch this browser or fail" rather than silently falling back to
-whatever the image prefers. When configured, run bundles record the requested browser and the
-resolved in-sandbox command as `desktopBrowser`.
+**Desktop browser choice.** Hosted computer-use lanes and shared-world actor seats use the
+route's historical opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,
+or `firefox`. A concrete value means "launch this browser or fail" rather than silently
+falling back to whatever the image prefers. When configured, run bundles record the requested
+browser and the resolved in-sandbox command as `desktopBrowser`.
 
 **Failed-lane reruns.** Multi-lane CUA fan-out can be rerun surgically without mutating
 the source run:

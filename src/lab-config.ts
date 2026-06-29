@@ -1091,8 +1091,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routesToShared = routesToSharedWorld(config);
   const routesToConcurrent = routesToConcurrentSharedWorld(config);
   const routesToHostedCuaBrowser = config.execution?.target === "e2b-desktop"
-    && routesToCua
-    && (!routesToShared || routesToConcurrent);
+    && routesToCua;
   for (const [index, actor] of config.actors.entries()) {
     // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
     if (actor.lanes?.some((lane) => lane.entry !== undefined) && !routesToShared) {

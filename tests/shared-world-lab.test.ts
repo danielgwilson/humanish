@@ -12,7 +12,7 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox
 } from "../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig, type LabDesktopBrowser } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runSharedWorldLab, type SharedWorldLabHooks } from "../src/shared-world-lab.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
@@ -91,8 +91,12 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
 }
 
 /** A scripted command handler whose checkpoint output reflects the shared world version. */
-function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string } | undefined {
-  return (command: string): { stdout?: string } | undefined => {
+function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string; exitCode?: number } | undefined {
+  return (command: string): { stdout?: string; exitCode?: number } | undefined => {
+    if (command.includes("browser_preference='firefox'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
+    if (command.includes("browser_preference='chrome'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='chromium'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
+    if (command.includes("browser_preference='default'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
     if (command.includes("/status")) return { stdout: "0" }; // every detached step exits 0
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" }; // commit SHA
     if (command.includes("curl")) return { stdout: "READY" }; // readiness probe
@@ -171,7 +175,11 @@ function makeRunSession(
   };
 }
 
-function sharedWorldConfig(overrides?: { env?: string[]; template?: string }): LabConfig {
+function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: string[]; template?: string }): LabConfig {
+  const desktop = {
+    ...(overrides?.browser === undefined ? {} : { browser: overrides.browser }),
+    ...(overrides?.template === undefined ? {} : { template: overrides.template })
+  };
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
     id: "shared-world-proof",
@@ -203,7 +211,7 @@ function sharedWorldConfig(overrides?: { env?: string[]; template?: string }): L
     execution: {
       target: "e2b-desktop",
       timeoutMs: 60_000,
-      ...(overrides?.template === undefined ? {} : { desktop: { template: overrides.template } })
+      ...(Object.keys(desktop).length === 0 ? {} : { desktop })
     },
     scenario: { mode: "live" }
   });
@@ -290,6 +298,27 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
+  it("execution.desktop.browser: sequential shared-world seats honor explicit browser preference and record provenance", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, sandbox } = baseHooks(state);
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig({ browser: "firefox" }), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    const seatLaunches = sandbox.calls
+      .map((call, index) => ({ call, index }))
+      .filter(({ call }) => call[0] === "commands.run" && String(call[1]).includes("browser_preference="));
+    expect(seatLaunches).toHaveLength(2);
+    expect(String(seatLaunches[0]!.call[1])).toContain("browser_preference='firefox'");
+    expect(String(seatLaunches[0]!.call[1])).toContain("launch_firefox");
+    expect(String(seatLaunches[0]!.call[1])).not.toContain("setsid -f google-chrome");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+
   it("GOOD run: ONE sandbox by-id, plane provisioned ONCE, sequential distinct profiles, interaction proof, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { hooks, created, killed, sandbox } = baseHooks(state);
@@ -317,8 +346,8 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       .map((call, index) => ({ call, index }))
       .filter(({ call }) => call[0] === "commands.run" && String(call[1]).includes("--user-data-dir="));
     expect(seatLaunches).toHaveLength(2);
-    expect(String(seatLaunches[0]!.call[1])).toContain("--user-data-dir='/tmp/seat-role-author'");
-    expect(String(seatLaunches[1]!.call[1])).toContain("--user-data-dir='/tmp/seat-role-reviewer'");
+    expect(String(seatLaunches[0]!.call[1])).toContain("profile_dir='/tmp/seat-role-author'");
+    expect(String(seatLaunches[1]!.call[1])).toContain("profile_dir='/tmp/seat-role-reviewer'");
     expect(seatLaunches[0]!.index).toBeLessThan(seatLaunches[1]!.index); // author's seat before reviewer's
 
     // A checkpoint at baseline + after each turn → timeline = cp, turn, cp, turn, cp.
@@ -328,6 +357,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(timeline[0]!.name).toBe("cp-baseline");
     expect(bundle.sharedWorld.sequence).toEqual(["role-author", "role-reviewer"]);
     expect(bundle.sharedWorld.roleCount).toBe(2);
+    expect(bundle.desktopBrowser).toBeUndefined();
 
     // THE INTERACTION PROOF: the checkpoint after role-author carries deltaFromPrev == true AND
     // appears strictly BEFORE role-reviewer's turn in the one harness clock.

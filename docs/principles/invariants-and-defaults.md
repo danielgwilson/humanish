@@ -63,7 +63,7 @@ silently drifting from one is not.
 | Synthetic, seeded state | Pinned provenance; no real user data in evidence paths | Declared external state, recorded as UNPINNED in provenance |
 | Single lane | Cost + evidence simplicity | Declared fan-out where the backend supports it — `actors[0].count: N` (homogeneous), explicit `actors[0].lanes[]` (differentiated persona/device/instruction), or compact `actors[0].roster[]` groups that normalize into lanes on the computer-use E2B route (per-lane worlds, cap 16; `execution.concurrency` bounds concurrent paid lanes) |
 | Stock `desktop` template | The stock E2B desktop image is right for most subjects; absent `execution.desktop.template` keeps `Sandbox.create(opts)` byte-stable | `execution.desktop.template` names a custom E2B desktop image (any name/id, no allowlist) for a subject needing baked-in runtimes the stock image lacks (e.g. node/bun/a local Postgres) — threaded to `Sandbox.create(template, opts)` on every desktop-creating route and recorded in the bundle as `desktopTemplate` (public-safe) |
-| Desktop default URL opener | Preserve the image's historical browser/default opener behavior when unset | `execution.desktop.browser: chrome | chromium | firefox` makes plain hosted CUA browser choice explicit, fail-closed, and recorded as `desktopBrowser` in the run bundle |
+| Desktop default URL opener | Preserve the route/image's historical browser/default opener behavior when unset | `execution.desktop.browser: chrome | chromium | firefox` makes hosted CUA/shared-world browser choice explicit, fail-closed, and recorded as `desktopBrowser` in the run bundle |
 
 ## The placement rule (worked example)
 
