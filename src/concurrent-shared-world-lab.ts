@@ -290,6 +290,7 @@ function buildActorSpec(config: LabConfig, role: LabActorLane, index: number): C
     streamId,
     persona: composed.persona,
     instructions: composed.instructions,
+    ...((role.stopWhen ?? config.actors[0]?.stopWhen) === undefined ? {} : { stopWhen: (role.stopWhen ?? config.actors[0]?.stopWhen)! }),
     deviceName: device.name,
     devicePreset: device.preset,
     resolution: device.resolution,

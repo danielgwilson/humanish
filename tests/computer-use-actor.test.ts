@@ -107,6 +107,32 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(trace.ids?.model).toBe(DEFAULT_OPENAI_CU_MODEL);
   });
 
+  it("T3b: threads stopWhen and runtime browser state through the E2B executor wrapper", async () => {
+    const fetchFn = scriptedFetch([
+      { id: "should-not-be-called", output: [{ type: "message", content: [{ type: "output_text", text: "unexpected" }] }] }
+    ]);
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop: makeFakeDesktop(),
+      executorOptions: {
+        observeBrowserState: async () => ({
+          url: "http://127.0.0.1:3000/items/123",
+          title: "Item saved",
+          text: "Saved successfully"
+        })
+      },
+      stopWhen: { any: [{ id: "saved", textIncludes: "Saved successfully" }] }
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.reason).toBe("stopWhen matched saved (textIncludes)");
+    expect(result.trace.counts.turns).toBe(0);
+    expect(JSON.stringify(result.trace)).not.toContain("Saved successfully");
+    expect(result.trace.items.some((item) => item.kind === "notice" && item.status === "matched")).toBe(true);
+  });
+
   it("T4: typed secrets never reach the trace; screenshots default to RAW (full fidelity, local)", async () => {
     const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([

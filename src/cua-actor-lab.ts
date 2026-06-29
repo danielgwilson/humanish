@@ -71,6 +71,7 @@ import { mapWithConcurrency } from "./concurrency.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { containsSensitive, redactText } from "./redaction.js";
+import type { StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
   loadRunBundle,
@@ -377,6 +378,8 @@ export interface CuaLaneSpec {
   instructions: string;
   /** App-url fan-out only: this lane's explicit browser target; absent falls back to deps.appUrl. */
   targetUrl?: string;
+  /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
+  stopWhen?: StopWhen;
   deviceName: string;
   devicePreset: DevicePreset;
   resolution: [number, number];
@@ -509,6 +512,7 @@ function laneSpecsAndPlan(
       persona: composed.persona,
       instructions: composed.instructions,
       ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
+      ...((lane?.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
       deviceName: device.name,
       devicePreset: device.preset,
       resolution: device.resolution,
@@ -871,17 +875,18 @@ async function openDesktopBrowserTarget(
       "  fi",
       "  return 1",
       "}",
+      "chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/mimetic-chrome-profile --no-first-run --no-default-browser-check --disable-default-apps)",
       "open_target() {",
       "  case \"$browser_preference\" in",
       "    chrome)",
-      "      launch_browser google-chrome google-chrome --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
-      "      launch_browser google-chrome-stable google-chrome-stable --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      launch_browser google-chrome google-chrome --new-window \"${chrome_debug_flags[@]}\" && return 0",
+      "      launch_browser google-chrome-stable google-chrome-stable --new-window \"${chrome_debug_flags[@]}\" && return 0",
       "      echo 'requested browser chrome was not found' >&2",
       "      return 127",
       "      ;;",
       "    chromium)",
-      "      launch_browser chromium chromium --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
-      "      launch_browser chromium-browser chromium-browser --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
+      "      launch_browser chromium chromium --new-window \"${chrome_debug_flags[@]}\" && return 0",
+      "      launch_browser chromium-browser chromium-browser --new-window \"${chrome_debug_flags[@]}\" && return 0",
       "      echo 'requested browser chromium was not found' >&2",
       "      return 127",
       "      ;;",
@@ -889,16 +894,17 @@ async function openDesktopBrowserTarget(
       "      launch_browser firefox firefox --new-window && return 0",
       "      echo 'requested browser firefox was not found' >&2",
       "      return 127",
-      "      ;;",
-      "    default)",
-      "      launch_browser xdg-open xdg-open && return 0",
-      "      launch_browser firefox firefox --new-window && return 0",
-      "      launch_browser google-chrome google-chrome --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
-      "      launch_browser chromium chromium --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
-      "      launch_browser chromium-browser chromium-browser --new-window --no-first-run --no-default-browser-check --disable-default-apps && return 0",
-      "      echo 'no browser opener found' >&2",
-      "      return 127",
-      "      ;;",
+    "      ;;",
+    "    default)",
+    "      launch_browser google-chrome google-chrome --new-window \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser google-chrome-stable google-chrome-stable --new-window \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser chromium chromium --new-window \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser chromium-browser chromium-browser --new-window \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser firefox firefox --new-window && return 0",
+    "      launch_browser xdg-open xdg-open && return 0",
+    "      echo 'no browser opener found' >&2",
+    "      return 127",
+    "      ;;",
       "  esac",
       "}",
       "open_target"
@@ -933,6 +939,65 @@ async function openDesktopBrowserTarget(
   return { requested: requestedBrowser, resolved: launchTarget };
 }
 
+export function makeChromeBrowserStateObserver(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number
+): () => Promise<{ url?: string; title?: string; text?: string }> {
+  return async () => {
+    const script = [
+      "const pages = await fetch('http://127.0.0.1:9222/json').then((r) => r.json()).catch(() => []);",
+      "const page = Array.isArray(pages) ? pages.find((entry) => entry && entry.type === 'page' && /^https?:/.test(String(entry.url || ''))) : undefined;",
+      "if (!page) { console.log('{}'); process.exit(0); }",
+      "let text = '';",
+      "let url = String(page.url || '');",
+      "let title = String(page.title || '');",
+      "if (typeof WebSocket === 'function' && page.webSocketDebuggerUrl) {",
+      "  const ws = new WebSocket(page.webSocketDebuggerUrl);",
+      "  const result = await new Promise((resolve) => {",
+      "    const timer = setTimeout(() => resolve(undefined), 1500);",
+      "    ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: '({ url: location.href, title: document.title, text: (document.body && document.body.innerText || \"\").slice(0, 20000) })' } }));",
+      "    ws.onmessage = (event) => {",
+      "      try {",
+      "        const payload = JSON.parse(String(event.data));",
+      "        if (payload.id !== 1) return;",
+      "        clearTimeout(timer);",
+      "        resolve(payload.result && payload.result.result && payload.result.result.value);",
+      "      } catch { clearTimeout(timer); resolve(undefined); }",
+      "    };",
+      "    ws.onerror = () => { clearTimeout(timer); resolve(undefined); };",
+      "  }).finally(() => { try { ws.close(); } catch {} });",
+      "  if (result && typeof result === 'object') {",
+      "    url = typeof result.url === 'string' ? result.url : url;",
+      "    title = typeof result.title === 'string' ? result.title : title;",
+      "    text = typeof result.text === 'string' ? result.text : '';",
+      "  }",
+      "}",
+      "console.log(JSON.stringify({ url, title, text }));"
+    ].join("\n");
+    const result = await desktop.commands.run(`node --input-type=module -e ${shellSingleQuote(script)}`, {
+      requestTimeoutMs,
+      timeoutMs: 5_000
+    });
+    if (result.exitCode !== undefined && result.exitCode !== 0) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse((result.stdout ?? "{}").trim() || "{}") as unknown;
+      if (!parsed || typeof parsed !== "object") {
+        return {};
+      }
+      const record = parsed as Record<string, unknown>;
+      return {
+        ...(typeof record.url === "string" && record.url.length > 0 ? { url: record.url } : {}),
+        ...(typeof record.title === "string" && record.title.length > 0 ? { title: record.title } : {}),
+        ...(typeof record.text === "string" && record.text.length > 0 ? { text: record.text } : {})
+      };
+    } catch {
+      return {};
+    }
+  };
+}
+
 function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
@@ -959,6 +1024,13 @@ function completionReasonContradictsGoal(reason: string): boolean {
     || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
     || /\berror[:.]/.test(text)
     || /what would you like me to do|please tell me|need (the )?(task|credentials|instructions)/.test(text);
+}
+
+function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
+  return session.trace.items.some((item) =>
+    item.kind === "notice"
+      && item.status === "matched"
+      && item.title.startsWith("stopWhen matched"));
 }
 
 /**
@@ -1101,9 +1173,13 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
         },
         desktop: desktop as unknown as E2BDesktopLike,
+        executorOptions: {
+          observeBrowserState: makeChromeBrowserStateObserver(desktop, deps.requestTimeoutMs)
+        },
         redactScreenshots: deps.redactScreenshots,
         scrubText: deps.scrubKnownValues,
-        writeScreenshot
+        writeScreenshot,
+        ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen })
       };
       session = await deps.runSession(sessionOptions);
     }
@@ -1142,7 +1218,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const noEngagement = session !== undefined
     && session.completionReason === "goal_satisfied"
     && (session.trace.counts.actions ?? 0) === 0
-    && (session.trace.counts.messages ?? 0) === 0;
+    && (session.trace.counts.messages ?? 0) === 0
+    && !traceHasStopWhenMatch(session);
   if (noEngagement) {
     warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
   }
@@ -1194,7 +1271,8 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
       executor,
       redactScreenshots: deps.redactScreenshots,
       scrubText: deps.scrubKnownValues,
-      writeScreenshot
+      writeScreenshot,
+      ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen })
     };
     session = await deps.runSession(sessionOptions);
   } catch (error) {
@@ -1212,7 +1290,8 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   const noEngagement = session !== undefined
     && session.completionReason === "goal_satisfied"
     && (session.trace.counts.actions ?? 0) === 0
-    && (session.trace.counts.messages ?? 0) === 0;
+    && (session.trace.counts.messages ?? 0) === 0
+    && !traceHasStopWhenMatch(session);
   if (noEngagement) {
     warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
   }

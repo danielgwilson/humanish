@@ -130,7 +130,7 @@ function expectSafeBrowserOpen(calls: Array<[string, ...unknown[]]>, url: string
     (call) =>
       call[0] === "commands.run" &&
       String(call[1]).includes(`target_url='${quotedUrl}'`) &&
-      String(call[1]).includes("launch_browser xdg-open xdg-open")
+      String(call[1]).includes("launch_browser google-chrome google-chrome")
   );
   expect(index).toBeGreaterThan(-1);
   return index;

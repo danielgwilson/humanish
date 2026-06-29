@@ -513,6 +513,29 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     }
   });
 
+  it("threads actor-default and lane-level stopWhen guards into concurrent shared-world actors", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const config = concurrentConfig(3, 3);
+    const actorDefault = { any: [{ id: "actor-done", textIncludes: "Saved" }] };
+    const laneOverride = { any: [{ id: "second-done", urlIncludes: "/done" }] };
+    config.actors[0]!.stopWhen = actorDefault;
+    config.actors[0]!.lanes![1]!.stopWhen = laneOverride;
+
+    const seen: Array<CuaActorSessionOptions["stopWhen"]> = [];
+    const runSession = hooks.runSession!;
+    hooks.runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
+      seen.push(options.stopWhen);
+      return runSession(options);
+    };
+
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(seen).toHaveLength(3);
+    expect(seen).toEqual([actorDefault, laneOverride, actorDefault]);
+  });
+
   it("adapter fail score turns a coherent concurrent shared-world run red while keeping evidence verifiable", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
@@ -563,7 +586,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         ? {
             status: "passed",
             completionReason: "goal_satisfied",
-            reason: "I cannot complete the approval because the app shows an error: DOSESPOT_USER_ID is not set."
+            reason: "I cannot complete the approval because the app shows an error: APP_USER_ID is not set."
           }
         : undefined
     ));
@@ -575,7 +598,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.gaps.some((gap) => gap.includes("DOSESPOT_USER_ID is not set"))).toBe(true);
+    expect(bundle.review.gaps.some((gap) => gap.includes("APP_USER_ID is not set"))).toBe(true);
     expect(bundle.events.some((event) =>
       event.level === "warn" && event.message.includes("NOT counted as a pass")
     )).toBe(true);

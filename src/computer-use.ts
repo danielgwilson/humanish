@@ -8,6 +8,11 @@ import {
   type ActorTraceItem
 } from "./actor-contract.js";
 import type { RedactionHooks } from "./redaction.js";
+import {
+  evaluateStopWhen,
+  type StopConditionMatch,
+  type StopWhen
+} from "./stop-conditions.js";
 
 // The computer-use (CUA) loop engine.
 //
@@ -78,6 +83,15 @@ export interface CuaObservation {
    * cannot sanitize an arbitrary blob.
    */
   appState?: Record<string, unknown>;
+  /**
+   * Optional browser state captured by an executor that can inspect the driven browser
+   * deterministically (for example via Chrome DevTools Protocol). These fields are runtime-only:
+   * they may drive stopWhen and progress decisions, but the loop never persists raw URL/title/text
+   * into the trace. Persisting arbitrary DOM text would make private-data leakage too easy.
+   */
+  url?: string;
+  title?: string;
+  text?: string;
 }
 
 /**
@@ -195,6 +209,12 @@ export interface CuaLoopOptions {
   scrubText?: (text: string) => string;
   /** Persist a screenshot (raw or redacted per redactScreenshots), returning the trace ref path. */
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
+  /**
+   * Deterministic harness-owned success guards. Evaluated after the initial observation and after
+   * every post-action observation, before another model turn is requested. This keeps a lane from
+   * wandering after the product already reached an app-visible endpoint.
+   */
+  stopWhen?: StopWhen;
 }
 
 export interface CuaLoopResult {
@@ -347,6 +367,9 @@ class CuaAbortError extends Error {}
 // to a structured harness_error; this just unwinds the loop without being misread as an adapter
 // failure in the catch block (it carries no message to persist).
 class CuaFrameGuardStop extends Error {}
+// Internal control-flow signal for deterministic harness stop conditions that match before the
+// model is asked for another turn. completionReason/reason are already set by the caller.
+class CuaStopWhenStop extends Error {}
 
 const neverAbort: AbortSignal = new AbortController().signal;
 
@@ -400,7 +423,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     acknowledgeSafetyChecks = () => null,
     redactScreenshots = false,
     scrubText = (text) => text,
-    writeScreenshot = async (name) => `screenshots/${name}`
+    writeScreenshot = async (name) => `screenshots/${name}`,
+    stopWhen
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
   // Model-authored narration: literal-scrub known provisioned values, THEN pattern-redact.
@@ -458,8 +482,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     bump("screenshots");
   };
 
+  const matchedStopWhen = (observation: CuaObservation): StopConditionMatch | undefined =>
+    evaluateStopWhen(stopWhen, {
+      ...(observation.url === undefined ? {} : { url: observation.url }),
+      ...(observation.text === undefined ? {} : { text: observation.text }),
+      ...(observation.appState === undefined ? {} : { appState: observation.appState })
+    });
+
   let completionReason: ActorCompletionReason = "goal_satisfied";
   let reason = "computer-use loop completed";
+  let stopConditionMatch: StopConditionMatch | undefined;
 
   // A vision provider against a screenshot-less observation is a fail-closed harness error, not
   // a silent crash: record it and break. Returns true when the run must stop. (The provider sets
@@ -494,6 +526,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
     await maybeRecordScreenshot(observation, "turn-00-start");
+    stopConditionMatch = matchedStopWhen(observation);
+    if (stopConditionMatch) {
+      completionReason = "goal_satisfied";
+      reason = stopWhenReason(stopConditionMatch);
+      items.push(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
+      throw new CuaStopWhenStop();
+    }
     // The progress key prefers a stable appState projection (route/turn/modal deltas drive
     // progress) and falls back to the executor's stateSignature — so a state executor with a
     // constant signature still registers progress, and a vision executor behaves exactly as before.
@@ -599,6 +638,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;
       await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
+      stopConditionMatch = matchedStopWhen(observation);
+      if (stopConditionMatch) {
+        completionReason = "goal_satisfied";
+        reason = stopWhenReason(stopConditionMatch);
+        items.push(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
+        break;
+      }
 
       // Progress prefers the stable appState projection; a state executor with a constant
       // stateSignature still registers progress when its appState changed (and vice versa).
@@ -630,8 +676,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
     }
   } catch (error) {
-    if (error instanceof CuaFrameGuardStop) {
-      // completionReason/reason were already set to the structured harness_error by the guard.
+    if (error instanceof CuaFrameGuardStop || error instanceof CuaStopWhenStop) {
+      // completionReason/reason were already set by the frame guard or stopWhen guard.
     } else if (error instanceof CuaDeadlineError) {
       completionReason = "timed_out";
       reason = `wall-clock deadline reached after ${timeoutMs}ms`;
@@ -694,4 +740,25 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   return { status, completionReason, reason, trace };
+}
+
+function stopWhenReason(match: StopConditionMatch): string {
+  return `stopWhen matched ${match.id} (${match.kinds.join("+")})`;
+}
+
+function stopWhenTraceItem(
+  id: string,
+  match: StopConditionMatch,
+  redactNarration: (text: string) => string
+): ActorTraceItem {
+  return {
+    id,
+    kind: "notice",
+    lifecycle: "completed",
+    status: "matched",
+    title: `stopWhen matched: ${match.id}`,
+    text: redactNarration(
+      `Harness stop condition matched rule ${match.id} using ${match.kinds.join(", ")}. Raw observed URL/text/appState were runtime-only and were not persisted.`
+    )
+  };
 }

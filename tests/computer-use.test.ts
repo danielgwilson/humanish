@@ -6,6 +6,7 @@ import {
   describeCuaAction,
   runComputerUseLoop,
   stableProgressKey,
+  type CuaAction,
   type CuaExecutor,
   type CuaObservation,
   type CuaProvider,
@@ -83,6 +84,21 @@ class SignatureExecutor implements CuaExecutor {
   async execute(): Promise<void> {}
 }
 
+class ObservationSequenceExecutor implements CuaExecutor {
+  private i = 0;
+  readonly frame = frame();
+  readonly actions: CuaAction[] = [];
+  constructor(private readonly observations: CuaObservation[]) {}
+  async observe(): Promise<CuaObservation> {
+    const observation = this.observations[Math.min(this.i, this.observations.length - 1)];
+    this.i += 1;
+    return observation ?? { screenshot: this.frame, stateSignature: "fallback" };
+  }
+  async execute(action: CuaAction): Promise<void> {
+    this.actions.push(action);
+  }
+}
+
 // A monotonic injected clock so deadlines and timestamps are deterministic.
 function monotonicClock(step = 1000): () => number {
   let t = 0;
@@ -141,6 +157,101 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.counts.actions).toBe(2);
     // initial + 2 executed turns
     expect(result.trace.counts.screenshots).toBe(3);
+  });
+
+  it("stops deterministically when post-action browser text matches stopWhen", async () => {
+    const provider = new RepeatProvider({
+      actions: [{ kind: "click", x: 10, y: 20 }],
+      pendingSafetyChecks: [],
+      done: false
+    });
+    const executor = new ObservationSequenceExecutor([
+      { screenshot: frame(), stateSignature: "before", url: "http://127.0.0.1:3000/items/123", text: "Edit item" },
+      { screenshot: frame(), stateSignature: "after", url: "http://127.0.0.1:3000/items/123", text: "Saved successfully" }
+    ]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Save the item.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      stopWhen: { any: [{ id: "saved", textIncludes: "Saved successfully" }] }
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.reason).toBe("stopWhen matched saved (textIncludes)");
+    expect(provider.seen).toHaveLength(1);
+    expect(executor.actions).toHaveLength(1);
+    expect(JSON.stringify(result.trace)).not.toContain("Saved successfully");
+    expect(result.trace.items.some((item) => item.kind === "notice" && item.status === "matched")).toBe(true);
+  });
+
+  it("can stop on an exact URL path plus page text after an action", async () => {
+    const provider = new RepeatProvider({
+      actions: [{ kind: "click", x: 10, y: 20 }],
+      pendingSafetyChecks: [],
+      done: false
+    });
+    const executor = new ObservationSequenceExecutor([
+      { screenshot: frame(), stateSignature: "detail", url: "https://example.test/tasks/rfd_123", text: "Confirm deny" },
+      { screenshot: frame(), stateSignature: "queue", url: "https://example.test/tasks?tab=open", text: "Tasks\nReview queue" }
+    ]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Deny the request.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      stopWhen: { any: [{ id: "returned-to-queue", urlPathEquals: "/tasks", textIncludes: "Tasks" }] }
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.reason).toBe("stopWhen matched returned-to-queue (urlPathEquals+textIncludes)");
+    expect(provider.seen).toHaveLength(1);
+    expect(executor.actions).toHaveLength(1);
+    expect(JSON.stringify(result.trace)).not.toContain("Review queue");
+  });
+
+  it("can stop before the first model turn when appState already satisfies stopWhen", async () => {
+    const provider = new RepeatProvider({
+      actions: [{ kind: "click", x: 10, y: 20 }],
+      pendingSafetyChecks: [],
+      done: false
+    });
+    const executor = new ObservationSequenceExecutor([
+      {
+        screenshot: frame(),
+        stateSignature: "ready",
+        appState: { workflow: { status: "done", count: 3 } }
+      }
+    ]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Finish the workflow.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      stopWhen: { any: [{ id: "already-done", appStatePathEquals: { path: "workflow.status", equals: "done" } }] }
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.reason).toBe("stopWhen matched already-done (appStatePathEquals)");
+    expect(provider.seen).toHaveLength(0);
+    expect(executor.actions).toHaveLength(0);
+    expect(JSON.stringify(result.trace)).not.toContain("workflow");
+    expect(result.trace.items.some((item) => item.kind === "notice" && item.status === "matched")).toBe(true);
   });
 
   it("DEFAULT persists RAW full-fidelity frames (local fidelity) and never logs raw typed text", async () => {

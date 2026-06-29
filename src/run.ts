@@ -4385,6 +4385,7 @@ function noEngagementActorFindings(bundle: RunBundle): string[] {
     };
     const engaged = countOf("actions") > 0
       || countOf("messages") > 0
+      || hasStopWhenObservationEvidence(items, countOf("screenshots"))
       || items.some((item) =>
         isRecord(item)
         && typeof item.kind === "string"
@@ -4396,6 +4397,22 @@ function noEngagementActorFindings(bundle: RunBundle): string[] {
   }
 
   return findings;
+}
+
+function hasStopWhenObservationEvidence(items: unknown[], screenshotCount: number): boolean {
+  const hasScreenshot = screenshotCount > 0 || items.some((item) =>
+    isRecord(item)
+      && item.kind === "screenshot"
+      && isRecord(item.screenshotRef)
+      && typeof item.screenshotRef.path === "string"
+      && item.screenshotRef.path.length > 0);
+  if (!hasScreenshot) return false;
+  return items.some((item) =>
+    isRecord(item)
+      && item.kind === "notice"
+      && item.status === "matched"
+      && typeof item.title === "string"
+      && item.title.startsWith("stopWhen matched"));
 }
 
 function actorVerdictConsistencyFindings(bundle: RunBundle): string[] {

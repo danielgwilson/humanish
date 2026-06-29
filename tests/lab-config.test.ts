@@ -170,6 +170,48 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
       expect(result.warnings[0]).not.toContain("laneFocus.instruction");
     });
 
+    it("parses actor-level and lane-level deterministic stopWhen guards", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        actors: [{
+          type: "openai-computer-use",
+          mission: "Exercise each lane.",
+          stopWhen: { any: [{ id: "actor-done", textIncludes: "Saved" }] },
+          lanes: [
+            { id: "lane-a", persona: "reviewer", instruction: "Review the item." },
+            {
+              id: "lane-b",
+              persona: "approver",
+              instruction: "Approve the item.",
+              stopWhen: { any: [{ id: "lane-approved", urlPathEquals: "/done" }] }
+            }
+          ]
+        }]
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.actors[0]?.stopWhen?.any[0]?.textIncludes).toBe("Saved");
+      expect(result.config.actors[0]?.lanes?.[1]?.stopWhen?.any[0]?.urlPathEquals).toBe("/done");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it.each([
+      ["empty any", { any: [] }],
+      ["bad rule id", { any: [{ id: "bad id", textIncludes: "Saved" }] }],
+      ["rule without condition", { any: [{ id: "done" }] }],
+      ["bad urlPathEquals", { any: [{ urlPathEquals: "tasks" }] }],
+      ["bad appState path", { any: [{ appStatePathEquals: { path: "bad/path", equals: "done" } }] }],
+      ["non-primitive equals", { any: [{ appStatePathEquals: { path: "status", equals: { value: "done" } } }] }]
+    ])("rejects invalid stopWhen: %s", (_label, stopWhen) => {
+      const result = parseLabConfig({
+        ...validCua,
+        actors: [{ type: "openai-computer-use", stopWhen }]
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("stopWhen");
+    });
+
     it("keeps warning about mission/persona/model on routes that do NOT consume them", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
@@ -664,8 +706,8 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
           env: ["GITHUB_TOKEN"],
           state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
         },
-        actors: [{ type: "scripted-browser", persona: "provider-reviewer", count: 1 }],
-        scenario: { ref: "provider-order-request-proof", mode: "live" },
+        actors: [{ type: "scripted-browser", persona: "workflow-reviewer", count: 1 }],
+        scenario: { ref: "workflow-review-proof", mode: "live" },
         execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { template: "adopter-ui-sim-base" } }
       });
       expect(result.ok).toBe(true);
@@ -694,7 +736,7 @@ describe("parseLabConfig (mimetic.lab.v2)", () => {
           state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
         },
         actors: [{ type: "scripted-browser" }],
-        scenario: { ref: "provider-order-request-proof" },
+        scenario: { ref: "workflow-review-proof" },
         execution: { target: "e2b-desktop" }
       };
       const typedPatch = patch as { subject?: Record<string, unknown>; actors?: unknown[] };

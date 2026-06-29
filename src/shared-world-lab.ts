@@ -37,6 +37,7 @@ import type { CuaLoopResult } from "./computer-use.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
+  makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
   provisionCloneSubject,
   resolveLaneDevice,
@@ -63,6 +64,7 @@ import {
 } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
+import type { StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -209,6 +211,8 @@ interface RoleSpec {
   instructions: string;
   /** The role's declared device (a PROMPT SIGNAL — see the file's FIDELITY NOTE). */
   deviceName: string;
+  /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
+  stopWhen?: StopWhen;
   entry?: string;
   seatUrl: string;
   screenshotDir: string;
@@ -278,7 +282,8 @@ async function launchSeatBrowser(
     "  local binary=\"$2\"",
     "  if ! command -v \"$binary\" >/dev/null 2>&1; then return 127; fi",
     "  echo \"MIMETIC_BROWSER_RESOLVED=$label\"",
-    "  setsid -f \"$binary\" --new-window --user-data-dir=\"$profile_dir\" --no-first-run --no-default-browser-check --disable-default-apps \"$seat_url\" > /dev/null 2>&1 < /dev/null",
+    "  pkill -f '[r]emote-debugging-port=9222' 2>/dev/null || true",
+    "  setsid -f \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=\"$profile_dir\" --no-first-run --no-default-browser-check --disable-default-apps \"$seat_url\" > /dev/null 2>&1 < /dev/null",
     "}",
     "launch_firefox() {",
     "  if ! command -v firefox >/dev/null 2>&1; then return 127; fi",
@@ -392,6 +397,7 @@ function buildRoleSpecs(config: LabConfig, serveUrl: string): RoleSpec[] {
       persona: composed.persona,
       instructions: composed.instructions,
       deviceName: device.name,
+      ...((lane.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane.stopWhen ?? actor?.stopWhen) as StopWhen }),
       ...(lane.entry === undefined ? {} : { entry: lane.entry }),
       seatUrl: resolveSeatUrl(serveUrl, lane.entry) ?? serveUrl,
       screenshotDir: roleId,
@@ -614,9 +620,13 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
               ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
             },
             desktop: desktop as unknown as E2BDesktopLike,
+            executorOptions: {
+              observeBrowserState: makeChromeBrowserStateObserver(desktop, requestTimeoutMs)
+            },
             redactScreenshots,
             scrubText: scrubKnownValues,
-            writeScreenshot
+            writeScreenshot,
+            ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen })
           };
           session = await runSession(sessionOptions);
         } catch (error) {

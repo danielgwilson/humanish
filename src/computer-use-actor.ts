@@ -27,6 +27,7 @@ import {
   type OpenAiResponsesProviderOptions
 } from "./openai-responses-cu.js";
 import { defaultRedactionHooks, type RedactionHooks } from "./redaction.js";
+import type { StopWhen } from "./stop-conditions.js";
 
 export interface CuaActorSessionOptions {
   /** The composed mission (persona + scenario/lane instruction) handed to the model. */
@@ -72,6 +73,8 @@ export interface CuaActorSessionOptions {
   scrubText?: (text: string) => string;
   /** Persist a screenshot (raw or redacted per redactScreenshots), returning the trace ref path. */
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
+  /** Deterministic harness-owned stop guards evaluated between model turns. */
+  stopWhen?: StopWhen;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
@@ -92,7 +95,8 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.acknowledgeSafetyChecks === undefined ? {} : { acknowledgeSafetyChecks: options.acknowledgeSafetyChecks }),
     ...(options.redactScreenshots === undefined ? {} : { redactScreenshots: options.redactScreenshots }),
     ...(options.scrubText === undefined ? {} : { scrubText: options.scrubText }),
-    ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot })
+    ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot }),
+    ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen })
   };
 
   return runComputerUseLoop(loopOptions);

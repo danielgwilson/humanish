@@ -214,6 +214,38 @@ or `firefox`. A concrete value means "launch this browser or fail" rather than s
 falling back to whatever the image prefers. When configured, run bundles record the requested
 browser and the resolved in-sandbox command as `desktopBrowser`.
 
+**Deterministic stop conditions.** Freeform computer-use actors can keep acting after the
+app has already reached the state you care about. Add `stopWhen` to the actor or a lane to
+stop immediately after a deterministic browser observation matches. Conditions inside one
+rule are ANDed together; rules under `any` are ORed. Lane-level `stopWhen` overrides the
+actor default.
+
+```yaml
+actors:
+  - type: openai-computer-use
+    mission: Complete the assigned browser task.
+    stopWhen:
+      any:
+        - id: dashboard-visible
+          urlPathEquals: /dashboard
+          textIncludes: Dashboard
+    lanes:
+      - id: reviewer
+        entry: /items/123
+        instruction: Review the item and return to the queue.
+        stopWhen:
+          any:
+            - id: returned-to-queue
+              urlPathEquals: /items
+              textIncludes: Queue
+```
+
+Supported primitives are `urlIncludes`, `urlPathEquals`, `textIncludes`, and
+`appStatePathEquals`. URL and text observations are runtime-only and are not persisted into
+the run bundle; the trace stores only the matched rule id and primitive names. Browser URL
+and text observation requires a Chrome/Chromium CDP session in the desktop. For deterministic
+browser-observed stops, set `execution.desktop.browser: chrome` or `chromium`.
+
 **Failed-lane reruns.** Multi-lane CUA fan-out can be rerun surgically without mutating
 the source run:
 

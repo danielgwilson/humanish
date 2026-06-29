@@ -49,6 +49,7 @@
 
 import { actorRegistry } from "./actor-registry.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
+import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 
 export const LAB_CONFIG_SCHEMA = "mimetic.lab.v2";
 
@@ -284,6 +285,11 @@ export interface LabActorLane {
   /** Per-lane steer appended to this lane's mission (the roster's per-lane focus). */
   instruction?: string;
   /**
+   * Deterministic lane completion guard. When set, this lane stops as soon as the runtime
+   * observation matches any declared rule; actor-level stopWhen is used as the default.
+   */
+  stopWhen?: StopWhen;
+  /**
    * App-url computer-use ONLY: absolute browser URL this lane opens instead of `subject.appUrl`.
    * This is the generic setup-produced-target handoff for crawler/swarm labs: product adapters may
    * start any topology they need, then hand Mimetic explicit lane targets. Public/non-loopback
@@ -337,6 +343,11 @@ export interface LabActor {
   mission?: string;
   /** Provider model override. Consumed on the app-url route. */
   model?: string;
+  /**
+   * Deterministic completion guard used as the default for CUA lanes. Lane-level stopWhen
+   * overrides this value.
+   */
+  stopWhen?: StopWhen;
 }
 
 export type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
@@ -1585,6 +1596,9 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     if (mission) actor.mission = mission;
     const model = str(entry.model);
     if (model) actor.model = model;
+    const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${index}].stopWhen`);
+    if (!stopWhenResult.ok) return stopWhenResult;
+    if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;
     const laneFocus = parseLaneFocus(entry.laneFocus);
     if (laneFocus) actor.laneFocus = laneFocus;
     actors.push(actor);
@@ -1706,6 +1720,9 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     if (caseGroup.value !== undefined) lane.caseGroup = caseGroup.value;
     const instruction = str(entry.instruction);
     if (instruction !== undefined) lane.instruction = instruction;
+    const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${actorIndex}].lanes[${laneIndex}].stopWhen`);
+    if (!stopWhenResult.ok) return stopWhenResult;
+    if (stopWhenResult.value !== undefined) lane.stopWhen = stopWhenResult.value;
     const target = str(entry.target);
     if (target !== undefined) {
       if (!isHttpUrl(target)) {
@@ -1720,6 +1737,81 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     lanes.push(lane);
   }
   return { ok: true, value: lanes };
+}
+
+function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!isRecord(raw)) {
+    return invalid(`${field} must be an object ({ any: [{ id?, urlIncludes?, urlPathEquals?, textIncludes?, appStatePathEquals? }] }).`);
+  }
+  if (!Array.isArray(raw.any) || raw.any.length === 0) {
+    return invalid(`${field}.any must be a non-empty array of stop condition rules.`);
+  }
+  const any: StopWhenRule[] = [];
+  for (const [index, entry] of raw.any.entries()) {
+    if (!isRecord(entry)) {
+      return invalid(`${field}.any[${index}] must be an object ({ id?, urlIncludes?, urlPathEquals?, textIncludes?, appStatePathEquals? }).`);
+    }
+    const rule: StopWhenRule = {};
+    const id = str(entry.id);
+    if (id !== undefined) {
+      if (!LANE_ID_PATTERN.test(id) || id.length > LANE_METADATA_MAX_CHARS) {
+        return invalid(`${field}.any[${index}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${id}".`);
+      }
+      rule.id = id;
+    }
+    const urlIncludes = str(entry.urlIncludes);
+    if (urlIncludes !== undefined) {
+      rule.urlIncludes = urlIncludes;
+    }
+    const urlPathEquals = str(entry.urlPathEquals);
+    if (urlPathEquals !== undefined) {
+      if (!urlPathEquals.startsWith("/") || urlPathEquals.startsWith("//")) {
+        return invalid(`${field}.any[${index}].urlPathEquals must be an absolute URL path starting with one slash.`);
+      }
+      rule.urlPathEquals = urlPathEquals;
+    }
+    const textIncludes = str(entry.textIncludes);
+    if (textIncludes !== undefined) {
+      rule.textIncludes = textIncludes;
+    }
+    if (entry.appStatePathEquals !== undefined) {
+      const parsed = parseStopWhenAppStatePathEquals(entry.appStatePathEquals, `${field}.any[${index}].appStatePathEquals`);
+      if (!parsed.ok) return parsed;
+      rule.appStatePathEquals = parsed.value;
+    }
+    if (rule.urlIncludes === undefined && rule.urlPathEquals === undefined && rule.textIncludes === undefined && rule.appStatePathEquals === undefined) {
+      return invalid(`${field}.any[${index}] must declare at least one condition: urlIncludes, urlPathEquals, textIncludes, or appStatePathEquals.`);
+    }
+    any.push(rule);
+  }
+  return { ok: true, value: { any } };
+}
+
+function parseStopWhenAppStatePathEquals(
+  raw: unknown,
+  field: string
+): { ok: true; value: { path: string; equals: StopConditionPrimitive } } | LabConfigParseFailure {
+  if (!isRecord(raw)) {
+    return invalid(`${field} must be an object ({ path, equals }).`);
+  }
+  const pathValue = str(raw.path);
+  if (pathValue === undefined) {
+    return invalid(`${field}.path is required and must be a dot-separated public-safe path.`);
+  }
+  if (!/^[A-Za-z0-9_.-]+$/.test(pathValue)) {
+    return invalid(`${field}.path must contain only letters, digits, underscore, dash, and dot.`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(raw, "equals")) {
+    return invalid(`${field}.equals is required.`);
+  }
+  const equals = raw.equals;
+  if (equals !== null && typeof equals !== "string" && typeof equals !== "number" && typeof equals !== "boolean") {
+    return invalid(`${field}.equals must be a string, number, boolean, or null.`);
+  }
+  return { ok: true, value: { path: pathValue, equals } };
 }
 
 function parseLaneMetadata(raw: unknown, field: string): { ok: true; value: string | undefined } | LabConfigParseFailure {

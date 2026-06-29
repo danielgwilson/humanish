@@ -2423,6 +2423,44 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
     });
   });
 
+  it("passes a deterministic stopWhen observation with a screenshot even when no model action was needed", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "stopwhen-observed-live", {
+        dryRun: false,
+        trace: cuaActorTrace({
+          reason: "stopWhen matched dashboard-visible (textIncludes)",
+          counts: { turns: 0, actions: 0, screenshots: 1, reasonings: 0, messages: 0, idleTurns: 0, noProgressTurns: 0 },
+          items: [
+            {
+              id: "screenshot-001",
+              kind: "screenshot",
+              lifecycle: "completed",
+              title: "turn-00-start",
+              screenshotRef: {
+                path: "screenshots/turn-00-start.png",
+                redaction: "blurred"
+              }
+            },
+            {
+              id: "notice-002",
+              kind: "notice",
+              lifecycle: "completed",
+              status: "matched",
+              title: "stopWhen matched: dashboard-visible",
+              text: "Harness stop condition matched rule dashboard-visible using textIncludes."
+            }
+          ]
+        })
+      });
+      await mkdir(path.join(cwd, ".mimetic/runs/stopwhen-observed-live/screenshots"), { recursive: true });
+      await writeFile(path.join(cwd, ".mimetic/runs/stopwhen-observed-live/screenshots/turn-00-start.png"), "fake-png", "utf8");
+
+      const verify = await verifyRun(cwd, "stopwhen-observed-live");
+      expect(verify.ok).toBe(true);
+      expect(verify.checks.find((entry) => entry.name === "actor engagement")?.ok).toBe(true);
+    });
+  });
+
   it("FAILS a live pass review whose actor trace status is failed", async () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "failed-actor-pass-review-regression", {
