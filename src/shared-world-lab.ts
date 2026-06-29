@@ -250,7 +250,7 @@ function shellQuote(value: string): string {
 
 /**
  * Launch ONE seat's browser with its OWN isolated Chrome profile — the NEW plumbing the
- * shared-world topology needs (the cua route's bare `desktop.launch("google-chrome", url)` has no
+ * shared-world topology needs (the generic CUA launcher does not allocate a shared-world seat
  * profile dir). A fresh `--user-data-dir` per role is the seat identity boundary (cookies/session
  * are isolated per role); the URL is the role's same-origin loopback entry. Launched detached.
  */

@@ -124,6 +124,18 @@ function makeFakeSandbox(options: {
   return sandbox as unknown as FakeSandbox;
 }
 
+function expectSafeBrowserOpen(calls: Array<[string, ...unknown[]]>, url: string): number {
+  const quotedUrl = url.replace(/'/g, "'\\''");
+  const index = calls.findIndex(
+    (call) =>
+      call[0] === "commands.run" &&
+      String(call[1]).includes(`target_url='${quotedUrl}'`) &&
+      String(call[1]).includes("xdg-open \"$target_url\"")
+  );
+  expect(index).toBeGreaterThan(-1);
+  return index;
+}
+
 function makeFakeModule(sandbox: FakeSandbox): {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
@@ -392,11 +404,11 @@ describe("runCuaActorLab", () => {
 
     // prepareDesktop ran before the browser opened, against the created sandbox.
     expect(prepared).toEqual(["fake-sandbox-001"]);
-    const openIndex = sandbox.calls.findIndex(([name]) => name === "open");
-    expect(sandbox.calls[openIndex]).toEqual(["open", "http://127.0.0.1:3000/"]);
+    const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
 
     // The model's click actuated the desktop through the real executor.
     expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
+    expect(openIndex).toBeLessThan(sandbox.calls.findIndex(([name]) => name === "leftClick"));
 
     // The prompt was composed from config (persona + mission + lane focus).
     const instructions = sessionOptionsSeen[0]?.instructions ?? "";
@@ -610,7 +622,7 @@ describe("runCuaActorLab", () => {
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(outcome.result.error).toBeUndefined();
-    expect(sandbox.calls).toContainEqual(["open", "https://preview-xyz.vercel.app/"]);
+    expectSafeBrowserOpen(sandbox.calls, "https://preview-xyz.vercel.app/");
 
     // Without the policy, the engine fails closed even if a config bypasses the parser.
     const sandbox2 = makeFakeSandbox();
@@ -737,10 +749,11 @@ describe("runCuaActorLab", () => {
     expect(ovBundle.streams[0].viewport).toMatchObject({ width: 1024, height: 768, deviceScaleFactor: 1, isMobile: false });
   });
 
-  it("falls back to launching the browser explicitly when the SDK lacks open()", async () => {
+  it("opens HTTP targets with a shell-quoted browser command so query params survive", async () => {
+    const targetUrl = "http://127.0.0.1:3000/api/bootstrap?origin=http%3A%2F%2F127.0.0.1%3A3000&scenario=alpha&redirect=%2Fdashboard";
     const sandbox = makeFakeSandbox({ withOpen: false });
     const { module } = makeFakeModule(sandbox);
-    const outcome = await runLab(cuaConfig(), {
+    const outcome = await runLab(cuaConfig(targetUrl), {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
@@ -751,7 +764,11 @@ describe("runCuaActorLab", () => {
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    expect(sandbox.calls).toContainEqual(["launch", "google-chrome", "http://127.0.0.1:3000/"]);
+    const openIndex = expectSafeBrowserOpen(sandbox.calls, targetUrl);
+    const openCommand = String(sandbox.calls[openIndex]?.[1] ?? "");
+    expect(openCommand).toContain("&scenario=alpha&redirect=");
+    expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
+    expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
   });
 
   it("live with missing keys fails closed, names the variables, and never creates a sandbox", async () => {
@@ -968,10 +985,9 @@ describe("runCuaActorLab", () => {
     const probeIndex = sandbox.calls.findIndex(
       (call) => call[0] === "commands.run" && String(call[1]).includes("curl")
     );
-    const openIndex = sandbox.calls.findIndex((call) => call[0] === "open");
+    const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
     expect(probeIndex).toBeGreaterThan(-1);
     expect(openIndex).toBeGreaterThan(probeIndex);
-    expect(sandbox.calls[openIndex]).toEqual(["open", "http://127.0.0.1:3000/"]);
 
     // The model's click actuated the real executor against the served subject.
     expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
@@ -1379,7 +1395,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const probeIndex = sandbox.calls.findIndex(
       (call) => call[0] === "commands.run" && String(call[1]).includes("curl -sf -o /dev/null")
     );
-    const openIndex = sandbox.calls.findIndex((call) => call[0] === "open");
+    const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
     expect(writeIndexFor("subject-install")).toBeLessThan(writeIndexFor("subject-state-prebuild"));
     expect(writeIndexFor("subject-state-prebuild")).toBeLessThan(writeIndexFor("subject-build"));
     expect(writeIndexFor("subject-build")).toBeLessThan(writeIndexFor("subject-state-db-up"));
