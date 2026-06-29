@@ -1,7 +1,7 @@
 // The shared-world lab backend (#164): the SEQUENTIAL deterministic proof-of-concept of the
 // shared-world topology. ONE sandbox provisions a mutable service plane ONCE (clone + serve +
-// seed), then N role SEATS take turns IN DECLARED ORDER (each an isolated Chrome
-// `--user-data-dir` profile + identity) against the shared loopback app. A read-only state
+// seed), then N role SEATS take turns IN DECLARED ORDER (each an isolated browser
+// profile + identity) against the shared loopback app. A read-only state
 // CHECKPOINT (digest probe) runs at baseline + after each role's turn, producing a
 // harness-clocked timeline that PROVES role B acted on a world already containing role A's
 // mutation (the checkpoint after A strictly precedes B's turn in one clock).
@@ -41,7 +41,8 @@ import {
   provisionCloneSubject,
   resolveLaneDevice,
   resolveSubjectState,
-  SUBJECT_DIR
+  SUBJECT_DIR,
+  type DesktopBrowserEvidence
 } from "./cua-actor-lab.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
@@ -57,6 +58,7 @@ import {
   sharedWorldValidationReason,
   type LabActorLane,
   type LabConfig,
+  type LabDesktopBrowser,
   type LabSubjectStateCheckpoint
 } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
@@ -220,6 +222,7 @@ interface RoleOutcome {
   session?: CuaLoopResult;
   sessionError?: string;
   screenshots: string[];
+  desktopBrowser?: DesktopBrowserEvidence;
   /** Set when fail-fast skipped this role before it ran. */
   skippedReason?: string;
   noEngagement: boolean;
@@ -249,17 +252,66 @@ function shellQuote(value: string): string {
 }
 
 /**
- * Launch ONE seat's browser with its OWN isolated Chrome profile — the NEW plumbing the
- * shared-world topology needs (the generic CUA launcher does not allocate a shared-world seat
- * profile dir). A fresh `--user-data-dir` per role is the seat identity boundary (cookies/session
- * are isolated per role); the URL is the role's same-origin loopback entry. Launched detached.
+ * Launch ONE seat's browser with its OWN isolated profile — the shared-world topology needs a
+ * fresh browser identity boundary per role (cookies/session isolated per seat). Absent/default
+ * preserves the historical shared-world opener (Chrome best-effort). A concrete preference is
+ * fail-closed and records the resolved in-sandbox command.
  */
 async function launchSeatBrowser(
   desktop: E2BDesktopSandbox,
-  args: { profileDir: string; seatUrl: string; requestTimeoutMs: number }
-): Promise<void> {
-  const command = `setsid -f google-chrome --user-data-dir=${shellQuote(args.profileDir)} --no-first-run --no-default-browser-check ${shellQuote(args.seatUrl)} > /dev/null 2>&1 < /dev/null || true`;
-  await desktop.commands.run(command, { requestTimeoutMs: args.requestTimeoutMs });
+  args: {
+    browserPreference?: LabDesktopBrowser;
+    profileDir: string;
+    requestTimeoutMs: number;
+    seatUrl: string;
+  }
+): Promise<DesktopBrowserEvidence | undefined> {
+  const requested = args.browserPreference ?? "default";
+  const command = [
+    "set -euo pipefail",
+    `browser_preference=${shellQuote(requested)}`,
+    `profile_dir=${shellQuote(args.profileDir)}`,
+    `seat_url=${shellQuote(args.seatUrl)}`,
+    'mkdir -p "$profile_dir"',
+    "launch_chrome() {",
+    "  local label=\"$1\"",
+    "  local binary=\"$2\"",
+    "  if ! command -v \"$binary\" >/dev/null 2>&1; then return 127; fi",
+    "  echo \"MIMETIC_BROWSER_RESOLVED=$label\"",
+    "  setsid -f \"$binary\" --new-window --user-data-dir=\"$profile_dir\" --no-first-run --no-default-browser-check --disable-default-apps \"$seat_url\" > /dev/null 2>&1 < /dev/null",
+    "}",
+    "launch_firefox() {",
+    "  if ! command -v firefox >/dev/null 2>&1; then return 127; fi",
+    "  echo \"MIMETIC_BROWSER_RESOLVED=firefox\"",
+    "  setsid -f firefox --new-window --profile \"$profile_dir\" \"$seat_url\" > /dev/null 2>&1 < /dev/null",
+    "}",
+    "case \"$browser_preference\" in",
+    "  chrome)",
+    "    launch_chrome google-chrome google-chrome || launch_chrome google-chrome-stable google-chrome-stable",
+    "    ;;",
+    "  chromium)",
+    "    launch_chrome chromium chromium || launch_chrome chromium-browser chromium-browser",
+    "    ;;",
+    "  firefox)",
+    "    launch_firefox",
+    "    ;;",
+    "  default)",
+    "    launch_chrome google-chrome google-chrome || true",
+    "    ;;",
+    "esac"
+  ].join("\n");
+  const result = await desktop.commands.run(command, { requestTimeoutMs: args.requestTimeoutMs });
+  if (args.browserPreference !== undefined && args.browserPreference !== "default" && result.exitCode !== undefined && result.exitCode !== 0) {
+    throw new Error(`requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`);
+  }
+  if (args.browserPreference === undefined) {
+    return undefined;
+  }
+  const resolved = (result.stdout ?? "").match(/^MIMETIC_BROWSER_RESOLVED=(\S+)$/m)?.[1];
+  return {
+    requested,
+    ...(resolved === undefined ? {} : { resolved })
+  };
 }
 
 /** Combine a snapshot's per-probe digests into ONE sha256-16 (digest-only; no raw value). */
@@ -543,9 +595,15 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         const writeScreenshot = makeLaneWriteScreenshot(artifactRoot, { screenshotDir: spec.screenshotDir }, screenshots);
         let session: CuaLoopResult | undefined;
         let sessionError: string | undefined;
+        let desktopBrowser: DesktopBrowserEvidence | undefined;
         try {
-          // Fresh isolated Chrome profile per seat, opened at the role's same-origin loopback entry.
-          await launchSeatBrowser(desktop, { profileDir: spec.profileDir, seatUrl: spec.seatUrl, requestTimeoutMs });
+          // Fresh isolated browser profile per seat, opened at the role's same-origin loopback entry.
+          desktopBrowser = await launchSeatBrowser(desktop, {
+            ...(config.execution?.desktop?.browser === undefined ? {} : { browserPreference: config.execution.desktop.browser }),
+            profileDir: spec.profileDir,
+            seatUrl: spec.seatUrl,
+            requestTimeoutMs
+          });
           await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
           const sessionOptions: CuaActorSessionOptions = {
             instructions: spec.instructions,
@@ -601,6 +659,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
           ...(session ? { session } : {}),
           ...(sessionError === undefined ? {} : { sessionError }),
           screenshots,
+          ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
           noEngagement,
           harnessError,
           afterCheckpoint
@@ -1049,6 +1108,13 @@ export function buildSharedWorldBundle(args: {
       })();
   const passedRoles = roleOutcomes.filter((outcome) =>
     sharedWorldRoleOutcomeOk(outcome, dryRun)).length;
+  const configuredBrowser = config.execution?.desktop?.browser;
+  const resolvedBrowsers = roleOutcomes
+    .map((outcome) => outcome.desktopBrowser?.resolved)
+    .filter((value): value is string => value !== undefined);
+  const unanimousResolvedBrowser = resolvedBrowsers.length > 0 && new Set(resolvedBrowsers).size === 1
+    ? resolvedBrowsers[0]
+    : undefined;
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
@@ -1122,6 +1188,9 @@ export function buildSharedWorldBundle(args: {
     feedbackCandidates: [],
     // Custom desktop image provenance (the ONE shared plane launched on it); omitted on the default.
     ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(configuredBrowser === undefined
+      ? {}
+      : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),
     subject: args.subject,
     attributionClass: "shared-world",
     sharedWorld
