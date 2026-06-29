@@ -36,6 +36,16 @@ interface FakeSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
 }
 
+function browserTargetFromCalls(calls: Array<[string, ...unknown[]]>): string | undefined {
+  for (const call of calls) {
+    if (call[0] === "open") return String(call[1]);
+    if (call[0] !== "commands.run") continue;
+    const target = String(call[1]).match(/^target_url='([^']+)'$/m)?.[1];
+    if (target) return target;
+  }
+  return undefined;
+}
+
 function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdout?: string } | undefined): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
   const sandbox = {
@@ -347,9 +357,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const actorSandboxes = sandboxes.slice(1);
     expect(actorSandboxes).toHaveLength(3);
     for (const actor of actorSandboxes) {
-      const opened = actor.calls.find(([name]) => name === "open");
+      const opened = browserTargetFromCalls(actor.calls);
       expect(opened, "each actor opens a seat URL").toBeTruthy();
-      expect(new URL(String(opened![1])).origin).toBe(new URL(getHostUrl).origin);
+      expect(new URL(opened!).origin).toBe(new URL(getHostUrl).origin);
     }
     // The published bundle records the host as a DIGEST (public-safe), never the raw e2b URL; the
     // raw tokenless URL is surfaced only on the ephemeral result.

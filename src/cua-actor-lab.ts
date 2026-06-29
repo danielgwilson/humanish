@@ -689,12 +689,16 @@ async function findVisibleBrowserWindowId(
     "find_chrome_window() {",
     "  timeout 2s xdotool search --onlyvisible --class 'google-chrome|Google-chrome|chromium|Chromium|chrome|Chrome' 2>/dev/null | tail -n 1 || true",
     "}",
+    "find_firefox_window() {",
+    "  timeout 2s xdotool search --onlyvisible --class 'firefox|Firefox' 2>/dev/null | tail -n 1 || true",
+    "}",
     "find_named_window() {",
-    "  timeout 2s xdotool search --onlyvisible --name 'Google Chrome|Chromium|127[.]0[.]0[.]1|localhost' 2>/dev/null | tail -n 1 || true",
+    "  timeout 2s xdotool search --onlyvisible --name 'Google Chrome|Chromium|Mozilla Firefox|127[.]0[.]0[.]1|localhost|e2b[.]app|e2b[.]dev' 2>/dev/null | tail -n 1 || true",
     "}",
     "window_id=",
     "for _ in $(seq 1 10); do",
     "  window_id=\"$(find_chrome_window)\"",
+    "  if [ -z \"$window_id\" ]; then window_id=\"$(find_firefox_window)\"; fi",
     "  if [ -z \"$window_id\" ]; then window_id=\"$(find_named_window)\"; fi",
     "  if [ -n \"$window_id\" ]; then break; fi",
     "  sleep 0.5",
@@ -705,6 +709,51 @@ async function findVisibleBrowserWindowId(
     timeoutMs: 15_000
   });
   return (result.stdout ?? "").match(/^WINDOW_ID=(\S+)$/m)?.[1];
+}
+
+async function openDesktopBrowserTarget(
+  desktop: E2BDesktopSandbox,
+  targetUrl: string,
+  requestTimeoutMs: number
+): Promise<void> {
+  if (isHttpUrl(targetUrl)) {
+    const result = await desktop.commands.run([
+      "set -euo pipefail",
+      `target_url=${shellSingleQuote(targetUrl)}`,
+      "open_target() {",
+      "  if command -v xdg-open >/dev/null 2>&1; then",
+      "    nohup xdg-open \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
+      "  elif command -v firefox >/dev/null 2>&1; then",
+      "    nohup firefox \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
+      "  elif command -v google-chrome >/dev/null 2>&1; then",
+      "    nohup google-chrome \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
+      "  elif command -v chromium >/dev/null 2>&1; then",
+      "    nohup chromium \"$target_url\" >/tmp/mimetic-browser-open.log 2>&1 &",
+      "  else",
+      "    echo 'no browser opener found' >&2",
+      "    return 127",
+      "  fi",
+      "}",
+      "open_target"
+    ].join("\n"), {
+      requestTimeoutMs,
+      timeoutMs: 15_000
+    });
+    if (result.exitCode !== undefined && result.exitCode !== 0) {
+      throw new Error(`browser launch failed with exit ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
+    }
+    return;
+  }
+
+  if (desktop.open) {
+    await desktop.open(targetUrl);
+  } else {
+    await desktop.launch("google-chrome", targetUrl);
+  }
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 async function startDesktopStream(
@@ -820,11 +869,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         });
       }
 
-      if (desktop.open) {
-        await desktop.open(targetUrl);
-      } else {
-        await desktop.launch("google-chrome", targetUrl);
-      }
+      await openDesktopBrowserTarget(desktop, targetUrl, deps.requestTimeoutMs);
       await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
 
       // World is ready: release the pipeline gate so the remaining lanes may start.
@@ -1662,6 +1707,7 @@ function buildSingleLaneBundle(args: {
   return buildCuaBundle({
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
+    laneId: spec.laneId,
     ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
     ...(spec.surface === undefined ? {} : { surface: spec.surface }),
     ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
@@ -1939,6 +1985,7 @@ function tailOf(log: string): string {
 export function buildCuaBundle(args: {
   actorId: string;
   appUrl: string;
+  laneId?: string;
   actorType?: string;
   surface?: string;
   caseGroup?: string;
@@ -2020,7 +2067,7 @@ export function buildCuaBundle(args: {
   const stream: RunStream = {
     id: "stream-001",
     simId: "sim-001",
-    laneId: "lane-01",
+    laneId: args.laneId ?? "lane-01",
     ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
     ...(args.surface === undefined ? {} : { surface: args.surface }),
     ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),

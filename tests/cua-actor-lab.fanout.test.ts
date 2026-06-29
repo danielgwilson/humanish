@@ -114,6 +114,10 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
           if (command.includes("xdpyinfo")) {
             return { exitCode: 0, stdout: `  dimensions:    ${reported[0]}x${reported[1]} pixels (300x200 millimeters)\n` };
           }
+          const targetUrl = command.match(/^target_url='([^']+)'$/m)?.[1];
+          if (targetUrl) {
+            opened.push(targetUrl);
+          }
           return { exitCode: 0, stdout: "" };
         }
       },
@@ -500,6 +504,42 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       { laneId: "role-a", actorType: "reviewer", surface: "review-queue", caseGroup: "case-001" },
       { laneId: "role-b", actorType: "operator", surface: "dashboard", caseGroup: "case-001" }
     ]);
+    const verified = await verifyRun(cwd, outcome.result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("preserves adapter lane metadata and explicit target on the single-lane bundle path", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      lanes: [
+        {
+          id: "role-a",
+          actorType: "reviewer",
+          surface: "review-queue",
+          caseGroup: "case-001",
+          persona: "role-a",
+          target: "http://127.0.0.1:3001/role-a?scenario=alpha",
+          instruction: "Start from target A."
+        }
+      ]
+    });
+    const outcome = await runLab(config, { cwd, cuaHooks: passingHooks(handle) });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+
+    expect(outcome.result.ok).toBe(true);
+    expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a?scenario=alpha"]);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams).toHaveLength(1);
+    expect(bundle.streams[0]).toMatchObject({
+      laneId: "role-a",
+      actorType: "reviewer",
+      surface: "review-queue",
+      caseGroup: "case-001",
+      ui: { route: "http://127.0.0.1:3001/role-a?scenario=alpha" }
+    });
+
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(verified.ok).toBe(true);
   });
