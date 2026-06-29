@@ -119,12 +119,14 @@ interface LabCommandOptions {
   envFile?: string | undefined;
   json?: boolean | undefined;
   keep?: boolean | undefined;
+  lanes?: string | undefined;
   limit?: string | undefined;
   open?: boolean | undefined;
   port?: string | undefined;
   redactRepos?: boolean | undefined;
   repo?: string[] | undefined;
   repos?: string | undefined;
+  rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
   sims?: string | undefined;
 }
@@ -1128,6 +1130,8 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
     .option("--count <count>", "Override headed desktop lane count.")
+    .option("--rerun-failed-from <run>", "CUA fan-out only: create a new run for failed lanes from a prior run.")
+    .option("--lanes <lane-ids>", "CUA rerun only: comma-separated lane ids to rerun from the source run.")
     .option("--limit <count>", "Override smoke lab repo limit.")
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -1143,6 +1147,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "",
         "Examples:",
         "  mimetic lab run first-run",
+        "  mimetic lab run first-run --rerun-failed-from latest --lanes lane-02,lane-04",
         "  mimetic lab run oss --dry-run --json --no-open",
         "  mimetic lab run .mimetic/labs/private-dogfood.yaml --env-file .mimetic/local/provider.env",
         "",
@@ -1549,13 +1554,34 @@ async function runCuaBackend(args: {
     : wantsMachine
       ? args.options.open === true
       : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const laneIds = parseLaneIds(args.options.lanes);
+  if (laneIds.length > 0 && !args.options.rerunFailedFrom) {
+    args.io.writeErr("error: --lanes requires --rerun-failed-from.\n");
+    args.io.setExitCode(2);
+    return;
+  }
+  const count = parseLabCount(args.options.count ?? args.options.sims, args.config.actors[0]?.count ?? 1);
+  if (count === null) {
+    args.io.writeErr("error: --count/--sims must be a positive integer.\n");
+    args.io.setExitCode(2);
+    return;
+  }
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
     // Watch mode opens the served Observer below instead of the static render.
     open: args.mode === "watch" ? false : shouldOpen,
+    count,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+    ...(args.options.rerunFailedFrom === undefined
+      ? {}
+      : {
+          rerun: {
+            sourceRunId: args.options.rerunFailedFrom,
+            ...(laneIds.length === 0 ? {} : { laneIds })
+          }
+        })
   });
   if (outcome.backend !== "cua") {
     throw new Error(`Expected cua backend, got ${outcome.backend}.`);
@@ -1893,6 +1919,9 @@ function formatCuaLabHuman(result: CuaActorLabResult): string {
     ...(result.subject?.source === "clone"
       ? [`repo: ${result.subject.repo}${result.subject.commit ? `@${result.subject.commit.slice(0, 12)}` : ""}${result.subject.envNames && result.subject.envNames.length > 0 ? ` env=[${result.subject.envNames.join(", ")}]` : ""}`]
       : []),
+    ...(result.rerun
+      ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
+      : []),
     ...(result.session
       ? [`session: ${result.session.status} (${result.session.completionReason}) — ${result.session.reason}`,
          `screenshots: ${result.session.screenshots}`]
@@ -2149,6 +2178,21 @@ function labReposOverride(options: LabCommandOptions): string[] | undefined {
 
 function parseLabCount(value: string | undefined, fallback: number): number | null {
   return value === undefined ? fallback : parsePositiveInteger(value);
+}
+
+function parseLaneIds(value: string | undefined): string[] {
+  if (value === undefined) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const laneIds: string[] = [];
+  for (const raw of value.split(",")) {
+    const laneId = raw.trim();
+    if (!laneId || seen.has(laneId)) continue;
+    seen.add(laneId);
+    laneIds.push(laneId);
+  }
+  return laneIds;
 }
 
 function withObserverServer(rendered: ObserverResult, server: ObserverServer): ObserverResult {

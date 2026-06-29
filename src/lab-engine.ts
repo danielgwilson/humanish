@@ -45,6 +45,11 @@ export interface RunLabOptions {
   open?: boolean;
   /** Lane override: synthetic sims, smoke repo limit, or meta desktop count. */
   count?: number;
+  /** CUA fan-out only: create a new run for failed/selected lanes from a prior run. */
+  rerun?: {
+    sourceRunId: string;
+    laneIds?: string[];
+  };
   repos?: string[];
   keep?: boolean;
   redactRepos?: boolean;
@@ -197,6 +202,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
         ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks })
       });
       return { backend, result };

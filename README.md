@@ -214,6 +214,20 @@ A concrete value means "launch this browser or fail" rather than silently fallin
 whatever the image prefers. When configured, run bundles record the requested browser and the
 resolved in-sandbox command as `desktopBrowser`.
 
+**Failed-lane reruns.** Multi-lane CUA fan-out can be rerun surgically without mutating
+the source run:
+
+```bash
+npx mimetic lab run cua-browser --rerun-failed-from latest --json --no-open
+npx mimetic lab run cua-browser --rerun-failed-from <run-id> --lanes lane-02,lane-04
+```
+
+This creates a new linked run containing only the failed/blocked/timed-out/hollow lanes
+(or the explicit `--lanes` selection). The new `run.json` records `rerun.sourceRunId`,
+selected lane ids, and previous lane statuses; the source run's verdict is left unchanged.
+This is intentionally not automatic retry; a passing rerun is evidence of a
+nondeterminism candidate, not permission to erase the original red lane.
+
 Trust note: `serve` commands run inside the disposable sandbox with the declared
 subject env provisioned — the same trust class as a repo's package.json scripts.
 Only run lab configs you trust, and declare only the env names that the subject

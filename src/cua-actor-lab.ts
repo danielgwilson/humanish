@@ -73,12 +73,14 @@ import { renderObserver, type ObserverResult } from "./observer.js";
 import { containsSensitive, redactText } from "./redaction.js";
 import {
   buildRunSource,
+  loadRunBundle,
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
+  type RunRerunLineage,
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream,
@@ -197,6 +199,11 @@ export interface RunCuaActorLabOptions {
   /** CLI `--count` override for the homogeneous fan-out lane count (ignored when a `lanes`
    *  roster is declared — a roster's length is authoritative). */
   countOverride?: number;
+  /** Explicitly create a new run containing failed or selected lanes from a prior fan-out run. */
+  rerun?: {
+    sourceRunId: string;
+    laneIds?: string[];
+  };
   hooks?: CuaActorLabHooks;
 }
 
@@ -292,6 +299,7 @@ export type CuaActorLabErrorCode =
   | "MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER"
   | "MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
   | "MIMETIC_CUA_LAB_FANOUT_INVALID"
+  | "MIMETIC_CUA_LAB_RERUN_INVALID"
   | "MIMETIC_CUA_LAB_DEVICE_GEOMETRY";
 
 /** Subject provenance projection (invariant 5): what the actor actually drove. */
@@ -341,6 +349,8 @@ export interface CuaActorLabResult {
   lanes?: CuaLaneResult[];
   /** Aggregate lane counts. */
   laneSummary?: CuaLaneSummary;
+  /** Present when this run explicitly re-executes selected lanes from a prior CUA fan-out run. */
+  rerun?: RunRerunLineage;
   observer?: ObserverResult;
   warnings: string[];
   error?: {
@@ -532,6 +542,125 @@ function laneSpecsAndPlan(
     }))
   };
   return { lanes, plan };
+}
+
+async function resolveCuaRerunSelection(args: {
+  cwd: string;
+  config: LabConfig;
+  sourceRunId: string;
+  laneIds?: string[];
+  laneSpecs: CuaLaneSpec[];
+  plan: CuaLanePlan;
+}): Promise<
+  | { ok: true; laneSpecs: CuaLaneSpec[]; plan: CuaLanePlan; rerun: RunRerunLineage }
+  | { ok: false; message: string }
+> {
+  const source = await loadRunBundle(args.cwd, args.sourceRunId);
+  if (!source) {
+    return { ok: false, message: `source run not found or invalid: ${args.sourceRunId}` };
+  }
+  const bundle = source.bundle;
+  if (bundle.mode !== "live") {
+    return { ok: false, message: `source run ${bundle.runId} is ${bundle.mode}; rerun selection only applies to live CUA fan-out evidence.` };
+  }
+  const fanoutEvent = bundle.events.some((event) => event.type === "cua-lab.fanout.plan");
+  if (!fanoutEvent || bundle.streams.length < 2) {
+    return { ok: false, message: `source run ${bundle.runId} is not a CUA fan-out run.` };
+  }
+
+  const prior = bundle.streams
+    .map(snapshotPriorCuaLane)
+    .filter((lane): lane is ReturnType<typeof snapshotPriorCuaLane> & { laneId: string } => lane !== null);
+  const priorById = new Map(prior.map((lane) => [lane.laneId, lane]));
+  if (priorById.size < 2) {
+    return { ok: false, message: `source run ${bundle.runId} does not expose multiple lane ids.` };
+  }
+
+  const explicitLaneIds = uniqueLaneIds(args.laneIds ?? []);
+  const selectedLaneIds = explicitLaneIds.length > 0
+    ? explicitLaneIds
+    : prior.filter((lane) => lane.rerunnable).map((lane) => lane.laneId);
+  if (selectedLaneIds.length === 0) {
+    return { ok: false, message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow lanes to rerun.` };
+  }
+
+  const missingPrior = selectedLaneIds.filter((laneId) => !priorById.has(laneId));
+  if (missingPrior.length > 0) {
+    return { ok: false, message: `selected lane id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}` };
+  }
+
+  const specsById = new Map(args.laneSpecs.map((spec) => [spec.laneId, spec]));
+  const missingCurrent = selectedLaneIds.filter((laneId) => !specsById.has(laneId));
+  if (missingCurrent.length > 0) {
+    return { ok: false, message: `selected lane id(s) are not present in the current lab config ${args.config.id}: ${missingCurrent.join(", ")}` };
+  }
+
+  const selectedSpecs = selectedLaneIds.map((laneId) => specsById.get(laneId)!);
+  const selectedPlanLaneIds = new Set(selectedLaneIds);
+  const selectedPlanEntries = args.plan.lanes.filter((lane) => selectedPlanLaneIds.has(lane.id));
+  const concurrency = Math.max(1, Math.min(args.plan.concurrency, selectedSpecs.length));
+  const plan: CuaLanePlan = {
+    ...args.plan,
+    laneCount: selectedSpecs.length,
+    concurrency,
+    waves: Math.ceil(selectedSpecs.length / concurrency),
+    worstCaseSandboxMinutes: Math.round((selectedSpecs.length * resolvePerLaneSandboxMs(args.config)) / 60_000),
+    lanes: selectedPlanEntries
+  };
+
+  const previous = selectedLaneIds.map((laneId) => priorById.get(laneId)!.previous);
+  return {
+    ok: true,
+    laneSpecs: selectedSpecs,
+    plan,
+    rerun: {
+      sourceRunId: bundle.runId,
+      selectedLaneIds,
+      previous
+    }
+  };
+}
+
+function uniqueLaneIds(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const laneId = value.trim();
+    if (!laneId || seen.has(laneId)) continue;
+    seen.add(laneId);
+    result.push(laneId);
+  }
+  return result;
+}
+
+function snapshotPriorCuaLane(stream: RunStream): { laneId: string; previous: RunRerunLineage["previous"][number]; rerunnable: boolean } | null {
+  if (stream.kind !== "browser" || typeof stream.laneId !== "string" || !stream.laneId.trim()) {
+    return null;
+  }
+  const actorStatus = stream.actor?.status;
+  const completionReason = stream.actor?.completionReason;
+  const reason = stream.ui?.state ?? stream.actor?.reason;
+  const actions = stream.actor?.counts.actions ?? 0;
+  const messages = stream.actor?.counts.messages ?? 0;
+  const hollow = completionReason === "goal_satisfied" && actions === 0 && messages === 0;
+  const rerunnable = stream.status !== "passed"
+    || actorStatus === "failed"
+    || actorStatus === "blocked"
+    || actorStatus === "timed_out"
+    || completionReason === "harness_error"
+    || hollow;
+  return {
+    laneId: stream.laneId,
+    previous: {
+      laneId: stream.laneId,
+      streamId: stream.id,
+      status: stream.status,
+      ...(reason === undefined ? {} : { reason }),
+      ...(actorStatus === undefined ? {} : { actorStatus }),
+      ...(completionReason === undefined ? {} : { completionReason })
+    },
+    rerunnable
+  };
 }
 
 /**
@@ -1385,12 +1514,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   }
 
   // Resolve the lane plan (pure) — the SAME table for dry-run and live.
-  const { lanes: laneSpecs, plan } = laneSpecsAndPlan(config, {
+  let { lanes: laneSpecs, plan } = laneSpecsAndPlan(config, {
     ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
     env,
     dryRun
   });
-  const laneCount = laneSpecs.length;
+  let laneCount = laneSpecs.length;
 
   if (laneCount > MAX_CUA_LANES) {
     return fail(
@@ -1405,6 +1534,25 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
       descriptor.id
     );
+  }
+
+  let rerunLineage: RunRerunLineage | undefined;
+  if (options.rerun) {
+    const selected = await resolveCuaRerunSelection({
+      cwd,
+      config,
+      sourceRunId: options.rerun.sourceRunId,
+      ...(options.rerun.laneIds === undefined ? {} : { laneIds: options.rerun.laneIds }),
+      laneSpecs,
+      plan
+    });
+    if (!selected.ok) {
+      return fail("MIMETIC_CUA_LAB_RERUN_INVALID", selected.message, descriptor.id);
+    }
+    laneSpecs = selected.laneSpecs;
+    plan = selected.plan;
+    laneCount = laneSpecs.length;
+    rerunLineage = selected.rerun;
   }
 
   // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). The hook fires for
@@ -1548,7 +1696,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     };
   })();
 
-  const bundle = laneCount === 1
+  const bundle = laneCount === 1 && rerunLineage === undefined
     ? buildSingleLaneBundle({
         spec: laneSpecs[0]!,
         outcome: outcomes?.[0],
@@ -1586,6 +1734,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         runId,
         source,
         plan,
+        ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
         ...(failFastReason === undefined ? {} : { failFastReason }),
         cloneRoute,
         ...(publicRepo === undefined ? {} : { publicRepo }),
@@ -1701,6 +1850,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     plan,
     lanes: laneResults,
     laneSummary,
+    ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
     observer,
     warnings,
     ...(errorResult === undefined ? {} : { error: errorResult })
@@ -2338,6 +2488,7 @@ export function buildCuaFanoutBundle(args: {
   runId: string;
   source: RunBundle["source"];
   plan: CuaLanePlan;
+  rerun?: RunRerunLineage;
   failFastReason?: string;
   cloneRoute: boolean;
   publicRepo?: string;
@@ -2365,6 +2516,16 @@ export function buildCuaFanoutBundle(args: {
 
   let eventSeq = 2;
   const nextEventId = (suffix: string): string => `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
+
+  if (args.rerun) {
+    events.push({
+      id: nextEventId("fanout-rerun"),
+      at: args.createdAt,
+      level: "info",
+      type: "cua-lab.fanout.rerun",
+      message: `Rerun selected ${args.rerun.selectedLaneIds.length} lane(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((lane) => `${lane.laneId} was ${lane.status}${lane.completionReason ? `/${lane.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`
+    });
+  }
 
   specs.forEach((spec, index) => {
     const outcome = outcomes?.[index];
@@ -2561,8 +2722,8 @@ export function buildCuaFanoutBundle(args: {
     schema: REVIEW_SCHEMA,
     verdict,
     summary: args.dryRun
-      ? `Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-      : `Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict.`,
+      ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
+      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict.`,
     gaps: args.dryRun
       ? ["Live fan-out session not yet run (dry-run contract only)."]
       : specs
@@ -2620,6 +2781,7 @@ export function buildCuaFanoutBundle(args: {
     simulations,
     streams,
     events,
+    ...(args.rerun === undefined ? {} : { rerun: args.rerun }),
     redaction: {
       status: "passed",
       notes: ranLive

@@ -204,6 +204,15 @@ projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event
 `ok = observer.ok ∧ no skipped lane ∧ all lanes terminal ∧ no harness error ∧ no
 hollow lane`.
 
+Explicit failed-lane reruns are supported on the CUA fan-out route via
+`mimetic lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
+The source run must be a live CUA fan-out bundle. Mimetic creates a NEW run for
+the selected failed/blocked/timed-out/hollow lanes (or explicit lane ids), leaves
+the source verdict unchanged, and records lineage as `run.rerun` plus a
+`cua-lab.fanout.rerun` event: source run id, selected lane ids, and previous lane
+statuses/reasons. This is intentionally not automatic retry; a passing rerun is a
+nondeterminism candidate for human/product scoring, not a rewrite of the old run.
+
 Manifests are human-authored `.yaml` source under `mimetic/labs/*.yaml` for
 committed public-safe labs, or ignored `.mimetic/labs/*.yaml` /
 `.mimetic/local/labs/*.yaml` for private local dogfood. Fields the engine does
