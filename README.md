@@ -208,6 +208,12 @@ arrives with the deterministic CDP actor. Device is run-wide today; per-*persona
 (N personas × devices) lands with fan-out. `execution.desktop.resolution` is a raw escape
 hatch that overrides the preset.
 
+**Desktop browser choice.** Plain hosted computer-use lanes use the desktop image's default
+URL opener unless you set `execution.desktop.browser` to `chrome`, `chromium`, or `firefox`.
+A concrete value means "launch this browser or fail" rather than silently falling back to
+whatever the image prefers. When configured, run bundles record the requested browser and the
+resolved in-sandbox command as `desktopBrowser`.
+
 Trust note: `serve` commands run inside the disposable sandbox with the declared
 subject env provisioned — the same trust class as a repo's package.json scripts.
 Only run lab configs you trust, and declare only the env names that the subject

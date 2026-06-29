@@ -146,6 +146,13 @@ A lab is a composition over code primitives, not a hardcoded kind:
   (public-safe — a template name is not a secret). Inert (warned) on every route
   that creates no desktop, incl. the in-process `local-app` cua route and the
   meta route — never silently ignored (invariant 6);
+- `execution.desktop.browser` (plain e2b-desktop computer-use/fan-out routes,
+  plus concurrent shared-world actor seats): optional browser family preference:
+  `default`, `chrome`, `chromium`, or `firefox`. Absent/default preserves the
+  historical desktop opener behavior. A concrete value means launch that browser
+  or fail closed; when configured, the bundle records `desktopBrowser` with the
+  requested value and the resolved in-sandbox command when known. Inert (warned)
+  where this route-specific browser launcher is not used;
 - `execution.terminal` + `execution.runtimeAuth` (terminal-product route):
   `terminal.transport` is `exec-stream` — captured NON-interactive exec output
   (stdin disabled); `pty` is rejected because labeling captured exec output as

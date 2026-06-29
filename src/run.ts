@@ -613,6 +613,15 @@ export interface RunBundle {
    */
   desktopTemplate?: string;
   /**
+   * Browser family requested for hosted desktop actor lanes and the in-sandbox command that opened
+   * it, when explicitly configured. Optional + additive; absent means the historical default opener
+   * path was used or the backend does not create a headed desktop.
+   */
+  desktopBrowser?: {
+    requested: "default" | "chrome" | "chromium" | "firefox";
+    resolved?: string;
+  };
+  /**
    * The interaction-attribution honesty axis (#164). Absent == `isolated` (every existing bundle
    * byte-stable). Set to `shared-world` by the shared-world backend, paired with `sharedWorld`.
    */
@@ -5036,6 +5045,7 @@ function isRunBundle(value: unknown): value is RunBundle {
     // Optional and additive: pre-existing bundles (and non-cua backends) carry no subject
     // block; when present it must be well-shaped (semantics are the verify check's job).
     && (value.subject === undefined || isRunSubjectProvenance(value.subject))
+    && (value.desktopBrowser === undefined || isDesktopBrowserEvidence(value.desktopBrowser))
     // Optional + additive shared-world fields (#164). Tolerant SHAPE guard only — the interaction
     // semantics (timeline well-formedness, single-plane, delta-on-pass) are the verify check's job.
     && (value.attributionClass === undefined || value.attributionClass === "isolated" || value.attributionClass === "shared-world")
@@ -5043,6 +5053,12 @@ function isRunBundle(value: unknown): value is RunBundle {
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
     // its SHAPE; core never reads the adapter's `data` payload.
     && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore));
+}
+
+function isDesktopBrowserEvidence(value: unknown): value is RunBundle["desktopBrowser"] {
+  return isRecord(value)
+    && (value.requested === "default" || value.requested === "chrome" || value.requested === "chromium" || value.requested === "firefox")
+    && (value.resolved === undefined || typeof value.resolved === "string");
 }
 
 function isRunAdapterScore(value: unknown): value is RunAdapterScore {

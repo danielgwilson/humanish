@@ -200,6 +200,7 @@ execution:
   timeoutMs: 300000
   desktop:
     device: desktop             # mobile | small-mobile | narrow-mobile | tablet | desktop | wide
+    # browser: chrome            # default | chrome | chromium | firefox; concrete values fail closed
     # On this route only width/height render (real mobile LAYOUT); the model is told its device.
     # True touch/DPR/UA emulation comes with the deterministic CDP actor (a later slice).
 scenario:
