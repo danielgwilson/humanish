@@ -287,6 +287,11 @@ export interface OpenAiCuContext {
 function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
   return {
     model: ctx.model,
+    // Keep the task/persona contract present on every turn. Some computer-use
+    // continuations carry only screenshot call outputs; without repeating the
+    // instructions, a provider that does not fully retain prior state can drift
+    // into asking the operator what to do.
+    instructions: ctx.instructions,
     // The Responses API `computer` tool takes no display/environment fields — the model infers
     // resolution from the screenshots it is sent. (Sending display_* returns a 400
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
@@ -301,7 +306,6 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
 export function buildInitialRequest(ctx: OpenAiCuContext): Record<string, unknown> {
   return {
     ...sharedRequestFields(ctx),
-    instructions: ctx.instructions,
     input: [{ role: "user", content: [{ type: "input_text", text: ctx.instructions }] }]
   };
 }
@@ -471,6 +475,10 @@ function defaultDelay(ms: number): Promise<void> {
   });
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 /**
  * Create a stateful CuaProvider backed by the OpenAI Responses API. The first
  * turn opens a session (buildInitialRequest); subsequent turns send the prior
@@ -530,13 +538,27 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     };
     const payload = JSON.stringify(body);
     let lastStatus = 0;
+    let sawNetworkError = false;
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-      const res = await fetchFn(endpoint, {
-        method: "POST",
-        headers,
-        body: payload,
-        ...(signal === undefined ? {} : { signal })
-      });
+      let res: Awaited<ReturnType<FetchLike>>;
+      try {
+        res = await fetchFn(endpoint, {
+          method: "POST",
+          headers,
+          body: payload,
+          ...(signal === undefined ? {} : { signal })
+        });
+      } catch (error) {
+        if (signal?.aborted === true || isAbortError(error)) {
+          throw error;
+        }
+        sawNetworkError = true;
+        if (attempt < maxRetries) {
+          await delayFn(2 ** attempt * 200);
+          continue;
+        }
+        throw new Error("OpenAI Responses network error");
+      }
       if (res.ok) {
         const parsed: unknown = await res.json();
         // Capture AFTER ok and BEFORE parse-to-CuaTurn: responses only, never the
@@ -558,6 +580,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
         continue;
       }
       throw new Error(`OpenAI Responses ${res.status}`);
+    }
+    if (sawNetworkError) {
+      throw new Error("OpenAI Responses network error");
     }
     throw new Error(`OpenAI Responses ${lastStatus}`);
   };

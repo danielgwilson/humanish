@@ -699,12 +699,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   const observer = await render(cwd, runId, { open: options.open === true });
 
   const roleOk = (outcome: RoleOutcome | undefined): boolean => {
-    if (dryRun) return true;
-    if (!outcome || outcome.skippedReason !== undefined) return false;
-    return outcome.session !== undefined
-      && outcome.session.completionReason !== "harness_error"
-      && outcome.sessionError === undefined
-      && !outcome.noEngagement;
+    return sharedWorldRoleOutcomeOk(outcome, dryRun);
   };
   const allRolesOk = roleSpecs.every((_, index) => roleOk(roleOutcomes[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
@@ -1037,6 +1032,9 @@ export function buildSharedWorldBundle(args: {
   const verdict: ReviewSummary["verdict"] = dryRun
     ? "contract_proof_only"
     : (() => {
+        const allPassed = roleOutcomes.length === roleSpecs.length
+          && roleOutcomes.every((outcome) => sharedWorldRoleOutcomeOk(outcome, false));
+        if (allPassed) return "pass";
         const anyFail = roleOutcomes.some((outcome) =>
           outcome.skippedReason !== undefined
           || outcome.harnessError
@@ -1047,14 +1045,10 @@ export function buildSharedWorldBundle(args: {
           || outcome.session.status === "blocked");
         if (anyFail) return "fail";
         if (roleOutcomes.some((outcome) => outcome.session?.status === "timed_out")) return "timed_out";
-        return "pass";
+        return "fail";
       })();
   const passedRoles = roleOutcomes.filter((outcome) =>
-    outcome.skippedReason === undefined
-    && outcome.session !== undefined
-    && outcome.session.completionReason !== "harness_error"
-    && outcome.sessionError === undefined
-    && !outcome.noEngagement).length;
+    sharedWorldRoleOutcomeOk(outcome, dryRun)).length;
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
@@ -1132,6 +1126,16 @@ export function buildSharedWorldBundle(args: {
     attributionClass: "shared-world",
     sharedWorld
   };
+}
+
+function sharedWorldRoleOutcomeOk(outcome: RoleOutcome | undefined, dryRun: boolean): boolean {
+  if (dryRun) return true;
+  if (!outcome || outcome.skippedReason !== undefined) return false;
+  return outcome.session !== undefined
+    && outcome.session.status === "passed"
+    && outcome.session.completionReason !== "harness_error"
+    && outcome.sessionError === undefined
+    && !outcome.noEngagement;
 }
 
 function renderSharedWorldReviewMarkdown(bundle: RunBundle): string {

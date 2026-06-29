@@ -36,6 +36,7 @@ import type {
   RunBundle,
   RunFeedbackCandidate
 } from "../src/index.js";
+import { containsSensitive } from "../src/redaction.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -1685,6 +1686,41 @@ describe("buildCuaBundle", () => {
     }
   });
 
+  it("keeps sensitive public target URLs out of persisted bundle text while preserving lane metadata", () => {
+    const rawUrl = "https://3000-example-sandbox.e2b.app/bootstrap/session";
+    const bundle = buildCuaBundle({
+      actorId: "openai-computer-use",
+      actorType: "reviewer",
+      surface: "inbox",
+      caseGroup: "message-flow",
+      appUrl: rawUrl,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      dryRun: true,
+      labId: "shape-proof",
+      mission: "Explore.",
+      persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
+      resolution: [414, 896],
+      runId: "cua-test-run",
+      screenshots: [],
+      source: {
+        packageName: "mimetic-cli",
+        mimeticSource: "present",
+        git: { schema: "mimetic.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
+      }
+    });
+
+    const text = JSON.stringify(bundle);
+    expect(text).not.toContain(rawUrl);
+    expect(text).not.toContain("e2b.app");
+    expect(containsSensitive(text)).toBe(false);
+    expect(bundle.streams[0]?.ui?.route).toMatch(/^\[target-url:[a-f0-9]{16}\]$/);
+    expect(bundle.streams[0]).toMatchObject({
+      actorType: "reviewer",
+      surface: "inbox",
+      caseGroup: "message-flow"
+    });
+  });
+
   it("labels mid-failure frames by capture policy when the session died before a trace existed", () => {
     // A session can throw after frames were already written: no trace exists to testify, so
     // the labels fall back to the capture-time policy the lab actually ran with.
@@ -1883,6 +1919,41 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(result.error?.message.toLowerCase()).toContain("no actions");
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(false);
+  });
+
+  it("a gave_up in-process run is a failed lane, not an engaged pass", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    const outcome = await runLab(localAppConfig(), {
+      cwd,
+      cuaHooks: {
+        loadDesktopModule: async () => module,
+        buildExecutor: async () => makeStateExecutor(),
+        buildProvider: async (): Promise<CuaProvider> => ({
+          id: "idle-brain",
+          capabilities: STATE_CAPS,
+          async nextTurn(): Promise<CuaTurn> {
+            return { actions: [{ kind: "wait", ms: 1 }], pendingSafetyChecks: [], done: false, message: "Still waiting." };
+          }
+        })
+      }
+    });
+    expect(created).toHaveLength(0);
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.session?.status).toBe("failed");
+    expect(result.session?.completionReason).toBe("gave_up");
+    expect(result.ok).toBe(false);
+    const lanes = result.lanes ?? [];
+    const laneSummary = result.laneSummary;
+    if (!laneSummary) throw new Error("expected lane summary");
+    expect(lanes[0]?.status).toBe("failed");
+    expect(lanes[0]?.ok).toBe(false);
+    expect(laneSummary.passed).toBe(0);
+    expect(result.error?.message).toContain("failed");
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("gave up");
   });
 
   // RUNG 5: the two boot-time fail-closed guards, both BEFORE any key check / any E2B touch.

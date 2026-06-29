@@ -2320,6 +2320,9 @@ describe("dry-run bundles", () => {
 
 function cuaActorTrace(args: {
   screenshots?: ActorTrace["redaction"]["screenshots"];
+  status?: ActorTrace["status"];
+  completionReason?: ActorTrace["completionReason"];
+  reason?: string;
   counts?: Record<string, number>;
   items?: ActorTrace["items"];
 }): ActorTrace {
@@ -2337,9 +2340,9 @@ function cuaActorTrace(args: {
     startedAt: "2026-01-01T00:00:00.000Z",
     completedAt: "2026-01-01T00:00:05.000Z",
     durationMs: 5_000,
-    status: "passed",
-    completionReason: "goal_satisfied",
-    reason: "model reported a natural endpoint with no further action",
+    status: args.status ?? "passed",
+    completionReason: args.completionReason ?? "goal_satisfied",
+    reason: args.reason ?? "model reported a natural endpoint with no further action",
     ids: { model: "computer-use-preview" },
     counts: args.counts ?? { turns: 1, actions: 0, screenshots: 0, reasonings: 0, messages: 0, idleTurns: 0, noProgressTurns: 0 },
     items: args.items ?? [],
@@ -2359,7 +2362,7 @@ function cuaActorTrace(args: {
 async function writeCuaRunFixture(
   cwd: string,
   runId: string,
-  args: { dryRun: boolean; trace?: ActorTrace; subject?: RunSubjectProvenance }
+  args: { dryRun: boolean; trace?: ActorTrace; subject?: RunSubjectProvenance; forceReviewVerdict?: "pass" | "fail" | "blocked" | "timed_out" | "contract_proof_only" }
 ): Promise<void> {
   const session: CuaLoopResult | undefined = args.trace
     ? {
@@ -2388,6 +2391,9 @@ async function writeCuaRunFixture(
   if (args.subject) {
     bundle.subject = args.subject;
   }
+  if (args.forceReviewVerdict) {
+    bundle.review.verdict = args.forceReviewVerdict;
+  }
   const runDir = path.join(cwd, ".mimetic", "runs", runId);
   await mkdir(runDir, { recursive: true });
   await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -2414,6 +2420,31 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(check?.message).toContain("zero actions and zero messages");
       // Blurred screenshots carry no raw-posture warning; the failure stands on its own.
       expect(verify.warnings).toEqual([]);
+    });
+  });
+
+  it("FAILS a live pass review whose actor trace status is failed", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "failed-actor-pass-review-regression", {
+        dryRun: false,
+        forceReviewVerdict: "pass",
+        trace: cuaActorTrace({
+          status: "failed",
+          completionReason: "gave_up",
+          reason: "gave up: 6 consecutive turns with no material UI action",
+          counts: { turns: 6, actions: 1, screenshots: 6, reasonings: 0, messages: 1, idleTurns: 6, noProgressTurns: 0 },
+          items: [
+            { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "wait" },
+            { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Still waiting." }
+          ]
+        })
+      });
+
+      const verify = await verifyRun(cwd, "failed-actor-pass-review-regression");
+      expect(verify.ok).toBe(false);
+      const check = verify.checks.find((entry) => entry.name === "actor verdict consistency");
+      expect(check?.ok).toBe(false);
+      expect(check?.message).toContain("status failed");
     });
   });
 

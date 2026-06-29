@@ -3535,6 +3535,14 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       ? "live actor traces that claim goal_satisfied carry at least one action or message"
       : `no-engagement findings: ${noEngagementFindings.join(", ")} — a hollow run is not credible evidence`
   });
+  const actorVerdictFindings = isRunBundle(bundle) ? actorVerdictConsistencyFindings(bundle) : [];
+  checks.push({
+    name: "actor verdict consistency",
+    ok: actorVerdictFindings.length === 0,
+    message: actorVerdictFindings.length === 0
+      ? "live pass verdicts do not hide failed, blocked, or timed-out actor traces"
+      : `actor verdict findings: ${actorVerdictFindings.join(", ")}`
+  });
   const stateFindings = isRunBundle(bundle) ? subjectStateFindings(bundle) : [];
   checks.push({
     name: "subject state provenance",
@@ -4347,6 +4355,27 @@ function noEngagementActorFindings(bundle: RunBundle): string[] {
     if (!engaged) {
       const provider = typeof trace.provider === "string" ? trace.provider : "unknown provider";
       findings.push(`${stream.id} live actor trace (${provider}) claims goal_satisfied with zero actions and zero messages`);
+    }
+  }
+
+  return findings;
+}
+
+function actorVerdictConsistencyFindings(bundle: RunBundle): string[] {
+  if (bundle.mode !== "live" || bundle.review.verdict !== "pass") {
+    return [];
+  }
+
+  const findings: string[] = [];
+  for (const stream of bundle.streams) {
+    const trace: unknown = stream.actor;
+    if (!isRecord(trace) || trace.schema !== ACTOR_TRACE_SCHEMA) {
+      continue;
+    }
+    if (trace.status !== "passed") {
+      const provider = typeof trace.provider === "string" ? trace.provider : "unknown provider";
+      const reason = typeof trace.reason === "string" ? trace.reason : "no actor reason";
+      findings.push(`${stream.id} live actor trace (${provider}) has status ${String(trace.status)} under a pass review verdict: ${reason}`);
     }
   }
 

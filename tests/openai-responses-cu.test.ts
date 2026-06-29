@@ -284,6 +284,7 @@ describe("request builders", () => {
       callOutputs: [callOutput],
       contextHint: "You seem stuck; try another control."
     });
+    expect(body.instructions).toBe("Do the thing.");
     expect(body.previous_response_id).toBe("resp_prev");
     const input = body.input as unknown[];
     expect(input[0]).toBe(callOutput);
@@ -302,6 +303,7 @@ describe("request builders", () => {
       callOutputs: [callOutput],
       explicitContextItems: priorItems
     });
+    expect(body.instructions).toBe("Do the thing.");
     expect(body.previous_response_id).toBeUndefined();
     const input = body.input as unknown[];
     expect(input[0]).toBe(priorItems[0]);
@@ -335,6 +337,7 @@ describe("createOpenAiResponsesProvider", () => {
     // The second request must carry the call output (with the screenshot) and
     // thread the first response's id.
     const second = JSON.parse(bodies[1] ?? "{}") as { previous_response_id?: string; input: unknown[] };
+    expect((second as { instructions?: string }).instructions).toBe("Act as a new user and sign in.");
     expect(second.previous_response_id).toBe("resp_1");
     const callOutput = second.input[0] as { type: string; call_id: string; output: { image_url: string } };
     expect(callOutput.type).toBe("computer_call_output");
@@ -380,6 +383,7 @@ describe("createOpenAiResponsesProvider", () => {
     // Three POSTs: initial, rejected continuation, retried continuation.
     expect(call).toBe(3);
     const retried = JSON.parse(bodies[2] ?? "{}") as { previous_response_id?: string; input: unknown[] };
+    expect((retried as { instructions?: string }).instructions).toBe("Act as a new user and sign in.");
     expect(retried.previous_response_id).toBeUndefined();
     // The retried body re-sends the prior output items (the computer_call) inline.
     const firstItem = retried.input[0] as { type: string };
@@ -392,6 +396,27 @@ describe("createOpenAiResponsesProvider", () => {
       call += 1;
       if (call === 1) {
         return { ok: false, status: 429, text: async () => "rate limited", json: async () => ({}) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => "",
+        json: async () => ({ id: "resp_1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] })
+      };
+    };
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: noDelay });
+    const turn = await provider.nextTurn(request(), neverAbort);
+    expect(call).toBe(2);
+    expect(turn.done).toBe(true);
+    expect(turn.message).toBe("ok");
+  });
+
+  it("retries a transient thrown fetch error and then succeeds", async () => {
+    let call = 0;
+    const fetchFn: FetchLike = async () => {
+      call += 1;
+      if (call === 1) {
+        throw new Error("fetch failed");
       }
       return {
         ok: true,
@@ -438,5 +463,24 @@ describe("createOpenAiResponsesProvider", () => {
     expect(message).toBe("OpenAI Responses 503");
     expect(message).not.toContain(apiKey);
     expect(message).not.toContain(responseBody);
+  });
+
+  it("does not leak the api key or request context in an exhausted fetch error", async () => {
+    const apiKey = "super-secret-key-do-not-leak";
+    const fetchFn: FetchLike = async () => {
+      throw new Error("fetch failed while sending super-private screenshot bytes");
+    };
+    const provider = createOpenAiResponsesProvider({ apiKey, fetchFn, maxRetries: 1, delayFn: noDelay });
+    let thrown: unknown;
+    try {
+      await provider.nextTurn(request(), neverAbort);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    const message = (thrown as Error).message;
+    expect(message).toBe("OpenAI Responses network error");
+    expect(message).not.toContain(apiKey);
+    expect(message).not.toContain("super-private");
   });
 });

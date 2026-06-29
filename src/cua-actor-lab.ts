@@ -69,7 +69,7 @@ import {
 import { mapWithConcurrency } from "./concurrency.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
-import { redactText } from "./redaction.js";
+import { containsSensitive, redactText } from "./redaction.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -1090,11 +1090,7 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
     };
   }
   const session = outcome.session;
-  const laneOk = session !== undefined
-    && session.completionReason !== "harness_error"
-    && outcome.sessionError === undefined
-    && !outcome.noEngagement
-    && !outcome.selfReportedBlocker;
+  const laneOk = laneOutcomeOk(outcome, dryRun);
   const status: CuaLaneResult["status"] = session ? session.status : "failed";
   return {
     ...base,
@@ -1125,10 +1121,23 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
                   ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
                 : session?.completionReason === "harness_error"
                   ? `Computer-use session ended with a harness error: ${session.reason}`
+                  : session?.status !== "passed"
+                  ? `Computer-use session ended with ${session?.status ?? "unknown"}: ${session?.reason ?? "no terminal reason"}`
                   : "Computer-use lab did not produce a terminal session.")
           }
         })
   };
+}
+
+function laneOutcomeOk(outcome: LaneRunOutcome | undefined, dryRun: boolean): boolean {
+  if (dryRun) return true;
+  if (!outcome || outcome.skippedReason !== undefined) return false;
+  return outcome.session !== undefined
+    && outcome.session.status === "passed"
+    && outcome.session.completionReason !== "harness_error"
+    && outcome.sessionError === undefined
+    && !outcome.noEngagement
+    && !outcome.selfReportedBlocker;
 }
 
 /** Build the per-lane subject projection (invariant 5). */
@@ -1498,16 +1507,8 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   const observer = await render(cwd, runId, { open: options.open === true });
 
-  // Lane-level pass: dry-run lanes are contract-ok; live lanes need a terminal, engaged session.
-  const laneOk = (outcome: LaneRunOutcome | undefined): boolean => {
-    if (dryRun) return true;
-    if (!outcome || outcome.skippedReason !== undefined) return false;
-    return outcome.session !== undefined
-      && outcome.session.completionReason !== "harness_error"
-      && outcome.sessionError === undefined
-      && !outcome.noEngagement
-      && !outcome.selfReportedBlocker;
-  };
+  // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
+  const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
   const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok = observer.ok && allLanesOk && adapterFailure === undefined;
@@ -1537,6 +1538,8 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
             : observer.ok
               ? outcome?.session?.completionReason === "harness_error"
                 ? `Computer-use session ended with a harness error: ${outcome.session.reason}`
+                : outcome?.session?.status !== "passed"
+                ? `Computer-use session ended with ${outcome?.session?.status ?? "unknown"}: ${outcome?.session?.reason ?? "no terminal reason"}`
                 : "Computer-use lab did not produce a terminal session."
               : observer.error?.message ?? "Observer failed for the computer-use lab run.")
       };
@@ -1609,12 +1612,7 @@ function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: num
     }
     if (outcome.harnessError) harnessErrors += 1;
     if (outcome.noEngagement) hollow += 1;
-    const laneOk = outcome.session !== undefined
-      && outcome.session.completionReason !== "harness_error"
-      && outcome.sessionError === undefined
-      && !outcome.noEngagement
-      && !outcome.selfReportedBlocker;
-    if (laneOk) passed += 1;
+    if (laneOutcomeOk(outcome, dryRun)) passed += 1;
   }
   return {
     strategy: CUA_FANOUT_STRATEGY,
@@ -1648,6 +1646,9 @@ function buildSingleLaneBundle(args: {
   return buildCuaBundle({
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
+    ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
+    ...(spec.surface === undefined ? {} : { surface: spec.surface }),
+    ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
     createdAt: args.createdAt,
     dryRun: args.dryRun,
     labId: config.id,
@@ -1922,6 +1923,9 @@ function tailOf(log: string): string {
 export function buildCuaBundle(args: {
   actorId: string;
   appUrl: string;
+  actorType?: string;
+  surface?: string;
+  caseGroup?: string;
   createdAt: string;
   dryRun: boolean;
   labId: string;
@@ -1957,6 +1961,7 @@ export function buildCuaBundle(args: {
   desktopTemplate?: string;
   traceArtifactPath?: string;
 }): RunBundle {
+  const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   const status: RunSimulationStatus = args.session
     ? args.session.status
     : args.sessionError
@@ -1990,7 +1995,7 @@ export function buildCuaBundle(args: {
       ? `Computer-use actor (${args.actorId}) drove the subject app in a hosted desktop browser; ${args.session.completionReason}.`
       : args.sessionError
         ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
-        : `Contract lane for the computer-use actor (${args.actorId}) against ${args.appUrl}.`,
+        : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
     streamIds: ["stream-001"],
     startedAt: args.createdAt,
     updatedAt: args.createdAt
@@ -1999,6 +2004,10 @@ export function buildCuaBundle(args: {
   const stream: RunStream = {
     id: "stream-001",
     simId: "sim-001",
+    laneId: "lane-01",
+    ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
+    ...(args.surface === undefined ? {} : { surface: args.surface }),
+    ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
     kind: "browser",
     label: `CUA browser — ${args.labId}`,
     status,
@@ -2014,7 +2023,7 @@ export function buildCuaBundle(args: {
       ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile })
     },
     ui: {
-      route: args.appUrl,
+      route: publicAppUrl,
       intent: "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
       state: reason,
       ...(args.session ? { actorStatus: args.session.status } : {}),
@@ -2053,11 +2062,11 @@ export function buildCuaBundle(args: {
           type: "cua-lab.subject.provenance",
           // HONEST WORDING: claim "cloned and served" only when it actually happened.
           message: `${args.dryRun
-            ? `Subject declared: clone of ${args.subjectProvenance.repo}, to be served at ${args.appUrl} in-sandbox (dry-run contract; nothing cloned)`
+            ? `Subject declared: clone of ${args.subjectProvenance.repo}, to be served at ${publicAppUrl} in-sandbox (dry-run contract; nothing cloned)`
             : args.subjectProvenance.commit
               ? args.session
-                ? `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit} and served at ${args.appUrl} in-sandbox`
-                : `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit}; serving at ${args.appUrl} did not complete (see session error)`
+                ? `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit} and served at ${publicAppUrl} in-sandbox`
+                : `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit}; serving at ${publicAppUrl} did not complete (see session error)`
               : `Subject clone attempted from ${args.subjectProvenance.repo}; commit unresolved (provisioning failed before resolution)`
           } (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
           simId: "sim-001",
@@ -2073,8 +2082,8 @@ export function buildCuaBundle(args: {
           // provisioned; it cannot be commit-pinned, so its provenance is honestly UNPINNED and
           // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox.
           message: args.entryKind === "local-app"
-            ? `Subject app declared at ${args.appUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
-            : `Subject app declared at ${args.appUrl} (loopback inside the desktop sandbox).`,
+            ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
+            : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
           simId: "sim-001",
           streamId: "stream-001"
         },
@@ -2234,6 +2243,7 @@ export function buildCuaFanoutBundle(args: {
   specs.forEach((spec, index) => {
     const outcome = outcomes?.[index];
     const laneAppUrl = spec.targetUrl ?? args.appUrl;
+    const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
     const subject = args.laneSubjects[index]!;
     const session = outcome?.session;
     const screenshots = outcome?.screenshots ?? [];
@@ -2272,7 +2282,7 @@ export function buildCuaFanoutBundle(args: {
           ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
           : outcome?.sessionError
             ? `Lane ${spec.laneId} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${laneAppUrl}.`,
+            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
       streamIds: [spec.streamId],
       startedAt: args.createdAt,
       updatedAt: args.createdAt
@@ -2300,7 +2310,7 @@ export function buildCuaFanoutBundle(args: {
         isMobile: spec.devicePreset.isMobile
       },
       ui: {
-        route: laneAppUrl,
+        route: publicLaneAppUrl,
         intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
         state: reason,
         ...(session ? { actorStatus: session.status } : {}),
@@ -2330,10 +2340,10 @@ export function buildCuaFanoutBundle(args: {
         level: "info",
         type: "cua-lab.subject.provenance",
         message: `Lane ${spec.laneId}: ${args.dryRun
-          ? `subject declared — clone of ${args.publicRepo}, served at ${laneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
+          ? `subject declared — clone of ${args.publicRepo}, served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
           : subject.commit
             ? session
-              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${laneAppUrl} in-sandbox`
+              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicLaneAppUrl} in-sandbox`
               : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
             : `subject clone attempted from ${args.publicRepo}; commit unresolved`
         } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
@@ -2346,7 +2356,7 @@ export function buildCuaFanoutBundle(args: {
         at: args.createdAt,
         level: "info",
         type: "cua-lab.subject.declared",
-        message: `Lane ${spec.laneId}: subject app declared at ${laneAppUrl} (loopback inside the lane's own desktop sandbox).`,
+        message: `Lane ${spec.laneId}: subject app declared at ${publicLaneAppUrl} (loopback inside the lane's own desktop sandbox).`,
         simId: spec.simId,
         streamId: spec.streamId
       });
@@ -2428,6 +2438,7 @@ export function buildCuaFanoutBundle(args: {
   const passedLanes = (outcomes ?? []).filter((outcome) =>
     outcome.skippedReason === undefined
     && outcome.session !== undefined
+    && outcome.session.status === "passed"
     && outcome.session.completionReason !== "harness_error"
     && outcome.sessionError === undefined
     && !outcome.noEngagement
@@ -2553,6 +2564,10 @@ function renderCuaReviewMarkdown(bundle: RunBundle): string {
 function makeCuaRunId(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   return `cua-${stamp}-${randomBytes(4).toString("hex")}`;
+}
+
+function publicSafeAppUrlLabel(url: string): string {
+  return containsSensitive(url) ? `[target-url:${digestUrl(url)}]` : url;
 }
 
 function digestUrl(url: string): string {

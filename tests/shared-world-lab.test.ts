@@ -422,9 +422,16 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
 
     // role-author failed its MISSION but did NOT trip fail-fast: role-reviewer still took its turn.
+    expect(result.ok).toBe(false);
     expect(result.roles[0]?.status).toBe("failed");
+    expect(result.roles[0]?.ok).toBe(false);
     expect(result.roles[1]?.status).not.toBe("blocked");
     expect(result.sequence).toEqual(["role-author", "role-reviewer"]);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("1/2 role(s)");
+    expect(bundle.review.gaps[0]).toContain("failed (gave_up)");
   });
 
   it("literal-scrubs a provisioned value injected into a forced error before persist", async () => {
