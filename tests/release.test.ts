@@ -19,7 +19,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.12.8");
+    expect(packageJson.version).toBe("0.12.9");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");

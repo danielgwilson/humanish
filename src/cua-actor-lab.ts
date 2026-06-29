@@ -1140,6 +1140,22 @@ function laneOutcomeOk(outcome: LaneRunOutcome | undefined, dryRun: boolean): bo
     && !outcome.selfReportedBlocker;
 }
 
+function fanoutReviewVerdict(args: {
+  dryRun: boolean;
+  expectedLaneCount: number;
+  outcomes: LaneRunOutcome[] | undefined;
+}): ReviewSummary["verdict"] {
+  if (args.dryRun) return "contract_proof_only";
+  const outcomes = args.outcomes ?? [];
+  if (outcomes.length !== args.expectedLaneCount) return "fail";
+  if (outcomes.some((outcome) => !laneOutcomeOk(outcome, false))) {
+    return outcomes.some((outcome) => outcome.session?.status === "timed_out")
+      ? "timed_out"
+      : "fail";
+  }
+  return "pass";
+}
+
 /** Build the per-lane subject projection (invariant 5). */
 function laneSubjectProjection(args: {
   cloneRoute: boolean;
@@ -2416,24 +2432,12 @@ export function buildCuaFanoutBundle(args: {
     });
   }
 
-  // Worst-of review verdict across lanes.
-  const verdict: ReviewSummary["verdict"] = args.dryRun
-    ? "contract_proof_only"
-    : (() => {
-        const list = outcomes ?? [];
-        const anyFail = list.some((outcome) =>
-          outcome.skippedReason !== undefined
-          || outcome.harnessError
-          || outcome.noEngagement
-          || outcome.selfReportedBlocker
-          || outcome.sessionError !== undefined
-          || outcome.session === undefined
-          || outcome.session.status === "failed"
-          || outcome.session.status === "blocked");
-        if (anyFail) return "fail";
-        if (list.some((outcome) => outcome.session?.status === "timed_out")) return "timed_out";
-        return "pass";
-      })();
+  // Worst-of review verdict across lanes; live fan-out must prove every lane.
+  const verdict = fanoutReviewVerdict({
+    dryRun: args.dryRun,
+    expectedLaneCount: specs.length,
+    outcomes
+  });
 
   const passedLanes = (outcomes ?? []).filter((outcome) =>
     outcome.skippedReason === undefined
@@ -2451,15 +2455,17 @@ export function buildCuaFanoutBundle(args: {
       : `Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict.`,
     gaps: args.dryRun
       ? ["Live fan-out session not yet run (dry-run contract only)."]
-      : (outcomes ?? [])
-          .filter((outcome) =>
-            outcome.skippedReason !== undefined
+      : specs
+          .map((spec, index) => ({ spec, outcome: outcomes?.[index] }))
+          .filter(({ outcome }) =>
+            outcome === undefined
+            || outcome.skippedReason !== undefined
             || outcome.sessionError !== undefined
             || outcome.noEngagement
             || outcome.selfReportedBlocker
             || outcome.session === undefined
             || outcome.session.status !== "passed")
-          .map((outcome) => `${outcome.spec.laneId}: ${outcome.skippedReason ?? outcome.sessionError ?? outcome.session?.reason ?? "did not pass"}`)
+          .map(({ spec, outcome }) => `${spec.laneId}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`)
   };
 
   const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");

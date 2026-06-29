@@ -7,11 +7,15 @@ import { PNG } from "pngjs";
 
 import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import {
+  buildCuaFanoutBundle,
   resolveCuaLanePlan,
   runCuaActorLab,
   type CuaActorLabHooks,
+  type CuaLaneSpec,
   type CuaLanePlan
 } from "../src/cua-actor-lab.js";
+import { getActor } from "../src/actor-registry.js";
+import { DEVICE_PRESETS } from "../src/device-presets.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab } from "../src/lab-engine.js";
@@ -253,6 +257,85 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     // Env override may NOT raise above the config/default (clamped to laneCount + the base).
     const planRaiseAttempt = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop", concurrency: 2 } }, { env: { MIMETIC_CUA_MAX_CONCURRENCY: "9" } });
     expect(planRaiseAttempt.concurrency).toBe(2);
+  });
+
+  it("direct live fan-out bundle builder fails closed when outcomes are missing", () => {
+    const config = fanoutConfig({
+      lanes: [
+        { id: "role-a", persona: "first-time-visitor", device: "desktop", instruction: "Review the dashboard." },
+        { id: "role-b", persona: "power-user", device: "desktop", instruction: "Review the settings." }
+      ]
+    });
+    const plan = resolveCuaLanePlan(config);
+    const specs: CuaLaneSpec[] = [
+      {
+        laneId: "role-a",
+        laneIndex: 0,
+        simId: "sim-role-a",
+        streamId: "stream-role-a",
+        persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "prompt-a" },
+        instructions: "Review the dashboard.",
+        deviceName: "desktop",
+        devicePreset: DEVICE_PRESETS.desktop,
+        resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
+        screenshotDir: "role-a",
+        traceArtifactPath: "actors/stream-role-a.json"
+      },
+      {
+        laneId: "role-b",
+        laneIndex: 1,
+        simId: "sim-role-b",
+        streamId: "stream-role-b",
+        persona: { id: "power-user", traitsApplied: [], promptDigest: "prompt-b" },
+        instructions: "Review the settings.",
+        deviceName: "desktop",
+        devicePreset: DEVICE_PRESETS.desktop,
+        resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
+        screenshotDir: "role-b",
+        traceArtifactPath: "actors/stream-role-b.json"
+      }
+    ];
+    const source: RunBundle["source"] = {
+      packageName: "mimetic-cli",
+      mimeticSource: "present",
+      git: {
+        schema: "mimetic.git-state.v1",
+        status: "clean",
+        capturedAt: "2026-01-01T00:00:00.000Z",
+        head: { shortSha: "abc1234", refState: "attached" },
+        changes: { staged: 0, unstaged: 0, untracked: 0, total: 0 },
+        note: "test fixture"
+      }
+    };
+    const subject = {
+      source: "app-url" as const,
+      state: { provenance: "undeclared" as const }
+    };
+
+    const bundle = buildCuaFanoutBundle({
+      specs,
+      outcomes: [],
+      laneSubjects: [subject, subject],
+      aggregateSubject: subject,
+      descriptor: getActor("openai-computer-use"),
+      appUrl: "http://127.0.0.1:3000/",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      dryRun: false,
+      config,
+      runId: "missing-outcomes-proof",
+      source,
+      plan,
+      cloneRoute: false,
+      subjectEnvNames: []
+    });
+
+    expect(bundle.mode).toBe("live");
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("0/2");
+    expect(bundle.review.gaps).toEqual([
+      "role-a: did not pass",
+      "role-b: did not pass"
+    ]);
   });
 });
 
