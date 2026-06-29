@@ -22,6 +22,10 @@ import {
 import type { ScriptedBrowserLike, ScriptedLocatorLike, ScriptedPageLike } from "../src/scripted-browser-actor.js";
 
 const ROOT = process.cwd();
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 // ---------------------------------------------------------------------------
 // Fakes + fixtures. The fake browser drives the REAL step executor and writes
@@ -61,7 +65,7 @@ function makeFakeBrowser(options: {
       throw new Error(`Timeout waiting for text ${String(needle)}`);
     },
     screenshot: async ({ path: screenshotPath }) => {
-      await writeFile(screenshotPath, Buffer.from(`fake-frame:${state.body}`));
+      await writeFile(screenshotPath, PNG_1X1);
       return undefined;
     },
     url: () => state.url,
@@ -426,7 +430,7 @@ describe("runScriptedBrowserLab", () => {
         const tracePath = `traces/${options.surface.id}.json`;
         await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
         await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
-        await writeFile(path.join(options.artifactRoot, screenshotPath), Buffer.from("fake-frame"));
+        await writeFile(path.join(options.artifactRoot, screenshotPath), PNG_1X1);
         const reason = `${options.surface.label} completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.`;
         const capture = {
           capturedAt,

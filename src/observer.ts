@@ -236,7 +236,7 @@ async function serveRunPath(
     return;
   }
 
-  if (cleanedRelativePath === "observer/observer-data.json" && runtimeStreamUrls.length > 0) {
+  if (cleanedRelativePath === "observer/observer-data.json") {
     const observerData = await readObserverData(root, runtimeStreamUrls);
     if (!observerData) {
       writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
@@ -263,15 +263,15 @@ async function readObserverData(
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = []
 ): Promise<ObserverData | null> {
   try {
+    const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as Parameters<typeof buildObserverData>[0];
+    return withRuntimeStreamUrls(buildObserverData(bundle), runtimeStreamUrls);
+  } catch {}
+
+  try {
     return withRuntimeStreamUrls(
       JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as ObserverData,
       runtimeStreamUrls
     );
-  } catch {}
-
-  try {
-    const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as Parameters<typeof buildObserverData>[0];
-    return withRuntimeStreamUrls(buildObserverData(bundle), runtimeStreamUrls);
   } catch {}
 
   return null;

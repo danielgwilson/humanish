@@ -512,6 +512,42 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("rejects referenced screenshot files that are not valid image evidence", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({
+        cwd,
+        dryRun: true,
+        runId: "invalid-screenshot-regression"
+      });
+      expect(run.ok).toBe(true);
+
+      const runRoot = path.join(cwd, ".mimetic/runs/invalid-screenshot-regression");
+      const screenshotPath = "screenshots/not-a-real-png.png";
+      await mkdir(path.join(runRoot, "screenshots"), { recursive: true });
+      await writeFile(path.join(runRoot, screenshotPath), "this file is non-empty but not an image", "utf8");
+
+      const bundlePath = path.join(runRoot, "run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        streams: Array<{
+          artifacts: Array<{ label: string; path: string; kind: string }>;
+          embed?: { kind: string; url?: string; title?: string };
+          ui?: { screenshotUrl?: string };
+        }>;
+      };
+      const stream = bundle.streams[0];
+      expect(stream).toBeTruthy();
+      stream!.embed = { kind: "screenshot", url: screenshotPath, title: "Invalid screenshot evidence" };
+      stream!.ui = { ...(stream!.ui ?? {}), screenshotUrl: screenshotPath };
+      stream!.artifacts.push({ label: "invalid screenshot evidence", path: screenshotPath, kind: "screenshot" });
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "invalid-screenshot-regression");
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+        .toContain("screenshots/not-a-real-png.png (expected PNG signature)");
+    });
+  });
+
   it("rejects local nested Mimetic proof references when the artifact is missing", async () => {
     await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({

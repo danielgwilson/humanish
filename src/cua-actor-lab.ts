@@ -67,6 +67,7 @@ import {
   type LabSubjectState
 } from "./lab-config.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { assertScreenshotEvidence } from "./image-evidence.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
 import {
@@ -622,9 +623,10 @@ export function makeLaneWriteScreenshot(
   const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
   const relPrefix = spec.screenshotDir ? path.posix.join("screenshots", spec.screenshotDir) : "screenshots";
   return async (name: string, bytes: Buffer): Promise<string> => {
+    const rel = path.posix.join(relPrefix, name);
+    assertScreenshotEvidence(rel, bytes);
     await mkdir(path.join(artifactRoot, ...dirParts), { recursive: true });
     await writeFile(path.join(artifactRoot, ...dirParts, name), bytes);
-    const rel = path.posix.join(relPrefix, name);
     screenshots.push(rel);
     return rel;
   };
