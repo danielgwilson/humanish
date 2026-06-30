@@ -21,6 +21,7 @@ import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-co
 import { runLab } from "../src/lab-engine.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
+import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,15 @@ function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
 }
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+async function waitForCondition(label: string, condition: () => boolean | Promise<boolean>, timeoutMs = 2_000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await condition()) return;
+    await delay(10);
+  }
+  throw new Error(`Timed out waiting for ${label}`);
+}
 
 interface FanoutModuleOptions {
   /** Override the geometry a given sandbox reports (laneIndex from metadata). Default: matches. */
@@ -367,6 +377,101 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ...extra
     };
   }
+
+  it("publishes an attached live Observer while CUA fan-out actors are still running", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 2,
+      lanes: [
+        { id: "role-a", persona: "role-a", device: "desktop", instruction: "Explore role A." },
+        { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." }
+      ]
+    });
+    const runId = "cua-fanout-live-observer";
+    const runRoot = path.join(cwd, ".mimetic", "runs", runId);
+    let actorSessionsStarted = 0;
+    let resolveActorsStarted: () => void = () => {};
+    const actorsStarted = new Promise<void>((resolve) => { resolveActorsStarted = resolve; });
+    let releaseActors: () => void = () => {};
+    const actorsReleased = new Promise<void>((resolve) => { releaseActors = resolve; });
+    let readyObserver: (ObserverResult & { ok: true }) | undefined;
+    let observerServer: ObserverServer | undefined;
+
+    const hooks = passingHooks(handle);
+    hooks.runSession = async (options: CuaActorSessionOptions) => {
+      actorSessionsStarted += 1;
+      if (actorSessionsStarted >= 2) {
+        resolveActorsStarted();
+      }
+      await actorsReleased;
+      return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+    };
+
+    const runPromise = runLab(config, {
+      cwd,
+      runId,
+      onObserverReady: async (observer) => {
+        readyObserver = observer;
+        observerServer = await serveObserver(observer, { port: 0 });
+      },
+      cuaHooks: hooks
+    });
+
+    try {
+      await waitForCondition("observer server", () => observerServer !== undefined);
+      await actorsStarted;
+      await waitForCondition("both actor sessions started", () => actorSessionsStarted === 2);
+
+      const persistedRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
+      expect(persistedRunText).not.toContain("fake-auth-key");
+      expect(persistedRunText).not.toContain("stream.invalid");
+
+      const persistedObserverDataText = await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8");
+      expect(persistedObserverDataText).not.toContain("fake-auth-key");
+      expect(persistedObserverDataText).not.toContain("stream.invalid");
+      const persistedObserverData = JSON.parse(persistedObserverDataText) as {
+        events: Array<{ type: string }>;
+        streams: Array<{ status: string; transport: string }>;
+        summary: { active: number };
+      };
+      expect(persistedObserverData.summary.active).toBe(2);
+      expect(persistedObserverData.streams.map((stream) => stream.status)).toEqual(["running", "running"]);
+      expect(persistedObserverData.streams.map((stream) => stream.transport)).toEqual(["snapshot", "snapshot"]);
+      expect(persistedObserverData.events.filter((event) => event.type === "cua-lab.session.running")).toHaveLength(2);
+
+      expect(readyObserver).toBeTruthy();
+      expect(observerServer).toBeTruthy();
+      const served = await fetch(new URL("observer-data.json", observerServer!.url));
+      const servedObserverData = await served.json() as {
+        streams: Array<{ embed?: { kind: string; url?: string }; transport: string; url?: string }>;
+      };
+      expect(servedObserverData.streams).toHaveLength(2);
+      expect(servedObserverData.streams.every((stream) => stream.transport === "sse")).toBe(true);
+      expect(servedObserverData.streams.every((stream) => stream.embed?.kind === "iframe")).toBe(true);
+      expect(servedObserverData.streams.every((stream) => stream.url === "https://stream.invalid/fake-auth-key")).toBe(true);
+
+      releaseActors();
+      const outcome = await runPromise;
+      expect(outcome.backend).toBe("cua");
+      if (outcome.backend !== "cua") return;
+      expect(outcome.result.ok).toBe(true);
+
+      const finalRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
+      expect(finalRunText).not.toContain("fake-auth-key");
+      expect(finalRunText).not.toContain("stream.invalid");
+      const finalObserverData = JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as {
+        summary: { active: number };
+        streams: Array<{ status: string; transport: string }>;
+      };
+      expect(finalObserverData.summary.active).toBe(0);
+      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual(["passed", "passed"]);
+      expect(finalObserverData.streams.map((stream) => stream.transport)).toEqual(["snapshot", "snapshot"]);
+    } finally {
+      releaseActors();
+      await observerServer?.close();
+      await runPromise.catch(() => undefined);
+    }
+  });
 
   it("execution.desktop.template: EVERY fan-out lane's Sandbox.create gets the template; bundle records it", async () => {
     const handle = makeFanoutModule();

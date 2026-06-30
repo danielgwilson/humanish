@@ -266,6 +266,14 @@ Evidence hygiene and readback polish (0.12.16):
   This keeps Observer status pills from rendering completed runs as low-percentage complete states.
   `done`
 
+Attached CUA live Observer (next patch):
+
+- Plain computer-use labs now honor the same attached `onObserverReady` lifecycle as shared-world
+  labs: a live CUA run writes an in-progress bundle before actor sessions complete, loopback
+  `serveObserver` can hydrate desktop stream iframes while actors are still running, and stream auth
+  URLs remain runtime-only through the Observer WeakMap rather than persisted into `run.json` or
+  `observer-data.json`. `done`
+
 ### 6. Lab Manifest Shape
 
 Make reusable simulations feel like source artifacts, not hardcoded command

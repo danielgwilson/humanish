@@ -201,6 +201,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         // is declared — the roster length is authoritative).
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
         ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks })

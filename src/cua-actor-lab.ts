@@ -24,6 +24,7 @@
 import { randomBytes, createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace } from "./actor-contract.js";
 import {
@@ -73,7 +74,13 @@ import {
 } from "./lab-config.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
-import { renderObserver, type ObserverResult } from "./observer.js";
+import { buildObserverData } from "./observer-data.js";
+import {
+  attachObserverRuntimeStreamUrls,
+  renderObserver,
+  type ObserverResult,
+  type ObserverRuntimeStreamUrl
+} from "./observer.js";
 import { containsSensitive, redactText } from "./redaction.js";
 import type { StopWhen } from "./stop-conditions.js";
 import {
@@ -210,6 +217,7 @@ export interface RunCuaActorLabOptions {
     laneIds?: string[];
   };
   hooks?: CuaActorLabHooks;
+  onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
 }
 
 /** A lane's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
@@ -1510,6 +1518,18 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
+  let liveObserver: (ObserverResult & { ok: true }) | undefined;
+  const runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [];
+  const liveHooks: CuaActorLabHooks = {
+    ...hooks,
+    onRuntimeStreamReady: async (stream) => {
+      await hooks.onRuntimeStreamReady?.(stream);
+      runtimeStreamUrls.push({ streamId: stream.streamId, url: stream.url });
+      if (liveObserver) {
+        attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
+      }
+    }
+  };
   const env = hooks.env ?? process.env;
   const render = hooks.renderObserverFn ?? renderObserver;
 
@@ -1736,8 +1756,73 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     redactScreenshots,
     scrubKnownValues,
     runSession,
-    hooks
+    hooks: liveHooks
   };
+
+  const inProgressLaneSubjects = laneSpecs.map(() =>
+    laneSubjectProjection({
+      cloneRoute,
+      ...(publicRepo === undefined ? {} : { publicRepo }),
+      subjectEnvNames,
+      subjectState: resolveSubjectState({
+        declared: cloneRoute ? config.subject.state : undefined,
+        dryRun: false,
+        executed: []
+      })
+    })
+  );
+  const inProgressAggregateSubject = inProgressLaneSubjects[0]!;
+
+  if (!dryRun && options.onObserverReady) {
+    const inProgressBundle = laneCount === 1 && rerunLineage === undefined
+      ? buildSingleLaneBundle({
+          spec: laneSpecs[0]!,
+          outcome: undefined,
+          descriptor,
+          appUrl: laneSpecs[0]!.targetUrl ?? appUrl,
+          createdAt,
+          dryRun: false,
+          config,
+          runId,
+          source,
+          redactScreenshots,
+          inProgress: true,
+          ...(inProgressAggregateSubject.source === "clone" && publicRepo
+            ? {
+                subjectProvenance: {
+                  repo: publicRepo,
+                  envNames: subjectEnvNames,
+                  state: inProgressAggregateSubject.state
+                }
+              }
+            : {}),
+          inProcessRoute,
+          localAppSubject
+        })
+      : buildCuaFanoutBundle({
+          specs: laneSpecs,
+          laneSubjects: inProgressLaneSubjects,
+          aggregateSubject: inProgressAggregateSubject,
+          descriptor,
+          appUrl,
+          createdAt,
+          dryRun: false,
+          config,
+          runId,
+          source,
+          plan,
+          ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
+          cloneRoute,
+          ...(publicRepo === undefined ? {} : { publicRepo }),
+          subjectEnvNames,
+          inProgress: true
+        });
+    await writeCuaRunArtifacts(cwd, artifactRoot, inProgressBundle, createdAt);
+    liveObserver = observerResultForCuaArtifacts(cwd, runId, artifactRoot, [
+      "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted."
+    ]);
+    await options.onObserverReady(liveObserver);
+  }
 
   // Run lanes (dry-run runs none). In-process is always one lane.
   let outcomes: LaneRunOutcome[] | undefined;
@@ -1858,22 +1943,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     hookLabel: "cuaHooks"
   });
 
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderCuaReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await writeFile(
-    path.join(cwd, ".mimetic", "runs", "latest.json"),
-    `${JSON.stringify({
-      schema: "mimetic.latest-run.v1",
-      runId,
-      path: path.join(".mimetic", "runs", runId),
-      updatedAt: createdAt
-    }, null, 2)}\n`,
-    "utf8"
-  );
+  await writeCuaRunArtifacts(cwd, artifactRoot, bundle, createdAt);
 
   const observer = await render(cwd, runId, { open: options.open === true });
+  if (observer.ok && runtimeStreamUrls.length > 0) {
+    attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, runtimeStreamUrls);
+  }
 
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
@@ -1995,6 +2070,62 @@ function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: num
   };
 }
 
+async function writeCuaRunArtifacts(
+  cwd: string,
+  artifactRoot: string,
+  bundle: RunBundle,
+  updatedAt: string
+): Promise<void> {
+  const publicBundle: RunBundle = {
+    ...bundle,
+    cwd: PUBLIC_TARGET_CWD
+  };
+  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
+  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
+  await writeFile(path.join(artifactRoot, "review.md"), renderCuaReviewMarkdown(publicBundle), "utf8");
+  await writeFile(path.join(artifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await mkdir(path.join(artifactRoot, "observer"), { recursive: true });
+  await writeFile(
+    path.join(artifactRoot, "observer", "observer-data.json"),
+    `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
+    "utf8"
+  );
+  await writeFile(
+    path.join(cwd, ".mimetic", "runs", "latest.json"),
+    `${JSON.stringify({
+      schema: "mimetic.latest-run.v1",
+      runId: publicBundle.runId,
+      path: path.join(".mimetic", "runs", publicBundle.runId),
+      updatedAt
+    }, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+function observerResultForCuaArtifacts(
+  cwd: string,
+  runId: string,
+  artifactRoot: string,
+  warnings: string[] = []
+): ObserverResult & { ok: true } {
+  const observerPath = path.join(artifactRoot, "observer", "index.html");
+  const observerDataPath = path.join(artifactRoot, "observer", "observer-data.json");
+  const eventsPath = path.join(artifactRoot, "events.ndjson");
+  return {
+    schema: "mimetic.observer-result.v1",
+    ok: true,
+    cwd,
+    run: runId,
+    observerPath: path.relative(cwd, observerPath),
+    observerDataPath: path.relative(cwd, observerDataPath),
+    eventsPath: path.relative(cwd, eventsPath),
+    observerUrl: pathToFileURL(observerPath).href,
+    bundlePath: path.join(artifactRoot, "run.json"),
+    opened: false,
+    warnings
+  };
+}
+
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
 function buildSingleLaneBundle(args: {
   spec: CuaLaneSpec;
@@ -2010,6 +2141,7 @@ function buildSingleLaneBundle(args: {
   subjectProvenance?: { repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] };
   inProcessRoute: boolean;
   localAppSubject: boolean;
+  inProgress?: boolean;
 }): RunBundle {
   const { spec, outcome, config } = args;
   return buildCuaBundle({
@@ -2034,6 +2166,7 @@ function buildSingleLaneBundle(args: {
     ...(outcome?.session ? { session: outcome.session } : {}),
     ...(outcome?.sessionError ? { sessionError: outcome.sessionError } : {}),
     source: args.source,
+    ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
     ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
     ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
@@ -2334,14 +2467,19 @@ export function buildCuaBundle(args: {
   /** The configured browser choice and the command that opened, when explicitly configured. */
   desktopBrowser?: DesktopBrowserEvidence;
   traceArtifactPath?: string;
+  inProgress?: boolean;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
-  const status: RunSimulationStatus = args.session
+  const status: RunSimulationStatus = args.inProgress === true
+    ? "running"
+    : args.session
     ? args.session.status
     : args.sessionError
       ? "failed"
       : "contract_proof_only";
-  const reason = args.session?.reason
+  const reason = args.inProgress === true
+    ? "Live computer-use session is running; stream auth URL is available only through the attached Observer server."
+    : args.session?.reason
     ?? args.sessionError
     ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
   const lastScreenshot = args.screenshots[args.screenshots.length - 1];
@@ -2363,10 +2501,12 @@ export function buildCuaBundle(args: {
     status,
     streamKind: "browser",
     mode: "browser-sim",
-    progress: 100,
+    progress: args.inProgress === true ? 20 : 100,
     currentStep: reason,
     summary: args.session
       ? `Computer-use actor (${args.actorId}) drove the subject app in a hosted desktop browser; ${args.session.completionReason}.`
+      : args.inProgress === true
+        ? `Computer-use actor (${args.actorId}) is driving the subject app in a hosted desktop browser.`
       : args.sessionError
         ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
         : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
@@ -2471,6 +2611,16 @@ export function buildCuaBundle(args: {
           simId: "sim-001",
           streamId: "stream-001"
         }
+      : args.inProgress === true
+        ? {
+            id: "event-002-running",
+            at: args.createdAt,
+            level: "info" as const,
+            type: "cua-lab.session.running",
+            message: "Live computer-use session is running; terminal evidence has not been written yet.",
+            simId: "sim-001",
+            streamId: "stream-001"
+          }
       : args.sessionError
         ? {
             id: "event-002-session",
@@ -2494,9 +2644,19 @@ export function buildCuaBundle(args: {
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
-    verdict: args.session ? verdictForStatus(args.session.status) : args.sessionError ? "fail" : "contract_proof_only",
+    verdict: args.inProgress === true
+      ? "contract_proof_only"
+      : args.session
+        ? verdictForStatus(args.session.status)
+        : args.sessionError
+          ? "fail"
+          : "contract_proof_only",
     summary: reason,
-    gaps: args.session || args.sessionError ? [] : ["Live desktop session not yet run (dry-run contract only)."]
+    gaps: args.session || args.sessionError
+      ? []
+      : args.inProgress === true
+        ? ["Live desktop session is still running."]
+        : ["Live desktop session not yet run (dry-run contract only)."]
   };
 
   return {
@@ -2592,6 +2752,7 @@ export function buildCuaFanoutBundle(args: {
   cloneRoute: boolean;
   publicRepo?: string;
   subjectEnvNames: string[];
+  inProgress?: boolean;
 }): RunBundle {
   const { specs, outcomes, config } = args;
   const simulations: RunSimulation[] = [];
@@ -2634,14 +2795,18 @@ export function buildCuaFanoutBundle(args: {
     const session = outcome?.session;
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];
-    const status: RunSimulationStatus = outcome?.skippedReason !== undefined
+    const status: RunSimulationStatus = args.inProgress === true && outcome === undefined
+      ? "running"
+      : outcome?.skippedReason !== undefined
       ? "blocked"
       : session
         ? session.status
         : outcome?.sessionError
           ? "failed"
           : "contract_proof_only";
-    const reason = outcome?.skippedReason
+    const reason = args.inProgress === true && outcome === undefined
+      ? "Live computer-use lane is running; stream auth URL is available only through the attached Observer server."
+      : outcome?.skippedReason
       ?? session?.reason
       ?? outcome?.sessionError
       ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
@@ -2660,10 +2825,12 @@ export function buildCuaFanoutBundle(args: {
       status,
       streamKind: "browser",
       mode: "browser-sim",
-      progress: 100,
+      progress: args.inProgress === true && outcome === undefined ? 20 : 100,
       currentStep: reason,
       summary: session
         ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
+        : args.inProgress === true && outcome === undefined
+          ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
         : outcome?.skippedReason !== undefined
           ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
           : outcome?.sessionError
@@ -2759,6 +2926,16 @@ export function buildCuaFanoutBundle(args: {
         simId: spec.simId,
         streamId: spec.streamId
       });
+    } else if (args.inProgress === true && outcome === undefined) {
+      events.push({
+        id: nextEventId(`running-${spec.laneId}`),
+        at: args.createdAt,
+        level: "info",
+        type: "cua-lab.session.running",
+        message: `Lane ${spec.laneId}: live computer-use session is running; terminal evidence has not been written yet.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
     } else if (outcome?.skippedReason !== undefined) {
       events.push({
         id: nextEventId(`blocked-${spec.laneId}`),
@@ -2803,11 +2980,13 @@ export function buildCuaFanoutBundle(args: {
   }
 
   // Worst-of review verdict across lanes; live fan-out must prove every lane.
-  const verdict = fanoutReviewVerdict({
-    dryRun: args.dryRun,
-    expectedLaneCount: specs.length,
-    outcomes
-  });
+  const verdict = args.inProgress === true
+    ? "contract_proof_only"
+    : fanoutReviewVerdict({
+        dryRun: args.dryRun,
+        expectedLaneCount: specs.length,
+        outcomes
+      });
 
   const passedLanes = (outcomes ?? []).filter((outcome) =>
     outcome.skippedReason === undefined
@@ -2820,10 +2999,14 @@ export function buildCuaFanoutBundle(args: {
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
-    summary: args.dryRun
+    summary: args.inProgress === true
+      ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
+      : args.dryRun
       ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
       : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict.`,
-    gaps: args.dryRun
+    gaps: args.inProgress === true
+      ? ["Live fan-out session is still running."]
+      : args.dryRun
       ? ["Live fan-out session not yet run (dry-run contract only)."]
       : specs
           .map((spec, index) => ({ spec, outcome: outcomes?.[index] }))
