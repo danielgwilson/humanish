@@ -1,6 +1,6 @@
 {
   "name": "mimetic-cli",
-  "version": "0.12.15",
+  "version": "0.12.16",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "keywords": [

@@ -248,13 +248,23 @@ Provenance hardening (0.12.1):
   run-bundle provenance when an adopter's install/provisioning step checks out the exact revision to
   test. `done`
 
-Adapter artifact evidence (0.12.15 candidate):
+Adapter artifact evidence (0.12.15):
 
 - Browser/shared-world adapter hooks may now write product/state proof files under the ignored run
   directory and return namespaced `mimetic.adapter-artifact.v1` references. Core validates only the
   generic reference shape and local-path safety, Observer links the artifacts, and `verify` fails
   closed if a referenced file disappears. The payload schema and product nouns stay in the adapter's
   namespace. `done`
+
+Evidence hygiene and readback polish (0.12.16):
+
+- Browser-backed lanes launch Chromium with shared evidence-hygiene defaults (first-run/update
+  background surfaces suppressed, extensions/sync/component update disabled, password/autofill
+  profile prompts disabled) so screenshots prefer product pixels over browser chrome. `done`
+- Run-bundle producers now use percent-scale simulation progress consistently: terminal states
+  serialize as `100`, and only true in-progress shared-world snapshots serialize partial progress.
+  This keeps Observer status pills from rendering completed runs as low-percentage complete states.
+  `done`
 
 ### 6. Lab Manifest Shape
 
