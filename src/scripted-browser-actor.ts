@@ -35,6 +35,7 @@ import {
   type ActorTrace,
   type ActorTraceItem
 } from "./actor-contract.js";
+import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "./browser-evidence-hygiene.js";
 import { digestText, redactText, redactToSecretLabel } from "./redaction.js";
 
 const execFileAsync = promisify(execFile);
@@ -91,13 +92,9 @@ export async function launchPlaywrightChromium(args: ScriptedBrowserLaunchArgs):
     executablePath: args.browserCommand,
     headless: true,
     args: [
-      "--disable-background-networking",
-      "--disable-default-apps",
-      "--disable-extensions",
+      ...CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
       "--disable-gpu",
-      "--disable-dev-shm-usage",
-      "--no-first-run",
-      "--no-default-browser-check"
+      "--disable-dev-shm-usage"
     ],
     timeout: args.timeoutMs
   });
@@ -641,13 +638,9 @@ function browserScreenshotArgs(args: {
 }): string[] {
   return [
     "--headless=new",
-    "--disable-background-networking",
-    "--disable-default-apps",
-    "--disable-extensions",
+    ...CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
     "--disable-gpu",
     "--disable-dev-shm-usage",
-    "--no-first-run",
-    "--no-default-browser-check",
     "--hide-scrollbars",
     `--user-data-dir=${args.profileDir}`,
     `--window-size=${args.surface.viewport.width},${args.surface.viewport.height}`,

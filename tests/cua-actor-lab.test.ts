@@ -850,6 +850,11 @@ describe("runCuaActorLab", () => {
     const openIndex = expectSafeBrowserOpen(sandbox.calls, targetUrl);
     const openCommand = String(sandbox.calls[openIndex]?.[1] ?? "");
     expect(openCommand).toContain("&scenario=alpha&redirect=");
+    expect(openCommand).toContain("--disable-component-update");
+    expect(openCommand).toContain("--disable-extensions");
+    expect(openCommand).toContain("--password-store=basic");
+    expect(openCommand).toContain("credentials_enable_service");
+    expect(openCommand).toContain("\"password_manager_enabled\":false");
     expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
     expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
   });
@@ -1809,6 +1814,7 @@ describe("buildCuaBundle", () => {
     expect(bundle.review.gaps.length).toBeGreaterThan(0);
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simCount).toBe(1);
+    expect(bundle.simulations[0]?.progress).toBe(100);
     // Honest no-session notes: zero frames exist, so no redaction (blur OR raw) is claimed.
     expect(bundle.redaction.notes).toContain("No screenshots captured");
     expect(bundle.redaction.notes).not.toContain("blurred fail-closed");
@@ -1878,6 +1884,7 @@ describe("buildCuaBundle", () => {
     };
 
     const blurred = buildCuaBundle({ ...base, captureRedaction: "blurred" });
+    expect(blurred.simulations[0]?.progress).toBe(100);
     expect(blurred.streams[0]?.embed?.title).toBe("CUA desktop (blurred)");
     expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(true);
     expect(blurred.redaction.notes).toContain("capture policy (blurred)");

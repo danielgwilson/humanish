@@ -271,6 +271,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       expect.arrayContaining(["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"])
     );
     expect(bundle.mode).toBe("dry-run");
+    expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -349,9 +350,16 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(String(seatLaunches[0]!.call[1])).toContain("profile_dir='/tmp/seat-role-author'");
     expect(String(seatLaunches[1]!.call[1])).toContain("profile_dir='/tmp/seat-role-reviewer'");
     expect(seatLaunches[0]!.index).toBeLessThan(seatLaunches[1]!.index); // author's seat before reviewer's
+    const firstSeatCommand = String(seatLaunches[0]!.call[1]);
+    expect(firstSeatCommand).toContain("--disable-component-update");
+    expect(firstSeatCommand).toContain("--disable-extensions");
+    expect(firstSeatCommand).toContain("--password-store=basic");
+    expect(firstSeatCommand).toContain("credentials_enable_service");
+    expect(firstSeatCommand).toContain("\"password_manager_enabled\":false");
 
     // A checkpoint at baseline + after each turn → timeline = cp, turn, cp, turn, cp.
     const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
     const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; name?: string; deltaFromPrev?: boolean; roleId?: string }>;
     expect(timeline.map((e) => e.kind)).toEqual(["checkpoint", "turn", "checkpoint", "turn", "checkpoint"]);
     expect(timeline[0]!.name).toBe("cp-baseline");

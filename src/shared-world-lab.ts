@@ -32,6 +32,10 @@ import {
   type BrowserLabAdapterHooks
 } from "./adapter-extension.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
+import {
+  CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
+  chromiumEvidenceProfilePreferencesJson
+} from "./browser-evidence-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
 import {
@@ -271,19 +275,27 @@ async function launchSeatBrowser(
   }
 ): Promise<DesktopBrowserEvidence | undefined> {
   const requested = args.browserPreference ?? "default";
+  const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellQuote).join(" ");
   const command = [
     "set -euo pipefail",
     `browser_preference=${shellQuote(requested)}`,
     `profile_dir=${shellQuote(args.profileDir)}`,
     `seat_url=${shellQuote(args.seatUrl)}`,
+    `chrome_preferences_json=${shellQuote(chromiumEvidenceProfilePreferencesJson())}`,
     'mkdir -p "$profile_dir"',
+    "chrome_debug_flags=(" + chromiumFlags + ")",
+    "prepare_chrome_profile() {",
+    "  mkdir -p \"$profile_dir/Default\"",
+    "  printf '%s\\n' \"$chrome_preferences_json\" > \"$profile_dir/Default/Preferences\"",
+    "}",
     "launch_chrome() {",
     "  local label=\"$1\"",
     "  local binary=\"$2\"",
     "  if ! command -v \"$binary\" >/dev/null 2>&1; then return 127; fi",
     "  echo \"MIMETIC_BROWSER_RESOLVED=$label\"",
     "  pkill -f '[r]emote-debugging-port=9222' 2>/dev/null || true",
-    "  setsid -f \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=\"$profile_dir\" --no-first-run --no-default-browser-check --disable-default-apps \"$seat_url\" > /dev/null 2>&1 < /dev/null",
+    "  prepare_chrome_profile",
+    "  setsid -f \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=\"$profile_dir\" \"${chrome_debug_flags[@]}\" \"$seat_url\" > /dev/null 2>&1 < /dev/null",
     "}",
     "launch_firefox() {",
     "  if ! command -v firefox >/dev/null 2>&1; then return 127; fi",
@@ -931,7 +943,7 @@ export function buildSharedWorldBundle(args: {
       status,
       streamKind: "browser",
       mode: "browser-sim",
-      progress: session || outcome?.sessionError || outcome?.skippedReason !== undefined ? 1 : 0.25,
+      progress: 100,
       currentStep: reason,
       summary: session
         ? `Role ${spec.roleId} (${spec.persona.id}): drove the shared app; ${session.completionReason}.`

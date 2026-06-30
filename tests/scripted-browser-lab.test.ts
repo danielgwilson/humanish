@@ -317,6 +317,7 @@ describe("runScriptedBrowserLab", () => {
       ["scripted-desktop", "contract_proof_only"],
       ["scripted-mobile", "contract_proof_only"]
     ]);
+    expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
     // No session ran, so no stream.actor exists (mirrors the cua dry-run honesty rule).
     for (const stream of bundle.streams) {
       expect(stream.actor).toBeUndefined();
@@ -371,6 +372,7 @@ describe("runScriptedBrowserLab", () => {
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
       expect(bundle.mode).toBe("live");
       expect(bundle.simCount).toBe(2);
+      expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
 
       for (const surface of ["desktop", "mobile"]) {
         const stream = bundle.streams.find((entry: { id: string }) => entry.id === `scripted-${surface}-stream`);

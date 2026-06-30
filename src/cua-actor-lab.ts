@@ -32,6 +32,10 @@ import {
   type BrowserLabAdapterHooks
 } from "./adapter-extension.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
+import {
+  CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
+  chromiumEvidenceProfilePreferencesJson
+} from "./browser-evidence-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
@@ -860,10 +864,17 @@ async function openDesktopBrowserTarget(
 ): Promise<DesktopBrowserEvidence | undefined> {
   const requestedBrowser = browserPreference ?? "default";
   if (isHttpUrl(targetUrl)) {
+    const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellSingleQuote).join(" ");
     const result = await desktop.commands.run([
       "set -euo pipefail",
       `target_url=${shellSingleQuote(targetUrl)}`,
       `browser_preference=${shellSingleQuote(requestedBrowser)}`,
+      "chrome_profile_dir=/tmp/mimetic-chrome-profile",
+      `chrome_preferences_json=${shellSingleQuote(chromiumEvidenceProfilePreferencesJson())}`,
+      "prepare_chrome_profile() {",
+      "  mkdir -p \"$chrome_profile_dir/Default\"",
+      "  printf '%s\\n' \"$chrome_preferences_json\" > \"$chrome_profile_dir/Default/Preferences\"",
+      "}",
       "launch_browser() {",
       "  local label=\"$1\"",
       "  local binary=\"$2\"",
@@ -875,7 +886,8 @@ async function openDesktopBrowserTarget(
       "  fi",
       "  return 1",
       "}",
-      "chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/mimetic-chrome-profile --no-first-run --no-default-browser-check --disable-default-apps)",
+      `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "--user-data-dir=$chrome_profile_dir" ${chromiumFlags})`,
+      "prepare_chrome_profile",
       "open_target() {",
       "  case \"$browser_preference\" in",
       "    chrome)",
@@ -2351,7 +2363,7 @@ export function buildCuaBundle(args: {
     status,
     streamKind: "browser",
     mode: "browser-sim",
-    progress: args.session || args.sessionError ? 1 : 0.25,
+    progress: 100,
     currentStep: reason,
     summary: args.session
       ? `Computer-use actor (${args.actorId}) drove the subject app in a hosted desktop browser; ${args.session.completionReason}.`
@@ -2648,7 +2660,7 @@ export function buildCuaFanoutBundle(args: {
       status,
       streamKind: "browser",
       mode: "browser-sim",
-      progress: session || outcome?.sessionError ? 1 : outcome?.skippedReason !== undefined ? 1 : 0.25,
+      progress: 100,
       currentStep: reason,
       summary: session
         ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
