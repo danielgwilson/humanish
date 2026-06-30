@@ -170,6 +170,10 @@ const TWO_TURN_SESSION = [
   { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
   { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
 ];
+const SUCCESS_WITH_NEGATED_BLOCKER_SESSION = [
+  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
+  { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Success: the target state is visible. No blocker encountered." }] }] }
+];
 const BROWSER_ADAPTER_NAMESPACE = "browser-adapter-proof";
 
 function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
@@ -450,6 +454,34 @@ describe("runCuaActorLab", () => {
       expect(text, file).not.toContain("test-openai-key");
       expect(text, file).not.toContain("test-e2b-key");
     }
+  });
+
+  it("does not treat a negated blocker phrase in a success message as a self-reported blocker", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(SUCCESS_WITH_NEGATED_BLOCKER_SESSION) }
+          })
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.ok).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(result.warnings.some((warning) => warning.includes("NOT counted as a pass"))).toBe(false);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.review.verdict).toBe("pass");
+    expect(bundle.review.gaps).toEqual([]);
   });
 
   it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {

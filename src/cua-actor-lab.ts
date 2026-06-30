@@ -1019,11 +1019,18 @@ async function startDesktopStream(
 }
 
 function completionReasonContradictsGoal(reason: string): boolean {
-  const text = reason.toLowerCase();
+  const text = stripNegatedNonBlockerPhrases(reason.toLowerCase());
   return /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text)
     || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
     || /\berror[:.]/.test(text)
     || /what would you like me to do|please tell me|need (the )?(task|credentials|instructions)/.test(text);
+}
+
+function stripNegatedNonBlockerPhrases(text: string): string {
+  return text
+    .replace(/\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g, "")
+    .replace(/\bwithout\s+(?:a\s+|any\s+)?(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\b/g, "")
+    .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "");
 }
 
 function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
