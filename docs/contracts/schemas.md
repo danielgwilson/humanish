@@ -42,6 +42,7 @@ workflow without leaking private upstream truth into core.
 | Terminal cost ledger | `mimetic.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
 | Terminal no-spend proof | `mimetic.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
 | Adapter score | `mimetic.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
+| Adapter artifact | `mimetic.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
 | Shared-world evidence | `mimetic.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
 
 ## Lab Manifest
@@ -664,7 +665,7 @@ hooks inherited by `CuaActorLabHooks` / `SharedWorldLabHooks` for CUA,
 sequential shared-world, and concurrent shared-world runs. This is never a
 built-in product scorer (the adopter's scorecard lives in the adopter's repo).
 
-Two product-agnostic carriers keep core's nouns closed while letting the adapter
+Three product-agnostic carriers keep core's nouns closed while letting the adapter
 record its own:
 
 - **Adapter score** (`mimetic.adapter-score.v1`, `RunBundle.adapterScore`).
@@ -680,6 +681,12 @@ record its own:
   recorded ONLY under `adapter: { namespace, data }` — never as core enums. Core
   validates the SHAPE (a non-empty `namespace` + a `data` record); the keys inside
   `data` are the adapter's.
+- **Adapter artifacts** (`mimetic.adapter-artifact.v1`,
+  `RunBundle.adapterArtifacts[]`). A namespaced list of local relative artifact
+  references the adapter's `deriveArtifacts` hook returns after writing
+  product/state proof files under the ignored run directory. Core validates only
+  schema/namespace/label/path/kind/note and local-path safety, Observer links the
+  artifacts, and `verifyRun` fails closed if a referenced file is missing.
 
 ```yaml
 # RunBundle.adapterScore (namespaced; data is the adopter's, core never reads it)
@@ -704,6 +711,16 @@ adapter:
     defectionFrictionRisk: low
 ```
 
+```yaml
+# RunBundle.adapterArtifacts — product/state proof payloads stay adapter-owned
+- schema: mimetic.adapter-artifact.v1
+  namespace: adopter-slug
+  label: Product state readback
+  path: adapter/product-state-readback.json
+  kind: state
+  note: Adapter-owned product/state proof.
+```
+
 Acceptance semantics are route-specific:
 
 - Terminal-product runs keep the mission-based `review` verdict unchanged; the
@@ -719,11 +736,12 @@ The `e2b-terminal` substrate is added to `RunFeedbackCandidate.substrate` so a
 terminal-agent candidate names its substrate honestly; browser candidates use
 the existing `e2b-desktop` substrate. Lanes invoke hooks over FULLY-ASSEMBLED,
 redacted evidence (`TerminalProductScoringContext` or
-`BrowserLabScoringContext`: `bundle`, run identifiers, actor/backend metadata;
-all exported public types), scrub+redact returned payloads, and DROP any
-malformed score or candidate with a warning so a bad extension never poisons a
-verifiable bundle. Default behavior (no hook) is unchanged. `verifyRun`
-re-checks the surviving shapes fail-closed.
+`BrowserLabScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
+actor/backend metadata; all exported public types), scrub+redact returned
+payloads, and DROP any malformed score, candidate, or artifact reference with a
+warning so a bad extension never poisons a verifiable bundle. Default behavior
+(no hook) is unchanged. `verifyRun` re-checks the surviving shapes fail-closed,
+including existence for referenced adapter artifacts.
 
 ## Evidence Streams
 

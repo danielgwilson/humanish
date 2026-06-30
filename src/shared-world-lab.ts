@@ -743,6 +743,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     bundle,
     context: {
       bundle,
+      runDir: artifactRoot,
       labId: config.id,
       runId,
       actor: descriptor.id,

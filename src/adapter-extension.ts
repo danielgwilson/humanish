@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type {
+  RunAdapterArtifact,
   RunAdapterScore,
   RunBundle,
   RunFeedbackCandidate
@@ -18,6 +19,12 @@ export type BrowserAdapterBackend =
  */
 export interface BrowserLabScoringContext {
   bundle: RunBundle;
+  /**
+   * Absolute path to the ignored run directory. Adapter hooks may write their
+   * own product/state proof files here, then return relative references through
+   * `deriveArtifacts`. This path is runtime-only and must never be persisted.
+   */
+  runDir: string;
   labId: string;
   runId: string;
   actor: string;
@@ -40,6 +47,13 @@ export interface BrowserLabAdapterHooks {
    * verifiable even when an adapter misbehaves.
    */
   deriveFeedback?: (ctx: BrowserLabScoringContext) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
+  /**
+   * Optional product/state proof artifact references. The adapter writes files
+   * under `ctx.runDir` and returns local relative paths. Core stores only the
+   * namespaced references and `verify` fails closed if referenced files are
+   * missing or nonlocal.
+   */
+  deriveArtifacts?: (ctx: BrowserLabScoringContext) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
 }
 
 export async function applyBrowserAdapterHooks(args: {
@@ -51,7 +65,7 @@ export async function applyBrowserAdapterHooks(args: {
   hookLabel: string;
 }): Promise<void> {
   const { hooks, context, bundle, sanitize, warnings, hookLabel } = args;
-  if (!hooks?.score && !hooks?.deriveFeedback) return;
+  if (!hooks?.score && !hooks?.deriveFeedback && !hooks?.deriveArtifacts) return;
 
   const scrubValue = <T>(value: T): T => {
     const encoded = JSON.stringify(value);
@@ -87,6 +101,23 @@ export async function applyBrowserAdapterHooks(args: {
       }
     } catch (error) {
       warnings.push(`${hookLabel}.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+    }
+  }
+
+  if (hooks.deriveArtifacts) {
+    try {
+      const artifacts = await hooks.deriveArtifacts(context);
+      const accepted: RunAdapterArtifact[] = [];
+      for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+        const cleaned = scrubValue(artifact);
+        if (isAdapterArtifactShape(cleaned)) accepted.push(cleaned);
+        else warnings.push(`${hookLabel}.deriveArtifacts returned an artifact that is not a well-formed mimetic.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`);
+      }
+      if (accepted.length > 0) {
+        bundle.adapterArtifacts = [...(bundle.adapterArtifacts ?? []), ...accepted];
+      }
+    } catch (error) {
+      warnings.push(`${hookLabel}.deriveArtifacts threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
     }
   }
 }
@@ -165,8 +196,40 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
   return true;
 }
 
+function isAdapterArtifactShape(value: unknown): value is RunAdapterArtifact {
+  if (!isRecord(value)) return false;
+  const artifact = value as Partial<RunAdapterArtifact>;
+  return artifact.schema === "mimetic.adapter-artifact.v1"
+    && typeof artifact.namespace === "string"
+    && artifact.namespace.trim().length > 0
+    && typeof artifact.label === "string"
+    && artifact.label.trim().length > 0
+    && typeof artifact.path === "string"
+    && isSafeRelativeArtifactPath(artifact.path)
+    && isAdapterArtifactKind(artifact.kind)
+    && typeof artifact.note === "string"
+    && artifact.note.trim().length > 0;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSafeRelativeArtifactPath(value: string): boolean {
+  return value.trim().length > 0
+    && !path.isAbsolute(value)
+    && !value.includes("://")
+    && !value.split(/[\\/]/).some((part) => part === ".." || part === "." || part.length === 0);
+}
+
+function isAdapterArtifactKind(value: unknown): value is RunAdapterArtifact["kind"] {
+  return value === "state"
+    || value === "review"
+    || value === "log"
+    || value === "trace"
+    || value === "screenshot"
+    || value === "filesystem"
+    || value === "summary";
 }
 
 function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {

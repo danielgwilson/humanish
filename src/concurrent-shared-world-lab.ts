@@ -697,6 +697,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     bundle,
     context: {
       bundle,
+      runDir: artifactRoot,
       labId: config.id,
       runId,
       actor: descriptor.id,

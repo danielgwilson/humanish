@@ -121,7 +121,12 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       { label: "review JSON", href: "../review.json", kind: "review" },
       { label: "review Markdown", href: "../review.md", kind: "review" },
       { label: "event log", href: "../events.ndjson", kind: "events" },
-      { label: "observer data", href: "observer-data.json", kind: "observer" }
+      { label: "observer data", href: "observer-data.json", kind: "observer" },
+      ...(bundle.adapterArtifacts ?? []).map((artifact) => ({
+        label: artifact.label,
+        href: `../${artifact.path}`,
+        kind: artifact.kind
+      }))
     ],
     publicSafety: {
       publishable: false,

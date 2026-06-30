@@ -64,6 +64,13 @@ feedbackCandidates:
     evidence:
       - path: "<relative run artifact path>"
         kind: "review|state|log|trace|screenshot|filesystem"
+adapterArtifacts:
+  - schema: mimetic.adapter-artifact.v1
+    namespace: "<adapter namespace>"
+    label: "<human-readable artifact label>"
+    path: "<relative run artifact path>"
+    kind: "state|review|log|trace|screenshot|filesystem|summary"
+    note: "<public-safe note>"
 ```
 
 Persisted `run.json` files must not contain absolute local target paths. Runtime
@@ -83,6 +90,23 @@ the persisted `review.verdict` becomes `fail` when it was pass-like, and a
 generic adapter gap is appended. The bundle remains valid evidence for
 `mimetic verify` because the failure is an observed product-acceptance outcome,
 not corrupt evidence.
+
+## Adapter Artifacts
+
+`adapterArtifacts` is optional and namespaced. It lets a downstream adapter
+attach product/state proof outputs to the Mimetic bundle without making the
+payload shape a core concept. Core validates only:
+
+- `schema: mimetic.adapter-artifact.v1`;
+- non-empty `namespace`, `label`, `path`, and `note`;
+- local relative paths only, with no absolute paths, traversal, or URLs;
+- supported generic artifact kinds.
+
+Adapters that use browser/shared-world hooks may write files under the ignored
+run directory and return relative references through `deriveArtifacts`. Core
+stores those references, Observer links them, and `mimetic verify` fails closed
+when any referenced file is missing. The adapter owns the artifact payload schema
+under its namespace.
 
 ## Lane Grouping Metadata
 

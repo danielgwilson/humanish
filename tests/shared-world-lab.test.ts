@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -386,6 +386,27 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
     hooks.score = sharedWorldFailScore;
+    hooks.deriveArtifacts = async (ctx) => {
+      await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
+      await writeFile(
+        path.join(ctx.runDir, "adapter", "shared-world-readback.json"),
+        `${JSON.stringify({
+          schema: "example.shared-world-readback.v1",
+          status: "review-required",
+          backend: ctx.backend,
+          laneCount: ctx.laneCount
+        }, null, 2)}\n`,
+        "utf8"
+      );
+      return [{
+        schema: "mimetic.adapter-artifact.v1",
+        namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
+        label: "Shared-world adapter readback",
+        path: "adapter/shared-world-readback.json",
+        kind: "state",
+        note: "Adapter-owned shared-world state readback."
+      }];
+    };
     const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
 
     expect(result.ok).toBe(false);
@@ -395,6 +416,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(bundle.adapterScore?.namespace).toBe(SHARED_WORLD_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("shared-world");
+    expect(bundle.adapterArtifacts?.[0]?.path).toBe("adapter/shared-world-readback.json");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
 

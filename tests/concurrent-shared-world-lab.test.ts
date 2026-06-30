@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -540,6 +540,27 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
     hooks.score = concurrentFailScore;
+    hooks.deriveArtifacts = async (ctx) => {
+      await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
+      await writeFile(
+        path.join(ctx.runDir, "adapter", "concurrent-readback.json"),
+        `${JSON.stringify({
+          schema: "example.concurrent-readback.v1",
+          status: "review-required",
+          backend: ctx.backend,
+          laneCount: ctx.laneCount
+        }, null, 2)}\n`,
+        "utf8"
+      );
+      return [{
+        schema: "mimetic.adapter-artifact.v1",
+        namespace: CONCURRENT_ADAPTER_NAMESPACE,
+        label: "Concurrent adapter readback",
+        path: "adapter/concurrent-readback.json",
+        kind: "state",
+        note: "Adapter-owned concurrent shared-world readback."
+      }];
+    };
     const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
 
     expect(result.ok).toBe(false);
@@ -550,6 +571,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(bundle.adapterScore?.namespace).toBe(CONCURRENT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("concurrent-shared-world");
+    expect(bundle.adapterArtifacts?.[0]?.path).toBe("adapter/concurrent-readback.json");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
 

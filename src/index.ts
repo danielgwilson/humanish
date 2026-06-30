@@ -128,6 +128,7 @@ export { SHARED_WORLD_SCHEMA } from "./run.js";
 export type {
   DoctorResult,
   ReviewSummary,
+  RunAdapterArtifact,
   RunAdapterScore,
   RunAttributionClass,
   RunBundle,

@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-23 (rev 11)
+Status date: 2026-06-30 (rev 12)
 
 This page is the current public-safe operating goal for `mimetic-cli`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -247,6 +247,14 @@ Provenance hardening (0.12.1):
   records the served subject HEAD rather than only the initial clone HEAD. This preserves truthful
   run-bundle provenance when an adopter's install/provisioning step checks out the exact revision to
   test. `done`
+
+Adapter artifact evidence (0.12.15 candidate):
+
+- Browser/shared-world adapter hooks may now write product/state proof files under the ignored run
+  directory and return namespaced `mimetic.adapter-artifact.v1` references. Core validates only the
+  generic reference shape and local-path safety, Observer links the artifacts, and `verify` fails
+  closed if a referenced file disappears. The payload schema and product nouns stay in the adapter's
+  namespace. `done`
 
 ### 6. Lab Manifest Shape
 

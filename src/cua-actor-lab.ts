@@ -1833,6 +1833,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     bundle,
     context: {
       bundle,
+      runDir: artifactRoot,
       labId: config.id,
       runId,
       actor: descriptor.id,

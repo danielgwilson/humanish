@@ -255,6 +255,20 @@ export interface RunFeedbackCandidate {
   };
 }
 
+/**
+ * Optional, adapter-namespaced artifact references. These let a thin in-repo
+ * adapter attach product/state proof outputs to the Mimetic evidence packet
+ * without teaching core product nouns or inventing fake streams.
+ */
+export interface RunAdapterArtifact {
+  schema: "mimetic.adapter-artifact.v1";
+  namespace: string;
+  label: string;
+  path: string;
+  kind: "state" | "review" | "log" | "trace" | "screenshot" | "filesystem" | "summary";
+  note: string;
+}
+
 export interface RunSimulation {
   id: string;
   index: number;
@@ -644,6 +658,12 @@ export interface RunBundle {
    * The default mission-based verdict (`review`) is unchanged when no scorer hook is given.
    */
   adapterScore?: RunAdapterScore;
+  /**
+   * OPTIONAL, ADAPTER-NAMESPACED product/state proof artifacts. Core validates
+   * shape and local relative artifact references, then verifies the referenced
+   * files exist. The adapter owns the payload schema under `namespace`.
+   */
+  adapterArtifacts?: RunAdapterArtifact[];
 }
 
 export interface RunRerunLineage {
@@ -4064,6 +4084,12 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
     }
   }
 
+  for (const artifact of bundle.adapterArtifacts ?? []) {
+    if (isLocalEvidenceArtifactPath(artifact.path)) {
+      addRequiredPath(artifact.path, { screenshot: artifact.kind === "screenshot" });
+    }
+  }
+
   const missing: string[] = [];
   for (const [artifactPath, requirements] of requiredPaths) {
     const absolutePath = path.join(runRoot, artifactPath);
@@ -4089,6 +4115,17 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
   const findings: string[] = [];
   if (path.isAbsolute(bundle.cwd)) {
     findings.push(`run bundle persists absolute cwd ${bundle.cwd}`);
+  }
+  const adapterArtifactKeys = new Set<string>();
+  for (const artifact of bundle.adapterArtifacts ?? []) {
+    const key = `${artifact.namespace}:${artifact.kind}:${artifact.path}`;
+    if (adapterArtifactKeys.has(key)) {
+      findings.push(`adapter artifact duplicate ${artifact.namespace}:${artifact.kind}:${artifact.path}`);
+    }
+    adapterArtifactKeys.add(key);
+    if (!isLocalEvidenceArtifactPath(artifact.path)) {
+      findings.push(`adapter artifact ${artifact.namespace}:${artifact.kind} nonlocal artifact ${artifact.path}`);
+    }
   }
   for (const stream of bundle.streams) {
     const seen = new Set<string>();
@@ -5149,7 +5186,9 @@ function isRunBundle(value: unknown): value is RunBundle {
     && (value.sharedWorld === undefined || isSharedWorldEvidence(value.sharedWorld))
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
     // its SHAPE; core never reads the adapter's `data` payload.
-    && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore));
+    && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore))
+    && (value.adapterArtifacts === undefined
+      || (Array.isArray(value.adapterArtifacts) && value.adapterArtifacts.every(isRunAdapterArtifact)));
 }
 
 function isRunRerunLineage(value: unknown): value is RunRerunLineage {
@@ -5403,6 +5442,29 @@ function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][nu
       || value.kind === "log"
       || value.kind === "filesystem"
     );
+}
+
+function isRunAdapterArtifact(value: unknown): value is RunAdapterArtifact {
+  return isRecord(value)
+    && value.schema === "mimetic.adapter-artifact.v1"
+    && typeof value.namespace === "string"
+    && value.namespace.trim().length > 0
+    && typeof value.label === "string"
+    && value.label.trim().length > 0
+    && typeof value.path === "string"
+    && value.path.trim().length > 0
+    && isLocalEvidenceArtifactPath(value.path)
+    && (
+      value.kind === "state"
+      || value.kind === "review"
+      || value.kind === "log"
+      || value.kind === "trace"
+      || value.kind === "screenshot"
+      || value.kind === "filesystem"
+      || value.kind === "summary"
+    )
+    && typeof value.note === "string"
+    && value.note.trim().length > 0;
 }
 
 function isRunEvent(value: unknown): value is RunEvent {

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -495,7 +495,28 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
         score: failingBrowserScore,
-        deriveFeedback: browserFeedback
+        deriveFeedback: browserFeedback,
+        deriveArtifacts: async (ctx) => {
+          await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
+          await writeFile(
+            path.join(ctx.runDir, "adapter", "browser-state-proof.json"),
+            `${JSON.stringify({
+              schema: "example.adapter-state-proof.v1",
+              runId: ctx.runId,
+              status: "failed-product-acceptance",
+              backend: ctx.backend
+            }, null, 2)}\n`,
+            "utf8"
+          );
+          return [{
+            schema: "mimetic.adapter-artifact.v1",
+            namespace: BROWSER_ADAPTER_NAMESPACE,
+            label: "Browser adapter state proof",
+            path: "adapter/browser-state-proof.json",
+            kind: "state",
+            note: "Adapter-owned product/state readback proof."
+          }];
+        }
       }
     });
 
@@ -516,9 +537,30 @@ describe("runCuaActorLab", () => {
     expect(bundle.feedbackCandidates).toHaveLength(1);
     expect(bundle.feedbackCandidates[0]?.adapter?.namespace).toBe(BROWSER_ADAPTER_NAMESPACE);
     expect(bundle.feedbackCandidates[0]?.substrate).toBe("e2b-desktop");
+    expect(bundle.adapterArtifacts).toEqual([{
+      schema: "mimetic.adapter-artifact.v1",
+      namespace: BROWSER_ADAPTER_NAMESPACE,
+      label: "Browser adapter state proof",
+      path: "adapter/browser-state-proof.json",
+      kind: "state",
+      note: "Adapter-owned product/state readback proof."
+    }]);
+    const observerData = JSON.parse(await readFile(path.join(runDir, "observer", "observer-data.json"), "utf8"));
+    expect(observerData.artifactLinks).toContainEqual({
+      label: "Browser adapter state proof",
+      href: "../adapter/browser-state-proof.json",
+      kind: "state"
+    });
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
+
+    await rm(path.join(runDir, "adapter", "browser-state-proof.json"), { force: true });
+    const missing = await verifyRun(cwd, result.runId);
+    expect(missing.ok).toBe(false);
+    expect(missing.error?.message).toBe("Run bundle failed verification.");
+    expect(missing.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
+      .toContain("adapter/browser-state-proof.json");
   });
 
   it("malformed browser adapter outputs are dropped, preserving default green behavior", async () => {
@@ -532,6 +574,14 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
         score: () => ({ schema: "mimetic.adapter-score.v1", namespace: "", status: "fail", score: 0, summary: "bad" }) as RunAdapterScore,
+        deriveArtifacts: () => ([{
+          schema: "mimetic.adapter-artifact.v1",
+          namespace: BROWSER_ADAPTER_NAMESPACE,
+          label: "Bad artifact",
+          path: "../secret.json",
+          kind: "state",
+          note: "bad path"
+        }]),
         deriveFeedback: () => ([{
           schema: "mimetic.feedback-candidate.v1",
           id: "bad",
@@ -550,6 +600,7 @@ describe("runCuaActorLab", () => {
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore).toBeUndefined();
+    expect(bundle.adapterArtifacts).toBeUndefined();
     expect(bundle.feedbackCandidates).toHaveLength(0);
     expect(bundle.review.verdict).toBe("pass");
 
