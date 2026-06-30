@@ -187,6 +187,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     // The planted key value must be SCRUBBED out of every persisted artifact.
     const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.simulations[0]?.progress).toBe(100);
     for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text).not.toContain(FAKE_RUNTIME_KEY);

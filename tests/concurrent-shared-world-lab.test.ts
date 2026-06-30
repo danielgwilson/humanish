@@ -368,6 +368,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(runText).not.toContain("e2b.app");
 
     const bundle = JSON.parse(runText);
+    expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100, 100]);
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.plane.hostDigest).toMatch(/^[0-9a-f]{16}$/);
     expect(bundle.sharedWorld.plane.exposure).toBe("synthetic");

@@ -916,7 +916,7 @@ export function buildConcurrentSharedWorldBundle(args: {
       status,
       streamKind: "browser",
       mode: "browser-sim",
-      progress: session || outcome?.sessionError ? 1 : inProgress ? 0.35 : 0.25,
+      progress: inProgress ? 35 : 100,
       currentStep: reason,
       summary: session
         ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`

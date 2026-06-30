@@ -700,7 +700,7 @@ export function buildScriptedLabBundle(args: {
       status,
       streamKind: "browser",
       mode: "browser-sim",
-      progress: result || args.sessionError ? 1 : 0.25,
+      progress: 100,
       currentStep: reason,
       summary: result
         ? `Scripted-browser actor (${args.actorId}) replayed ${args.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
