@@ -49,6 +49,18 @@ import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
  * executor awaits every call, which is correct for both sync and async returns.
  */
 export interface E2BDesktopLike {
+  /** Optional command surface used only for best-effort substrate fallbacks. */
+  commands?: {
+    run(command: string, options?: { requestTimeoutMs?: number; timeoutMs?: number }): Promise<{
+      exitCode?: number;
+      stderr?: string;
+      stdout?: string;
+    }>;
+  };
+  /** Optional file surface used to transfer typed text without shell-quoting it. */
+  files?: {
+    write(path: string, data: string | ArrayBuffer, options?: { requestTimeoutMs?: number; useOctetStream?: boolean }): Promise<unknown>;
+  };
   /** Capture the current desktop frame as PNG bytes (default/'bytes' overload). */
   screenshot(): Promise<Uint8Array | Buffer> | Uint8Array | Buffer;
   /** Left click, optionally moving to (x, y) first. */
@@ -91,10 +103,52 @@ export interface E2BDesktopExecutorOptions {
 
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
+const TYPE_FALLBACK_TIMEOUT_MS = 15_000;
 
 /** Coerce screenshot bytes (Uint8Array or Buffer) to a Node Buffer without copying when possible. */
 function toBuffer(bytes: Uint8Array | Buffer): Buffer {
   return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function tailOf(value: string | undefined): string {
+  return (value ?? "").trim().replace(/\s+/g, " ").slice(-240);
+}
+
+async function pasteTextViaClipboard(desktop: E2BDesktopLike, text: string): Promise<boolean> {
+  if (!desktop.files || !desktop.commands) return false;
+
+  const path = `/tmp/mimetic-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
+  await desktop.files.write(path, text, { requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS });
+
+  const result = await desktop.commands.run([
+    "set -euo pipefail",
+    "export DISPLAY=\"${DISPLAY:-:0}\"",
+    `text_path=${shellSingleQuote(path)}`,
+    "cleanup() { rm -f \"$text_path\"; }",
+    "trap cleanup EXIT",
+    "if command -v xclip >/dev/null 2>&1; then",
+    "  xclip -selection clipboard < \"$text_path\"",
+    "elif command -v xsel >/dev/null 2>&1; then",
+    "  xsel --clipboard --input < \"$text_path\"",
+    "else",
+    "  echo 'no xclip/xsel clipboard utility available for paste fallback' >&2",
+    "  exit 127",
+    "fi"
+  ].join("\n"), {
+    requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS,
+    timeoutMs: TYPE_FALLBACK_TIMEOUT_MS
+  });
+
+  if (result.exitCode !== undefined && result.exitCode !== 0) {
+    throw new Error(`clipboard paste fallback failed with exit ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout)}`);
+  }
+
+  await desktop.press(["Control", "v"]);
+  return true;
 }
 
 /**
@@ -160,7 +214,12 @@ export function createE2BDesktopExecutor(
           return;
         }
         case "type":
-          await desktop.write(action.text);
+          try {
+            await desktop.write(action.text);
+          } catch (error) {
+            if (await pasteTextViaClipboard(desktop, action.text)) return;
+            throw error;
+          }
           return;
         case "keypress":
           // The SDK press() accepts a string[] directly; pass the keys through so

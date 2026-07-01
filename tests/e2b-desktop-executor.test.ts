@@ -17,11 +17,12 @@ interface Call {
 // returns a caller-provided PNG buffer.
 function makeFakeDesktop(
   screenshotBytes: Uint8Array | Buffer,
-  opts: { sync?: boolean } = {}
+  opts: { sync?: boolean; writeError?: Error; withClipboardFallback?: boolean } = {}
 ): { desktop: E2BDesktopLike; calls: Call[] } {
   const calls: Call[] = [];
   const record = (method: string, ...args: unknown[]): Promise<void> | void => {
     calls.push({ method, args });
+    if (method === "write" && opts.writeError) throw opts.writeError;
     return opts.sync ? undefined : Promise.resolve();
   };
   const screenshotResult = (): Promise<Uint8Array | Buffer> | Uint8Array | Buffer => {
@@ -41,6 +42,19 @@ function makeFakeDesktop(
     drag: (from, to) => record("drag", from, to),
     wait: (ms) => record("wait", ms)
   };
+  if (opts.withClipboardFallback) {
+    desktop.files = {
+      write: async (remotePath, data, options) => {
+        calls.push({ method: "files.write", args: [remotePath, data, options] });
+      }
+    };
+    desktop.commands = {
+      run: async (command, options) => {
+        calls.push({ method: "commands.run", args: [command, options] });
+        return { exitCode: 0, stdout: "", stderr: "" };
+      }
+    };
+  }
   return { desktop, calls };
 }
 
@@ -133,6 +147,37 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
   it("maps type to write(text)", async () => {
     const calls = await run({ kind: "type", text: "hello@example.test" });
     expect(calls).toEqual([{ method: "write", args: ["hello@example.test"] }]);
+  });
+
+  it("falls back to clipboard paste when desktop.write fails and clipboard surfaces are present", async () => {
+    const { desktop, calls } = makeFakeDesktop(SHOT, {
+      writeError: new Error("exit status 1"),
+      withClipboardFallback: true
+    });
+    const executor = createE2BDesktopExecutor(desktop);
+
+    await executor.execute({ kind: "type", text: "hello — with punctuation" });
+
+    expect(calls.map((call) => call.method)).toEqual([
+      "write",
+      "files.write",
+      "commands.run",
+      "press"
+    ]);
+    expect(calls[1]?.args[1]).toBe("hello — with punctuation");
+    expect(String(calls[2]?.args[0])).not.toContain("hello");
+    expect(calls[3]).toEqual({ method: "press", args: [["Control", "v"]] });
+  });
+
+  it("rethrows desktop.write failures when clipboard fallback surfaces are unavailable", async () => {
+    const { desktop } = makeFakeDesktop(SHOT, {
+      writeError: new Error("exit status 1")
+    });
+    const executor = createE2BDesktopExecutor(desktop);
+
+    await expect(executor.execute({ kind: "type", text: "hello" })).rejects.toThrow(
+      "exit status 1"
+    );
   });
 
   it("maps keypress to press(keys array)", async () => {
