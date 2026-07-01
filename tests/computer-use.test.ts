@@ -348,6 +348,72 @@ describe("runComputerUseLoop", () => {
     expect(JSON.stringify(result.trace)).toContain("[REDACTED_SECRET]");
   });
 
+  it("records public-safe actor diagnostics when the provider loop crashes", async () => {
+    const provisionedValue = "shapeless-runtime-token-9a2b";
+    const provider: CuaProvider = {
+      id: "crashy-provider",
+      version: "c1",
+      capabilities: FAKE_CAPS,
+      async nextTurn(): Promise<CuaTurn> {
+        throw new Error(`provider subprocess exited with ${provisionedValue}`);
+      }
+    };
+    const executor = new SignatureExecutor(["s0"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      scrubText: (text) => text.split(provisionedValue).join("[REDACTED_SECRET]")
+    });
+
+    expect(result.completionReason).toBe("actor_error");
+    expect(result.status).toBe("failed");
+    expect(result.reason).toContain("computer-use loop error");
+    expect(result.trace.diagnostic).toMatchObject({
+      kind: "actor_error",
+      phase: "requesting provider turn 1",
+      errorName: "Error",
+      message: "provider subprocess exited with [REDACTED_SECRET]",
+      lastScreenshotRef: { path: "screenshots/turn-00-start.png", redaction: "none" }
+    });
+    expect(JSON.stringify(result.trace)).not.toContain(provisionedValue);
+  });
+
+  it("records the last UI action when the executor crashes mid-actuation", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 11, y: 22 }], pendingSafetyChecks: [], done: false }
+    ]);
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: "s0" }),
+      execute: async () => {
+        throw new Error("desktop actuator exited 1");
+      }
+    };
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock()
+    });
+
+    expect(result.completionReason).toBe("actor_error");
+    expect(result.trace.diagnostic).toMatchObject({
+      kind: "actor_error",
+      phase: "executing click (11, 22)",
+      lastAction: "click (11, 22)",
+      message: "desktop actuator exited 1"
+    });
+  });
+
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {
     const provider = new RepeatProvider({ actions: [{ kind: "screenshot" }], pendingSafetyChecks: [], done: false });
     const executor = new SignatureExecutor(["s0", "s1", "s2", "s3", "s4"]);

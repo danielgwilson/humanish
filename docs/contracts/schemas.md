@@ -551,7 +551,13 @@ Core-owned fields:
 - `status` / `completionReason` / `reason` (`completionReason` includes
   `step_failed`: a deterministic scripted step/expectation evaluated false —
   the subject failed the script while the harness executed faithfully)
-- `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`
+- `ids`, `counts`, `items[]`, optional `diagnostic`, optional `tokenUsage`,
+  `capabilities`
+
+`diagnostic` is only for unexpected actor-loop failures. It is public-safe
+evidence, not a crash dump: redacted message, coarse phase, optional error name,
+last normalized UI action, and last screenshot reference. It must not carry raw
+stacks, env values, target URLs, or unredacted provider payloads.
 
 Adapter-owned fields:
 

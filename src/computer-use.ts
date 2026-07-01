@@ -449,6 +449,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let usageOutput = 0;
   let sawUsage = false;
   let lastResponseId: string | undefined;
+  let currentPhase = "initializing computer-use loop";
+  let lastActionTitle: string | undefined;
+  let lastScreenshotRef: ActorTraceItem["screenshotRef"] | undefined;
+  let diagnostic: ActorTrace["diagnostic"] | undefined;
 
   const nextId = (kind: string): string => `${kind}-${(seq += 1).toString().padStart(3, "0")}`;
   const bump = (key: string): void => {
@@ -466,18 +470,21 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const maybeRecordScreenshot = async (observation: CuaObservation, label: string): Promise<void> => {
     const frame = observation.screenshot;
     if (frame === undefined) return;
+    currentPhase = `writing screenshot ${label}`;
     // Default: persist the raw frame (full fidelity, local-only). redactScreenshots flips to the
     // publish-safe blurred thumbnail. Either way the bytes the model already saw were raw.
     const { bytes, method } = redactScreenshots
       ? await redaction.redactScreenshot(frame, { label }).then((r) => ({ bytes: r.buffer, method: r.method }))
       : { bytes: frame, method: "none" as const };
     const path = await writeScreenshot(`${label}.png`, bytes);
+    const screenshotRef: ActorTraceItem["screenshotRef"] = { path, redaction: method };
+    lastScreenshotRef = screenshotRef;
     items.push({
       id: nextId("screenshot"),
       kind: "screenshot",
       lifecycle: "completed",
       title: label,
-      screenshotRef: { path, redaction: method }
+      screenshotRef
     });
     bump("screenshots");
   };
@@ -521,6 +528,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   // are staged here rather than written onto the request already sent.
   let pendingAcks: CuaSafetyCheck[] | undefined;
   try {
+    currentPhase = "observing initial UI state";
     let observation = await raceSettle(executor.observe(), remaining(), signal);
     if (observation.appState !== undefined) observedAppState = true;
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
@@ -559,6 +567,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       contextHint = undefined;
       pendingAcks = undefined;
 
+      currentPhase = `requesting provider turn ${turnNumber}`;
       const turn = await raceSettle(provider.nextTurn(request, signal ?? neverAbort), remaining(), signal);
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;
@@ -622,17 +631,21 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       const idleThisTurn = isIdleTurn(turn.actions);
       for (const action of turn.actions) {
         if (signal?.aborted) throw new CuaAbortError();
+        const actionTitle = describeCuaAction(action);
+        lastActionTitle = actionTitle;
         items.push({
           id: nextId("ui_action"),
           kind: "ui_action",
           lifecycle: "completed",
-          title: describeCuaAction(action)
+          title: actionTitle
         });
         bump("actions");
+        currentPhase = `executing ${actionTitle}`;
         await raceSettle(executor.execute(action), remaining(), signal);
       }
 
       if (signal?.aborted) throw new CuaAbortError();
+      currentPhase = `observing UI state after turn ${turnNumber}`;
       observation = await raceSettle(executor.observe(), remaining(), signal);
       if (observation.appState !== undefined) observedAppState = true;
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
@@ -686,7 +699,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       reason = "run aborted by the harness";
     } else {
       completionReason = "actor_error";
-      reason = redactNarration(`computer-use loop error: ${error instanceof Error ? error.message : String(error)}`);
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      const message = redactNarration(rawMessage);
+      reason = redactNarration(`computer-use loop error: ${rawMessage}`);
+      diagnostic = {
+        kind: "actor_error",
+        phase: redactNarration(currentPhase),
+        ...(error instanceof Error && error.name ? { errorName: redactNarration(error.name) } : {}),
+        message,
+        ...(lastActionTitle === undefined ? {} : { lastAction: redactNarration(lastActionTitle) }),
+        ...(lastScreenshotRef === undefined ? {} : { lastScreenshotRef })
+      };
     }
   }
 
@@ -735,6 +758,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ids,
     counts,
     items,
+    ...(diagnostic === undefined ? {} : { diagnostic }),
     ...(sawUsage ? { tokenUsage: { input: usageInput, output: usageOutput, total: usageInput + usageOutput } } : {}),
     capabilities: provider.capabilities
   };

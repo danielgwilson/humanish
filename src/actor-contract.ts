@@ -65,6 +65,15 @@ export interface ActorTraceItem {
   text?: string;
 }
 
+export interface ActorTraceDiagnostic {
+  kind: "actor_error";
+  phase?: string;
+  errorName?: string;
+  message: string;
+  lastAction?: string;
+  lastScreenshotRef?: ActorTraceItem["screenshotRef"];
+}
+
 export interface ActorCapabilities {
   headless: boolean;
   structuredTrace: boolean;
@@ -124,6 +133,7 @@ export interface ActorTrace {
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
   counts: Record<string, number>;
   items: ActorTraceItem[];
+  diagnostic?: ActorTraceDiagnostic;
   tokenUsage?: ActorTokenUsage;
   capabilities: ActorCapabilities;
 }
