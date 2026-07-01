@@ -452,7 +452,6 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let currentPhase = "initializing computer-use loop";
   let lastActionTitle: string | undefined;
   let lastScreenshotRef: ActorTraceItem["screenshotRef"] | undefined;
-  let diagnostic: ActorTrace["diagnostic"] | undefined;
 
   const nextId = (kind: string): string => `${kind}-${(seq += 1).toString().padStart(3, "0")}`;
   const bump = (key: string): void => {
@@ -702,14 +701,20 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       const rawMessage = error instanceof Error ? error.message : String(error);
       const message = redactNarration(rawMessage);
       reason = redactNarration(`computer-use loop error: ${rawMessage}`);
-      diagnostic = {
-        kind: "actor_error",
-        phase: redactNarration(currentPhase),
-        ...(error instanceof Error && error.name ? { errorName: redactNarration(error.name) } : {}),
-        message,
-        ...(lastActionTitle === undefined ? {} : { lastAction: redactNarration(lastActionTitle) }),
-        ...(lastScreenshotRef === undefined ? {} : { lastScreenshotRef })
-      };
+      items.push({
+        id: nextId("notice"),
+        kind: "notice",
+        lifecycle: "completed",
+        status: "error",
+        title: "computer-use loop error",
+        text: [
+          `phase: ${redactNarration(currentPhase)}`,
+          error instanceof Error && error.name ? `error: ${redactNarration(error.name)}` : undefined,
+          `message: ${message}`,
+          lastActionTitle === undefined ? undefined : `last action: ${redactNarration(lastActionTitle)}`
+        ].filter(Boolean).join("; "),
+        ...(lastScreenshotRef === undefined ? {} : { screenshotRef: lastScreenshotRef })
+      });
     }
   }
 
@@ -758,7 +763,6 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ids,
     counts,
     items,
-    ...(diagnostic === undefined ? {} : { diagnostic }),
     ...(sawUsage ? { tokenUsage: { input: usageInput, output: usageOutput, total: usageInput + usageOutput } } : {}),
     capabilities: provider.capabilities
   };

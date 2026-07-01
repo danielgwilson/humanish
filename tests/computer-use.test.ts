@@ -374,12 +374,12 @@ describe("runComputerUseLoop", () => {
     expect(result.completionReason).toBe("actor_error");
     expect(result.status).toBe("failed");
     expect(result.reason).toContain("computer-use loop error");
-    expect(result.trace.diagnostic).toMatchObject({
-      kind: "actor_error",
-      phase: "requesting provider turn 1",
-      errorName: "Error",
-      message: "provider subprocess exited with [REDACTED_SECRET]",
-      lastScreenshotRef: { path: "screenshots/turn-00-start.png", redaction: "none" }
+    expect(result.trace.items.at(-1)).toMatchObject({
+      kind: "notice",
+      status: "error",
+      title: "computer-use loop error",
+      text: "phase: requesting provider turn 1; error: Error; message: provider subprocess exited with [REDACTED_SECRET]",
+      screenshotRef: { path: "screenshots/turn-00-start.png", redaction: "none" }
     });
     expect(JSON.stringify(result.trace)).not.toContain(provisionedValue);
   });
@@ -406,11 +406,11 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("actor_error");
-    expect(result.trace.diagnostic).toMatchObject({
-      kind: "actor_error",
-      phase: "executing click (11, 22)",
-      lastAction: "click (11, 22)",
-      message: "desktop actuator exited 1"
+    expect(result.trace.items.at(-1)).toMatchObject({
+      kind: "notice",
+      status: "error",
+      title: "computer-use loop error",
+      text: "phase: executing click (11, 22); error: Error; message: desktop actuator exited 1; last action: click (11, 22)"
     });
   });
 
