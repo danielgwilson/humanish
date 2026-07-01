@@ -416,7 +416,7 @@ describe("runComputerUseLoop", () => {
 
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {
     const provider = new RepeatProvider({ actions: [{ kind: "screenshot" }], pendingSafetyChecks: [], done: false });
-    const executor = new SignatureExecutor(["s0", "s1", "s2", "s3", "s4"]);
+    const executor = new SignatureExecutor(["same"]);
 
     const result = await runComputerUseLoop({
       instructions: "go",
@@ -432,6 +432,64 @@ describe("runComputerUseLoop", () => {
     expect(result.completionReason).toBe("gave_up");
     expect(result.status).toBe("failed");
     expect(result.reason).toContain("no material UI action");
+    const notice = result.trace.items.find((item) => item.title === "computer-use backstop gave up");
+    expect(notice?.text).toContain("recent actions: screenshot -> screenshot -> screenshot");
+    expect(notice?.screenshotRef?.path).toBe("screenshots/turn-03.png");
+  });
+
+  it("does not carry an idle streak across visible UI progress", async () => {
+    const seen: CuaTurnRequest[] = [];
+    const provider: CuaProvider = {
+      id: "idle-recovery",
+      version: "ir",
+      capabilities: FAKE_CAPS,
+      async nextTurn(req: CuaTurnRequest): Promise<CuaTurn> {
+        seen.push(req);
+        if (req.contextHint?.includes("only waiting or taking screenshots")) {
+          return {
+            actions: [{ kind: "click", x: 10, y: 20 }],
+            pendingSafetyChecks: [],
+            done: false
+          };
+        }
+        if (seen.length >= 6) {
+          return {
+            actions: [],
+            pendingSafetyChecks: [],
+            done: true,
+            message: "continued after the choice screen became actionable"
+          };
+        }
+        return { actions: [{ kind: "screenshot" }], pendingSafetyChecks: [], done: false };
+      }
+    };
+    const executor = new SignatureExecutor([
+      "start",
+      "loading",
+      "choice-screen",
+      "choice-screen",
+      "choice-screen",
+      "selected"
+    ]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      idleSteps: 3,
+      noProgressSteps: 6
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.status).toBe("passed");
+    expect(result.reason).toBe("continued after the choice screen became actionable");
+    expect(seen.some((req) => req.contextHint?.includes("only waiting or taking screenshots"))).toBe(true);
+    expect(result.trace.counts.idleTurns).toBeGreaterThan(3);
+    expect(result.trace.items.some((item) => item.title === "computer-use backstop gave up")).toBe(false);
   });
 
   it("gives up on a no-progress streak and nudges before stopping", async () => {
@@ -453,6 +511,9 @@ describe("runComputerUseLoop", () => {
     expect(result.reason).toContain("no change to the UI state");
     // A recovery hint was injected before the backstop tripped.
     expect(provider.seen.some((r) => (r.contextHint ?? "").includes("No visible progress"))).toBe(true);
+    expect(result.trace.items.find((item) => item.title === "computer-use backstop gave up")?.text).toContain(
+      "last material action: click (5, 5)"
+    );
   });
 
   it("stops on the wall-clock deadline (checked at the top of the loop)", async () => {

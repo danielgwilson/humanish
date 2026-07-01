@@ -226,6 +226,7 @@ export interface CuaLoopResult {
 
 const DEFAULT_IDLE_STEPS = 6;
 const DEFAULT_NO_PROGRESS_STEPS = 8;
+const IDLE_PROGRESS_FORGIVENESS_STEPS = 2;
 
 function isIdleAction(action: CuaAction): boolean {
   return action.kind === "screenshot" || action.kind === "wait";
@@ -427,6 +428,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     stopWhen
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
+  const idleRecoverySteps = Math.min(Math.max(1, idleSteps - 1), 3);
   // Model-authored narration: literal-scrub known provisioned values, THEN pattern-redact.
   // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
   // alone cannot catch it — the lab's scrubKnownValues, injected as scrubText, closes that.
@@ -451,7 +453,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let lastResponseId: string | undefined;
   let currentPhase = "initializing computer-use loop";
   let lastActionTitle: string | undefined;
+  let lastMaterialActionTitle: string | undefined;
   let lastScreenshotRef: ActorTraceItem["screenshotRef"] | undefined;
+  const recentActionTitles: string[] = [];
 
   const nextId = (kind: string): string => `${kind}-${(seq += 1).toString().padStart(3, "0")}`;
   const bump = (key: string): void => {
@@ -522,6 +526,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let consecutiveNoProgress = 0;
   let lastSignature = "";
   let contextHint: string | undefined;
+  let idleProgressForgivenessUsed = 0;
   // Acks granted for the previous turn's safety checks. They must ride the
   // NEXT request (the one carrying that call's computer_call_output), so they
   // are staged here rather than written onto the request already sent.
@@ -632,6 +637,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         if (signal?.aborted) throw new CuaAbortError();
         const actionTitle = describeCuaAction(action);
         lastActionTitle = actionTitle;
+        recentActionTitles.push(actionTitle);
+        if (recentActionTitles.length > 8) recentActionTitles.shift();
+        if (!isIdleAction(action)) lastMaterialActionTitle = actionTitle;
         items.push({
           id: nextId("ui_action"),
           kind: "ui_action",
@@ -664,26 +672,65 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       const progressed = progressKey !== lastSignature;
       lastSignature = progressKey;
 
-      consecutiveIdle = idleThisTurn ? consecutiveIdle + 1 : 0;
+      // A screenshot/wait turn while the UI visibly changes may be patience through loading or a
+      // transition, so grant a bounded recovery window. Do not grant infinite immunity: animated
+      // pixels or state-executor turn counters can otherwise keep a screenshot/wait loop alive
+      // until the wall-clock timeout.
+      if (idleThisTurn) {
+        if (progressed && idleProgressForgivenessUsed < IDLE_PROGRESS_FORGIVENESS_STEPS) {
+          idleProgressForgivenessUsed += 1;
+          consecutiveIdle = 0;
+        } else {
+          consecutiveIdle += 1;
+        }
+      } else {
+        idleProgressForgivenessUsed = 0;
+        consecutiveIdle = 0;
+      }
       if (idleThisTurn) bump("idleTurns");
       consecutiveNoProgress = progressed ? 0 : consecutiveNoProgress + 1;
       if (!progressed) bump("noProgressTurns");
 
       // Recovery nudge before the backstop trips: tell the model it is stuck.
+      const contextHints: string[] = [];
       if (consecutiveNoProgress >= noProgressRecoverySteps && consecutiveNoProgress < noProgressSteps) {
-        contextHint =
+        contextHints.push(
           `No visible progress for ${consecutiveNoProgress} step(s). ` +
-          "Try a different visible control, scroll within a panel, or stop with a final summary.";
+          "Try a different visible control, scroll within a panel, or stop with a final summary."
+        );
       }
+      if (consecutiveIdle >= idleRecoverySteps && consecutiveIdle < idleSteps) {
+        contextHints.push(
+          `You are only waiting or taking screenshots for ${consecutiveIdle} step(s). ` +
+          "If visible controls are actionable, choose one; otherwise stop with a blocker summary."
+        );
+      }
+      if (contextHints.length > 0) contextHint = contextHints.join(" ");
 
       if (consecutiveIdle >= idleSteps) {
         completionReason = "gave_up";
         reason = `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`;
+        items.push(backstopTraceItem({
+          id: nextId("notice"),
+          reason,
+          lastMaterialActionTitle,
+          recentActionTitles,
+          screenshotRef: lastScreenshotRef,
+          redactNarration
+        }));
         break;
       }
       if (consecutiveNoProgress >= noProgressSteps) {
         completionReason = "gave_up";
         reason = `gave up: ${consecutiveNoProgress} consecutive turns with no change to the UI state`;
+        items.push(backstopTraceItem({
+          id: nextId("notice"),
+          reason,
+          lastMaterialActionTitle,
+          recentActionTitles,
+          screenshotRef: lastScreenshotRef,
+          redactNarration
+        }));
         break;
       }
     }
@@ -788,5 +835,34 @@ function stopWhenTraceItem(
     text: redactNarration(
       `Harness stop condition matched rule ${match.id} using ${match.kinds.join(", ")}. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.`
     )
+  };
+}
+
+function backstopTraceItem(args: {
+  id: string;
+  reason: string;
+  lastMaterialActionTitle: string | undefined;
+  recentActionTitles: string[];
+  screenshotRef: ActorTraceItem["screenshotRef"] | undefined;
+  redactNarration: (text: string) => string;
+}): ActorTraceItem {
+  const details = [
+    `reason: ${args.reason}`,
+    args.lastMaterialActionTitle === undefined
+      ? "last material action: none"
+      : `last material action: ${args.lastMaterialActionTitle}`,
+    args.recentActionTitles.length === 0
+      ? "recent actions: none"
+      : `recent actions: ${args.recentActionTitles.join(" -> ")}`
+  ];
+
+  return {
+    id: args.id,
+    kind: "notice",
+    lifecycle: "completed",
+    status: "blocked",
+    title: "computer-use backstop gave up",
+    text: args.redactNarration(details.join("; ")),
+    ...(args.screenshotRef === undefined ? {} : { screenshotRef: args.screenshotRef })
   };
 }
