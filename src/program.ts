@@ -29,6 +29,7 @@ import type {
   LabListResult,
   LabResolveFailure
 } from "./labs.js";
+import { runLabPreflight, type LabPreflightReachabilityMode, type LabPreflightResult } from "./lab-preflight.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
 import type { CuaActorLabResult } from "./cua-actor-lab.js";
 import type { ScriptedBrowserLabResult } from "./scripted-browser-lab.js";
@@ -1102,6 +1103,58 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
       const result = await inspectLabManifest(options.cwd, labName);
       writeResult(command, io, result, formatLabInspectHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  lab
+    .command("preflight")
+    .argument("<lab>", "Lab id or .yaml path.")
+    .description("Check a lab manifest and optional target reachability before actor/model spend.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .addOption(new Option("--reachability <mode>", "Reachability mode.").choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"]).default("metadata"))
+    .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
+    .option("--env-file <path>", "Load a local env file for this preflight without persisting values.")
+    .option("--json", "Print a machine-readable JSON response.")
+    .action(async (labName: string, options: { cwd: string; envFile?: string; json?: boolean; reachability: LabPreflightReachabilityMode; timeoutMs: string }, command) => {
+      if (!await applyEnvFileOption({
+        command,
+        cwd: options.cwd,
+        envFile: options.envFile,
+        io
+      })) {
+        return;
+      }
+
+      const timeoutMs = parsePositiveInteger(options.timeoutMs);
+      if (timeoutMs === null) {
+        const result: LabPreflightResult = {
+          schema: "mimetic.lab-preflight-result.v1",
+          ok: false,
+          cwd: resolve(options.cwd),
+          lab: labName,
+          reachability: options.reachability,
+          checks: [{ name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." }],
+          targets: [],
+          sandbox: { created: false },
+          spend: { e2bDesktop: false, model: false },
+          warnings: [],
+          error: {
+            code: "MIMETIC_LAB_PREFLIGHT_INVALID_OPTION",
+            message: "--timeout-ms must be a positive integer."
+          }
+        };
+        writeResult(command, io, result, formatLabPreflightHuman);
+        io.setExitCode(2);
+        return;
+      }
+
+      const result = await runLabPreflight({
+        cwd: options.cwd,
+        lab: labName,
+        reachability: options.reachability,
+        timeoutMs
+      });
+      writeResult(command, io, result, formatLabPreflightHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
 
@@ -2420,6 +2473,27 @@ function formatLabInspectHuman(result: LabInspectResult): string {
     ...(result.path ? [`path: ${result.path}`] : []),
     ...(result.origin ? [`origin: ${result.origin}`] : []),
     ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
+    ...result.warnings.map((warning) => `warning: ${warning}`)
+  ].join("\n") + "\n";
+}
+
+function formatLabPreflightHuman(result: LabPreflightResult): string {
+  const checkedTargets = result.targets.filter((target) => target.checked);
+  const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
+  const blockedTargets = result.targets.filter((target) => target.status === "blocked");
+  return [
+    `mimetic lab preflight ${result.ok ? "passed" : "failed"}`,
+    `lab: ${result.labId ?? result.lab}`,
+    ...(result.backend ? [`backend: ${result.backend}`] : []),
+    `reachability: ${result.reachability}`,
+    `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
+    ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
+    `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
+    ...(result.sandbox.created
+      ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
+      : []),
+    ...result.checks.map((check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`),
+    ...(result.error ? [`error: ${result.error.code}: ${result.error.message}`] : []),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }

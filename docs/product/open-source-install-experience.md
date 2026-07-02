@@ -169,6 +169,7 @@ Suggested scripts:
 | `mimetic watch --json --no-open` | Agent/CI proof path | Create the same bundle and Observer artifacts without browser open or attached watch server |
 | `mimetic lab list` | Discover available labs | List committed labs and ignored local labs with origin labels |
 | `mimetic lab inspect <lab>` | Read a lab manifest | Print the parsed lab config, origin, path, and warnings without executing |
+| `mimetic lab preflight <lab>` | Check lab readiness before spend | Validate routing and optionally probe declared targets from a hosted desktop without launching actors |
 | `mimetic lab run <lab>` | Run a lab manifest | Human or JSON execution path for synthetic, OSS meta, and smoke labs |
 | `mimetic lab run oss` | Maintainer dogfood example | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos`, target app windows, nested Observers, runtime-only stream URLs, and redacted durable evidence for token-backed runs |
 | `mimetic lab run oss-smoke` | Maintainer smoke example | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |

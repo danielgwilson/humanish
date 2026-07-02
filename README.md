@@ -99,6 +99,7 @@ After `mimetic init`, named lab manifests can be run the same way:
 npx mimetic watch first-run
 npx mimetic lab list
 npx mimetic lab inspect first-run
+npx mimetic lab preflight first-run
 ```
 
 The CI-safe equivalent is:
@@ -118,6 +119,7 @@ npx mimetic watch --json --no-open
 | `mimetic watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
 | `mimetic lab list` | List committed and ignored lab manifests. |
 | `mimetic lab inspect <lab>` | Show the source manifest for a lab without running it. |
+| `mimetic lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
 | `mimetic lab run <lab>` | Run a lab manifest in human or JSON mode. |
 | `mimetic verify` | Validate a run bundle and public-safety gates. |
 | `mimetic cleanup` | Clean resources explicitly recorded as owned by a run and write `cleanup.json`. |

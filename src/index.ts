@@ -302,6 +302,16 @@ export type {
 } from "./lab-config.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
 export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";
+export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab-preflight.js";
+export type {
+  LabPreflightCheck,
+  LabPreflightReachabilityMode,
+  LabPreflightResult,
+  LabPreflightSandbox,
+  LabPreflightSpend,
+  LabPreflightTarget,
+  RunLabPreflightOptions
+} from "./lab-preflight.js";
 export {
   CLI_RESPONSE_SCHEMA,
   createProgram,
