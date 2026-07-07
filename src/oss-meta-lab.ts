@@ -2,6 +2,8 @@ import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { runDesktopCommandOrThrow } from "./command-failure.js";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -5532,7 +5534,13 @@ async function runDesktopCommand(
   command: string,
   options: E2BCommandRunOptions
 ): Promise<E2BCommandResult> {
-  const result = await desktop.commands.run(`bash -lc ${shellQuote(command)}`, options);
+  const result = await runDesktopCommandOrThrow(
+    () => desktop.commands.run(`bash -lc ${shellQuote(command)}`, options),
+    // The real Sandbox throws CommandExitError on a non-zero exit, so recover the
+    // exit code + output tail from the throw and preserve the formatted error.
+    ({ exitCode, stderrTail }) =>
+      new Error(`Remote command failed with exit code ${exitCode ?? "unknown"}.\noutput=${stderrTail}`),
+  );
   if (result.exitCode && result.exitCode !== 0) {
     throw new Error([
       `Remote command failed with exit code ${result.exitCode}.`,

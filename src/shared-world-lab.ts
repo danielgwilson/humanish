@@ -24,7 +24,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
-import { runDesktopCommand } from "./command-failure.js";
+import { runDesktopCommandOrThrow } from "./command-failure.js";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "./actor-contract.js";
 import {
@@ -318,7 +318,7 @@ async function launchSeatBrowser(
     "    ;;",
     "esac"
   ].join("\n");
-  const result = await runDesktopCommand(
+  const result = await runDesktopCommandOrThrow(
     () => desktop.commands.run(command, { requestTimeoutMs: args.requestTimeoutMs }),
     (_info, error) =>
       args.browserPreference !== undefined && args.browserPreference !== "default"

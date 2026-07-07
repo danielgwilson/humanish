@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { commandFailureInfo, runDesktopCommand, tailOf } from "../src/command-failure.js";
+import { commandFailureInfo, runDesktopCommandOrThrow, tailOf } from "../src/command-failure.js";
 
 /** Shape matching @e2b/desktop's CommandExitError (name + exitCode + stderr/stdout). */
 function commandExitError(fields: { exitCode?: number; stderr?: string; stdout?: string; message?: string }): Error {
@@ -45,10 +45,10 @@ describe("commandFailureInfo", () => {
   });
 });
 
-describe("runDesktopCommand", () => {
+describe("runDesktopCommandOrThrow", () => {
   it("returns the run result on success and never calls onFailure", async () => {
     let onFailureCalls = 0;
-    const result = await runDesktopCommand(
+    const result = await runDesktopCommandOrThrow(
       async () => ({ exitCode: 0, stdout: "ok" }),
       () => {
         onFailureCalls += 1;
@@ -60,7 +60,7 @@ describe("runDesktopCommand", () => {
   });
 
   it("converts a thrown CommandExitError into the caller's intended error", async () => {
-    const thrown = await runDesktopCommand(
+    const thrown = await runDesktopCommandOrThrow(
       async () => {
         throw commandExitError({ exitCode: 127, stderr: "requested browser firefox was not found" });
       },
@@ -74,7 +74,7 @@ describe("runDesktopCommand", () => {
 
   it("can rethrow the ORIGINAL error (e.g. to preserve default propagation)", async () => {
     const original = commandExitError({ exitCode: 1, stderr: "infra" });
-    const thrown = await runDesktopCommand(
+    const thrown = await runDesktopCommandOrThrow(
       async () => {
         throw original;
       },

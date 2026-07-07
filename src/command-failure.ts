@@ -44,7 +44,7 @@ export function commandFailureInfo(error: unknown): { exitCode?: number; stderrT
  * error to preserve raw propagation). A non-throwing runner that RETURNS a
  * non-zero exitCode is left to the caller's own post-call check.
  */
-export async function runDesktopCommand<T>(
+export async function runDesktopCommandOrThrow<T>(
   run: () => Promise<T>,
   onFailure: (info: { exitCode?: number; stderrTail: string }, error: unknown) => unknown,
 ): Promise<T> {
