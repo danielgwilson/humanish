@@ -15,7 +15,7 @@ UI sims, so the lane has to become a first-class registered actor.
 - **`runCuaActorSession`** (`src/computer-use-actor.ts`): the registry-facing wrapper that
   constructs the OpenAI provider + E2B executor behind DI seams (tests inject fakes; zero spend).
 - **Registry entry**: `openai-computer-use` in `actorRegistry` — `runSession`-only, since the
-  loop already returns a finished `mimetic.actor-trace.v1`; capabilities reuse
+  loop already returns a finished `homun.actor-trace.v1`; capabilities reuse
   `OPENAI_RESPONSES_CU_CAPABILITIES` so the registry never drifts from what the trace reports.
 - **Public surface**: the full CUA API exported from `src/index.ts` (previously unexported).
 - **A live-API bug fix found by real testing**: the Responses `computer` tool must be exactly
@@ -32,7 +32,7 @@ UI sims, so the lane has to become a first-class registered actor.
   (`computer-use` / `cua-loop` / `openai-responses-cu`), typed secrets and API keys never reach
   the trace, every screenshot ref is `blurred`, and safety checks fail closed (`blocked_approval`).
 - **Live (spend-gated)** — `tests/computer-use-actor.live.test.ts`: triple-gated
-  (`MIMETIC_LIVE_CUA=1` + both API keys + lazy peer import). A real E2B desktop showing a local
+  (`HOMUN_LIVE_CUA=1` + both API keys + lazy peer import). A real E2B desktop showing a local
   `file://` page, driven by the real OpenAI Computer Use loop, returned
   `status=passed / goal_satisfied` with a conformant redacted trace (run 2026-06-09; the run that
   surfaced and then verified the tool-schema fix).

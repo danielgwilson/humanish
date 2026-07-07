@@ -121,7 +121,7 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
       throw new Error(
-        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `mimetic lab run oss --dry-run`."
+        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `homun lab run oss --dry-run`."
       );
     }
 

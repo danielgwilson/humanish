@@ -2,12 +2,12 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  mimeticScripts,
+  homunScripts,
   runtimeDirectories,
   starterFiles
 } from "./init-templates.js";
 
-export const INIT_RESPONSE_SCHEMA = "mimetic.init-result.v1";
+export const INIT_RESPONSE_SCHEMA = "homun.init-result.v1";
 
 export interface InitOptions {
   cwd: string;
@@ -33,9 +33,9 @@ export interface InitResult {
   warnings: string[];
   error?: {
     code:
-      | "MIMETIC_CONFIRMATION_REQUIRED"
-      | "MIMETIC_INVALID_CWD"
-      | "MIMETIC_INVALID_PACKAGE_JSON";
+      | "HOMUN_CONFIRMATION_REQUIRED"
+      | "HOMUN_INVALID_CWD"
+      | "HOMUN_INVALID_PACKAGE_JSON";
     message: string;
   };
 }
@@ -106,7 +106,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
         target: file.plane,
         reason: "existing file would not be overwritten"
       });
-      warnings.push(`Skipped existing ${file.path}; Mimetic never overwrites user files during init.`);
+      warnings.push(`Skipped existing ${file.path}; Homun never overwrites user files during init.`);
     }
   }
 
@@ -162,7 +162,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       changes,
       warnings,
       error: {
-        code: "MIMETIC_CONFIRMATION_REQUIRED",
+        code: "HOMUN_CONFIRMATION_REQUIRED",
         message: "Re-run with --dry-run to inspect or --yes to apply safe generated changes."
       }
     };
@@ -213,7 +213,7 @@ async function planGitignore(cwd: string): Promise<{ write?: PlannedWrite; chang
     || (envIndex !== -1 && envExampleIndex < envIndex)
     || needsEnv;
   const missingLines = [
-    ...(currentLines.includes(".mimetic/") ? [] : [".mimetic/"]),
+    ...(currentLines.includes(".homun/") ? [] : [".homun/"]),
     ...(needsEnv ? [".env*"] : []),
     ...(needsEnvExample ? ["!.env.example"] : [])
   ];
@@ -224,7 +224,7 @@ async function planGitignore(cwd: string): Promise<{ write?: PlannedWrite; chang
         path: relativePath,
         action: "skip",
         target: "gitignore",
-        reason: "already ignores Mimetic runtime and env files"
+        reason: "already ignores Homun runtime and env files"
       }
     };
   }
@@ -232,7 +232,7 @@ async function planGitignore(cwd: string): Promise<{ write?: PlannedWrite; chang
   const prefix = existing && existing.trim().length > 0
     ? trimTrailingNewlines(existing) + "\n\n"
     : "";
-  const contents = `${prefix}# Mimetic runtime and local secrets\n${missingLines.join("\n")}\n`;
+  const contents = `${prefix}# Homun runtime and local secrets\n${missingLines.join("\n")}\n`;
 
   return {
     write: {
@@ -281,8 +281,8 @@ async function planPackageJson(cwd: string): Promise<PackagePlan> {
       },
       warnings: ["package.json is not valid JSON; init did not apply partial changes."],
       error: {
-        code: "MIMETIC_INVALID_PACKAGE_JSON",
-        message: "package.json is not valid JSON. Fix it before running mimetic init."
+        code: "HOMUN_INVALID_PACKAGE_JSON",
+        message: "package.json is not valid JSON. Fix it before running homun init."
       }
     };
   }
@@ -297,8 +297,8 @@ async function planPackageJson(cwd: string): Promise<PackagePlan> {
       },
       warnings: ["package.json root is not an object; init did not apply partial changes."],
       error: {
-        code: "MIMETIC_INVALID_PACKAGE_JSON",
-        message: "package.json root must be an object. Fix it before running mimetic init."
+        code: "HOMUN_INVALID_PACKAGE_JSON",
+        message: "package.json root must be an object. Fix it before running homun init."
       }
     };
   }
@@ -307,7 +307,7 @@ async function planPackageJson(cwd: string): Promise<PackagePlan> {
   const missingScripts: Record<string, string> = {};
   const conflictingScripts: string[] = [];
 
-  for (const [name, command] of Object.entries(mimeticScripts)) {
+  for (const [name, command] of Object.entries(homunScripts)) {
     const existingScript = scripts[name];
 
     if (existingScript === undefined) {
@@ -337,7 +337,7 @@ async function planPackageJson(cwd: string): Promise<PackagePlan> {
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: "Mimetic scripts already present"
+        reason: "Homun scripts already present"
       },
       warnings: []
     };
@@ -402,7 +402,7 @@ async function validateCwd(cwd: string): Promise<InitResult["error"] | null> {
 
     if (!stats.isDirectory()) {
       return {
-        code: "MIMETIC_INVALID_CWD",
+        code: "HOMUN_INVALID_CWD",
         message: `Target cwd is not a directory: ${cwd}`
       };
     }
@@ -411,7 +411,7 @@ async function validateCwd(cwd: string): Promise<InitResult["error"] | null> {
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return {
-        code: "MIMETIC_INVALID_CWD",
+        code: "HOMUN_INVALID_CWD",
         message: `Target cwd does not exist: ${cwd}`
       };
     }

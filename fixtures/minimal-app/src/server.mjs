@@ -7,11 +7,11 @@ const html = `<!doctype html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mimetic Synthetic Fixture</title>
+    <title>Homun Synthetic Fixture</title>
   </head>
   <body>
     <main>
-      <h1>Mimetic Synthetic Fixture</h1>
+      <h1>Homun Synthetic Fixture</h1>
       <p data-testid="state">first-visible-state</p>
       <form aria-label="Synthetic onboarding">
         <label>
@@ -35,5 +35,5 @@ const server = createServer((_request, response) => {
 });
 
 server.listen(port, () => {
-  console.log(`mimetic synthetic fixture listening on http://localhost:${port}`);
+  console.log(`homun synthetic fixture listening on http://localhost:${port}`);
 });

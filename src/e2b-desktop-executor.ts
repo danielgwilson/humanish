@@ -121,7 +121,7 @@ function tailOf(value: string | undefined): string {
 async function pasteTextViaClipboard(desktop: E2BDesktopLike, text: string): Promise<boolean> {
   if (!desktop.files || !desktop.commands) return false;
 
-  const path = `/tmp/mimetic-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
+  const path = `/tmp/homun-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
   await desktop.files.write(path, text, { requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS });
 
   const result = await desktop.commands.run([

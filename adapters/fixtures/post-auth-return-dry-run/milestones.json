@@ -1,5 +1,5 @@
 {
-  "schema": "mimetic.milestones.v1",
+  "schema": "homun.milestones.v1",
   "milestones": [
     {
       "id": "upload-ready",

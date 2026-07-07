@@ -13,14 +13,14 @@ import { verifyRun } from "../src/run.js";
 // no-spend. It exercises the credential-placement inversion against a real provider, so it is
 // gated EXACTLY like the other live rungs (never run in CI) and kept as a receipt by the
 // orchestrator post-merge:
-//   1. MIMETIC_LIVE_CODEX=1 must be set explicitly (the live opt-in);
+//   1. HOMUN_LIVE_CODEX=1 must be set explicitly (the live opt-in);
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present (operator-side; the runtime key is
 //      injected ONLY into the command-scoped codex invocation, never sandbox-global);
 //   3. @e2b/desktop is the lazily-loaded substrate.
 // Asserts the safety contract holds against a real agent: real sandbox created + reclaimed,
 // runtime auth command-scoped (never in metadata), no banned creds in artifacts, the bundle
 // verifies (incl. the terminal-product evidence check). NEVER asserts task success.
-const LIVE = process.env.MIMETIC_LIVE_CODEX === "1"
+const LIVE = process.env.HOMUN_LIVE_CODEX === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
@@ -62,7 +62,7 @@ function liveConfig(): LabConfig {
 
 describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "mimetic-tp-livereal-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-tp-livereal-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("runs a real Codex agent in an E2B shell with a command-scoped key and a verified bundle", { timeout: 600_000 }, async () => {
@@ -80,7 +80,7 @@ describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", (
     expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
 
     // No credential VALUE in evidence: the real OPENAI_API_KEY value never appears in any artifact.
-    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
     const realKey = (process.env.OPENAI_API_KEY ?? "").trim();
     for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json"]) {
       const text = await readFile(path.join(runDir, file), "utf8");

@@ -1,5 +1,5 @@
 name: Product feedback
-description: Evidence-backed feedback from a Mimetic run or human review
+description: Evidence-backed feedback from a Homun run or human review
 title: "[feedback] "
 labels:
   - product-feedback
@@ -20,12 +20,12 @@ body:
   - type: textarea
     id: feedback-block
     attributes:
-      label: mimetic_feedback block
-      description: Fill this from `mimetic feedback draft` when available.
+      label: homun_feedback block
+      description: Fill this from `homun feedback draft` when available.
       value: |
         ```yaml
-        mimetic_feedback:
-          schema: mimetic.feedback.v1
+        homun_feedback:
+          schema: homun.feedback.v1
           run_id:
           adapter_id:
           scenario_id:

@@ -11,12 +11,12 @@ import { runLab } from "../src/lab-engine.js";
 import { verifyRun } from "../src/run.js";
 
 // The LIVE rung for the CONCURRENT shared-world topology (#164 phase 2). WRITTEN + gated, NOT run
-// in the autonomous proof: it needs (1) MIMETIC_LIVE_SHARED_WORLD=1 (the spend opt-in), (2)
+// in the autonomous proof: it needs (1) HOMUN_LIVE_SHARED_WORLD=1 (the spend opt-in), (2)
 // OPENAI_API_KEY + E2B_API_KEY.
 //
 // It drives the REAL committed synthetic fixture (no placeholders): the lab
-// `mimetic/labs/shared-world-concurrent-live.yaml` clones THIS public repo, serves the synthetic
-// shared task board `mimetic/fixtures/shared-world-app` on 0.0.0.0, seeds it, and probes it (a
+// `homun/labs/shared-world-concurrent-live.yaml` clones THIS public repo, serves the synthetic
+// shared task board `homun/fixtures/shared-world-app` on 0.0.0.0, seeds it, and probes it (a
 // read-only aggregate). 3 concurrent personas each add a task to the shared board; the prober
 // observes the task count GROW under load. The fixture must be on the cloned commit's default
 // branch — so this rung is a separately-authorized receipt RUN AFTER this PR merges to main.
@@ -24,7 +24,7 @@ import { verifyRun } from "../src/run.js";
 // The deterministic fake-substrate proof (the rendezvous latch) in
 // concurrent-shared-world-lab.test.ts is the merge gate at $0; it proves the PLUMBING + the honesty
 // contract — NOT "we ran many concurrent users at scale", which only this live receipt backs.
-const LIVE = process.env.MIMETIC_LIVE_SHARED_WORLD === "1"
+const LIVE = process.env.HOMUN_LIVE_SHARED_WORLD === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
@@ -34,7 +34,7 @@ describe.skipIf(!LIVE)("concurrent shared-world topology (LIVE, spend-gated — 
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "mimetic-concurrent-sw-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "homun-concurrent-sw-live-"));
   });
 
   afterEach(async () => {
@@ -44,7 +44,7 @@ describe.skipIf(!LIVE)("concurrent shared-world topology (LIVE, spend-gated — 
   it("provisions one getHost-exposed plane, runs 3 personas at once, proves overlap + state evolution", { timeout: 1_200_000 }, async () => {
     // The REAL committed fixture lab — single source of truth (no inline placeholder). Flip the
     // (dry-run default) committed lab to a live run via the explicit dryRun override.
-    const raw = parse(readFileSync(path.join(REPO_ROOT, "mimetic/labs/shared-world-concurrent-live.yaml"), "utf8"));
+    const raw = parse(readFileSync(path.join(REPO_ROOT, "homun/labs/shared-world-concurrent-live.yaml"), "utf8"));
     const parsed = parseLabConfig(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
 
@@ -69,7 +69,7 @@ describe.skipIf(!LIVE)("concurrent shared-world topology (LIVE, spend-gated — 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.attributionClass).toBe("shared-world");
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     // The shared world changed under concurrent load (the task count grew → a real stateSeries delta).

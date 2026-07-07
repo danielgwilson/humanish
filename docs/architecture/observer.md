@@ -10,10 +10,10 @@ active-run Observer snapshots; broader live actor adapters next.
 The Observer is a mission-control surface over durable run artifacts, not a
 static report page.
 
-Every run writes immutable local evidence under `.mimetic/runs/<run-id>/`:
+Every run writes immutable local evidence under `.homun/runs/<run-id>/`:
 
 ```text
-.mimetic/runs/<run-id>/
+.homun/runs/<run-id>/
   run.json
   review.json
   review.md
@@ -46,7 +46,7 @@ metadata.
 
 ## Live Watch
 
-`mimetic watch` now:
+`homun watch` now:
 
 1. creates a fresh four-lane synthetic run bundle;
 2. writes `observer-data.json` and `events.ndjson`;
@@ -56,7 +56,7 @@ metadata.
 
 The browser polls `observer-data.json` with `no-store` caching. Static
 `file://` opening still works for immutable review, but follow mode is the
-operator path. Agents and CI should use `mimetic watch --json --no-open` for
+operator path. Agents and CI should use `homun watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
 
 Local `codex-exec` actor runs now publish an initial running `run.json` and
@@ -103,7 +103,7 @@ active-run Observer snapshots for local `codex-exec`.
 Since shipped (updated 2026-06-11):
 
 - Playwright-backed browser proof with scripted, app-specific
-  `browser.steps` authored in `mimetic/scenarios/*.yaml` (`src/run.ts`);
+  `browser.steps` authored in `homun/scenarios/*.yaml` (`src/run.ts`);
 - native Codex app-server session adapter (`src/codex-app-server.ts`,
   registered in `src/actor-registry.ts`);
 - E2B desktop substrate lanes on the meta and computer-use routes;

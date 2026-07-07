@@ -1,0 +1,213 @@
+# Completion Audit
+
+Date: 2026-06-04
+
+Verdict: recursive proof critical point complete for one public-safe lane.
+
+## Independent Audit Result
+
+An independent read-only audit found the recursive proof evidence was real and
+surfaced four issues:
+
+- the original arbitrary total run-count cap was a poor spend-control proxy and
+  was likely exceeded;
+- the transient goal packet was included in the npm package file list;
+- local browser proofs retained Chrome profile state under run artifacts;
+- `verify` checked screenshot/trace artifact entries but not screenshot URLs
+  referenced by `embed.url` or `ui.screenshotUrl`.
+
+Continuation audit also found two stale proof-surface labels:
+
+- live OSS meta-lab bundles still wrote `mode: "dry-run"`;
+- public ramp and architecture docs still described live browser proof as
+  not-first-class / nested dry-run-only.
+
+Post-audit fixes:
+
+- `package.json` now packages `docs/goals/current.md` instead of all
+  `docs/goals/`, and `tests/release.test.ts` enforces that narrower package
+  surface.
+- Browser profile state is created under the OS temp directory and removed after
+  each screenshot capture.
+- `verify` now validates local screenshot references from artifact entries,
+  screenshot embeds, and UI screenshot URLs.
+- The goal packet source-of-truth text no longer depends on a private Codex
+  thread.
+- E2B provider state was queried by public-safe metadata. Seven running Homun
+  OSS meta-lab sandboxes were found, all seven were killed, and a follow-up
+  provider readback returned zero running Homun OSS meta-lab sandboxes.
+- `homun lab oss` now treats `--count` as the requested lane count rather
+  than comparing it to a hidden max-running desktop ceiling.
+- The original total run-count cap was reclassified as an arbitrary goal-design
+  mistake, not a completion invariant. The corrected spend policy uses dollar
+  budget, wall-clock budget, provider sandbox timeout, and cleanup/readback,
+  not a hidden desktop-count cap.
+- The active goal and packet now explicitly say there is no total-attempt cap;
+  only the real spend, time, provider-timeout, cleanup/readback, and
+  proof-quality gates can stop the live loop.
+- Redaction now avoids treating Codex command flags such as
+  `--ask-for-approval` as OpenAI keys while still redacting real `sk-*` token
+  shapes.
+- Actor-required retry found two additional harness issues and one external
+  blocker: ambient Codex `exec` had stale flag support, `codex exec`
+  automation needs `CODEX_API_KEY` inline for the single invocation, and the
+  available key then failed a local auth smoke with quota exceeded.
+- Remote provider secret handling was tightened so raw provider env names are
+  not exposed broadly to target repo scripts. Codex auth is scoped to the actor
+  process; GitHub auth is scoped to clone/askpass; E2B API key is not forwarded
+  into the sandbox env.
+- Host actor plan preflight was hardened so raw cloned repos, `.git` metadata,
+  raw Codex last-message output, and schema scratch files live only under
+  `.homun/tmp` and are deleted after normalization. Durable host-plan run
+  artifacts now contain only `actor-plan.json` and sanitized `codex-output.txt`.
+- Host Codex plan generation now uses an allowlist environment instead of
+  copying the full host env and deleting known secret names.
+- Host-plan application no longer sets `ACTOR_STATUS=passed`; host-plan mode is
+  useful preflight evidence but cannot satisfy actor-required completion without
+  a real remote actor process.
+- `homun verify` now scans all run text artifacts and rejects raw browser
+  profile/store paths and raw clone `.git` paths. Regression tests cover
+  browser-profile artifacts and non-bundle `events.ndjson` secret leakage.
+- A new actor-required live retry with explicit `gpt-5.4-mini` proved the model
+  override reached E2B, but remote Codex still failed with quota exceeded.
+- An isolated empty-`CODEX_HOME` smoke and direct OpenAI Responses API preflight
+  confirmed the available API-key path is quota blocked; actor-required live
+  runs now fail closed before paid E2B launch when the preflight fails.
+- Local `codex-exec` fanout no longer rejects lane counts above four. It runs
+  requested lanes through bounded concurrency
+  `HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` (default 4), which is a resource
+  rail rather than a total run-count cap.
+- Live OSS meta-lab bundles now write `mode: "live"` when live launch is
+  requested, and Observer warnings are mode-aware.
+- The captured final proof bundle was corrected to `mode: live`, its Observer
+  was rerendered without another paid provider launch, and the same run verified
+  green again.
+- Public ramp and OSS lab architecture docs now say `--app-url` browser proof is
+  live for desktop/mobile render evidence while multi-step autonomous persona
+  navigation remains the next gap.
+- The remote bootstrap script now supports
+  `HOMUN_OSS_META_ACTOR_FIRST=1`,
+  `HOMUN_OSS_META_REQUIRE_ACTOR=1`, and
+  `HOMUN_OSS_META_ACTOR_TIMEOUT_MS` so a future live run can require terminal
+  Codex actor readback and move the actor before deterministic setup/readback.
+- Actor-required live run `oss-meta-2026-06-04T09-14-56-290Z-3f979fc9`
+  verified successfully as a run bundle and failed closed with verdict
+  `blocked` because `actorStatus` was `timed_out` while app/nested Observer
+  evidence passed.
+- After OpenAI credits and limits were fixed, actor-required live run
+  `oss-meta-actor-required-resume-2026-06-04T11-03Z` passed with
+  `actorStatus=passed`, `appStatus=running`, `nestedVerifyPassed=true`,
+  `nestedObserverPresent=true`, `visualStatus=visible`,
+  `visualWindowCount=3`, and `screenshotPresent=true`.
+- Verification for `oss-meta-actor-required-resume-2026-06-04T11-03Z` passed
+  schema, redaction, review-artifact, public-safety, and local-evidence checks.
+- Screenshot inspection confirmed the headed Redux Essentials app windows and
+  nested Homun Observer with desktop/mobile browser lanes.
+- Provider cleanup killed sandbox `[redacted-sandbox-id]`; follow-up provider
+  readback returned zero running Homun OSS meta-lab sandboxes.
+- A later app-target live run
+  `oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z` passed against
+  `maciekt07/TodoApp`, a public locally runnable app target with visible
+  desktop/mobile surfaces.
+- The app-target run persisted two public-safe actor evidence artifacts under
+  `actor-evidence/`, and verification checked those local log artifacts exist.
+- Screenshot inspection confirmed Todo app desktop/mobile browser windows and
+  a nested Homun Observer with desktop/mobile browser lanes.
+- Provider cleanup killed sandbox `[redacted-sandbox-id]`; follow-up provider
+  readback returned zero running Homun OSS meta-lab sandboxes.
+- After PR #71 merged, canonical `main` reran the same app-target proof as
+  `oss-meta-app-target-main-2026-06-04T19-18Z`; it passed with
+  `actorStatus=passed`, `appStatus=running`, `nestedVerifyPassed=true`,
+  `nestedObserverPresent=true`, `visualStatus=visible`,
+  `visualWindowCount=3`, and `screenshotPresent=true`.
+- Verification for `oss-meta-app-target-main-2026-06-04T19-18Z` passed schema,
+  redaction, review-artifact, public-safety, and local-evidence checks.
+- Screenshot inspection confirmed Todo app desktop/mobile browser windows and
+  a nested Homun Observer in the E2B desktop.
+- Provider cleanup killed sandbox `[redacted-sandbox-id]`; follow-up provider
+  readback returned zero running Homun OSS meta-lab sandboxes.
+
+## Invariant Map
+
+| Success invariant | Evidence | Status |
+| --- | --- | --- |
+| Committed goal packet exists | `docs/goals/homun-recursive-proof-critical-point/goal.md`, `state.yaml`, and receipts are tracked on `main` after PR #69 | passed |
+| `homun run --app-url` captures desktop/mobile browser evidence | `src/run.ts`, `tests/run.test.ts`, `.homun/runs/local-browser-app-proof-clean/screenshots/*.png`, `.homun/runs/local-browser-app-proof-clean/traces/*.json` | passed |
+| `verify` fails when claimed screenshot/trace evidence is missing | `tests/run.test.ts` removes screenshot evidence and mutates embed URL evidence; `verifyRun` checks artifact, embed, and UI screenshot paths | passed |
+| OSS meta-lab uses nested app URL proof when target app is running | `src/oss-meta-lab.ts`; final terminal tail includes `homun run live`, `sims: 2`, and nested verify passed | passed |
+| Bounded live run uses public-safe OSS app/tool target | Final app-target run used `maciekt07/TodoApp`, `--count 1`, and live E2B mode. Earlier Redux evidence is historical, not the preferred target-selection proof. | passed |
+| Provider spend/time policy respected | No secret values were printed; exact dollar usage was unavailable from the CLI; wall-clock remained within the authorized window; all running Homun OSS meta-lab sandboxes were killed after proof collection | passed with usage note |
+| Future provider launch cap guarded | `src/oss-meta-lab.ts` checks running provider sandboxes before launch; `tests/oss-lab.test.ts` covers fail-closed capacity classification | passed |
+| Actor API-key quota preflight prevents wasted E2B spend | `src/oss-meta-lab.ts` preflights actor-required API-key/quota path; `oss-meta-actor-preflight-real-2026-06-04T10-44Z` launched zero sandboxes, verified blocked, and provider readback returned zero running sandboxes | passed |
+| Durable artifacts contain no secret values, runtime stream auth URLs, private repo labels, PII, PHI, or private source artifacts | `pnpm homun -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json`; broad run-artifact scan and public-surface scan passed | passed |
+| Top-level Observer evidence shows E2B desktop lane | `.homun/runs/oss-meta-app-target-main-2026-06-04T19-18Z/observer/index.html`; screenshot `screenshots/oss-01-desktop.png` | passed |
+| Nested Observer exists and contains desktop/mobile browser streams | Canonical app-target run completion records nested Observer path, `homun run live`, `sims: 2`, and nested verify passed; screenshot visually shows Todo app desktop/mobile windows plus nested desktop/mobile lanes | passed |
+| Coding-agent persona discovers, installs, and uses Homun | `oss-meta-app-target-main-2026-06-04T19-18Z` passed with `actorStatus=passed`; local actor evidence artifacts record `npm i -D homun`, `npx homun init --yes`, target app startup, public npm watch use, Observer generation, and verification | passed |
+| Bundle and review pass schema/redaction/public-safety checks | `pnpm homun -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json` | passed |
+| Independent audit maps invariants or names gaps | This receipt plus independent audit result | passed |
+
+## Final Commands
+
+```bash
+pnpm test tests/run.test.ts tests/oss-lab.test.ts
+HOMUN_BROWSER_COMMAND='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' pnpm homun -- run --app-url http://127.0.0.1:4173 --run-id local-browser-app-proof-clean --json
+pnpm homun -- verify --run local-browser-app-proof-clean --json
+pnpm homun -- watch --run oss-meta-2026-06-04T08-33-55-996Z-8854989a --detach --no-open
+pnpm homun -- verify --run oss-meta-2026-06-04T08-33-55-996Z-8854989a --json
+pnpm homun -- verify --run oss-meta-2026-06-04T09-14-56-290Z-3f979fc9 --json
+pnpm homun -- verify --run oss-meta-actor-required-resume-2026-06-04T11-03Z --json
+pnpm homun -- verify --run oss-meta-actor-evidence-todoapp-2026-06-04T12-03Z --json
+pnpm homun -- verify --run oss-meta-app-target-main-2026-06-04T19-18Z --json
+npm pack --dry-run --json --ignore-scripts
+pnpm release:check
+```
+
+Final release check:
+
+```text
+typecheck: passed
+tests: 15 files, 102 tests passed
+build: passed
+public-surface scan: passed
+skill check: passed
+npm pack dry-run: passed
+```
+
+Post-cleanup provider readback:
+
+```text
+running Homun OSS meta-lab sandboxes: 0
+```
+
+## Package Surface
+
+`npm pack --dry-run` includes `docs/goals/current.md` but not
+`docs/goals/homun-recursive-proof-critical-point/`.
+
+## Completion Decision
+
+The recursive proof critical point is achieved for one public-safe headed OSS
+lane. The run proves:
+
+```text
+top-level Homun Observer
+-> headed E2B desktop
+-> remote Codex actor terminal with actorStatus=passed
+-> public OSS app/tool target running
+-> nested Homun live app-url run
+-> nested Observer with desktop/mobile browser evidence
+-> durable public-safe actor evidence artifacts
+-> verifier/public-safety checks
+-> provider cleanup/readback to zero running Homun OSS meta-lab sandboxes
+```
+
+The final target-selection proof uses `maciekt07/TodoApp` rather than the
+earlier Redux proof because a visible app/tool surface is the correct default
+for user-simulation dogfood. A release/discovery gap remains: the remote actor's
+published `homun@0.1.4` install path did not expose the branch app-url
+path, so the actor used the public npm watch path while deterministic bootstrap
+used the local branch package for nested live app-url proof.
+
+This is a phase-change proof, not broad platform readiness. Repeated-run
+reliability, multi-step autonomous browser-persona navigation, and richer
+adapter coverage remain future work.

@@ -1,4 +1,4 @@
-export const OSS_REMOTE_TELEMETRY_SCHEMA = "mimetic.oss-remote-telemetry.v1";
+export const OSS_REMOTE_TELEMETRY_SCHEMA = "homun.oss-remote-telemetry.v1";
 
 export type OssRemoteCompletionStatus =
   | "running"

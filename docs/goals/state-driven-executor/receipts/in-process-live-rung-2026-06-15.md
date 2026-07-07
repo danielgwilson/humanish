@@ -2,14 +2,14 @@
 
 Date: 2026-06-15. Tree: main @ e40d4f0 (#150 merged). Operator: maintainer session.
 
-Command: `MIMETIC_LIVE_CUA=1 npx vitest run tests/cua-actor-lab.state-executor.live.test.ts`
+Command: `HOMUN_LIVE_CUA=1 npx vitest run tests/cua-actor-lab.state-executor.live.test.ts`
 Result: **1 passed / 0 failed, 747ms.**
 
 ## Why this receipt exists
 
 PR1 of issue #148 lets a library caller drive an already-running local app through a
 custom state-driven `CuaExecutor`, with NO E2B desktop and NO screenshot vision, while
-keeping mimetic's composition (persona, Observer, `ActorTrace` bundle, redaction, the
+keeping homun's composition (persona, Observer, `ActorTrace` bundle, redaction, the
 friction loop). The deterministic merge-gate rungs prove the wiring; this rung proves the
 **real `runComputerUseLoop`** drives the new in-process route end-to-end. Per AGENTS.md,
 the kept receipt is this file plus the asserted live test committed in #150.

@@ -7,12 +7,12 @@ local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
 workspace-trust preflight. It also supports explicit noninteractive
 `codex-exec` actor fanout for autonomous local dogfood proof. Requested exec
 lanes are not capped by total run count; they run through bounded concurrency
-controlled by `MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` (default 4). TUI
+controlled by `HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` (default 4). TUI
 autonomous completion and TUI live Observer follow remain follow-up work.
 
 ## Goal
 
-Let `mimetic run` dogfood `mimetic-cli` with a real local Codex TUI actor while
+Let `homun run` dogfood `homun` with a real local Codex TUI actor while
 preserving the public-safe harness contract:
 
 ```text
@@ -35,40 +35,40 @@ without opt-in should continue to fail closed.
 Suggested gate:
 
 ```bash
-mimetic run --actor codex-tui --sims 1 --timeout-ms 240000
+homun run --actor codex-tui --sims 1 --timeout-ms 240000
 ```
 
 or, for noninteractive local autonomy:
 
 ```bash
-mimetic run --actor codex-exec --sims 4 --timeout-ms 240000
+homun run --actor codex-exec --sims 4 --timeout-ms 240000
 ```
 
 or:
 
 ```bash
-MIMETIC_ENABLE_LOCAL_CODEX_TUI=1 mimetic run --sims 1
+HOMUN_ENABLE_LOCAL_CODEX_TUI=1 homun run --sims 1
 ```
 
 or:
 
 ```bash
-MIMETIC_ENABLE_LOCAL_CODEX_EXEC=1 mimetic run --sims 1
+HOMUN_ENABLE_LOCAL_CODEX_EXEC=1 homun run --sims 1
 ```
 
 Provider spend, E2B, GitHub mutation, and external network calls remain off
 unless separately and explicitly requested. When real Codex exec auth is used,
-`MIMETIC_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` is the cost/resource rail; there is
+`HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` is the cost/resource rail; there is
 no arbitrary total lane cap.
 
-For deterministic tests or local substrate debugging, `MIMETIC_CODEX_ACTOR_COMMAND`
+For deterministic tests or local substrate debugging, `HOMUN_CODEX_ACTOR_COMMAND`
 can point at a safe fixture command. Real Codex TUI launch uses a Linux
 `script` PTY wrapper when available because the Codex TUI requires a terminal.
-Mimetic answers the minimal terminal cursor/color queries needed for headless
+Homun answers the minimal terminal cursor/color queries needed for headless
 TUI startup and normalizes terminal control sequences before classifying the
 final actor transcript. Once a final
-`MIMETIC_ACTOR_VERDICT=* MIMETIC_ACTOR_NONCE=<run-nonce>` marker appears,
-Mimetic terminates the local actor process and records the marker verdict rather
+`HOMUN_ACTOR_VERDICT=* HOMUN_ACTOR_NONCE=<run-nonce>` marker appears,
+Homun terminates the local actor process and records the marker verdict rather
 than waiting for the TUI session to stay open until timeout. The nonce prevents
 the classifier from accepting an echoed prompt or inspected docs as a final
 actor verdict.
@@ -104,10 +104,10 @@ served Observer poll the same local evidence path during the run.
 
 ## Runtime State
 
-All generated state stays under ignored `.mimetic/`:
+All generated state stays under ignored `.homun/`:
 
 ```text
-.mimetic/runs/<run-id>/
+.homun/runs/<run-id>/
   run.json
   review.json
   review.md
@@ -125,9 +125,9 @@ All generated state stays under ignored `.mimetic/`:
 No raw terminal output is public by default. The transcript artifact must be
 sanitized before it is linked from the bundle.
 
-For TUI runs, `.mimetic/runs/latest.json` is published only after a valid
+For TUI runs, `.homun/runs/latest.json` is published only after a valid
 running bundle, review, and Observer data exist, then refreshed after final
-artifacts exist. This keeps `mimetic verify --run latest` from pointing at an
+artifacts exist. This keeps `homun verify --run latest` from pointing at an
 incomplete TUI run while still allowing live Observer follow on the active run.
 
 ## Redaction Rules
@@ -144,11 +144,11 @@ Before any transcript tail or event payload is written:
 
 The first actor prompt should be bounded to public-safe dogfood work:
 
-- inspect `mimetic/` dogfood config;
+- inspect `homun/` dogfood config;
 - run at most two read-only inspection commands;
 - avoid commands that write runtime artifacts or temp config, including
-  `pnpm mimetic`, `mimetic watch`, `mimetic feedback`, `mimetic init`, tests,
-  builds, installs, and commands that write `.mimetic/`;
+  `pnpm homun`, `homun watch`, `homun feedback`, `homun init`, tests,
+  builds, installs, and commands that write `.homun/`;
 - inspect existing artifacts and explain the strongest write-required proof as a
   follow-up when the TUI actor is running in a read-only sandbox;
 - use `passed` when read-only inspection confirms the committed harness and
@@ -156,7 +156,7 @@ The first actor prompt should be bounded to public-safe dogfood work:
 - do not commit, push, publish, file issues, or print secrets;
 - summarize blockers using public-safe evidence paths;
 - finish with exactly one final
-  `MIMETIC_ACTOR_VERDICT=<status> MIMETIC_ACTOR_NONCE=<run-nonce>` line, where
+  `HOMUN_ACTOR_VERDICT=<status> HOMUN_ACTOR_NONCE=<run-nonce>` line, where
   `<status>` is `passed`, `blocked`, or `failed`.
 
 The raw prompt can live in source only if it contains no private context and no
@@ -179,12 +179,12 @@ The first real local TUI proof in this environment reached Codex's workspace
 trust prompt. The current TUI implementation detects missing exact project-root
 trust before spawn and writes a `blocked` run bundle instead of waiting for the
 TUI timeout. A follow-up PTY probe showed that the Codex TUI still prompts when
-only a trusted ancestor is configured, so Mimetic only treats the exact trust
+only a trusted ancestor is configured, so Homun only treats the exact trust
 root as sufficient for autonomous launch.
 
-With exact trust present, Mimetic answers Codex's terminal startup query, strips
+With exact trust present, Homun answers Codex's terminal startup query, strips
 TUI control sequences from the captured transcript, and terminates/classifies on
-an explicit nonce-bearing `MIMETIC_ACTOR_VERDICT=*` marker when present. If
+an explicit nonce-bearing `HOMUN_ACTOR_VERDICT=*` marker when present. If
 Codex exits cleanly without a marker, the run is still considered process-passed
 but the transcript remains available for review.
 
@@ -203,11 +203,11 @@ needed beyond the current 1x TUI proof plus bounded-concurrency noninteractive
 The implementation slice for this spec should prove:
 
 ```bash
-pnpm mimetic:doctor
-pnpm mimetic -- run --actor codex-tui --sims 1 --timeout-ms 240000 --json
-pnpm mimetic -- run --actor codex-exec --sims 1 --timeout-ms 240000 --json
-pnpm mimetic -- run --actor codex-exec --sims 4 --timeout-ms 240000 --json
-pnpm mimetic -- watch --run latest --detach --json --no-open
-pnpm mimetic -- verify --run latest --json
+pnpm homun:doctor
+pnpm homun -- run --actor codex-tui --sims 1 --timeout-ms 240000 --json
+pnpm homun -- run --actor codex-exec --sims 1 --timeout-ms 240000 --json
+pnpm homun -- run --actor codex-exec --sims 4 --timeout-ms 240000 --json
+pnpm homun -- watch --run latest --detach --json --no-open
+pnpm homun -- verify --run latest --json
 pnpm check
 ```

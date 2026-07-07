@@ -11,22 +11,22 @@ import { runLab } from "../src/lab-engine.js";
 // The single LIVE rung for the computer-use LAB: a real lab config dispatched through runLab to
 // a real E2B desktop driven by the real OpenAI Computer Use loop. Spend-gated exactly like the
 // actor-level live rung (tests/computer-use-actor.live.test.ts):
-//   1. MIMETIC_LIVE_CUA=1 must be set explicitly (the spend opt-in),
+//   1. HOMUN_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
 // The subject is a loopback page served INSIDE the sandbox, provisioned via the prepareDesktop
 // hook — the documented seam for app-url subjects until clone+serve lands. Asserts only that a
 // verified bundle with a terminal, conformant, redacted session came back — never task success.
-// Fixture refreshes: additionally set MIMETIC_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
-// under .mimetic/) to capture redacted RESPONSE wire bodies — see src/openai-responses-cu.ts.
-const LIVE = process.env.MIMETIC_LIVE_CUA === "1"
+// Fixture refreshes: additionally set HOMUN_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
+// under .homun/) to capture redacted RESPONSE wire bodies — see src/openai-responses-cu.ts.
+const LIVE = process.env.HOMUN_LIVE_CUA === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
 const PROOF_HTML = [
   "<!doctype html><html><head><meta charset=utf-8></head>",
   "<body style=\"font-family:system-ui;padding:48px;background:#fff\">",
-  "<h1 style=\"font-size:48px\">Mimetic CUA Lab Live Proof</h1>",
+  "<h1 style=\"font-size:48px\">Homun CUA Lab Live Proof</h1>",
   "<p style=\"font-size:24px\">Served from loopback inside the sandbox; the lab dispatched this run from a config.</p>",
   "</body></html>"
 ].join("");
@@ -35,7 +35,7 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "mimetic-cua-lab-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-lab-live-"));
   });
 
   afterEach(async () => {
@@ -88,11 +88,11 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
     expect(result.session?.completionReason).not.toBe("harness_error");
     expect(result.observer?.ok).toBe(true);
     expect(result.sandbox?.killed).toBe(true);
-    const liveBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const liveBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     const liveCounts = liveBundle.streams[0].actor.counts;
     expect((liveCounts.actions ?? 0) + (liveCounts.messages ?? 0)).toBeGreaterThan(0);
 
-    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(bundle.streams[0].actor.redaction.status).toBe("passed");

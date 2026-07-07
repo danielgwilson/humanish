@@ -8,7 +8,7 @@ Do not emit a reserved schema.
 
 ## Purpose
 
-This document names the core Mimetic contracts before more implementation
+This document names the core Homun contracts before more implementation
 lands. It is intentionally public-safe: examples use synthetic ids, local
 relative artifact paths, env var names without values, and redacted evidence
 notes.
@@ -27,27 +27,27 @@ workflow without leaking private upstream truth into core.
 
 | Contract | Schema | Public-safe fixture |
 | --- | --- | --- |
-| Run bundle | `mimetic.run-bundle.v1` | `synthetic-run-bundle` |
-| Adapter | `mimetic.adapter.v1` | `synthetic-cli-adapter` |
-| Lab | `mimetic.lab.v2` | `first-run` |
-| Persona | `mimetic.persona.v1` | `synthetic-maintainer` |
-| Scenario | `mimetic.scenario.v1` | `first-run-smoke` |
-| Actor trace | `mimetic.actor-trace.v1` | `synthetic-actor-trace` |
+| Run bundle | `homun.run-bundle.v1` | `synthetic-run-bundle` |
+| Adapter | `homun.adapter.v1` | `synthetic-cli-adapter` |
+| Lab | `homun.lab.v2` | `first-run` |
+| Persona | `homun.persona.v1` | `synthetic-maintainer` |
+| Scenario | `homun.scenario.v1` | `first-run-smoke` |
+| Actor trace | `homun.actor-trace.v1` | `synthetic-actor-trace` |
 | Substrate | reserved (never shipped) | none |
 | Evidence stream | reserved (streams live inside the run bundle) | see [`run-bundle.md`](run-bundle.md) |
-| Review | `mimetic.review.v1` | `contract-proof-review` |
-| Verification | `mimetic.verify-result.v1` | `five-check-verify` |
-| Policy | `mimetic.policy.v1` (fixture-only; not engine-validated) | `public-safety-policy` |
-| Feedback | `mimetic.feedback.v1` | `public-safe-feedback` |
-| Terminal cost ledger | `mimetic.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
-| Terminal no-spend proof | `mimetic.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
-| Adapter score | `mimetic.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
-| Adapter artifact | `mimetic.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
-| Shared-world evidence | `mimetic.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
+| Review | `homun.review.v1` | `contract-proof-review` |
+| Verification | `homun.verify-result.v1` | `five-check-verify` |
+| Policy | `homun.policy.v1` (fixture-only; not engine-validated) | `public-safety-policy` |
+| Feedback | `homun.feedback.v1` | `public-safe-feedback` |
+| Terminal cost ledger | `homun.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
+| Terminal no-spend proof | `homun.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
+| Adapter score | `homun.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
+| Adapter artifact | `homun.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
+| Shared-world evidence | `homun.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
 
 ## Lab Manifest
 
-Schema: `mimetic.lab.v2` (`src/lab-config.ts`). There is deliberately no v1
+Schema: `homun.lab.v2` (`src/lab-config.ts`). There is deliberately no v1
 compatibility: v1 (`kind`, top-level `sims`) had zero real users and was
 deleted when labs became config.
 
@@ -63,7 +63,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `local-app` subject pairs a computer-use actor with `execution.target: local`
   (or absent) and is library-assisted: the caller supplies
   `cuaHooks.buildExecutor` + `buildProvider`; with no hooks the engine fails
-  closed (`MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
+  closed (`HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
   [`docs/architecture/state-driven-executor.md`](../architecture/state-driven-executor.md);
 - `subject.product` (terminal-product subjects): the product the agent studies.
   `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
@@ -121,7 +121,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
 - `execution.concurrency` (computer-use E2B route): bounds in-flight (paid)
   fan-out lanes; default `min(laneCount, 3)`. The env override
-  `MIMETIC_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never raise
+  `HOMUN_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never raise
   concurrent paid desktops (invariant 3). Inert (warned) on other routes.
   `execution.timeoutMs` is the PER-LANE session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level
@@ -167,7 +167,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   later slice;
 - `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
   `scenario.ref` is CONSUMED (and REQUIRED) on the scripted-browser route: it
-  resolves a committed scenario (`mimetic/scenarios/<ref>.yaml` or a repo
+  resolves a committed scenario (`homun/scenarios/<ref>.yaml` or a repo
   path) whose `browser.steps` ARE what the actor executes, digest-pinned into
   bundle provenance; on other routes `ref`/`inline` stay forward-declared
   warnings. On the scripted route `live` gates real browser ACTUATION against
@@ -178,7 +178,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   is never exercised without a fail-closed cap in force. `maxMinutes` is the
   wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
   ledger (a run whose KNOWN spend exceeds the cap fails closed,
-  `MIMETIC_TERMINAL_LAB_CAPS_EXCEEDED`). The no-spend proof is derived from that
+  `HOMUN_TERMINAL_LAB_CAPS_EXCEEDED`). The no-spend proof is derived from that
   real ledger, never asserted (see Terminal Cost Ledger And No-Spend Proof).
   Inert (warned) on every other route;
 - `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`, and the
@@ -189,11 +189,11 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
 
-Lab backends report results in their own schemas (`mimetic.run-result.v1`,
-`mimetic.oss-lab-result.v1`, `mimetic.oss-meta-lab-result.v1`,
-`mimetic.cua-lab-result.v2`, `mimetic.scripted-lab-result.v1`,
-`mimetic.terminal-lab-result.v1`); the evidence record stays
-`mimetic.run-bundle.v1` in every case. The computer-use result bumped to v2 for
+Lab backends report results in their own schemas (`homun.run-result.v1`,
+`homun.oss-lab-result.v1`, `homun.oss-meta-lab-result.v1`,
+`homun.cua-lab-result.v2`, `homun.scripted-lab-result.v1`,
+`homun.terminal-lab-result.v1`); the evidence record stays
+`homun.run-bundle.v1` in every case. The computer-use result bumped to v2 for
 fan-out: it carries `plan` (the pre-flight lane table — concurrency, waves,
 per-lane session budget, worst-case sandbox-minutes), `lanes[]` (ALWAYS present,
 length 1 at N=1; per-lane status/session/sandbox/subject), and `laneSummary`
@@ -207,24 +207,24 @@ projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event
 hollow lane`.
 
 Explicit failed-lane reruns are supported on the CUA fan-out route via
-`mimetic lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
-The source run must be a live CUA fan-out bundle. Mimetic creates a NEW run for
+`homun lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
+The source run must be a live CUA fan-out bundle. Homun creates a NEW run for
 the selected failed/blocked/timed-out/hollow lanes (or explicit lane ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected lane ids, and previous lane
 statuses/reasons. This is intentionally not automatic retry; a passing rerun is a
 nondeterminism candidate for human/product scoring, not a rewrite of the old run.
 
-Manifests are human-authored `.yaml` source under `mimetic/labs/*.yaml` for
-committed public-safe labs, or ignored `.mimetic/labs/*.yaml` /
-`.mimetic/local/labs/*.yaml` for private local dogfood. Fields the engine does
-not yet consume are accepted but reported as warnings (`mimetic lab inspect`
+Manifests are human-authored `.yaml` source under `homun/labs/*.yaml` for
+committed public-safe labs, or ignored `.homun/labs/*.yaml` /
+`.homun/local/labs/*.yaml` for private local dogfood. Fields the engine does
+not yet consume are accepted but reported as warnings (`homun lab inspect`
 shows them), so a manifest never silently claims behavior that did not run.
 
-Committed fixture (`mimetic/labs/first-run.yaml`):
+Committed fixture (`homun/labs/first-run.yaml`):
 
 ```yaml
-schema: mimetic.lab.v2
+schema: homun.lab.v2
 id: first-run
 title: First-run synthetic Observer
 description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
@@ -268,7 +268,7 @@ Core-owned fields:
   externalEnvNames? }`. Emitted by the computer-use backend; absent on
   pre-existing and other backends' bundles. `commandDigest` is the sha256-16 of
   the exact seed command — command text and env values never appear. Verified
-  by the `subject state provenance` check in `mimetic verify`.
+  by the `subject state provenance` check in `homun verify`.
 - `desktopTemplate` (optional, additive): the custom E2B desktop TEMPLATE (image)
   the run's sandbox(es) launched on, from `execution.desktop.template` — so the
   evidence shows WHICH image ran. Present only when a template was configured;
@@ -279,14 +279,14 @@ Core-owned fields:
   honesty axis (#164) — ORTHOGONAL to the persona-sampling evidence classes. Set
   to `shared-world` by the shared-world backend, paired with `sharedWorld`.
 - `sharedWorld` (optional, additive): the shared-world evidence block
-  (`mimetic.shared-world.v1`) — see [Shared-World Evidence](#shared-world-evidence)
+  (`homun.shared-world.v1`) — see [Shared-World Evidence](#shared-world-evidence)
   below. Present only on shared-world runs; verified fail-closed by the
-  `shared-world evidence` check in `mimetic verify`.
+  `shared-world evidence` check in `homun verify`.
 
 Adapter-owned fields:
 
 - `source.packageName`
-- `source.mimeticSource`
+- `source.homunSource`
 - `persona`
 - `scenario`
 - target-specific stream labels and public-safe summaries
@@ -294,17 +294,17 @@ Adapter-owned fields:
 Synthetic fixture:
 
 ```yaml
-schema: mimetic.run-bundle.v1
+schema: homun.run-bundle.v1
 runId: synthetic-run-bundle-2026-06-02t10-00-00-000z-proof
 mode: dry-run
 simCount: 1
 createdAt: "2026-06-02T10:00:00.000Z"
-artifactRoot: .mimetic/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof
+artifactRoot: .homun/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof
 source:
   packageName: fixture-app
-  mimeticSource: present
+  homunSource: present
   git:
-    schema: mimetic.git-state.v1
+    schema: homun.git-state.v1
     status: clean
     capturedAt: "2026-06-02T10:00:00.000Z"
     head:
@@ -319,13 +319,13 @@ source:
 persona:
   id: synthetic-maintainer
   name: Synthetic Maintainer
-  source: mimetic/personas/synthetic-maintainer.yaml
+  source: homun/personas/synthetic-maintainer.yaml
   sourceDigest: synthetic
 scenario:
   id: first-run-smoke
   title: First-run smoke
   goal: Prove setup and verification without private data.
-  source: mimetic/scenarios/first-run-smoke.yaml
+  source: homun/scenarios/first-run-smoke.yaml
   sourceDigest: synthetic
 lifecycle:
   - at: "2026-06-02T10:00:00.000Z"
@@ -341,7 +341,7 @@ artifacts:
   observerData: observer/observer-data.json
   events: events.ndjson
 review:
-  schema: mimetic.review.v1
+  schema: homun.review.v1
   verdict: contract_proof_only
   summary: Synthetic contract fixture generated.
   gaps: []
@@ -353,13 +353,13 @@ feedbackCandidates: []
 The shared-world topology (#164) is the DECLARED override of the per-lane-worlds
 default: N distinct actor ROLES drive ONE provisioned, mutable service plane (one
 app + one seeded DB) so their actions interact through shared state. A shared-world
-bundle adds TWO additive, optional fields to `mimetic.run-bundle.v1` (absent on
+bundle adds TWO additive, optional fields to `homun.run-bundle.v1` (absent on
 every other bundle, so they stay byte-stable):
 
 - `attributionClass: isolated | shared-world` — a new, ORTHOGONAL honesty axis
   ("how well did the run attribute INTERACTION?"), distinct from the persona-sampling
   evidence classes ("how representative is the actor?"). Absent == `isolated`.
-- `sharedWorld` (`mimetic.shared-world.v1`): TWO variants discriminated by
+- `sharedWorld` (`homun.shared-world.v1`): TWO variants discriminated by
   `topologyMode: "sequential" | "concurrent"` (validateSharedWorldEvidence branches on
   it FIRST; unknown/missing or a mismatched shape fails closed). Common fields:
   - `topology: shared-world`
@@ -414,7 +414,7 @@ every other bundle, so they stay byte-stable):
     `state-change-not-isolated-to-actors`, and MUST NOT contain `sequential-only` or
     `no-concurrent-races` (a sequential guarantee on a concurrent run is an overclaim).
 
-The `shared-world evidence` check in `mimetic verify` is fail-closed (live runs only;
+The `shared-world evidence` check in `homun verify` is fail-closed (live runs only;
 dry-run contract bundles are skipped). It dispatches on `topologyMode` FIRST.
 SEQUENTIAL: the timeline must be well-formed (start `cp-baseline`, strictly alternate,
 end on a checkpoint, turn order == sequence, sequence length == roleCount == turn
@@ -468,7 +468,7 @@ Adapter-owned fields:
 Synthetic fixture:
 
 ```yaml
-schema: mimetic.adapter.v1
+schema: homun.adapter.v1
 id: synthetic-cli-adapter
 name: Synthetic CLI Adapter
 routes:
@@ -502,7 +502,7 @@ Synthetic fixture:
 
 ```yaml
 persona:
-  schema: mimetic.persona.v1
+  schema: homun.persona.v1
   id: synthetic-maintainer
   name: Synthetic Maintainer
   summary: Privacy-safe maintainer evaluating first-run clarity.
@@ -510,7 +510,7 @@ persona:
     - Do not use real personal data.
     - Treat credentials as env var names only.
 scenario:
-  schema: mimetic.scenario.v1
+  schema: homun.scenario.v1
   id: first-run-smoke
   title: First-run smoke
   persona: synthetic-maintainer
@@ -526,13 +526,13 @@ scenario:
 ## Actor Trace
 
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
-`mimetic.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,
+`homun.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,
 Claude Agent SDK blocks, pi events, computer-use cycles, scripted browser
 steps, and in-sandbox terminal-agent exec output all map onto one `ActorTrace`.
 Registered actors live in
 `src/actor-registry.ts` (`codex-app-server`, `pi-agent-core`,
 `claude-agent-sdk`, `openai-computer-use`, `scripted-browser`, `codex-exec`).
-There is no `mimetic.actor.v1`; that name never shipped.
+There is no `homun.actor.v1`; that name never shipped.
 
 Core-owned fields:
 
@@ -567,7 +567,7 @@ Adapter-owned fields:
 Synthetic fixture (abridged; see `src/actor-contract.ts` for the full type):
 
 ```yaml
-schema: mimetic.actor-trace.v1
+schema: homun.actor-trace.v1
 provider: codex-app-server
 protocol: json-rpc
 lane: code
@@ -592,7 +592,7 @@ items: []
 
 ## Substrate
 
-Reserved: `mimetic.substrate.v1` is named here for layering intent but has
+Reserved: `homun.substrate.v1` is named here for layering intent but has
 never shipped — no code emits or validates it. Substrate truth today lives
 inside run bundles (per-stream transport and status) and lab execution config
 (`execution.target: local | e2b-desktop`). Do not emit this schema.
@@ -602,9 +602,9 @@ inside run bundles (per-stream transport and status) and lab execution config
 The terminal-product lane (`src/e2b-terminal-lab.ts`) places a real provider key
 INSIDE the sandbox, so the no-spend claim must be REAL — derived from a ledger,
 never asserted. The live run writes both to `terminal-ledgers.json` (a `cost`
-block + a `noSpendProof` block, additive to `mimetic.terminal-ledgers.v1`).
+block + a `noSpendProof` block, additive to `homun.terminal-ledgers.v1`).
 
-The cost ledger (`mimetic.terminal-cost-ledger.v1`) has one line per category —
+The cost ledger (`homun.terminal-cost-ledger.v1`) has one line per category —
 `product`, `media`, `payment`, `provider` — and follows a strict **null
 discipline** that distinguishes three states and never conflates them:
 
@@ -622,7 +622,7 @@ This slice meters only the `provider` line, populated from the actor trace's
 `null` until the SLICE-4 adapter supplies them.
 
 ```yaml
-schema: mimetic.terminal-cost-ledger.v1
+schema: homun.terminal-cost-ledger.v1
 currency: usd
 lines:
   product: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
@@ -633,7 +633,7 @@ knownTotalUsd: 0
 fullyMeasured: false
 ```
 
-The no-spend proof (`mimetic.terminal-no-spend-proof.v1`) is DERIVED from the
+The no-spend proof (`homun.terminal-no-spend-proof.v1`) is DERIVED from the
 ledger. It vouches only for what it measured: `knownZeroLines` (proven zero),
 `knownNonZeroLines` (break `satisfied`), and `unmeasuredLines` (the `null` lines
 it explicitly CANNOT vouch for). `satisfied` is true only when every KNOWN line
@@ -642,7 +642,7 @@ unmeasured lines never make it satisfied. A proof never claims zero on a `null`
 line — verification fails closed if it does.
 
 ```yaml
-schema: mimetic.terminal-no-spend-proof.v1
+schema: homun.terminal-no-spend-proof.v1
 maxUsd: 0
 satisfied: true
 knownZeroLines: []
@@ -654,7 +654,7 @@ statement: "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is 
 
 **Full caps enforcement (fail-closed, not advisory).** `scenario.caps.maxUsd`
 is enforced against the ledger: if the observed KNOWN spend exceeds `maxUsd`, the
-run fails closed (`MIMETIC_TERMINAL_LAB_CAPS_EXCEEDED`); `maxJobs` likewise when
+run fails closed (`HOMUN_TERMINAL_LAB_CAPS_EXCEEDED`); `maxJobs` likewise when
 a known job count is present; `maxMinutes` is the wall-clock kill (unchanged).
 Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
 measure) and never grant a green pass (they surface as unmeasured). `verifyRun`
@@ -674,7 +674,7 @@ built-in product scorer (the adopter's scorecard lives in the adopter's repo).
 Three product-agnostic carriers keep core's nouns closed while letting the adapter
 record its own:
 
-- **Adapter score** (`mimetic.adapter-score.v1`, `RunBundle.adapterScore`).
+- **Adapter score** (`homun.adapter-score.v1`, `RunBundle.adapterScore`).
   A namespaced summary the adapter's `score` hook returns: `{ schema, namespace,
   status, score, summary, data? }`. Core never reads `data` — the adopter's
   component rubric rides there; `namespace` (an adopter slug) scopes the whole
@@ -687,7 +687,7 @@ record its own:
   recorded ONLY under `adapter: { namespace, data }` — never as core enums. Core
   validates the SHAPE (a non-empty `namespace` + a `data` record); the keys inside
   `data` are the adapter's.
-- **Adapter artifacts** (`mimetic.adapter-artifact.v1`,
+- **Adapter artifacts** (`homun.adapter-artifact.v1`,
   `RunBundle.adapterArtifacts[]`). A namespaced list of local relative artifact
   references the adapter's `deriveArtifacts` hook returns after writing
   product/state proof files under the ignored run directory. Core validates only
@@ -696,7 +696,7 @@ record its own:
 
 ```yaml
 # RunBundle.adapterScore (namespaced; data is the adopter's, core never reads it)
-schema: mimetic.adapter-score.v1
+schema: homun.adapter-score.v1
 namespace: adopter-slug
 status: pass
 score: 88
@@ -719,7 +719,7 @@ adapter:
 
 ```yaml
 # RunBundle.adapterArtifacts — product/state proof payloads stay adapter-owned
-- schema: mimetic.adapter-artifact.v1
+- schema: homun.adapter-artifact.v1
   namespace: adopter-slug
   label: Product state readback
   path: adapter/product-state-readback.json
@@ -751,9 +751,9 @@ including existence for referenced adapter artifacts.
 
 ## Evidence Streams
 
-Reserved: `mimetic.evidence-stream.v1` has never shipped as a standalone
+Reserved: `homun.evidence-stream.v1` has never shipped as a standalone
 schema, and streams are not standalone artifacts. They are the `streams` array
-inside `mimetic.run-bundle.v1`, normalizing UI, browser, terminal, TUI,
+inside `homun.run-bundle.v1`, normalizing UI, browser, terminal, TUI,
 code-agent UI, artifact, and summary lanes — each with transport, terminal
 tail, completion, meaningful-use verdicts, and artifact pointers. See
 [`run-bundle.md`](run-bundle.md#completion-and-meaningful-use-verdicts) for
@@ -780,7 +780,7 @@ Adapter-owned fields:
 Synthetic fixture:
 
 ```yaml
-schema: mimetic.review.v1
+schema: homun.review.v1
 verdict: contract_proof_only
 summary: Synthetic dry-run proves bundle shape, not product behavior.
 gaps:
@@ -812,10 +812,10 @@ Adapter-owned fields:
 Synthetic fixture:
 
 ```yaml
-schema: mimetic.verify-result.v1
+schema: homun.verify-result.v1
 ok: true
 run: synthetic-run-bundle-2026-06-02t10-00-00-000z-proof
-bundlePath: .mimetic/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/run.json
+bundlePath: .homun/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/run.json
 checks:
   - name: run.json exists
     ok: true
@@ -831,10 +831,10 @@ shareSafety:
 ## Policy
 
 Policy names boundaries before an actor runs or feedback is promoted.
-`mimetic.policy.v1` exists today only as an adapter fixture shape
+`homun.policy.v1` exists today only as an adapter fixture shape
 (`adapters/fixtures/`); the engine does not validate it. The committed policy
-source files scaffolded by `mimetic init` use `mimetic.redaction-policy.v1`,
-`mimetic.network-policy.v1`, and `mimetic.credentials-policy.v1`.
+source files scaffolded by `homun init` use `homun.redaction-policy.v1`,
+`homun.network-policy.v1`, and `homun.credentials-policy.v1`.
 
 Core-owned fields:
 
@@ -856,7 +856,7 @@ Adapter-owned fields:
 Synthetic fixture:
 
 ```yaml
-schema: mimetic.policy.v1
+schema: homun.policy.v1
 kind: public-safety
 default: deny_sensitive_material
 deny:
@@ -907,7 +907,7 @@ Adapter-owned fields:
 Synthetic fixture:
 
 ```yaml
-schema: mimetic.feedback.v1
+schema: homun.feedback.v1
 run_id: synthetic-run-bundle-2026-06-02t10-00-00-000z-proof
 adapter_id: synthetic-cli-adapter
 scenario_id: first-run-smoke
@@ -918,9 +918,9 @@ failure_owner: harness
 summary: Synthetic user needed clearer verification instructions.
 expected: Verification command is visible and public-safe.
 actual: Dry-run review noted missing live behavior proof.
-source_bundle: .mimetic/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/run.json
+source_bundle: .homun/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/run.json
 evidence:
-  - path: .mimetic/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/review.md
+  - path: .homun/runs/synthetic-run-bundle-2026-06-02t10-00-00-000z-proof/review.md
     kind: review
     note: Public-safe synthetic review.
 redaction:
@@ -929,7 +929,7 @@ redaction:
 idempotency_key: synthetic-cli-adapter:first-run-smoke:verification-instructions
 proposed_next_state: watch
 acceptance_proof:
-  - pnpm mimetic -- verify --run latest --json
+  - pnpm homun -- verify --run latest --json
 ```
 
 ## Contract Stop Conditions

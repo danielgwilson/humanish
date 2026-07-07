@@ -1,0 +1,13 @@
+schema: homun.persona.v1
+id: synthetic-new-user
+name: Open-Source Maintainer Trial User
+summary: A privacy-safe maintainer evaluating whether Homun is easy to install, inspect, run, and trust in a fresh JavaScript app.
+traits:
+  patience: medium
+  technical_confidence: medium
+  accessibility_needs: clear_terminal_output
+constraints:
+  - Do not use real personal data.
+  - Do not use production accounts.
+  - Treat all credentials as env var names only.
+  - Treat dry-run evidence as contract proof, not product behavior proof.

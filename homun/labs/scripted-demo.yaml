@@ -1,0 +1,21 @@
+schema: homun.lab.v2
+id: scripted-demo
+title: Scripted browser journey (deterministic, zero provider spend)
+description: >
+  The registered scripted-browser actor replays committed scenario steps against a
+  loopback app with playwright — no model, no provider spend. Dry-run (default)
+  validates the composition and the scenario contract without touching anything.
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:5173
+actors:
+  - type: scripted-browser # REAL dispatch key: resolves in the actor registry
+    persona: synthetic-new-user # trace/bundle provenance (no prompt exists — no model runs)
+    count: 2 # declared override: 2 = desktop + mobile surfaces (the default is 1, desktop only)
+scenario:
+  ref: scripted-first-run # CONSUMED: homun/scenarios/scripted-first-run.yaml
+  # mode: live # uncomment to actuate; spend stays $0 by mechanism —
+  #            # the gate is for real browser actuation, not cost
+execution:
+  target: local # optional; absent defaults to local on this route
+  timeoutMs: 60000 # journey wall-clock budget per surface

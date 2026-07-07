@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // VERIFIES — proving the seam closes the fork-forcing gap WITHOUT a fork.
 //
 // THE LOAD-BEARING PROOF: the example adapter imports ONLY from the public package barrel
-// ("../src/index.js" — the exact surface published as mimetic-cli), never a deep `src/` module. If
+// ("../src/index.js" — the exact surface published as homun), never a deep `src/` module. If
 // the contract types it needs (RunFeedbackCandidate / RunAdapterScore / TerminalProductScoringContext
 // / TerminalLedgers / ActorTrace) were not exported, this file would not type-check — which IS the
 // fork-forcing gap acceptance #8 names.
@@ -36,7 +36,7 @@ import { verifyRun } from "../src/run.js";
 
 // =============================================================================================
 // THE THIN EXAMPLE ADAPTER — this is the ~40-line extension an adopter would write in ITS repo.
-// It types ONLY against mimetic-cli's PUBLIC barrel; it knows nothing of core internals. It scores
+// It types ONLY against homun's PUBLIC barrel; it knows nothing of core internals. It scores
 // the product attempt with ITS OWN (off-core) rubric and records ITS product nouns (public CLI
 // command observed, hosted success/blocker, feedback id, media/job ids, no-media-spend, friction
 // risk) under an ADAPTER-NAMESPACED block — never as core enums. NEUTRAL fictional product name.
@@ -48,7 +48,7 @@ function exampleAdapterScore(ctx: TerminalProductScoringContext): RunAdapterScor
   // breakdown rides under `data` (core never reads it).
   const usedProduct = ctx.trace.status === "passed";
   return {
-    schema: "mimetic.adapter-score.v1",
+    schema: "homun.adapter-score.v1",
     namespace: ADAPTER_NAMESPACE,
     status: usedProduct ? "pass" : "partial",
     score: usedProduct ? 88 : 40,
@@ -62,7 +62,7 @@ function exampleAdapterScore(ctx: TerminalProductScoringContext): RunAdapterScor
 
 function exampleAdapterFeedback(ctx: TerminalProductScoringContext): RunFeedbackCandidate[] {
   return [{
-    schema: "mimetic.feedback-candidate.v1",
+    schema: "homun.feedback-candidate.v1",
     id: `pixelforge-attempt-${ctx.runId}`,
     run_id: ctx.runId,
     stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
@@ -79,7 +79,7 @@ function exampleAdapterFeedback(ctx: TerminalProductScoringContext): RunFeedback
     redaction: { status: "passed", notes: "Adapter feedback references local public-safe artifacts only." },
     idempotency_key: `${ADAPTER_NAMESPACE}:${ctx.runId}:attempt`,
     proposed_next_state: "watch",
-    acceptance_proof: [`pnpm mimetic -- verify --run ${ctx.runId} --json`],
+    acceptance_proof: [`pnpm homun -- verify --run ${ctx.runId} --json`],
     // THE NON-CORE PRODUCT NOUNS (issue #154's "record product-specific concepts as NON-core nouns"
     // list) — namespaced so core schemas stay product-agnostic and an inert-field audit never misfires.
     adapter: {
@@ -116,8 +116,8 @@ function makeFakeModule(opts: { codexBehavior: (cmd: string) => { exitCode: numb
                 if (behavior.stdout && runOptions?.onStdout) runOptions.onStdout(behavior.stdout);
                 return { exitCode: behavior.exitCode };
               }
-              if (runOptions?.onStdout) runOptions.onStdout("MIMETIC_SHELL_READY\n");
-              return { exitCode: 0, stdout: "MIMETIC_SHELL_READY\n" };
+              if (runOptions?.onStdout) runOptions.onStdout("HOMUN_SHELL_READY\n");
+              return { exitCode: 0, stdout: "HOMUN_SHELL_READY\n" };
             }
           },
           files: { async write() { return undefined; } },
@@ -140,7 +140,7 @@ function makeFakeModule(opts: { codexBehavior: (cmd: string) => { exitCode: numb
 }
 
 function nonceFrom(command: string): string {
-  return /MIMETIC_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command)?.[1] ?? "unknown-nonce";
+  return /HOMUN_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command)?.[1] ?? "unknown-nonce";
 }
 
 function liveConfig(): LabConfig {
@@ -168,26 +168,26 @@ function passingHooks(extra: Partial<TerminalProductLabHooks>): TerminalProductL
   return {
     env: baseEnv(),
     now: () => 4_000,
-    loadModule: async () => makeFakeModule({ killed, codexBehavior: (cmd) => ({ exitCode: 0, stdout: `created a durable image\nMIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=${nonceFrom(cmd)}\n` }) }),
+    loadModule: async () => makeFakeModule({ killed, codexBehavior: (cmd) => ({ exitCode: 0, stdout: `created a durable image\nHOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=${nonceFrom(cmd)}\n` }) }),
     ...extra
   };
 }
 
 describe("terminal-product extension seam (SLICE 4 conformance — thin adapter, not a fork)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "mimetic-tp-seam-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-tp-seam-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("runs the adapter scorer + feedback strategy, attaches NAMESPACED nouns, and the bundle VERIFIES", async () => {
     const hooks = passingHooks({ score: exampleAdapterScore, deriveFeedback: exampleAdapterFeedback });
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
 
-    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
 
     // (1) The scorer hook RAN and its namespaced score is in the bundle.
     expect(bundle.adapterScore).toBeDefined();
-    expect(bundle.adapterScore?.schema).toBe("mimetic.adapter-score.v1");
+    expect(bundle.adapterScore?.schema).toBe("homun.adapter-score.v1");
     expect(bundle.adapterScore?.namespace).toBe(ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("pass");
     // The adopter's product breakdown rides under `data` (core never read it).
@@ -226,7 +226,7 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     const hooks = passingHooks({}); // no score, no deriveFeedback
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     // No adapter score, no derived feedback — the mission-based verdict stands alone.
     expect(bundle.adapterScore).toBeUndefined();
     expect(bundle.feedbackCandidates.length).toBe(0);
@@ -239,12 +239,12 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
   it("fails CLOSED on a malformed adapter score/candidate — a bad extension never poisons a verifiable bundle", async () => {
     const hooks = passingHooks({
       // A malformed score (missing namespace) and a malformed candidate (empty summary) — both dropped.
-      score: () => ({ schema: "mimetic.adapter-score.v1", namespace: "", status: "pass", score: 1, summary: "x" }) as RunAdapterScore,
-      deriveFeedback: () => ([{ schema: "mimetic.feedback-candidate.v1", id: "bad", summary: "   ", evidence: [], redaction: { status: "passed" } }] as unknown as RunFeedbackCandidate[])
+      score: () => ({ schema: "homun.adapter-score.v1", namespace: "", status: "pass", score: 1, summary: "x" }) as RunAdapterScore,
+      deriveFeedback: () => ([{ schema: "homun.feedback-candidate.v1", id: "bad", summary: "   ", evidence: [], redaction: { status: "passed" } }] as unknown as RunFeedbackCandidate[])
     });
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore).toBeUndefined(); // malformed score dropped
     expect(bundle.feedbackCandidates.length).toBe(0); // malformed candidate dropped
     expect(result.warnings.some((w) => w.includes("adapter-score.v1") || w.includes("feedback-candidate.v1"))).toBe(true);

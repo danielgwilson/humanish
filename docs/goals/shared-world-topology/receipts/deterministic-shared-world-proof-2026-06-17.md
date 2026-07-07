@@ -9,7 +9,7 @@ were made.
 
 - `pnpm check` (typecheck + vitest + build) — **exit 0**, 660 passed / 9 skipped.
 - `node scripts/public-surface-scan.mjs` — **exit 0** (367 text files, 1 binary asset).
-- `mimetic/labs/shared-world-demo.yaml` parses → routes to the `shared-world`
+- `homun/labs/shared-world-demo.yaml` parses → routes to the `shared-world`
   backend → dry-run `verifyRun` ok.
 
 ## The doctrine (the load-bearing part)
@@ -19,7 +19,7 @@ VERIFIED fields, that per-role attribution is weaker and states its ceiling:
 
 - `RunBundle.attributionClass: "isolated" | "shared-world"` — a new, ORTHOGONAL
   honesty axis (absent == `isolated`, so every existing bundle is byte-stable).
-- `RunBundle.sharedWorld` (`mimetic.shared-world.v1`): `{ topology, roleCount,
+- `RunBundle.sharedWorld` (`homun.shared-world.v1`): `{ topology, roleCount,
   plane: { commit?, seedDigest, envNames }, sequence[], timeline: (checkpoint |
   turn)[], attributionLimits[] }`. checkpoint = `{ kind, name, digest,
   deltaFromPrev }`; turn = `{ kind, roleId, simId, streamId, commit?, seedDigest }`
@@ -39,7 +39,7 @@ and EVERY existing route (synthetic / smoke / meta / scripted / terminal, plus t
 same composition WITHOUT `topology` staying `cua` per-lane-worlds) still
 parses/routes/warns unchanged.
 
-Dry-run: `shared-world-demo.yaml` → ONE `mimetic.run-bundle.v1`, mode `dry-run`,
+Dry-run: `shared-world-demo.yaml` → ONE `homun.run-bundle.v1`, mode `dry-run`,
 `attributionClass: shared-world`, the `sharedWorld` block with the mandatory
 `attributionLimits` and a well-formed declared timeline; `verifyRun` ok at $0.
 
@@ -80,6 +80,6 @@ checkpoint stdout:
   is the named PR2+ phase.
 - Per-action causation (a delta attributes to the TURN, not a specific action).
 - The LIVE rung is WRITTEN + gated (`tests/shared-world-lab.live.test.ts`,
-  `MIMETIC_LIVE_SHARED_WORLD=1` + keys) but NOT run — deferred to a
+  `HOMUN_LIVE_SHARED_WORLD=1` + keys) but NOT run — deferred to a
   separately-authorized receipt (it also needs a real stateful seeded app whose
   checkpoint probes observe role mutations).

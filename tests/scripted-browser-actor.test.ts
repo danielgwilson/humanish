@@ -102,7 +102,7 @@ function demoJourney(): BrowserPersonaJourney {
     goal: "Load the app, submit the primary form, and confirm the success state renders.",
     scenarioId: "scripted-first-run",
     scenarioTitle: "First-run scripted walkthrough",
-    source: "mimetic/scenarios/scripted-first-run.yaml",
+    source: "homun/scenarios/scripted-first-run.yaml",
     sourceDigest: "abcd1234abcd",
     startPath: "/",
     steps: [
@@ -133,7 +133,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
   let artifactRoot: string;
 
   beforeEach(async () => {
-    artifactRoot = await mkdtemp(path.join(tmpdir(), "mimetic-scripted-actor-"));
+    artifactRoot = await mkdtemp(path.join(tmpdir(), "homun-scripted-actor-"));
   });
 
   afterEach(async () => {
@@ -183,9 +183,9 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       expect(trace.redaction.status).toBe("passed");
       expect(trace.redaction.screenshots).toBe("raw");
 
-      // The native mimetic.browser-persona-trace.v1 is kept on disk.
+      // The native homun.browser-persona-trace.v1 is kept on disk.
       const native = JSON.parse(await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"));
-      expect(native.schema).toBe("mimetic.browser-persona-trace.v1");
+      expect(native.schema).toBe("homun.browser-persona-trace.v1");
       expect(native.scenario.sourceDigest).toBe("abcd1234abcd");
       expect(native.steps).toHaveLength(4);
     });

@@ -30,7 +30,7 @@ function fakeQuery(messages: unknown[], capture?: (options: Record<string, unkno
 }
 
 async function withRunRoot<T>(body: (runRoot: string) => Promise<T>): Promise<T> {
-  const runRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-claude-shim-"));
+  const runRoot = await mkdtemp(path.join(os.tmpdir(), "homun-claude-shim-"));
   try {
     return await body(runRoot);
   } finally {
@@ -50,7 +50,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         timeoutMs: 5000,
         queryFn: fakeQuery(messages)
       });
-      expect(result.trace.schema).toBe("mimetic.actor-trace.v1");
+      expect(result.trace.schema).toBe("homun.actor-trace.v1");
       expect(result.trace.provider).toBe("claude-agent-sdk");
       expect(result.status).toBe("passed");
       expect(result.trace.persona).toEqual(persona);
@@ -76,7 +76,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         queryFn: fakeQuery(messages)
       });
       const summary = JSON.parse(await readFile(path.join(runRoot, result.tracePath), "utf8"));
-      expect(summary.schema).toBe("mimetic.actor-trace.v1");
+      expect(summary.schema).toBe("homun.actor-trace.v1");
       expect(summary.provider).toBe("claude-agent-sdk");
 
       const events = (await readFile(path.join(runRoot, result.eventsPath), "utf8")).trim().split("\n");

@@ -2,7 +2,7 @@
 
 Date: 2026-06-11. Tree: main @ 535ea9e (#145 merged). Operator: maintainer session.
 
-Command: `MIMETIC_LIVE_CUA=1 npx vitest run tests/cua-actor-lab.state.live.test.ts`
+Command: `HOMUN_LIVE_CUA=1 npx vitest run tests/cua-actor-lab.state.live.test.ts`
 Result: **1 passed / 0 failed, 24.2s** (real E2B sandbox + real OpenAI actor).
 
 What the rung proves, by construction:

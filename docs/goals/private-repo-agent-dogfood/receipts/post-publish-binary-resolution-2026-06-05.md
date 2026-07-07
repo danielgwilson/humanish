@@ -2,7 +2,7 @@
 
 ## Scope
 
-This receipt covers the first full dogfood rerun after `mimetic-cli@0.1.5`
+This receipt covers the first full dogfood rerun after `homun@0.1.5`
 published to npm. Repo labels remain redacted as `repo-01` through `repo-04`.
 
 The run used four lanes because four authorized repos were assigned. There is no
@@ -20,14 +20,14 @@ arbitrary run-count cap or desktop-count cap in this goal packet.
 - run: `oss-meta-2026-06-05T16-07-27-703Z-1ce7e253`
 - mode: `live`
 - verification:
-  `pnpm mimetic -- verify --run oss-meta-2026-06-05T16-07-27-703Z-1ce7e253 --json`
+  `pnpm homun -- verify --run oss-meta-2026-06-05T16-07-27-703Z-1ce7e253 --json`
   passed all checks.
 
 The live bundle readback showed:
 
 - `4/4` top-level lane statuses passed;
 - `4/4` target app surfaces running;
-- `4/4` nested Mimetic verifications passed;
+- `4/4` nested Homun verifications passed;
 - `4/4` nested Observers present;
 - `4/4` headed desktop visual layouts visible.
 
@@ -43,15 +43,15 @@ All four lanes produced app-aware setup-quality evidence.
 | `repo-04` | `high_leverage` | 5/5 | succeeded |
 
 The remaining blocker was not that `0.1.5` lacked `run --app-url` globally.
-The failing lane used a bare `npx mimetic` command path and reported a stale or
+The failing lane used a bare `npx homun` command path and reported a stale or
 wrong binary that did not expose `--app-url`. The durable fix is to make the
-meta-lab actor/bootstrap path use the locally installed `mimetic-cli` binary:
-`npx --no-install mimetic ...`, with explicit package fallback only for
+meta-lab actor/bootstrap path use the locally installed `homun` binary:
+`npx --no-install homun ...`, with explicit package fallback only for
 one-shot proof commands.
 
 ## Feedback Candidates
 
-The rerun generated one remaining Mimetic-owned feedback candidate:
+The rerun generated one remaining Homun-owned feedback candidate:
 
 - `published-cli-app-url-oss-03-desktop`.
 
@@ -65,7 +65,7 @@ Artifact scan over the ignored run directory checked `18` text files and found:
 - stream URL hits: `0`;
 - sandbox ID key hits: `0`.
 
-Provider cleanup after the run found `4` running Mimetic OSS meta-lab desktops,
+Provider cleanup after the run found `4` running Homun OSS meta-lab desktops,
 killed `4/4`, reported `0` cleanup errors, and post-cleanup readback found `0`
 matching desktops.
 
@@ -73,9 +73,9 @@ matching desktops.
 
 The current branch prepares `0.1.6` and hardens meta-lab command resolution:
 
-- actor instructions identify package `mimetic-cli` and binary `mimetic`;
-- actor and deterministic bootstrap commands use `npx --no-install mimetic`;
-- one-shot package proof uses `npx --yes --package mimetic-cli@latest mimetic`;
+- actor instructions identify package `homun` and binary `homun`;
+- actor and deterministic bootstrap commands use `npx --no-install homun`;
+- one-shot package proof uses `npx --yes --package homun@latest homun`;
 - feedback acceptance proof is non-interactive;
 - OSS lab tests assert the local-bin command path.
 

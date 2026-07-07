@@ -65,8 +65,8 @@ function makeFakeModule(opts: {
                 return { exitCode: behavior.exitCode };
               }
               // readiness probe
-              if (runOptions?.onStdout) runOptions.onStdout("MIMETIC_SHELL_READY\n");
-              return { exitCode: 0, stdout: "MIMETIC_SHELL_READY\n" };
+              if (runOptions?.onStdout) runOptions.onStdout("HOMUN_SHELL_READY\n");
+              return { exitCode: 0, stdout: "HOMUN_SHELL_READY\n" };
             }
           },
           files: { async write() { return undefined; } },
@@ -107,7 +107,7 @@ function makeFakeModule(opts: {
 // Extract the per-run verdict nonce the lab embedded in the codex command, so the mock can echo
 // a NONCE-VERIFIED marker exactly as a real agent would (the scorer rejects a bare marker).
 function nonceFrom(command: string): string {
-  const m = /MIMETIC_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command);
+  const m = /HOMUN_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command);
   return m?.[1] ?? "unknown-nonce";
 }
 
@@ -143,7 +143,7 @@ function baseEnv(): Record<string, string | undefined> {
 
 describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "mimetic-tp-live-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-tp-live-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("injects the runtime key ONLY command-scoped, never into Sandbox.create or metadata or the bundle", async () => {
@@ -159,7 +159,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           exitCode: 0,
           // A real agent echoes the nonce-verified verdict AND some output — INCLUDING the key value
           // (simulating an agent that transcribed its key into output). The scrub must catch it.
-          stdout: `working on it... key seen: ${FAKE_RUNTIME_KEY}\nMIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=${nonceFrom(cmd)}\n`
+          stdout: `working on it... key seen: ${FAKE_RUNTIME_KEY}\nHOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=${nonceFrom(cmd)}\n`
         })
       })
     };
@@ -186,7 +186,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(codexRun?.envs).not.toHaveProperty("STRIPE_SECRET_KEY");
 
     // The planted key value must be SCRUBBED out of every persisted artifact.
-    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simulations[0]?.progress).toBe(100);
     for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json", "events.ndjson"]) {
@@ -222,7 +222,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig({ caps: null }), dryRun: false, open: false, hooks });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("MIMETIC_TERMINAL_LAB_CAPS_MISSING");
+    expect(result.error?.code).toBe("HOMUN_TERMINAL_LAB_CAPS_MISSING");
     expect(creates.length).toBe(0); // the live key is never exercised without a cap
   });
 
@@ -257,11 +257,11 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       loadModule: async () => makeFakeModule({
         creates, runs, killed,
         listRemaining: () => 1, // a sandbox is STILL listed after kill -> teardown not proven
-        codexBehavior: (cmd) => ({ exitCode: 0, stdout: `MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=${nonceFrom(cmd)}\n` })
+        codexBehavior: (cmd) => ({ exitCode: 0, stdout: `HOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=${nonceFrom(cmd)}\n` })
       })
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("MIMETIC_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.error?.code).toBe("HOMUN_TERMINAL_LAB_CLEANUP_UNPROVEN");
   });
 });

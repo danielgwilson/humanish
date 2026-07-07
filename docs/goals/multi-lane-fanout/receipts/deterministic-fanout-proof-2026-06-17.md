@@ -8,8 +8,8 @@ Date: 2026-06-17. Branch: `codex/fanout-per-lane-v2` off `origin/main` @ 91bc1ed
 
 - `pnpm check` (typecheck + vitest + build) — **exit 0**, 636 passed / 8 skipped.
 - `node scripts/public-surface-scan.mjs` — **exit 0** (356 text files, 1 binary asset).
-- `pnpm mimetic -- lab run fanout-demo --dry-run --json --no-open` then
-  `pnpm mimetic -- verify --run latest --json` — **ok: true** (4-stream bundle).
+- `pnpm homun -- lab run fanout-demo --dry-run --json --no-open` then
+  `pnpm homun -- verify --run latest --json` — **ok: true** (4-stream bundle).
 
 ## What the deterministic ladder proves, by construction
 
@@ -20,9 +20,9 @@ rejected (named as shared-world / layer 7), `clone.fanout` REJECTED on the cua r
 elsewhere; the OTHER routes' rules + warnings still fire (regression guarded).
 
 Dry-run (`tests/cua-actor-lab.fanout.test.ts`): a 4-lane roster → ONE
-`mimetic.run-bundle.v1`, `simCount 4`, per-lane persona/device/viewport, the
+`homun.run-bundle.v1`, `simCount 4`, per-lane persona/device/viewport, the
 `cua-lab.fanout.plan` event, contract statuses; `verifyRun` ok. `resolveCuaLanePlan`
-is pure (default concurrency `min(N,3)`; env `MIMETIC_CUA_MAX_CONCURRENCY` only LOWERS).
+is pure (default concurrency `min(N,3)`; env `HOMUN_CUA_MAX_CONCURRENCY` only LOWERS).
 
 Live-with-FAKE-substrate (the load-bearing rung, $0) — REAL orchestration at N=4,
 concurrency 2 through `runLab`/`runCuaActorLab`:
@@ -40,12 +40,12 @@ concurrency 2 through `runLab`/`runCuaActorLab`:
 - a hollow lane (zero actions/messages) ⇒ run `ok=false` AND `verifyRun` fails the
   `actor engagement` check for that stream.
 - geometry mismatch (xdpyinfo reports the wrong dimensions) ⇒
-  `MIMETIC_CUA_LAB_DEVICE_GEOMETRY`, sandbox still reclaimed by id.
+  `HOMUN_CUA_LAB_DEVICE_GEOMETRY`, sandbox still reclaimed by id.
 - per-lane secret scrub holds: an actor-key value echoed by a lane's harness error never
   reaches run.json / review.* / events.ndjson / per-lane `actors/*.json`.
 
 Engine guards: multi-lane on the in-process route (buildExecutor) and engine-side
-`clone.fanout` both fail closed with `MIMETIC_CUA_LAB_FANOUT_INVALID`.
+`clone.fanout` both fail closed with `HOMUN_CUA_LAB_FANOUT_INVALID`.
 
 N=1 byte-stability: the entire pre-existing cua-actor-lab suite (single-lane bundle,
 result.subject/sandbox/session, clone provenance, subject.state, in-process route) stays
@@ -55,7 +55,7 @@ green unchanged — the N=1 run bundle is byte-identical; only the result projec
 ## Honest scope
 
 - The deterministic ladder is the merge gate. The LIVE fan-out rung
-  (`tests/cua-actor-lab.fanout.live.test.ts`, gated by `MIMETIC_LIVE_CUA=1`) is WRITTEN
+  (`tests/cua-actor-lab.fanout.live.test.ts`, gated by `HOMUN_LIVE_CUA=1`) is WRITTEN
   but NOT run — it is a separately-authorized paid receipt per the goal packet's Provider
   Spend Policy.
 - `subject.clone.provisioning: seed-fork` is the deferred PR-2 (the field does not exist).

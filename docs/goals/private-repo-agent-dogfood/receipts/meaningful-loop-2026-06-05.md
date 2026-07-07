@@ -34,11 +34,11 @@ no arbitrary run-count cap or desktop-count cap in this goal packet.
 - run: `oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb`
 - mode: `live`
 - observer:
-  `.mimetic/runs/oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb/observer/index.html`
+  `.homun/runs/oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb/observer/index.html`
 - bundle:
-  `.mimetic/runs/oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb/run.json`
+  `.homun/runs/oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb/run.json`
 - verification:
-  `pnpm mimetic -- verify --run oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb --json`
+  `pnpm homun -- verify --run oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb --json`
   passed all checks.
 
 The live JSON result showed:
@@ -71,7 +71,7 @@ found that the currently published install path is behind the source branch.
 
 ## Feedback Candidates
 
-The rerun generated four Mimetic-owned feedback candidates:
+The rerun generated four Homun-owned feedback candidates:
 
 - `published-cli-app-url-oss-01-desktop`;
 - `published-cli-app-url-oss-02-desktop`;
@@ -79,7 +79,7 @@ The rerun generated four Mimetic-owned feedback candidates:
 - `published-cli-app-url-oss-04-desktop`.
 
 All four are classified as `harness` owner, `adapter-hardening` next state, with
-summary `Published Mimetic install path blocked app-url proof`.
+summary `Published Homun install path blocked app-url proof`.
 
 ## Public-Safety And Cleanup
 
@@ -89,14 +89,14 @@ Artifact scan over the ignored run directory checked `18` text files and found:
 - stream URL hits: `0`;
 - sandbox ID key hits: `0`.
 
-Provider cleanup after the run found `4` running Mimetic OSS meta-lab desktops,
+Provider cleanup after the run found `4` running Homun OSS meta-lab desktops,
 killed `4/4`, reported `0` cleanup errors, and post-cleanup readback found `0`
 matching desktops.
 
 ## Release Follow-Up
 
 The dogfood loop found a real external blocker: published
-`mimetic-cli@0.1.4` does not yet expose the branch `run --app-url` path and
+`homun@0.1.4` does not yet expose the branch `run --app-url` path and
 still advertises an older lane-count constraint. The current branch bumps the
 package to `0.1.5` and updates package/skill docs so the next publish can make
 the consumer path match source truth.
@@ -104,7 +104,7 @@ the consumer path match source truth.
 Consumer install proof from a locally packed `0.1.5` tarball passed:
 
 - installed package version: `0.1.5`;
-- `mimetic run --help` includes `--app-url`;
+- `homun run --help` includes `--app-url`;
 - stale `1-4 lanes` help text is absent.
 
 No sandbox IDs, stream auth URLs, provider account identifiers, private repo

@@ -30,7 +30,7 @@ import { redactText } from "./redaction.js";
 // and the hand-written fixtures encoded the SAME wrong shape, so tests passed in
 // lockstep with the bug while every live action was silently dropped — taught us
 // that deterministic fixtures must derive from CAPTURED live wire shapes, never
-// from memory. Setting MIMETIC_CUA_WIRE_CAPTURE_DIR makes the live shim persist
+// from memory. Setting HOMUN_CUA_WIRE_CAPTURE_DIR makes the live shim persist
 // each successful Responses RESPONSE body into that directory as pretty-printed
 // JSON, one file per provider call in call order (wire-001.json, wire-002.json,
 // ...), for refreshing fixtures. The capture seam is:
@@ -41,7 +41,7 @@ import { redactText } from "./redaction.js";
 //  - REDACTED: every string field (keys and values) passes through the shared
 //    redactText (src/redaction.ts) before writing, so a secret-shaped echo in a
 //    response cannot persist to disk.
-// Point the env var at a gitignored path (e.g. under .mimetic/): raw captures must
+// Point the env var at a gitignored path (e.g. under .homun/): raw captures must
 // never be committed — fixtures derived from them must be minimal, hand-reviewed
 // excerpts checked into tests deliberately.
 
@@ -379,7 +379,7 @@ export function buildContinuationRequest(args: ContinuationRequestArgs): Record<
 // ---------------------------------------------------------------------------
 
 /** The opt-in gate for response wire capture: a directory path, or unset for off. */
-export const WIRE_CAPTURE_ENV = "MIMETIC_CUA_WIRE_CAPTURE_DIR";
+export const WIRE_CAPTURE_ENV = "HOMUN_CUA_WIRE_CAPTURE_DIR";
 
 /**
  * Deep-copy a captured wire value with every string — object keys included —
@@ -427,7 +427,7 @@ export interface OpenAiResponsesProviderOptions {
   delayFn?: (ms: number) => Promise<void>;
   zeroDataRetention?: boolean;
   /**
-   * Environment for the wire-capture gate (MIMETIC_CUA_WIRE_CAPTURE_DIR — see the
+   * Environment for the wire-capture gate (HOMUN_CUA_WIRE_CAPTURE_DIR — see the
    * module header). Injectable so deterministic tests control the gate without
    * mutating process.env. Defaults to process.env.
    */

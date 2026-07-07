@@ -58,7 +58,7 @@ const privateResiduePatterns = [
   ["provider_sandbox_id", /\b(?:(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?|sandboxId["']?\s*[:=]\s*["']?)(?!\[redacted-sandbox-id\])i[a-z0-9]{18,}`?/g],
   ["stale_internal_docs_path", new RegExp(`\\bdocs/(?:${staleInternalDocDirs.join("|")})\\b`, "g")],
   ["stale_internal_context_name", new RegExp(`\\b(?:${staleInternalContextNames.join("|")})\\b`, "gi")],
-  ...((process.env.MIMETIC_PUBLIC_DENYLIST_PATTERN ?? "")
+  ...((process.env.HOMUN_PUBLIC_DENYLIST_PATTERN ?? "")
     .split("\n")
     .map((pattern, index) => pattern.trim() ? [`custom_private_residue_${index + 1}`, new RegExp(pattern, "g")] : null)
     .filter(Boolean))
@@ -87,11 +87,11 @@ const allowedEmailDomains = new Set([
 ]);
 
 const approvedBinaryAssets = new Map([
-  ["docs/assets/mimetic-oss-lab-observer.png", "fad58feb832facd0b1a6828585936d07d5e766d0a1a09c39fea7ee3b5d3f23d7"]
+  ["docs/assets/homun-oss-lab-observer.png", "fad58feb832facd0b1a6828585936d07d5e766d0a1a09c39fea7ee3b5d3f23d7"]
 ]);
 const approvedPublicCommitEmails = new Set([
   "daniel@danielgwilson.com",
-  ...(process.env.MIMETIC_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")
+  ...(process.env.HOMUN_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")
     .split("\n")
     .map((email) => email.trim())
     .filter(Boolean)

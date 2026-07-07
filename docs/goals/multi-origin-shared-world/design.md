@@ -7,7 +7,7 @@ first confirming the need (see "The gate"). Written generically — no adopter/p
 
 ## The question
 
-Can mimetic support ONE shared simulation world where different lanes start from different app
+Can homun support ONE shared simulation world where different lanes start from different app
 ORIGINS, while preserving the SAME evidence, attribution, Observer, and replay guarantees as
 single-origin shared-world (shipped 0.10.1)?
 
@@ -71,7 +71,7 @@ origin — there is **no cross-origin-in-one-browser** requirement; the sharing 
 
 ## Evidence / provenance changes (small, additive)
 
-The `mimetic.shared-world.v1` block gains:
+The `homun.shared-world.v1` block gains:
 - `apps`: a name → `hostDigest` map (sha256-16 of each app's getHost origin; raw host never persisted,
   exactly as the single-origin `plane.hostDigest` works today).
 - each `laneWindow` carries its `app` name; `routeHostDigest` must match that app's recorded host
@@ -100,8 +100,8 @@ strict additive superset. This is the answer to "are we cornering ourselves": no
 
 | Path | Shape | Pro | Con |
 |---|---|---|---|
-| Downstream facade | one exposed origin, reverse-proxy `/appA`,`/appB`,`/appC` to each app | no mimetic core change; rides single-origin + `lanes[].entry` today | fights each Next app's per-origin assumptions (basePath, auth callback URLs, cookie scoping); distorts real deployment topology |
-| Core multi-origin | mimetic supports N subject origins per shared world | faithful to real topology; native auth/cookies (each app on its real origin); each lane single-origin so no browser gymnastics; reusable for any multi-app adopter | a (small) core schema + provenance change |
+| Downstream facade | one exposed origin, reverse-proxy `/appA`,`/appB`,`/appC` to each app | no homun core change; rides single-origin + `lanes[].entry` today | fights each Next app's per-origin assumptions (basePath, auth callback URLs, cookie scoping); distorts real deployment topology |
+| Core multi-origin | homun supports N subject origins per shared world | faithful to real topology; native auth/cookies (each app on its real origin); each lane single-origin so no browser gymnastics; reusable for any multi-app adopter | a (small) core schema + provenance change |
 
 **Lean: core multi-origin.** Because each lane is single-origin (sharing is at the backend), the
 facade solves a problem the sim doesn't have while introducing real auth/cookie fragility. Core

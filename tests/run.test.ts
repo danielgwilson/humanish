@@ -26,7 +26,7 @@ import {
 } from "../src/run.js";
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-run-fixture-"));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-run-fixture-"));
   const tempApp = path.join(tempRoot, "minimal-app");
 
   try {
@@ -49,7 +49,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     }
   });
 
-  await program.parseAsync(["node", "mimetic", ...args], { from: "node" });
+  await program.parseAsync(["node", "homun", ...args], { from: "node" });
 
   return {
     exitCode,
@@ -80,7 +80,7 @@ async function waitForFile(filePath: string, timeoutMs = 2_000): Promise<void> {
 async function withHttpServer<T>(callback: (url: string) => Promise<T>): Promise<T> {
   const server = createServer((_request, response) => {
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end("<!doctype html><title>Mimetic test app</title><main>browser surface proof</main>");
+    response.end("<!doctype html><title>Homun test app</title><main>browser surface proof</main>");
   });
   const url = await new Promise<string>((resolve) => {
     server.listen(0, "127.0.0.1", () => {
@@ -157,31 +157,31 @@ async function writeNeverScreenshottingBrowserCommand(cwd: string): Promise<stri
 
 function restoreBrowserEnv(previousBrowserCommand: string | undefined, previousBrowserPersonaDriver: string | undefined): void {
   if (previousBrowserCommand === undefined) {
-    delete process.env.MIMETIC_BROWSER_COMMAND;
+    delete process.env.HOMUN_BROWSER_COMMAND;
   } else {
-    process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+    process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
   }
   if (previousBrowserPersonaDriver === undefined) {
-    delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+    delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
   } else {
-    process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+    process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
   }
 }
 
-async function writeMimeticBrowserScenario(cwd: string, scenarioText: string): Promise<void> {
-  await mkdir(path.join(cwd, "mimetic", "personas"), { recursive: true });
-  await mkdir(path.join(cwd, "mimetic", "scenarios"), { recursive: true });
+async function writeHomunBrowserScenario(cwd: string, scenarioText: string): Promise<void> {
+  await mkdir(path.join(cwd, "homun", "personas"), { recursive: true });
+  await mkdir(path.join(cwd, "homun", "scenarios"), { recursive: true });
   await writeFile(
-    path.join(cwd, "mimetic/personas/synthetic-new-user.yaml"),
+    path.join(cwd, "homun/personas/synthetic-new-user.yaml"),
     [
-      "schema: mimetic.persona.v1",
+      "schema: homun.persona.v1",
       "id: synthetic-new-user",
       "name: Synthetic New User",
       "summary: Public-safe fixture persona."
     ].join("\n") + "\n",
     "utf8"
   );
-  await writeFile(path.join(cwd, "mimetic/scenarios/app-browser.yaml"), scenarioText, "utf8");
+  await writeFile(path.join(cwd, "homun/scenarios/app-browser.yaml"), scenarioText, "utf8");
 }
 
 describe("dry-run bundles", () => {
@@ -195,9 +195,9 @@ describe("dry-run bundles", () => {
 
       expect(run.ok).toBe(true);
       expect(run.runId).toBe("dryrun-test");
-      expect(run.bundlePath).toBe(".mimetic/runs/dryrun-test/run.json");
+      expect(run.bundlePath).toBe(".homun/runs/dryrun-test/run.json");
 
-      const bundleText = await readFile(path.join(cwd, ".mimetic/runs/dryrun-test/run.json"), "utf8");
+      const bundleText = await readFile(path.join(cwd, ".homun/runs/dryrun-test/run.json"), "utf8");
       const bundle = JSON.parse(bundleText) as {
         cwd: string;
         schema: string;
@@ -211,11 +211,11 @@ describe("dry-run bundles", () => {
       expect(bundleText).not.toContain(cwd);
       expect(bundle.simCount).toBe(1);
       expect(bundle.simulations).toHaveLength(1);
-      expect(bundle.source.git.schema).toBe("mimetic.git-state.v1");
+      expect(bundle.source.git.schema).toBe("homun.git-state.v1");
       expect(bundle.source.git.status).toBe("missing");
       expect(bundle.review.verdict).toBe("contract_proof_only");
 
-      await expect(stat(path.join(cwd, ".mimetic/runs/latest.json"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".homun/runs/latest.json"))).resolves.toBeTruthy();
 
       const verify = await verifyRun(cwd, "latest");
       expect(verify.ok).toBe(true);
@@ -244,15 +244,15 @@ describe("dry-run bundles", () => {
         runId: "cleanup-owned"
       });
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/cleanup-owned/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/cleanup-owned/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
       bundle.providerResources = [
         {
-          schema: "mimetic.provider-resource.v1",
+          schema: "homun.provider-resource.v1",
           provider: "e2b-desktop",
           kind: "sandbox",
           id: "sbx-owned-1",
-          owner: "mimetic",
+          owner: "homun",
           status: "running",
           simId: "sim-001",
           streamId: "stream-001",
@@ -279,8 +279,8 @@ describe("dry-run bundles", () => {
       expect(killed).toEqual(["sbx-owned-1"]);
       expect(cleanup.summary).toMatchObject({ resources: 1, killed: 1, alreadyClean: 0, failed: 0, skipped: 0 });
 
-      const cleanupText = await readFile(path.join(cwd, ".mimetic/runs/cleanup-owned/cleanup.json"), "utf8");
-      expect(cleanupText).toContain("mimetic.cleanup-result.v1");
+      const cleanupText = await readFile(path.join(cwd, ".homun/runs/cleanup-owned/cleanup.json"), "utf8");
+      expect(cleanupText).toContain("homun.cleanup-result.v1");
 
       const verify = await verifyRun(cwd, "cleanup-owned");
       expect(verify.ok).toBe(true);
@@ -296,15 +296,15 @@ describe("dry-run bundles", () => {
         runId: "cleanup-already-clean"
       });
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/cleanup-already-clean/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/cleanup-already-clean/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as Record<string, unknown>;
       bundle.providerResources = [
         {
-          schema: "mimetic.provider-resource.v1",
+          schema: "homun.provider-resource.v1",
           provider: "e2b-desktop",
           kind: "sandbox",
           id: "sbx-already-clean",
-          owner: "mimetic",
+          owner: "homun",
           status: "killed",
           cleanup: {
             killed: true,
@@ -332,7 +332,7 @@ describe("dry-run bundles", () => {
       });
 
       await writeFile(
-        path.join(cwd, ".mimetic/runs/cleanup-failed-receipt/cleanup.json"),
+        path.join(cwd, ".homun/runs/cleanup-failed-receipt/cleanup.json"),
         `${JSON.stringify({
           schema: CLEANUP_SCHEMA,
           ok: false,
@@ -375,7 +375,7 @@ describe("dry-run bundles", () => {
       expect(run.simCount).toBe(65);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/dryrun-sims-65/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/dryrun-sims-65/run.json"), "utf8")
       ) as { simCount: number; simulations: unknown[] };
       expect(bundle.simCount).toBe(65);
       expect(bundle.simulations).toHaveLength(65);
@@ -391,7 +391,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-run-shape/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/malformed-run-shape/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         streams?: unknown;
       };
@@ -400,7 +400,7 @@ describe("dry-run bundles", () => {
 
       const verify = await verifyRun(cwd, "malformed-run-shape");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
@@ -414,16 +414,16 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-run-source-git/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/malformed-run-source-git/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         source: { git: { schema?: string } };
       };
-      bundle.source.git.schema = "mimetic.legacy-not-captured";
+      bundle.source.git.schema = "homun.legacy-not-captured";
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
       const verify = await verifyRun(cwd, "malformed-run-source-git");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
@@ -437,7 +437,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-run-git-values/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/malformed-run-git-values/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         source: { git: { head: { shortSha: unknown }; note: string } };
       };
@@ -446,7 +446,7 @@ describe("dry-run bundles", () => {
 
       let verify = await verifyRun(cwd, "malformed-run-git-values");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
 
       bundle.source.git.head.shortSha = null;
@@ -455,7 +455,7 @@ describe("dry-run bundles", () => {
 
       verify = await verifyRun(cwd, "malformed-run-git-values");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
@@ -469,7 +469,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-feedback-candidate/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/malformed-feedback-candidate/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         feedbackCandidates: unknown[];
       };
@@ -478,7 +478,7 @@ describe("dry-run bundles", () => {
 
       const verify = await verifyRun(cwd, "malformed-feedback-candidate");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
@@ -492,7 +492,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/malformed-sim-streams/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/malformed-sim-streams/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         simCount: number;
         simulations: Array<{ id: string; streamIds: string[] }>;
@@ -503,7 +503,7 @@ describe("dry-run bundles", () => {
 
       let verify = await verifyRun(cwd, "malformed-sim-streams");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
 
       bundle.simCount = bundle.simulations.length;
@@ -517,7 +517,7 @@ describe("dry-run bundles", () => {
 
       verify = await verifyRun(cwd, "malformed-sim-streams");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(verify.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
   });
@@ -527,8 +527,8 @@ describe("dry-run bundles", () => {
       const result = await runDryRun({ cwd });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_LIVE_RUN_UNIMPLEMENTED");
-      await expect(stat(path.join(cwd, ".mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+      expect(result.error?.code).toBe("HOMUN_LIVE_RUN_UNIMPLEMENTED");
+      await expect(stat(path.join(cwd, ".homun"))).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 
@@ -542,7 +542,7 @@ describe("dry-run bundles", () => {
       expect(run.ok).toBe(true);
 
       await writeFile(
-        path.join(cwd, ".mimetic/runs/flag-redaction-regression/review.md"),
+        path.join(cwd, ".homun/runs/flag-redaction-regression/review.md"),
         "actor command: codex exec --ask-for-approval never\n",
         "utf8"
       );
@@ -562,7 +562,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const profileDir = path.join(cwd, ".mimetic/runs/profile-artifact-regression/profiles/desktop/Default");
+      const profileDir = path.join(cwd, ".homun/runs/profile-artifact-regression/profiles/desktop/Default");
       await mkdir(profileDir, { recursive: true });
       await writeFile(path.join(profileDir, "Preferences"), "{\"metadata_secret\":\"synthetic\"}\n", "utf8");
 
@@ -583,7 +583,7 @@ describe("dry-run bundles", () => {
       expect(run.ok).toBe(true);
 
       await writeFile(
-        path.join(cwd, ".mimetic/runs/events-secret-regression/events.ndjson"),
+        path.join(cwd, ".homun/runs/events-secret-regression/events.ndjson"),
         `{\"message\":\"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}\"}\n`,
         "utf8"
       );
@@ -606,7 +606,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/raw-cwd-regression/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/raw-cwd-regression/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as { cwd: string };
       bundle.cwd = cwd;
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -626,7 +626,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/nonlocal-artifact-regression/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/nonlocal-artifact-regression/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         streams: Array<{ artifacts: Array<{ label: string; path: string; kind: string }> }>;
       };
@@ -653,7 +653,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const runRoot = path.join(cwd, ".mimetic/runs/invalid-screenshot-regression");
+      const runRoot = path.join(cwd, ".homun/runs/invalid-screenshot-regression");
       const screenshotPath = "screenshots/not-a-real-png.png";
       await mkdir(path.join(runRoot, "screenshots"), { recursive: true });
       await writeFile(path.join(runRoot, screenshotPath), "this file is non-empty but not an image", "utf8");
@@ -680,7 +680,7 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("rejects local nested Mimetic proof references when the artifact is missing", async () => {
+  it("rejects local nested Homun proof references when the artifact is missing", async () => {
     await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({
         cwd,
@@ -689,7 +689,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/missing-nested-proof-regression/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/missing-nested-proof-regression/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         streams: Array<{ ui?: { nestedObserverPath?: string } }>;
       };
@@ -715,7 +715,7 @@ describe("dry-run bundles", () => {
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".mimetic/runs/placeholder-nested-proof-regression/run.json");
+      const bundlePath = path.join(cwd, ".homun/runs/placeholder-nested-proof-regression/run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         streams: Array<{ ui?: { nestedObserverPath?: string } }>;
       };
@@ -735,10 +735,10 @@ describe("dry-run bundles", () => {
   it("captures and verifies live browser app desktop/mobile evidence", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -752,7 +752,7 @@ describe("dry-run bundles", () => {
           expect(result.simCount).toBe(2);
 
           const bundle = JSON.parse(
-            await readFile(path.join(cwd, ".mimetic/runs/browser-app-test/run.json"), "utf8")
+            await readFile(path.join(cwd, ".homun/runs/browser-app-test/run.json"), "utf8")
           ) as {
             mode: string;
             review: { verdict: string };
@@ -771,7 +771,7 @@ describe("dry-run bundles", () => {
 
           expect(bundle.mode).toBe("live");
           expect(bundle.review.verdict).toBe("pass");
-          expect(bundle.source.git.schema).toBe("mimetic.git-state.v1");
+          expect(bundle.source.git.schema).toBe("homun.git-state.v1");
           expect(bundle.source.git.status).toBe("missing");
           expect(bundle.scenario).toEqual(expect.objectContaining({
             id: "browser-persona-two-step",
@@ -790,17 +790,17 @@ describe("dry-run bundles", () => {
           expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-step-01-load.png");
           expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-step-02-interact.png");
 
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/desktop-step-01-load.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/desktop-step-02-interact.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile-step-01-load.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile-step-02-interact.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/traces/desktop.json"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/events.ndjson"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-test/profiles"))).rejects.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/screenshots/desktop-step-01-load.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/screenshots/desktop-step-02-interact.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/screenshots/mobile-step-01-load.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/screenshots/mobile-step-02-interact.png"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/traces/desktop.json"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/events.ndjson"))).resolves.toBeTruthy();
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-test/profiles"))).rejects.toBeTruthy();
           const desktopTrace = JSON.parse(
-            await readFile(path.join(cwd, ".mimetic/runs/browser-app-test/traces/desktop.json"), "utf8")
+            await readFile(path.join(cwd, ".homun/runs/browser-app-test/traces/desktop.json"), "utf8")
           ) as { schema: string; steps: Array<{ status: string; screenshotPath: string }> };
-          expect(desktopTrace.schema).toBe("mimetic.browser-persona-trace.v1");
+          expect(desktopTrace.schema).toBe("homun.browser-persona-trace.v1");
           expect(desktopTrace.steps).toHaveLength(2);
           expect(desktopTrace.steps.map((step) => step.status)).toEqual(["passed", "passed"]);
           expect(desktopTrace.steps.map((step) => step.screenshotPath)).toEqual([
@@ -819,7 +819,7 @@ describe("dry-run bundles", () => {
 
           bundle.streams[0]!.embed.url = "../screenshots/missing-embed.png";
           await writeFile(
-            path.join(cwd, ".mimetic/runs/browser-app-test/run.json"),
+            path.join(cwd, ".homun/runs/browser-app-test/run.json"),
             `${JSON.stringify(bundle, null, 2)}\n`,
             "utf8"
           );
@@ -829,26 +829,26 @@ describe("dry-run bundles", () => {
             .toContain("screenshots/missing-embed.png");
           bundle.streams[0]!.embed.url = "../screenshots/desktop-step-02-interact.png";
           await writeFile(
-            path.join(cwd, ".mimetic/runs/browser-app-test/run.json"),
+            path.join(cwd, ".homun/runs/browser-app-test/run.json"),
             `${JSON.stringify(bundle, null, 2)}\n`,
             "utf8"
           );
 
-          await rm(path.join(cwd, ".mimetic/runs/browser-app-test/screenshots/mobile-step-02-interact.png"));
+          await rm(path.join(cwd, ".homun/runs/browser-app-test/screenshots/mobile-step-02-interact.png"));
           const missingVerify = await verifyRun(cwd, "latest");
           expect(missingVerify.ok).toBe(false);
           expect(missingVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
             .toContain("screenshots/mobile-step-02-interact.png");
         } finally {
           if (previousBrowserCommand === undefined) {
-            delete process.env.MIMETIC_BROWSER_COMMAND;
+            delete process.env.HOMUN_BROWSER_COMMAND;
           } else {
-            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+            process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
           }
           if (previousBrowserPersonaDriver === undefined) {
-            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+            delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
           } else {
-            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+            process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -862,12 +862,12 @@ describe("dry-run bundles", () => {
     // refs for blocked-not-executed steps while keeping the blocked stream present.
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
         // A browser that exits cleanly but writes NO screenshot forces the capture's
         // catch path (buildBlockedBrowserPersonaSteps) for every surface.
-        process.env.MIMETIC_BROWSER_COMMAND = await writeNeverScreenshottingBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        process.env.HOMUN_BROWSER_COMMAND = await writeNeverScreenshottingBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -881,7 +881,7 @@ describe("dry-run bundles", () => {
           expect(result.mode).toBe("live");
 
           const bundle = JSON.parse(
-            await readFile(path.join(cwd, ".mimetic/runs/browser-blocked-test/run.json"), "utf8")
+            await readFile(path.join(cwd, ".homun/runs/browser-blocked-test/run.json"), "utf8")
           ) as {
             streams: Array<{
               status: string;
@@ -925,10 +925,10 @@ describe("dry-run bundles", () => {
     // must STILL fail closed, so a genuinely-broken producer gets no free pass.
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           await runDryRun({ appUrl, cwd, runId: "browser-broken-success-test" });
@@ -937,7 +937,7 @@ describe("dry-run bundles", () => {
           expect(baseline.ok).toBe(true);
 
           // Delete a referenced screenshot the bundle claims as evidence for a passed stream.
-          await rm(path.join(cwd, ".mimetic/runs/browser-broken-success-test/screenshots/desktop-step-02-interact.png"));
+          await rm(path.join(cwd, ".homun/runs/browser-broken-success-test/screenshots/desktop-step-02-interact.png"));
 
           const verify = await verifyRun(cwd, "browser-broken-success-test");
           expect(verify.ok).toBe(false);
@@ -953,10 +953,10 @@ describe("dry-run bundles", () => {
   it("uses executable browser scenario manifests for browser app proof traces", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        await writeMimeticBrowserScenario(
+        await writeHomunBrowserScenario(
           cwd,
           [
-            "schema: mimetic.scenario.v1",
+            "schema: homun.scenario.v1",
             "id: app-onboarding",
             "title: Fixture app onboarding",
             "persona: synthetic-new-user",
@@ -978,10 +978,10 @@ describe("dry-run bundles", () => {
           ].join("\n") + "\n"
         );
 
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -993,7 +993,7 @@ describe("dry-run bundles", () => {
 
           expect(result.ok).toBe(true);
           const bundle = JSON.parse(
-            await readFile(path.join(cwd, ".mimetic/runs/browser-app-manifest-test/run.json"), "utf8")
+            await readFile(path.join(cwd, ".homun/runs/browser-app-manifest-test/run.json"), "utf8")
           ) as {
             review: { gaps: string[]; verdict: string };
             scenario: { goal: string; id: string; source: string; title: string };
@@ -1003,7 +1003,7 @@ describe("dry-run bundles", () => {
           expect(bundle.scenario).toEqual(expect.objectContaining({
             goal: "Exercise the fixture app through app-specific browser checks.",
             id: "app-onboarding",
-            source: "mimetic/scenarios/app-browser.yaml",
+            source: "homun/scenarios/app-browser.yaml",
             title: "Fixture app onboarding"
           }));
           expect(bundle.simulations[0]?.scenarioId).toBe("app-onboarding");
@@ -1011,17 +1011,17 @@ describe("dry-run bundles", () => {
           expect(bundle.streams[0]?.ui.screenshotUrl).toBe("../screenshots/desktop-confirm-copy.png");
           expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-open-home.png");
           expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-confirm-copy.png");
-          expect(bundle.review.gaps.join("\n")).toContain("mimetic/scenarios/app-browser.yaml");
+          expect(bundle.review.gaps.join("\n")).toContain("homun/scenarios/app-browser.yaml");
 
           const desktopTrace = JSON.parse(
-            await readFile(path.join(cwd, ".mimetic/runs/browser-app-manifest-test/traces/desktop.json"), "utf8")
+            await readFile(path.join(cwd, ".homun/runs/browser-app-manifest-test/traces/desktop.json"), "utf8")
           ) as {
             scenario: { id: string; source: string; stepCount: number };
             steps: Array<{ action: string; assertions?: Array<{ id: string; status: string }>; id: string; label: string; screenshotPath: string; status: string }>;
           };
           expect(desktopTrace.scenario).toEqual(expect.objectContaining({
             id: "app-onboarding",
-            source: "mimetic/scenarios/app-browser.yaml",
+            source: "homun/scenarios/app-browser.yaml",
             stepCount: 2
           }));
           expect(desktopTrace.steps).toEqual([
@@ -1048,14 +1048,14 @@ describe("dry-run bundles", () => {
           expect(verify.ok).toBe(true);
         } finally {
           if (previousBrowserCommand === undefined) {
-            delete process.env.MIMETIC_BROWSER_COMMAND;
+            delete process.env.HOMUN_BROWSER_COMMAND;
           } else {
-            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+            process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
           }
           if (previousBrowserPersonaDriver === undefined) {
-            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+            delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
           } else {
-            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+            process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -1065,10 +1065,10 @@ describe("dry-run bundles", () => {
   it("allows a one-step executable browser scenario manifest", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        await writeMimeticBrowserScenario(
+        await writeHomunBrowserScenario(
           cwd,
           [
-            "schema: mimetic.scenario.v1",
+            "schema: homun.scenario.v1",
             "id: single-step-proof",
             "title: Single-step browser proof",
             "persona: synthetic-new-user",
@@ -1086,10 +1086,10 @@ describe("dry-run bundles", () => {
           ].join("\n") + "\n"
         );
 
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -1101,7 +1101,7 @@ describe("dry-run bundles", () => {
 
           expect(result.ok).toBe(true);
           const desktopTrace = JSON.parse(
-            await readFile(path.join(cwd, ".mimetic/runs/browser-app-one-step-manifest/traces/desktop.json"), "utf8")
+            await readFile(path.join(cwd, ".homun/runs/browser-app-one-step-manifest/traces/desktop.json"), "utf8")
           ) as {
             scenario: { id: string; stepCount: number };
             steps: Array<{ id: string; status: string }>;
@@ -1118,14 +1118,14 @@ describe("dry-run bundles", () => {
           ]);
         } finally {
           if (previousBrowserCommand === undefined) {
-            delete process.env.MIMETIC_BROWSER_COMMAND;
+            delete process.env.HOMUN_BROWSER_COMMAND;
           } else {
-            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+            process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
           }
           if (previousBrowserPersonaDriver === undefined) {
-            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+            delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
           } else {
-            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+            process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -1135,10 +1135,10 @@ describe("dry-run bundles", () => {
   it("fails closed for unparsable scenario YAML during browser app proof", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        await writeMimeticBrowserScenario(
+        await writeHomunBrowserScenario(
           cwd,
           [
-            "schema: mimetic.scenario.v1",
+            "schema: homun.scenario.v1",
             "id: unparsable-browser-scenario",
             "title: Unparsable browser scenario",
             "mode: browser",
@@ -1151,10 +1151,10 @@ describe("dry-run bundles", () => {
           ].join("\n") + "\n"
         );
 
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -1164,19 +1164,19 @@ describe("dry-run bundles", () => {
           });
 
           expect(result.ok).toBe(false);
-          expect(result.error?.code).toBe("MIMETIC_BROWSER_APP_CAPTURE_FAILED");
+          expect(result.error?.code).toBe("HOMUN_BROWSER_APP_CAPTURE_FAILED");
           expect(result.error?.message).toContain("could not be parsed as YAML");
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-unparsable-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-unparsable-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
         } finally {
           if (previousBrowserCommand === undefined) {
-            delete process.env.MIMETIC_BROWSER_COMMAND;
+            delete process.env.HOMUN_BROWSER_COMMAND;
           } else {
-            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+            process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
           }
           if (previousBrowserPersonaDriver === undefined) {
-            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+            delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
           } else {
-            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+            process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -1186,10 +1186,10 @@ describe("dry-run bundles", () => {
   it("fails closed for malformed executable browser scenario manifests", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        await writeMimeticBrowserScenario(
+        await writeHomunBrowserScenario(
           cwd,
           [
-            "schema: mimetic.scenario.v1",
+            "schema: homun.scenario.v1",
             "id: malformed-browser-scenario",
             "title: Malformed browser scenario",
             "goal: Prove malformed executable browser steps fail closed.",
@@ -1203,10 +1203,10 @@ describe("dry-run bundles", () => {
           ].join("\n") + "\n"
         );
 
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const result = await runDryRun({
@@ -1216,19 +1216,19 @@ describe("dry-run bundles", () => {
           });
 
           expect(result.ok).toBe(false);
-          expect(result.error?.code).toBe("MIMETIC_BROWSER_APP_CAPTURE_FAILED");
+          expect(result.error?.code).toBe("HOMUN_BROWSER_APP_CAPTURE_FAILED");
           expect(result.error?.message).toContain("fill action requires selector");
-          await expect(stat(path.join(cwd, ".mimetic/runs/browser-app-malformed-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+          await expect(stat(path.join(cwd, ".homun/runs/browser-app-malformed-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
         } finally {
           if (previousBrowserCommand === undefined) {
-            delete process.env.MIMETIC_BROWSER_COMMAND;
+            delete process.env.HOMUN_BROWSER_COMMAND;
           } else {
-            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+            process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
           }
           if (previousBrowserPersonaDriver === undefined) {
-            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+            delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
           } else {
-            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+            process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -1244,17 +1244,17 @@ describe("dry-run bundles", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_INVALID_APP_URL");
+      expect(result.error?.code).toBe("HOMUN_INVALID_APP_URL");
     });
   });
 
   it("strips loopback app URL userinfo, query, and hash before durable browser proof artifacts", async () => {
     await withFixtureCopy(async (cwd) => {
       await withHttpServer(async (appUrl) => {
-        const previousBrowserCommand = process.env.MIMETIC_BROWSER_COMMAND;
-        const previousBrowserPersonaDriver = process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
-        process.env.MIMETIC_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
-        process.env.MIMETIC_BROWSER_PERSONA_DRIVER = "fixture";
+        const previousBrowserCommand = process.env.HOMUN_BROWSER_COMMAND;
+        const previousBrowserPersonaDriver = process.env.HOMUN_BROWSER_PERSONA_DRIVER;
+        process.env.HOMUN_BROWSER_COMMAND = await writeFakeBrowserCommand(cwd);
+        process.env.HOMUN_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
           const pollutedUrl = appUrl.replace("http://", "http://synthetic-user:synthetic-pass@") + "?access_token=secret-token#private-fragment";
@@ -1266,8 +1266,8 @@ describe("dry-run bundles", () => {
 
           expect(result.ok).toBe(true);
 
-          const bundleText = await readFile(path.join(cwd, ".mimetic/runs/browser-app-url-sanitize/run.json"), "utf8");
-          const desktopTraceText = await readFile(path.join(cwd, ".mimetic/runs/browser-app-url-sanitize/traces/desktop.json"), "utf8");
+          const bundleText = await readFile(path.join(cwd, ".homun/runs/browser-app-url-sanitize/run.json"), "utf8");
+          const desktopTraceText = await readFile(path.join(cwd, ".homun/runs/browser-app-url-sanitize/traces/desktop.json"), "utf8");
           const bundle = JSON.parse(bundleText) as { streams: Array<{ ui: { appUrl: string; route: string } }> };
 
           expect(bundle.streams[0]?.ui.appUrl).toBe(appUrl);
@@ -1281,14 +1281,14 @@ describe("dry-run bundles", () => {
           }
         } finally {
           if (previousBrowserCommand === undefined) {
-            delete process.env.MIMETIC_BROWSER_COMMAND;
+            delete process.env.HOMUN_BROWSER_COMMAND;
           } else {
-            process.env.MIMETIC_BROWSER_COMMAND = previousBrowserCommand;
+            process.env.HOMUN_BROWSER_COMMAND = previousBrowserCommand;
           }
           if (previousBrowserPersonaDriver === undefined) {
-            delete process.env.MIMETIC_BROWSER_PERSONA_DRIVER;
+            delete process.env.HOMUN_BROWSER_PERSONA_DRIVER;
           } else {
-            process.env.MIMETIC_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
+            process.env.HOMUN_BROWSER_PERSONA_DRIVER = previousBrowserPersonaDriver;
           }
         }
       });
@@ -1309,7 +1309,7 @@ describe("dry-run bundles", () => {
           "  if (!data.includes('\\u001b[24;120R')) return;",
           "  clearTimeout(timeout);",
           "  process.stdout.write('secret-like value ' + 'sk-' + 'testsecretvalue1234567890' + '\\n');",
-          "  process.stdout.write(('MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE).split('').join('\\u001b7\\u001b8') + '\\n');",
+          "  process.stdout.write(('HOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=' + process.env.HOMUN_ACTOR_VERDICT_NONCE).split('').join('\\u001b7\\u001b8') + '\\n');",
           "  process.exit(0);",
           "});"
         ].join("\n"),
@@ -1330,7 +1330,7 @@ describe("dry-run bundles", () => {
       expect(result.runId).toBe("codex-tui-test");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-tui-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-tui-test/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string }>;
         mode: string;
@@ -1367,11 +1367,11 @@ describe("dry-run bundles", () => {
       expect(bundle.events.some((event) => event.message.includes(`sk-${"testsecretvalue"}`))).toBe(false);
 
       const transcript = await readFile(
-        path.join(cwd, ".mimetic/runs/codex-tui-test/transcripts/codex-tui-sanitized.txt"),
+        path.join(cwd, ".homun/runs/codex-tui-test/transcripts/codex-tui-sanitized.txt"),
         "utf8"
       );
-      expect(transcript).toContain("MIMETIC_ACTOR_VERDICT=passed");
-      expect(transcript).toContain("MIMETIC_ACTOR_NONCE=");
+      expect(transcript).toContain("HOMUN_ACTOR_VERDICT=passed");
+      expect(transcript).toContain("HOMUN_ACTOR_NONCE=");
       expect(transcript).toContain("[REDACTED_SECRET]");
       expect(transcript).not.toContain(`sk-${"testsecretvalue"}`);
 
@@ -1385,7 +1385,7 @@ describe("dry-run bundles", () => {
       const fakeActor = path.join(cwd, "fake-codex-blocked-actor.mjs");
       await writeFile(
         fakeActor,
-        "process.stdout.write('MIMETIC_ACTOR_VERDICT=blocked MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
+        "process.stdout.write('HOMUN_ACTOR_VERDICT=blocked HOMUN_ACTOR_NONCE=' + process.env.HOMUN_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
         "utf8"
       );
 
@@ -1399,10 +1399,10 @@ describe("dry-run bundles", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
+      expect(result.error?.code).toBe("HOMUN_LOCAL_CODEX_TUI_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-tui-blocked-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-tui-blocked-marker/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -1422,7 +1422,7 @@ describe("dry-run bundles", () => {
         fakeActor,
         [
           "process.stdout.write('tui actor echoing an unauthenticated marker\\n');",
-          "process.stdout.write('MIMETIC_ACTOR_VERDICT=passed\\n');",
+          "process.stdout.write('HOMUN_ACTOR_VERDICT=passed\\n');",
           "process.exit(1);"
         ].join("\n"),
         "utf8"
@@ -1438,10 +1438,10 @@ describe("dry-run bundles", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
+      expect(result.error?.code).toBe("HOMUN_LOCAL_CODEX_TUI_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-tui-forged-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-tui-forged-marker/run.json"), "utf8")
       ) as {
         review: { verdict: string };
         streams: Array<{ status: string; completion: { reason: string; status: string } }>;
@@ -1456,7 +1456,7 @@ describe("dry-run bundles", () => {
   it("publishes running Observer data while a local Codex TUI actor is active", async () => {
     await withFixtureCopy(async (cwd) => {
       const runId = "codex-tui-live-follow-test";
-      const runRoot = path.join(cwd, ".mimetic/runs", runId);
+      const runRoot = path.join(cwd, ".homun/runs", runId);
       const fakeActor = path.join(cwd, "fake-codex-live-follow-actor.cjs");
       const startedFile = path.join(cwd, "actor-started");
       const releaseFile = path.join(cwd, "actor-release");
@@ -1468,7 +1468,7 @@ describe("dry-run bundles", () => {
           "const timer = setInterval(() => {",
           `  if (!fs.existsSync(${JSON.stringify(releaseFile)})) return;`,
           "  clearInterval(timer);",
-          "  process.stdout.write('MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE + '\\n');",
+          "  process.stdout.write('HOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=' + process.env.HOMUN_ACTOR_VERDICT_NONCE + '\\n');",
           "}, 25);"
         ].join("\n"),
         "utf8"
@@ -1506,7 +1506,7 @@ describe("dry-run bundles", () => {
       expect(runningObserverData.events.map((event) => event.type)).toContain("actor.running");
       expect(runningObserverData.streams[0]?.status).toBe("running");
 
-      const runningLatest = JSON.parse(await readFile(path.join(cwd, ".mimetic/runs/latest.json"), "utf8")) as {
+      const runningLatest = JSON.parse(await readFile(path.join(cwd, ".homun/runs/latest.json"), "utf8")) as {
         runId: string;
         path: string;
       };
@@ -1517,7 +1517,7 @@ describe("dry-run bundles", () => {
       const result = await runPromise;
       expect(result.ok).toBe(true);
 
-      const latest = JSON.parse(await readFile(path.join(cwd, ".mimetic/runs/latest.json"), "utf8")) as {
+      const latest = JSON.parse(await readFile(path.join(cwd, ".homun/runs/latest.json"), "utf8")) as {
         runId: string;
         path: string;
       };
@@ -1538,13 +1538,13 @@ describe("dry-run bundles", () => {
   it("exposes explicit local Codex TUI actor runs through the Commander CLI", async () => {
     await withFixtureCopy(async (cwd) => {
       const fakeActor = path.join(cwd, "fake-codex-cli.mjs");
-      const previousCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      const previousCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
       await writeFile(
         fakeActor,
         "process.stdout.write('cli fixture actor passed\\n');\n",
         "utf8"
       );
-      process.env.MIMETIC_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
+      process.env.HOMUN_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
 
       try {
         const result = await runCli([
@@ -1580,12 +1580,12 @@ describe("dry-run bundles", () => {
         expect(watch.exitCode).toBe(0);
         const observer = JSON.parse(watch.stdout) as { ok: boolean; observerPath: string };
         expect(observer.ok).toBe(true);
-        expect(observer.observerPath).toBe(".mimetic/runs/codex-cli/observer/index.html");
+        expect(observer.observerPath).toBe(".homun/runs/codex-cli/observer/index.html");
       } finally {
         if (previousCommand === undefined) {
-          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+          delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
         } else {
-          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousCommand;
+          process.env.HOMUN_CODEX_ACTOR_COMMAND = previousCommand;
         }
       }
     });
@@ -1598,7 +1598,7 @@ describe("dry-run bundles", () => {
         fakeActor,
         [
           "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
-          "process.stdout.write('exec actor inspected mimetic/config.ts\\n');",
+          "process.stdout.write('exec actor inspected homun/config.ts\\n');",
           "process.stdout.write('secret-like value ' + 'sk-' + 'execsecretvalue1234567890' + '\\n');",
           "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
         ].join("\n"),
@@ -1619,7 +1619,7 @@ describe("dry-run bundles", () => {
       expect(result.runId).toBe("codex-exec-test");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-exec-test/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string }>;
         mode: string;
@@ -1643,7 +1643,7 @@ describe("dry-run bundles", () => {
           transport: "snapshot"
         })
       ]);
-      expect(bundle.streams[0]?.terminal.tail).toContain("exec actor inspected mimetic/config.ts");
+      expect(bundle.streams[0]?.terminal.tail).toContain("exec actor inspected homun/config.ts");
       expect(bundle.streams[0]?.terminal.tail).toContain("[REDACTED_SECRET]");
       expect(bundle.streams[0]?.terminal.tail).not.toContain(`sk-${"execsecretvalue"}`);
       expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");
@@ -1652,7 +1652,7 @@ describe("dry-run bundles", () => {
       expect(bundle.events.some((event) => event.message.includes(`sk-${"execsecretvalue"}`))).toBe(false);
 
       const transcript = await readFile(
-        path.join(cwd, ".mimetic/runs/codex-exec-test/transcripts/codex-exec-sanitized.jsonl"),
+        path.join(cwd, ".homun/runs/codex-exec-test/transcripts/codex-exec-sanitized.jsonl"),
         "utf8"
       );
       expect(transcript).toContain("[REDACTED_SECRET]");
@@ -1670,7 +1670,7 @@ describe("dry-run bundles", () => {
         fakeActor,
         [
           "process.stdout.write('exec actor echoing an unauthenticated marker\\n');",
-          "process.stdout.write('MIMETIC_ACTOR_VERDICT=passed\\n');",
+          "process.stdout.write('HOMUN_ACTOR_VERDICT=passed\\n');",
           "process.exit(1);"
         ].join("\n"),
         "utf8"
@@ -1686,10 +1686,10 @@ describe("dry-run bundles", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_EXEC_FAILED");
+      expect(result.error?.code).toBe("HOMUN_LOCAL_CODEX_EXEC_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-forged-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-exec-forged-marker/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -1708,7 +1708,7 @@ describe("dry-run bundles", () => {
       const fakeActor = path.join(cwd, "fake-codex-exec-blocked-actor.mjs");
       await writeFile(
         fakeActor,
-        "process.stdout.write('MIMETIC_ACTOR_VERDICT=blocked MIMETIC_ACTOR_NONCE=' + process.env.MIMETIC_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
+        "process.stdout.write('HOMUN_ACTOR_VERDICT=blocked HOMUN_ACTOR_NONCE=' + process.env.HOMUN_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
         "utf8"
       );
 
@@ -1722,10 +1722,10 @@ describe("dry-run bundles", () => {
       });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_EXEC_FAILED");
+      expect(result.error?.code).toBe("HOMUN_LOCAL_CODEX_EXEC_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-blocked-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-exec-blocked-marker/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -1745,7 +1745,7 @@ describe("dry-run bundles", () => {
         fakeActor,
         [
           "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
-          "process.stdout.write('exec fanout fixture inspected mimetic dogfood docs\\n');",
+          "process.stdout.write('exec fanout fixture inspected homun dogfood docs\\n');",
           "process.stdout.write('secret-like value ' + 'sk-' + 'fanoutsecretvalue1234567890' + '\\n');",
           "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
         ].join("\n"),
@@ -1766,7 +1766,7 @@ describe("dry-run bundles", () => {
       expect(result.simCount).toBe(4);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-exec-fanout-test/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string; simId?: string; streamId?: string }>;
         mode: string;
@@ -1823,10 +1823,10 @@ describe("dry-run bundles", () => {
         const tracePath = stream.artifacts.find((artifact) => artifact.path.endsWith(".json") && artifact.path.startsWith("actors/"))?.path;
         expect(transcriptPath).toBeTruthy();
         expect(tracePath).toBeTruthy();
-        const transcript = await readFile(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test", transcriptPath ?? ""), "utf8");
+        const transcript = await readFile(path.join(cwd, ".homun/runs/codex-exec-fanout-test", transcriptPath ?? ""), "utf8");
         expect(transcript).toContain("[REDACTED_SECRET]");
         expect(transcript).not.toContain(`sk-${"fanoutsecretvalue"}`);
-        await expect(stat(path.join(cwd, ".mimetic/runs/codex-exec-fanout-test", tracePath ?? ""))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, ".homun/runs/codex-exec-fanout-test", tracePath ?? ""))).resolves.toBeTruthy();
       }
 
       const verify = await verifyRun(cwd, "latest");
@@ -1837,7 +1837,7 @@ describe("dry-run bundles", () => {
   it("publishes running Observer data while local Codex exec actors are active", async () => {
     await withFixtureCopy(async (cwd) => {
       const fakeActor = path.join(cwd, "fake-codex-exec-slow-actor.mjs");
-      const runRoot = path.join(cwd, ".mimetic/runs/codex-exec-live-follow-test");
+      const runRoot = path.join(cwd, ".homun/runs/codex-exec-live-follow-test");
       await writeFile(
         fakeActor,
         [
@@ -1924,7 +1924,7 @@ describe("dry-run bundles", () => {
       expect(result.simCount).toBe(5);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-exec-five-lanes/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-exec-five-lanes/run.json"), "utf8")
       ) as {
         lifecycle: Array<{ message: string }>;
         simCount: number;
@@ -1947,13 +1947,13 @@ describe("dry-run bundles", () => {
   it("exposes explicit local Codex exec actor runs through the Commander CLI", async () => {
     await withFixtureCopy(async (cwd) => {
       const fakeActor = path.join(cwd, "fake-codex-exec-cli.mjs");
-      const previousCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      const previousCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
       await writeFile(
         fakeActor,
         "process.stdout.write('cli exec fixture actor passed\\n');\n",
         "utf8"
       );
-      process.env.MIMETIC_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
+      process.env.HOMUN_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
 
       try {
         const result = await runCli([
@@ -1989,12 +1989,12 @@ describe("dry-run bundles", () => {
         expect(watch.exitCode).toBe(0);
         const observer = JSON.parse(watch.stdout) as { ok: boolean; observerPath: string };
         expect(observer.ok).toBe(true);
-        expect(observer.observerPath).toBe(".mimetic/runs/codex-exec-cli/observer/index.html");
+        expect(observer.observerPath).toBe(".homun/runs/codex-exec-cli/observer/index.html");
       } finally {
         if (previousCommand === undefined) {
-          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+          delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
         } else {
-          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousCommand;
+          process.env.HOMUN_CODEX_ACTOR_COMMAND = previousCommand;
         }
       }
     });
@@ -2036,12 +2036,12 @@ describe("dry-run bundles", () => {
           actorCommand: `${JSON.stringify(process.execPath)} ${JSON.stringify(fakeAppServer)}`,
           cwd,
           prompt: `Private UI prompt marker at ${cwd} with ${fakeApiKey}`,
-          runRoot: ".mimetic/codex-app-server-ui-test",
-          stateFile: ".mimetic/codex-app-server-ui-test/state.json",
+          runRoot: ".homun/codex-app-server-ui-test",
+          stateFile: ".homun/codex-app-server-ui-test/state.json",
           timeoutMs: 5_000
         });
         await controller.completion;
-        const stateText = await readFile(path.join(cwd, ".mimetic/codex-app-server-ui-test/state.json"), "utf8");
+        const stateText = await readFile(path.join(cwd, ".homun/codex-app-server-ui-test/state.json"), "utf8");
         expect(stateText).toContain("[target-cwd]");
         expect(stateText).not.toContain(cwd);
         expect(stateText).not.toContain("Private UI prompt marker");
@@ -2125,7 +2125,7 @@ describe("dry-run bundles", () => {
       expect(result.runId).toBe("codex-app-server-test");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".mimetic/runs/codex-app-server-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".homun/runs/codex-app-server-test/run.json"), "utf8")
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -2162,13 +2162,13 @@ describe("dry-run bundles", () => {
       expect(bundle.streams[0]?.codex.state).toBe("completed");
       expect(bundle.streams[0]?.codex.threadId).toBe("thread-public-safe-01");
       expect(bundle.streams[0]?.codex.turnId).toBe("turn-public-safe-01");
-      expect(bundle.streams[0]?.codex.trace.schema).toBe("mimetic.codex-app-server-trace.v1");
+      expect(bundle.streams[0]?.codex.trace.schema).toBe("homun.codex-app-server-trace.v1");
       expect(bundle.streams[0]?.codex.trace.counts.approvals).toBe(1);
       expect(bundle.streams[0]?.codex.trace.counts.commandOutputs).toBeGreaterThan(0);
       // Provider-neutral actor projection is populated alongside the raw codex evidence,
       // and carries the persona's applied traits.
       const actorTrace = bundle.streams[0]?.actor;
-      expect(actorTrace?.schema).toBe("mimetic.actor-trace.v1");
+      expect(actorTrace?.schema).toBe("homun.actor-trace.v1");
       expect(actorTrace?.provider).toBe("codex-app-server");
       expect(actorTrace?.persona.id).toBeTruthy();
       expect(typeof actorTrace?.persona.promptDigest).toBe("string");
@@ -2182,18 +2182,18 @@ describe("dry-run bundles", () => {
       expect(JSON.stringify(bundle)).toContain("[REDACTED_SECRET]");
 
       const trace = await readFile(
-        path.join(cwd, ".mimetic/runs/codex-app-server-test/codex-app-server/summary.json"),
+        path.join(cwd, ".homun/runs/codex-app-server-test/codex-app-server/summary.json"),
         "utf8"
       );
       const appServerEvents = await readFile(
-        path.join(cwd, ".mimetic/runs/codex-app-server-test/codex-app-server/events.ndjson"),
+        path.join(cwd, ".homun/runs/codex-app-server-test/codex-app-server/events.ndjson"),
         "utf8"
       );
       const transcript = await readFile(
-        path.join(cwd, ".mimetic/runs/codex-app-server-test/codex-app-server/transcript.txt"),
+        path.join(cwd, ".homun/runs/codex-app-server-test/codex-app-server/transcript.txt"),
         "utf8"
       );
-      expect(trace).toContain("mimetic.codex-app-server-trace.v1");
+      expect(trace).toContain("homun.codex-app-server-trace.v1");
       expect(trace).toContain("approval-public-safe-01");
       expect(trace).toContain("[REDACTED_SECRET]");
       expect(trace).not.toContain(`sk-${"testsecretvalue"}`);
@@ -2202,7 +2202,7 @@ describe("dry-run bundles", () => {
       expect(trace).not.toContain(cwd);
       expect(appServerEvents).toContain("[REDACTED_PROMPT_TEXT]");
       expect(appServerEvents).toContain("textDigest");
-      expect(appServerEvents).not.toContain("You are a Mimetic Codex app-server dogfood actor");
+      expect(appServerEvents).not.toContain("You are a Homun Codex app-server dogfood actor");
       expect(appServerEvents).not.toContain(cwd);
       expect(transcript).not.toContain(cwd);
 
@@ -2216,11 +2216,11 @@ describe("dry-run bundles", () => {
     await withFixtureCopy(async (cwd) => {
       const codexHome = path.join(cwd, ".codex-home");
       const previousCodexHome = process.env.CODEX_HOME;
-      const previousActorCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      const previousActorCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
       await mkdir(path.join(cwd, ".git"), { recursive: true });
       await writeFile(path.join(cwd, ".git/HEAD"), "ref: refs/heads/main\n", "utf8");
       await mkdir(codexHome, { recursive: true });
-      delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
       process.env.CODEX_HOME = codexHome;
 
       try {
@@ -2233,10 +2233,10 @@ describe("dry-run bundles", () => {
         });
 
         expect(result.ok).toBe(false);
-        expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
+        expect(result.error?.code).toBe("HOMUN_LOCAL_CODEX_TUI_FAILED");
 
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".mimetic/runs/codex-trust-blocked/run.json"), "utf8")
+          await readFile(path.join(cwd, ".homun/runs/codex-trust-blocked/run.json"), "utf8")
         ) as {
           events: Array<{ type: string }>;
           review: { verdict: string };
@@ -2262,9 +2262,9 @@ describe("dry-run bundles", () => {
           process.env.CODEX_HOME = previousCodexHome;
         }
         if (previousActorCommand === undefined) {
-          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+          delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
         } else {
-          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousActorCommand;
+          process.env.HOMUN_CODEX_ACTOR_COMMAND = previousActorCommand;
         }
       }
     });
@@ -2277,7 +2277,7 @@ describe("dry-run bundles", () => {
       const fakeCodex = path.join(fakeBin, "codex");
       const spawnedSentinel = path.join(cwd, "fake-codex-spawned");
       const previousCodexHome = process.env.CODEX_HOME;
-      const previousActorCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      const previousActorCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
       const previousPath = process.env.PATH;
       const trustedAncestor = path.dirname(cwd);
       await mkdir(path.join(cwd, ".git"), { recursive: true });
@@ -2291,11 +2291,11 @@ describe("dry-run bundles", () => {
       );
       await writeFile(
         fakeCodex,
-        `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'fake trusted codex tui started\\n'\nprintf 'MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=%s\\n' "$MIMETIC_ACTOR_VERDICT_NONCE"\n`,
+        `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'fake trusted codex tui started\\n'\nprintf 'HOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=%s\\n' "$HOMUN_ACTOR_VERDICT_NONCE"\n`,
         "utf8"
       );
       await chmod(fakeCodex, 0o755);
-      delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
       process.env.CODEX_HOME = codexHome;
       process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
 
@@ -2309,10 +2309,10 @@ describe("dry-run bundles", () => {
         });
 
         expect(result.ok).toBe(false);
-        expect(result.error?.code).toBe("MIMETIC_LOCAL_CODEX_TUI_FAILED");
+        expect(result.error?.code).toBe("HOMUN_LOCAL_CODEX_TUI_FAILED");
 
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".mimetic/runs/codex-trusted-ancestor/run.json"), "utf8")
+          await readFile(path.join(cwd, ".homun/runs/codex-trusted-ancestor/run.json"), "utf8")
         ) as {
           events: Array<{ type: string }>;
           review: { verdict: string };
@@ -2334,9 +2334,9 @@ describe("dry-run bundles", () => {
           process.env.CODEX_HOME = previousCodexHome;
         }
         if (previousActorCommand === undefined) {
-          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+          delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
         } else {
-          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousActorCommand;
+          process.env.HOMUN_CODEX_ACTOR_COMMAND = previousActorCommand;
         }
         if (previousPath === undefined) {
           delete process.env.PATH;
@@ -2353,7 +2353,7 @@ describe("dry-run bundles", () => {
       const fakeBin = path.join(cwd, "fake-bin");
       const fakeCodex = path.join(fakeBin, "codex");
       const previousCodexHome = process.env.CODEX_HOME;
-      const previousActorCommand = process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      const previousActorCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
       const previousPath = process.env.PATH;
       await mkdir(path.join(cwd, ".git"), { recursive: true });
       await writeFile(path.join(cwd, ".git/HEAD"), "ref: refs/heads/main\n", "utf8");
@@ -2366,11 +2366,11 @@ describe("dry-run bundles", () => {
       );
       await writeFile(
         fakeCodex,
-        "#!/usr/bin/env sh\nprintf 'fake exact trusted codex tui started\\n'\nprintf 'MIMETIC_ACTOR_VERDICT=passed MIMETIC_ACTOR_NONCE=%s\\n' \"$MIMETIC_ACTOR_VERDICT_NONCE\"\n",
+        "#!/usr/bin/env sh\nprintf 'fake exact trusted codex tui started\\n'\nprintf 'HOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=%s\\n' \"$HOMUN_ACTOR_VERDICT_NONCE\"\n",
         "utf8"
       );
       await chmod(fakeCodex, 0o755);
-      delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+      delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
       process.env.CODEX_HOME = codexHome;
       process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
 
@@ -2386,7 +2386,7 @@ describe("dry-run bundles", () => {
         expect(result.ok).toBe(true);
 
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".mimetic/runs/codex-exact-trusted-root/run.json"), "utf8")
+          await readFile(path.join(cwd, ".homun/runs/codex-exact-trusted-root/run.json"), "utf8")
         ) as {
           events: Array<{ type: string }>;
           review: { verdict: string };
@@ -2404,9 +2404,9 @@ describe("dry-run bundles", () => {
           process.env.CODEX_HOME = previousCodexHome;
         }
         if (previousActorCommand === undefined) {
-          delete process.env.MIMETIC_CODEX_ACTOR_COMMAND;
+          delete process.env.HOMUN_CODEX_ACTOR_COMMAND;
         } else {
-          process.env.MIMETIC_CODEX_ACTOR_COMMAND = previousActorCommand;
+          process.env.HOMUN_CODEX_ACTOR_COMMAND = previousActorCommand;
         }
         if (previousPath === undefined) {
           delete process.env.PATH;
@@ -2516,7 +2516,7 @@ async function writeCuaRunFixture(
     runId,
     screenshots: [],
     ...(session ? { session, traceArtifactPath: "actor.json" } : {}),
-    source: await buildRunSource({ cwd, mimeticSource: "present", packageName: "mimetic-cli" })
+    source: await buildRunSource({ cwd, homunSource: "present", packageName: "homun" })
   });
   // The verify matrix forges subject blocks the producer would never emit (e.g. a "seeded"
   // claim over a failed step) — verify must reject them from the persisted evidence alone.
@@ -2526,7 +2526,7 @@ async function writeCuaRunFixture(
   if (args.forceReviewVerdict) {
     bundle.review.verdict = args.forceReviewVerdict;
   }
-  const runDir = path.join(cwd, ".mimetic", "runs", runId);
+  const runDir = path.join(cwd, ".homun", "runs", runId);
   await mkdir(runDir, { recursive: true });
   await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   await writeFile(path.join(runDir, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
@@ -2546,7 +2546,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
 
       const verify = await verifyRun(cwd, "hollow-live-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       const check = verify.checks.find((entry) => entry.name === "actor engagement");
       expect(check?.ok).toBe(false);
       expect(check?.message).toContain("zero actions and zero messages");
@@ -2584,8 +2584,8 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
           ]
         })
       });
-      await mkdir(path.join(cwd, ".mimetic/runs/stopwhen-observed-live/screenshots"), { recursive: true });
-      await writeFile(path.join(cwd, ".mimetic/runs/stopwhen-observed-live/screenshots/turn-00-start.png"), "fake-png", "utf8");
+      await mkdir(path.join(cwd, ".homun/runs/stopwhen-observed-live/screenshots"), { recursive: true });
+      await writeFile(path.join(cwd, ".homun/runs/stopwhen-observed-live/screenshots/turn-00-start.png"), "fake-png", "utf8");
 
       const verify = await verifyRun(cwd, "stopwhen-observed-live");
       expect(verify.ok).toBe(true);
@@ -2738,7 +2738,7 @@ describe("verify: subject state provenance", () => {
       });
       const verify = await verifyRun(cwd, "state-seeded-hollow");
       expect(verify.ok).toBe(false);
-      expect(verify.error?.code).toBe("MIMETIC_INVALID_RUN_BUNDLE");
+      expect(verify.error?.code).toBe("HOMUN_INVALID_RUN_BUNDLE");
       expect(stateCheck(verify)?.ok).toBe(false);
       expect(stateCheck(verify)?.message).toContain("did not complete ok");
     });

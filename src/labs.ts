@@ -8,8 +8,8 @@ import { parseLabConfig, type LabConfig } from "./lab-config.js";
 export { LAB_CONFIG_SCHEMA } from "./lab-config.js";
 export type { LabConfig } from "./lab-config.js";
 
-export const LAB_LIST_SCHEMA = "mimetic.lab-list.v1";
-export const LAB_INSPECT_SCHEMA = "mimetic.lab-inspect.v1";
+export const LAB_LIST_SCHEMA = "homun.lab-list.v1";
+export const LAB_INSPECT_SCHEMA = "homun.lab-inspect.v1";
 
 export type LabOrigin = "committed" | "ignored" | "explicit";
 
@@ -25,7 +25,7 @@ export interface LabResolveFailure {
   cwd: string;
   lab: string;
   error: {
-    code: "MIMETIC_LAB_NOT_FOUND" | "MIMETIC_LAB_INVALID";
+    code: "HOMUN_LAB_NOT_FOUND" | "HOMUN_LAB_INVALID";
     message: string;
   };
   warnings: string[];
@@ -63,10 +63,10 @@ export interface LabInspectResult {
   warnings: string[];
 }
 
-const committedLabsDir = path.join("mimetic", "labs");
+const committedLabsDir = path.join("homun", "labs");
 const ignoredLabsDirs = [
-  path.join(".mimetic", "labs"),
-  path.join(".mimetic", "local", "labs")
+  path.join(".homun", "labs"),
+  path.join(".homun", "local", "labs")
 ] as const;
 
 export async function resolveLabManifest(cwd: string, lab: string): Promise<LabResolveResult> {
@@ -102,8 +102,8 @@ export async function resolveLabManifest(cwd: string, lab: string): Promise<LabR
     cwd: resolvedCwd,
     lab,
     error: {
-      code: "MIMETIC_LAB_NOT_FOUND",
-      message: `Lab not found: ${lab}. Look in mimetic/labs/ or pass a .yaml path.`
+      code: "HOMUN_LAB_NOT_FOUND",
+      message: `Lab not found: ${lab}. Look in homun/labs/ or pass a .yaml path.`
     },
     warnings
   };
@@ -200,7 +200,7 @@ async function parseResolvedLab(args: {
 
   const warnings = [...args.warnings, ...parsed.warnings];
   if (args.path.endsWith(".yml")) {
-    warnings.push("Prefer .yaml for Mimetic-authored lab source; .yml is accepted for compatibility only.");
+    warnings.push("Prefer .yaml for Homun-authored lab source; .yml is accepted for compatibility only.");
   }
 
   return {
@@ -222,7 +222,7 @@ function invalidLab(args: {
     cwd: args.cwd,
     lab: args.lab,
     error: {
-      code: "MIMETIC_LAB_INVALID",
+      code: "HOMUN_LAB_INVALID",
       message
     },
     warnings: args.warnings

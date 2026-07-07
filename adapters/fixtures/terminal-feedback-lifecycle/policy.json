@@ -1,5 +1,5 @@
 {
-  "schema": "mimetic.policy.v1",
+  "schema": "homun.policy.v1",
   "kind": "terminal-feedback-fixture",
   "network_policy": "no_network",
   "spend_policy": "no_spend",

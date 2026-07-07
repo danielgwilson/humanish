@@ -9,7 +9,7 @@ goal-mode session. Spend: **$0 by mechanism** (fake N+1 E2B substrate via the
 
 - `pnpm check` (typecheck + vitest + build) — **exit 0**.
 - `node scripts/public-surface-scan.mjs` — **exit 0** (own exit code checked directly).
-- `mimetic/labs/shared-world-concurrent-demo.yaml` parses → routes to the
+- `homun/labs/shared-world-concurrent-demo.yaml` parses → routes to the
   `concurrent-shared-world` backend → dry-run `verifyRun` ok.
 - `tests/concurrent-shared-world-lab.test.ts` — **14 passed**, run 3× to confirm
   determinism (no flakiness).
@@ -99,5 +99,5 @@ into an error is literal-scrubbed before persist; the raw getHost URL never appe
 - Strict causal attribution of a delta to an actor is structurally inexpressible under
   concurrency (declared + schema-enforced).
 - The LIVE rung (`tests/concurrent-shared-world-lab.live.test.ts`,
-  `MIMETIC_LIVE_SHARED_WORLD=1` + keys) is WRITTEN + gated, NOT run — it needs a real
+  `HOMUN_LIVE_SHARED_WORLD=1` + keys) is WRITTEN + gated, NOT run — it needs a real
   synthetic seeded app served on `0.0.0.0`.

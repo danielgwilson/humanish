@@ -68,7 +68,7 @@ import type {
   VerifyResult
 } from "./run.js";
 
-export const CLI_RESPONSE_SCHEMA = "mimetic.cli-response.v1";
+export const CLI_RESPONSE_SCHEMA = "homun.cli-response.v1";
 
 function readCliVersion(): string {
   const packageJsonPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
@@ -101,7 +101,7 @@ export interface UnsupportedEnvelope {
   ok: false;
   command: string;
   error: {
-    code: "MIMETIC_UNIMPLEMENTED";
+    code: "HOMUN_UNIMPLEMENTED";
     message: string;
   };
   docs: string[];
@@ -135,7 +135,7 @@ interface LabCommandOptions {
 }
 
 interface CodexAppServerUiCliResult {
-  schema: "mimetic.codex-app-server-ui-result.v1";
+  schema: "homun.codex-app-server-ui-result.v1";
   ok: boolean;
   cwd: string;
   reason: string;
@@ -143,7 +143,7 @@ interface CodexAppServerUiCliResult {
   status?: string;
   url?: string;
   error?: {
-    code: "MIMETIC_CODEX_APP_SERVER_PROMPT_REQUIRED" | "MIMETIC_INVALID_PORT" | "MIMETIC_INVALID_TIMEOUT";
+    code: "HOMUN_CODEX_APP_SERVER_PROMPT_REQUIRED" | "HOMUN_INVALID_PORT" | "HOMUN_INVALID_TIMEOUT";
     message: string;
   };
 }
@@ -165,8 +165,8 @@ const commonDocs = [
 export const plannedCommands: PlannedCommand[] = [
   {
     name: "init",
-    description: "Set up committed mimetic/ source files and ignored .mimetic/ runtime state.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/14",
+    description: "Set up committed homun/ source files and ignored .homun/ runtime state.",
+    issue: "https://github.com/danielgwilson/homun/issues/14",
     docs: ["docs/architecture/project-layout.md", ...commonDocs],
     options: [
       { flags: "--dry-run", description: "Print planned changes without writing files." },
@@ -176,14 +176,14 @@ export const plannedCommands: PlannedCommand[] = [
   },
   {
     name: "doctor",
-    description: "Explain project readiness and missing Mimetic setup.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7",
+    description: "Explain project readiness and missing Homun setup.",
+    issue: "https://github.com/danielgwilson/homun/issues/7",
     docs: commonDocs
   },
   {
     name: "run",
     description: "Run a persona/scenario simulation or synthetic dry-run bundle.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7",
+    issue: "https://github.com/danielgwilson/homun/issues/7",
     docs: commonDocs,
     options: [
       { flags: "[lab]", description: "Optional lab id or .yaml path." },
@@ -198,7 +198,7 @@ export const plannedCommands: PlannedCommand[] = [
   {
     name: "verify",
     description: "Validate a run bundle and public-safety gates.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7",
+    issue: "https://github.com/danielgwilson/homun/issues/7",
     docs: commonDocs,
     options: [
       { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" }
@@ -207,7 +207,7 @@ export const plannedCommands: PlannedCommand[] = [
   {
     name: "review",
     description: "Build a review packet from verified run evidence.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7",
+    issue: "https://github.com/danielgwilson/homun/issues/7",
     docs: commonDocs,
     options: [
       { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" }
@@ -216,7 +216,7 @@ export const plannedCommands: PlannedCommand[] = [
   {
     name: "watch",
     description: "Run sims, open the observer, and keep the shell attached.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/10",
+    issue: "https://github.com/danielgwilson/homun/issues/10",
     docs: commonDocs,
     options: [
       { flags: "[lab]", description: "Optional lab id or .yaml path to run and observe." },
@@ -232,8 +232,8 @@ export const plannedCommands: PlannedCommand[] = [
   },
   {
     name: "runs",
-    description: "List local Mimetic runs and latest pointers.",
-    issue: "https://github.com/danielgwilson/mimetic-cli/issues/7",
+    description: "List local Homun runs and latest pointers.",
+    issue: "https://github.com/danielgwilson/homun/issues/7",
     docs: commonDocs
   }
 ];
@@ -243,7 +243,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   const program = new Command();
 
   program
-    .name("mimetic")
+    .name("homun")
     .description("Open-source-safe persona simulation CLI and proof harness.")
     .version(CLI_VERSION)
     .showHelpAfterError()
@@ -257,17 +257,17 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
       [
         "",
         "Examples:",
-        "  mimetic watch",
-        "  mimetic watch first-run",
-        "  mimetic watch --lab .mimetic/labs/local.yaml",
-        "  mimetic watch --run latest --detach",
-        "  mimetic watch --json --no-open",
-        "  mimetic lab list",
-        "  mimetic lab run first-run --json --no-open",
-        "  mimetic verify --run latest --json",
+        "  homun watch",
+        "  homun watch first-run",
+        "  homun watch --lab .homun/labs/local.yaml",
+        "  homun watch --run latest --detach",
+        "  homun watch --json --no-open",
+        "  homun lab list",
+        "  homun lab run first-run --json --no-open",
+        "  homun verify --run latest --json",
         "",
         "Public-safety boundary:",
-        "  Mimetic must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
+        "  Homun must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
         "  private screenshots, or private upstream artifacts."
       ].join("\n")
     );
@@ -297,7 +297,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
 function registerInitCommand(parent: Command, io: CliIo): void {
   parent
     .command("init")
-    .description("Set up committed mimetic/ source files and ignored .mimetic/ runtime state.")
+    .description("Set up committed homun/ source files and ignored .homun/ runtime state.")
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -325,7 +325,7 @@ function registerInitCommand(parent: Command, io: CliIo): void {
 function registerDoctorCommand(parent: Command, io: CliIo): void {
   parent
     .command("doctor")
-    .description("Explain project readiness and missing Mimetic setup.")
+    .description("Explain project readiness and missing Homun setup.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", "Print a machine-readable JSON response.")
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -372,13 +372,13 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       if (lab) {
         if (options.appUrl !== undefined || options.actor !== undefined) {
           const result: RunResult = {
-            schema: "mimetic.run-result.v1",
+            schema: "homun.run-result.v1",
             ok: false,
             cwd: options.cwd,
             warnings: [],
             error: {
-              code: "MIMETIC_APP_URL_OPTION_CONFLICT",
-              message: "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `mimetic run`."
+              code: "HOMUN_APP_URL_OPTION_CONFLICT",
+              message: "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `homun run`."
             }
           };
           writeResult(command, io, result, formatRunHuman);
@@ -405,12 +405,12 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       const timeoutMs = options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
       if (options.sims !== undefined && simCount === null) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_INVALID_SIM_COUNT",
+            code: "HOMUN_INVALID_SIM_COUNT",
             message: "--sims must be a positive integer."
           }
         };
@@ -420,12 +420,12 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       }
       if (options.timeoutMs !== undefined && timeoutMs === null) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_INVALID_TIMEOUT",
+            code: "HOMUN_INVALID_TIMEOUT",
             message: "--timeout-ms must be an integer between 1 and 600000."
           }
         };
@@ -493,7 +493,7 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
 function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
-    .description("List local Mimetic runs and latest pointers.")
+    .description("List local Homun runs and latest pointers.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", "Print a machine-readable JSON response.")
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -506,7 +506,7 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerCodexCommands(parent: Command, io: CliIo): void {
   const codex = parent
     .command("codex")
-    .description("Run Codex-native Mimetic integration surfaces.");
+    .description("Run Codex-native Homun integration surfaces.");
 
   codex
     .command("app-server")
@@ -514,7 +514,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--prompt <text>", "Prompt to submit to Codex app-server.")
     .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
-    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.", ".mimetic/codex-app-server-ui")
+    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.", ".homun/codex-app-server-ui")
     .option("--state-file <path>", "State JSON file for external observers.")
     .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(240_000))
     .option("--port <port>", "Local browser UI port.", "0")
@@ -540,13 +540,13 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       const timeoutMs = parseTimeoutMs(options.timeoutMs);
       const port = parseObserverPort(options.port);
       if (timeoutMs === null) {
-        const result = codexAppServerUiError(options.cwd, "MIMETIC_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 600000.");
+        const result = codexAppServerUiError(options.cwd, "HOMUN_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 600000.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
       }
       if (port === null) {
-        const result = codexAppServerUiError(options.cwd, "MIMETIC_INVALID_PORT", "--port must be an integer between 0 and 65535.");
+        const result = codexAppServerUiError(options.cwd, "HOMUN_INVALID_PORT", "--port must be an integer between 0 and 65535.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
@@ -554,7 +554,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
 
       const prompt = await readCodexAppServerPrompt(options);
       if (!prompt) {
-        const result = codexAppServerUiError(options.cwd, "MIMETIC_CODEX_APP_SERVER_PROMPT_REQUIRED", "Provide --prompt or --prompt-file.");
+        const result = codexAppServerUiError(options.cwd, "HOMUN_CODEX_APP_SERVER_PROMPT_REQUIRED", "Provide --prompt or --prompt-file.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
@@ -574,7 +574,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       });
 
       const initial = {
-        schema: "mimetic.codex-app-server-ui-result.v1" as const,
+        schema: "homun.codex-app-server-ui-result.v1" as const,
         ok: true,
         cwd: resolve(options.cwd),
         stateFile: controller.stateFile,
@@ -632,15 +632,15 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       [
         "",
         "Happy path:",
-        "  mimetic watch",
-        "  mimetic watch first-run",
-        "  mimetic watch --lab .mimetic/labs/local.yaml",
+        "  homun watch",
+        "  homun watch first-run",
+        "  homun watch --lab .homun/labs/local.yaml",
         "",
         "Agent/CI path:",
-        "  mimetic watch --json --no-open",
+        "  homun watch --json --no-open",
         "",
         "Existing evidence:",
-        "  mimetic watch --run latest --detach"
+        "  homun watch --run latest --detach"
       ].join("\n")
     )
     .action(async (labArg: string | undefined, options: {
@@ -667,12 +667,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       const lab = options.lab ?? labArg;
       if (options.lab !== undefined && labArg !== undefined) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_WATCH_OPTION_CONFLICT",
+            code: "HOMUN_WATCH_OPTION_CONFLICT",
             message: "Use either positional lab or --lab, not both."
           }
         };
@@ -693,12 +693,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       if (lab) {
         if (options.run !== undefined) {
           const result: RunResult = {
-            schema: "mimetic.run-result.v1",
+            schema: "homun.run-result.v1",
             ok: false,
             cwd: options.cwd,
             warnings: [],
             error: {
-              code: "MIMETIC_WATCH_OPTION_CONFLICT",
+              code: "HOMUN_WATCH_OPTION_CONFLICT",
               message: "Use either a lab to start evidence or --run to watch existing evidence, not both."
             }
           };
@@ -740,12 +740,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       const port = parseObserverPort(options.port);
       if (options.sims !== undefined && simCount === null) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_INVALID_SIM_COUNT",
+            code: "HOMUN_INVALID_SIM_COUNT",
             message: "--sims must be a positive integer."
           }
         };
@@ -755,12 +755,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
       if (!runWasOmitted && options.sims !== undefined) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_WATCH_OPTION_CONFLICT",
+            code: "HOMUN_WATCH_OPTION_CONFLICT",
             message: "Use either --run to watch existing evidence or --sims to start a fresh run, not both."
           }
         };
@@ -770,12 +770,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
       if (!runWasOmitted && options.runId !== undefined) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_WATCH_OPTION_CONFLICT",
+            code: "HOMUN_WATCH_OPTION_CONFLICT",
             message: "--run-id only applies to fresh watch runs; remove --run or remove --run-id."
           }
         };
@@ -785,12 +785,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
       if (port === null) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_INVALID_PORT",
+            code: "HOMUN_INVALID_PORT",
             message: "--port must be an integer between 0 and 65535."
           }
         };
@@ -863,10 +863,10 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  mimetic observe",
-        "  mimetic observe --run latest",
-        "  mimetic observe --run <runId> --port 8732",
-        "  mimetic observe --no-open --json",
+        "  homun observe",
+        "  homun observe --run latest",
+        "  homun observe --run <runId> --port 8732",
+        "  homun observe --no-open --json",
         "",
         "The server binds 127.0.0.1 only and exposes just the run's bundle directory.",
         "It stays attached until Ctrl-C; file:// security policy and live refresh are why",
@@ -883,12 +883,12 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
       const port = parseObserverPort(options.port);
       if (port === null) {
         const result: RunResult = {
-          schema: "mimetic.run-result.v1",
+          schema: "homun.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "MIMETIC_INVALID_PORT",
+            code: "HOMUN_INVALID_PORT",
             message: "--port must be an integer between 0 and 65535."
           }
         };
@@ -908,7 +908,7 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
       // links (../run.json, ../review.json, ../events.ndjson) resolve, then land
       // visitors on observer/index.html. The loopback root is the run dir; the
       // traversal guard still refuses anything above it (sibling runs, the
-      // .mimetic/runs/ parent, etc.).
+      // .homun/runs/ parent, etc.).
       const observerIndexAbs = join(resolve(options.cwd), rendered.observerPath);
       const runDir = dirname(dirname(observerIndexAbs));
 
@@ -1081,11 +1081,11 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
 function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("List, inspect, and run Mimetic lab manifests.");
+    .description("List, inspect, and run Homun lab manifests.");
 
   lab
     .command("list")
-    .description("List committed and ignored Mimetic lab manifests.")
+    .description("List committed and ignored Homun lab manifests.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", "Print a machine-readable JSON response.")
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -1097,7 +1097,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("inspect")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Inspect a Mimetic lab manifest without running it.")
+    .description("Inspect a Homun lab manifest without running it.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", "Print a machine-readable JSON response.")
     .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
@@ -1128,7 +1128,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const timeoutMs = parsePositiveInteger(options.timeoutMs);
       if (timeoutMs === null) {
         const result: LabPreflightResult = {
-          schema: "mimetic.lab-preflight-result.v1",
+          schema: "homun.lab-preflight-result.v1",
           ok: false,
           cwd: resolve(options.cwd),
           lab: labName,
@@ -1139,7 +1139,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
           spend: { e2bDesktop: false, model: false },
           warnings: [],
           error: {
-            code: "MIMETIC_LAB_PREFLIGHT_INVALID_OPTION",
+            code: "HOMUN_LAB_PREFLIGHT_INVALID_OPTION",
             message: "--timeout-ms must be a positive integer."
           }
         };
@@ -1166,7 +1166,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .action(async (labName: string, _options: { json?: boolean }, command) => {
       if (labName !== "oss") {
         const result = {
-          schema: "mimetic.oss-meta-lab-cleanup-result.v1" as const,
+          schema: "homun.oss-meta-lab-cleanup-result.v1" as const,
           ok: false,
           lab: labName,
           cleanup: { killed: 0, skipped: 0, errors: [`Unsupported cleanup lab '${labName}'.`] }
@@ -1178,7 +1178,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       const cleanup = await cleanupStaleOssMetaLabSandboxes();
       const result = {
-        schema: "mimetic.oss-meta-lab-cleanup-result.v1" as const,
+        schema: "homun.oss-meta-lab-cleanup-result.v1" as const,
         ok: cleanup.errors.length === 0,
         lab: "oss",
         cleanup
@@ -1190,7 +1190,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("run")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Run a Mimetic lab manifest.")
+    .description("Run a Homun lab manifest.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--dry-run", "Render contract evidence without live provider spend.")
     .option("--codex-app-server", "Use Codex app-server client mode for headed desktop actor surfaces.")
@@ -1216,14 +1216,14 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  mimetic lab run first-run",
-        "  mimetic lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
-        "  mimetic lab run oss --dry-run --json --no-open",
-        "  mimetic lab run .mimetic/labs/private-dogfood.yaml --env-file .mimetic/local/provider.env",
+        "  homun lab run first-run",
+        "  homun lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
+        "  homun lab run oss --dry-run --json --no-open",
+        "  homun lab run .homun/labs/private-dogfood.yaml --env-file .homun/local/provider.env",
         "",
         "Human watch path:",
-        "  mimetic watch first-run",
-        "  mimetic watch --lab .mimetic/labs/local.yaml"
+        "  homun watch first-run",
+        "  homun watch --lab .homun/labs/local.yaml"
       ].join("\n")
     )
     .action(async (labName: string, options: LabCommandOptions, command) => {
@@ -1254,7 +1254,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--count <count>", "Number of headed desktop sims to assign.", String(DEFAULT_OSS_REPOS.length))
     .option("--sims <count>", "Alias for --count.")
     .option("--run-id <id>", "Explicit lab run id.")
-    .option("--cwd <path>", "Host directory for ignored .mimetic lab report.", ".")
+    .option("--cwd <path>", "Host directory for ignored .homun lab report.", ".")
     .option("--dry-run", "Render the Observer-of-Observers contract without provider spend or live E2B launch.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
@@ -1271,24 +1271,24 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Preferred paths:",
-        "  mimetic watch oss",
-        "  mimetic lab run oss",
+        "  homun watch oss",
+        "  homun lab run oss",
         "",
         "Repo selection:",
-        "  mimetic watch --lab .mimetic/labs/local-oss.yaml",
-        "  mimetic lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
-        "  mimetic lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
+        "  homun watch --lab .homun/labs/local-oss.yaml",
+        "  homun lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
+        "  homun lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
         "",
         "Agent/CI path:",
-        "  mimetic lab run oss --dry-run --json --no-open",
+        "  homun lab run oss --dry-run --json --no-open",
         "",
         "Disposable clone smoke:",
-        "  mimetic lab run oss-smoke --limit 1 --keep",
-        "  mimetic lab oss-smoke --limit 1 --keep",
+        "  homun lab run oss-smoke --limit 1 --keep",
+        "  homun lab oss-smoke --limit 1 --keep",
         "",
         "Shape:",
         "  The top-level Observer shows headed E2B desktop lanes. Each desktop clones",
-        "  its assigned authorized repo, sets up Mimetic, starts the target app where",
+        "  its assigned authorized repo, sets up Homun, starts the target app where",
         "  feasible, opens desktop/mobile app windows plus the nested Observer, and",
         "  starts a nonblocking Codex actor attempt.",
         "",
@@ -1336,13 +1336,13 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const port = parseObserverPort(options.port);
       if (port === null) {
         const result: OssMetaLabResult = {
-          schema: "mimetic.oss-meta-lab-result.v1",
+          schema: "homun.oss-meta-lab-result.v1",
           ok: false,
           assignments: [],
           cwd: options.cwd,
           dryRun: options.dryRun === true,
           error: {
-            code: "MIMETIC_META_RUN_FAILED",
+            code: "HOMUN_META_RUN_FAILED",
             message: "--port must be an integer between 0 and 65535."
           },
           liveRequested: options.dryRun !== true,
@@ -1438,12 +1438,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
   lab
     .command("oss-smoke", { hidden: true })
-    .description("Clone lightweight public OSS repos, try Mimetic setup/proof, then discard clones.")
+    .description("Clone lightweight public OSS repos, try Homun setup/proof, then discard clones.")
     .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
     .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
     .option("--limit <count>", "Number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
     .option("--run-id <id>", "Explicit lab run id.")
-    .option("--cwd <path>", "Host directory for ignored .mimetic lab report.", ".")
+    .option("--cwd <path>", "Host directory for ignored .homun lab report.", ".")
     .option("--keep", "Keep disposable clone sandbox for debugging.")
     .option("--json", "Print a machine-readable JSON response.")
     .addHelpText(
@@ -1451,12 +1451,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  mimetic lab oss-smoke",
-        "  mimetic lab oss-smoke --repos CorentinTh/it-tools,drawdb-io/drawdb",
-        "  mimetic lab oss-smoke --limit 1 --keep --json",
+        "  homun lab oss-smoke",
+        "  homun lab oss-smoke --repos CorentinTh/it-tools,drawdb-io/drawdb",
+        "  homun lab oss-smoke --limit 1 --keep --json",
         "",
         "Safety:",
-        "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .mimetic/",
+        "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .homun/",
         "  runtime state and are removed by default."
       ].join("\n")
     )
@@ -1565,12 +1565,12 @@ function writeUnsupportedRerunFlagsResult(args: {
   options: LabCommandOptions;
 }, backend: string): void {
   const result: RunResult = {
-    schema: "mimetic.run-result.v1",
+    schema: "homun.run-result.v1",
     ok: false,
     cwd: resolve(args.options.cwd),
     warnings: [],
     error: {
-      code: "MIMETIC_UNSUPPORTED_RERUN_FLAGS",
+      code: "HOMUN_UNSUPPORTED_RERUN_FLAGS",
       message: `--rerun-failed-from/--lanes apply only to CUA fan-out labs; this lab resolved to ${backend}.`
     }
   };
@@ -1589,12 +1589,12 @@ async function runSyntheticBackend(args: {
   const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
   if (simCount === null) {
     const result: RunResult = {
-      schema: "mimetic.run-result.v1",
+      schema: "homun.run-result.v1",
       ok: false,
       cwd: args.options.cwd,
       warnings: [],
       error: {
-        code: "MIMETIC_INVALID_SIM_COUNT",
+        code: "HOMUN_INVALID_SIM_COUNT",
         message: "--sims must be a positive integer."
       }
     };
@@ -1829,7 +1829,7 @@ async function runSharedWorldBackend(args: {
 
 function formatSharedWorldLabHuman(result: SharedWorldLabResult): string {
   return [
-    `mimetic lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `homun lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -1864,7 +1864,7 @@ async function runConcurrentSharedWorldBackend(args: {
   const port = parseObserverPort(args.options.port ?? "0");
   if (wantsFollow && port === null) {
     const result: ConcurrentSharedWorldLabResult = {
-      schema: "mimetic.concurrent-shared-world-lab-result.v1",
+      schema: "homun.concurrent-shared-world-lab-result.v1",
       ok: false,
       cwd: args.options.cwd,
       labId: args.config.id,
@@ -1878,7 +1878,7 @@ async function runConcurrentSharedWorldBackend(args: {
       roles: [],
       warnings: [],
       error: {
-        code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+        code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED",
         message: "--port must be an integer between 0 and 65535."
       }
     };
@@ -1954,7 +1954,7 @@ async function runConcurrentSharedWorldBackend(args: {
 
 function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabResult): string {
   return [
-    `mimetic lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `homun lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -1974,7 +1974,7 @@ function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabRes
 
 function formatTerminalLabHuman(result: TerminalProductLabResult): string {
   return [
-    `mimetic lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `homun lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -1988,7 +1988,7 @@ function formatTerminalLabHuman(result: TerminalProductLabResult): string {
 
 function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
   return [
-    `mimetic lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `homun lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -2007,7 +2007,7 @@ function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
 
 function formatCuaLabHuman(result: CuaActorLabResult): string {
   return [
-    `mimetic lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `homun lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -2043,18 +2043,18 @@ async function runSmokeBackend(args: {
   const limit = parseLabCount(args.options.limit ?? args.options.sims, fanout);
   if (limit === null) {
     const result: OssLabResult = {
-      schema: "mimetic.oss-lab-result.v1",
+      schema: "homun.oss-lab-result.v1",
       ok: false,
       cleanup: { kept: Boolean(args.options.keep), sandboxRemoved: false },
       completedAt: new Date().toISOString(),
       cwd: args.options.cwd,
       error: {
-        code: "MIMETIC_INVALID_OSS_LIMIT",
+        code: "HOMUN_INVALID_OSS_LIMIT",
         message: "--limit must be a positive integer."
       },
       repos: [],
       runId: args.options.runId ?? "not-created",
-      sandboxPath: ".mimetic/tmp/oss-lab/not-created",
+      sandboxPath: ".homun/tmp/oss-lab/not-created",
       startedAt: new Date().toISOString(),
       warnings: []
     };
@@ -2092,13 +2092,13 @@ async function runMetaBackend(args: {
   const port = parseObserverPort(args.options.port ?? "0");
   if (port === null) {
     const result: OssMetaLabResult = {
-      schema: "mimetic.oss-meta-lab-result.v1",
+      schema: "homun.oss-meta-lab-result.v1",
       ok: false,
       assignments: [],
       cwd: args.options.cwd,
       dryRun: args.options.dryRun === true,
       error: {
-        code: "MIMETIC_META_RUN_FAILED",
+        code: "HOMUN_META_RUN_FAILED",
         message: "--port must be an integer between 0 and 65535."
       },
       liveRequested: args.options.dryRun !== true,
@@ -2213,12 +2213,12 @@ async function renderAndMaybeFollowObserver(args: {
   const port = parseObserverPort(args.port);
   if (port === null) {
     const result: RunResult = {
-      schema: "mimetic.run-result.v1",
+      schema: "homun.run-result.v1",
       ok: false,
       cwd: args.cwd,
       warnings: [],
       error: {
-        code: "MIMETIC_INVALID_PORT",
+        code: "HOMUN_INVALID_PORT",
         message: "--port must be an integer between 0 and 65535."
       }
     };
@@ -2340,7 +2340,7 @@ function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (re
 
 function formatDoctorHuman(result: DoctorResult): string {
   return [
-    `mimetic doctor ${result.ok ? "ok" : "needs setup"}`,
+    `homun doctor ${result.ok ? "ok" : "needs setup"}`,
     `cwd: ${result.cwd}`,
     ...result.checks.map((check) => `- ${check.ok ? "ok" : "missing"} ${check.name}: ${check.message}`)
   ].join("\n") + "\n";
@@ -2352,7 +2352,7 @@ function formatRunHuman(result: RunResult): string {
   }
 
   return [
-    `mimetic run ${result.mode}`,
+    `homun run ${result.mode}`,
     `run: ${result.runId}`,
     ...(result.simCount === undefined ? [] : [`sims: ${result.simCount}`]),
     `bundle: ${result.bundlePath}`,
@@ -2363,7 +2363,7 @@ function formatRunHuman(result: RunResult): string {
 
 function formatVerifyHuman(result: VerifyResult): string {
   return [
-    `mimetic verify ${result.ok ? "passed" : "failed"}`,
+    `homun verify ${result.ok ? "passed" : "failed"}`,
     `run: ${result.run}`,
     `share-safety: ${result.shareSafety.status}`,
     ...result.shareSafety.reasons.map((reason) => `share-safety reason: ${reason.code}: ${reason.message}`),
@@ -2378,7 +2378,7 @@ function formatCleanupHuman(result: CleanupResult): string {
   }
 
   return [
-    `mimetic cleanup ${result.ok ? "passed" : "failed"}`,
+    `homun cleanup ${result.ok ? "passed" : "failed"}`,
     `run: ${result.runId ?? result.run}`,
     `resources: killed ${result.summary.killed}, already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
     ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
@@ -2388,7 +2388,7 @@ function formatCleanupHuman(result: CleanupResult): string {
 
 function formatRunsHuman(result: RunsResult): string {
   if (result.runs.length === 0) {
-    return `No Mimetic runs found in ${result.cwd}\n`;
+    return `No Homun runs found in ${result.cwd}\n`;
   }
 
   return [
@@ -2403,7 +2403,7 @@ function formatObserverHuman(result: ObserverResult): string {
   }
 
   return [
-    "mimetic observer rendered",
+    "homun observer rendered",
     `run: ${result.run}`,
     `observer: ${result.observerPath}`,
     ...(result.observerUrl ? [`url: ${result.observerUrl}`] : []),
@@ -2419,7 +2419,7 @@ function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): string 
   }
 
   return [
-    "mimetic codex app-server",
+    "homun codex app-server",
     `url: ${result.url ?? "not-started"}`,
     `status: ${result.status ?? "unknown"}`,
     `state: ${result.stateFile ?? "none"}`,
@@ -2433,7 +2433,7 @@ function formatEnvFileHuman(result: EnvFileLoadResult): string {
   }
 
   return [
-    "mimetic env-file loaded",
+    "homun env-file loaded",
     `env-file: ${result.envFile}`,
     `loaded: ${result.loaded.length ? result.loaded.join(", ") : "none"}`,
     `skipped-existing: ${result.skipped.length ? result.skipped.join(", ") : "none"}`
@@ -2443,14 +2443,14 @@ function formatEnvFileHuman(result: EnvFileLoadResult): string {
 function formatLabListHuman(result: LabListResult): string {
   if (result.labs.length === 0) {
     return [
-      `No Mimetic labs found in ${result.cwd}`,
-      "Create one under mimetic/labs/*.yaml, .mimetic/labs/*.yaml, or pass a .yaml path.",
+      `No Homun labs found in ${result.cwd}`,
+      "Create one under homun/labs/*.yaml, .homun/labs/*.yaml, or pass a .yaml path.",
       ...result.warnings.map((warning) => `warning: ${warning}`)
     ].join("\n") + "\n";
   }
 
   return [
-    "mimetic labs",
+    "homun labs",
     ...result.labs.map((lab) => `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
@@ -2463,7 +2463,7 @@ function formatLabInspectHuman(result: LabInspectResult): string {
 
   const config = result.config;
   return [
-    "mimetic lab",
+    "homun lab",
     `id: ${config.id}`,
     `subject: ${config.subject.source}`,
     ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
@@ -2482,7 +2482,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");
   return [
-    `mimetic lab preflight ${result.ok ? "passed" : "failed"}`,
+    `homun lab preflight ${result.ok ? "passed" : "failed"}`,
     `lab: ${result.labId ?? result.lab}`,
     ...(result.backend ? [`backend: ${result.backend}`] : []),
     `reachability: ${result.reachability}`,
@@ -2527,7 +2527,7 @@ function codexAppServerUiError(
   message: string
 ): CodexAppServerUiCliResult {
   return {
-    schema: "mimetic.codex-app-server-ui-result.v1",
+    schema: "homun.codex-app-server-ui-result.v1",
     ok: false,
     cwd: resolve(cwd),
     reason: message,
@@ -2537,7 +2537,7 @@ function codexAppServerUiError(
 
 function codexAppServerUiResultFromState(state: CodexAppServerUiState): CodexAppServerUiCliResult {
   return {
-    schema: "mimetic.codex-app-server-ui-result.v1",
+    schema: "homun.codex-app-server-ui-result.v1",
     ok: state.status === "passed",
     cwd: state.cwd,
     reason: state.reason,
@@ -2658,7 +2658,7 @@ function formatFeedbackHuman(result: FeedbackResult): string {
   }
 
   return [
-    "mimetic feedback ready",
+    "homun feedback ready",
     `run: ${result.run}`,
     ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
     ...(result.issuePath ? [`issue: ${result.issuePath}`] : [])
@@ -2671,7 +2671,7 @@ function formatOssLabHuman(result: OssLabResult): string {
   }
 
   return [
-    `mimetic lab oss-smoke ${result.ok ? "passed" : "failed"}`,
+    `homun lab oss-smoke ${result.ok ? "passed" : "failed"}`,
     `run: ${result.runId}`,
     ...(result.reportMarkdownPath ? [`report: ${result.reportMarkdownPath}`] : []),
     `sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
@@ -2685,7 +2685,7 @@ function formatOssLabHuman(result: OssLabResult): string {
 
 function formatOssMetaLabHuman(result: OssMetaLabResult): string {
   return [
-    `mimetic lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
+    `homun lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId ?? "not-created"}`,
     `repos: ${result.repos.join(", ")}`,
@@ -2694,7 +2694,7 @@ function formatOssMetaLabHuman(result: OssMetaLabResult): string {
     ...(result.observer?.observerUrl ? [`url: ${result.observer.observerUrl}`] : []),
     ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
     ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
-    ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Mimetic Observer`),
+    ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Homun Observer`),
     ...result.sandboxes.map((sandbox) => {
       const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
       const bootstrapLabel = sandbox.bootstrapStatus ? ` bootstrap=${sandbox.bootstrapStatus}` : "";
@@ -2719,7 +2719,7 @@ function formatOssMetaLabCleanupHuman(result: {
   schema: string;
 }): string {
   return [
-    `mimetic lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
+    `homun lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
     ...(result.cleanup.matched === undefined ? [] : [`matched: ${result.cleanup.matched}`]),
     `killed: ${result.cleanup.killed}`,
     `skipped: ${result.cleanup.skipped}`,
@@ -2734,8 +2734,8 @@ function collectRepeated(value: string, previous: string[]): string[] {
 
 function formatInitHuman(result: InitResult): string {
   const title = result.ok
-    ? `mimetic init ${result.mode}`
-    : `mimetic init ${result.mode} blocked`;
+    ? `homun init ${result.mode}`
+    : `homun init ${result.mode} blocked`;
   const lines = [
     title,
     `cwd: ${result.cwd}`,
@@ -2791,7 +2791,7 @@ function emitUnsupported(plannedCommand: PlannedCommand, command: Command, io: C
     ok: false,
     command: plannedCommand.name,
     error: {
-      code: "MIMETIC_UNIMPLEMENTED",
+      code: "HOMUN_UNIMPLEMENTED",
       message: `${plannedCommand.name} is planned but not implemented in this scaffold slice.`
     },
     docs: plannedCommand.docs,
@@ -2808,7 +2808,7 @@ function emitUnsupported(plannedCommand: PlannedCommand, command: Command, io: C
   } else {
     io.writeErr(
       [
-        `mimetic ${plannedCommand.name} is planned but not implemented yet.`,
+        `homun ${plannedCommand.name} is planned but not implemented yet.`,
         `Track: ${plannedCommand.issue}`,
         `Docs: ${plannedCommand.docs.join(", ")}`,
         "This scaffold does not mutate GitHub, spend provider credits, or use production data."

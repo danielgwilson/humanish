@@ -1,16 +1,16 @@
 {
-  "schema": "mimetic.run-bundle.v1",
+  "schema": "homun.run-bundle.v1",
   "runId": "terminal-feedback-lifecycle-fixture",
   "mode": "dry-run",
   "simCount": 1,
   "createdAt": "2026-06-02T10:30:00.000Z",
   "cwd": "[target-cwd]",
-  "artifactRoot": ".mimetic/runs/terminal-feedback-lifecycle-fixture",
+  "artifactRoot": ".homun/runs/terminal-feedback-lifecycle-fixture",
   "source": {
     "packageName": "fixture-terminal-product",
-    "mimeticSource": "present",
+    "homunSource": "present",
     "git": {
-      "schema": "mimetic.git-state.v1",
+      "schema": "homun.git-state.v1",
       "status": "clean",
       "capturedAt": "2026-06-02T10:30:00.000Z",
       "head": {
@@ -148,7 +148,7 @@
     "events": "events.ndjson"
   },
   "review": {
-    "schema": "mimetic.review.v1",
+    "schema": "homun.review.v1",
     "verdict": "contract_proof_only",
     "summary": "Synthetic terminal fixture proves feedback lifecycle and redaction policy shape.",
     "gaps": [
@@ -157,7 +157,7 @@
   },
   "feedbackCandidates": [
     {
-      "schema": "mimetic.feedback-candidate.v1",
+      "schema": "homun.feedback-candidate.v1",
       "id": "terminal-feedback-lifecycle-candidate",
       "artifact": "feedback-draft.json",
       "mutation": "not_requested",

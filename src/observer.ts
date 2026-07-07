@@ -9,7 +9,7 @@ import type { ObserverData } from "./observer-data.js";
 import { observerClientJs, observerCss } from "./observer-assets.js";
 import { listRuns, loadRunBundle, verifyRun } from "./run.js";
 
-export const OBSERVER_SCHEMA = "mimetic.observer-result.v1";
+export const OBSERVER_SCHEMA = "homun.observer-result.v1";
 
 export interface ObserverResult {
   schema: typeof OBSERVER_SCHEMA;
@@ -26,7 +26,7 @@ export interface ObserverResult {
   openCommand?: string;
   warnings: string[];
   error?: {
-    code: "MIMETIC_RUN_NOT_FOUND" | "MIMETIC_INVALID_RUN_BUNDLE";
+    code: "HOMUN_RUN_NOT_FOUND" | "HOMUN_INVALID_RUN_BUNDLE";
     message: string;
   };
 }
@@ -75,7 +75,7 @@ export async function renderObserver(
       run: runInput,
       warnings: [],
       error: {
-        code: verified.error?.code === "MIMETIC_RUN_NOT_FOUND" ? "MIMETIC_RUN_NOT_FOUND" : "MIMETIC_INVALID_RUN_BUNDLE",
+        code: verified.error?.code === "HOMUN_RUN_NOT_FOUND" ? "HOMUN_RUN_NOT_FOUND" : "HOMUN_INVALID_RUN_BUNDLE",
         message: verified.error?.message ?? "Run bundle failed verification."
       }
     };
@@ -90,7 +90,7 @@ export async function renderObserver(
       run: runInput,
       warnings: [],
       error: {
-        code: "MIMETIC_RUN_NOT_FOUND",
+        code: "HOMUN_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
       }
     };
@@ -126,7 +126,7 @@ export async function renderObserver(
       loaded.bundle.mode === "live"
         ? "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted."
         : "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
-      "Before filing public feedback, use `mimetic feedback issue` so redaction and public-safety checks gate the payload.",
+      "Before filing public feedback, use `homun feedback issue` so redaction and public-safety checks gate the payload.",
       ...(openResult.warning ? [openResult.warning] : [])
     ]
   };
@@ -155,7 +155,7 @@ export async function serveObserver(
         return;
       }
 
-      if (url.pathname === "/_mimetic/history.json") {
+      if (url.pathname === "/_homun/history.json") {
         const history = await buildHistoryIndex(cwd);
         writeResponse(response, 200, JSON.stringify(history, null, 2), "application/json; charset=utf-8");
         return;
@@ -193,14 +193,14 @@ function renderObserverHtml(data: ObserverData): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mimetic Observer - ${escapeHtml(data.run.runId)}</title>
+<title>Homun Observer - ${escapeHtml(data.run.runId)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>${observerCss()}</style>
 </head>
 <body>
-<div class="app" id="app" aria-label="Mimetic Observer mission control">
+<div class="app" id="app" aria-label="Homun Observer mission control">
   <div class="boot" id="boot" aria-hidden="true"></div>
 </div>
 <noscript>This Observer renders local run evidence with JavaScript. Inspect the run bundle directly at <code>../run.json</code>.</noscript>
@@ -318,7 +318,7 @@ async function buildHistoryIndex(cwd: string): Promise<{
         runId: run.runId,
         createdAt: run.createdAt,
         mode: run.mode,
-        href: `/_mimetic/runs/${encodeURIComponent(run.runId)}/observer/index.html`,
+        href: `/_homun/runs/${encodeURIComponent(run.runId)}/observer/index.html`,
         status: data?.run.status ?? "unknown",
         streamCount: data?.streams.length ?? 0
       };
@@ -329,7 +329,7 @@ async function buildHistoryIndex(cwd: string): Promise<{
 }
 
 function matchRunRoute(pathname: string): { runId: string; relativePath: string } | null {
-  const match = pathname.match(/^\/_mimetic\/runs\/([^/]+)(?:\/(.*))?$/);
+  const match = pathname.match(/^\/_homun\/runs\/([^/]+)(?:\/(.*))?$/);
   if (!match) return null;
   return {
     runId: decodeURIComponent(match[1] ?? ""),

@@ -1,7 +1,7 @@
 # Receipt: post-fix live proof that the CUA actor acts (0.6.1)
 
-Date: 2026-06-11. Version: mimetic-cli 0.6.1 (main, v0.6.1 tag). Operator: maintainer
-session; run bundle retained locally under the gitignored `.mimetic/` plane (receipts
+Date: 2026-06-11. Version: homun 0.6.1 (main, v0.6.1 tag). Operator: maintainer
+session; run bundle retained locally under the gitignored `.homun/` plane (receipts
 carry numbers and digests, never bundles or pixels).
 
 ## Why this receipt exists
@@ -13,7 +13,7 @@ evidence class that failed before. This receipt is the kept artifact.
 
 ## The run
 
-Lab (`mimetic.lab.v2`, live mode): `subject.source: clone` of the public repo
+Lab (`homun.lab.v2`, live mode): `subject.source: clone` of the public repo
 `mdn/beginner-html-site-styled`, served in-sandbox via `python3 -m http.server 8000`,
 actor `openai-computer-use` (persona `first-time-visitor`), execution `e2b-desktop`.
 Mission: state the page's main heading text exactly, then stop.
@@ -23,7 +23,7 @@ Mission: state the page's main heading text exactly, then stop.
 - Session: `passed` / `goal_satisfied`, reason: `Mozilla is cool`
 - Engagement counts: **2 turns, 1 model-issued action, 2 screenshots, 1 message**
   (`tokenUsage 3448 in / 40 out`); session duration 7.1s; sandbox killed on teardown
-- `mimetic verify --run latest`: ok, 8/8 checks
+- `homun verify --run latest`: ok, 8/8 checks
 - Subject env names: none declared, none provisioned
 
 ## Verification beyond the run's own verdict

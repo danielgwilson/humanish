@@ -40,7 +40,7 @@ import type {
 } from "./run.js";
 import { scoreOssMetaMeaningfulUse } from "./oss-meta-lab-scoring.js";
 
-export const OSS_META_LAB_SCHEMA = "mimetic.oss-meta-lab-result.v1";
+export const OSS_META_LAB_SCHEMA = "homun.oss-meta-lab-result.v1";
 
 export interface OssMetaLabOptions {
   codexAppServer?: boolean;
@@ -107,7 +107,7 @@ interface OssMetaLabBootstrap {
   completionPath?: string;
   launcherPath?: string;
   logPath?: string;
-  mimeticPackageUploaded: boolean;
+  homunPackageUploaded: boolean;
   nestedObserverPath?: string;
   status: "started" | "failed";
   tail: string;
@@ -146,7 +146,7 @@ export interface OssMetaLabCompletion {
 }
 
 export interface OssMetaLabNestedStepTraceSummary {
-  schema: "mimetic.oss-meta-nested-step-trace-summary.v1";
+  schema: "homun.oss-meta-nested-step-trace-summary.v1";
   redaction: {
     status: "passed";
     notes: string;
@@ -195,7 +195,7 @@ export interface OssMetaLabAppServerActorEvidence {
 }
 
 export interface OssMetaLabHostActorPlan {
-  schema: "mimetic.oss-host-actor-plan.v1";
+  schema: "homun.oss-host-actor-plan.v1";
   generatedAt: string;
   personas: Array<{
     id: string;
@@ -261,9 +261,9 @@ export interface OssMetaLabResult {
   dryRun: boolean;
   error?: {
     code:
-      | "MIMETIC_INVALID_OSS_COUNT"
-      | "MIMETIC_INVALID_OSS_REPO"
-      | "MIMETIC_META_RUN_FAILED";
+      | "HOMUN_INVALID_OSS_COUNT"
+      | "HOMUN_INVALID_OSS_REPO"
+      | "HOMUN_META_RUN_FAILED";
     message: string;
   };
   liveRequested: boolean;
@@ -308,15 +308,15 @@ const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 const liveRuntimeByResult = new WeakMap<OssMetaLabResult, OssMetaLabRuntime>();
 const OSS_META_LAB_PROVIDER_METADATA = {
   mode: "oss-meta-lab",
-  tool: "mimetic-cli"
+  tool: "homun"
 } as const;
 const OSS_META_LAB_REMOTE_ENV_NAMES = [
-  "MIMETIC_OSS_META_ACTOR_FIRST",
-  "MIMETIC_OSS_META_ACTOR_MODEL",
-  "MIMETIC_OSS_META_HOST_CODEX_ACTOR",
-  "MIMETIC_OSS_META_CODEX_APP_SERVER",
-  "MIMETIC_OSS_META_ACTOR_TIMEOUT_MS",
-  "MIMETIC_OSS_META_REQUIRE_ACTOR"
+  "HOMUN_OSS_META_ACTOR_FIRST",
+  "HOMUN_OSS_META_ACTOR_MODEL",
+  "HOMUN_OSS_META_HOST_CODEX_ACTOR",
+  "HOMUN_OSS_META_CODEX_APP_SERVER",
+  "HOMUN_OSS_META_ACTOR_TIMEOUT_MS",
+  "HOMUN_OSS_META_REQUIRE_ACTOR"
 ] as const;
 const OSS_META_LAB_ACTOR_AUTH_PLACEHOLDER = "CODEX_API_KEY or CODEX_ACCESS_TOKEN";
 const OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER = "Codex actor API quota/auth preflight";
@@ -373,22 +373,22 @@ export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<stri
   const result: Record<string, string> = {};
   const codexApiKey = env.CODEX_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
   const codexAccessToken = env.CODEX_ACCESS_TOKEN?.trim();
-  const codexAppServerUrl = env.MIMETIC_OSS_META_CODEX_APP_SERVER_URL?.trim()
+  const codexAppServerUrl = env.HOMUN_OSS_META_CODEX_APP_SERVER_URL?.trim()
     || env.CODEX_APP_SERVER_CLIENT_URL?.trim()
     || env.CODEX_APP_SERVER_URL?.trim();
   const githubToken = githubTokenFromEnv(env);
 
   if (codexApiKey) {
-    result.MIMETIC_CODEX_API_KEY = codexApiKey;
+    result.HOMUN_CODEX_API_KEY = codexApiKey;
   }
   if (codexAccessToken) {
-    result.MIMETIC_CODEX_ACCESS_TOKEN = codexAccessToken;
+    result.HOMUN_CODEX_ACCESS_TOKEN = codexAccessToken;
   }
   if (codexAppServerUrl) {
-    result.MIMETIC_CODEX_APP_SERVER_URL = codexAppServerUrl;
+    result.HOMUN_CODEX_APP_SERVER_URL = codexAppServerUrl;
   }
   if (githubToken) {
-    result.MIMETIC_GITHUB_TOKEN = githubToken;
+    result.HOMUN_GITHUB_TOKEN = githubToken;
   }
 
   return result;
@@ -414,7 +414,7 @@ async function createGitHubAskPassEnv(root: string, env: NodeJS.ProcessEnv): Pro
     "#!/usr/bin/env bash",
     "case \"$1\" in",
     "  *Username*) echo \"x-access-token\" ;;",
-    "  *Password*) echo \"${MIMETIC_GITHUB_TOKEN_RUNTIME:-}\" ;;",
+    "  *Password*) echo \"${HOMUN_GITHUB_TOKEN_RUNTIME:-}\" ;;",
     "  *) echo \"\" ;;",
     "esac",
     ""
@@ -425,7 +425,7 @@ async function createGitHubAskPassEnv(root: string, env: NodeJS.ProcessEnv): Pro
     ...gitCredentialIsolatedEnv(env),
     GIT_ASKPASS: askPassPath,
     GIT_TERMINAL_PROMPT: "0",
-    ...(token ? { MIMETIC_GITHUB_TOKEN_RUNTIME: token } : {})
+    ...(token ? { HOMUN_GITHUB_TOKEN_RUNTIME: token } : {})
   };
 }
 
@@ -449,7 +449,7 @@ function gitCredentialIsolatedEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   delete isolated.GITHUB_PAT;
   delete isolated.GITHUB_TOKEN;
   delete isolated.GIT_ASKPASS;
-  delete isolated.MIMETIC_GITHUB_TOKEN_RUNTIME;
+  delete isolated.HOMUN_GITHUB_TOKEN_RUNTIME;
   delete isolated.SSH_ASKPASS;
   return {
     ...isolated,
@@ -470,7 +470,7 @@ async function runGitRepoAccessProbe(
     cwd,
     env,
     maxBuffer: 256 * 1024,
-    timeout: readPositiveInt(sourceEnv.MIMETIC_OSS_META_REPO_PREFLIGHT_TIMEOUT_MS, 45_000)
+    timeout: readPositiveInt(sourceEnv.HOMUN_OSS_META_REPO_PREFLIGHT_TIMEOUT_MS, 45_000)
   });
 }
 
@@ -483,7 +483,7 @@ export async function preflightOssMetaRepoAccess(args: {
 }): Promise<OssMetaLabRepoAccessPreflight[]> {
   const execImpl = args.execFileImpl ?? execFileAsync;
   const tokenPresent = Boolean(githubTokenFromEnv(args.env));
-  const root = path.join(args.cwd, ".mimetic", "tmp", `repo-access-${randomBytes(4).toString("hex")}`);
+  const root = path.join(args.cwd, ".homun", "tmp", `repo-access-${randomBytes(4).toString("hex")}`);
 
   try {
     await mkdir(root, { recursive: true });
@@ -562,7 +562,7 @@ export async function preflightOssMetaActorApiKey(args: {
   }
 
   const fetchImpl = args.fetchImpl ?? fetch;
-  const model = args.env.MIMETIC_OSS_META_ACTOR_PREFLIGHT_MODEL?.trim() || "gpt-4.1-mini";
+  const model = args.env.HOMUN_OSS_META_ACTOR_PREFLIGHT_MODEL?.trim() || "gpt-4.1-mini";
   try {
     const response = await fetchImpl("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -604,19 +604,19 @@ export async function preflightOssMetaActorApiKey(args: {
 }
 
 function hostCodexActorRequested(env: NodeJS.ProcessEnv): boolean {
-  return env.MIMETIC_OSS_META_HOST_CODEX_ACTOR === "1";
+  return env.HOMUN_OSS_META_HOST_CODEX_ACTOR === "1";
 }
 
 function codexAppServerModeRequested(env: NodeJS.ProcessEnv, explicit = false): boolean {
-  return explicit || env.MIMETIC_OSS_META_CODEX_APP_SERVER === "1";
+  return explicit || env.HOMUN_OSS_META_CODEX_APP_SERVER === "1";
 }
 
 function remoteActorAuthRequested(env: NodeJS.ProcessEnv): boolean {
-  return env.MIMETIC_OSS_META_ACTOR_FIRST === "1" || env.MIMETIC_OSS_META_REQUIRE_ACTOR === "1";
+  return env.HOMUN_OSS_META_ACTOR_FIRST === "1" || env.HOMUN_OSS_META_REQUIRE_ACTOR === "1";
 }
 
 function actorRequired(env: NodeJS.ProcessEnv): boolean {
-  return env.MIMETIC_OSS_META_REQUIRE_ACTOR === "1";
+  return env.HOMUN_OSS_META_REQUIRE_ACTOR === "1";
 }
 
 async function createHostActorPlans(args: {
@@ -642,9 +642,9 @@ async function createHostActorPlan(args: {
   runId: string;
 }): Promise<OssMetaLabHostActorPlanResult> {
   const token = repoSlugToken(args.assignment.repo);
-  const actorRoot = path.join(args.cwd, ".mimetic", "runs", args.runId, "host-actors", token);
+  const actorRoot = path.join(args.cwd, ".homun", "runs", args.runId, "host-actors", token);
   const artifactPath = path.join("host-actors", token, "actor-plan.json");
-  const tmpRoot = path.join(args.cwd, ".mimetic", "tmp", "host-actors", args.runId, token);
+  const tmpRoot = path.join(args.cwd, ".homun", "tmp", "host-actors", args.runId, token);
   const repoDir = path.join(tmpRoot, "repo");
   const planPath = path.join(actorRoot, "actor-plan.json");
   const schemaPath = path.join(tmpRoot, "actor-plan.schema.json");
@@ -675,7 +675,7 @@ async function createHostActorPlan(args: {
         cwd: tmpRoot,
         env: gitEnv,
         maxBuffer: 10 * 1024 * 1024,
-        timeout: readPositiveInt(process.env.MIMETIC_OSS_META_HOST_CLONE_TIMEOUT_MS, 90_000)
+        timeout: readPositiveInt(process.env.HOMUN_OSS_META_HOST_CLONE_TIMEOUT_MS, 90_000)
       });
     });
     await writeJson(schemaPath, hostActorPlanJsonSchema());
@@ -702,7 +702,7 @@ async function createHostActorPlan(args: {
       cwd: repoDir,
       env: codexEnv,
       maxBuffer: 10 * 1024 * 1024,
-      timeout: readPositiveInt(process.env.MIMETIC_OSS_META_HOST_ACTOR_TIMEOUT_MS, 240_000)
+      timeout: readPositiveInt(process.env.HOMUN_OSS_META_HOST_ACTOR_TIMEOUT_MS, 240_000)
     });
 
     const rawPlan = await readFile(outputPath, "utf8").catch(() => {
@@ -821,7 +821,7 @@ function repoAccessFailureReason(args: {
 function sanitizeRepoAccessError(error: unknown, repo: string, redactRepoName: boolean): string {
   let message = compactError(error)
     .replace(/github_pat_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
-    .replace(/\bMIMETIC_GITHUB_TOKEN_RUNTIME=[^\s]+/g, "MIMETIC_GITHUB_TOKEN_RUNTIME=[redacted-github-token]");
+    .replace(/\bHOMUN_GITHUB_TOKEN_RUNTIME=[^\s]+/g, "HOMUN_GITHUB_TOKEN_RUNTIME=[redacted-github-token]");
   if (redactRepoName) {
     message = message
       .replaceAll(`https://github.com/${repo}.git`, "https://github.com/[redacted-authorized-repo].git")
@@ -871,8 +871,8 @@ function blockedLiveDesktopsForRepoAccess(args: {
 
 function buildHostActorPrompt(repo: string, repoContext: string): string {
   return [
-    "You are a public-safe Mimetic host actor.",
-    "Use the bounded public repository context below to author a compact Mimetic setup plan.",
+    "You are a public-safe Homun host actor.",
+    "Use the bounded public repository context below to author a compact Homun setup plan.",
     "Do not print secrets, environment values, private data, or long source snippets.",
     "Do not commit, push, file issues, or mutate remotes.",
     "Return only JSON matching the supplied schema.",
@@ -884,8 +884,8 @@ function buildHostActorPrompt(repo: string, repoContext: string): string {
     "- Include exactly 1 or 2 synthetic personas.",
     "- Include exactly 1 or 2 desktop/mobile browser scenarios.",
     "- Scenario steps must be concise and public-safe.",
-    "- recommendedProof should name the strongest Mimetic command shape for this repo.",
-    "- Current Mimetic supports `mimetic run --app-url <loopback-url> --sims 2`; do not invent --browser, --viewport, --persona, or --scenario flags.",
+    "- recommendedProof should name the strongest Homun command shape for this repo.",
+    "- Current Homun supports `homun run --app-url <loopback-url> --sims 2`; do not invent --browser, --viewport, --persona, or --scenario flags.",
     "",
     "Bounded public repo context:",
     repoContext
@@ -973,7 +973,7 @@ function normalizeHostActorPlan(raw: string, repo: string): OssMetaLabHostActorP
   }
 
   return {
-    schema: "mimetic.oss-host-actor-plan.v1",
+    schema: "homun.oss-host-actor-plan.v1",
     generatedAt: new Date().toISOString(),
     personas,
     recommendedProof: normalizeHostActorRecommendedProof(parsed.recommendedProof),
@@ -981,7 +981,7 @@ function normalizeHostActorPlan(raw: string, repo: string): OssMetaLabHostActorP
     scenarios,
     source: "local-codex-exec",
     status,
-    summary: cleanHostActorText(parsed.summary, status === "passed" ? "Host Codex actor authored a public-safe Mimetic plan." : "Host Codex actor could not author a complete plan.")
+    summary: cleanHostActorText(parsed.summary, status === "passed" ? "Host Codex actor authored a public-safe Homun plan." : "Host Codex actor could not author a complete plan.")
   };
 }
 
@@ -1017,12 +1017,12 @@ function normalizeHostActorScenario(value: unknown): OssMetaLabHostActorPlan["sc
 
 export function normalizeHostActorRecommendedProof(value: unknown): string {
   const proof = cleanHostActorText(value, "");
-  if (!/\bmimetic\s+run\b/.test(proof)) {
-    return "Start the target app on a loopback URL, then run `mimetic run --app-url http://127.0.0.1:<port> --sims 2`.";
+  if (!/\bhomun\s+run\b/.test(proof)) {
+    return "Start the target app on a loopback URL, then run `homun run --app-url http://127.0.0.1:<port> --sims 2`.";
   }
 
   if (/\s--(?:browser|viewport|persona|scenario)\b/.test(proof)) {
-    return "Start the target app on a loopback URL, then run `mimetic run --app-url http://127.0.0.1:<port> --sims 2`.";
+    return "Start the target app on a loopback URL, then run `homun run --app-url http://127.0.0.1:<port> --sims 2`.";
   }
 
   return proof;
@@ -1034,7 +1034,7 @@ function failedHostActorPlan(args: {
   summary: string;
 }): OssMetaLabHostActorPlan {
   return {
-    schema: "mimetic.oss-host-actor-plan.v1",
+    schema: "homun.oss-host-actor-plan.v1",
     generatedAt: new Date().toISOString(),
     personas: [],
     recommendedProof: "Host actor plan was not available.",
@@ -1109,7 +1109,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       cwd,
       dryRun,
       error: {
-        code: "MIMETIC_INVALID_OSS_COUNT",
+        code: "HOMUN_INVALID_OSS_COUNT",
         message: "--count must be a positive integer."
       },
       liveRequested,
@@ -1129,7 +1129,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       cwd,
       dryRun,
       error: {
-        code: "MIMETIC_INVALID_OSS_REPO",
+        code: "HOMUN_INVALID_OSS_REPO",
         message: `Only GitHub owner/repo slugs are supported: ${invalid}`
       },
       liveRequested,
@@ -1170,7 +1170,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       cwd,
       dryRun,
       error: {
-        code: "MIMETIC_META_RUN_FAILED",
+        code: "HOMUN_META_RUN_FAILED",
         message: runResult.error?.message ?? "Failed to create OSS meta-lab run bundle."
       },
       liveRequested,
@@ -1180,13 +1180,13 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     };
   }
 
-  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
+  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd,
-    mimeticSource: "present",
-    packageName: "mimetic-cli"
+    homunSource: "present",
+    packageName: "homun"
   });
   const persistScreenshots = liveRequested;
   let liveDesktops: OssMetaLabLiveDesktop[] = [];
@@ -1214,7 +1214,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
 
   const shouldPreflightRepoAccess = liveRequested
     && missingKeys.length === 0
-    && process.env.MIMETIC_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT !== "1"
+    && process.env.HOMUN_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT !== "1"
     && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length));
   const repoAccessPreflight = shouldPreflightRepoAccess
     ? await preflightOssMetaRepoAccess({
@@ -1248,7 +1248,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   ));
   if (hostActorPlanResults.length > 0) {
     const passed = hostActorPlanResults.filter((result) => result.plan?.status === "passed").length;
-    warnings.push(`Host Codex actor authored ${passed}/${hostActorPlanResults.length} public-safe Mimetic plan${hostActorPlanResults.length === 1 ? "" : "s"}.`);
+    warnings.push(`Host Codex actor authored ${passed}/${hostActorPlanResults.length} public-safe Homun plan${hostActorPlanResults.length === 1 ? "" : "s"}.`);
     for (const failed of hostActorPlanResults.filter((result) => result.plan?.status !== "passed")) {
       warnings.push(`Host Codex actor plan failed for ${redactRepoNames ? "[redacted-authorized-repo]" : failed.repo}: ${failed.error ?? failed.plan?.summary ?? "unknown failure"}`);
     }
@@ -1261,7 +1261,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     && missingKeys.length === 0
     && !hostActorMode
     && actorRequired(process.env)
-    && process.env.MIMETIC_OSS_META_SKIP_ACTOR_PREFLIGHT !== "1"
+    && process.env.HOMUN_OSS_META_SKIP_ACTOR_PREFLIGHT !== "1"
     ? await preflightOssMetaActorApiKey({ env: process.env })
     : undefined;
   const actorAuthPreflightBlocked = actorAuthPreflight !== undefined && !actorAuthPreflight.ok;
@@ -1278,10 +1278,10 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   let localPackage: OssMetaLabLocalPackage | undefined;
   if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
     try {
-      localPackage = await packLocalMimeticPackage(cwd, runId);
-      warnings.push(`Packed local mimetic-cli package for sandbox install (${localPackage.fileName}).`);
+      localPackage = await packLocalHomunPackage(cwd, runId);
+      warnings.push(`Packed local homun package for sandbox install (${localPackage.fileName}).`);
     } catch (error) {
-      warnings.push(`Local mimetic-cli package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`);
+      warnings.push(`Local homun package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`);
     }
   }
   if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
@@ -1337,7 +1337,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   if (liveDesktops.length > 0) {
     warnings.push(`Launched ${liveDesktopCount}/${liveDesktops.length} live E2B desktop stream${liveDesktops.length === 1 ? "" : "s"}.`);
     if (startedBootstrapCount > 0) {
-      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Mimetic setup, and ${codexAppServerMode ? "Codex app-server client surface" : "Codex actor attempt"}.`);
+      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Homun setup, and ${codexAppServerMode ? "Codex app-server client surface" : "Codex actor attempt"}.`);
       if (terminalCompletionCount > 0) {
         warnings.push(`Classified ${terminalCompletionCount}/${startedBootstrapCount} bootstrap terminal state${startedBootstrapCount === 1 ? "" : "s"} from remote public-safe evidence.`);
         warnings.push(`Detected ${runningAppCount}/${terminalCompletionCount} target app HTTP-ready surface${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
@@ -1345,8 +1345,8 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       }
     } else {
       warnings.push(codexAppServerMode
-        ? "Codex app-server client surfacing and nested Mimetic execution remain the next substrate slice behind these live desktops."
-        : "Codex TUI injection and nested Mimetic execution remain the next substrate slice behind these live desktops.");
+        ? "Codex app-server client surfacing and nested Homun execution remain the next substrate slice behind these live desktops."
+        : "Codex TUI injection and nested Homun execution remain the next substrate slice behind these live desktops.");
     }
   }
   if (failedLiveDesktopCount > 0) {
@@ -1408,7 +1408,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       ? {}
       : {
           error: {
-            code: "MIMETIC_META_RUN_FAILED" as const,
+            code: "HOMUN_META_RUN_FAILED" as const,
             message: observer.ok ? outcome.reason : observer.error?.message ?? "OSS meta-lab Observer failed."
           }
         }),
@@ -1496,9 +1496,9 @@ export function startOssMetaLabLiveRefresh(
     return null;
   }
 
-  const intervalMs = options.intervalMs ?? readPositiveInt(process.env.MIMETIC_OSS_META_WATCH_REFRESH_MS, 5_000);
-  const screenshotIntervalMs = options.screenshotIntervalMs ?? readPositiveInt(process.env.MIMETIC_OSS_META_SCREENSHOT_REFRESH_MS, 15_000);
-  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
+  const intervalMs = options.intervalMs ?? readPositiveInt(process.env.HOMUN_OSS_META_WATCH_REFRESH_MS, 5_000);
+  const screenshotIntervalMs = options.screenshotIntervalMs ?? readPositiveInt(process.env.HOMUN_OSS_META_SCREENSHOT_REFRESH_MS, 15_000);
+  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.HOMUN_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
   const deadline = timeoutMs === 0 ? null : runtime.startedAt + timeoutMs;
   let lastScreenshotAt = 0;
   let timer: NodeJS.Timeout | null = null;
@@ -1533,7 +1533,7 @@ export function startOssMetaLabLiveRefresh(
         delete result.error;
       } else {
         result.error = {
-          code: "MIMETIC_META_RUN_FAILED",
+          code: "HOMUN_META_RUN_FAILED",
           message: outcome.reason
         };
       }
@@ -1629,7 +1629,7 @@ export async function cleanupOssMetaLabSandboxesAndProviderMatches(
     requestTimeoutMs?: number;
   } = {}
 ): Promise<OssMetaLabCleanupResult> {
-  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const listed = await listOssMetaLabProviderSandboxIds({
     ...(options.listSandboxes === undefined ? {} : { listSandboxes: options.listSandboxes }),
     requestTimeoutMs
@@ -1765,7 +1765,7 @@ export async function cleanupOssMetaLabSandboxes(
     return { killed: 0, skipped, errors: [] };
   }
 
-  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
   let killSandbox = options.killSandbox;
   if (!killSandbox) {
     const e2bApiKey = process.env.E2B_API_KEY;
@@ -1850,22 +1850,22 @@ export function buildOssMetaBootstrapScriptFixture(): string {
   return buildRemoteBootstrapScript({
     assignment,
     appDir: "/home/user/maciekt07-todoapp",
-    completionPath: "/home/user/.mimetic-oss-lab/maciekt07-todoapp/completion.json",
+    completionPath: "/home/user/.homun-oss-lab/maciekt07-todoapp/completion.json",
     displayRepo: "maciekt07/TodoApp",
-    logPath: "/home/user/.mimetic-oss-lab/maciekt07-todoapp/bootstrap.log",
-    nestedObserverPath: "/home/user/maciekt07-todoapp/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html",
-    remoteHostActorPlanPath: "/home/user/.mimetic-oss-lab/maciekt07-todoapp/host-actor-plan.json",
-    stateDir: "/home/user/.mimetic-oss-lab/maciekt07-todoapp",
+    logPath: "/home/user/.homun-oss-lab/maciekt07-todoapp/bootstrap.log",
+    nestedObserverPath: "/home/user/maciekt07-todoapp/.homun/runs/nested-maciekt07-todoapp/observer/index.html",
+    remoteHostActorPlanPath: "/home/user/.homun-oss-lab/maciekt07-todoapp/host-actor-plan.json",
+    stateDir: "/home/user/.homun-oss-lab/maciekt07-todoapp",
     token: "maciekt07-todoapp"
   });
 }
 
 function syntheticOssMetaRunSource(createdAt: string): RunBundle["source"] {
   return {
-    packageName: "mimetic-cli",
-    mimeticSource: "present",
+    packageName: "homun",
+    homunSource: "present",
     git: {
-      schema: "mimetic.git-state.v1",
+      schema: "homun.git-state.v1",
       status: "clean",
       capturedAt: createdAt,
       head: {
@@ -1934,8 +1934,8 @@ function buildMetaBundle(args: {
       summary: completion
         ? `Headed E2B desktop lane assigned to ${repoLabel}; ${completion.reason}`
         : liveDesktop?.bootstrap?.status === "started"
-        ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Mimetic and open the nested Observer${appServerMode ? " plus Codex app-server client surface" : ""}.`
-        : `Headed E2B desktop lane assigned to ${repoLabel}; remote bootstrap should set up Mimetic and open a nested Observer inside that desktop.`,
+        ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Homun and open the nested Observer${appServerMode ? " plus Codex app-server client surface" : ""}.`
+        : `Headed E2B desktop lane assigned to ${repoLabel}; remote bootstrap should set up Homun and open a nested Observer inside that desktop.`,
       streamIds: [assignment.streamId],
       startedAt: args.createdAt,
       updatedAt: args.createdAt
@@ -1953,7 +1953,7 @@ function buildMetaBundle(args: {
       ...(liveDesktop?.actorEvidence?.appServerTracePath ? [{ label: "codex app-server trace", path: liveDesktop.actorEvidence.appServerTracePath, kind: "trace" as const }] : []),
       ...(liveDesktop?.actorEvidence?.appServerEventsPath ? [{ label: "codex app-server events", path: liveDesktop.actorEvidence.appServerEventsPath, kind: "events" as const }] : []),
       ...(liveDesktop?.actorEvidence?.appServerTranscriptPath ? [{ label: "codex app-server transcript", path: liveDesktop.actorEvidence.appServerTranscriptPath, kind: "log" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.nestedEvidencePath ? [{ label: "nested Mimetic proof", path: liveDesktop.actorEvidence.nestedEvidencePath, kind: "trace" as const }] : []),
+      ...(liveDesktop?.actorEvidence?.nestedEvidencePath ? [{ label: "nested Homun proof", path: liveDesktop.actorEvidence.nestedEvidencePath, kind: "trace" as const }] : []),
       ...(liveDesktop?.actorEvidence?.setupQualityPath ? [{ label: "setup quality", path: liveDesktop.actorEvidence.setupQualityPath, kind: "filesystem" as const }] : []),
       ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
       ...(screenshot ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }] : [])
@@ -1986,8 +1986,8 @@ function buildMetaBundle(args: {
       ui: {
         route: completion?.appUrl ?? `e2b://desktop/${repoLabel}`,
         intent: appServerMode
-          ? "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and opens a Codex app-server client surface."
-          : "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Mimetic, opens the nested Observer, and attempts a Codex actor.",
+          ? "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Homun, opens the nested Observer, and opens a Codex app-server client surface."
+          : "Watch the headed desktop where the bootstrap clones the repo, starts the target app, sets up Homun, opens the nested Observer, and attempts a Codex actor.",
         ...(completion?.actorStatus ? { actorStatus: completion.actorStatus } : {}),
         ...(completion?.appStatus ? { appStatus: completion.appStatus } : {}),
         ...(completion?.appUrl ? { appUrl: completion.appUrl } : {}),
@@ -2141,7 +2141,7 @@ function buildMetaBundle(args: {
       type: "oss-meta.live.substrate_planned",
       message: args.missingKeys.length > 0
         ? "E2B desktop launch is waiting on required environment variables."
-        : "Codex TUI injection and nested Mimetic execution are planned behind this Observer contract."
+        : "Codex TUI injection and nested Homun execution are planned behind this Observer contract."
     });
   }
   if (args.liveDesktops.some((desktop) => desktop.url)) {
@@ -2170,7 +2170,7 @@ function buildMetaBundle(args: {
     simCount: args.assignments.length,
     createdAt: args.createdAt,
     cwd: args.cwd,
-    artifactRoot: path.join(".mimetic", "runs", args.runId),
+    artifactRoot: path.join(".homun", "runs", args.runId),
     source: args.source ?? syntheticOssMetaRunSource(args.createdAt),
     persona: {
       id: "oss-meta-codex-tui-operators",
@@ -2181,7 +2181,7 @@ function buildMetaBundle(args: {
     scenario: {
       id: "oss-meta-observer-of-observers",
       title: "OSS Observer-of-Observers Meta-Lab",
-      goal: "Launch headed E2B desktops where Codex agents clone authorized GitHub repos, set up Mimetic, run nested Mimetic proof commands, attempt Codex TUI, and keep each nested Observer visible.",
+      goal: "Launch headed E2B desktops where Codex agents clone authorized GitHub repos, set up Homun, run nested Homun proof commands, attempt Codex TUI, and keep each nested Observer visible.",
       source: "lab:oss:meta",
       sourceDigest: "public-safe"
     },
@@ -2199,7 +2199,7 @@ function buildMetaBundle(args: {
       {
         at: args.createdAt,
         event: "oss-meta.observer.ready",
-        message: "Top-level Observer is ready to watch nested Mimetic Observers."
+        message: "Top-level Observer is ready to watch nested Homun Observers."
       }
     ],
     simulations,
@@ -2318,8 +2318,8 @@ function currentStepForMeta(args: {
   }
   if (liveDesktop?.bootstrap?.status === "started") {
     return liveDesktop.bootstrap.codexMode === "app-server-client"
-      ? `Bootstrap terminal launched for ${repoLabel}; Codex app-server actor, Mimetic setup, target app, and nested Observer run inside the desktop.`
-      : `Bootstrap terminal launched for ${repoLabel}; Codex TUI attempt, Mimetic setup, and nested Observer run inside the desktop.`;
+      ? `Bootstrap terminal launched for ${repoLabel}; Codex app-server actor, Homun setup, target app, and nested Observer run inside the desktop.`
+      : `Bootstrap terminal launched for ${repoLabel}; Codex TUI attempt, Homun setup, and nested Observer run inside the desktop.`;
   }
   if (liveDesktop?.bootstrap?.status === "failed") {
     return `Bootstrap launcher failed for ${repoLabel}.`;
@@ -2348,24 +2348,24 @@ function createMetaReview(args: {
   const visualVisible = args.liveDesktops.filter((desktop) => desktop.completion?.visualStatus === "visible");
   const nestedLiveProof = args.liveDesktops.some((desktop) =>
     desktop.completion?.nestedVerifyPassed === true
-    && /\bmimetic run live\b/.test(desktop.completion.logTail ?? "")
+    && /\bhomun run live\b/.test(desktop.completion.logTail ?? "")
   );
   const outcome = classifyMetaLabOutcome(args);
   const gaps = [
     nestedLiveProof && appRunning.length > 0 && visualVisible.length > 0
-      ? "Target app browser surfaces, nested Observer windows, and nested Mimetic live app-url proof are visible inside headed desktops."
+      ? "Target app browser surfaces, nested Observer windows, and nested Homun live app-url proof are visible inside headed desktops."
       : appRunning.length > 0 && visualVisible.length > 0
-      ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; nested Mimetic live proof is still missing."
+      ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; nested Homun live proof is still missing."
       : appRunning.length > 0
       ? "Target app surfaces responded over HTTP, but headed desktop browser-window visibility was not detected for every lane."
       : started.length > 0 && terminalCompletions.length === started.length
       ? "OSS lane terminal states are classified from public-safe remote bootstrap evidence, but target app HTTP readiness was not detected."
       : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
-      ? "Visible E2B bootstrap terminals are launched and run nested Mimetic setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
-      : "Nested Mimetic Observer evidence is represented as a lane contract until Codex TUI injection and nested Mimetic execution land.",
+      ? "Visible E2B bootstrap terminals are launched and run nested Homun setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
+      : "Nested Homun Observer evidence is represented as a lane contract until Codex TUI injection and nested Homun execution land.",
     nestedLiveProof
-      ? "Nested Mimetic proof reached live app-url mode with desktop/mobile browser persona evidence; richer app-specific journey manifests remain the next adapter slice."
-      : "Nested Mimetic proof did not reach live app-url mode; target app startup or browser evidence is still missing.",
+      ? "Nested Homun proof reached live app-url mode with desktop/mobile browser persona evidence; richer app-specific journey manifests remain the next adapter slice."
+      : "Nested Homun proof did not reach live app-url mode; target app startup or browser evidence is still missing.",
     "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
     "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default."
   ];
@@ -2374,7 +2374,7 @@ function createMetaReview(args: {
     gaps.unshift(`Live launch is blocked until ${args.missingKeys.join(", ")} are available in environment.`);
   }
   if (args.liveDesktops.some((desktop) => desktop.url) && !args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")) {
-    gaps.unshift("Live E2B desktop streams are connected, but Codex TUI injection and nested Mimetic execution are not yet automated.");
+    gaps.unshift("Live E2B desktop streams are connected, but Codex TUI injection and nested Homun execution are not yet automated.");
   }
 
   return {
@@ -2387,7 +2387,7 @@ function createMetaReview(args: {
       : terminalCompletions.length > 0
         ? `OSS meta-lab launched live E2B desktop streams, classified ${terminalCompletions.length}/${started.length || terminalCompletions.length} bootstrap terminal state${terminalCompletions.length === 1 ? "" : "s"} from public-safe remote evidence, detected ${appRunning.length}/${terminalCompletions.length} target app HTTP-ready surface${terminalCompletions.length === 1 ? "" : "s"}, and detected ${visualVisible.length}/${terminalCompletions.length} headed desktop visual layout${terminalCompletions.length === 1 ? "" : "s"}.`
       : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
-        ? "OSS meta-lab launched live E2B desktop streams, injected visible bootstrap terminals, and started target app plus nested Mimetic setup inside each desktop."
+        ? "OSS meta-lab launched live E2B desktop streams, injected visible bootstrap terminals, and started target app plus nested Homun setup inside each desktop."
         : args.liveDesktops.some((desktop) => desktop.url)
           ? "OSS meta-lab launched live E2B desktop streams and rendered them in the top-level Observer."
         : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
@@ -2460,7 +2460,7 @@ function classifyMetaLabOutcome(args: {
   if (completedWithMissingApp.length > 0) {
     return {
       ok: false,
-      reason: `OSS meta-lab completed nested Mimetic setup but did not detect ${completedWithMissingApp.length}/${args.liveDesktops.length} target app HTTP-ready surface${completedWithMissingApp.length === 1 ? "" : "s"}.`,
+      reason: `OSS meta-lab completed nested Homun setup but did not detect ${completedWithMissingApp.length}/${args.liveDesktops.length} target app HTTP-ready surface${completedWithMissingApp.length === 1 ? "" : "s"}.`,
       verdict: "blocked"
     };
   }
@@ -2472,7 +2472,7 @@ function classifyMetaLabOutcome(args: {
   if (completedWithMissingVisual.length > 0) {
     return {
       ok: false,
-      reason: `OSS meta-lab completed nested Mimetic setup but did not detect ${completedWithMissingVisual.length}/${args.liveDesktops.length} headed desktop visual layout${completedWithMissingVisual.length === 1 ? "" : "s"}.`,
+      reason: `OSS meta-lab completed nested Homun setup but did not detect ${completedWithMissingVisual.length}/${args.liveDesktops.length} headed desktop visual layout${completedWithMissingVisual.length === 1 ? "" : "s"}.`,
       verdict: "blocked"
     };
   }
@@ -2485,7 +2485,7 @@ function classifyMetaLabOutcome(args: {
   if (completedWithMissingAppServerActor.length > 0) {
     return {
       ok: false,
-      reason: `OSS meta-lab completed nested Mimetic setup but did not capture passed Codex app-server actor evidence for ${completedWithMissingAppServerActor.length}/${args.liveDesktops.length} headed desktop lane${completedWithMissingAppServerActor.length === 1 ? "" : "s"}.`,
+      reason: `OSS meta-lab completed nested Homun setup but did not capture passed Codex app-server actor evidence for ${completedWithMissingAppServerActor.length}/${args.liveDesktops.length} headed desktop lane${completedWithMissingAppServerActor.length === 1 ? "" : "s"}.`,
       verdict: "blocked"
     };
   }
@@ -2613,7 +2613,7 @@ function buildMetaFeedbackCandidates(args: {
 
     if (setupQualityPath && failedSetupChecks.length > 0) {
       candidates.push({
-        schema: "mimetic.feedback-candidate.v1",
+        schema: "homun.feedback-candidate.v1",
         id: `setup-quality-${safeArtifactToken(assignment.streamId)}`,
         run_id: args.runId,
         stream_id: assignment.streamId,
@@ -2623,8 +2623,8 @@ function buildMetaFeedbackCandidates(args: {
         actor: "codex-tui",
         substrate: "e2b-desktop",
         failure_owner: "actor",
-        summary: `Generated Mimetic setup for ${repoLabel} needs review`,
-        expected: "The setup actor should create committed Mimetic source files, useful personas/scenarios, a package script, and a .mimetic/ runtime ignore without preserving private state.",
+        summary: `Generated Homun setup for ${repoLabel} needs review`,
+        expected: "The setup actor should create committed Homun source files, useful personas/scenarios, a package script, and a .homun/ runtime ignore without preserving private state.",
         actual: failedSetupChecks.map((check) => `${check.label}: ${check.detail}`).join(" "),
         evidence: [
           {
@@ -2638,11 +2638,11 @@ function buildMetaFeedbackCandidates(args: {
           status: "passed",
           notes: "Feedback candidate references local public-safe run artifacts only."
         },
-        idempotency_key: `mimetic:${args.runId}:${assignment.streamId}:setup-quality`,
+        idempotency_key: `homun:${args.runId}:${assignment.streamId}:setup-quality`,
         proposed_next_state: "setup-quality-review",
         acceptance_proof: [
-          `pnpm mimetic -- verify --run ${args.runId} --json`,
-          `pnpm mimetic -- watch --run ${args.runId} --no-open`
+          `pnpm homun -- verify --run ${args.runId} --json`,
+          `pnpm homun -- watch --run ${args.runId} --no-open`
         ]
       });
     }
@@ -2650,7 +2650,7 @@ function buildMetaFeedbackCandidates(args: {
     const actorText = `${desktop.completion?.actorLastMessageTail ?? ""}\n${desktop.completion?.actorLogTail ?? ""}`;
     if (hasAppUrlProofBlocker(actorText)) {
       candidates.push({
-        schema: "mimetic.feedback-candidate.v1",
+        schema: "homun.feedback-candidate.v1",
         id: `published-cli-app-url-${safeArtifactToken(assignment.streamId)}`,
         run_id: args.runId,
         stream_id: assignment.streamId,
@@ -2660,27 +2660,27 @@ function buildMetaFeedbackCandidates(args: {
         actor: "codex-tui",
         substrate: "e2b-desktop",
         failure_owner: "harness",
-        summary: "Published Mimetic install path blocked app-url proof",
-        expected: "A fresh npm-installed Mimetic CLI should support the app-url live proof path documented for agents.",
+        summary: "Published Homun install path blocked app-url proof",
+        expected: "A fresh npm-installed Homun CLI should support the app-url live proof path documented for agents.",
         actual: "The actor evidence reports that the installed CLI did not accept or expose the app-url proof option.",
         evidence: baseEvidence,
         redaction: {
           status: "passed",
           notes: "Actor evidence was redacted before persistence."
         },
-        idempotency_key: `mimetic:${args.runId}:${assignment.streamId}:published-cli-app-url`,
+        idempotency_key: `homun:${args.runId}:${assignment.streamId}:published-cli-app-url`,
         proposed_next_state: "adapter-hardening",
         acceptance_proof: [
-          "npm view mimetic-cli version",
-          "npx --yes --package mimetic-cli mimetic run --help | grep -- --app-url",
-          `pnpm mimetic -- verify --run ${args.runId} --json`
+          "npm view homun version",
+          "npx --yes --package homun homun run --help | grep -- --app-url",
+          `pnpm homun -- verify --run ${args.runId} --json`
         ]
       });
     }
 
     if (setupQualityPath && studyQuality && (studyQuality.rating === "none" || studyQuality.rating === "ceremonial")) {
       candidates.push({
-        schema: "mimetic.feedback-candidate.v1",
+        schema: "homun.feedback-candidate.v1",
         id: `study-quality-${safeArtifactToken(assignment.streamId)}`,
         run_id: args.runId,
         stream_id: assignment.streamId,
@@ -2690,8 +2690,8 @@ function buildMetaFeedbackCandidates(args: {
         actor: "codex-tui",
         substrate: "e2b-desktop",
         failure_owner: "actor",
-        summary: `Generated Mimetic setup for ${repoLabel} was ${studyQuality.rating}`,
-        expected: "The setup actor should turn Mimetic init into an app-aware user-study plan with customized coverage, personas, scenarios, app-url proof, and public-safe feedback.",
+        summary: `Generated Homun setup for ${repoLabel} was ${studyQuality.rating}`,
+        expected: "The setup actor should turn Homun init into an app-aware user-study plan with customized coverage, personas, scenarios, app-url proof, and public-safe feedback.",
         actual: studyQuality.summary,
         evidence: [
           {
@@ -2705,11 +2705,11 @@ function buildMetaFeedbackCandidates(args: {
           status: "passed",
           notes: "Study-quality feedback candidate references local public-safe artifacts only."
         },
-        idempotency_key: `mimetic:${args.runId}:${assignment.streamId}:study-quality`,
+        idempotency_key: `homun:${args.runId}:${assignment.streamId}:study-quality`,
         proposed_next_state: "study-quality-review",
         acceptance_proof: [
-          `pnpm mimetic -- verify --run ${args.runId} --json`,
-          `pnpm mimetic -- watch --run ${args.runId} --no-open`,
+          `pnpm homun -- verify --run ${args.runId} --json`,
+          `pnpm homun -- watch --run ${args.runId} --no-open`,
           "Study-quality rating is useful or high_leverage, or the remaining ceremonial state is explicitly explained."
         ]
       });
@@ -2766,7 +2766,7 @@ function isTerminalCompletion(completion: OssMetaLabCompletion | undefined): boo
 function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoName = false): string {
   const repoLabel = redactRepoName ? "[redacted-authorized-repo]" : `https://github.com/${assignment.repo}.git`;
   return [
-    `# Mimetic OSS Meta-Lab Actor ${assignment.index}`,
+    `# Homun OSS Meta-Lab Actor ${assignment.index}`,
     "",
     "You are running inside a disposable headed E2B desktop with a visible terminal and browser.",
     "Public-safety hard rails: use only authorized repo contents; never print keys; never commit, push, file issues, or preserve private artifacts.",
@@ -2777,23 +2777,23 @@ function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoN
     "1. Clone the target repo into a clean disposable workspace.",
     "2. Inspect the package manager, dev scripts, README, and app shape.",
     "3. Get the repo into a local runnable dev mode if feasible.",
-    "4. Discover the Mimetic skill path and try installing it with `npx skills add danielgwilson/mimetic-cli --skill mimetic-cli`.",
-    "5. Install Mimetic as a dev dependency with the package manager the repo already uses. The package is `mimetic-cli`; the binary is `mimetic`.",
-    "6. Run `npx --no-install mimetic init --yes` or the package-manager equivalent. Do not run bare `npx mimetic` unless you have confirmed it resolves the local `mimetic-cli` binary.",
-    "7. Replace starter coverage files with an app-aware `mimetic/coverage-map.md` and `mimetic/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.",
-    "8. Author at least two public-safe, app-specific Mimetic personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.",
-    "9. Run `npx --no-install mimetic run --help` and verify `--app-url` is available. If the local binary is missing, install `mimetic-cli`; one-shot fallback is `npx --yes --package mimetic-cli@latest mimetic run --help`.",
-    "10. If the app is running locally, run `npx --no-install mimetic run --app-url <loopback-url> --sims 2`; do not use `mimetic watch --sims` as app behavior proof.",
-    "11. After `run --app-url`, render or open the nested Mimetic Observer with `npx --no-install mimetic watch --run latest --detach --no-open --json` and keep it visible.",
+    "4. Discover the Homun skill path and try installing it with `npx skills add danielgwilson/homun --skill homun`.",
+    "5. Install Homun as a dev dependency with the package manager the repo already uses. The package is `homun`; the binary is `homun`.",
+    "6. Run `npx --no-install homun init --yes` or the package-manager equivalent. Do not run bare `npx homun` unless you have confirmed it resolves the local `homun` binary.",
+    "7. Replace starter coverage files with an app-aware `homun/coverage-map.md` and `homun/coverage-matrix.md` that name real screens, roles, states, happy paths, and at least one sad/friction path discovered from the repo/app.",
+    "8. Author at least two public-safe, app-specific Homun personas and two desktop/mobile browser scenarios. Avoid generic `first-run-smoke` only; each scenario should name a target journey, route/state, expected evidence, and a failure/friction check.",
+    "9. Run `npx --no-install homun run --help` and verify `--app-url` is available. If the local binary is missing, install `homun`; one-shot fallback is `npx --yes --package homun@latest homun run --help`.",
+    "10. If the app is running locally, run `npx --no-install homun run --app-url <loopback-url> --sims 2`; do not use `homun watch --sims` as app behavior proof.",
+    "11. After `run --app-url`, render or open the nested Homun Observer with `npx --no-install homun watch --run latest --detach --no-open --json` and keep it visible.",
     "12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.",
     "13. Record public-safe blockers and evidence paths only.",
     "",
-    "Expected nested outcome: the top-level Mimetic Observer shows this desktop, and this desktop shows its own nested Mimetic Observer."
+    "Expected nested outcome: the top-level Homun Observer shows this desktop, and this desktop shows its own nested Homun Observer."
   ].join("\n");
 }
 
 function renderMetaReviewMarkdown(bundle: RunBundle): string {
-  return `# Mimetic OSS Meta-Lab Review
+  return `# Homun OSS Meta-Lab Review
 
 Run: ${bundle.runId}
 
@@ -2832,8 +2832,8 @@ async function launchLiveDesktops(
   }
 
   const desktopModule = await loadE2BDesktopModule();
-  const timeoutMs = readPositiveInt(process.env.MIMETIC_E2B_TIMEOUT_MS, 60 * 60 * 1000);
-  const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const timeoutMs = readPositiveInt(process.env.HOMUN_E2B_TIMEOUT_MS, 60 * 60 * 1000);
+  const requestTimeoutMs = readPositiveInt(process.env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
 
   return Promise.all(assignments.map(async (assignment) => {
     const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
@@ -2850,7 +2850,7 @@ async function launchLiveDesktops(
         },
         envs: {
           ...collectOssMetaLabRemoteEnv(process.env),
-          ...(options.codexAppServerMode ? { MIMETIC_OSS_META_CODEX_APP_SERVER: "1" } : {}),
+          ...(options.codexAppServerMode ? { HOMUN_OSS_META_CODEX_APP_SERVER: "1" } : {}),
           ...collectOssMetaLabPrivateEnv(process.env)
         },
         resolution: [1440, 960],
@@ -2912,13 +2912,13 @@ async function pollLiveDesktopCompletions(
     return { warnings: [] };
   }
 
-  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
-  const intervalMs = readPositiveInt(process.env.MIMETIC_OSS_META_COMPLETION_INTERVAL_MS, 5_000);
-  const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.HOMUN_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
+  const intervalMs = readPositiveInt(process.env.HOMUN_OSS_META_COMPLETION_INTERVAL_MS, 5_000);
+  const requestTimeoutMs = readPositiveInt(process.env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const warnings: string[] = [];
 
   if (timeoutMs === 0) {
-    warnings.push(`Initial OSS meta-lab completion wait skipped because ${options.timeoutReason ?? "MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=0"}; attached watch continues polling while the Observer is open.`);
+    warnings.push(`Initial OSS meta-lab completion wait skipped because ${options.timeoutReason ?? "HOMUN_OSS_META_COMPLETION_TIMEOUT_MS=0"}; attached watch continues polling while the Observer is open.`);
     return { warnings };
   }
 
@@ -3000,7 +3000,7 @@ async function refreshLiveDesktopProgress(
   liveDesktops: OssMetaLabLiveDesktop[],
   options: { timedOut: boolean; timeoutMs: number }
 ): Promise<void> {
-  const requestTimeoutMs = readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = readPositiveInt(process.env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
 
   await Promise.all(liveDesktops.map(async (desktop) => {
     if (!desktop.desktop || desktop.bootstrap?.status !== "started") {
@@ -3092,9 +3092,9 @@ async function captureLiveDesktopScreenshots(
       await arrangeLiveDesktopForScreenshot(
         desktop.desktop,
         desktop.bootstrap?.terminalTitle,
-        readPositiveInt(process.env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000)
+        readPositiveInt(process.env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000)
       );
-      await desktop.desktop.wait(readPositiveInt(process.env.MIMETIC_OSS_META_SCREENSHOT_SETTLE_MS, 2_500)).catch(() => undefined);
+      await desktop.desktop.wait(readPositiveInt(process.env.HOMUN_OSS_META_SCREENSHOT_SETTLE_MS, 2_500)).catch(() => undefined);
       const bytes = await desktop.desktop.screenshot("bytes");
       const fileName = `${safeArtifactToken(desktop.streamId)}.png`;
       const screenshotPath = path.join(screenshotRoot, fileName);
@@ -3200,7 +3200,7 @@ async function writeActorEvidenceArtifacts(
     )) {
       const relativePath = path.join("nested-evidence", `${baseName}-nested-proof.json`);
       await writeJson(path.join(artifactRoot, relativePath), {
-        schema: "mimetic.oss-meta-nested-proof.v1",
+        schema: "homun.oss-meta-nested-proof.v1",
         streamId: desktop.streamId,
         redaction: {
           status: "passed",
@@ -3230,7 +3230,7 @@ async function writeActorEvidenceArtifacts(
         isRecord(evidence.traceJson)
           ? evidence.traceJson
           : {
-              schema: "mimetic.codex-app-server-trace.missing.v1",
+              schema: "homun.codex-app-server-trace.missing.v1",
               redaction: { status: "passed" },
               status: evidence.status ?? "unknown",
               reason: evidence.reason ?? "Remote app-server trace JSON was not captured.",
@@ -3285,7 +3285,7 @@ function renderPublicSafeActorEvidenceText(
 ): string {
   const sanitized = sanitizeRemoteLog(redactPrivateActorEvidence(text, redaction));
   return [
-    `schema: mimetic.oss-meta-actor-evidence.v1`,
+    `schema: homun.oss-meta-actor-evidence.v1`,
     `kind: ${kind}`,
     `stream: ${streamId}`,
     `redaction: passed`,
@@ -3379,7 +3379,7 @@ function stripSourceDiffBlocks(text: string): string {
     }
 
     if (inDiff) {
-      if (/^(tokens used|Installed\b|Mimetic\b|Created personas:|Created browser scenarios:|Product journeys covered:|Observed friction|Evidence paths:|Verification:|If you want\b)/.test(line)) {
+      if (/^(tokens used|Installed\b|Homun\b|Created personas:|Created browser scenarios:|Product journeys covered:|Observed friction|Evidence paths:|Verification:|If you want\b)/.test(line)) {
         inDiff = false;
       } else {
         continue;
@@ -3629,7 +3629,7 @@ function normalizeNestedStepTraceSummary(value: unknown): OssMetaLabNestedStepTr
     : undefined;
 
   return {
-    schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+    schema: "homun.oss-meta-nested-step-trace-summary.v1",
     redaction: {
       status: "passed",
       notes: "Nested browser trace summary stores counts and redacted step metadata only; URLs, auth streams, remote paths, screenshots, and raw DOM text are omitted."
@@ -3727,14 +3727,14 @@ function defaultReasonForCompletion(status: OssMetaLabCompletionStatus): string 
 }
 
 function isRunSetupQualitySnapshot(value: unknown): value is RunSetupQualitySnapshot {
-  if (!isRecord(value) || value.schema !== "mimetic.setup-quality.v1") {
+  if (!isRecord(value) || value.schema !== "homun.setup-quality.v1") {
     return false;
   }
 
   return Array.isArray(value.checks)
     && Array.isArray(value.tree)
     && Array.isArray(value.previews)
-    && isRecord(value.mimetic)
+    && isRecord(value.homun)
     && isRecord(value.packageScripts)
     && typeof value.generatedAt === "string"
     && typeof value.summary === "string"
@@ -3769,7 +3769,7 @@ function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSet
   }
 
   return {
-    schema: "mimetic.setup-quality.v1",
+    schema: "homun.setup-quality.v1",
     generatedAt: sanitizeSetupQualityText(snapshot.generatedAt).slice(0, 80) || new Date().toISOString(),
     redaction: {
       status: "passed",
@@ -3791,12 +3791,12 @@ function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSet
     previews: safePreviews,
     ...(snapshot.studyQuality ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) } : {}),
     packageScripts: safeScripts,
-    mimetic: {
-      configPresent: snapshot.mimetic.configPresent === true,
-      personaCount: typeof snapshot.mimetic.personaCount === "number" && Number.isFinite(snapshot.mimetic.personaCount) ? Math.max(0, Math.round(snapshot.mimetic.personaCount)) : 0,
-      scenarioCount: typeof snapshot.mimetic.scenarioCount === "number" && Number.isFinite(snapshot.mimetic.scenarioCount) ? Math.max(0, Math.round(snapshot.mimetic.scenarioCount)) : 0,
-      packageScriptPresent: snapshot.mimetic.packageScriptPresent === true,
-      gitignoreContainsRuntimeIgnore: snapshot.mimetic.gitignoreContainsRuntimeIgnore === true
+    homun: {
+      configPresent: snapshot.homun.configPresent === true,
+      personaCount: typeof snapshot.homun.personaCount === "number" && Number.isFinite(snapshot.homun.personaCount) ? Math.max(0, Math.round(snapshot.homun.personaCount)) : 0,
+      scenarioCount: typeof snapshot.homun.scenarioCount === "number" && Number.isFinite(snapshot.homun.scenarioCount) ? Math.max(0, Math.round(snapshot.homun.scenarioCount)) : 0,
+      packageScriptPresent: snapshot.homun.packageScriptPresent === true,
+      gitignoreContainsRuntimeIgnore: snapshot.homun.gitignoreContainsRuntimeIgnore === true
     }
   };
 }
@@ -3810,7 +3810,7 @@ function sanitizeStudyQualitySnapshot(studyQuality: NonNullable<RunSetupQualityS
     : "none";
 
   return {
-    schema: "mimetic.study-quality.v1",
+    schema: "homun.study-quality.v1",
     rating,
     summary: sanitizeSetupQualityText(studyQuality.summary).slice(0, 320),
     checks: Array.isArray(studyQuality.checks)
@@ -3892,21 +3892,21 @@ async function startOssBootstrap(
 ): Promise<OssMetaLabBootstrap> {
   const token = display.token;
   const appDir = `/home/user/${token}`;
-  const stateDir = `/home/user/.mimetic-oss-lab/${token}`;
-  const remotePackagePath = `/tmp/${localPackage?.fileName ?? "mimetic-cli.tgz"}`;
+  const stateDir = `/home/user/.homun-oss-lab/${token}`;
+  const remotePackagePath = `/tmp/${localPackage?.fileName ?? "homun.tgz"}`;
   const remoteHostActorPlanPath = `${stateDir}/host-actor-plan.json`;
   const bootstrapPath = `${stateDir}/bootstrap.sh`;
   const launcherPath = `${stateDir}/launch-terminal.sh`;
   const logPath = `${stateDir}/bootstrap.log`;
   const completionPath = `${stateDir}/completion.json`;
-  const nestedObserverPath = `${appDir}/.mimetic/runs/nested-${token}/observer/index.html`;
-  const title = `Mimetic ${assignment.index} ${display.repoLabel}`;
+  const nestedObserverPath = `${appDir}/.homun/runs/nested-${token}/observer/index.html`;
+  const title = `Homun ${assignment.index} ${display.repoLabel}`;
   const codexMode = codexAppServerModeRequested(process.env, display.codexAppServerMode === true) ? "app-server-client" : "tui-attempted";
   const baseTail = [
     `repo: ${display.repoLabel}`,
     `project: ${appDir}`,
     `sandbox: ${desktop.sandboxId}`,
-    `remote package: ${localPackage ? remotePackagePath : "npm:mimetic-cli fallback"}`,
+    `remote package: ${localPackage ? remotePackagePath : "npm:homun fallback"}`,
     `bootstrap: ${bootstrapPath}`,
     `completion: ${completionPath}`,
     `log: ${logPath}`,
@@ -3972,14 +3972,14 @@ async function startOssBootstrap(
       completionPath,
       launcherPath,
       logPath,
-      mimeticPackageUploaded: Boolean(localPackage),
+      homunPackageUploaded: Boolean(localPackage),
       nestedObserverPath,
       status: "started",
       tail: [
         "Visible E2B bootstrap terminal launched.",
         codexMode === "app-server-client"
-          ? "The terminal clones the authorized repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, opens the nested Observer, and opens the Codex app-server client surface in Chrome when configured."
-          : "The terminal clones the authorized repo, installs this local mimetic-cli package tarball when available, runs nested Mimetic proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
+          ? "The terminal clones the authorized repo, installs this local homun package tarball when available, runs nested Homun proof commands, opens the nested Observer, and opens the Codex app-server client surface in Chrome when configured."
+          : "The terminal clones the authorized repo, installs this local homun package tarball when available, runs nested Homun proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
         baseTail
       ].join("\n"),
       terminalTitle: title
@@ -3990,7 +3990,7 @@ async function startOssBootstrap(
       completionPath,
       launcherPath,
       logPath,
-      mimeticPackageUploaded: Boolean(localPackage),
+      homunPackageUploaded: Boolean(localPackage),
       nestedObserverPath,
       status: "failed",
       tail: [
@@ -4020,12 +4020,12 @@ function buildRemoteBootstrapScript(args: {
   return `#!/usr/bin/env bash
 set -Eeuo pipefail
 export TERM=xterm-256color
-export MIMETIC_PUBLIC_SAFE=1
-MIMETIC_PRIVATE_CODEX_API_KEY="\${MIMETIC_CODEX_API_KEY:-}"
-MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="\${MIMETIC_CODEX_ACCESS_TOKEN:-}"
-MIMETIC_PRIVATE_CODEX_APP_SERVER_URL="\${MIMETIC_CODEX_APP_SERVER_URL:-}"
-MIMETIC_PRIVATE_GITHUB_TOKEN="\${MIMETIC_GITHUB_TOKEN:-}"
-unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_CODEX_APP_SERVER_URL MIMETIC_GITHUB_TOKEN
+export HOMUN_PUBLIC_SAFE=1
+HOMUN_PRIVATE_CODEX_API_KEY="\${HOMUN_CODEX_API_KEY:-}"
+HOMUN_PRIVATE_CODEX_ACCESS_TOKEN="\${HOMUN_CODEX_ACCESS_TOKEN:-}"
+HOMUN_PRIVATE_CODEX_APP_SERVER_URL="\${HOMUN_CODEX_APP_SERVER_URL:-}"
+HOMUN_PRIVATE_GITHUB_TOKEN="\${HOMUN_GITHUB_TOKEN:-}"
+unset HOMUN_CODEX_API_KEY HOMUN_CODEX_ACCESS_TOKEN HOMUN_CODEX_APP_SERVER_URL HOMUN_GITHUB_TOKEN
 unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN
 STATE_DIR=${shellQuote(args.stateDir)}
 ROOT_DIR="$STATE_DIR"
@@ -4042,10 +4042,10 @@ CODEX_APP_SERVER_ROOT_PATH="$ROOT_DIR/codex-app-server"
 CODEX_APP_SERVER_STATE_PATH="$CODEX_APP_SERVER_ROOT_PATH/state.json"
 CODEX_APP_SERVER_LOG_PATH="$CODEX_APP_SERVER_ROOT_PATH/ui.log"
 CODEX_APP_SERVER_PROMPT_PATH="$ROOT_DIR/codex-app-server-prompt.txt"
-CODEX_APP_SERVER_PORT="\${MIMETIC_OSS_META_CODEX_APP_SERVER_PORT:-45137}"
+CODEX_APP_SERVER_PORT="\${HOMUN_OSS_META_CODEX_APP_SERVER_PORT:-45137}"
 CODEX_APP_SERVER_UI_URL=""
 STREAM_ID=${shellQuote(args.assignment.streamId)}
-TERMINAL_TITLE=${shellQuote(`Mimetic ${args.assignment.index} ${args.displayRepo}`)}
+TERMINAL_TITLE=${shellQuote(`Homun ${args.assignment.index} ${args.displayRepo}`)}
 mkdir -p "$ROOT_DIR"
 touch "$LOG_PATH"
 exec > >(tee -a "$LOG_PATH") 2>&1
@@ -4130,12 +4130,12 @@ const languageFor = (rel) => {
 };
 const shouldPreview = (rel) => rel === "package.json"
   || rel === ".gitignore"
-  || rel === "mimetic/config.ts"
-  || rel === "mimetic/coverage-map.md"
-  || rel === "mimetic/coverage-matrix.md"
-  || rel.startsWith("mimetic/personas/")
-  || rel.startsWith("mimetic/scenarios/");
-const ignoredSegments = new Set([".git", "node_modules", ".mimetic", "dist", "build", ".next", "coverage", ".turbo", ".cache"]);
+  || rel === "homun/config.ts"
+  || rel === "homun/coverage-map.md"
+  || rel === "homun/coverage-matrix.md"
+  || rel.startsWith("homun/personas/")
+  || rel.startsWith("homun/scenarios/");
+const ignoredSegments = new Set([".git", "node_modules", ".homun", "dist", "build", ".next", "coverage", ".turbo", ".cache"]);
 const readTextLimited = (filePath, maxBytes = 12000) => {
   try {
     const buffer = fs.readFileSync(filePath);
@@ -4210,15 +4210,15 @@ const buildSetupQuality = (root) => {
     visit(absoluteRoot, 0);
     return files;
   };
-  const coverageMapText = readRel("mimetic/coverage-map.md");
-  const coverageMatrixText = readRel("mimetic/coverage-matrix.md");
-  const personaFiles = listFilesUnder(path.join("mimetic", "personas"));
-  const scenarioFiles = listFilesUnder(path.join("mimetic", "scenarios"));
+  const coverageMapText = readRel("homun/coverage-map.md");
+  const coverageMatrixText = readRel("homun/coverage-matrix.md");
+  const personaFiles = listFilesUnder(path.join("homun", "personas"));
+  const scenarioFiles = listFilesUnder(path.join("homun", "scenarios"));
   const personaText = personaFiles.map((rel) => readRel(rel)).join("\\n");
   const scenarioText = scenarioFiles.map((rel) => readRel(rel)).join("\\n");
-  const configText = readRel("mimetic/config.ts");
-  const defaultPersonaFiles = new Set(["mimetic/personas/synthetic-new-user.yaml", "mimetic/personas/skeptical-power-user.yaml"]);
-  const defaultScenarioFiles = new Set(["mimetic/scenarios/first-run-smoke.yaml", "mimetic/scenarios/onboarding-regression.yaml"]);
+  const configText = readRel("homun/config.ts");
+  const defaultPersonaFiles = new Set(["homun/personas/synthetic-new-user.yaml", "homun/personas/skeptical-power-user.yaml"]);
+  const defaultScenarioFiles = new Set(["homun/scenarios/first-run-smoke.yaml", "homun/scenarios/onboarding-regression.yaml"]);
   const personaEntries = personaFiles.map((rel) => ({ rel, text: readRel(rel) }));
   const scenarioEntries = scenarioFiles.map((rel) => ({ rel, text: readRel(rel) }));
   const coverageCustomized = (
@@ -4245,21 +4245,21 @@ const buildSetupQuality = (root) => {
   const appUrlProofBlocked = /(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))[\\s\\S]{0,220}(?:--app-url|run\\s+--app-url|app-url\\s+proof)|(?:--app-url|run\\s+--app-url|app-url\\s+proof)[\\s\\S]{0,220}(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))/i.test(actorEvidenceNormalized);
   const appUrlProofMentioned = !appUrlProofBlocked && (
     nestedVerifyStatus === "passed"
-    || /(?:mimetic\\s+run[\\s\\S]{0,160}--app-url|--app-url[\\s\\S]{0,160}mimetic\\s+run)/i.test(actorEvidenceText)
+    || /(?:homun\\s+run[\\s\\S]{0,160}--app-url|--app-url[\\s\\S]{0,160}homun\\s+run)/i.test(actorEvidenceText)
   );
   const actorInsightCaptured = /\\b(observed|found|friction|improvement|issue|gap|confusing|blocked|recommend|none observed|feedback|useful improvement|next harness upgrade)\\b/i.test(actorEvidenceNormalized);
   const gitignore = readTextLimited(path.join(root, ".gitignore"), 20000);
-  const configPresent = fs.existsSync(path.join(root, "mimetic", "config.ts"));
-  const personaCount = countFilesUnder(root, path.join("mimetic", "personas"));
-  const scenarioCount = countFilesUnder(root, path.join("mimetic", "scenarios"));
-  const packageScriptPresent = Object.entries(packageScripts).some(([key, value]) => key.includes("mimetic") || String(value).includes("mimetic"));
-  const gitignoreContainsRuntimeIgnore = /(^|\\n)\\s*\\.mimetic\\/?\\s*(\\n|$)/.test(gitignore);
+  const configPresent = fs.existsSync(path.join(root, "homun", "config.ts"));
+  const personaCount = countFilesUnder(root, path.join("homun", "personas"));
+  const scenarioCount = countFilesUnder(root, path.join("homun", "scenarios"));
+  const packageScriptPresent = Object.entries(packageScripts).some(([key, value]) => key.includes("homun") || String(value).includes("homun"));
+  const gitignoreContainsRuntimeIgnore = /(^|\\n)\\s*\\.homun\\/?\\s*(\\n|$)/.test(gitignore);
   const checks = [
-    { id: "mimetic-config", label: "Mimetic config", ok: configPresent, detail: configPresent ? "mimetic/config.ts exists." : "mimetic/config.ts was not created." },
+    { id: "homun-config", label: "Homun config", ok: configPresent, detail: configPresent ? "homun/config.ts exists." : "homun/config.ts was not created." },
     { id: "personas", label: "Personas", ok: personaCount > 0, detail: personaCount + " persona file(s) detected." },
     { id: "scenarios", label: "Scenarios", ok: scenarioCount > 0, detail: scenarioCount + " scenario file(s) detected." },
-    { id: "package-script", label: "Package script", ok: packageScriptPresent, detail: packageScriptPresent ? "package.json exposes a Mimetic script." : "package.json does not expose a Mimetic script." },
-    { id: "runtime-ignore", label: "Runtime ignore", ok: gitignoreContainsRuntimeIgnore, detail: gitignoreContainsRuntimeIgnore ? ".gitignore ignores .mimetic/." : ".gitignore does not ignore .mimetic/." }
+    { id: "package-script", label: "Package script", ok: packageScriptPresent, detail: packageScriptPresent ? "package.json exposes a Homun script." : "package.json does not expose a Homun script." },
+    { id: "runtime-ignore", label: "Runtime ignore", ok: gitignoreContainsRuntimeIgnore, detail: gitignoreContainsRuntimeIgnore ? ".gitignore ignores .homun/." : ".gitignore does not ignore .homun/." }
   ];
   const studyChecks = [
     { id: "coverage-customized", label: "Coverage customized", ok: coverageCustomized, detail: coverageCustomized ? "Coverage map or matrix appears app-aware." : "Coverage map/matrix still appears starter-level or absent." },
@@ -4280,20 +4280,20 @@ const buildSetupQuality = (root) => {
         : "ceremonial";
   const failed = checks.filter((check) => !check.ok);
   return {
-    schema: "mimetic.setup-quality.v1",
+    schema: "homun.setup-quality.v1",
     generatedAt: new Date().toISOString(),
     redaction: {
       status: "passed",
       rawPreviews: "included",
-      notes: "Only allowlisted setup files are previewed; generated state, browser profiles, secrets, .git, node_modules, and .mimetic are excluded."
+      notes: "Only allowlisted setup files are previewed; generated state, browser profiles, secrets, .git, node_modules, and .homun are excluded."
     },
-    summary: failed.length === 0 ? "Mimetic setup evidence looks complete." : failed.length + " setup-quality gap(s) need review.",
+    summary: failed.length === 0 ? "Homun setup evidence looks complete." : failed.length + " setup-quality gap(s) need review.",
     status: failed.length === 0 ? "passed" : "needs_review",
     checks,
     tree,
     previews,
     studyQuality: {
-      schema: "mimetic.study-quality.v1",
+      schema: "homun.study-quality.v1",
       rating: studyRating,
       summary: "Study-quality rating " + studyRating + " from " + studySignalCount + "/5 app-specific leverage signals" + (appUrlProofBlocked ? "; app-url proof path was blocked by actor evidence." : "."),
       checks: studyChecks,
@@ -4307,7 +4307,7 @@ const buildSetupQuality = (root) => {
       }
     },
     packageScripts,
-    mimetic: { configPresent, personaCount, scenarioCount, packageScriptPresent, gitignoreContainsRuntimeIgnore }
+    homun: { configPresent, personaCount, scenarioCount, packageScriptPresent, gitignoreContainsRuntimeIgnore }
   };
 };
 const setupQuality = buildSetupQuality(appDir);
@@ -4353,7 +4353,7 @@ const appServerActorEvidence = (() => {
         ...(change.outputTail ? { outputTail: cleanText(change.outputTail).slice(-2000) } : {})
       } : null, 8);
       return {
-        schema: "mimetic.codex-app-server-trace.projected.v1",
+        schema: "homun.codex-app-server-trace.projected.v1",
         sourceSchema: cleanText(value.schema || ""),
         redaction: value.redaction && typeof value.redaction === "object" ? value.redaction : { status: "passed" },
         status: cleanText(value.status || result.status || state.status || ""),
@@ -4444,10 +4444,10 @@ const nestedStepTraceSummary = (() => {
     const passedSteps = surfaceSummaries.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "passed").length, 0);
     const blockedSteps = surfaceSummaries.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "blocked").length, 0);
     return {
-      schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+      schema: "homun.oss-meta-nested-step-trace-summary.v1",
       redaction: {
         status: "passed",
-        notes: "Projected inside disposable sandbox from nested Mimetic trace JSON; URLs, screenshots, and remote paths are omitted."
+        notes: "Projected inside disposable sandbox from nested Homun trace JSON; URLs, screenshots, and remote paths are omitted."
       },
       counts: {
         blockedSteps,
@@ -4465,7 +4465,7 @@ const nestedStepTraceSummary = (() => {
   }
 })();
 fs.writeFileSync(completionPath, JSON.stringify({
-  schema: "mimetic.oss-meta-bootstrap-completion.v1",
+  schema: "homun.oss-meta-bootstrap-completion.v1",
   status,
   reason,
   exitCode: Number(exitCode),
@@ -4497,32 +4497,32 @@ finish() {
   local exit_code="$?"
   trap - EXIT
   if [[ "$exit_code" -ne 0 ]]; then
-    write_completion "failed" "Bootstrap exited before nested Mimetic proof completed." "$exit_code"
+    write_completion "failed" "Bootstrap exited before nested Homun proof completed." "$exit_code"
   elif [[ "$NESTED_VERIFY_STATUS" != "passed" ]]; then
-    write_completion "failed" "Nested Mimetic verification did not pass." "$exit_code"
+    write_completion "failed" "Nested Homun verification did not pass." "$exit_code"
   elif [[ "$APP_STATUS" != "running" ]]; then
-    write_completion "blocked" "Nested Mimetic proof completed, but the target app surface was not proven running." "$exit_code"
+    write_completion "blocked" "Nested Homun proof completed, but the target app surface was not proven running." "$exit_code"
   elif [[ "$VISUAL_STATUS" != "visible" ]]; then
-    write_completion "blocked" "Nested Mimetic proof completed, but headed desktop visual layout was not proven visible." "$exit_code"
-  elif [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
+    write_completion "blocked" "Nested Homun proof completed, but headed desktop visual layout was not proven visible." "$exit_code"
+  elif [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
     write_completion "blocked" "Codex app-server mode requires passed Codex app-server actor evidence." "$exit_code"
-  elif [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
+  elif [[ "\${HOMUN_OSS_META_REQUIRE_ACTOR:-0}" == "1" && "$ACTOR_STATUS" != "passed" ]]; then
     write_completion "blocked" "Required Codex actor evidence did not reach a passed terminal status." "$exit_code"
   else
-    write_completion "passed" "Target app surface, nested Mimetic proof, and nested Observer were checked." "$exit_code"
+    write_completion "passed" "Target app surface, nested Homun proof, and nested Observer were checked." "$exit_code"
   fi
   exit "$exit_code"
 }
 trap finish EXIT
 
-echo "== mimetic oss meta-lab bootstrap =="
+echo "== homun oss meta-lab bootstrap =="
 echo "repo=${args.displayRepo}"
 echo "public_safe=1"
 echo "provider_secrets=isolated"
-echo "github_token=$([[ -n "$MIMETIC_PRIVATE_GITHUB_TOKEN" ]] && echo available-for-clone || echo absent)"
-echo "codex_actor_auth=$([[ -n "$MIMETIC_PRIVATE_CODEX_API_KEY$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" ]] && echo available-for-actor || echo absent)"
-echo "codex_app_server_mode=\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}"
-echo "codex_app_server_client=$([[ -n "$MIMETIC_PRIVATE_CODEX_APP_SERVER_URL" ]] && echo available || echo placeholder)"
+echo "github_token=$([[ -n "$HOMUN_PRIVATE_GITHUB_TOKEN" ]] && echo available-for-clone || echo absent)"
+echo "codex_actor_auth=$([[ -n "$HOMUN_PRIVATE_CODEX_API_KEY$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" ]] && echo available-for-actor || echo absent)"
+echo "codex_app_server_mode=\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}"
+echo "codex_app_server_client=$([[ -n "$HOMUN_PRIVATE_CODEX_APP_SERVER_URL" ]] && echo available || echo placeholder)"
 echo "host_actor_plan=$([[ -f "$HOST_ACTOR_PLAN" ]] && echo available || echo absent)"
 echo
 
@@ -4653,7 +4653,7 @@ open_nested_observer() {
 }
 
 open_codex_app_server_client() {
-  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
+  if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
     return 0
   fi
   if [[ "$CODEX_APP_SERVER_CLIENT_OPENED" == "1" ]]; then
@@ -4662,7 +4662,7 @@ open_codex_app_server_client() {
 
   echo
   echo "== codex app-server client surface =="
-  local client_url="\${CODEX_APP_SERVER_UI_URL:-$MIMETIC_PRIVATE_CODEX_APP_SERVER_URL}"
+  local client_url="\${CODEX_APP_SERVER_UI_URL:-$HOMUN_PRIVATE_CODEX_APP_SERVER_URL}"
   if [[ -z "$client_url" ]]; then
     ACTOR_STATUS=blocked
     echo "codex_app_server_client=blocked reason=no real app-server UI URL available"
@@ -4680,7 +4680,7 @@ arrange_lab_windows() {
   VISUAL_REASON="Window manager proof was not collected."
   VISUAL_WINDOW_COUNT=0
   local expected_chrome_windows=2
-  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+  if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
     expected_chrome_windows=3
   fi
   if ! command -v xdotool >/dev/null 2>&1; then
@@ -4694,7 +4694,7 @@ arrange_lab_windows() {
   local observer_window=""
   for attempt in $(seq 1 40); do
     mapfile -t chrome_windows < <(xdotool search --onlyvisible --class google-chrome 2>/dev/null || true)
-    observer_window="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
+    observer_window="$(xdotool search --onlyvisible --name "Homun Observer" 2>/dev/null | tail -n 1 || true)"
     VISUAL_WINDOW_COUNT="\${#chrome_windows[@]}"
     if [[ "$VISUAL_WINDOW_COUNT" -ge "$expected_chrome_windows" && -n "$observer_window" ]]; then
       break
@@ -4739,14 +4739,14 @@ arrange_lab_windows() {
   VISUAL_WINDOW_COUNT="\${#chrome_windows[@]}"
   if [[ "$VISUAL_WINDOW_COUNT" -ge "$expected_chrome_windows" && -n "$observer_window" ]]; then
     VISUAL_STATUS=visible
-    if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+    if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
       VISUAL_REASON="Detected $VISUAL_WINDOW_COUNT visible Chrome windows including target app, nested Observer, and Codex app-server client surface."
     else
       VISUAL_REASON="Detected $VISUAL_WINDOW_COUNT visible Chrome windows including nested Observer; app and Observer windows arranged for screenshot."
     fi
   else
     VISUAL_STATUS=blocked
-    if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+    if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
       VISUAL_REASON="Expected target app, nested Observer, and Codex app-server client browser windows, detected $VISUAL_WINDOW_COUNT visible Chrome window(s)."
     else
       VISUAL_REASON="Expected app and nested Observer browser windows, detected $VISUAL_WINDOW_COUNT visible Chrome window(s)."
@@ -4880,18 +4880,18 @@ install_project_dependencies() {
   esac
 }
 
-install_mimetic_cli() {
+install_homun_cli() {
   echo
-  echo "== installing mimetic-cli =="
+  echo "== installing homun =="
   local plan_output
   plan_output="$(detect_app_plan)"
   eval "$plan_output"
   local pm="\${APP_PM:-npm}"
   if ! ensure_package_manager "$pm"; then
-    echo "mimetic_install=blocked package_manager=$pm"
+    echo "homun_install=blocked package_manager=$pm"
     return 1
   fi
-  local spec="mimetic-cli"
+  local spec="homun"
   if [[ -n "$REMOTE_PACKAGE" && -f "$REMOTE_PACKAGE" ]]; then
     spec="$REMOTE_PACKAGE"
   fi
@@ -4920,7 +4920,7 @@ install_mimetic_cli() {
 }
 
 apply_host_actor_plan() {
-  if [[ "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+  if [[ "\${HOMUN_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
     return 0
   fi
 
@@ -4937,7 +4937,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const [planPath] = process.argv.slice(2);
 const plan = JSON.parse(fs.readFileSync(planPath, "utf8"));
-if (plan.schema !== "mimetic.oss-host-actor-plan.v1" || plan.status !== "passed") {
+if (plan.schema !== "homun.oss-host-actor-plan.v1" || plan.status !== "passed") {
   throw new Error("host actor plan is not passed");
 }
 const clean = (value, fallback) => String(value || fallback)
@@ -4951,8 +4951,8 @@ const clean = (value, fallback) => String(value || fallback)
 const token = (value, fallback) => clean(value, fallback).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || fallback;
 const yamlScalar = (value) => clean(value, "").replace(/"/g, "\\\\\"");
 const yamlList = (values) => (Array.isArray(values) && values.length ? values : ["public_safe"]).map((value) => "  - " + yamlScalar(value)).join("\\n");
-fs.mkdirSync("mimetic/personas", { recursive: true });
-fs.mkdirSync("mimetic/scenarios", { recursive: true });
+fs.mkdirSync("homun/personas", { recursive: true });
+fs.mkdirSync("homun/scenarios", { recursive: true });
 const personas = Array.isArray(plan.personas) ? plan.personas.slice(0, 2) : [];
 const scenarios = Array.isArray(plan.scenarios) ? plan.scenarios.slice(0, 2) : [];
 if (!personas.length || !scenarios.length) {
@@ -4960,8 +4960,8 @@ if (!personas.length || !scenarios.length) {
 }
 for (const persona of personas) {
   const id = token(persona.id, "host-codex-persona");
-  fs.writeFileSync(path.join("mimetic/personas", id + ".yaml"), [
-    "schema: mimetic.persona.v1",
+  fs.writeFileSync(path.join("homun/personas", id + ".yaml"), [
+    "schema: homun.persona.v1",
     "id: " + id,
     "name: " + yamlScalar(persona.name || "Host Codex Persona"),
     "summary: " + yamlScalar(persona.intent || "Public-safe host Codex actor persona."),
@@ -4977,8 +4977,8 @@ for (const persona of personas) {
 for (const scenario of scenarios) {
   const id = token(scenario.id, "host-codex-scenario");
   const personaId = token(personas[0].id, "host-codex-persona");
-  fs.writeFileSync(path.join("mimetic/scenarios", id + ".yaml"), [
-    "schema: mimetic.scenario.v1",
+  fs.writeFileSync(path.join("homun/scenarios", id + ".yaml"), [
+    "schema: homun.scenario.v1",
     "id: " + id,
     "title: " + yamlScalar(scenario.title || "Host Codex Scenario"),
     "persona: " + personaId,
@@ -4992,7 +4992,7 @@ for (const scenario of scenarios) {
   ].join("\\n") + "\\n");
 }
 console.log("host_actor_plan=applied personas=" + personas.length + " scenarios=" + scenarios.length);
-console.log("host_actor_recommended_proof=" + clean(plan.recommendedProof, "mimetic run --app-url <loopback-url> --sims 2"));
+console.log("host_actor_recommended_proof=" + clean(plan.recommendedProof, "homun run --app-url <loopback-url> --sims 2"));
 NODE
   local apply_exit=$?
   if [[ "$apply_exit" -eq 0 ]]; then
@@ -5009,28 +5009,28 @@ start_codex_app_server_actor_attempt() {
   echo "Codex app-server mode requested."
   mkdir -p "$CODEX_APP_SERVER_ROOT_PATH"
   cat > "$CODEX_APP_SERVER_PROMPT_PATH" <<'PROMPT'
-You are a Mimetic meta-lab actor running through Codex app-server in a disposable authorized repo clone.
+You are a Homun meta-lab actor running through Codex app-server in a disposable authorized repo clone.
 
-Goal: make Mimetic useful for this app, then run at least one meaningful public-safe user-test proof.
+Goal: make Homun useful for this app, then run at least one meaningful public-safe user-test proof.
 
 Work requirements:
 - Inspect package.json, README, routes/components where lightweight, and the running app URL from APP_URL.
-- Improve Mimetic setup beyond ceremonial init: app-aware coverage map/matrix, at least two app-specific synthetic personas, and at least two meaningful browser scenarios covering desktop/mobile or happy/friction states.
+- Improve Homun setup beyond ceremonial init: app-aware coverage map/matrix, at least two app-specific synthetic personas, and at least two meaningful browser scenarios covering desktop/mobile or happy/friction states.
 - Do not leave only starter persona/scenario filenames, ids, or names. Write app-specific persona and scenario files with app-specific ids, names, goals, selectors, and expectations.
-- Use committed mimetic/ source files for personas/scenarios. Keep runtime output under ignored .mimetic/.
-- Run at least one meaningful Mimetic proof against the running app URL when available: npx --no-install mimetic run --app-url "$APP_URL" --sims 2.
-- Render or refresh the nested Observer with npx --no-install mimetic watch --run latest --detach --no-open when feasible.
-- Finish with concise public-safe feedback: what user journey was tested, what evidence path proves it, and one useful product or Mimetic harness improvement.
+- Use committed homun/ source files for personas/scenarios. Keep runtime output under ignored .homun/.
+- Run at least one meaningful Homun proof against the running app URL when available: npx --no-install homun run --app-url "$APP_URL" --sims 2.
+- Render or refresh the nested Observer with npx --no-install homun watch --run latest --detach --no-open when feasible.
+- Finish with concise public-safe feedback: what user journey was tested, what evidence path proves it, and one useful product or Homun harness improvement.
 
 Safety:
 - Do not print secrets, environment values, raw private source, or private screenshots.
 - Do not commit, push, file issues, or mutate remotes.
-- Do not run provider-spend-heavy commands beyond the bounded Mimetic/Codex proof.
+- Do not run provider-spend-heavy commands beyond the bounded Homun/Codex proof.
 PROMPT
 
-  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
+  local timeout_ms="\${HOMUN_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
   local command
-  command="APP_URL=$(printf '%q' "$APP_URL") MIMETIC_PRIVATE_CODEX_API_KEY=$(printf '%q' "$MIMETIC_PRIVATE_CODEX_API_KEY") MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN=$(printf '%q' "$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN") npx --no-install mimetic codex app-server --cwd $(printf '%q' "$APP_DIR") --run-root $(printf '%q' "$CODEX_APP_SERVER_ROOT_PATH") --state-file $(printf '%q' "$CODEX_APP_SERVER_STATE_PATH") --prompt-file $(printf '%q' "$CODEX_APP_SERVER_PROMPT_PATH") --timeout-ms $(printf '%q' "$timeout_ms") --port $(printf '%q' "$CODEX_APP_SERVER_PORT") --sandbox danger-full-access --actor-command 'npx -y @openai/codex@latest app-server --listen stdio://' --keep-open"
+  command="APP_URL=$(printf '%q' "$APP_URL") HOMUN_PRIVATE_CODEX_API_KEY=$(printf '%q' "$HOMUN_PRIVATE_CODEX_API_KEY") HOMUN_PRIVATE_CODEX_ACCESS_TOKEN=$(printf '%q' "$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN") npx --no-install homun codex app-server --cwd $(printf '%q' "$APP_DIR") --run-root $(printf '%q' "$CODEX_APP_SERVER_ROOT_PATH") --state-file $(printf '%q' "$CODEX_APP_SERVER_STATE_PATH") --prompt-file $(printf '%q' "$CODEX_APP_SERVER_PROMPT_PATH") --timeout-ms $(printf '%q' "$timeout_ms") --port $(printf '%q' "$CODEX_APP_SERVER_PORT") --sandbox danger-full-access --actor-command 'npx -y @openai/codex@latest app-server --listen stdio://' --keep-open"
   nohup bash -lc "$command" > "$CODEX_APP_SERVER_LOG_PATH" 2>&1 &
   ACTOR_PID=$!
   ACTOR_STATUS=running
@@ -5078,10 +5078,10 @@ const titleFromHtml = (html) => {
     const bodyText = visibleTextFromHtml(html);
     const expectedText = clean(bodyText.split(/[.!?\\n]/).find((part) => clean(part, "").length >= 4) || title, "");
     const scenarioId = token(title || "app-surface-browser", "app-surface-browser");
-    const scenarioPath = path.join(appDir, "mimetic", "scenarios", "app-surface-browser.yaml");
+    const scenarioPath = path.join(appDir, "homun", "scenarios", "app-surface-browser.yaml");
     fs.mkdirSync(path.dirname(scenarioPath), { recursive: true });
     const lines = [
-      "schema: mimetic.scenario.v1",
+      "schema: homun.scenario.v1",
       "id: " + scenarioId,
       "title: App surface browser proof",
       "persona: synthetic-new-user",
@@ -5105,7 +5105,7 @@ const titleFromHtml = (html) => {
       "      selector: body"
     ];
     fs.writeFileSync(scenarioPath, lines.join("\\n") + "\\n");
-    console.log("browser_scenario=authored path=mimetic/scenarios/app-surface-browser.yaml expected_text=" + (expectedText ? "present" : "absent"));
+    console.log("browser_scenario=authored path=homun/scenarios/app-surface-browser.yaml expected_text=" + (expectedText ? "present" : "absent"));
   } catch (error) {
     console.log("browser_scenario=skipped reason=" + clean(error && error.message ? error.message : error, "unknown"));
   }
@@ -5186,7 +5186,7 @@ start_target_app_surface() {
 start_actor_attempt() {
   echo
   echo "== codex actor attempt =="
-  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+  if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
     start_codex_app_server_actor_attempt
     return 0
   fi
@@ -5196,25 +5196,25 @@ start_actor_attempt() {
 #!/usr/bin/env bash
 set +e
 APP_DIR="$APP_DIR"
-if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
-  PROMPT='You are a Mimetic meta-lab actor running in a disposable public-safe repo clone. Your goal is useful product-specific user-study setup, not ceremonial install proof. Inspect package.json, README, routes, scripts, and the running app shape. Install mimetic-cli as a dev dependency with the repo package manager if needed; package=mimetic-cli, binary=mimetic. Run npx --no-install mimetic init --yes if Mimetic is not initialized. Replace starter mimetic/coverage-map.md and mimetic/coverage-matrix.md with app-aware screens, roles, states, happy paths, and at least one sad/friction path. Author at least two public-safe app-specific personas and two desktop/mobile browser scenarios; avoid generic first-run-smoke only. Start the local app if feasible. Run npx --no-install mimetic run --help and verify --app-url is available. If the local binary is missing, install mimetic-cli; one-shot fallback is npx --yes --package mimetic-cli@latest mimetic run --help. If the app is running locally, run npx --no-install mimetic run --app-url <loopback-url> --sims 2; do not use mimetic watch --sims as app behavior proof. After run --app-url, render or open the nested Mimetic Observer with npx --no-install mimetic watch --run latest --detach --no-open --json if feasible. Final summary must include personas/scenarios created, product journeys covered, one observed friction/improvement or none observed, and evidence paths. Do not stop at install/init proof. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
+if [[ "\${HOMUN_OSS_META_ACTOR_FIRST:-0}" == "1" ]]; then
+  PROMPT='You are a Homun meta-lab actor running in a disposable public-safe repo clone. Your goal is useful product-specific user-study setup, not ceremonial install proof. Inspect package.json, README, routes, scripts, and the running app shape. Install homun as a dev dependency with the repo package manager if needed; package=homun, binary=homun. Run npx --no-install homun init --yes if Homun is not initialized. Replace starter homun/coverage-map.md and homun/coverage-matrix.md with app-aware screens, roles, states, happy paths, and at least one sad/friction path. Author at least two public-safe app-specific personas and two desktop/mobile browser scenarios; avoid generic first-run-smoke only. Start the local app if feasible. Run npx --no-install homun run --help and verify --app-url is available. If the local binary is missing, install homun; one-shot fallback is npx --yes --package homun@latest homun run --help. If the app is running locally, run npx --no-install homun run --app-url <loopback-url> --sims 2; do not use homun watch --sims as app behavior proof. After run --app-url, render or open the nested Homun Observer with npx --no-install homun watch --run latest --detach --no-open --json if feasible. Final summary must include personas/scenarios created, product journeys covered, one observed friction/improvement or none observed, and evidence paths. Do not stop at install/init proof. Do not wait on long-running watchers after rendering proof. Do not print secrets, do not commit, do not push, and do not file issues.'
 else
-  PROMPT='You are a Mimetic meta-lab actor. Inspect this repo, inspect the running app and Mimetic artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Once the draft is written, exit successfully. Do not wait on long-running watchers. Do not print secrets, do not commit, do not push, and do not file issues.'
+  PROMPT='You are a Homun meta-lab actor. Inspect this repo, inspect the running app and Homun artifacts already generated here, and draft the best next public-safe personas and desktop/mobile browser scenarios for human users of this app. Once the draft is written, exit successfully. Do not wait on long-running watchers. Do not print secrets, do not commit, do not push, and do not file issues.'
 fi
 printf -v app_dir_q '%q' "\\$APP_DIR"
 printf -v prompt_q '%q' "\\$PROMPT"
 printf -v actor_message_q '%q' "$ACTOR_LAST_MESSAGE_PATH"
-ACTOR_MODEL="\${MIMETIC_OSS_META_ACTOR_MODEL:-gpt-5.4-mini}"
-ACTOR_TIMEOUT_MS="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
+ACTOR_MODEL="\${HOMUN_OSS_META_ACTOR_MODEL:-gpt-5.4-mini}"
+ACTOR_TIMEOUT_MS="\${HOMUN_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
 ACTOR_TIMEOUT_SECONDS=\\$(( (ACTOR_TIMEOUT_MS + 999) / 1000 ))
 printf -v actor_model_q '%q' "\\$ACTOR_MODEL"
 CODEX_COMMAND="npx -y @openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check -m \\$actor_model_q -C \\$app_dir_q --dangerously-bypass-approvals-and-sandbox --output-last-message \\$actor_message_q \\$prompt_q"
-if [[ -n "\${MIMETIC_PRIVATE_CODEX_API_KEY:-}" && -n "\${MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
-  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
-elif [[ -n "\${MIMETIC_PRIVATE_CODEX_API_KEY:-}" ]]; then
-  CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
-elif [[ -n "\${MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
-  CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
+if [[ -n "\${HOMUN_PRIVATE_CODEX_API_KEY:-}" && -n "\${HOMUN_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
+  CODEX_API_KEY="\\$HOMUN_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
+elif [[ -n "\${HOMUN_PRIVATE_CODEX_API_KEY:-}" ]]; then
+  CODEX_API_KEY="\\$HOMUN_PRIVATE_CODEX_API_KEY" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
+elif [[ -n "\${HOMUN_PRIVATE_CODEX_ACCESS_TOKEN:-}" ]]; then
+  CODEX_ACCESS_TOKEN="\\$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
 else
   timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"
 fi
@@ -5223,21 +5223,21 @@ echo "actor_exit=\\$code"
 exit "\\$code"
 ACTOR
   chmod +x "$actor_script"
-  MIMETIC_PRIVATE_CODEX_API_KEY="$MIMETIC_PRIVATE_CODEX_API_KEY" MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script" > "$ACTOR_LOG_PATH" 2>&1 &
+  HOMUN_PRIVATE_CODEX_API_KEY="$HOMUN_PRIVATE_CODEX_API_KEY" HOMUN_PRIVATE_CODEX_ACCESS_TOKEN="$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script" > "$ACTOR_LOG_PATH" 2>&1 &
   ACTOR_PID=$!
   ACTOR_STATUS=running
   echo "actor_status=$ACTOR_STATUS pid=$ACTOR_PID log=$ACTOR_LOG_PATH"
 }
 
 wait_for_actor_attempt_if_required() {
-  if [[ "\${MIMETIC_OSS_META_REQUIRE_ACTOR:-0}" != "1" && "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
+  if [[ "\${HOMUN_OSS_META_REQUIRE_ACTOR:-0}" != "1" && "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
     return 0
   fi
 
   echo
   echo "== required codex actor readback =="
-  if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
-    local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
+  if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+    local timeout_ms="\${HOMUN_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
     local started_ms
     started_ms="$(date +%s%3N)"
     local next_heartbeat_ms=$((started_ms + 15000))
@@ -5302,7 +5302,7 @@ NODE
     return 1
   fi
 
-  local timeout_ms="\${MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
+  local timeout_ms="\${HOMUN_OSS_META_ACTOR_TIMEOUT_MS:-480000}"
   local started_ms
   started_ms="$(date +%s%3N)"
   while kill -0 "$ACTOR_PID" >/dev/null 2>&1; do
@@ -5337,7 +5337,7 @@ cat > "$ASKPASS" <<'ASKPASS'
 #!/usr/bin/env bash
 case "$1" in
   *Username*) echo "x-access-token" ;;
-  *Password*) echo "\${MIMETIC_GITHUB_TOKEN_RUNTIME:-}" ;;
+  *Password*) echo "\${HOMUN_GITHUB_TOKEN_RUNTIME:-}" ;;
   *) echo "" ;;
 esac
 ASKPASS
@@ -5351,8 +5351,8 @@ clone_repo() {
   echo "clone_auth=anonymous_failed retry=token_clone"
   rm -rf "$APP_DIR"
 
-  if [[ -n "$MIMETIC_PRIVATE_GITHUB_TOKEN" ]]; then
-    if GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone --depth=1 "$repo_url" "$APP_DIR"; then
+  if [[ -n "$HOMUN_PRIVATE_GITHUB_TOKEN" ]]; then
+    if GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 HOMUN_GITHUB_TOKEN_RUNTIME="$HOMUN_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone --depth=1 "$repo_url" "$APP_DIR"; then
       echo "clone_auth=token"
       return 0
     fi
@@ -5371,56 +5371,56 @@ node --version || true
 npm --version || true
 
 echo
-echo "== mimetic skill discovery =="
-if npx -y skills add danielgwilson/mimetic-cli --skill mimetic-cli --list >/tmp/mimetic-skill-list.txt 2>&1; then
+echo "== homun skill discovery =="
+if npx -y skills add danielgwilson/homun --skill homun --list >/tmp/homun-skill-list.txt 2>&1; then
   echo "skill_discovery=listed"
-elif npx -y skills add danielgwilson/mimetic-cli --skill mimetic-cli >/tmp/mimetic-skill-install.txt 2>&1; then
+elif npx -y skills add danielgwilson/homun --skill homun >/tmp/homun-skill-install.txt 2>&1; then
   echo "skill_install=attempted"
 else
   echo "skill_install=blocked"
-  tail -n 20 /tmp/mimetic-skill-list.txt /tmp/mimetic-skill-install.txt 2>/dev/null || true
+  tail -n 20 /tmp/homun-skill-list.txt /tmp/homun-skill-install.txt 2>/dev/null || true
 fi
 
 echo
-if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" == "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" && "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
+if [[ "\${HOMUN_OSS_META_ACTOR_FIRST:-0}" == "1" && "\${HOMUN_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" && "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
   start_actor_attempt
   wait_for_actor_attempt_if_required || true
 fi
 
 echo
-install_mimetic_cli
+install_homun_cli
 
 echo
-echo "== mimetic init =="
-npx --no-install mimetic init --yes
+echo "== homun init =="
+npx --no-install homun init --yes
 apply_host_actor_plan || true
 
 start_target_app_surface
 
-if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
+if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" && "\${HOMUN_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" ]]; then
   start_actor_attempt
   wait_for_actor_attempt_if_required || true
 fi
 
 echo
-echo "== nested mimetic proof =="
+echo "== nested homun proof =="
 if [[ "$APP_STATUS" == "running" && -n "$APP_URL" ]]; then
-  npx --no-install mimetic run --app-url "$APP_URL" --sims 2 --run-id ${shellQuote(runId)}
+  npx --no-install homun run --app-url "$APP_URL" --sims 2 --run-id ${shellQuote(runId)}
 else
   echo "app_not_running_for_browser_proof=$APP_REASON"
-  npx --no-install mimetic run --dry-run --run-id ${shellQuote(runId)}
+  npx --no-install homun run --dry-run --run-id ${shellQuote(runId)}
 fi
-if npx --no-install mimetic verify --run latest; then
+if npx --no-install homun verify --run latest; then
   NESTED_VERIFY_STATUS=passed
 else
   NESTED_VERIFY_STATUS=failed
   exit 1
 fi
-npx --no-install mimetic watch --run latest --detach --no-open
+npx --no-install homun watch --run latest --detach --no-open
 open_nested_observer "opening nested observer"
 open_codex_app_server_client
 arrange_lab_windows
-if [[ "\${MIMETIC_OSS_META_ACTOR_FIRST:-0}" != "1" && "\${MIMETIC_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" && "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
+if [[ "\${HOMUN_OSS_META_ACTOR_FIRST:-0}" != "1" && "\${HOMUN_OSS_META_HOST_CODEX_ACTOR:-0}" != "1" && "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" != "1" ]]; then
   start_actor_attempt
   wait_for_actor_attempt_if_required || true
 fi
@@ -5440,7 +5440,7 @@ function buildRemoteLauncherScript(args: {
   logPath: string;
   title: string;
 }): string {
-  const terminalCommand = `bash -lc ${shellQuote(`${args.bootstrapPath}; echo; echo 'Mimetic bootstrap finished. Leave this terminal open for review.'; exec bash`)}`;
+  const terminalCommand = `bash -lc ${shellQuote(`${args.bootstrapPath}; echo; echo 'Homun bootstrap finished. Leave this terminal open for review.'; exec bash`)}`;
   return `#!/usr/bin/env bash
 set -u
 BOOTSTRAP=${shellQuote(args.bootstrapPath)}
@@ -5478,7 +5478,7 @@ exit 0`;
 function buildRemoteScreenshotArrangeCommand(terminalTitle: string | undefined): string {
   return `TERMINAL_TITLE=${shellQuote(terminalTitle ?? "")}
 EXPECTED_CHROME_WINDOWS=2
-if [[ "\${MIMETIC_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
+if [[ "\${HOMUN_OSS_META_CODEX_APP_SERVER:-0}" == "1" ]]; then
   EXPECTED_CHROME_WINDOWS=3
 fi
 if ! command -v xdotool >/dev/null 2>&1; then
@@ -5486,13 +5486,13 @@ if ! command -v xdotool >/dev/null 2>&1; then
 fi
 for attempt in $(seq 1 24); do
   CHROME_COUNT="$(xdotool search --onlyvisible --class google-chrome 2>/dev/null | wc -l | tr -d ' ')"
-  OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
+  OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Homun Observer" 2>/dev/null | tail -n 1 || true)"
   if [[ "$CHROME_COUNT" -ge "$EXPECTED_CHROME_WINDOWS" && -n "$OBSERVER_WINDOW" ]]; then
     break
   fi
   sleep 0.25
 done
-OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Mimetic Observer" 2>/dev/null | tail -n 1 || true)"
+OBSERVER_WINDOW="$(xdotool search --onlyvisible --name "Homun Observer" 2>/dev/null | tail -n 1 || true)"
 if [[ -n "$OBSERVER_WINDOW" ]]; then
   xdotool windowsize "$OBSERVER_WINDOW" 680 933 >/dev/null 2>&1 || true
   xdotool windowmove "$OBSERVER_WINDOW" 760 27 >/dev/null 2>&1 || true
@@ -5543,9 +5543,9 @@ async function runDesktopCommand(
   return result;
 }
 
-async function packLocalMimeticPackage(cwd: string, runId: string): Promise<OssMetaLabLocalPackage> {
+async function packLocalHomunPackage(cwd: string, runId: string): Promise<OssMetaLabLocalPackage> {
   const packageRoot = moduleRoot;
-  const packDir = path.join(cwd, ".mimetic", "tmp", "oss-meta", runId, "package");
+  const packDir = path.join(cwd, ".homun", "tmp", "oss-meta", runId, "package");
   await mkdir(packDir, { recursive: true });
   await execFileAsync("pnpm", ["build"], {
     cwd: packageRoot,
@@ -5558,9 +5558,9 @@ async function packLocalMimeticPackage(cwd: string, runId: string): Promise<OssM
     maxBuffer: 10 * 1024 * 1024
   });
   const files = await readdir(packDir);
-  const fileName = files.find((file) => /^mimetic-cli-.*\.tgz$/.test(file));
+  const fileName = files.find((file) => /^homun-.*\.tgz$/.test(file));
   if (!fileName) {
-    throw new Error("npm pack did not produce a mimetic-cli tarball.");
+    throw new Error("npm pack did not produce a homun tarball.");
   }
   const archivePath = path.join(packDir, fileName);
   const archiveStat = await stat(archivePath);

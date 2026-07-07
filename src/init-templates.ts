@@ -11,9 +11,9 @@ export interface RuntimeDirectory {
 
 export const starterFiles: StarterFile[] = [
   {
-    path: "mimetic/README.md",
+    path: "homun/README.md",
     plane: "source",
-    contents: `# Mimetic
+    contents: `# Homun
 
 This directory is the committed source of persona simulation intent for this app.
 
@@ -24,43 +24,43 @@ Keep this directory public-safe:
 - env var names only, never values;
 - no PII, PHI, secrets, raw private transcripts, private screenshots, customer data, or patient data.
 
-Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.mimetic/\`.
+Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.homun/\`.
 
 Labs:
 
-- committed reusable labs live in mimetic/labs/*.yaml;
-- private or machine-local labs live in ignored .mimetic/labs/*.yaml or .mimetic/local/labs/*.yaml;
-- run a lab with \`mimetic watch <lab>\` or \`mimetic lab run <lab>\`.
+- committed reusable labs live in homun/labs/*.yaml;
+- private or machine-local labs live in ignored .homun/labs/*.yaml or .homun/local/labs/*.yaml;
+- run a lab with \`homun watch <lab>\` or \`homun lab run <lab>\`.
 
 Format standard:
 
-- human-authored Mimetic source uses .yaml;
+- human-authored Homun source uses .yaml;
 - executable integration uses .ts;
 - generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
-- .yml is reserved for outside ecosystem files such as GitHub Actions, not Mimetic source.
+- .yml is reserved for outside ecosystem files such as GitHub Actions, not Homun source.
 `
   },
   {
-    path: "mimetic/config.ts",
+    path: "homun/config.ts",
     plane: "source",
     contents: `export default {
-  schema: "mimetic.config.v1",
+  schema: "homun.config.v1",
   app: {
     name: "synthetic-app",
     baseUrl: "http://localhost:3000",
     startCommand: "npm run dev"
   },
-  personasDir: "mimetic/personas",
-  scenariosDir: "mimetic/scenarios",
-  policiesDir: "mimetic/policies",
-  artifactsDir: ".mimetic/runs"
+  personasDir: "homun/personas",
+  scenariosDir: "homun/scenarios",
+  policiesDir: "homun/policies",
+  artifactsDir: ".homun/runs"
 };
 `
   },
   {
-    path: "mimetic/personas/synthetic-new-user.yaml",
+    path: "homun/personas/synthetic-new-user.yaml",
     plane: "source",
-    contents: `schema: mimetic.persona.v1
+    contents: `schema: homun.persona.v1
 id: synthetic-new-user
 name: Synthetic New User
 summary: A privacy-safe first-time user evaluating the app with realistic but synthetic needs.
@@ -75,9 +75,9 @@ constraints:
 `
   },
   {
-    path: "mimetic/personas/skeptical-power-user.yaml",
+    path: "homun/personas/skeptical-power-user.yaml",
     plane: "source",
-    contents: `schema: mimetic.persona.v1
+    contents: `schema: homun.persona.v1
 id: skeptical-power-user
 name: Skeptical Power User
 summary: A privacy-safe experienced user looking for speed, reversibility, and clear proof.
@@ -92,9 +92,9 @@ constraints:
 `
   },
   {
-    path: "mimetic/scenarios/first-run-smoke.yaml",
+    path: "homun/scenarios/first-run-smoke.yaml",
     plane: "source",
-    contents: `schema: mimetic.scenario.v1
+    contents: `schema: homun.scenario.v1
 id: first-run-smoke
 title: First-run smoke
 persona: synthetic-new-user
@@ -110,9 +110,9 @@ steps:
 `
   },
   {
-    path: "mimetic/scenarios/onboarding-regression.yaml",
+    path: "homun/scenarios/onboarding-regression.yaml",
     plane: "source",
-    contents: `schema: mimetic.scenario.v1
+    contents: `schema: homun.scenario.v1
 id: onboarding-regression
 title: Onboarding regression
 persona: skeptical-power-user
@@ -128,9 +128,9 @@ steps:
 `
   },
   {
-    path: "mimetic/labs/first-run.yaml",
+    path: "homun/labs/first-run.yaml",
     plane: "source",
-    contents: `schema: mimetic.lab.v2
+    contents: `schema: homun.lab.v2
 id: first-run
 title: First-run synthetic Observer
 description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
@@ -146,14 +146,14 @@ defaults:
 `
   },
   {
-    path: "mimetic/labs/cua-browser.yaml",
+    path: "homun/labs/cua-browser.yaml",
     plane: "source",
-    contents: `schema: mimetic.lab.v2
+    contents: `schema: homun.lab.v2
 id: cua-browser
 title: Computer-use browser lab
 description: >-
   A registered computer-use actor drives your app in a hosted desktop browser and emits an
-  evidence bundle into gitignored .mimetic/. Screenshots are full-fidelity (raw) by default;
+  evidence bundle into gitignored .homun/. Screenshots are full-fidelity (raw) by default;
   set policies.redactScreenshots: true to blur at capture for a share-as-is bundle. Typed
   text is recorded as length only. Dry-run by default; switch scenario.mode to live (with
   OPENAI_API_KEY + E2B_API_KEY via --env-file) for a real session. The clone subject below
@@ -213,12 +213,12 @@ defaults:
 `
   },
   {
-    path: "mimetic/policies/redaction.yaml",
+    path: "homun/policies/redaction.yaml",
     plane: "source",
-    contents: `schema: mimetic.redaction-policy.v1
+    contents: `schema: homun.redaction-policy.v1
 # Public-safety policy of intent for this project.
 #
-# Enforcement scope: \`mimetic verify\` detects the classes under \`enforced\`
+# Enforcement scope: \`homun verify\` detects the classes under \`enforced\`
 # (secret/key/token shapes and known local-path shapes) and fails closed on a
 # match. It does NOT detect free-form PII/PHI (names, emails, DOBs, MRNs). The
 # classes under \`author_responsibility\` are forbidden in public output but rely
@@ -250,9 +250,9 @@ allow:
 `
   },
   {
-    path: "mimetic/policies/network.yaml",
+    path: "homun/policies/network.yaml",
     plane: "source",
-    contents: `schema: mimetic.network-policy.v1
+    contents: `schema: homun.network-policy.v1
 default: local_only
 allowed_hosts:
   - localhost
@@ -262,9 +262,9 @@ notes:
 `
   },
   {
-    path: "mimetic/policies/credentials.example.yaml",
+    path: "homun/policies/credentials.example.yaml",
     plane: "source",
-    contents: `schema: mimetic.credentials-policy.v1
+    contents: `schema: homun.credentials-policy.v1
 env_names:
   openai: OPENAI_API_KEY
   e2b: E2B_API_KEY
@@ -275,10 +275,10 @@ rules:
 `
   },
   {
-    path: "mimetic/adapters/app.ts",
+    path: "homun/adapters/app.ts",
     plane: "source",
     contents: `export const appAdapter = {
-  schema: "mimetic.adapter.v1",
+  schema: "homun.adapter.v1",
   id: "synthetic-app",
   name: "Synthetic App",
   routes: [
@@ -292,9 +292,9 @@ rules:
 `
   },
   {
-    path: "mimetic/review/vocabulary.yaml",
+    path: "homun/review/vocabulary.yaml",
     plane: "source",
-    contents: `schema: mimetic.review-vocabulary.v1
+    contents: `schema: homun.review-vocabulary.v1
 verdicts:
   - pass
   - fail
@@ -307,9 +307,9 @@ labels:
 `
   },
   {
-    path: "mimetic/review/milestones.yaml",
+    path: "homun/review/milestones.yaml",
     plane: "source",
-    contents: `schema: mimetic.milestones.v1
+    contents: `schema: homun.milestones.v1
 milestones:
   - id: first-visible-state
     description: The first meaningful app state is visible.
@@ -320,7 +320,7 @@ milestones:
 `
   },
   {
-    path: "mimetic/coverage-map.md",
+    path: "homun/coverage-map.md",
     plane: "source",
     contents: `# Coverage Map
 
@@ -330,7 +330,7 @@ Current starter coverage is intentionally minimal and synthetic.
 `
   },
   {
-    path: "mimetic/coverage-matrix.md",
+    path: "homun/coverage-matrix.md",
     plane: "source",
     contents: `# Coverage Matrix
 
@@ -341,10 +341,10 @@ Current starter coverage is intentionally minimal and synthetic.
 `
   },
   {
-    path: "mimetic/fixtures/synthetic-login-state.json",
+    path: "homun/fixtures/synthetic-login-state.json",
     plane: "source",
     contents: `{
-  "schema": "mimetic.synthetic-fixture.v1",
+  "schema": "homun.synthetic-fixture.v1",
   "kind": "login-state",
   "user": {
     "id": "synthetic-user-001",
@@ -360,22 +360,22 @@ Current starter coverage is intentionally minimal and synthetic.
 ];
 
 export const runtimeDirectories: RuntimeDirectory[] = [
-  { path: ".mimetic/runs", plane: "runtime" },
-  { path: ".mimetic/cache", plane: "runtime" },
-  { path: ".mimetic/tmp", plane: "runtime" },
-  { path: ".mimetic/logs", plane: "runtime" },
-  { path: ".mimetic/labs", plane: "runtime" },
-  { path: ".mimetic/local/labs", plane: "runtime" },
-  { path: ".mimetic/local/personas", plane: "runtime" },
-  { path: ".mimetic/local/policies", plane: "runtime" },
-  { path: ".mimetic/secrets", plane: "runtime" }
+  { path: ".homun/runs", plane: "runtime" },
+  { path: ".homun/cache", plane: "runtime" },
+  { path: ".homun/tmp", plane: "runtime" },
+  { path: ".homun/logs", plane: "runtime" },
+  { path: ".homun/labs", plane: "runtime" },
+  { path: ".homun/local/labs", plane: "runtime" },
+  { path: ".homun/local/personas", plane: "runtime" },
+  { path: ".homun/local/policies", plane: "runtime" },
+  { path: ".homun/secrets", plane: "runtime" }
 ];
 
-export const mimeticScripts: Record<string, string> = {
-  mimetic: "mimetic",
-  "mimetic:doctor": "mimetic doctor",
-  "mimetic:run": "mimetic run --dry-run",
-  "mimetic:watch": "mimetic watch",
-  "mimetic:watch:ci": "mimetic watch --json --no-open",
-  "mimetic:verify": "mimetic verify"
+export const homunScripts: Record<string, string> = {
+  homun: "homun",
+  "homun:doctor": "homun doctor",
+  "homun:run": "homun run --dry-run",
+  "homun:watch": "homun watch",
+  "homun:watch:ci": "homun watch --json --no-open",
+  "homun:verify": "homun verify"
 };

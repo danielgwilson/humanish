@@ -1,16 +1,16 @@
 {
-  "schema": "mimetic.run-bundle.v1",
+  "schema": "homun.run-bundle.v1",
   "runId": "post-auth-return-dry-run-fixture",
   "mode": "dry-run",
   "simCount": 1,
   "createdAt": "2026-06-02T10:20:00.000Z",
   "cwd": "[target-cwd]",
-  "artifactRoot": ".mimetic/runs/post-auth-return-dry-run-fixture",
+  "artifactRoot": ".homun/runs/post-auth-return-dry-run-fixture",
   "source": {
     "packageName": "fixture-upload-studio",
-    "mimeticSource": "present",
+    "homunSource": "present",
     "git": {
-      "schema": "mimetic.git-state.v1",
+      "schema": "homun.git-state.v1",
       "status": "clean",
       "capturedAt": "2026-06-02T10:20:00.000Z",
       "head": {
@@ -175,7 +175,7 @@
     "events": "events.ndjson"
   },
   "review": {
-    "schema": "mimetic.review.v1",
+    "schema": "homun.review.v1",
     "verdict": "contract_proof_only",
     "summary": "Synthetic adapter dry-run fixture proves route, persona, scenario, and milestone ownership.",
     "gaps": [

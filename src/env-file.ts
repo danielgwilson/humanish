@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export const ENV_FILE_RESULT_SCHEMA = "mimetic.env-file-result.v1";
+export const ENV_FILE_RESULT_SCHEMA = "homun.env-file-result.v1";
 
 export interface EnvFileLoadResult {
   schema: typeof ENV_FILE_RESULT_SCHEMA;
@@ -11,7 +11,7 @@ export interface EnvFileLoadResult {
   loaded: string[];
   skipped: string[];
   error?: {
-    code: "MIMETIC_ENV_FILE_NOT_FOUND" | "MIMETIC_ENV_FILE_INVALID";
+    code: "HOMUN_ENV_FILE_NOT_FOUND" | "HOMUN_ENV_FILE_INVALID";
     message: string;
   };
 }
@@ -40,7 +40,7 @@ export async function loadEnvFile(
       loaded,
       skipped,
       error: {
-        code: "MIMETIC_ENV_FILE_NOT_FOUND",
+        code: "HOMUN_ENV_FILE_NOT_FOUND",
         message: `Env file was not readable: ${envFile}`
       }
     };
@@ -62,7 +62,7 @@ export async function loadEnvFile(
         loaded,
         skipped,
         error: {
-          code: "MIMETIC_ENV_FILE_INVALID",
+          code: "HOMUN_ENV_FILE_INVALID",
           message: `Invalid env assignment on line ${index + 1}.`
         }
       };

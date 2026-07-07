@@ -15,7 +15,7 @@ const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: ["pa
 describe("claudeSessionToActorTrace", () => {
   const trace = claudeSessionToActorTrace(buildClaudeSession(), persona);
 
-  it("emits a conformant mimetic.actor-trace.v1 envelope for the claude provider", () => {
+  it("emits a conformant homun.actor-trace.v1 envelope for the claude provider", () => {
     expect(trace.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(trace.provider).toBe("claude-agent-sdk");
     expect(trace.providerVersion).toBe("0.3.168");

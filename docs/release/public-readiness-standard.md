@@ -3,7 +3,7 @@
 Status: researched working standard for public repository and npm release hygiene.
 
 This document separates real public-release risk from preference cleanup. The
-goal is to keep `mimetic-cli` safe, useful, and professional without deleting the
+goal is to keep `homun` safe, useful, and professional without deleting the
 durable context future contributors and agents need.
 
 ## Sources Reviewed
@@ -56,7 +56,7 @@ to rewrite history.
   packaged by `files`, or generated assets.
 - Binary public assets are not approved by path and checksum.
 - Docs link to files that are not shipped or not reachable from the public repo.
-- Runtime artifacts are included: `.mimetic/`, run bundles, transcripts,
+- Runtime artifacts are included: `.homun/`, run bundles, transcripts,
   disposable clones, `.firecrawl/`, `.e2b/`, logs, tarballs, caches.
 - GitHub Actions use broad default permissions where read-only is enough.
 - Publish workflow uses long-lived npm tokens when OIDC trusted publishing is
@@ -160,15 +160,15 @@ Nice-to-have after public launch:
 - release provenance and staged publishing where practical;
 - signed releases when the release process matures.
 
-## Mimetic Application
+## Homun Application
 
-For `mimetic-cli`, the honest standard is:
+For `homun`, the honest standard is:
 
 - Keep `docs/ramp/` and `docs/goals/` if they are public-safe. They are essential
   project memory for future coding agents and contributors.
 - Keep the package docs and skill docs focused on public install, public-safe
   examples, and synthetic proof.
-- Do not commit `.mimetic/`, `.firecrawl/`, screenshots from private systems,
+- Do not commit `.homun/`, `.firecrawl/`, screenshots from private systems,
   raw run bundles, private transcripts, local env files, or packed tarballs.
 - Treat `dist` and source maps as public and scan them.
 - Treat the README screenshot as public and checksum-gated.

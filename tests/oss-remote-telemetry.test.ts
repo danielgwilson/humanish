@@ -15,13 +15,13 @@ describe("OSS remote telemetry", () => {
       completionJson: JSON.stringify({
         completedAt: "2026-06-03T10:01:00.000Z",
         exitCode: 0,
-        logTail: "npx mimetic verify --run latest\nnested verify passed",
+        logTail: "npx homun verify --run latest\nnested verify passed",
         nestedObserverPresent: true,
         nestedVerifyStatus: "passed",
-        reason: "Nested Mimetic proof completed and nested Observer path was checked.",
+        reason: "Nested Homun proof completed and nested Observer path was checked.",
         status: "passed"
       }),
-      nestedObserverPath: "/home/user/repo/.mimetic/runs/nested/observer/index.html",
+      nestedObserverPath: "/home/user/repo/.homun/runs/nested/observer/index.html",
       streamUrl: "https://stream.example/e2b"
     });
 
@@ -46,10 +46,10 @@ describe("OSS remote telemetry", () => {
     const completion = parseOssRemoteCompletion({
       completedAt: "2026-06-03T10:02:00.000Z",
       exitCode: 1,
-      logTail: "npx mimetic verify --run latest\nverification failed",
+      logTail: "npx homun verify --run latest\nverification failed",
       nestedObserverPresent: false,
       nestedVerifyStatus: "failed",
-      reason: "Bootstrap exited before nested Mimetic proof completed.",
+      reason: "Bootstrap exited before nested Homun proof completed.",
       status: "failed"
     });
 
@@ -69,7 +69,7 @@ describe("OSS remote telemetry", () => {
         exitCode: 1,
         nestedObserverPresent: false,
         nestedVerifyStatus: "failed",
-        reason: "Bootstrap exited before nested Mimetic proof completed.",
+        reason: "Bootstrap exited before nested Homun proof completed.",
         status: "failed"
       },
       processStateText: "pid=1234 exited with exit code 1"
@@ -170,12 +170,12 @@ describe("OSS remote telemetry", () => {
   });
 
   it("redacts remote sandbox filesystem paths from public-safe telemetry", () => {
-    const text = "project=/home/user/repo-01 bootstrap=/home/user/.mimetic-oss-lab/repo-01/bootstrap.sh package=/tmp/mimetic-cli-0.1.8.tgz";
+    const text = "project=/home/user/repo-01 bootstrap=/home/user/.homun-oss-lab/repo-01/bootstrap.sh package=/tmp/homun-0.1.8.tgz";
     const redacted = redactOssRemoteTelemetryText(text);
 
     expect(redacted).toContain("[redacted-remote-path]");
     expect(redacted).not.toContain("/home/user");
-    expect(redacted).not.toContain("/tmp/mimetic-cli");
+    expect(redacted).not.toContain("/tmp/homun");
   });
 
   it("does not redact Codex approval flags as provider tokens", () => {

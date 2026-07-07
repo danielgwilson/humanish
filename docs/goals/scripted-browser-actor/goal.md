@@ -4,7 +4,7 @@ Status: shipped.
 
 ## What
 
-The deterministic BrowserPersona driver that has always powered `mimetic run --app-url` is now
+The deterministic BrowserPersona driver that has always powered `homun run --app-url` is now
 a registered actor and a lab route, instead of private code inside `src/run.ts`:
 
 - **Move-only extraction** of the driver (journey parser, surface capture engines, helpers)
@@ -18,14 +18,14 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
 - **Registry entry** `scripted-browser` with capability-lane dispatch:
   `isScriptedBrowserActorDescriptor` (mirror of `isCuaActorDescriptor`) — lane
   `"scripted-browser"` ⇒ `runSession(ScriptedBrowserSessionOptions) →
-  ScriptedBrowserSessionResult` with a fully-formed `mimetic.actor-trace.v1` at
+  ScriptedBrowserSessionResult` with a fully-formed `homun.actor-trace.v1` at
   `result.trace`. Trace vocabulary additions (ratified): lane `"scripted-browser"`, protocol
   `"scripted-steps"`, completionReason `"step_failed"` (the subject failed the script's
   predicate — distinct from `actor_error`/`harness_error`, where the harness failed).
 - **New backend** `src/scripted-browser-lab.ts` for the composition `subject.source: app-url`
   × `execution.target: local` (or absent) × a registered scripted-browser actor.
   `scenario.ref` is promoted from forward-declared to CONSUMED and REQUIRED on this route: it
-  resolves a committed scenario (`mimetic/scenarios/<ref>.yaml` or a cwd-clamped path) whose
+  resolves a committed scenario (`homun/scenarios/<ref>.yaml` or a cwd-clamped path) whose
   `browser.steps` ARE the actor's behavior — there is deliberately NO built-in journey
   fallback on the lab route (the fallback stays a `run --app-url` affordance).
 - Default surface roster is **1** (desktop; the defaults-table single-lane row governs);
@@ -45,7 +45,7 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
   (a later slice), never ignored.
 - `policies.redactScreenshots: true` is REJECTED (blur is not implemented here; a silently
   ignored redaction policy would be a safety lie). Screenshots persist raw in gitignored
-  `.mimetic/`; the bundle, verify warnings, and the lab warning all state the raw posture.
+  `.homun/`; the bundle, verify warnings, and the lab warning all state the raw posture.
 - Path-style `scenario.ref` is clamped inside the target cwd, fail-closed — no `../../`
   escape can be recorded as repo-relative provenance.
 - Subject provenance: the lab does not provision the app, so the bundle DECLARES the absence
@@ -64,10 +64,10 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
 - Out of scope, fail-closed (rejected, never ignored): scripted actor on `e2b-desktop`,
   clone/this-repo subjects, `count > 2`, `allowPublicTargets`, `redactScreenshots: true`.
   Hybrid scripted+LLM stays out of reach (`parseActors` single-actor rule).
-- `MIMETIC_SCRIPTED_LAB_BROWSER_MISSING` (no Chrome/Chromium found before a live run) has no
+- `HOMUN_SCRIPTED_LAB_BROWSER_MISSING` (no Chrome/Chromium found before a live run) has no
   deterministic test: browser-binary resolution reads the real PATH, and CI images ship a
   Chrome, so the negative case cannot be pinned portably. The code path mirrors
-  `run --app-url`'s existing `MIMETIC_BROWSER_APP_CAPTURE_FAILED` resolution.
+  `run --app-url`'s existing `HOMUN_BROWSER_APP_CAPTURE_FAILED` resolution.
 - `mission`/`laneFocus`/`model` are warned inert on this route (no model runs);
   `execution.desktop.*` stays forward-declared (device presets belong to the cua route —
   scripted surfaces are the driver's own desktop/mobile viewports).
@@ -92,7 +92,7 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
   `scripted-demo` lab parses with zero warnings and its committed scenario is executable
   (`tests/lab-structural.test.ts`); CLI `lab run scripted-demo --dry-run` JSON + human output;
   the UNCHANGED `run --app-url` fixture suite proves the extraction was behavior-preserving.
-- Live (actuation-gated `MIMETIC_LIVE_SCRIPTED=1`, requires a local Chrome/Chromium; provider
+- Live (actuation-gated `HOMUN_LIVE_SCRIPTED=1`, requires a local Chrome/Chromium; provider
   spend $0 BY MECHANISM): `tests/scripted-browser-lab.live.test.ts` serves a tiny loopback
   app in-test and dispatches the committed scenario through `runLab` to real playwright-core —
   verified bundle, goal_satisfied on both surfaces, non-empty raw step screenshots, sanitized

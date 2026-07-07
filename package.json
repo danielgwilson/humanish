@@ -1,5 +1,5 @@
 {
-  "name": "mimetic-cli",
+  "name": "homun",
   "version": "0.12.24",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "author": "Daniel G Wilson <daniel@danielgwilson.com>",
@@ -25,7 +25,7 @@
     "node": ">=20"
   },
   "bin": {
-    "mimetic": "./dist/cli.js"
+    "homun": "./dist/cli.js"
   },
   "files": [
     "AGENTS.md",
@@ -51,7 +51,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node --eval \"import('node:fs').then(({ chmodSync }) => chmodSync('dist/cli.js', 0o755))\"",
     "check": "pnpm typecheck && pnpm test && pnpm build",
-    "mimetic": "tsx src/cli.ts",
+    "homun": "tsx src/cli.ts",
     "pack:dry-run": "npm pack --dry-run",
     "prepack": "pnpm build",
     "public-surface:scan": "node scripts/public-surface-scan.mjs",
@@ -59,26 +59,26 @@
     "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "mimetic:doctor": "pnpm mimetic -- doctor",
-    "mimetic:run": "pnpm mimetic -- run --dry-run",
-    "mimetic:watch": "pnpm mimetic -- watch",
-    "mimetic:watch:ci": "pnpm mimetic -- watch --json --no-open",
-    "mimetic:dogfood": "pnpm mimetic -- watch",
-    "mimetic:verify": "pnpm mimetic -- verify",
-    "mimetic:feedback": "pnpm mimetic -- feedback issue --repo danielgwilson/mimetic-cli",
-    "mimetic:lab:list": "pnpm mimetic -- lab list",
-    "mimetic:lab:oss": "pnpm mimetic -- lab run oss",
-    "mimetic:lab:oss:ci": "pnpm mimetic -- lab run oss --dry-run --json --no-open",
-    "mimetic:lab:oss:smoke": "pnpm mimetic -- lab run oss-smoke"
+    "homun:doctor": "pnpm homun -- doctor",
+    "homun:run": "pnpm homun -- run --dry-run",
+    "homun:watch": "pnpm homun -- watch",
+    "homun:watch:ci": "pnpm homun -- watch --json --no-open",
+    "homun:dogfood": "pnpm homun -- watch",
+    "homun:verify": "pnpm homun -- verify",
+    "homun:feedback": "pnpm homun -- feedback issue --repo danielgwilson/homun",
+    "homun:lab:list": "pnpm homun -- lab list",
+    "homun:lab:oss": "pnpm homun -- lab run oss",
+    "homun:lab:oss:ci": "pnpm homun -- lab run oss --dry-run --json --no-open",
+    "homun:lab:oss:smoke": "pnpm homun -- lab run oss-smoke"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/danielgwilson/mimetic-cli.git"
+    "url": "https://github.com/danielgwilson/homun.git"
   },
   "bugs": {
-    "url": "https://github.com/danielgwilson/mimetic-cli/issues"
+    "url": "https://github.com/danielgwilson/homun/issues"
   },
-  "homepage": "https://github.com/danielgwilson/mimetic-cli#readme",
+  "homepage": "https://github.com/danielgwilson/homun#readme",
   "dependencies": {
     "commander": "^14.0.3",
     "playwright-core": "^1.60.0",

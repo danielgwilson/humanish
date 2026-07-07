@@ -16,9 +16,9 @@ const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: [], 
 describe("codexResultToActorTrace", () => {
   const actorTrace = codexResultToActorTrace(buildCodexResult(), persona);
 
-  it("emits a conformant mimetic.actor-trace.v1 envelope", () => {
+  it("emits a conformant homun.actor-trace.v1 envelope", () => {
     expect(actorTrace.schema).toBe(ACTOR_TRACE_SCHEMA);
-    expect(actorTrace.schema).toBe("mimetic.actor-trace.v1");
+    expect(actorTrace.schema).toBe("homun.actor-trace.v1");
     expect(actorTrace.provider).toBe("codex-app-server");
     expect(actorTrace.providerVersion).toBe("1.2.3");
     expect(actorTrace.protocol).toBe("json-rpc");

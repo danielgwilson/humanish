@@ -1,40 +1,40 @@
-# mimetic-cli
+# homun
 
 Open-source-safe persona simulation for apps, CLIs, and agent-facing product
 flows.
 
-Mimetic gives a project a repeatable way to ask: what happens when realistic
+Homun gives a project a repeatable way to ask: what happens when realistic
 synthetic users, with different goals and tolerances, try to use this thing?
-It creates committed simulation source under `mimetic/`, ignored run evidence
-under `.mimetic/`, a watchable Observer UI, verification gates, and public-safe
+It creates committed simulation source under `homun/`, ignored run evidence
+under `.homun/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Mimetic Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/mimetic-cli@latest/docs/assets/mimetic-oss-lab-observer.png?v=0.12.1)
+![Homun Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/homun@latest/docs/assets/homun-oss-lab-observer.png?v=0.12.1)
 
 ## Install
 
 ```bash
-npm i -D mimetic-cli
-npx mimetic init --yes
-npx mimetic watch
+npm i -D homun
+npx homun init --yes
+npx homun watch
 ```
 
-The package is `mimetic-cli`; the installed binary is `mimetic`. For a one-shot
-command before installation, use `npx --package mimetic-cli mimetic ...` so npm
-does not resolve an unrelated package named `mimetic`.
+The package is `homun`; the installed binary is `homun`. For a one-shot
+command before installation, use `npx --package homun homun ...` so npm
+does not resolve an unrelated package named `homun`.
 
 For coding agents, install the repo skill first:
 
 ```bash
-npx skills add danielgwilson/mimetic-cli --skill mimetic-cli
+npx skills add danielgwilson/homun --skill homun
 ```
 
-The skill lives at [`skills/mimetic-cli/SKILL.md`](skills/mimetic-cli/SKILL.md)
+The skill lives at [`skills/homun/SKILL.md`](skills/homun/SKILL.md)
 for skills.sh discovery.
 
 ## Public-Safety Boundary
 
-Mimetic is designed for public repositories and public issue queues. The
+Homun is designed for public repositories and public issue queues. The
 boundary is three planks, each enforced where it actually holds:
 
 **1. This repo and the published package are kept public-safe by CI.** Every
@@ -51,21 +51,21 @@ evidence; values never are. Pixels are the exception: a raw screenshot shows
 whatever was on screen, which is why plank 3 exists.
 
 **3. Run bundles are local by default.** Evidence lands under gitignored
-`.mimetic/`, and no command publishes it for you. Sharing evidence — committing
+`.homun/`, and no command publishes it for you. Sharing evidence — committing
 screenshots, pasting transcripts, attaching bundles to issues — is a deliberate
 act, and reviewing what you share is on you. Use synthetic personas and
 synthetic data so there is nothing sensitive to capture in the first place.
 
-**What the automated gate enforces.** `mimetic verify` scans public-bound
+**What the automated gate enforces.** `homun verify` scans public-bound
 artifacts and fails closed on secret, key, and token shapes and on known local
 path shapes. It does not yet detect free-form PII or PHI such as names, emails,
 phone numbers, dates of birth, or medical identifiers. Keeping those out depends
 on using synthetic data and on review, so `redaction: passed` means the
 automated secret and path scan found no matches, not that the artifact was
 certified free of PII or PHI. A first-class PII/PHI detector is on the roadmap
-([#108](https://github.com/danielgwilson/mimetic-cli/issues/108)).
+([#108](https://github.com/danielgwilson/homun/issues/108)).
 
-`mimetic verify --json` also reports `shareSafety.status`:
+`homun verify --json` also reports `shareSafety.status`:
 
 - `share_ready`: the verified bundle is eligible for public feedback drafts;
 - `local_only`: the bundle is valid local evidence, but should not be shared as-is
@@ -78,77 +78,77 @@ reviewed in Observer without being promoted into a public issue draft.
 ## How It Works
 
 ```text
-mimetic/      committed source plane: labs, personas, scenarios, policy, adapters
-.mimetic/    ignored runtime plane: runs, Observer output, reviews, local state
+homun/      committed source plane: labs, personas, scenarios, policy, adapters
+.homun/    ignored runtime plane: runs, Observer output, reviews, local state
 ```
 
 The first-run path does not require credentials:
 
 ```bash
-npx mimetic doctor
-npx mimetic watch
-npx mimetic verify --run latest --json
-npx mimetic feedback issue --run latest --repo owner/repo --format markdown
+npx homun doctor
+npx homun watch
+npx homun verify --run latest --json
+npx homun feedback issue --run latest --repo owner/repo --format markdown
 ```
 
-`mimetic watch` starts a fresh four-lane synthetic run, renders the Observer,
+`homun watch` starts a fresh four-lane synthetic run, renders the Observer,
 opens it in the browser, serves it over localhost, and keeps the shell attached.
-After `mimetic init`, named lab manifests can be run the same way:
+After `homun init`, named lab manifests can be run the same way:
 
 ```bash
-npx mimetic watch first-run
-npx mimetic lab list
-npx mimetic lab inspect first-run
-npx mimetic lab preflight first-run
+npx homun watch first-run
+npx homun lab list
+npx homun lab inspect first-run
+npx homun lab preflight first-run
 ```
 
 The CI-safe equivalent is:
 
 ```bash
-npx mimetic watch --json --no-open
+npx homun watch --json --no-open
 ```
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `mimetic init` | Scaffold committed `mimetic/` source and ignored `.mimetic/` runtime state. |
-| `mimetic doctor` | Explain readiness and missing setup. |
-| `mimetic run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
-| `mimetic run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
-| `mimetic watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
-| `mimetic lab list` | List committed and ignored lab manifests. |
-| `mimetic lab inspect <lab>` | Show the source manifest for a lab without running it. |
-| `mimetic lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
-| `mimetic lab run <lab>` | Run a lab manifest in human or JSON mode. |
-| `mimetic verify` | Validate a run bundle and public-safety gates. |
-| `mimetic cleanup` | Clean resources explicitly recorded as owned by a run and write `cleanup.json`. |
-| `mimetic review` | Read review evidence for a run. |
-| `mimetic runs` | List local runs and latest pointers. |
-| `mimetic feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
-| `mimetic lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
-| `mimetic lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
+| `homun init` | Scaffold committed `homun/` source and ignored `.homun/` runtime state. |
+| `homun doctor` | Explain readiness and missing setup. |
+| `homun run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
+| `homun run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
+| `homun watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
+| `homun lab list` | List committed and ignored lab manifests. |
+| `homun lab inspect <lab>` | Show the source manifest for a lab without running it. |
+| `homun lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
+| `homun lab run <lab>` | Run a lab manifest in human or JSON mode. |
+| `homun verify` | Validate a run bundle and public-safety gates. |
+| `homun cleanup` | Clean resources explicitly recorded as owned by a run and write `cleanup.json`. |
+| `homun review` | Read review evidence for a run. |
+| `homun runs` | List local runs and latest pointers. |
+| `homun feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
+| `homun lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
+| `homun lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
 
 ## Lab Manifests
 
 Labs are authored as `.yaml` source:
 
 ```text
-mimetic/labs/*.yaml          committed public-safe labs
-.mimetic/labs/*.yaml         ignored local labs
-.mimetic/local/labs/*.yaml   ignored private or machine-specific labs
+homun/labs/*.yaml          committed public-safe labs
+.homun/labs/*.yaml         ignored local labs
+.homun/local/labs/*.yaml   ignored private or machine-specific labs
 ```
 
 Committed labs should be useful to anyone who clones the project. Private repo
 targets, token-backed provider settings, and local-only dogfood variants belong
-in ignored `.mimetic/` lab manifests and can be run explicitly:
+in ignored `.homun/` lab manifests and can be run explicitly:
 
 ```bash
-npx mimetic watch .mimetic/labs/local-dogfood.yaml --env-file .mimetic/local/provider.env
-npx mimetic lab run .mimetic/labs/local-dogfood.yaml --json --no-open
+npx homun watch .homun/labs/local-dogfood.yaml --env-file .homun/local/provider.env
+npx homun lab run .homun/labs/local-dogfood.yaml --json --no-open
 ```
 
-`--env-file` loads values for the current process only. Mimetic reports loaded
+`--env-file` loads values for the current process only. Homun reports loaded
 env var names, never values, and does not persist those values into run bundles
 or Observer data.
 
@@ -157,8 +157,8 @@ or Observer data.
 A computer-use lab dispatches a **registered computer-use actor** (`actors[0].type`,
 resolved against the actor registry — e.g. `openai-computer-use`) to drive an app in
 a hosted E2B desktop browser and emit an evidence bundle under gitignored
-`.mimetic/` (full-fidelity screenshots by default — see below; length-only typed
-text; provider-neutral `mimetic.actor-trace.v1` on the stream). Two subjects route
+`.homun/` (full-fidelity screenshots by default — see below; length-only typed
+text; provider-neutral `homun.actor-trace.v1` on the stream). Two subjects route
 here:
 
 - **`subject.source: clone`** (+ `execution.target: e2b-desktop` + a computer-use
@@ -188,7 +188,7 @@ scenario: { mode: live }
 ```
 
 ```bash
-npx mimetic lab run cua-browser                 # dry-run contract bundle (no spend)
+npx homun lab run cua-browser                 # dry-run contract bundle (no spend)
 ```
 
 Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass via
@@ -196,19 +196,19 @@ Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass vi
 subject is served **inside** the sandbox on loopback; to instead drive a deployment
 you own (a Vercel preview, staging), use an `app-url` subject with
 `policies.allowPublicTargets: true`. The actor's API key never enters the sandbox;
-only declared subject env names do. `mimetic init` scaffolds an example at
-`mimetic/labs/cua-browser.yaml`.
+only declared subject env names do. `homun init` scaffolds an example at
+`homun/labs/cua-browser.yaml`.
 
 **Screenshots are full-fidelity by default.** Run bundles live in gitignored
-`.mimetic/`, so the Observer shows exactly what the persona saw — the point of
+`.homun/`, so the Observer shows exactly what the persona saw — the point of
 simming your own app. Set `policies.redactScreenshots: true` to persist blurred
 thumbnails at capture instead (for unowned subjects, or bundles you intend to share
-as-is). Raw bundles stay local in gitignored `.mimetic/`; nothing scans the pixels,
+as-is). Raw bundles stay local in gitignored `.homun/`; nothing scans the pixels,
 so review them before sharing anywhere — a redact-on-export step is planned. The
 frame sent to the model is always full-resolution regardless. (Doctrine:
 `docs/principles/invariants-and-defaults.md` — redaction binds the publish boundary,
-not capture.) `mimetic verify` reports raw-screenshot bundles as
-`shareSafety.status: local_only`; `mimetic feedback issue` refuses them until the
+not capture.) `homun verify` reports raw-screenshot bundles as
+`shareSafety.status: local_only`; `homun feedback issue` refuses them until the
 run is share-ready.
 
 **Device presets.** `execution.desktop.device` picks the viewport the run renders at —
@@ -265,8 +265,8 @@ browser-observed stops, set `execution.desktop.browser: chrome` or `chromium`.
 the source run:
 
 ```bash
-npx mimetic lab run cua-browser --rerun-failed-from latest --json --no-open
-npx mimetic lab run cua-browser --rerun-failed-from <run-id> --lanes lane-02,lane-04
+npx homun lab run cua-browser --rerun-failed-from latest --json --no-open
+npx homun lab run cua-browser --rerun-failed-from <run-id> --lanes lane-02,lane-04
 ```
 
 This creates a new linked run containing only the failed/blocked/timed-out/hollow lanes
@@ -279,11 +279,11 @@ nondeterminism candidate, not permission to erase the original red lane.
 After a run, reclaim only those resources and write a durable receipt:
 
 ```bash
-npx mimetic cleanup --run latest
-npx mimetic verify --run latest
+npx homun cleanup --run latest
+npx homun verify --run latest
 ```
 
-Cleanup is exact-id only; Mimetic does not enumerate or bulk-delete provider
+Cleanup is exact-id only; Homun does not enumerate or bulk-delete provider
 accounts from this command.
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
@@ -307,14 +307,14 @@ desktop and NO clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
 
 ## Browser Scenario Manifests
 
-`mimetic run --app-url http://127.0.0.1:<port>` looks for executable browser
-steps in committed `mimetic/scenarios/*.yaml`. If none are present, Mimetic
+`homun run --app-url http://127.0.0.1:<port>` looks for executable browser
+steps in committed `homun/scenarios/*.yaml`. If none are present, Homun
 falls back to the built-in two-step browser persona proof. Browser steps are
 public-safe source, so use synthetic fixture values and committed relative app
 paths only.
 
 ```yaml
-schema: mimetic.scenario.v1
+schema: homun.scenario.v1
 id: todo-onboarding
 title: Todo onboarding
 persona: synthetic-new-user
@@ -346,24 +346,24 @@ browser:
 Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
 and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
 `urlIncludes`, and `stateChanged`. Generated traces are stored as JSON under
-`.mimetic/runs/<run>/traces/` and summarized in the Observer.
+`.homun/runs/<run>/traces/` and summarized in the Observer.
 
 ## Maintainer OSS Meta-Lab Example
 
 This repository includes an experimental authorized-repo dogfood lab:
 
 ```bash
-pnpm mimetic -- watch oss
-pnpm mimetic -- lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+pnpm homun -- watch oss
+pnpm homun -- lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
 ```
 
 Default lab targets are intentionally app/tool-like repos with visible,
 locally runnable user surfaces. Avoid libraries and frameworks for public
 dogfood unless the scenario is explicitly testing developer experience.
 
-With `E2B_API_KEY` and `OPENAI_API_KEY` present, Mimetic launches headed E2B
+With `E2B_API_KEY` and `OPENAI_API_KEY` present, Homun launches headed E2B
 desktop lanes, uploads the local package tarball, clones each assigned
-repository inside the sandbox, initializes Mimetic, runs nested proof commands,
+repository inside the sandbox, initializes Homun, runs nested proof commands,
 starts the target app when a runnable script is present, opens desktop/mobile
 app windows plus the nested Observer in the sandbox browser, and starts a
 nonblocking Codex actor attempt.
@@ -376,7 +376,7 @@ npm i -D @e2b/desktop
 The contract-safe path for agents and CI is:
 
 ```bash
-pnpm mimetic -- lab run oss --dry-run --json --no-open
+pnpm homun -- lab run oss --dry-run --json --no-open
 ```
 
 The `oss` lab accepts GitHub `owner/repo` slugs. Private repositories are
@@ -386,7 +386,7 @@ token is present, durable run artifacts redact repo labels by default; pass
 `--no-redact-repos` only for public-safe repo selections. Live E2B stream URLs
 are runtime-only for the attached Observer server and are not persisted to
 `run.json` or `observer-data.json`. Local bundles remain ignored under
-`.mimetic/`; do not publish private screenshots, logs, or upstream details.
+`.homun/`; do not publish private screenshots, logs, or upstream details.
 
 ## Development
 
@@ -400,10 +400,10 @@ pnpm pack:dry-run
 Local dogfood:
 
 ```bash
-pnpm mimetic:watch
-pnpm mimetic:verify
-pnpm mimetic:feedback
-pnpm mimetic:lab:list
+pnpm homun:watch
+pnpm homun:verify
+pnpm homun:feedback
+pnpm homun:lab:list
 ```
 
 ## Docs

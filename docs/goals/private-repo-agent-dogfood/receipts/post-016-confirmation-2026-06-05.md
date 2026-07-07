@@ -3,7 +3,7 @@
 ## Scope
 
 This receipt covers the confirmatory four-lane dogfood run after PR #91 merged
-and `mimetic-cli@0.1.6` published. Repo labels remain redacted as `repo-01`
+and `homun@0.1.6` published. Repo labels remain redacted as `repo-01`
 through `repo-04`.
 
 The run used four lanes because four authorized repos were assigned. There is no
@@ -14,9 +14,9 @@ arbitrary run-count cap or desktop-count cap in this goal packet.
 - main merge commit: `770d952`;
 - publish workflow: `27026709790`, conclusion `success`;
 - npm metadata: `latest: 0.1.6`;
-- explicit registry install of `mimetic-cli@0.1.6` exposed `run --app-url` and
+- explicit registry install of `homun@0.1.6` exposed `run --app-url` and
   did not show stale `1-4 lanes` help text;
-- `mimetic-cli@latest --prefer-online` installed `0.1.6` and showed the same
+- `homun@latest --prefer-online` installed `0.1.6` and showed the same
   help behavior.
 
 ## Run Evidence
@@ -24,14 +24,14 @@ arbitrary run-count cap or desktop-count cap in this goal packet.
 - run: `oss-meta-2026-06-05T16-25-58-003Z-515846ab`
 - mode: `live`
 - verification:
-  `pnpm mimetic -- verify --run oss-meta-2026-06-05T16-25-58-003Z-515846ab --json`
+  `pnpm homun -- verify --run oss-meta-2026-06-05T16-25-58-003Z-515846ab --json`
   passed all checks.
 
 The live bundle readback showed:
 
 - `4/4` top-level lane statuses passed;
 - `4/4` target app surfaces running;
-- `4/4` nested Mimetic verifications passed;
+- `4/4` nested Homun verifications passed;
 - `4/4` nested Observers present;
 - `4/4` headed desktop visual layouts visible;
 - `0` feedback candidates.
@@ -47,9 +47,9 @@ All four lanes produced app-aware setup-quality evidence.
 | `repo-03` | `high_leverage` | 5/5 | succeeded |
 | `repo-04` | `high_leverage` | 5/5 | succeeded |
 
-This confirms the stale bare-`npx mimetic` command-resolution failure observed
+This confirms the stale bare-`npx homun` command-resolution failure observed
 in the previous run was fixed by forcing actor/bootstrap commands through the
-locally installed `mimetic-cli` binary.
+locally installed `homun` binary.
 
 ## Public-Safety And Cleanup
 
@@ -57,7 +57,7 @@ Run verification passed the public-safety scan. A targeted ignored-artifact grep
 over the run found no private repo labels, no E2B stream URLs, no sandbox ID
 keys, and no credential assignments.
 
-Provider cleanup after the run found `4` running Mimetic OSS meta-lab desktops,
+Provider cleanup after the run found `4` running Homun OSS meta-lab desktops,
 killed `4/4`, reported `0` cleanup errors, and post-cleanup readback found `0`
 matching desktops.
 

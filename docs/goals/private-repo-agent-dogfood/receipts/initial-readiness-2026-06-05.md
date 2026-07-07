@@ -3,11 +3,11 @@
 ## What This Establishes
 
 The private-repo dogfood path is ready for a formal goal run, with one known
-Mimetic-owned bootstrap blocker already ticketed.
+Homun-owned bootstrap blocker already ticketed.
 
 This receipt is orientation, not completion proof. The raw runtime artifacts
 from these private runs are not committed. A future `/goal` must rerun current
-proof, inspect current `.mimetic/` artifacts, and produce a fresh completion
+proof, inspect current `.homun/` artifacts, and produce a fresh completion
 audit before claiming success.
 
 ## Public-Safe Evidence
@@ -26,10 +26,10 @@ audit before claiming success.
   - run: `oss-meta-2026-06-05T06-07-41-618Z-5b4d1727`
   - preflight: `4/4` assigned repos passed
   - lane verdicts: `3 passed`, `1 failed`
-  - passed lanes reached running target app surfaces, nested Mimetic proof,
+  - passed lanes reached running target app surfaces, nested Homun proof,
     nested Observers, and visible desktop layouts
   - failed lane cloned successfully through token auth, then failed during
-    package-manager install before nested Mimetic proof
+    package-manager install before nested Homun proof
 - Disposable sandbox cleanup killed `5/5` sandboxes with no cleanup errors.
 
 ## Known Blocker
@@ -38,7 +38,7 @@ GitHub issue #86 tracks the current bootstrap blocker:
 
 - title: `Handle pnpm workspace-root installs in OSS meta-lab bootstrap`
 - symptom: `ERR_PNPM_ADDING_TO_ROOT` after successful private clone
-- classification: Mimetic-owned bootstrap ergonomics bug
+- classification: Homun-owned bootstrap ergonomics bug
 
 ## Public-Safety Notes
 
@@ -49,5 +49,5 @@ GitHub issue #86 tracks the current bootstrap blocker:
 ## Next Goal Slice
 
 Run the formal private-repo agent dogfood study with actor-required mode, then
-evaluate each lane for setup correctness, generated Mimetic file quality,
-meaningful-use rating, agent feedback quality, and Mimetic-owned blockers.
+evaluate each lane for setup correctness, generated Homun file quality,
+meaningful-use rating, agent feedback quality, and Homun-owned blockers.

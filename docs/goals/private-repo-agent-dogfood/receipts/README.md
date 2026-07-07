@@ -9,7 +9,7 @@ Allowed:
 - pass/fail/block classifications;
 - setup-quality summaries;
 - meaningful-use ratings;
-- public-safe issue URLs in `mimetic-cli`;
+- public-safe issue URLs in `homun`;
 - provider cleanup/readback summaries.
 
 Forbidden:
@@ -22,5 +22,5 @@ Forbidden:
   PHI, or private customer/user data.
 
 If raw private context is needed for local analysis, keep it in ignored
-`.mimetic/local/private-dogfood/` and summarize only the public-safe conclusion
+`.homun/local/private-dogfood/` and summarize only the public-safe conclusion
 here.

@@ -4,15 +4,15 @@ Date: 2026-06-17. Operator: maintainer session, dedicated danielgwilson-team E2B
 production key). Bounded by the goal packet's Provider Spend Policy. This is the FIRST live proof
 of the north-star capability: MANY personas against ONE shared mutable service, AT ONCE.
 
-Lab: `mimetic/labs/shared-world-concurrent-live.yaml` (clones this public repo, serves the
-synthetic `mimetic/fixtures/shared-world-app` task board on 0.0.0.0, seeds it, exposes it via
+Lab: `homun/labs/shared-world-concurrent-live.yaml` (clones this public repo, serves the
+synthetic `homun/fixtures/shared-world-app` task board on 0.0.0.0, seeds it, exposes it via
 getHost; 3 personas drive that one URL concurrently). Run via `runLab(config, { dryRun: false })`
-with `MIMETIC_LIVE_SHARED_WORLD=1`. The gated test `tests/concurrent-shared-world-lab.live.test.ts`
+with `HOMUN_LIVE_SHARED_WORLD=1`. The gated test `tests/concurrent-shared-world-lab.live.test.ts`
 passed (1/1, 30.9s); this receipt is from a parallel persisted capture of the same lab.
 
 ## What the run proves (real environment-state evidence)
 
-- **`ok: true`, `verifyRun` ok** over `mimetic.run-bundle.v1` (attributionClass `shared-world`,
+- **`ok: true`, `verifyRun` ok** over `homun.run-bundle.v1` (attributionClass `shared-world`,
   `sharedWorld.topologyMode: concurrent`, roleCount 3).
 - **3 personas, all `passed`** (planner / coordinator / mobile) — each reached its goal (added a
   task) against the ONE shared plane.

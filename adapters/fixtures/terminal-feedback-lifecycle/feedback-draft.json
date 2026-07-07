@@ -1,5 +1,5 @@
 {
-  "schema": "mimetic.feedback.v1",
+  "schema": "homun.feedback.v1",
   "run_id": "terminal-feedback-lifecycle-fixture",
   "adapter_id": "terminal-feedback-lifecycle",
   "scenario_id": "terminal-feedback-lifecycle",

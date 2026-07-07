@@ -29,26 +29,26 @@ describe("core run primitives", () => {
 
     expect(runId).toBe("contract-fixture-2026-06-02t10-00-00-123z-issue-6");
     expect(layout).toEqual({
-      artifactRoot: ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6",
-      run: ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/run.json",
-      reviewJson: ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/review.json",
-      reviewMarkdown: ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/review.md",
-      observerData: ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/observer/observer-data.json",
-      events: ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/events.ndjson",
-      latestPointer: ".mimetic/runs/latest.json"
+      artifactRoot: ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6",
+      run: ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/run.json",
+      reviewJson: ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/review.json",
+      reviewMarkdown: ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/review.md",
+      observerData: ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/observer/observer-data.json",
+      events: ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/events.ndjson",
+      latestPointer: ".homun/runs/latest.json"
     });
   });
 
   it("builds latest, history, lifecycle, and timing records from explicit inputs", () => {
     const runId = "contract-fixture-2026-06-02t10-00-00-123z-issue-6";
-    const artifactRoot = ".mimetic/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6";
+    const artifactRoot = ".homun/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6";
 
     expect(createLatestPointer({
       runId,
       artifactRoot,
       updatedAt: "2026-06-02T10:01:00.000Z"
     })).toEqual({
-      schema: "mimetic.latest-run.v1",
+      schema: "homun.latest-run.v1",
       runId,
       path: artifactRoot,
       updatedAt: "2026-06-02T10:01:00.000Z"
@@ -59,7 +59,7 @@ describe("core run primitives", () => {
       mode: "dry-run",
       artifactRoot
     })).toEqual({
-      schema: "mimetic.run-history-entry.v1",
+      schema: "homun.run-history-entry.v1",
       runId,
       createdAt: "2026-06-02T10:00:00.123Z",
       mode: "dry-run",
@@ -86,8 +86,8 @@ describe("core run primitives", () => {
   });
 
   it("rejects absolute and traversal artifact paths", () => {
-    expect(() => buildArtifactLayout("valid-run", "/tmp/mimetic")).toThrow(/relative/);
-    expect(() => buildArtifactLayout("valid-run", ".mimetic/../runs")).toThrow(/unsafe/);
+    expect(() => buildArtifactLayout("valid-run", "/tmp/homun")).toThrow(/relative/);
+    expect(() => buildArtifactLayout("valid-run", ".homun/../runs")).toThrow(/unsafe/);
   });
 
   it("keeps source code free of environment-specific nouns", async () => {
@@ -121,7 +121,7 @@ describe("core git state", () => {
   });
 
   it("captures clean and dirty git state without paths, remotes, branch names, or file names", async () => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-core-git-"));
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-core-git-"));
 
     try {
       await runGit(["init"], tempRoot);
@@ -129,7 +129,7 @@ describe("core git state", () => {
       await runGit(["add", "tracked-private-name.txt"], tempRoot);
       await runGit([
         "-c",
-        "user.name=Mimetic Test",
+        "user.name=Homun Test",
         "-c",
         "user.email=test@example.test",
         "commit",
@@ -177,7 +177,7 @@ describe("core git state", () => {
   });
 
   it("reports missing git work trees without leaking the cwd", async () => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-core-no-git-"));
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-core-no-git-"));
 
     try {
       await mkdir(path.join(tempRoot, "nested"), { recursive: true });
@@ -186,7 +186,7 @@ describe("core git state", () => {
       });
 
       expect(state).toEqual({
-        schema: "mimetic.git-state.v1",
+        schema: "homun.git-state.v1",
         status: "missing",
         capturedAt: "2026-06-02T10:00:00.000Z",
         head: {

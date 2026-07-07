@@ -1,27 +1,27 @@
 {
-  "schema": "mimetic.run-bundle.v1",
+  "schema": "homun.run-bundle.v1",
   "runId": "golden-first-run",
   "mode": "dry-run",
   "simCount": 4,
-  "createdAt": "2026-06-08T18:59:51.436Z",
+  "createdAt": "2026-07-07T03:11:43.551Z",
   "cwd": "[target-cwd]",
-  "artifactRoot": ".mimetic/runs/golden-first-run",
+  "artifactRoot": ".homun/runs/golden-first-run",
   "source": {
-    "packageName": "mimetic-cli",
-    "mimeticSource": "present",
+    "packageName": "homun",
+    "homunSource": "present",
     "git": {
-      "schema": "mimetic.git-state.v1",
+      "schema": "homun.git-state.v1",
       "status": "dirty",
-      "capturedAt": "2026-06-08T18:59:51.436Z",
+      "capturedAt": "2026-07-07T03:11:43.551Z",
       "head": {
-        "shortSha": "a1b95edc7dab",
+        "shortSha": "ed7d56f7fac0",
         "refState": "attached"
       },
       "changes": {
-        "staged": 0,
-        "unstaged": 0,
-        "untracked": 1,
-        "total": 1
+        "staged": 47,
+        "unstaged": 215,
+        "untracked": 0,
+        "total": 222
       },
       "note": "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names."
     }
@@ -29,34 +29,34 @@
   "persona": {
     "id": "synthetic-new-user",
     "name": "Open-Source Maintainer Trial User",
-    "source": "mimetic/personas/synthetic-new-user.yaml",
-    "sourceDigest": "0913c2176445"
+    "source": "homun/personas/synthetic-new-user.yaml",
+    "sourceDigest": "04cd00af5fc4"
   },
   "scenario": {
     "id": "first-run-smoke",
-    "title": "Mimetic CLI first-run smoke",
-    "goal": "Prove that Mimetic can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
-    "source": "mimetic/scenarios/first-run-smoke.yaml",
-    "sourceDigest": "31424602f93d"
+    "title": "Homun CLI first-run smoke",
+    "goal": "Prove that Homun can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
+    "source": "homun/scenarios/first-run-smoke.yaml",
+    "sourceDigest": "8bb9ae98e623"
   },
   "lifecycle": [
     {
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "event": "run.created",
       "message": "Synthetic dry-run contract bundle created with 4 sims."
     },
     {
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "event": "persona.selected",
       "message": "Selected public-safe synthetic persona."
     },
     {
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "event": "scenario.selected",
       "message": "Selected public-safe first-run scenario."
     },
     {
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "event": "review.skeleton.created",
       "message": "Created review skeleton without claiming product proof."
     }
@@ -76,8 +76,8 @@
       "streamIds": [
         "sim-01-ui"
       ],
-      "startedAt": "2026-06-08T18:59:51.436Z",
-      "updatedAt": "2026-06-08T18:59:51.436Z"
+      "startedAt": "2026-07-07T03:11:43.551Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z"
     },
     {
       "id": "sim-02",
@@ -93,8 +93,8 @@
       "streamIds": [
         "sim-02-terminal"
       ],
-      "startedAt": "2026-06-08T18:59:51.436Z",
-      "updatedAt": "2026-06-08T18:59:51.436Z"
+      "startedAt": "2026-07-07T03:11:43.551Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z"
     },
     {
       "id": "sim-03",
@@ -110,8 +110,8 @@
       "streamIds": [
         "sim-03-tui"
       ],
-      "startedAt": "2026-06-08T18:59:51.436Z",
-      "updatedAt": "2026-06-08T18:59:51.436Z"
+      "startedAt": "2026-07-07T03:11:43.551Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z"
     },
     {
       "id": "sim-04",
@@ -127,8 +127,8 @@
       "streamIds": [
         "sim-04-codex-ui"
       ],
-      "startedAt": "2026-06-08T18:59:51.436Z",
-      "updatedAt": "2026-06-08T18:59:51.436Z"
+      "startedAt": "2026-07-07T03:11:43.551Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z"
     }
   ],
   "streams": [
@@ -139,7 +139,7 @@
       "label": "UI journey",
       "status": "contract_proof_only",
       "transport": "polling",
-      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z",
       "embed": {
         "kind": "placeholder",
         "title": "UI journey"
@@ -185,7 +185,7 @@
       "label": "CLI actor",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z",
       "embed": {
         "kind": "terminal",
         "title": "CLI actor"
@@ -194,7 +194,7 @@
         "title": "CLI actor",
         "format": "plain",
         "stdin": "disabled",
-        "tail": "$ mimetic doctor\nok target cwd\nok mimetic source\n$ mimetic run --scenario first-run-smoke\ncontract proof emitted"
+        "tail": "$ homun doctor\nok target cwd\nok homun source\n$ homun run --scenario first-run-smoke\ncontract proof emitted"
       },
       "artifacts": [
         {
@@ -221,7 +221,7 @@
       "label": "TUI actor",
       "status": "contract_proof_only",
       "transport": "pty",
-      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z",
       "embed": {
         "kind": "terminal",
         "title": "TUI actor"
@@ -230,7 +230,7 @@
         "title": "TUI actor",
         "format": "ansi",
         "stdin": "disabled",
-        "tail": "\u001b[2mMimetic TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
+        "tail": "\u001b[2mHomun TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
       },
       "artifacts": [
         {
@@ -257,7 +257,7 @@
       "label": "Codex UI",
       "status": "contract_proof_only",
       "transport": "app-server",
-      "updatedAt": "2026-06-08T18:59:51.436Z",
+      "updatedAt": "2026-07-07T03:11:43.551Z",
       "embed": {
         "kind": "placeholder",
         "title": "Codex UI"
@@ -305,14 +305,14 @@
   "events": [
     {
       "id": "event-000",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "info",
       "type": "observer.contract.created",
       "message": "Created public-safe observer stream contract."
     },
     {
       "id": "event-001-a",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "UI journey stream contract ready.",
@@ -321,7 +321,7 @@
     },
     {
       "id": "event-001-b",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -330,7 +330,7 @@
     },
     {
       "id": "event-002-a",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "CLI actor stream contract ready.",
@@ -339,7 +339,7 @@
     },
     {
       "id": "event-002-b",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -348,7 +348,7 @@
     },
     {
       "id": "event-003-a",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "TUI actor stream contract ready.",
@@ -357,7 +357,7 @@
     },
     {
       "id": "event-003-b",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -366,7 +366,7 @@
     },
     {
       "id": "event-004-a",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "Codex UI stream contract ready.",
@@ -375,7 +375,7 @@
     },
     {
       "id": "event-004-b",
-      "at": "2026-06-08T18:59:51.436Z",
+      "at": "2026-07-07T03:11:43.551Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -395,9 +395,9 @@
     "events": "events.ndjson"
   },
   "review": {
-    "schema": "mimetic.review.v1",
+    "schema": "homun.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Synthetic dry-run bundle was generated. This proves Mimetic artifact plumbing, not product behavior.",
+    "summary": "Synthetic dry-run bundle was generated. This proves Homun artifact plumbing, not product behavior.",
     "gaps": [
       "No browser was launched.",
       "No product state was verified.",

@@ -14,7 +14,7 @@
 //   - ALL N+1 sandboxes torn down BY exact id in a finally — NEVER Sandbox.list.
 //
 // HONEST ATTRIBUTION (verify-enforced, doctrine-audit fixes incorporated): the bundle declares
-// attributionClass: shared-world + a CONCURRENT mimetic.shared-world.v1 block (topologyMode
+// attributionClass: shared-world + a CONCURRENT homun.shared-world.v1 block (topologyMode
 // "concurrent"; laneWindows + stateSeries + outcomes; NO timeline) whose attributionLimits drop
 // `sequential-only`/`no-concurrent-races` and add `concurrent`,
 // `best-effort-causal-attribution`, `non-deterministic-shared-state`,
@@ -31,7 +31,7 @@
 // Synthetic-subject (FIX-3): a getHost URL is internet-reachable for the run, so this route is
 // synthetic-seeded-subjects ONLY. Verify fail-closes on subject.state.provenance != "seeded" and
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
-// gate, NOT a no-real-data guarantee (Mimetic cannot tell synthetic from real data).
+// gate, NOT a no-real-data guarantee (Homun cannot tell synthetic from real data).
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
@@ -102,11 +102,11 @@ import {
   type SharedWorldStateSnapshot
 } from "./run.js";
 
-export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "mimetic.concurrent-shared-world-lab-result.v1";
+export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "homun.concurrent-shared-world-lab-result.v1";
 
 export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
   mode: "concurrent-shared-world-lab",
-  tool: "mimetic-cli"
+  tool: "homun"
 } as const;
 
 // The verify-enforced CONCURRENT attribution ceiling (FIX-5). Mirrored in run.ts's required set.
@@ -140,12 +140,12 @@ export interface RunConcurrentSharedWorldLabOptions {
 }
 
 export type ConcurrentSharedWorldLabErrorCode =
-  | "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED"
-  | "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-  | "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_INVALID"
-  | "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
-  | "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
-  | "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE";
+  | "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED"
+  | "HOMUN_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
+  | "HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID"
+  | "HOMUN_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
+  | "HOMUN_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
+  | "HOMUN_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE";
 
 /** One persona's OUTCOME against the contended world (the "M of N" headline). */
 export interface ConcurrentSharedWorldRoleResult {
@@ -319,11 +319,11 @@ async function writeConcurrentRunArtifacts(
     "utf8"
   );
   await writeFile(
-    path.join(cwd, ".mimetic", "runs", "latest.json"),
+    path.join(cwd, ".homun", "runs", "latest.json"),
     `${JSON.stringify({
-      schema: "mimetic.latest-run.v1",
+      schema: "homun.latest-run.v1",
       runId: publicBundle.runId,
-      path: path.join(".mimetic", "runs", publicBundle.runId),
+      path: path.join(".homun", "runs", publicBundle.runId),
       updatedAt: new Date().toISOString()
     }, null, 2)}\n`,
     "utf8"
@@ -340,7 +340,7 @@ function observerResultForConcurrentArtifacts(
   const observerDataPath = path.join(artifactRoot, "observer", "observer-data.json");
   const eventsPath = path.join(artifactRoot, "events.ndjson");
   return {
-    schema: "mimetic.observer-result.v1",
+    schema: "homun.observer-result.v1",
     ok: true,
     cwd,
     run: runId,
@@ -383,13 +383,13 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
 
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail("MIMETIC_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
+    return fail("HOMUN_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
   }
 
   // Re-enforce the concurrent cross-validation (library API surface).
   const invalidReason = concurrentSharedWorldValidationReason(config);
   if (invalidReason) {
-    return fail("MIMETIC_CONCURRENT_SHARED_WORLD_LAB_INVALID", invalidReason, descriptor.id);
+    return fail("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID", invalidReason, descriptor.id);
   }
 
   const serve = config.subject.serve!;
@@ -419,19 +419,19 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       ...(e2bApiKey ? [] : ["E2B_API_KEY"])
     ];
     if (missingKeys.length > 0) {
-      return fail("MIMETIC_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING", `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (pass via --env-file; values are never persisted).`, descriptor.id);
+      return fail("HOMUN_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING", `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (pass via --env-file; values are never persisted).`, descriptor.id);
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
-      return fail("MIMETIC_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING", `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`, descriptor.id);
+      return fail("HOMUN_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING", `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`, descriptor.id);
     }
   }
 
   const runId = options.runId ?? makeRunId();
-  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
+  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-  const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = readPositiveInt(env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};
   const now = hooks.now ?? Date.now;
@@ -439,7 +439,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const seedDigest = seedRecipeDigest(config);
 
   await mkdir(artifactRoot, { recursive: true });
-  const source = await buildRunSource({ capturedAt: createdAt, cwd, mimeticSource: "present", packageName: "mimetic-cli" });
+  const source = await buildRunSource({ capturedAt: createdAt, cwd, homunSource: "present", packageName: "homun" });
 
   const warnings: string[] = [];
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
@@ -754,7 +754,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         ? {}
         : {
             error: {
-              code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED" as const,
+              code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED" as const,
               message: result.outcome.sessionError
                 ?? (result.outcome.noEngagement
                   ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
@@ -771,16 +771,16 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const errorResult = ((): ConcurrentSharedWorldLabResult["error"] | undefined => {
     if (ok) return undefined;
     if (!observer.ok) {
-      return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the concurrent shared-world run." };
+      return { code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the concurrent shared-world run." };
     }
     if (runError) {
-      return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: runError };
+      return { code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: runError };
     }
     if (adapterFailure !== undefined) {
-      return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
+      return { code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
     }
     const passed = roleResults.filter((role) => role.ok).length;
-    return { code: "MIMETIC_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: `Concurrent shared-world run did not run coherently: ${passed}/${roles.length} actor(s) reached a terminal, engaged passed session.` };
+    return { code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: `Concurrent shared-world run did not run coherently: ${passed}/${roles.length} actor(s) reached a terminal, engaged passed session.` };
   })();
 
   return {
@@ -831,7 +831,7 @@ function actorLanePassed(result: ActorLaneResult | undefined): boolean {
     && !result.outcome.selfReportedBlocker;
 }
 
-/** Project the concurrent run into a mimetic.run-bundle.v1 with the CONCURRENT shared-world block. */
+/** Project the concurrent run into a homun.run-bundle.v1 with the CONCURRENT shared-world block. */
 export function buildConcurrentSharedWorldBundle(args: {
   config: LabConfig;
   descriptor: CuaActorDescriptor;
@@ -1141,7 +1141,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     simCount: actorSpecs.length,
     createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".mimetic", "runs", args.runId),
+    artifactRoot: path.join(".homun", "runs", args.runId),
     source: args.source,
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",

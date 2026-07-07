@@ -13,12 +13,12 @@ import { verifyRun } from "../src/run.js";
 // probe. The probe target (serve.url) is a file that exists ONLY because the before-start
 // seed step wrote it — readiness cannot pass unless the seed ran, and the real actor then
 // reads the seeded sentinel on screen. Spend-gated exactly like the other live rungs:
-//   1. MIMETIC_LIVE_CUA=1 must be set explicitly (the spend opt-in),
+//   1. HOMUN_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
 // Asserts a verified bundle with state.provenance "seeded", the step's commandDigest, and a
 // terminal session — never task success.
-const LIVE = process.env.MIMETIC_LIVE_CUA === "1"
+const LIVE = process.env.HOMUN_LIVE_CUA === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
@@ -28,7 +28,7 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => 
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "mimetic-cua-state-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-state-live-"));
   });
 
   afterEach(async () => {
@@ -87,7 +87,7 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => 
     });
 
     // The persisted bundle carries the same story and verifies independently.
-    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.subject.state.provenance).toBe("seeded");
     expect(bundle.subject.state.seed[0].commandDigest).toBe(expectedDigest);

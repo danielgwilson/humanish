@@ -1,0 +1,17 @@
+schema: homun.scenario.v1
+id: onboarding-regression
+title: Dogfood readiness regression
+persona: skeptical-power-user
+goal: Confirm Homun's self-harness has a one-command watch path, a 1-4 lane local Codex exec actor path, and explicit boundaries for Codex TUI trust, credentials, and release gates.
+mode: dry-run
+steps:
+  - name: Attempt live run boundary
+    expectation: Non-dry-run execution fails closed unless an explicit supported actor is selected; Codex TUI blocks before spawn when exact workspace trust is missing.
+  - name: Exercise local Codex exec actor
+    expectation: The noninteractive actor can produce 1-4 lane live run bundles with running Observer snapshots and sanitized transcript evidence when credentials and local Codex auth allow it.
+  - name: Inspect watch ergonomics
+    expectation: Watch can create sims, render Observer, open the browser, and keep the shell attached from one command.
+  - name: Inspect generated issue draft
+    expectation: Public issue body contains only synthetic artifact pointers and explicit no-mutation notes.
+  - name: Inspect release gate
+    expectation: Release docs allow package dry-runs but still block npm publish without explicit maintainer approval.

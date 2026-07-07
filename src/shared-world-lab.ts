@@ -7,7 +7,7 @@
 // mutation (the checkpoint after A strictly precedes B's turn in one clock).
 //
 // Doctrine (docs/goals/shared-world-topology/goal.md): the bundle declares a VERIFIED, weaker
-// `attributionClass: shared-world` + a `mimetic.shared-world.v1` block whose `attributionLimits`
+// `attributionClass: shared-world` + a `homun.shared-world.v1` block whose `attributionLimits`
 // pin the attribution ceiling (sequential-only, no-concurrent-races,
 // delta-attributed-to-turn-not-action). verifyRun fails closed on any overclaim.
 //
@@ -88,11 +88,11 @@ import {
   type SharedWorldTimelineEntry
 } from "./run.js";
 
-export const SHARED_WORLD_LAB_SCHEMA = "mimetic.shared-world-lab-result.v1";
+export const SHARED_WORLD_LAB_SCHEMA = "homun.shared-world-lab-result.v1";
 
 export const SHARED_WORLD_LAB_PROVIDER_METADATA = {
   mode: "shared-world-lab",
-  tool: "mimetic-cli"
+  tool: "homun"
 } as const;
 
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
@@ -148,11 +148,11 @@ export interface RunSharedWorldLabOptions {
 }
 
 export type SharedWorldLabErrorCode =
-  | "MIMETIC_SHARED_WORLD_LAB_FAILED"
-  | "MIMETIC_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-  | "MIMETIC_SHARED_WORLD_LAB_INVALID"
-  | "MIMETIC_SHARED_WORLD_LAB_KEYS_MISSING"
-  | "MIMETIC_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING";
+  | "HOMUN_SHARED_WORLD_LAB_FAILED"
+  | "HOMUN_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
+  | "HOMUN_SHARED_WORLD_LAB_INVALID"
+  | "HOMUN_SHARED_WORLD_LAB_KEYS_MISSING"
+  | "HOMUN_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING";
 
 /** One role seat's terminal outcome in the result projection. */
 export interface SharedWorldRoleResult {
@@ -292,14 +292,14 @@ async function launchSeatBrowser(
     "  local label=\"$1\"",
     "  local binary=\"$2\"",
     "  if ! command -v \"$binary\" >/dev/null 2>&1; then return 127; fi",
-    "  echo \"MIMETIC_BROWSER_RESOLVED=$label\"",
+    "  echo \"HOMUN_BROWSER_RESOLVED=$label\"",
     "  pkill -f '[r]emote-debugging-port=9222' 2>/dev/null || true",
     "  prepare_chrome_profile",
     "  setsid -f \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=\"$profile_dir\" \"${chrome_debug_flags[@]}\" \"$seat_url\" > /dev/null 2>&1 < /dev/null",
     "}",
     "launch_firefox() {",
     "  if ! command -v firefox >/dev/null 2>&1; then return 127; fi",
-    "  echo \"MIMETIC_BROWSER_RESOLVED=firefox\"",
+    "  echo \"HOMUN_BROWSER_RESOLVED=firefox\"",
     "  setsid -f firefox --new-window --profile \"$profile_dir\" \"$seat_url\" > /dev/null 2>&1 < /dev/null",
     "}",
     "case \"$browser_preference\" in",
@@ -324,7 +324,7 @@ async function launchSeatBrowser(
   if (args.browserPreference === undefined) {
     return undefined;
   }
-  const resolved = (result.stdout ?? "").match(/^MIMETIC_BROWSER_RESOLVED=(\S+)$/m)?.[1];
+  const resolved = (result.stdout ?? "").match(/^HOMUN_BROWSER_RESOLVED=(\S+)$/m)?.[1];
   return {
     requested,
     ...(resolved === undefined ? {} : { resolved })
@@ -447,13 +447,13 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   // rather than trusting a config that arrived through the library door (this fn is npm surface).
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail("MIMETIC_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
+    return fail("HOMUN_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
   }
 
   // Re-enforce the shared-world cross-validation (library API surface).
   const invalidReason = sharedWorldValidationReason(config);
   if (invalidReason) {
-    return fail("MIMETIC_SHARED_WORLD_LAB_INVALID", invalidReason, descriptor.id);
+    return fail("HOMUN_SHARED_WORLD_LAB_INVALID", invalidReason, descriptor.id);
   }
 
   const serve = config.subject.serve!;
@@ -490,7 +490,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     ];
     if (missingKeys.length > 0) {
       return fail(
-        "MIMETIC_SHARED_WORLD_LAB_KEYS_MISSING",
+        "HOMUN_SHARED_WORLD_LAB_KEYS_MISSING",
         `Live shared-world labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`,
         descriptor.id
       );
@@ -498,7 +498,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
       return fail(
-        "MIMETIC_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
+        "HOMUN_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
         `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
         descriptor.id
       );
@@ -506,10 +506,10 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   }
 
   const runId = options.runId ?? makeSharedWorldRunId();
-  const artifactRoot = path.join(cwd, ".mimetic", "runs", runId);
+  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-  const requestTimeoutMs = readPositiveInt(env.MIMETIC_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = readPositiveInt(env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};
   // ONE sandbox geometry for the shared desktop (run-wide; per-role device is a prompt signal).
@@ -523,7 +523,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
       + SANDBOX_TIMEOUT_BUFFER_MS;
 
   await mkdir(artifactRoot, { recursive: true });
-  const source = await buildRunSource({ capturedAt: createdAt, cwd, mimeticSource: "present", packageName: "mimetic-cli" });
+  const source = await buildRunSource({ capturedAt: createdAt, cwd, homunSource: "present", packageName: "homun" });
 
   const warnings: string[] = [];
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
@@ -649,7 +649,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
           await mkdir(path.dirname(path.join(artifactRoot, spec.traceArtifactPath)), { recursive: true });
           await writeFile(path.join(artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
           if (session.trace.redaction.screenshots === "raw") {
-            warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .mimetic and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+            warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .homun and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
           }
         }
 
@@ -773,8 +773,8 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   await writeFile(path.join(artifactRoot, "review.md"), renderSharedWorldReviewMarkdown(bundle), "utf8");
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   await writeFile(
-    path.join(cwd, ".mimetic", "runs", "latest.json"),
-    `${JSON.stringify({ schema: "mimetic.latest-run.v1", runId, path: path.join(".mimetic", "runs", runId), updatedAt: createdAt }, null, 2)}\n`,
+    path.join(cwd, ".homun", "runs", "latest.json"),
+    `${JSON.stringify({ schema: "homun.latest-run.v1", runId, path: path.join(".homun", "runs", runId), updatedAt: createdAt }, null, 2)}\n`,
     "utf8"
   );
 
@@ -800,7 +800,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         status: "blocked" as const,
         ok: false,
         skippedReason: outcome.skippedReason,
-        error: { code: "MIMETIC_SHARED_WORLD_LAB_FAILED" as const, message: outcome.skippedReason }
+        error: { code: "HOMUN_SHARED_WORLD_LAB_FAILED" as const, message: outcome.skippedReason }
       };
     }
     const session = outcome.session;
@@ -816,7 +816,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         ? {}
         : {
             error: {
-              code: "MIMETIC_SHARED_WORLD_LAB_FAILED" as const,
+              code: "HOMUN_SHARED_WORLD_LAB_FAILED" as const,
               message: outcome.sessionError
                 ?? (outcome.noEngagement
                   ? "Role took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
@@ -835,14 +835,14 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   const errorResult = ((): SharedWorldLabResult["error"] | undefined => {
     if (ok) return undefined;
     if (!observer.ok) {
-      return { code: "MIMETIC_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the shared-world run." };
+      return { code: "HOMUN_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the shared-world run." };
     }
     if (adapterFailure !== undefined) {
-      return { code: "MIMETIC_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
+      return { code: "HOMUN_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
     }
     const passed = roles.filter((role) => role.ok).length;
     return {
-      code: "MIMETIC_SHARED_WORLD_LAB_FAILED",
+      code: "HOMUN_SHARED_WORLD_LAB_FAILED",
       message: `Shared-world run failed: ${passed}/${roleCount} role(s) passed${failFastReason ? ` (fail-fast: ${failFastReason})` : ""}.`
     };
   })();
@@ -867,7 +867,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   };
 }
 
-/** Project the shared-world run into a mimetic.run-bundle.v1 with the sharedWorld evidence block. */
+/** Project the shared-world run into a homun.run-bundle.v1 with the sharedWorld evidence block. */
 export function buildSharedWorldBundle(args: {
   config: LabConfig;
   descriptor: CuaActorDescriptor;
@@ -1167,7 +1167,7 @@ export function buildSharedWorldBundle(args: {
     simCount: roleSpecs.length,
     createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".mimetic", "runs", args.runId),
+    artifactRoot: path.join(".homun", "runs", args.runId),
     source: args.source,
     persona: {
       id: roleSpecs[0]?.persona.id ?? "shared-world-role",

@@ -37,7 +37,7 @@ export const DEVICE_PRESETS = {
   "narrow-mobile": { width: 320, height: 700, isMobile: true, deviceScaleFactor: 2 },
   // tablet — both reference sims agree
   tablet: { width: 820, height: 1180, isMobile: false, deviceScaleFactor: 2 },
-  // laptop baseline (the in-house desktop viewport; ~matches mimetic's own run.ts desktop surface)
+  // laptop baseline (the in-house desktop viewport; ~matches homun's own run.ts desktop surface)
   desktop: { width: 1440, height: 950, isMobile: false, deviceScaleFactor: 1 },
   // external monitor / most-common desktop resolution
   wide: { width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 }
@@ -47,7 +47,7 @@ export type DevicePresetName = keyof typeof DEVICE_PRESETS;
 
 /**
  * Default device for a run that does not declare one. `desktop` (1440x950) is the median
- * first-run laptop — the in-house desktop default, within 10px of mimetic's own
+ * first-run laptop — the in-house desktop default, within 10px of homun's own
  * pre-existing run.ts desktop surface. `wide` (1920x1080), the most-common external monitor, is
  * one keystroke away (`execution.desktop.device: wide`) but is deliberately not the default,
  * because the median device a first-time user arrives on is a laptop, not a 1080p monitor.

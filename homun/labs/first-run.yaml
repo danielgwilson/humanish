@@ -1,0 +1,13 @@
+schema: homun.lab.v2
+id: first-run
+title: First-run synthetic Observer
+description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
+subject:
+  source: this-repo
+actors:
+  - type: synthetic-persona
+    count: 4
+scenario:
+  mode: dry-run
+defaults:
+  open: true

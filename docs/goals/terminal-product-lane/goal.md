@@ -14,13 +14,13 @@ because this lane is the first to place a real provider key *inside* the sandbox
 
 ## The ask (issue #154)
 
-The reference adopter cannot delete its bespoke real-agent sim for mimetic yet. mimetic has
+The reference adopter cannot delete its bespoke real-agent sim for homun yet. homun has
 strong Observer/browser/lab primitives but no **terminal-product real-agent study lane**: a
 real autonomous agent (Codex) discovering and using a CLI/product from *public surfaces
 only*, running *inside* an E2B shell with command-scoped runtime auth, capped at no-spend,
 and emitting durable terminal/substrate/cost/no-spend/cleanup/intervention proof that
 verifies fail-closed. This is proof-roadmap **layer 6** (the extension seam + in-sandbox
-command-scoped key placement) and depth-phase-2 (delete a bespoke sim for mimetic + a thin
+command-scoped key placement) and depth-phase-2 (delete a bespoke sim for homun + a thin
 adapter).
 
 ## The safety contract (every slice enforces this — by construction and by verifier)

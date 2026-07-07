@@ -1,5 +1,5 @@
 {
-  "schema": "mimetic.verify-result.v1",
+  "schema": "homun.verify-result.v1",
   "ok": true,
   "cwd": "adapters/fixtures/terminal-feedback-lifecycle",
   "run": "terminal-feedback-lifecycle-fixture",

@@ -14,9 +14,9 @@ const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: ["pa
 describe("piSessionToActorTrace", () => {
   const trace = piSessionToActorTrace(buildPiSession(), persona);
 
-  it("emits a conformant mimetic.actor-trace.v1 envelope for the pi provider", () => {
+  it("emits a conformant homun.actor-trace.v1 envelope for the pi provider", () => {
     expect(trace.schema).toBe(ACTOR_TRACE_SCHEMA);
-    expect(trace.schema).toBe("mimetic.actor-trace.v1");
+    expect(trace.schema).toBe("homun.actor-trace.v1");
     expect(trace.provider).toBe("pi-agent-core");
     expect(trace.providerVersion).toBe("0.75.5");
     expect(trace.protocol).toBe("in-process-sdk");

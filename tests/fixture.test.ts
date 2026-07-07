@@ -16,12 +16,12 @@ describe("minimal target app fixture", () => {
 
     expect(result.ok).toBe(true);
     expect(result.mode).toBe("dry-run");
-    expect(result.changes.some((change) => change.path === "mimetic/config.ts")).toBe(true);
-    await expect(stat(path.join(fixturePath, "mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(result.changes.some((change) => change.path === "homun/config.ts")).toBe(true);
+    await expect(stat(path.join(fixturePath, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("can be copied to a temp app and initialized without committing runtime artifacts", async () => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-fixture-copy-"));
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-fixture-copy-"));
     const tempApp = path.join(tempRoot, "minimal-app");
 
     try {
@@ -32,11 +32,11 @@ describe("minimal target app fixture", () => {
       });
 
       expect(result.ok).toBe(true);
-      await expect(stat(path.join(tempApp, "mimetic/scenarios/first-run-smoke.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(tempApp, ".mimetic/runs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(tempApp, "homun/scenarios/first-run-smoke.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(tempApp, ".homun/runs"))).resolves.toBeTruthy();
 
       const gitignore = await readFile(path.join(tempApp, ".gitignore"), "utf8");
-      expect(gitignore).toContain(".mimetic/");
+      expect(gitignore).toContain(".homun/");
       expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(gitignore.lastIndexOf(".env*"));
     } finally {
       await rm(tempRoot, { force: true, recursive: true });

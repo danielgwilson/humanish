@@ -17,7 +17,7 @@ import { selectLabBackend, type LabBackend } from "./lab-engine.js";
 import { resolveLabManifest, type LabResolveFailure } from "./labs.js";
 import { redactText } from "./redaction.js";
 
-export const LAB_PREFLIGHT_SCHEMA = "mimetic.lab-preflight-result.v1";
+export const LAB_PREFLIGHT_SCHEMA = "homun.lab-preflight-result.v1";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
 const DEFAULT_SANDBOX_TIMEOUT_MS = 10 * 60_000;
@@ -49,7 +49,7 @@ export interface LabPreflightTarget {
   reachable?: boolean;
   status: "not_checked" | "passed" | "failed" | "blocked";
   statusCode?: number;
-  errorCode?: "MIMETIC_PREFLIGHT_TARGET_BLOCKED" | "MIMETIC_PREFLIGHT_TARGET_UNREACHABLE";
+  errorCode?: "HOMUN_PREFLIGHT_TARGET_BLOCKED" | "HOMUN_PREFLIGHT_TARGET_UNREACHABLE";
   message: string;
 }
 
@@ -83,14 +83,14 @@ export interface LabPreflightResult {
   error?: {
     code:
       | LabResolveFailure["error"]["code"]
-      | "MIMETIC_LAB_PREFLIGHT_INVALID_OPTION"
-      | "MIMETIC_LAB_PREFLIGHT_UNSUPPORTED_ROUTE"
-      | "MIMETIC_LAB_PREFLIGHT_TARGET_POLICY"
-      | "MIMETIC_LAB_PREFLIGHT_ENV_MISSING"
-      | "MIMETIC_LAB_PREFLIGHT_E2B_REQUIRED"
-      | "MIMETIC_LAB_PREFLIGHT_TARGET_UNREACHABLE"
-      | "MIMETIC_LAB_PREFLIGHT_PROVISION_FAILED"
-      | "MIMETIC_LAB_PREFLIGHT_TEARDOWN_FAILED";
+      | "HOMUN_LAB_PREFLIGHT_INVALID_OPTION"
+      | "HOMUN_LAB_PREFLIGHT_UNSUPPORTED_ROUTE"
+      | "HOMUN_LAB_PREFLIGHT_TARGET_POLICY"
+      | "HOMUN_LAB_PREFLIGHT_ENV_MISSING"
+      | "HOMUN_LAB_PREFLIGHT_E2B_REQUIRED"
+      | "HOMUN_LAB_PREFLIGHT_TARGET_UNREACHABLE"
+      | "HOMUN_LAB_PREFLIGHT_PROVISION_FAILED"
+      | "HOMUN_LAB_PREFLIGHT_TEARDOWN_FAILED";
     message: string;
   };
 }
@@ -186,7 +186,7 @@ export async function runLabPreflight(options: RunLabPreflightOptions): Promise<
     case "sandbox-loopback":
       return await runSandboxLoopbackPreflight(ctx);
     case "prepared-host":
-      return fail(ctx, "MIMETIC_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", "prepared-host preflight requires a library adapter hook; the plain CLI can validate metadata only for this mode.", [
+      return fail(ctx, "HOMUN_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", "prepared-host preflight requires a library adapter hook; the plain CLI can validate metadata only for this mode.", [
         { name: "prepared-host", ok: false, message: "no generic CLI hook exists for adopter-prepared hosts yet" }
       ]);
   }
@@ -195,7 +195,7 @@ export async function runLabPreflight(options: RunLabPreflightOptions): Promise<
 async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPreflightResult> {
   const routeError = publicPreviewRouteError(ctx.config, ctx.backend);
   if (routeError) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
       { name: "route", ok: false, message: routeError }
     ]);
   }
@@ -205,7 +205,7 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
     ? laneTargets
     : ctx.targets.filter((target) => target.kind === "subject.appUrl");
   if (publicTargets.length === 0) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_TARGET_POLICY", "public-preview preflight needs at least one declared app-url target.", [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_TARGET_POLICY", "public-preview preflight needs at least one declared app-url target.", [
       { name: "targets", ok: false, message: "no app-url targets were declared" }
     ]);
   }
@@ -213,14 +213,14 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
   const loopbackTarget = publicTargets.find((target) => target.loopback);
   if (loopbackTarget) {
     blockTarget(loopbackTarget, "public-preview requires externally reachable non-loopback targets.");
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_TARGET_POLICY", "public-preview reachability cannot prove loopback targets from a hosted desktop; use sandbox-loopback or a prepared public target.", [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_TARGET_POLICY", "public-preview reachability cannot prove loopback targets from a hosted desktop; use sandbox-loopback or a prepared public target.", [
       { name: "target policy", ok: false, message: "loopback target blocked before sandbox launch" }
     ]);
   }
 
   const e2bApiKey = ctx.env.E2B_API_KEY?.trim();
   if (!e2bApiKey) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_E2B_REQUIRED", "public-preview preflight creates one E2B desktop to probe target reachability; E2B_API_KEY is required.", [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_E2B_REQUIRED", "public-preview preflight creates one E2B desktop to probe target reachability; E2B_API_KEY is required.", [
       { name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }
     ]);
   }
@@ -243,7 +243,7 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
 
   const failed = publicTargets.find((target) => target.reachable === false);
   if (failed) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_TARGET_UNREACHABLE", "one or more declared public-preview targets were not reachable from the hosted desktop.", [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_TARGET_UNREACHABLE", "one or more declared public-preview targets were not reachable from the hosted desktop.", [
       { name: "target reachability", ok: false, message: `${publicTargets.filter((target) => target.reachable).length}/${publicTargets.length} targets reachable` }
     ]);
   }
@@ -256,21 +256,21 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
 async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPreflightResult> {
   const routeError = sandboxLoopbackRouteError(ctx.config, ctx.backend);
   if (routeError) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
       { name: "route", ok: false, message: routeError }
     ]);
   }
 
   const missingEnv = (ctx.config.subject.env ?? []).filter((name) => !ctx.env[name]?.trim());
   if (missingEnv.length > 0) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_ENV_MISSING", `sandbox-loopback preflight needs declared env values: ${missingEnv.join(", ")}`, [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_ENV_MISSING", `sandbox-loopback preflight needs declared env values: ${missingEnv.join(", ")}`, [
       { name: "subject env", ok: false, message: `${missingEnv.length} declared env var value(s) missing` }
     ]);
   }
 
   const e2bApiKey = ctx.env.E2B_API_KEY?.trim();
   if (!e2bApiKey) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_E2B_REQUIRED", "sandbox-loopback preflight creates one E2B desktop to clone, serve, and probe the subject; E2B_API_KEY is required.", [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_E2B_REQUIRED", "sandbox-loopback preflight creates one E2B desktop to clone, serve, and probe the subject; E2B_API_KEY is required.", [
       { name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }
     ]);
   }
@@ -278,7 +278,7 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
   const repo = ctx.config.subject.repos?.[0];
   const serve = ctx.config.subject.serve;
   if (!repo || !serve) {
-    return fail(ctx, "MIMETIC_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", "sandbox-loopback preflight requires one clone repo and subject.serve.", [
+    return fail(ctx, "HOMUN_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", "sandbox-loopback preflight requires one clone repo and subject.serve.", [
       { name: "clone subject", ok: false, message: "missing repo or serve block" }
     ]);
   }
@@ -375,7 +375,7 @@ async function withPreflightSandbox(
   if (failureMessage) {
     return {
       ok: false,
-      result: fail(ctx, "MIMETIC_LAB_PREFLIGHT_PROVISION_FAILED", failureMessage, [
+      result: fail(ctx, "HOMUN_LAB_PREFLIGHT_PROVISION_FAILED", failureMessage, [
         { name: "sandbox preflight", ok: false, message: failureMessage }
       ])
     };
@@ -384,7 +384,7 @@ async function withPreflightSandbox(
   if (ctx.sandbox.created && ctx.sandbox.killed !== true) {
     return {
       ok: false,
-      result: fail(ctx, "MIMETIC_LAB_PREFLIGHT_TEARDOWN_FAILED", "preflight sandbox was created but teardown could not be proven.", [
+      result: fail(ctx, "HOMUN_LAB_PREFLIGHT_TEARDOWN_FAILED", "preflight sandbox was created but teardown could not be proven.", [
         { name: "sandbox teardown", ok: false, message: "sandbox kill was not proven" }
       ])
     };
@@ -470,7 +470,7 @@ function markTargetReachability(target: LabPreflightTarget, reachable: boolean):
     target.message = "target reachable from preflight substrate";
     return;
   }
-  target.errorCode = "MIMETIC_PREFLIGHT_TARGET_UNREACHABLE";
+  target.errorCode = "HOMUN_PREFLIGHT_TARGET_UNREACHABLE";
   target.message = "target did not answer from preflight substrate within the timeout";
 }
 
@@ -478,7 +478,7 @@ function blockTarget(target: LabPreflightTarget, message: string): void {
   target.checked = false;
   target.reachable = false;
   target.status = "blocked";
-  target.errorCode = "MIMETIC_PREFLIGHT_TARGET_BLOCKED";
+  target.errorCode = "HOMUN_PREFLIGHT_TARGET_BLOCKED";
   target.message = message;
 }
 

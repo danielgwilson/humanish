@@ -34,7 +34,7 @@ function normalizeBundle(value: unknown, inGitState = false): unknown {
   }
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    const nowInGitState = inGitState || obj.schema === "mimetic.git-state.v1";
+    const nowInGitState = inGitState || obj.schema === "homun.git-state.v1";
     const out: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(obj)) {
       out[key] = normalizeBundle(entry, nowInGitState);
@@ -64,7 +64,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
       expect(outcome.result.ok ?? true).not.toBe(false);
 
       const producedRaw = await readFile(
-        path.join(ROOT, ".mimetic", "runs", golden.runId, "run.json"),
+        path.join(ROOT, ".homun", "runs", golden.runId, "run.json"),
         "utf8"
       );
       const goldenRaw = await readFile(

@@ -6,9 +6,9 @@ This receipt covers the first headed four-lane dogfood run where each redacted
 lane used Codex app-server mode as the coding-agent actor surface. The target
 repos are intentionally recorded only as `repo-01` through `repo-04`.
 
-The run objective was to verify that Mimetic can watch agents use Mimetic:
-each disposable desktop should run a target app, set up app-aware Mimetic
-source, run nested Mimetic proof, expose a nested Observer, and persist
+The run objective was to verify that Homun can watch agents use Homun:
+each disposable desktop should run a target app, set up app-aware Homun
+source, run nested Homun proof, expose a nested Observer, and persist
 public-safe Codex app-server actor evidence.
 
 ## Implementation Delta
@@ -33,11 +33,11 @@ public-safe Codex app-server actor evidence.
 
 - run: `oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4`
 - observer:
-  `.mimetic/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/observer/index.html`
+  `.homun/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/observer/index.html`
 - bundle:
-  `.mimetic/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/run.json`
+  `.homun/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/run.json`
 - verification:
-  `pnpm mimetic -- verify --run oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4 --json`
+  `pnpm homun -- verify --run oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4 --json`
   passed all checks.
 
 The verified run bundle readback showed:
@@ -46,7 +46,7 @@ The verified run bundle readback showed:
 - `4/4` redacted lanes passed;
 - `4/4` actor statuses passed;
 - `4/4` target app surfaces were running;
-- `4/4` local nested-proof files showed nested Mimetic verification passed;
+- `4/4` local nested-proof files showed nested Homun verification passed;
 - `4/4` local nested-proof files showed nested Observers were present;
 - `4/4` headed visual layouts were visible;
 - `4/4` meaningful-use scores were `pass 100/100`;
@@ -59,9 +59,9 @@ The verified run bundle readback showed:
 Each lane persisted redacted app-server artifacts:
 
 ```text
-.mimetic/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/codex-app-server/oss-01-desktop-summary.json
-.mimetic/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/codex-app-server/oss-01-desktop-events.ndjson
-.mimetic/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/codex-app-server/oss-01-desktop-transcript.txt
+.homun/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/codex-app-server/oss-01-desktop-summary.json
+.homun/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/codex-app-server/oss-01-desktop-events.ndjson
+.homun/runs/oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4/codex-app-server/oss-01-desktop-transcript.txt
 ```
 
 The same artifact pattern exists for `oss-02-desktop`, `oss-03-desktop`, and
@@ -83,7 +83,7 @@ transcript dumps.
 
 ```bash
 pnpm vitest run tests/oss-lab.test.ts tests/run.test.ts tests/oss-remote-telemetry.test.ts
-pnpm mimetic -- verify --run oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4 --json
+pnpm homun -- verify --run oss-meta-2026-06-06T00-02-41-550Z-8e6e93f4 --json
 pnpm release:check
 ```
 
@@ -98,7 +98,7 @@ Results:
 ## Cleanup Readback
 
 After stopping the headed watcher, explicit E2B SDK cleanup found stale
-Mimetic OSS meta-lab desktops from interrupted candidate runs, killed `14`
+Homun OSS meta-lab desktops from interrupted candidate runs, killed `14`
 provider sandboxes, and a final provider readback found `0` active sandboxes.
 No provider sandbox ids, stream auth URLs, token values, private repo labels,
 screenshots, raw private transcripts, PII, PHI, or source snippets are recorded

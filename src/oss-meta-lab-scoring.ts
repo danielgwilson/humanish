@@ -33,7 +33,7 @@ export function scoreOssMetaMeaningfulUse(input: OssMetaMeaningfulUseInput): Run
   const components: Component[] = [
     scoreSetupCorrectness(input.setupQuality),
     scoreFilesystemEvidence(input.setupQuality),
-    scoreNestedMimeticEvidence(input, hardFailures),
+    scoreNestedHomunEvidence(input, hardFailures),
     scoreActorActivity(input, hardFailures),
     scoreProductSurface(input, hardFailures),
     scoreFeedbackQuality(input)
@@ -56,7 +56,7 @@ export function scoreOssMetaMeaningfulUse(input: OssMetaMeaningfulUseInput): Run
       : "partial";
 
   return {
-    schema: "mimetic.meaningful-use-score.v1",
+    schema: "homun.meaningful-use-score.v1",
     status,
     score,
     summary: meaningfulUseSummary(status, score, hardFailures, components),
@@ -88,9 +88,9 @@ function scoreFilesystemEvidence(setupQuality: RunSetupQualitySnapshot | undefin
 
   const treeCount = setupQuality.tree.length;
   const previewCount = setupQuality.previews.length;
-  const hasMimeticSource = setupQuality.tree.some((entry) => entry.path === "mimetic" || entry.path.startsWith("mimetic/"));
+  const hasHomunSource = setupQuality.tree.some((entry) => entry.path === "homun" || entry.path.startsWith("homun/"));
   const previewsSuppressed = setupQuality.redaction.rawPreviews === "suppressed";
-  if (treeCount >= 3 && hasMimeticSource && (previewCount > 0 || previewsSuppressed)) {
+  if (treeCount >= 3 && hasHomunSource && (previewCount > 0 || previewsSuppressed)) {
     return component(
       "filesystem-evidence",
       "Filesystem evidence",
@@ -102,25 +102,25 @@ function scoreFilesystemEvidence(setupQuality: RunSetupQualitySnapshot | undefin
     );
   }
   if (treeCount > 0) {
-    return component("filesystem-evidence", "Filesystem evidence", "partial", 8, `Captured ${treeCount} safe tree entr${treeCount === 1 ? "y" : "ies"}, but Mimetic setup evidence is thin.`);
+    return component("filesystem-evidence", "Filesystem evidence", "partial", 8, `Captured ${treeCount} safe tree entr${treeCount === 1 ? "y" : "ies"}, but Homun setup evidence is thin.`);
   }
   return component("filesystem-evidence", "Filesystem evidence", "fail", 0, "Filesystem tree evidence is empty.");
 }
 
-function scoreNestedMimeticEvidence(input: OssMetaMeaningfulUseInput, hardFailures: string[]): Component {
+function scoreNestedHomunEvidence(input: OssMetaMeaningfulUseInput, hardFailures: string[]): Component {
   if (input.nestedVerifyPassed === true && input.nestedObserverPresent === true) {
-    return component("nested-mimetic-evidence", "Nested Mimetic evidence", "pass", SCORE.nested, "Nested verify passed and the nested Observer is present.");
+    return component("nested-homun-evidence", "Nested Homun evidence", "pass", SCORE.nested, "Nested verify passed and the nested Observer is present.");
   }
 
   if (input.status !== "running") {
-    if (input.nestedVerifyPassed === false) hardFailures.push("Nested Mimetic verification failed.");
-    if (input.nestedObserverPresent === false) hardFailures.push("Nested Mimetic Observer was missing.");
+    if (input.nestedVerifyPassed === false) hardFailures.push("Nested Homun verification failed.");
+    if (input.nestedObserverPresent === false) hardFailures.push("Nested Homun Observer was missing.");
   }
 
   if (input.nestedVerifyPassed === true || input.nestedObserverPresent === true) {
-    return component("nested-mimetic-evidence", "Nested Mimetic evidence", "partial", 10, "Only one of nested verify or nested Observer presence was proven.");
+    return component("nested-homun-evidence", "Nested Homun evidence", "partial", 10, "Only one of nested verify or nested Observer presence was proven.");
   }
-  return component("nested-mimetic-evidence", "Nested Mimetic evidence", input.status === "running" ? "partial" : "fail", input.status === "running" ? 5 : 0, "Nested Mimetic proof is not complete.");
+  return component("nested-homun-evidence", "Nested Homun evidence", input.status === "running" ? "partial" : "fail", input.status === "running" ? 5 : 0, "Nested Homun proof is not complete.");
 }
 
 function scoreActorActivity(input: OssMetaMeaningfulUseInput, hardFailures: string[]): Component {

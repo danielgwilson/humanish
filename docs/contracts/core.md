@@ -30,12 +30,12 @@ Core records must be safe to include in public run bundles by default:
 | Primitive | Contract |
 | --- | --- |
 | Run id | Deterministic from explicit prefix, timestamp, and entropy; valid ids match `^[a-z0-9][a-z0-9-]{0,127}$`. |
-| Artifact layout | Builds stable relative pointers under `.mimetic/runs/<run-id>/` plus `.mimetic/runs/latest.json`. |
-| Latest pointer | `{ schema, runId, path, updatedAt }` using `mimetic.latest-run.v1`. |
-| History entry | `{ schema, runId, createdAt, mode, path }` using `mimetic.run-history-entry.v1`. |
+| Artifact layout | Builds stable relative pointers under `.homun/runs/<run-id>/` plus `.homun/runs/latest.json`. |
+| Latest pointer | `{ schema, runId, path, updatedAt }` using `homun.latest-run.v1`. |
+| History entry | `{ schema, runId, createdAt, mode, path }` using `homun.run-history-entry.v1`. |
 | Lifecycle event | `{ at, event, message }`; event and message are required. |
 | Timing summary | `{ startedAt, endedAt, durationMs, status }`; running records have null end and duration. |
-| Git state | `{ schema, status, capturedAt, head, changes, note }` using `mimetic.git-state.v1`. |
+| Git state | `{ schema, status, capturedAt, head, changes, note }` using `homun.git-state.v1`. |
 
 ## Git State Boundary
 

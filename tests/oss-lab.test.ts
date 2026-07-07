@@ -40,52 +40,52 @@ const execFileAsync = promisify(execFile);
 
 function highLeverageSetupQualityFixture(): RunSetupQualitySnapshot {
   return {
-    schema: "mimetic.setup-quality.v1",
+    schema: "homun.setup-quality.v1",
     generatedAt: "2026-06-04T10:06:00.000Z",
     redaction: {
       status: "passed",
       rawPreviews: "included",
       notes: "Only allowlisted setup files are previewed."
     },
-    summary: "Mimetic setup is app-specific and proof-oriented.",
+    summary: "Homun setup is app-specific and proof-oriented.",
     status: "passed",
     checks: [
       {
-        id: "mimetic-config",
-        label: "Mimetic config",
+        id: "homun-config",
+        label: "Homun config",
         ok: true,
-        detail: "mimetic/config.ts exists."
+        detail: "homun/config.ts exists."
       },
       {
         id: "package-script",
         label: "Package script",
         ok: true,
-        detail: "package.json exposes a Mimetic watch script."
+        detail: "package.json exposes a Homun watch script."
       },
       {
         id: "runtime-ignore",
         label: "Runtime ignore",
         ok: true,
-        detail: ".gitignore excludes .mimetic/ runtime state."
+        detail: ".gitignore excludes .homun/ runtime state."
       }
     ],
     tree: [
       { path: "package.json", type: "file", sizeBytes: 540 },
-      { path: "mimetic", type: "directory" },
-      { path: "mimetic/config.ts", type: "file", sizeBytes: 180 },
-      { path: "mimetic/personas/product-researcher.yaml", type: "file", sizeBytes: 220 },
-      { path: "mimetic/scenarios/desktop-core-flow.yaml", type: "file", sizeBytes: 260 }
+      { path: "homun", type: "directory" },
+      { path: "homun/config.ts", type: "file", sizeBytes: 180 },
+      { path: "homun/personas/product-researcher.yaml", type: "file", sizeBytes: 220 },
+      { path: "homun/scenarios/desktop-core-flow.yaml", type: "file", sizeBytes: 260 }
     ],
     previews: [
       {
-        path: "mimetic/config.ts",
+        path: "homun/config.ts",
         language: "typescript",
         truncated: false,
         text: "export default { run: { appUrl: 'http://127.0.0.1:5173', sims: 2 } };"
       }
     ],
     studyQuality: {
-      schema: "mimetic.study-quality.v1",
+      schema: "homun.study-quality.v1",
       rating: "high_leverage",
       summary: "Study-quality rating high_leverage from app-specific personas, scenarios, app URL proof, and actor insight.",
       checks: [
@@ -113,9 +113,9 @@ function highLeverageSetupQualityFixture(): RunSetupQualitySnapshot {
     },
     packageScripts: {
       dev: "vite",
-      mimetic: "mimetic watch"
+      homun: "homun watch"
     },
-    mimetic: {
+    homun: {
       configPresent: true,
       gitignoreContainsRuntimeIgnore: true,
       packageScriptPresent: true,
@@ -146,7 +146,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   }
 
   try {
-    await program.parseAsync(["node", "mimetic", ...args], { from: "node" });
+    await program.parseAsync(["node", "homun", ...args], { from: "node" });
   } catch (error) {
     if (error instanceof CommanderError && error.code === "commander.helpDisplayed") {
       return {
@@ -169,11 +169,11 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
 describe("OSS lab command", () => {
   function liveMetaResult(overrides: Partial<OssMetaLabResult> = {}): OssMetaLabResult {
     return {
-      schema: "mimetic.oss-meta-lab-result.v1",
+      schema: "homun.oss-meta-lab-result.v1",
       ok: true,
       assignments: [],
       count: 1,
-      cwd: "/tmp/mimetic",
+      cwd: "/tmp/homun",
       dryRun: false,
       liveRequested: true,
       repos: ["CorentinTh/it-tools"],
@@ -202,7 +202,7 @@ describe("OSS lab command", () => {
     expect(shouldForceExitAfterOssMetaLab(liveMetaResult({
       ok: false,
       error: {
-        code: "MIMETIC_META_RUN_FAILED",
+        code: "HOMUN_META_RUN_FAILED",
         message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
       },
       sandboxes: [
@@ -233,25 +233,25 @@ describe("OSS lab command", () => {
       CODEX_API_KEY: "must-not-forward-from-helper",
       E2B_API_KEY: "must-not-forward-from-helper",
       GH_TOKEN: "must-not-forward-from-helper",
-      MIMETIC_OSS_META_ACTOR_FIRST: "1",
-      MIMETIC_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
-      MIMETIC_OSS_META_HOST_CODEX_ACTOR: "1",
-      MIMETIC_OSS_META_CODEX_APP_SERVER: "1",
-      MIMETIC_OSS_META_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/private-token-test",
-      MIMETIC_OSS_META_ACTOR_TIMEOUT_MS: "240000",
-      MIMETIC_OSS_META_REQUIRE_ACTOR: "1",
+      HOMUN_OSS_META_ACTOR_FIRST: "1",
+      HOMUN_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
+      HOMUN_OSS_META_HOST_CODEX_ACTOR: "1",
+      HOMUN_OSS_META_CODEX_APP_SERVER: "1",
+      HOMUN_OSS_META_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/private-token-test",
+      HOMUN_OSS_META_ACTOR_TIMEOUT_MS: "240000",
+      HOMUN_OSS_META_REQUIRE_ACTOR: "1",
       OPENAI_API_KEY: "must-not-forward-from-helper"
     })).toEqual({
-      MIMETIC_OSS_META_ACTOR_FIRST: "1",
-      MIMETIC_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
-      MIMETIC_OSS_META_HOST_CODEX_ACTOR: "1",
-      MIMETIC_OSS_META_CODEX_APP_SERVER: "1",
-      MIMETIC_OSS_META_ACTOR_TIMEOUT_MS: "240000",
-      MIMETIC_OSS_META_REQUIRE_ACTOR: "1"
+      HOMUN_OSS_META_ACTOR_FIRST: "1",
+      HOMUN_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
+      HOMUN_OSS_META_HOST_CODEX_ACTOR: "1",
+      HOMUN_OSS_META_CODEX_APP_SERVER: "1",
+      HOMUN_OSS_META_ACTOR_TIMEOUT_MS: "240000",
+      HOMUN_OSS_META_REQUIRE_ACTOR: "1"
     });
   });
 
-  it("isolates provider secrets under Mimetic-private remote env names", () => {
+  it("isolates provider secrets under Homun-private remote env names", () => {
     expect(collectOssMetaLabPrivateEnv({
       CODEX_ACCESS_TOKEN: "codex-access-token-test",
       CODEX_APP_SERVER_CLIENT_URL: "https://codex-app-server.example/session/client-token-test",
@@ -259,21 +259,21 @@ describe("OSS lab command", () => {
       GH_TOKEN: "github-token-test",
       OPENAI_API_KEY: "openai-token-test"
     })).toEqual({
-      MIMETIC_CODEX_ACCESS_TOKEN: "codex-access-token-test",
-      MIMETIC_CODEX_API_KEY: "openai-token-test",
-      MIMETIC_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/client-token-test",
-      MIMETIC_GITHUB_TOKEN: "github-token-test"
+      HOMUN_CODEX_ACCESS_TOKEN: "codex-access-token-test",
+      HOMUN_CODEX_API_KEY: "openai-token-test",
+      HOMUN_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/client-token-test",
+      HOMUN_GITHUB_TOKEN: "github-token-test"
     });
 
     expect(collectOssMetaLabPrivateEnv({
       GITHUB_PAT: "github-pat-test"
     })).toEqual({
-      MIMETIC_GITHUB_TOKEN: "github-pat-test"
+      HOMUN_GITHUB_TOKEN: "github-pat-test"
     });
   });
 
   it("preflights private GitHub repo clone access with askpass-scoped token auth after anonymous access fails", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-repo-preflight-"));
     const [assignment] = buildOssRepoAssignments(["example/private-fixture"], 1);
     if (!assignment) {
       throw new Error("Missing assignment.");
@@ -297,7 +297,7 @@ describe("OSS lab command", () => {
             env: options?.env ?? {},
             file
           });
-          if (!options?.env?.MIMETIC_GITHUB_TOKEN_RUNTIME) {
+          if (!options?.env?.HOMUN_GITHUB_TOKEN_RUNTIME) {
             throw new Error("anonymous access rejected");
           }
           return { stderr: "", stdout: "" };
@@ -320,7 +320,7 @@ describe("OSS lab command", () => {
         "HEAD"
       ]);
       expect(calls[0]?.env.GIT_ASKPASS).toBe("false");
-      expect(calls[0]?.env.MIMETIC_GITHUB_TOKEN_RUNTIME).toBeUndefined();
+      expect(calls[0]?.env.HOMUN_GITHUB_TOKEN_RUNTIME).toBeUndefined();
       expect(calls[0]?.env.GIT_CONFIG_GLOBAL).toBe("/dev/null");
       expect(calls[0]?.env.GIT_CONFIG_NOSYSTEM).toBe("1");
       expect(calls[0]?.env.GIT_TERMINAL_PROMPT).toBe("0");
@@ -328,14 +328,14 @@ describe("OSS lab command", () => {
       expect(calls[1]?.env.GIT_CONFIG_GLOBAL).toBe("/dev/null");
       expect(calls[1]?.env.GIT_CONFIG_NOSYSTEM).toBe("1");
       expect(calls[1]?.env.GIT_TERMINAL_PROMPT).toBe("0");
-      expect(calls[1]?.env.MIMETIC_GITHUB_TOKEN_RUNTIME).toBe("github-token-test");
+      expect(calls[1]?.env.HOMUN_GITHUB_TOKEN_RUNTIME).toBe("github-token-test");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
   });
 
   it("prefers anonymous repo access when token auth is present for a public repo", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-fallback-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-repo-preflight-fallback-"));
     const [assignment] = buildOssRepoAssignments(["example/public-fixture"], 1);
     if (!assignment) {
       throw new Error("Missing assignment.");
@@ -371,14 +371,14 @@ describe("OSS lab command", () => {
       expect(envs[0]?.GIT_CONFIG_NOSYSTEM).toBe("1");
       expect(envs[0]?.GIT_CONFIG_COUNT).toBeUndefined();
       expect(envs[0]?.GITHUB_TOKEN).toBeUndefined();
-      expect(envs[0]?.MIMETIC_GITHUB_TOKEN_RUNTIME).toBeUndefined();
+      expect(envs[0]?.HOMUN_GITHUB_TOKEN_RUNTIME).toBeUndefined();
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
   });
 
   it("classifies missing GitHub clone auth without leaking private repo labels when redacted", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-repo-preflight-fail-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-repo-preflight-fail-"));
     const [assignment] = buildOssRepoAssignments(["example/private-fixture"], 1);
     if (!assignment) {
       throw new Error("Missing assignment.");
@@ -419,7 +419,7 @@ describe("OSS lab command", () => {
     const result = await preflightOssMetaActorApiKey({
       env: {
         OPENAI_API_KEY: fakeOpenAiKey,
-        MIMETIC_OSS_META_ACTOR_PREFLIGHT_MODEL: "gpt-test"
+        HOMUN_OSS_META_ACTOR_PREFLIGHT_MODEL: "gpt-test"
       },
       fetchImpl: async () => response
     });
@@ -436,7 +436,7 @@ describe("OSS lab command", () => {
     expect(exitCodeForOssMetaLab(liveMetaResult({
       ok: false,
       error: {
-        code: "MIMETIC_META_RUN_FAILED",
+        code: "HOMUN_META_RUN_FAILED",
         message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
       }
     }))).toBe(2);
@@ -446,16 +446,16 @@ describe("OSS lab command", () => {
     const failedWithObserver = liveMetaResult({
       ok: false,
       error: {
-        code: "MIMETIC_META_RUN_FAILED",
+        code: "HOMUN_META_RUN_FAILED",
         message: "OSS meta-lab failed 4/4 live desktop or bootstrap launches."
       },
       observer: {
-        schema: "mimetic.observer-result.v1",
+        schema: "homun.observer-result.v1",
         ok: true,
-        cwd: "/tmp/mimetic",
+        cwd: "/tmp/homun",
         run: "oss-live-fixture",
-        observerPath: ".mimetic/runs/oss-live-fixture/observer/index.html",
-        observerDataPath: ".mimetic/runs/oss-live-fixture/observer/observer-data.json",
+        observerPath: ".homun/runs/oss-live-fixture/observer/index.html",
+        observerDataPath: ".homun/runs/oss-live-fixture/observer/observer-data.json",
         warnings: []
       }
     });
@@ -504,12 +504,12 @@ describe("OSS lab command", () => {
   it("cleans up stale OSS meta-lab sandboxes by provider metadata without exposing ids", async () => {
     const killed = new Set<string>();
     const listSandboxes = async () => [
-      { sandboxId: "sandbox-a", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" } },
-      { id: "sandbox-b", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" } },
-      { sandboxID: "sandbox-c", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" } },
+      { sandboxId: "sandbox-a", metadata: { mode: "oss-meta-lab", tool: "homun" } },
+      { id: "sandbox-b", metadata: { mode: "oss-meta-lab", tool: "homun" } },
+      { sandboxID: "sandbox-c", metadata: { mode: "oss-meta-lab", tool: "homun" } },
       { sandboxID: "sandbox-missing-metadata" },
-      { sandboxId: "sandbox-paused", metadata: { mode: "oss-meta-lab", tool: "mimetic-cli" }, state: "paused" },
-      { sandboxId: "sandbox-other", metadata: { mode: "other", tool: "mimetic-cli" } }
+      { sandboxId: "sandbox-paused", metadata: { mode: "oss-meta-lab", tool: "homun" }, state: "paused" },
+      { sandboxId: "sandbox-other", metadata: { mode: "other", tool: "homun" } }
     ].filter((sandbox) => {
       const id = sandbox.sandboxId ?? sandbox.sandboxID ?? sandbox.id;
       return !id || !killed.has(id);
@@ -580,7 +580,7 @@ describe("OSS lab command", () => {
   });
 
   it("allows OSS meta-lab dry-run lane counts above old magic caps", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-count-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-count-"));
     try {
       const result = await runOssMetaLab({
         count: 65,
@@ -599,35 +599,35 @@ describe("OSS lab command", () => {
     }
   });
 
-  it("normalizes host actor recommended proof to supported Mimetic flags", () => {
+  it("normalizes host actor recommended proof to supported Homun flags", () => {
     expect(normalizeHostActorRecommendedProof(
-      "Start Vite, then run mimetic run --app-url http://127.0.0.1:4173 --browser chromium --viewport desktop,mobile"
-    )).toBe("Start the target app on a loopback URL, then run `mimetic run --app-url http://127.0.0.1:<port> --sims 2`.");
+      "Start Vite, then run homun run --app-url http://127.0.0.1:4173 --browser chromium --viewport desktop,mobile"
+    )).toBe("Start the target app on a loopback URL, then run `homun run --app-url http://127.0.0.1:<port> --sims 2`.");
 
     expect(normalizeHostActorRecommendedProof(
-      "Run mimetic run --app-url http://127.0.0.1:5173 --sims 2 after the app starts."
-    )).toContain("mimetic run --app-url");
+      "Run homun run --app-url http://127.0.0.1:5173 --sims 2 after the app starts."
+    )).toContain("homun run --app-url");
   });
 
   it("renders a bash-valid remote bootstrap script with app surfaces and optional required actor readback", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-bootstrap-script-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-bootstrap-script-"));
     const scriptPath = path.join(cwd, "bootstrap.sh");
     try {
       const script = buildOssMetaBootstrapScriptFixture();
       await writeFile(scriptPath, script, "utf8");
       await execFileAsync("bash", ["-n", scriptPath]);
 
-      expect(script).toContain("STATE_DIR='/home/user/.mimetic-oss-lab/maciekt07-todoapp'");
+      expect(script).toContain("STATE_DIR='/home/user/.homun-oss-lab/maciekt07-todoapp'");
       expect(script).toContain("ROOT_DIR=\"$STATE_DIR\"");
       expect(script).toContain("APP_DIR='/home/user/maciekt07-todoapp'");
-      expect(script).toContain("NESTED_OBSERVER='/home/user/maciekt07-todoapp/.mimetic/runs/nested-maciekt07-todoapp/observer/index.html'");
-      expect(script).not.toContain("/home/user/mimetic-oss-lab/maciekt07-todoapp/repo");
+      expect(script).toContain("NESTED_OBSERVER='/home/user/maciekt07-todoapp/.homun/runs/nested-maciekt07-todoapp/observer/index.html'");
+      expect(script).not.toContain("/home/user/homun-oss-lab/maciekt07-todoapp/repo");
       expect(script).toContain("start_target_app_surface");
       expect(script).toContain("write_app_specific_browser_scenario");
       expect(script).toContain("app-surface-browser.yaml");
       expect(script).toContain("browser_scenario=authored");
       expect(script).toContain("selectorVisible: body");
-      expect(script).toContain('npx --no-install mimetic run --app-url "$APP_URL" --sims 2');
+      expect(script).toContain('npx --no-install homun run --app-url "$APP_URL" --sims 2');
       expect(script).toContain('open_browser_url "$APP_URL" app-desktop');
       expect(script).toContain("arrange_lab_windows");
       expect(script).toContain("visualStatus");
@@ -637,24 +637,24 @@ describe("OSS lab command", () => {
       expect(script).toContain("host_actor_plan=applied");
       expect(script).toContain("source=host-codex-plan");
       expect(script).toContain("reason=remote-actor-not-run");
-      expect(script).toContain("mimetic/personas");
-      expect(script).toContain("mimetic/scenarios");
-      expect(script).toContain("MIMETIC_OSS_META_HOST_CODEX_ACTOR");
-      expect(script).toContain("MIMETIC_OSS_META_CODEX_APP_SERVER");
-      expect(script).toContain("MIMETIC_PRIVATE_CODEX_APP_SERVER_URL");
-      expect(script).toContain("MIMETIC_CODEX_APP_SERVER_URL");
+      expect(script).toContain("homun/personas");
+      expect(script).toContain("homun/scenarios");
+      expect(script).toContain("HOMUN_OSS_META_HOST_CODEX_ACTOR");
+      expect(script).toContain("HOMUN_OSS_META_CODEX_APP_SERVER");
+      expect(script).toContain("HOMUN_PRIVATE_CODEX_APP_SERVER_URL");
+      expect(script).toContain("HOMUN_CODEX_APP_SERVER_URL");
       expect(script).toContain("wait_for_actor_attempt_if_required");
-      expect(script).toContain("MIMETIC_OSS_META_ACTOR_FIRST");
-      expect(script).toContain("MIMETIC_OSS_META_REQUIRE_ACTOR");
-      expect(script).toContain("MIMETIC_OSS_META_ACTOR_TIMEOUT_MS");
-      expect(script).toContain('MIMETIC_OSS_META_ACTOR_TIMEOUT_MS:-480000');
+      expect(script).toContain("HOMUN_OSS_META_ACTOR_FIRST");
+      expect(script).toContain("HOMUN_OSS_META_REQUIRE_ACTOR");
+      expect(script).toContain("HOMUN_OSS_META_ACTOR_TIMEOUT_MS");
+      expect(script).toContain('HOMUN_OSS_META_ACTOR_TIMEOUT_MS:-480000');
       expect(script).toContain("ACTOR_TIMEOUT_SECONDS");
       expect(script).toContain("Do not wait on long-running watchers");
       expect(script).toContain("coverage-map.md");
       expect(script).toContain("Do not stop at install/init proof");
-      expect(script).toContain("Run npx --no-install mimetic run --help and verify --app-url is available");
-      expect(script).toContain("do not use mimetic watch --sims as app behavior proof");
-      expect(script).toContain("MIMETIC_OSS_META_ACTOR_MODEL");
+      expect(script).toContain("Run npx --no-install homun run --help and verify --app-url is available");
+      expect(script).toContain("do not use homun watch --sims as app behavior proof");
+      expect(script).toContain("HOMUN_OSS_META_ACTOR_MODEL");
       expect(script).toContain("actor_log_tail_begin");
       expect(script).toContain("elapsed_ms=$((now_ms - started_ms))");
       expect(script).toContain("ACTOR_LAST_MESSAGE_PATH");
@@ -666,9 +666,9 @@ describe("OSS lab command", () => {
       expect(script).toContain("codex-app-server/summary.json");
       expect(script).toContain("codex-app-server/events.ndjson");
       expect(script).toContain("codex-app-server/transcript.txt");
-      expect(script).toContain("mimetic.codex-app-server-trace.projected.v1");
+      expect(script).toContain("homun.codex-app-server-trace.projected.v1");
       expect(script).toContain("projectTraceJson");
-      expect(script).toContain("mimetic.oss-meta-nested-step-trace-summary.v1");
+      expect(script).toContain("homun.oss-meta-nested-step-trace-summary.v1");
       expect(script).toContain("nestedStepTraceSummary");
       expect(script).not.toContain("codex_app_server_client=placeholder");
       expect(script).not.toContain("source=codex-app-server-client");
@@ -682,17 +682,17 @@ describe("OSS lab command", () => {
       expect(script).toContain("--dangerously-bypass-approvals-and-sandbox");
       expect(script).toContain("--output-last-message");
       expect(script).toContain("CODEX_COMMAND=");
-      expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="${MIMETIC_CODEX_API_KEY:-}"');
-      expect(script).toContain('MIMETIC_PRIVATE_CODEX_APP_SERVER_URL="${MIMETIC_CODEX_APP_SERVER_URL:-}"');
+      expect(script).toContain('HOMUN_PRIVATE_CODEX_API_KEY="${HOMUN_CODEX_API_KEY:-}"');
+      expect(script).toContain('HOMUN_PRIVATE_CODEX_APP_SERVER_URL="${HOMUN_CODEX_APP_SERVER_URL:-}"');
       expect(script).toContain("unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN");
-      expect(script).toContain("unset MIMETIC_CODEX_API_KEY MIMETIC_CODEX_ACCESS_TOKEN MIMETIC_CODEX_APP_SERVER_URL MIMETIC_GITHUB_TOKEN");
-      expect(script).toContain('CODEX_API_KEY="\\$MIMETIC_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
-      expect(script).toContain('CODEX_ACCESS_TOKEN="\\$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
-      expect(script).toContain('MIMETIC_PRIVATE_CODEX_API_KEY="$MIMETIC_PRIVATE_CODEX_API_KEY" MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN="$MIMETIC_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"');
+      expect(script).toContain("unset HOMUN_CODEX_API_KEY HOMUN_CODEX_ACCESS_TOKEN HOMUN_CODEX_APP_SERVER_URL HOMUN_GITHUB_TOKEN");
+      expect(script).toContain('CODEX_API_KEY="\\$HOMUN_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
+      expect(script).toContain('CODEX_ACCESS_TOKEN="\\$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
+      expect(script).toContain('HOMUN_PRIVATE_CODEX_API_KEY="$HOMUN_PRIVATE_CODEX_API_KEY" HOMUN_PRIVATE_CODEX_ACCESS_TOKEN="$HOMUN_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"');
       expect(script).toContain("GIT_ASKPASS=false SSH_ASKPASS=false GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone");
       expect(script).toContain("clone_auth=anonymous");
       expect(script).toContain("clone_auth=anonymous_failed retry=token_clone");
-      expect(script).toContain('MIMETIC_GITHUB_TOKEN_RUNTIME="$MIMETIC_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone');
+      expect(script).toContain('HOMUN_GITHUB_TOKEN_RUNTIME="$HOMUN_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone');
       expect(script).toContain("clone_auth=token_failed");
       expect(script).not.toContain("command -v codex");
       expect(script).not.toContain("--ask-for-approval");
@@ -708,25 +708,25 @@ describe("OSS lab command", () => {
     const result = await runCli(["lab", "oss", "--help"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Usage: mimetic lab oss");
+    expect(result.stdout).toContain("Usage: homun lab oss");
     expect(result.stdout).toContain("Alias: run the bundled OSS meta-lab manifest");
     expect(result.stdout).toContain("--repos");
-    expect(result.stdout).toContain("mimetic lab run oss");
-    expect(result.stdout).toContain("mimetic lab oss-smoke");
+    expect(result.stdout).toContain("homun lab run oss");
+    expect(result.stdout).toContain("homun lab oss-smoke");
   });
 
   it("keeps disposable-clone safety on lab oss-smoke", async () => {
     const result = await runCli(["lab", "oss-smoke", "--help"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Usage: mimetic lab oss-smoke");
+    expect(result.stdout).toContain("Usage: homun lab oss-smoke");
     expect(result.stdout).toContain("Clone lightweight public OSS repos");
     expect(result.stdout).toContain("--keep");
     expect(result.stdout).toContain("removed by default");
   });
 
   it("renders a no-network OSS meta-lab contract from --repos", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-"));
     const result = await runCli([
       "lab",
       "oss",
@@ -749,16 +749,16 @@ describe("OSS lab command", () => {
       observer: { observerPath: string };
       schema: string;
     };
-    expect(json.schema).toBe("mimetic.oss-meta-lab-result.v1");
+    expect(json.schema).toBe("homun.oss-meta-lab-result.v1");
     expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
       "repo-01",
       "repo-02",
       "repo-03",
       "repo-04"
     ]);
-    expect(json.observer.observerPath).toBe(".mimetic/runs/oss-meta-test/observer/index.html");
+    expect(json.observer.observerPath).toBe(".homun/runs/oss-meta-test/observer/index.html");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-test", "run.json"), "utf8")) as {
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "oss-meta-test", "run.json"), "utf8")) as {
       cwd: string;
       mode: string;
       streams: Array<{
@@ -768,17 +768,17 @@ describe("OSS lab command", () => {
     };
     expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
     expect(bundle.mode).toBe("dry-run");
-    expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install mimetic init --yes");
-    expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install mimetic run --app-url");
+    expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install homun init --yes");
+    expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install homun run --app-url");
     expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/repo-01");
   });
 
   it("runs the bundled OSS meta-lab through the generic lab runner", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-generic-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-generic-"));
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
-    await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
-      "schema: mimetic.lab.v2",
+    await mkdir(path.join(cwd, "homun", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "homun", "labs", "oss.yaml"), [
+      "schema: homun.lab.v2",
       "id: oss",
       "subject:",
       "  source: clone",
@@ -813,7 +813,7 @@ describe("OSS lab command", () => {
       dryRun: boolean;
       schema: string;
     };
-    expect(json.schema).toBe("mimetic.oss-meta-lab-result.v1");
+    expect(json.schema).toBe("homun.oss-meta-lab-result.v1");
     expect(json.dryRun).toBe(true);
     expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
       "CorentinTh/it-tools",
@@ -824,11 +824,11 @@ describe("OSS lab command", () => {
   it("forces repo-label redaction when repos are overridden on the CLI (privacy invariant)", async () => {
     // Regression: a CLI --repos override must force redactRepos=true so an authorized private
     // slug never reaches durable artifacts, even with no policies.redactRepos in the lab.
-    const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-redact-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-redact-"));
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
-    await mkdir(path.join(cwd, "mimetic", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "mimetic", "labs", "oss.yaml"), [
-      "schema: mimetic.lab.v2",
+    await mkdir(path.join(cwd, "homun", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "homun", "labs", "oss.yaml"), [
+      "schema: homun.lab.v2",
       "id: oss",
       "subject:",
       "  source: clone",
@@ -859,7 +859,7 @@ describe("OSS lab command", () => {
     delete process.env.OPENAI_API_KEY;
 
     try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-waiting-"));
+      const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-waiting-"));
       const result = await runCli([
         "lab",
         "oss",
@@ -884,7 +884,7 @@ describe("OSS lab command", () => {
       expect(json.sandboxes).toEqual([]);
       expect(json.warnings.join("\n")).toContain("waiting on env vars");
 
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-waiting-test", "run.json"), "utf8")) as {
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "oss-meta-waiting-test", "run.json"), "utf8")) as {
         cwd: string;
         mode: string;
         review: { verdict: string };
@@ -923,7 +923,7 @@ describe("OSS lab command", () => {
     delete process.env.OPENAI_API_KEY;
 
     try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-immediate-observer-"));
+      const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-immediate-observer-"));
       let readyObserverPath = "";
       let readyObserverDataPath = "";
       const result = await runOssMetaLab({
@@ -946,8 +946,8 @@ describe("OSS lab command", () => {
       });
 
       expect(result.ok).toBe(true);
-      expect(readyObserverPath).toBe(".mimetic/runs/oss-meta-immediate-observer-test/observer/index.html");
-      expect(readyObserverDataPath).toBe(".mimetic/runs/oss-meta-immediate-observer-test/observer/observer-data.json");
+      expect(readyObserverPath).toBe(".homun/runs/oss-meta-immediate-observer-test/observer/index.html");
+      expect(readyObserverDataPath).toBe(".homun/runs/oss-meta-immediate-observer-test/observer/observer-data.json");
     } finally {
       if (previousE2b === undefined) {
         delete process.env.E2B_API_KEY;
@@ -967,17 +967,17 @@ describe("OSS lab command", () => {
     const previousOpenai = process.env.OPENAI_API_KEY;
     const previousCodexApiKey = process.env.CODEX_API_KEY;
     const previousCodexAccessToken = process.env.CODEX_ACCESS_TOKEN;
-    const previousActorFirst = process.env.MIMETIC_OSS_META_ACTOR_FIRST;
-    const previousRequireActor = process.env.MIMETIC_OSS_META_REQUIRE_ACTOR;
+    const previousActorFirst = process.env.HOMUN_OSS_META_ACTOR_FIRST;
+    const previousRequireActor = process.env.HOMUN_OSS_META_REQUIRE_ACTOR;
     process.env.E2B_API_KEY = "fake-e2b-key";
     delete process.env.OPENAI_API_KEY;
     delete process.env.CODEX_API_KEY;
     delete process.env.CODEX_ACCESS_TOKEN;
-    process.env.MIMETIC_OSS_META_ACTOR_FIRST = "1";
-    process.env.MIMETIC_OSS_META_REQUIRE_ACTOR = "1";
+    process.env.HOMUN_OSS_META_ACTOR_FIRST = "1";
+    process.env.HOMUN_OSS_META_REQUIRE_ACTOR = "1";
 
     try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-actor-auth-waiting-"));
+      const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-actor-auth-waiting-"));
       const result = await runCli([
         "lab",
         "oss",
@@ -998,7 +998,7 @@ describe("OSS lab command", () => {
       const json = JSON.parse(result.stdout) as { warnings: string[] };
       expect(json.warnings.join("\n")).toContain("CODEX_API_KEY or CODEX_ACCESS_TOKEN");
 
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-actor-auth-waiting-test", "run.json"), "utf8")) as {
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "oss-meta-actor-auth-waiting-test", "run.json"), "utf8")) as {
         simulations: Array<{ currentStep: string; status: string }>;
       };
       expect(bundle.simulations[0]).toMatchObject({
@@ -1014,10 +1014,10 @@ describe("OSS lab command", () => {
       else process.env.CODEX_API_KEY = previousCodexApiKey;
       if (previousCodexAccessToken === undefined) delete process.env.CODEX_ACCESS_TOKEN;
       else process.env.CODEX_ACCESS_TOKEN = previousCodexAccessToken;
-      if (previousActorFirst === undefined) delete process.env.MIMETIC_OSS_META_ACTOR_FIRST;
-      else process.env.MIMETIC_OSS_META_ACTOR_FIRST = previousActorFirst;
-      if (previousRequireActor === undefined) delete process.env.MIMETIC_OSS_META_REQUIRE_ACTOR;
-      else process.env.MIMETIC_OSS_META_REQUIRE_ACTOR = previousRequireActor;
+      if (previousActorFirst === undefined) delete process.env.HOMUN_OSS_META_ACTOR_FIRST;
+      else process.env.HOMUN_OSS_META_ACTOR_FIRST = previousActorFirst;
+      if (previousRequireActor === undefined) delete process.env.HOMUN_OSS_META_REQUIRE_ACTOR;
+      else process.env.HOMUN_OSS_META_REQUIRE_ACTOR = previousRequireActor;
     }
   });
 
@@ -1026,16 +1026,16 @@ describe("OSS lab command", () => {
     const previousOpenai = process.env.OPENAI_API_KEY;
     const previousCodexApiKey = process.env.CODEX_API_KEY;
     const previousCodexAccessToken = process.env.CODEX_ACCESS_TOKEN;
-    const previousActorFirst = process.env.MIMETIC_OSS_META_ACTOR_FIRST;
-    const previousRequireActor = process.env.MIMETIC_OSS_META_REQUIRE_ACTOR;
+    const previousActorFirst = process.env.HOMUN_OSS_META_ACTOR_FIRST;
+    const previousRequireActor = process.env.HOMUN_OSS_META_REQUIRE_ACTOR;
     const previousFetch = globalThis.fetch;
     const fakeOpenAiKey = `sk-${"testsecretvalue1234567890abcd"}`;
     process.env.E2B_API_KEY = "fake-e2b-key";
     process.env.OPENAI_API_KEY = fakeOpenAiKey;
     delete process.env.CODEX_API_KEY;
     delete process.env.CODEX_ACCESS_TOKEN;
-    process.env.MIMETIC_OSS_META_ACTOR_FIRST = "1";
-    process.env.MIMETIC_OSS_META_REQUIRE_ACTOR = "1";
+    process.env.HOMUN_OSS_META_ACTOR_FIRST = "1";
+    process.env.HOMUN_OSS_META_REQUIRE_ACTOR = "1";
     globalThis.fetch = (async () => new Response(JSON.stringify({
       error: {
         code: "insufficient_quota",
@@ -1044,7 +1044,7 @@ describe("OSS lab command", () => {
     }), { status: 429 })) as typeof fetch;
 
     try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "mimetic-oss-meta-actor-preflight-"));
+      const cwd = await mkdtemp(path.join(tmpdir(), "homun-oss-meta-actor-preflight-"));
       const result = await runCli([
         "lab",
         "oss",
@@ -1068,7 +1068,7 @@ describe("OSS lab command", () => {
       expect(json.warnings.join("\n")).not.toContain("Invalid API key format");
       expect(json.warnings.join("\n")).not.toContain("sk-testsecretvalue");
 
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", "oss-meta-actor-preflight-test", "run.json"), "utf8")) as {
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "oss-meta-actor-preflight-test", "run.json"), "utf8")) as {
         review: { verdict: string };
         simulations: Array<{ currentStep: string; status: string }>;
       };
@@ -1088,10 +1088,10 @@ describe("OSS lab command", () => {
       else process.env.CODEX_API_KEY = previousCodexApiKey;
       if (previousCodexAccessToken === undefined) delete process.env.CODEX_ACCESS_TOKEN;
       else process.env.CODEX_ACCESS_TOKEN = previousCodexAccessToken;
-      if (previousActorFirst === undefined) delete process.env.MIMETIC_OSS_META_ACTOR_FIRST;
-      else process.env.MIMETIC_OSS_META_ACTOR_FIRST = previousActorFirst;
-      if (previousRequireActor === undefined) delete process.env.MIMETIC_OSS_META_REQUIRE_ACTOR;
-      else process.env.MIMETIC_OSS_META_REQUIRE_ACTOR = previousRequireActor;
+      if (previousActorFirst === undefined) delete process.env.HOMUN_OSS_META_ACTOR_FIRST;
+      else process.env.HOMUN_OSS_META_ACTOR_FIRST = previousActorFirst;
+      if (previousRequireActor === undefined) delete process.env.HOMUN_OSS_META_REQUIRE_ACTOR;
+      else process.env.HOMUN_OSS_META_REQUIRE_ACTOR = previousRequireActor;
     }
   });
 
@@ -1100,13 +1100,13 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt: "2026-06-04T10:00:00.000Z",
-      cwd: "/tmp/mimetic-oss-meta-fixture",
+      cwd: "/tmp/homun-oss-meta-fixture",
       dryRun: false,
       lanes: [
         {
           error: "Invalid API key format: expected [redacted-e2b-key].",
           hostActorPlan: {
-            schema: "mimetic.oss-host-actor-plan.v1",
+            schema: "homun.oss-host-actor-plan.v1",
             generatedAt: "2026-06-04T10:00:00.000Z",
             personas: [
               {
@@ -1116,7 +1116,7 @@ describe("OSS lab command", () => {
                 traits: ["public_safe"]
               }
             ],
-            recommendedProof: "Start the app, then run mimetic run --app-url http://127.0.0.1:5173 --sims 2.",
+            recommendedProof: "Start the app, then run homun run --app-url http://127.0.0.1:5173 --sims 2.",
             repo: "maciekt07/TodoApp",
             scenarios: [
               {
@@ -1154,7 +1154,7 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt: "2026-06-04T10:05:00.000Z",
-      cwd: "/tmp/mimetic-oss-meta-app-server-fixture",
+      cwd: "/tmp/homun-oss-meta-app-server-fixture",
       dryRun: false,
       lanes: [
         {
@@ -1162,8 +1162,8 @@ describe("OSS lab command", () => {
             codexMode: "app-server-client",
             completionPath: "/remote/todoapp/completion.json",
             logPath: "/remote/todoapp/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/todoapp/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/todoapp/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "codex_app_server_client=provided\nactor_status=suspended source=codex-app-server-client"
           },
@@ -1176,7 +1176,7 @@ describe("OSS lab command", () => {
             checkedAt: "2026-06-04T10:06:00.000Z",
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
-            reason: "Target app surface, nested Mimetic proof, and nested Observer were checked.",
+            reason: "Target app surface, nested Homun proof, and nested Observer were checked.",
             status: "passed",
             visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
             visualStatus: "visible",
@@ -1203,7 +1203,7 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.terminal?.tail).toContain("source=codex-app-server-client");
     expect(bundle.events.find((event) => event.type === "oss-meta.codex.prompt.ready")?.message).toContain("app-server client hook");
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
-      schema: "mimetic.meaningful-use-score.v1",
+      schema: "homun.meaningful-use-score.v1",
       status: "fail"
     });
     expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain("Required actor did not pass (suspended).");
@@ -1231,7 +1231,7 @@ describe("OSS lab command", () => {
       checkedAt: "2026-06-04T10:06:00.000Z",
       nestedObserverPresent: true,
       nestedStepTraceSummary: {
-        schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+        schema: "homun.oss-meta-nested-step-trace-summary.v1",
         redaction: {
           status: "passed",
           notes: "Fixture summary stores public-safe nested trace metadata only."
@@ -1245,7 +1245,7 @@ describe("OSS lab command", () => {
         },
         scenario: {
           id: "todo-list-browser",
-          source: "mimetic/scenarios/todo-list-browser.yaml",
+          source: "homun/scenarios/todo-list-browser.yaml",
           sourceDigest: "abcdef123456",
           stepCount: 2,
           title: "Todo list browser"
@@ -1299,7 +1299,7 @@ describe("OSS lab command", () => {
         ]
       },
       nestedVerifyPassed: true,
-      reason: "Target app surface, nested Mimetic proof, nested Observer, and Codex app-server actor evidence were checked.",
+      reason: "Target app surface, nested Homun proof, nested Observer, and Codex app-server actor evidence were checked.",
       setupQuality: highLeverageSetupQualityFixture(),
       status: "passed",
       visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
@@ -1309,7 +1309,7 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt: "2026-06-04T10:05:00.000Z",
-      cwd: "/tmp/mimetic-oss-meta-app-server-evidence-fixture",
+      cwd: "/tmp/homun-oss-meta-app-server-evidence-fixture",
       dryRun: false,
       lanes: [
         {
@@ -1321,8 +1321,8 @@ describe("OSS lab command", () => {
             codexMode: "app-server-client",
             completionPath: "/remote/todoapp/completion.json",
             logPath: "/remote/todoapp/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/todoapp/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/todoapp/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "codex_app_server_client=provided\nactor_status=passed source=codex-app-server"
           },
@@ -1363,7 +1363,7 @@ describe("OSS lab command", () => {
       kind: "filesystem"
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
-      label: "nested Mimetic proof",
+      label: "nested Homun proof",
       path: "nested-evidence/oss-01-desktop-nested-proof.json",
       kind: "trace"
     });
@@ -1380,7 +1380,7 @@ describe("OSS lab command", () => {
     expect(artifactRefs.every((ref) => !ref.includes("/remote/"))).toBe(true);
     expect(artifactRefs.every((ref) => !path.isAbsolute(ref.split(":").slice(1).join(":")))).toBe(true);
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
-      schema: "mimetic.meaningful-use-score.v1",
+      schema: "homun.meaningful-use-score.v1",
       status: "pass",
       score: 100,
       hardFailures: []
@@ -1388,7 +1388,7 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.completion?.meaningfulUse?.components.map((component) => component.id)).toEqual([
       "setup-correctness",
       "filesystem-evidence",
-      "nested-mimetic-evidence",
+      "nested-homun-evidence",
       "actor-activity",
       "product-surface",
       "feedback-quality"
@@ -1398,7 +1398,7 @@ describe("OSS lab command", () => {
     const persistedSerialized = JSON.stringify(persisted);
     const persistedRefs = persisted.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
     expect(persisted.cwd).toBe("[target-cwd]");
-    expect(persistedSerialized).not.toContain("/tmp/mimetic-oss-meta-app-server-evidence-fixture");
+    expect(persistedSerialized).not.toContain("/tmp/homun-oss-meta-app-server-evidence-fixture");
     expect(persistedSerialized).not.toContain("/remote/todoapp");
     expect(persistedSerialized).not.toContain("/home/user");
     expect(persisted.streams[0]?.codex).toMatchObject({
@@ -1409,7 +1409,7 @@ describe("OSS lab command", () => {
     expect(persistedRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
     const observerData = buildObserverData(persisted);
     expect(observerData.streams[0]?.artifacts).toContainEqual({
-      label: "nested Mimetic proof",
+      label: "nested Homun proof",
       path: "nested-evidence/oss-01-desktop-nested-proof.json",
       kind: "trace"
     });
@@ -1419,13 +1419,13 @@ describe("OSS lab command", () => {
   it("redacts structured Codex app-server trace evidence for private repo meta-labs", () => {
     const assignments = buildOssRepoAssignments(["maintainer/private-cinema-app"], 1);
     const appServerCompletion: OssMetaLabCompletion = {
-      actorLastMessageTail: "Set up private-cinema-app and ran Mimetic.",
+      actorLastMessageTail: "Set up private-cinema-app and ran Homun.",
       actorStatus: "passed",
       appServerActorEvidence: {
         eventsPath: "codex-app-server/oss-01-desktop-events.ndjson",
         eventsText: "agent mentioned maintainer/private-cinema-app",
         traceJson: {
-          schema: "mimetic.codex-app-server-trace.projected.v1",
+          schema: "homun.codex-app-server-trace.projected.v1",
           status: "passed",
           messages: [
             { text: "Implemented private-cinema-app setup in maintainer/private-cinema-app." }
@@ -1443,7 +1443,7 @@ describe("OSS lab command", () => {
       checkedAt: "2026-06-05T10:06:00.000Z",
       nestedObserverPresent: true,
       nestedStepTraceSummary: {
-        schema: "mimetic.oss-meta-nested-step-trace-summary.v1",
+        schema: "homun.oss-meta-nested-step-trace-summary.v1",
         redaction: {
           status: "passed",
           notes: "mentions private-cinema-app /remote/private-cinema-app github_pat_fakepat123456789012"
@@ -1457,7 +1457,7 @@ describe("OSS lab command", () => {
         },
         scenario: {
           id: "private-cinema-app-flow",
-          source: "/remote/private-cinema-app/mimetic/scenarios/private.yaml",
+          source: "/remote/private-cinema-app/homun/scenarios/private.yaml",
           sourceDigest: "abc123",
           stepCount: 1,
           title: "private-cinema-app flow"
@@ -1489,7 +1489,7 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt: "2026-06-05T10:05:00.000Z",
-      cwd: "/tmp/mimetic-oss-meta-app-server-redaction-fixture",
+      cwd: "/tmp/homun-oss-meta-app-server-redaction-fixture",
       dryRun: false,
       lanes: [
         {
@@ -1497,8 +1497,8 @@ describe("OSS lab command", () => {
             codexMode: "app-server-client",
             completionPath: "/remote/repo/completion.json",
             logPath: "/remote/repo/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "actor_status=passed source=codex-app-server"
           },
@@ -1530,7 +1530,7 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt,
-      cwd: "/tmp/mimetic-oss-meta-fixture",
+      cwd: "/tmp/homun-oss-meta-fixture",
       dryRun: false,
       lanes: [
         {
@@ -1543,15 +1543,15 @@ describe("OSS lab command", () => {
             codexMode: "tui-attempted",
             completionPath: "/remote/it-tools/completion.json",
             logPath: "/remote/it-tools/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/it-tools/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/it-tools/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started"
           },
           completion: {
             actorLogPath: "/remote/it-tools/actor.log",
-            actorLogTail: "codex actor attempt\nnpx --no-install mimetic init --yes\nactor_exit=0",
-            actorLastMessageTail: "Set up Mimetic, but the installed CLI does **not** expose run --app-url in the proof path.",
+            actorLogTail: "codex actor attempt\nnpx --no-install homun init --yes\nactor_exit=0",
+            actorLastMessageTail: "Set up Homun, but the installed CLI does **not** expose run --app-url in the proof path.",
             actorPid: 4321,
             actorStatus: "running",
             appLogPath: "/remote/it-tools/app.log",
@@ -1564,9 +1564,9 @@ describe("OSS lab command", () => {
             logTail: "nested verify passed\n== bootstrap complete ==",
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
-            reason: "Nested Mimetic proof completed and nested Observer path was checked.",
+            reason: "Nested Homun proof completed and nested Observer path was checked.",
             setupQuality: {
-              schema: "mimetic.setup-quality.v1",
+              schema: "homun.setup-quality.v1",
               generatedAt: "2026-06-02T08:31:00.000Z",
               redaction: {
                 status: "passed",
@@ -1577,33 +1577,33 @@ describe("OSS lab command", () => {
               status: "needs_review",
               checks: [
                 {
-                  id: "mimetic-config",
-                  label: "Mimetic config",
+                  id: "homun-config",
+                  label: "Homun config",
                   ok: true,
-                  detail: "mimetic/config.ts exists."
+                  detail: "homun/config.ts exists."
                 },
                 {
                   id: "package-script",
                   label: "Package script",
                   ok: false,
-                  detail: "package.json does not expose a Mimetic script."
+                  detail: "package.json does not expose a Homun script."
                 }
               ],
               tree: [
                 { path: "package.json", type: "file", sizeBytes: 240 },
-                { path: "mimetic", type: "directory" },
-                { path: "mimetic/config.ts", type: "file", sizeBytes: 120 }
+                { path: "homun", type: "directory" },
+                { path: "homun/config.ts", type: "file", sizeBytes: 120 }
               ],
               previews: [
                 {
-                  path: "mimetic/config.ts",
+                  path: "homun/config.ts",
                   language: "typescript",
                   truncated: false,
                   text: "export default { run: { appUrl: 'http://127.0.0.1:5173' } };"
                 }
               ],
               studyQuality: {
-                schema: "mimetic.study-quality.v1",
+                schema: "homun.study-quality.v1",
                 rating: "ceremonial",
                 summary: "Study-quality rating ceremonial from 2/5 app-specific leverage signals.",
                 checks: [
@@ -1632,7 +1632,7 @@ describe("OSS lab command", () => {
               packageScripts: {
                 dev: "vite"
               },
-              mimetic: {
+              homun: {
                 configPresent: true,
                 personaCount: 1,
                 scenarioCount: 1,
@@ -1660,18 +1660,18 @@ describe("OSS lab command", () => {
             codexMode: "tui-attempted",
             completionPath: "/remote/todoapp/completion.json",
             logPath: "/remote/todoapp/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/todoapp/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/todoapp/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started"
           },
           completion: {
             checkedAt: "2026-06-02T08:31:10.000Z",
             exitCode: 1,
-            logTail: "npx --no-install mimetic verify --run latest\nverification failed",
+            logTail: "npx --no-install homun verify --run latest\nverification failed",
             nestedObserverPresent: false,
             nestedVerifyPassed: false,
-            reason: "Bootstrap exited before nested Mimetic proof completed.",
+            reason: "Bootstrap exited before nested Homun proof completed.",
             status: "failed"
           },
           repo: "maciekt07/TodoApp",
@@ -1691,8 +1691,8 @@ describe("OSS lab command", () => {
     expect(bundle.review.summary).toContain("failed");
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
-      actorLogTail: "codex actor attempt\nnpx --no-install mimetic init --yes\nactor_exit=0",
-      actorLastMessageTail: "Set up Mimetic, but the installed CLI does **not** expose run --app-url in the proof path.",
+      actorLogTail: "codex actor attempt\nnpx --no-install homun init --yes\nactor_exit=0",
+      actorLastMessageTail: "Set up Homun, but the installed CLI does **not** expose run --app-url in the proof path.",
       actorStatus: "running",
       appStatus: "running",
       appUrl: "http://127.0.0.1:5173",
@@ -1703,7 +1703,7 @@ describe("OSS lab command", () => {
       visualWindowCount: 3
     });
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
-      schema: "mimetic.meaningful-use-score.v1",
+      schema: "homun.meaningful-use-score.v1",
       status: "partial"
     });
     expect(bundle.streams[0]?.completion?.meaningfulUse?.score).toBeGreaterThanOrEqual(45);
@@ -1715,7 +1715,7 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor last message tail:");
     expect(bundle.streams[0]?.terminal?.tail).toContain("study_quality: ceremonial");
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor log tail:");
-    expect(bundle.streams[0]?.terminal?.tail).toContain("npx --no-install mimetic init --yes");
+    expect(bundle.streams[0]?.terminal?.tail).toContain("npx --no-install homun init --yes");
     expect(bundle.streams[0]).toMatchObject({
       transport: "sse",
       embed: { kind: "screenshot", url: "../screenshots/oss-01-desktop.png" },
@@ -1750,10 +1750,10 @@ describe("OSS lab command", () => {
     });
     expect(bundle.feedbackCandidates).toHaveLength(3);
     expect(bundle.feedbackCandidates[0]).toMatchObject({
-      schema: "mimetic.feedback-candidate.v1",
+      schema: "homun.feedback-candidate.v1",
       failure_owner: "actor",
       proposed_next_state: "setup-quality-review",
-      summary: "Generated Mimetic setup for CorentinTh/it-tools needs review"
+      summary: "Generated Homun setup for CorentinTh/it-tools needs review"
     });
     expect(bundle.feedbackCandidates[0]?.evidence).toContainEqual({
       path: "setup-quality/oss-01-desktop-setup-quality.json",
@@ -1761,10 +1761,10 @@ describe("OSS lab command", () => {
       note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews."
     });
     expect(bundle.feedbackCandidates[1]).toMatchObject({
-      schema: "mimetic.feedback-candidate.v1",
+      schema: "homun.feedback-candidate.v1",
       failure_owner: "harness",
       proposed_next_state: "adapter-hardening",
-      summary: "Published Mimetic install path blocked app-url proof"
+      summary: "Published Homun install path blocked app-url proof"
     });
     expect(bundle.feedbackCandidates[1]?.evidence).toContainEqual({
       path: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
@@ -1772,10 +1772,10 @@ describe("OSS lab command", () => {
       note: "Public-safe actor last-message tail."
     });
     expect(bundle.feedbackCandidates[2]).toMatchObject({
-      schema: "mimetic.feedback-candidate.v1",
+      schema: "homun.feedback-candidate.v1",
       failure_owner: "actor",
       proposed_next_state: "study-quality-review",
-      summary: "Generated Mimetic setup for CorentinTh/it-tools was ceremonial"
+      summary: "Generated Homun setup for CorentinTh/it-tools was ceremonial"
     });
     expect(bundle.feedbackCandidates[2]?.evidence).toContainEqual({
       path: "setup-quality/oss-01-desktop-setup-quality.json",
@@ -1798,7 +1798,7 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt,
-      cwd: "/tmp/mimetic-oss-meta-timeout-fixture",
+      cwd: "/tmp/homun-oss-meta-timeout-fixture",
       dryRun: false,
       lanes: [
         {
@@ -1806,8 +1806,8 @@ describe("OSS lab command", () => {
             codexMode: "tui-attempted",
             completionPath: "/remote/drawdb/completion.json",
             logPath: "/remote/drawdb/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/drawdb/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/drawdb/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started"
           },
@@ -1833,7 +1833,7 @@ describe("OSS lab command", () => {
     expect(bundle.simulations.map((sim) => sim.status)).toEqual(["timed_out"]);
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["timed_out"]);
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
-      schema: "mimetic.meaningful-use-score.v1",
+      schema: "homun.meaningful-use-score.v1",
       status: "fail"
     });
     expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain("Remote bootstrap timed out.");
@@ -1849,7 +1849,7 @@ describe("OSS lab command", () => {
     const bundle = buildOssMetaBundleFixture({
       assignments,
       createdAt: "2026-06-02T10:30:00.000Z",
-      cwd: "/tmp/mimetic-oss-meta-private-fixture",
+      cwd: "/tmp/homun-oss-meta-private-fixture",
       dryRun: false,
       lanes: [
         {
@@ -1857,14 +1857,14 @@ describe("OSS lab command", () => {
             codexMode: "tui-attempted",
             completionPath: "/remote/repo-01/completion.json",
             logPath: "/remote/repo-01/bootstrap.log",
-            mimeticPackageUploaded: true,
-            nestedObserverPath: "/remote/repo-01/repo/.mimetic/runs/nested/observer/index.html",
+            homunPackageUploaded: true,
+            nestedObserverPath: "/remote/repo-01/repo/.homun/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started",
-            terminalTitle: "Mimetic 1 repo-01"
+            terminalTitle: "Homun 1 repo-01"
           },
           completion: {
-            actorLastMessageTail: "Configured Mimetic for maintainer/private-app in sandbox-private-123 and opened the private-app Observer.",
+            actorLastMessageTail: "Configured Homun for maintainer/private-app in sandbox-private-123 and opened the private-app Observer.",
             actorLogTail: [
               "git clone https://github.com/maintainer/private-app.git",
               "diff --git a/src/private-flow.ts b/src/private-flow.ts",
@@ -1883,7 +1883,7 @@ describe("OSS lab command", () => {
             checkedAt: "2026-06-02T10:31:00.000Z",
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
-            reason: "Target app surface, nested Mimetic proof, and nested Observer were checked in sandbox-private-123.",
+            reason: "Target app surface, nested Homun proof, and nested Observer were checked in sandbox-private-123.",
             status: "passed",
             visualStatus: "visible",
             visualWindowCount: 3

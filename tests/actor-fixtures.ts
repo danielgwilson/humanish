@@ -28,11 +28,11 @@ export function buildCodexResult(): CodexAppServerRunResult {
     warnings: 1
   };
   const trace: CodexAppServerTrace = {
-    schema: "mimetic.codex-app-server-trace.v1",
+    schema: "homun.codex-app-server-trace.v1",
     provider: "codex-app-server",
     protocolVersion: "v2",
     redaction: { status: "passed", notes: "synthetic redaction note" },
-    client: { name: "mimetic_cli", title: "Mimetic CLI", experimentalApi: false },
+    client: { name: "homun_cli", title: "Homun CLI", experimentalApi: false },
     server: { commandName: "codex", codexCliVersion: "1.2.3", transport: "stdio" },
     cwd: "[target-cwd]",
     promptDigest: "abc123def456",

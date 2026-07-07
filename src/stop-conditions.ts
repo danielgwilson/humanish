@@ -74,7 +74,7 @@ export function evaluateStopWhen(
 function pathOfUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   try {
-    return new URL(url, "http://mimetic.local").pathname;
+    return new URL(url, "http://homun.local").pathname;
   } catch {
     return undefined;
   }

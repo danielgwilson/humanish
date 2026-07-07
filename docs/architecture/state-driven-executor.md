@@ -16,7 +16,7 @@ You do not have to drive a screen with a vision model. You can point the loop at
 **an already-running local app** and drive it through that app's **in-process
 JavaScript automation contract** (e.g. `window.app.getState()`,
 `sendChat(text)`, `dispatch(action)`, `navigate(target)`), using `getState()` as
-the progress signal instead of a quantized screenshot — keeping mimetic's
+the progress signal instead of a quantized screenshot — keeping homun's
 composition (personas, the Observer, the normalized `ActorTrace` evidence
 bundle, redaction, and the friction / no-progress loop).
 
@@ -130,10 +130,10 @@ The supported library path. It keeps personas, the Observer, the evidence
 bundle, redaction, and the friction loop, while skipping E2B entirely:
 
 ```ts
-import { runLab, parseLabConfig, type CuaExecutor, type CuaProvider } from "mimetic-cli";
+import { runLab, parseLabConfig, type CuaExecutor, type CuaProvider } from "homun";
 
 // local-app YAML (shareable; fails closed without hooks):
-//   schema: mimetic.lab.v2
+//   schema: homun.lab.v2
 //   id: pixel-bae-state
 //   subject: { source: local-app, appUrl: http://localhost:5173 }
 //   actors: [{ type: openai-computer-use, persona: pixel-pat, mission: "…" }]
@@ -162,10 +162,10 @@ proof.
 Two boot-time fail-closed guards (both BEFORE any key check, so a CLI invocation
 never sees a misleading `KEYS_MISSING` first):
 
-- `MIMETIC_CUA_LAB_EXECUTOR_NO_PROVIDER` — `buildExecutor` without `buildProvider`
+- `HOMUN_CUA_LAB_EXECUTOR_NO_PROVIDER` — `buildExecutor` without `buildProvider`
   (a state executor MUST be paired with a non-vision provider). `buildProvider`
   ALONE is allowed — that is just a model swap on the normal E2B route.
-- `MIMETIC_CUA_LAB_LOCAL_APP_NO_EXECUTOR` — a `subject.source: local-app` config
+- `HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR` — a `subject.source: local-app` config
   run with no `buildExecutor` hook (there is no built-in in-process driver yet).
   A structured error, never a desktop attempt.
 

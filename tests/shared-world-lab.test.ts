@@ -93,10 +93,10 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
 /** A scripted command handler whose checkpoint output reflects the shared world version. */
 function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string; exitCode?: number } | undefined {
   return (command: string): { stdout?: string; exitCode?: number } | undefined => {
-    if (command.includes("browser_preference='firefox'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
-    if (command.includes("browser_preference='chrome'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
-    if (command.includes("browser_preference='chromium'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
-    if (command.includes("browser_preference='default'")) return { stdout: "MIMETIC_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='firefox'")) return { stdout: "HOMUN_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
+    if (command.includes("browser_preference='chrome'")) return { stdout: "HOMUN_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='chromium'")) return { stdout: "HOMUN_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
+    if (command.includes("browser_preference='default'")) return { stdout: "HOMUN_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
     if (command.includes("/status")) return { stdout: "0" }; // every detached step exits 0
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" }; // commit SHA
     if (command.includes("curl")) return { stdout: "READY" }; // readiness probe
@@ -235,7 +235,7 @@ const SHARED_WORLD_ADAPTER_NAMESPACE = "shared-world-adapter-proof";
 
 function sharedWorldFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
   return {
-    schema: "mimetic.adapter-score.v1",
+    schema: "homun.adapter-score.v1",
     namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
     status: "fail",
     score: 18,
@@ -249,7 +249,7 @@ function sharedWorldFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
 
 let cwd: string;
 beforeEach(async () => {
-  cwd = await mkdtemp(path.join(tmpdir(), "mimetic-shared-world-"));
+  cwd = await mkdtemp(path.join(tmpdir(), "homun-shared-world-"));
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
@@ -264,9 +264,9 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.topology).toBe("shared-world");
     expect(result.roleCount).toBe(2);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.attributionClass).toBe("shared-world");
-    expect(bundle.sharedWorld.schema).toBe("mimetic.shared-world.v1");
+    expect(bundle.sharedWorld.schema).toBe("homun.shared-world.v1");
     expect(bundle.sharedWorld.attributionLimits).toEqual(
       expect.arrayContaining(["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"])
     );
@@ -286,7 +286,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.ok).toBe(true);
     expect(withTemplate.created).toHaveLength(1);
     expect(withTemplate.templates).toEqual(["acme-desktop-with-runtimes"]);
-    const withBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const withBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
 
     // Byte-stable default: NO template → create called with NO template arg, bundle omits the field.
@@ -295,7 +295,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const result2 = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks: noTemplate.hooks });
     expect(result2.ok).toBe(true);
     expect(noTemplate.templates).toEqual([undefined]);
-    const noBundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result2.runId, "run.json"), "utf8"));
+    const noBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result2.runId, "run.json"), "utf8"));
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
@@ -313,7 +313,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(String(seatLaunches[0]!.call[1])).toContain("launch_firefox");
     expect(String(seatLaunches[0]!.call[1])).not.toContain("setsid -f google-chrome");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
 
     const verify = await verifyRun(cwd, result.runId);
@@ -358,7 +358,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(firstSeatCommand).toContain("\"password_manager_enabled\":false");
 
     // A checkpoint at baseline + after each turn → timeline = cp, turn, cp, turn, cp.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
     const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; name?: string; deltaFromPrev?: boolean; roleId?: string }>;
     expect(timeline.map((e) => e.kind)).toEqual(["checkpoint", "turn", "checkpoint", "turn", "checkpoint"]);
@@ -386,7 +386,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
 
     // Per-role actor traces written.
-    const actorsDir = await readdir(path.join(cwd, ".mimetic", "runs", result.runId, "actors"));
+    const actorsDir = await readdir(path.join(cwd, ".homun", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json"]);
   });
 
@@ -407,7 +407,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
         "utf8"
       );
       return [{
-        schema: "mimetic.adapter-artifact.v1",
+        schema: "homun.adapter-artifact.v1",
         namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
         label: "Shared-world adapter readback",
         path: "adapter/shared-world-readback.json",
@@ -420,7 +420,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(SHARED_WORLD_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("shared-world");
@@ -486,7 +486,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // Still ONE sandbox, still killed by id.
     expect(killed).toEqual([sandbox.sandboxId]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.events.some((e: { type: string }) => e.type === "shared-world.fail-fast")).toBe(true);
   });
 
@@ -509,7 +509,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.roles[1]?.status).not.toBe("blocked");
     expect(result.sequence).toEqual(["role-author", "role-reviewer"]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".mimetic", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("1/2 role(s)");
     expect(bundle.review.gaps[0]).toContain("failed (gave_up)");
@@ -530,7 +530,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.ok).toBe(false);
 
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
-      const text = await readFile(path.join(cwd, ".mimetic", "runs", result.runId, file), "utf8");
+      const text = await readFile(path.join(cwd, ".homun", "runs", result.runId, file), "utf8");
       expect(text, file).not.toContain(secret);
     }
   });
@@ -544,7 +544,7 @@ describe("verifyRun fails closed on each injected shared-world overclaim", () =>
     expect(result.ok).toBe(true);
     const baseline = await verifyRun(cwd, result.runId);
     expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
-    return { runId: result.runId, bundlePath: path.join(cwd, ".mimetic", "runs", result.runId, "run.json") };
+    return { runId: result.runId, bundlePath: path.join(cwd, ".homun", "runs", result.runId, "run.json") };
   }
 
   async function mutateAndVerify(mutate: (bundle: Record<string, unknown>) => void): Promise<boolean> {

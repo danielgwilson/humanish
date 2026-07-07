@@ -1,5 +1,5 @@
 {
-  "schema": "mimetic.scenario.v1",
+  "schema": "homun.scenario.v1",
   "id": "post-auth-return-dry-run",
   "title": "Post-auth return dry-run",
   "persona": "synthetic-returning-creator",

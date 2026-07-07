@@ -14,7 +14,7 @@
 import type { ActorPersonaRef, ActorStatus, ActorCompletionReason, ActorTrace } from "./actor-contract.js";
 
 /** The fail-closed marker a SLICE-1 live invocation surfaces (never a raw crash). */
-export const TERMINAL_AGENT_NOT_IMPLEMENTED_CODE = "MIMETIC_TERMINAL_AGENT_NOT_IMPLEMENTED" as const;
+export const TERMINAL_AGENT_NOT_IMPLEMENTED_CODE = "HOMUN_TERMINAL_AGENT_NOT_IMPLEMENTED" as const;
 
 /**
  * Options the engine hands the terminal agent session. The transport is the captured
@@ -41,7 +41,7 @@ export interface TerminalAgentSessionResult {
   status: ActorStatus;
   completionReason: ActorCompletionReason;
   reason: string;
-  /** The provider-neutral evidence projection (mimetic.actor-trace.v1, lane "terminal"). */
+  /** The provider-neutral evidence projection (homun.actor-trace.v1, lane "terminal"). */
   trace: ActorTrace;
 }
 

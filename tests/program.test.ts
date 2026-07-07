@@ -28,7 +28,7 @@ async function runCli(args: string[]): Promise<CliResult> {
   program.exitOverride();
 
   try {
-    await program.parseAsync(["node", "mimetic", ...args], { from: "node" });
+    await program.parseAsync(["node", "homun", ...args], { from: "node" });
   } catch (error) {
     if (
       error instanceof CommanderError &&
@@ -55,7 +55,7 @@ async function withTempApp<T>(
   files: Record<string, string>,
   callback: (cwd: string) => Promise<T>
 ): Promise<T> {
-  const cwd = await mkdtemp(path.join(os.tmpdir(), "mimetic-init-test-"));
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "homun-init-test-"));
 
   try {
     for (const [relativePath, contents] of Object.entries(files)) {
@@ -74,7 +74,7 @@ async function readJson(filePath: string): Promise<unknown> {
   return JSON.parse(await readFile(filePath, "utf8")) as unknown;
 }
 
-describe("mimetic CLI scaffold", () => {
+describe("homun CLI scaffold", () => {
   it("cleans up attached Observer watches on package-manager style termination signals", async () => {
     let exitCode = 0;
     const stdout: string[] = [];
@@ -92,10 +92,10 @@ describe("mimetic CLI scaffold", () => {
         }
       },
       {
-        schema: "mimetic.observer-result.v1",
+        schema: "homun.observer-result.v1",
         ok: true,
-        cwd: "/tmp/mimetic",
-        observerPath: ".mimetic/runs/run/observer/index.html",
+        cwd: "/tmp/homun",
+        observerPath: ".homun/runs/run/observer/index.html",
         run: "run",
         warnings: []
       },
@@ -132,7 +132,7 @@ describe("mimetic CLI scaffold", () => {
     const result = await runCli(["--help"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Usage: mimetic [options] [command]");
+    expect(result.stdout).toContain("Usage: homun [options] [command]");
     expect(result.stdout).toContain("init");
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("feedback");
@@ -165,12 +165,12 @@ describe("mimetic CLI scaffold", () => {
         changes: Array<{ action: string; path: string }>;
       };
 
-      expect(envelope.schema).toBe("mimetic.init-result.v1");
+      expect(envelope.schema).toBe("homun.init-result.v1");
       expect(envelope.ok).toBe(true);
       expect(envelope.mode).toBe("dry-run");
-      expect(envelope.changes.some((change) => change.path === "mimetic/config.ts")).toBe(true);
+      expect(envelope.changes.some((change) => change.path === "homun/config.ts")).toBe(true);
 
-      await expect(stat(path.join(cwd, "mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(cwd, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
       const packageJson = await readJson(path.join(cwd, "package.json")) as {
         scripts: Record<string, string>;
       };
@@ -194,15 +194,15 @@ describe("mimetic CLI scaffold", () => {
       };
       expect(envelope.ok).toBe(true);
       expect(envelope.mode).toBe("applied");
-      expect(envelope.changes.some((change) => change.path === ".mimetic/runs" && change.action === "mkdir")).toBe(true);
+      expect(envelope.changes.some((change) => change.path === ".homun/runs" && change.action === "mkdir")).toBe(true);
 
-      await expect(stat(path.join(cwd, "mimetic/personas/synthetic-new-user.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, "mimetic/labs/first-run.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, ".mimetic/runs"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, ".mimetic/local/labs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, "homun/personas/synthetic-new-user.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, "homun/labs/first-run.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".homun/runs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".homun/local/labs"))).resolves.toBeTruthy();
 
       const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
-      expect(gitignore).toContain(".mimetic/");
+      expect(gitignore).toContain(".homun/");
       expect(gitignore).toContain(".env*");
       expect(gitignore).toContain("!.env.example");
       expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(gitignore.lastIndexOf(".env*"));
@@ -211,10 +211,10 @@ describe("mimetic CLI scaffold", () => {
         scripts: Record<string, string>;
       };
       expect(packageJson.scripts.dev).toBe("vite");
-      expect(packageJson.scripts.mimetic).toBe("mimetic");
-      expect(packageJson.scripts["mimetic:watch"]).toBe("mimetic watch");
-      expect(packageJson.scripts["mimetic:watch:ci"]).toBe("mimetic watch --json --no-open");
-      expect(packageJson.scripts["mimetic:verify"]).toBe("mimetic verify");
+      expect(packageJson.scripts.homun).toBe("homun");
+      expect(packageJson.scripts["homun:watch"]).toBe("homun watch");
+      expect(packageJson.scripts["homun:watch:ci"]).toBe("homun watch --json --no-open");
+      expect(packageJson.scripts["homun:verify"]).toBe("homun verify");
     });
   });
 
@@ -227,14 +227,14 @@ describe("mimetic CLI scaffold", () => {
       const envelope = JSON.parse(result.stdout) as { mode: string };
       expect(result.exitCode).toBe(0);
       expect(envelope.mode).toBe("dry-run");
-      await expect(stat(path.join(cwd, "mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(cwd, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 
   it("does not overwrite existing starter files or conflicting scripts", async () => {
     await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app", scripts: { mimetic: "custom command" } }, null, 2),
-      "mimetic/README.md": "# Existing harness\n"
+      "package.json": JSON.stringify({ name: "fixture-app", scripts: { homun: "custom command" } }, null, 2),
+      "homun/README.md": "# Existing harness\n"
     }, async (cwd) => {
       const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
 
@@ -247,30 +247,30 @@ describe("mimetic CLI scaffold", () => {
       expect(envelope.ok).toBe(true);
       expect(envelope.changes).toContainEqual(expect.objectContaining({
         action: "skip",
-        path: "mimetic/README.md"
+        path: "homun/README.md"
       }));
       expect(envelope.changes).toContainEqual(expect.objectContaining({
         action: "update",
         path: "package.json",
         reason: expect.stringContaining("add scripts")
       }));
-      expect(envelope.warnings.join("\n")).toContain("Skipped existing mimetic/README.md");
+      expect(envelope.warnings.join("\n")).toContain("Skipped existing homun/README.md");
       expect(envelope.warnings.join("\n")).toContain("Preserved existing script values");
-      expect(await readFile(path.join(cwd, "mimetic/README.md"), "utf8")).toBe("# Existing harness\n");
+      expect(await readFile(path.join(cwd, "homun/README.md"), "utf8")).toBe("# Existing harness\n");
       const packageJson = await readJson(path.join(cwd, "package.json")) as {
         scripts: Record<string, string>;
       };
-      expect(packageJson.scripts.mimetic).toBe("custom command");
-      expect(packageJson.scripts["mimetic:run"]).toBe("mimetic run --dry-run");
-      expect(packageJson.scripts["mimetic:watch"]).toBe("mimetic watch");
+      expect(packageJson.scripts.homun).toBe("custom command");
+      expect(packageJson.scripts["homun:run"]).toBe("homun run --dry-run");
+      expect(packageJson.scripts["homun:watch"]).toBe("homun watch");
     });
   });
 
   it("lists and inspects lab manifests from the CLI", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v2",
+      "homun/labs/first-run.yaml": [
+        "schema: homun.lab.v2",
         "id: first-run",
         "title: First run",
         "subject:",
@@ -284,7 +284,7 @@ describe("mimetic CLI scaffold", () => {
       const inspect = await runCli(["lab", "inspect", "first-run", "--cwd", cwd, "--json"]);
 
       expect(list.exitCode).toBe(0);
-      expect(list.stdout).toContain("mimetic labs");
+      expect(list.stdout).toContain("homun labs");
       expect(list.stdout).toContain("first-run this-repo committed");
 
       const envelope = JSON.parse(inspect.stdout) as {
@@ -304,8 +304,8 @@ describe("mimetic CLI scaffold", () => {
   it("runs a synthetic lab manifest through run and watch", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v2",
+      "homun/labs/first-run.yaml": [
+        "schema: homun.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -358,8 +358,8 @@ describe("mimetic CLI scaffold", () => {
   it("fails closed when rerun flags are used on a non-CUA lab", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v2",
+      "homun/labs/first-run.yaml": [
+        "schema: homun.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -386,7 +386,7 @@ describe("mimetic CLI scaffold", () => {
       };
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("MIMETIC_UNSUPPORTED_RERUN_FLAGS");
+      expect(envelope.error.code).toBe("HOMUN_UNSUPPORTED_RERUN_FLAGS");
       expect(envelope.error.message).toContain("CUA fan-out");
       expect(envelope.error.message).toContain("synthetic");
     });
@@ -395,8 +395,8 @@ describe("mimetic CLI scaffold", () => {
   it("fails closed when direct run-only options are mixed with lab manifests", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "mimetic/labs/first-run.yaml": [
-        "schema: mimetic.lab.v2",
+      "homun/labs/first-run.yaml": [
+        "schema: homun.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -420,13 +420,13 @@ describe("mimetic CLI scaffold", () => {
       };
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("MIMETIC_APP_URL_OPTION_CONFLICT");
+      expect(envelope.error.code).toBe("HOMUN_APP_URL_OPTION_CONFLICT");
       expect(envelope.error.message).toContain("lab-compatible options");
     });
   });
 
   it("fails closed for invalid target cwd and invalid package.json", async () => {
-    const missingRoot = await mkdtemp(path.join(os.tmpdir(), "mimetic-missing-root-"));
+    const missingRoot = await mkdtemp(path.join(os.tmpdir(), "homun-missing-root-"));
     const missing = path.join(missingRoot, "missing");
     await rm(missingRoot, { force: true, recursive: true });
     const missingResult = await runCli(["init", "--dry-run", "--json", "--cwd", missing]);
@@ -437,7 +437,7 @@ describe("mimetic CLI scaffold", () => {
 
     expect(missingResult.exitCode).toBe(2);
     expect(missingEnvelope.ok).toBe(false);
-    expect(missingEnvelope.error.code).toBe("MIMETIC_INVALID_CWD");
+    expect(missingEnvelope.error.code).toBe("HOMUN_INVALID_CWD");
 
     await withTempApp({
       "package.json": "{ nope"
@@ -450,8 +450,8 @@ describe("mimetic CLI scaffold", () => {
 
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("MIMETIC_INVALID_PACKAGE_JSON");
-      await expect(stat(path.join(cwd, "mimetic"))).rejects.toMatchObject({ code: "ENOENT" });
+      expect(envelope.error.code).toBe("HOMUN_INVALID_PACKAGE_JSON");
+      await expect(stat(path.join(cwd, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 
@@ -480,9 +480,9 @@ describe("mimetic CLI scaffold", () => {
       };
 
       expect(result.exitCode).toBe(2);
-      expect(envelope.schema).toBe("mimetic.feedback-result.v1");
+      expect(envelope.schema).toBe("homun.feedback-result.v1");
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("MIMETIC_RUN_NOT_FOUND");
+      expect(envelope.error.code).toBe("HOMUN_RUN_NOT_FOUND");
     });
   });
 
@@ -493,7 +493,7 @@ describe("mimetic CLI scaffold", () => {
       const result = await runCli(["feedback", "draft", "--run", "latest", "--cwd", cwd]);
 
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("MIMETIC_RUN_NOT_FOUND");
+      expect(result.stdout).toContain("HOMUN_RUN_NOT_FOUND");
       expect(result.stderr).toBe("");
     });
   });

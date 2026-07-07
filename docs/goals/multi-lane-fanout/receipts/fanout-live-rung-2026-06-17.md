@@ -4,7 +4,7 @@ Date: 2026-06-17. Tree: main @ 6b5e524 (#168 merged). Operator: maintainer sessi
 dedicated danielgwilson-team E2B key (not a production key). Bounded by the goal packet's
 Provider Spend Policy.
 
-Command: `MIMETIC_LIVE_CUA=1 npx vitest run tests/cua-actor-lab.fanout.live.test.ts`
+Command: `HOMUN_LIVE_CUA=1 npx vitest run tests/cua-actor-lab.fanout.live.test.ts`
 Result: **1 passed / 0 failed, 33.4s** (real E2B + real OpenAI computer-use).
 
 ## What ran
@@ -13,7 +13,7 @@ A 2-lane fan-out, `per-lane worlds`, against a neutral loopback page served insi
 own sandbox via `prepareDesktop`:
 
 ```
-mimetic cua fan-out plan (cua-fanout-live-proof): 2 lane(s), strategy per-lane-worlds,
+homun cua fan-out plan (cua-fanout-live-proof): 2 lane(s), strategy per-lane-worlds,
 concurrency 2, 1 wave(s).  per-lane session budget 120s; worst-case ~24 sandbox-minutes total.
   - mobile:  persona=synthetic-new-user device=mobile  414x896
   - desktop: persona=synthetic-new-user device=desktop 1440x950

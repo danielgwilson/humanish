@@ -5,8 +5,8 @@ Status date: 2026-06-05
 ## Objective
 
 Run a bounded, public-safe dogfood study where one agent-like lane per
-Daniel-authorized private repo tries to install, configure, and use Mimetic;
-then evaluate the resulting filesystem state, generated Mimetic artifacts,
+Daniel-authorized private repo tries to install, configure, and use Homun;
+then evaluate the resulting filesystem state, generated Homun artifacts,
 Observer evidence, agent feedback, and product-specific leverage.
 
 This is a study-and-improvement loop, not a green-run vanity target. Missing,
@@ -16,7 +16,7 @@ blocked, failed, or low-quality setup is a valid result when backed by evidence.
 
 - This goal packet.
 - `docs/goals/current.md`.
-- `docs/goals/mimetic-recursive-proof-critical-point/goal.md`.
+- `docs/goals/homun-recursive-proof-critical-point/goal.md`.
 - `docs/architecture/oss-lab-poc.md`.
 - `docs/principles/self-driving-harness.md`.
 - `docs/product/open-source-install-experience.md`.
@@ -29,7 +29,7 @@ as `repo-01` through `repo-04` in committed receipts.
 
 The initial readiness receipt is orientation only. It does not satisfy the
 completion invariants for a future `/goal`; the formal goal run must generate
-current `.mimetic/` evidence and a fresh completion audit.
+current `.homun/` evidence and a fresh completion audit.
 
 ## Success Invariants
 
@@ -47,23 +47,23 @@ current `.mimetic/` evidence and a fresh completion audit.
 - Each lane has a terminal state: `passed`, `failed`, `blocked`, or
   `timed_out`, with a public-safe reason.
 - Each lane records whether the target app reached a local running URL and
-  whether nested Mimetic proof reached `run --app-url` style browser evidence.
-- Each lane records setup-quality filesystem evidence: `mimetic/config.ts`,
+  whether nested Homun proof reached `run --app-url` style browser evidence.
+- Each lane records setup-quality filesystem evidence: `homun/config.ts`,
   persona files, scenario files, package script, runtime ignore, and tree
   snapshot status.
 - Each lane records agent evidence: actor status, actor log tail or last
   message tail when public-safe, and whether the actor materially discovered,
-  installed, initialized, configured, ran, or improved Mimetic.
+  installed, initialized, configured, ran, or improved Homun.
 - Each lane gets a meaningful-use assessment:
-  - `none`: setup did not reach usable Mimetic proof;
+  - `none`: setup did not reach usable Homun proof;
   - `ceremonial`: setup/init ran but personas/scenarios were generic or not
     connected to the target app;
   - `useful`: personas/scenarios or feedback were plausibly target-specific;
-  - `high-leverage`: the actor used Mimetic evidence to find or articulate a
-    concrete product or Mimetic improvement.
+  - `high-leverage`: the actor used Homun evidence to find or articulate a
+    concrete product or Homun improvement.
 - Agent feedback is classified as actionable, duplicate, vague, unsafe for
   public filing, or not captured.
-- For Mimetic-owned blockers, either implement a scoped fix with tests or file
+- For Homun-owned blockers, either implement a scoped fix with tests or file
   a public-safe GitHub issue. Do not mutate target repos.
 - Any implementation changes run relevant tests and, before merge/release
   claims, `pnpm release:check`.
@@ -76,8 +76,8 @@ current `.mimetic/` evidence and a fresh completion audit.
 
 Read:
 
-- The full `mimetic-cli` repo.
-- Ignored `.mimetic/` runtime artifacts for verification.
+- The full `homun` repo.
+- Ignored `.homun/` runtime artifacts for verification.
 - Local env var names, never values.
 - Authorized disposable private repo clones inside E2B or ignored runtime
   workspaces only.
@@ -86,20 +86,20 @@ Write:
 
 - `docs/goals/private-repo-agent-dogfood/**`.
 - Public-safe docs under existing `docs/` paths when needed.
-- Mimetic source and focused tests only when needed to unblock the study:
+- Homun source and focused tests only when needed to unblock the study:
   - `src/oss-meta-lab.ts`
   - `src/run.ts`
   - `src/program.ts`
   - `src/labs.ts`
   - `src/observer*.ts`
   - focused tests under `tests/`
-- GitHub issues in `danielgwilson/mimetic-cli` only after public-safety review.
+- GitHub issues in `danielgwilson/homun` only after public-safety review.
 
 Runtime/local-only:
 
-- `.mimetic/` run artifacts.
-- `.mimetic/local/labs/*.yaml` ignored private lab manifests.
-- `.mimetic/local/private-dogfood/**` ignored private review notes if raw
+- `.homun/` run artifacts.
+- `.homun/local/labs/*.yaml` ignored private lab manifests.
+- `.homun/local/private-dogfood/**` ignored private review notes if raw
   private details are unavoidable. Do not quote those details in committed
   receipts.
 
@@ -127,17 +127,17 @@ Runtime/local-only:
 4. For each lane, fill the lane evaluation table in a receipt:
    - clone/auth result;
    - app status and URL class;
-   - nested Mimetic run/verify/Observer status;
+   - nested Homun run/verify/Observer status;
    - setup-quality checks;
-   - generated Mimetic file presence and quality class;
+   - generated Homun file presence and quality class;
    - actor evidence captured;
    - meaningful-use rating;
    - feedback classification;
    - blocker or next fix.
-5. If evidence is insufficient because Mimetic lacks a safe telemetry surface,
+5. If evidence is insufficient because Homun lacks a safe telemetry surface,
    implement the smallest public-safe telemetry improvement and rerun the
    relevant proof.
-6. If a lane fails because of a Mimetic-owned bootstrap issue, implement or
+6. If a lane fails because of a Homun-owned bootstrap issue, implement or
    ticket it, then rerun only as much as needed to prove the issue class.
 7. Run an independent audit pass before completion.
 
@@ -154,12 +154,12 @@ git diff --check
 Private four-lane study command shape:
 
 ```bash
-MIMETIC_OSS_META_ACTOR_FIRST=1 \
-MIMETIC_OSS_META_REQUIRE_ACTOR=1 \
-MIMETIC_OSS_META_ACTOR_TIMEOUT_MS=480000 \
-MIMETIC_OSS_META_ACTOR_MODEL=gpt-5.4-mini \
-MIMETIC_OSS_META_COMPLETION_TIMEOUT_MS=900000 \
-pnpm mimetic -- watch oss \
+HOMUN_OSS_META_ACTOR_FIRST=1 \
+HOMUN_OSS_META_REQUIRE_ACTOR=1 \
+HOMUN_OSS_META_ACTOR_TIMEOUT_MS=480000 \
+HOMUN_OSS_META_ACTOR_MODEL=gpt-5.4-mini \
+HOMUN_OSS_META_COMPLETION_TIMEOUT_MS=900000 \
+pnpm homun -- watch oss \
   --env-file <ignored-env-file> \
   --repo <authorized-private-repo-1> \
   --repo <authorized-private-repo-2> \
@@ -174,7 +174,7 @@ pnpm mimetic -- watch oss \
 Human-watched equivalent:
 
 ```bash
-pnpm mimetic -- watch oss \
+pnpm homun -- watch oss \
   --env-file <ignored-env-file> \
   --repo <authorized-private-repo-1> \
   --repo <authorized-private-repo-2> \
@@ -186,15 +186,15 @@ pnpm mimetic -- watch oss \
 
 ## Proof Artifacts
 
-- `.mimetic/runs/<run-id>/run.json`
-- `.mimetic/runs/<run-id>/review.json`
-- `.mimetic/runs/<run-id>/review.md`
-- `.mimetic/runs/<run-id>/events.ndjson`
-- `.mimetic/runs/<run-id>/observer/index.html`
-- `.mimetic/runs/<run-id>/observer/observer-data.json`
-- `.mimetic/runs/<run-id>/setup-quality/*.json`
+- `.homun/runs/<run-id>/run.json`
+- `.homun/runs/<run-id>/review.json`
+- `.homun/runs/<run-id>/review.md`
+- `.homun/runs/<run-id>/events.ndjson`
+- `.homun/runs/<run-id>/observer/index.html`
+- `.homun/runs/<run-id>/observer/observer-data.json`
+- `.homun/runs/<run-id>/setup-quality/*.json`
 - `docs/goals/private-repo-agent-dogfood/receipts/*.md`
-- Public-safe GitHub issues in `mimetic-cli` for Mimetic-owned defects.
+- Public-safe GitHub issues in `homun` for Homun-owned defects.
 
 Prior readiness receipts can guide the run, but completion requires proof
 artifacts from the current goal execution. Do not mark complete from receipt
@@ -206,14 +206,14 @@ prose alone.
   missing or non-material.
 - Dry-run-only success: synthetic proof exists without target-app evidence.
 - Observer-only success: UI renders but no nested run or setup quality exists.
-- Transcript-only success: actor says it used Mimetic without filesystem,
+- Transcript-only success: actor says it used Homun without filesystem,
   bundle, verify, or Observer evidence.
 - Generic scenario success: personas/scenarios exist but are not meaningfully
   connected to the app under test.
 - Private leakage: committed receipt includes private repo labels, private
   source snippets, private screenshots, stream auth URLs, or secrets.
 - Workspace-root install failure: package-manager bootstrap fails before
-  Mimetic init, as tracked in issue #86.
+  Homun init, as tracked in issue #86.
 - Over-aggregation: four-lane summary hides a single failed or weak lane.
 - Unclean cleanup: E2B sandboxes remain running after proof collection.
 
@@ -225,7 +225,7 @@ prose alone.
 - Work in a feature worktree for code/doc changes.
 - Keep commits scoped and public-safe.
 - Update `state.yaml` and add receipts after meaningful slices.
-- Prefer fixing small Mimetic-owned harness defects immediately when they block
+- Prefer fixing small Homun-owned harness defects immediately when they block
   the study; file issues for larger defects.
 - Treat blocked lanes as evidence, not as permission to lower the bar.
 - Before marking complete, perform a requirement-to-evidence audit.
@@ -234,11 +234,11 @@ prose alone.
 
 Using the `/goal` that points at this file authorizes only:
 
-- E2B Desktop sandboxes for Mimetic OSS meta-lab lanes.
+- E2B Desktop sandboxes for Homun OSS meta-lab lanes.
 - OpenAI/Codex API calls for agent-like actor attempts and bounded local
   evaluation.
 - GitHub HTTPS clone/API reads for authorized private repos and public-safe
-  Mimetic issue management.
+  Homun issue management.
 
 Spend rails:
 

@@ -12,7 +12,7 @@ import { verifyRun } from "../src/run.js";
 // The single LIVE rung for multi-lane FAN-OUT (#163). WRITTEN, gated, and NOT run in the
 // deterministic suite — it is a separately-authorized paid receipt (see the goal packet's
 // Provider Spend Policy). Gated exactly like the other live rungs:
-//   1. MIMETIC_LIVE_CUA=1 must be set explicitly (the spend opt-in),
+//   1. HOMUN_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
 // Two PER-LANE WORLDS (mobile + desktop), each serving a neutral loopback page INSIDE its own
@@ -21,14 +21,14 @@ import { verifyRun } from "../src/run.js";
 // desktops is the execution.concurrency bound (the spend control). Asserts only that TWO DISTINCT
 // sandboxes came back, both terminal + engaged, both reclaimed BY ID, and the bundle verifies —
 // never task success.
-const LIVE = process.env.MIMETIC_LIVE_CUA === "1"
+const LIVE = process.env.HOMUN_LIVE_CUA === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
 const PROOF_HTML = [
   "<!doctype html><html><head><meta charset=utf-8></head>",
   "<body style=\"font-family:system-ui;padding:48px;background:#fff\">",
-  "<h1 style=\"font-size:48px\">Mimetic Fan-out Live Proof</h1>",
+  "<h1 style=\"font-size:48px\">Homun Fan-out Live Proof</h1>",
   "<p style=\"font-size:24px\">Served from loopback inside THIS lane's own sandbox (per-lane worlds).</p>",
   "</body></html>"
 ].join("");
@@ -37,7 +37,7 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (LIVE, spend-gated)", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "mimetic-cua-fanout-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-fanout-live-"));
   });
 
   afterEach(async () => {
@@ -95,7 +95,7 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (LIVE, spend-gated)", () => {
       expect(lane.sandbox?.killed).toBe(true);
     }
 
-    const runDir = path.join(cwd, ".mimetic", "runs", result.runId);
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simCount).toBe(2);
     for (const stream of bundle.streams) {

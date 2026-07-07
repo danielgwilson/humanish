@@ -12,7 +12,7 @@ describe("codex app-server trace redaction", () => {
     // any host: the configured root is the symlinked form, the actor reports the
     // resolved realpath form. Without symlink-aware canonicalization, path.relative
     // returns a "../"-prefixed path and the absolute temp path leaks into the trace.
-    const realRoot = realpathSync.native(await mkdtemp(path.join(os.tmpdir(), "mimetic-redaction-real-")));
+    const realRoot = realpathSync.native(await mkdtemp(path.join(os.tmpdir(), "homun-redaction-real-")));
     const linkRoot = `${realRoot}-link`;
     await symlink(realRoot, linkRoot);
 
@@ -42,7 +42,7 @@ describe("codex app-server trace redaction", () => {
 
   it("falls back to redaction for an absolute path under a different root", () => {
     const root = realpathSync.native(os.tmpdir());
-    expect(publicPathForTrace("/tmp/some-other-root/file", `${root}/mimetic-unrelated-root`)).toContain(
+    expect(publicPathForTrace("/tmp/some-other-root/file", `${root}/homun-unrelated-root`)).toContain(
       "[REDACTED_LOCAL_PATH]"
     );
   });

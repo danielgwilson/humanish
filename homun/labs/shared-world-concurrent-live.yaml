@@ -1,0 +1,82 @@
+schema: homun.lab.v2
+id: shared-world-concurrent-live
+title: Concurrent shared-world live rung (synthetic shared task board)
+description: >
+  THREE distinct personas drive ONE provisioned, mutable service plane SIMULTANEOUSLY (#164 phase
+  2) — backed by a REAL synthetic app, not a placeholder. ONE subject sandbox clones THIS public
+  repo, serves the committed fixture `homun/fixtures/shared-world-app` on 0.0.0.0, seeds it with
+  a few generic starter tasks, and exposes it via getHost; then 3 actor desktop sandboxes each open
+  that ONE getHost URL AT ONCE and add a task to the shared board. A background prober runs the
+  read-only checkpoint probe (an AGGREGATE: task count + a sha256-16 hash, never row contents) on a
+  cadence → a stateSeries showing the shared task count GROW under concurrent load.
+  The cloned commit is recorded as the plane's provenance (the schema has no ref field — the pin is
+  the recorded commit, not a config-pinned ref). Dry-run (the default) emits ONE verified concurrent
+  shared-world bundle at $0 — no sandboxes, no provider tokens. A LIVE run needs OPENAI_API_KEY +
+  E2B_API_KEY and scenario.mode: live; it is wired in tests/concurrent-shared-world-lab.live.test.ts
+  (gated on HOMUN_LIVE_SHARED_WORLD=1) and is run as a separately-authorized paid receipt.
+subject:
+  source: clone
+  topology: shared-world # the declared override of the per-lane-worlds default (#164)
+  # SYNTHETIC subject attestation (REQUIRED on the concurrent route): the fixture is exposed on an
+  # internet-reachable getHost URL for the run, so the author attests it is synthetic seeded data
+  # (author-trust + a state.provenance == seeded gate, NOT a no-real-data guarantee).
+  exposure: synthetic
+  repos:
+    - danielgwilson/homun # clone THIS public repo; serve the committed fixture subdir
+  clone:
+    depth: 1 # shallow; the recorded HEAD commit is the plane provenance pin
+  serve:
+    # Pure Node built-ins — NO install/build step. Bind 0.0.0.0 (FIX-4): getHost only routes to a
+    # port bound on all interfaces; the readiness probe below stays loopback. Python stdlib (the
+    # E2B desktop image ships python3, not node) — NO install/build step.
+    start: HOST=0.0.0.0 PORT=3000 python3 homun/fixtures/shared-world-app/server.py
+    url: http://127.0.0.1:3000/ # loopback readiness-probe target; getHost exposes the 0.0.0.0 port
+    readyTimeoutMs: 60000
+  state:
+    # Seed the shared plane ONCE, before the server starts. Persisted as a command DIGEST only.
+    seed:
+      - name: seed-tasks
+        command: python3 homun/fixtures/shared-world-app/seed.py
+        when: before-start
+    # Read-only digest probe the background prober runs on a cadence (baseline + periodic + final).
+    # Prints an AGGREGATE (count + hash), never row contents; only sha256-16(scrubbed stdout)
+    # persists. The task count GROWING as actors add tasks IS the observed stateSeries delta.
+    checkpoint:
+      - name: task-count
+        command: python3 homun/fixtures/shared-world-app/checkpoint.py
+actors:
+  - type: openai-computer-use # REAL dispatch key: resolves in the actor registry
+    mission: >-
+      You are one of several people using a shared task board at the same time. The page has a text
+      box and an "Add task" button. Add exactly ONE task, then stop.
+    # The roster IS the persona roster (>= 2). On the CONCURRENT route every persona drives the SAME
+    # getHost URL AT ONCE (the fixture's single page); each gets its OWN desktop sandbox, so the
+    # per-persona device is physically honored here.
+    lanes:
+      - id: persona-planner
+        actorType: planner
+        surface: task-board
+        caseGroup: board-001
+        persona: weekly-planner
+        device: desktop
+        instruction: Add one task describing planning the week, then stop.
+      - id: persona-coordinator
+        actorType: coordinator
+        surface: task-board
+        caseGroup: board-001
+        persona: ops-coordinator
+        device: desktop
+        instruction: Add one task describing coordinating an operations handoff, then stop.
+      - id: persona-mobile
+        actorType: contributor
+        surface: task-board
+        caseGroup: board-001
+        persona: on-the-go-contributor
+        device: mobile
+        instruction: From a phone, add one quick task describing a follow-up, then stop.
+execution:
+  target: e2b-desktop # required: each persona drives a hosted desktop browser
+  timeoutMs: 120000 # PER-PERSONA session budget
+  concurrency: 3 # > 1 selects the CONCURRENT substrate (max in-flight paid actor desktops)
+scenario:
+  mode: dry-run # default safe; the gated live rung flips to live for the authorized paid receipt

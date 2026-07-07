@@ -1,0 +1,17 @@
+schema: homun.lab.v2
+id: oss-smoke
+title: Disposable public OSS clone smoke
+description: Shallow clone public app/tool repos, try Homun setup, verify evidence, and discard clones by default.
+subject:
+  source: clone
+  repos:
+    - CorentinTh/it-tools
+    - drawdb-io/drawdb
+    - maciekt07/TodoApp
+    - lissy93/dashy
+  clone:
+    fanout: 4
+actors:
+  - type: homun-setup
+execution:
+  target: local

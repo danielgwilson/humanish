@@ -14,12 +14,12 @@ infrastructure or GitHub credentials.
 Target loop:
 
 ```text
-mimetic run
+homun run
 -> run bundle
--> mimetic review
--> mimetic verify
--> mimetic feedback draft
--> mimetic feedback issue
+-> homun review
+-> homun verify
+-> homun feedback draft
+-> homun feedback issue
 -> user files public GitHub issue
 -> maintainer triage / project cockpit
 -> scoped implementation when accepted
@@ -41,11 +41,11 @@ before printing an issue body or issue URL.
 Likely v0 commands:
 
 ```bash
-mimetic feedback list --run latest
-mimetic feedback draft --run latest --json
-mimetic feedback verify --run latest --json
-mimetic feedback issue --run latest --repo owner/repo --format markdown
-mimetic feedback issue-url --run latest --repo owner/repo
+homun feedback list --run latest
+homun feedback draft --run latest --json
+homun feedback verify --run latest --json
+homun feedback issue --run latest --repo owner/repo --format markdown
+homun feedback issue-url --run latest --repo owner/repo
 ```
 
 `issue` and `issue-url` should fail closed unless the draft contains:
@@ -85,8 +85,8 @@ produce a high-quality issue draft and clear filing instructions.
 Promoted feedback should use this stable body shape:
 
 ```yaml
-mimetic_feedback:
-  schema: mimetic.feedback.v1
+homun_feedback:
+  schema: homun.feedback.v1
   run_id: "<run-id>"
   adapter_id: "<adapter-id>"
   scenario_id: "<scenario-id>"
@@ -107,8 +107,8 @@ mimetic_feedback:
 For maintainer/agent-ready work, the issue can also include:
 
 ```yaml
-mimetic_swarm:
-  schema: mimetic.swarm-readiness.v1
+homun_swarm:
+  schema: homun.swarm-readiness.v1
   status: needs_spec
   authority: draft_spec
   blocked_by: []
@@ -120,7 +120,7 @@ mimetic_swarm:
     - .env*
     - .github/workflows/**
     - infra/**
-  artifact_schema_version: mimetic.run-bundle.v1
+  artifact_schema_version: homun.run-bundle.v1
   credential_manifest: []
   network_policy: no_network
   spend_policy: no_spend
