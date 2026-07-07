@@ -640,15 +640,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         recentActionTitles.push(actionTitle);
         if (recentActionTitles.length > 8) recentActionTitles.shift();
         if (!isIdleAction(action)) lastMaterialActionTitle = actionTitle;
+        bump("actions");
+        currentPhase = `executing ${actionTitle}`;
+        // Record the action as completed only AFTER execute() resolves: a failed
+        // action must not appear as a plainly-completed ui_action (#248). On
+        // failure the error notice below captures the failing action + phase.
+        await raceSettle(executor.execute(action), remaining(), signal);
         items.push({
           id: nextId("ui_action"),
           kind: "ui_action",
           lifecycle: "completed",
           title: actionTitle
         });
-        bump("actions");
-        currentPhase = `executing ${actionTitle}`;
-        await raceSettle(executor.execute(action), remaining(), signal);
       }
 
       if (signal?.aborted) throw new CuaAbortError();

@@ -3,7 +3,7 @@ import { PNG } from "pngjs";
 
 import type { CuaAction } from "../src/computer-use.js";
 import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
-import { createE2BDesktopExecutor, perceptualSignature } from "../src/e2b-desktop-executor.js";
+import { createE2BDesktopExecutor, CuaTypeFallbackError, perceptualSignature } from "../src/e2b-desktop-executor.js";
 
 // A recorded desktop call: the method name and the arguments it received.
 interface Call {
@@ -169,15 +169,17 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     expect(calls[3]).toEqual({ method: "press", args: [["Control", "v"]] });
   });
 
-  it("rethrows desktop.write failures when clipboard fallback surfaces are unavailable", async () => {
+  it("throws a structured type-fallback error when clipboard fallback surfaces are unavailable", async () => {
     const { desktop } = makeFakeDesktop(SHOT, {
       writeError: new Error("exit status 1")
     });
     const executor = createE2BDesktopExecutor(desktop);
 
-    await expect(executor.execute({ kind: "type", text: "hello" })).rejects.toThrow(
-      "exit status 1"
-    );
+    const error = await executor
+      .execute({ kind: "type", text: "hello" })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CuaTypeFallbackError);
+    expect((error as CuaTypeFallbackError).phase).toBe("clipboard-unavailable");
   });
 
   it("maps keypress to press(keys array)", async () => {
