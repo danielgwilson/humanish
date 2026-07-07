@@ -865,6 +865,47 @@ async function findVisibleBrowserWindowId(
   return (result.stdout ?? "").match(/^WINDOW_ID=(\S+)$/m)?.[1];
 }
 
+/**
+ * Build the xdotool command that makes a browser window fill the desktop.
+ * Exported (pure) for contract tests. A window manager can ignore Chrome's
+ * --window-size, so xdotool is the robust path: move the window to the origin,
+ * then size it to the exact desktop resolution so Observer screenshots carry no
+ * dead margin around the browser.
+ */
+export function buildFillDesktopWindowCommand(
+  windowId: string,
+  width: number,
+  height: number,
+): string {
+  return [
+    "set -euo pipefail",
+    `win=${shellSingleQuote(windowId)}`,
+    `xdotool windowactivate "$win" >/dev/null 2>&1 || true`,
+    `xdotool windowmove "$win" 0 0 >/dev/null 2>&1 || true`,
+    `xdotool windowsize "$win" ${width} ${height} >/dev/null 2>&1 || true`,
+  ].join("\n");
+}
+
+/**
+ * Best-effort: resize the detected browser window to fill the lane's desktop
+ * resolution. A failure must never fail the lane (the actor can still run on a
+ * smaller window), so all errors are swallowed.
+ */
+async function fillDesktopBrowserWindow(
+  desktop: E2BDesktopSandbox,
+  windowId: string,
+  resolution: readonly [number, number],
+  requestTimeoutMs: number,
+): Promise<void> {
+  const [width, height] = resolution;
+  await desktop.commands
+    .run(buildFillDesktopWindowCommand(windowId, width, height), {
+      requestTimeoutMs,
+      timeoutMs: 10_000,
+    })
+    .catch(() => undefined);
+}
+
 async function openDesktopBrowserTarget(
   desktop: E2BDesktopSandbox,
   targetUrl: string,
@@ -1169,6 +1210,14 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             warnings.push(`Browser window lookup failed before live stream start (falling back to desktop stream): ${redactText(deps.scrubKnownValues(compactError(error)))}`);
             return undefined;
           });
+        if (browserWindowId !== undefined) {
+          await fillDesktopBrowserWindow(
+            desktop,
+            browserWindowId,
+            spec.resolution,
+            deps.requestTimeoutMs,
+          );
+        }
         await startDesktopStream(desktop, browserWindowId);
         const candidateStreamUrl: unknown = desktop.stream.getUrl({
           authKey: desktop.stream.getAuthKey(),
