@@ -1,5 +1,6 @@
 import { PNG } from "pngjs";
 
+import { commandFailureInfo } from "./command-failure.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
 
 // The DESKTOP side of the computer-use loop: a CuaExecutor (from
@@ -161,30 +162,6 @@ export class CuaTypeFallbackError extends Error {
 
 type DesktopCommandResult = { exitCode?: number; stderr?: string; stdout?: string };
 
-/**
- * Recover the exit code + a sanitized stderr/stdout tail from a command failure.
- * The real @e2b/desktop Sandbox throws CommandExitError (exposing exitCode,
- * stderr, stdout, error) on a non-zero exit, so this reads those fields
- * structurally rather than importing the SDK error class. Only the substrate's
- * own output is read; the typed text never passes through here.
- */
-function commandFailureDetail(error: unknown): { exitCode?: number; stderrTail: string } {
-  const e = (error ?? {}) as {
-    exitCode?: unknown;
-    stderr?: unknown;
-    stdout?: unknown;
-    error?: unknown;
-    message?: unknown;
-  };
-  const exitCode = typeof e.exitCode === "number" ? e.exitCode : undefined;
-  const str = (value: unknown): string | undefined =>
-    typeof value === "string" && value.length > 0 ? value : undefined;
-  const source = str(e.stderr) ?? str(e.stdout) ?? str(e.error) ?? str(e.message);
-  return exitCode === undefined
-    ? { stderrTail: tailOf(source) }
-    : { exitCode, stderrTail: tailOf(source) };
-}
-
 /** Map a clipboard-command exit code to a CuaTypeFallbackError phase and throw. */
 function throwClipboardCommandFailure(
   exitCode: number | undefined,
@@ -282,7 +259,7 @@ async function pasteTextViaClipboard(
   }
 
   if (runError !== undefined) {
-    const detail = commandFailureDetail(runError);
+    const detail = commandFailureInfo(runError);
     throwClipboardCommandFailure(detail.exitCode, detail.stderrTail, attemptChain, runError);
   }
   if (runResult !== undefined && runResult.exitCode !== undefined && runResult.exitCode !== 0) {

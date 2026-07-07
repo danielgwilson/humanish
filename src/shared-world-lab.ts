@@ -24,6 +24,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
+import { runDesktopCommand } from "./command-failure.js";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "./actor-contract.js";
 import {
@@ -317,7 +318,13 @@ async function launchSeatBrowser(
     "    ;;",
     "esac"
   ].join("\n");
-  const result = await desktop.commands.run(command, { requestTimeoutMs: args.requestTimeoutMs });
+  const result = await runDesktopCommand(
+    () => desktop.commands.run(command, { requestTimeoutMs: args.requestTimeoutMs }),
+    (_info, error) =>
+      args.browserPreference !== undefined && args.browserPreference !== "default"
+        ? new Error(`requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`)
+        : error,
+  );
   if (args.browserPreference !== undefined && args.browserPreference !== "default" && result.exitCode !== undefined && result.exitCode !== 0) {
     throw new Error(`requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`);
   }

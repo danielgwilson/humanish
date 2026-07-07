@@ -24,6 +24,7 @@
 import { randomBytes, createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { runDesktopCommand } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace } from "./actor-contract.js";
@@ -915,7 +916,9 @@ async function openDesktopBrowserTarget(
   const requestedBrowser = browserPreference ?? "default";
   if (isHttpUrl(targetUrl)) {
     const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellSingleQuote).join(" ");
-    const result = await desktop.commands.run([
+    const result = await runDesktopCommand(
+      () =>
+        desktop.commands.run([
       "set -euo pipefail",
       `target_url=${shellSingleQuote(targetUrl)}`,
       `browser_preference=${shellSingleQuote(requestedBrowser)}`,
@@ -973,7 +976,12 @@ async function openDesktopBrowserTarget(
     ].join("\n"), {
       requestTimeoutMs,
       timeoutMs: 15_000
-    });
+        }),
+      ({ exitCode, stderrTail }) =>
+        new Error(
+          `browser launch failed${exitCode === undefined ? "" : ` with exit ${exitCode}`}: ${stderrTail}`,
+        ),
+    );
     if (result.exitCode !== undefined && result.exitCode !== 0) {
       throw new Error(`browser launch failed with exit ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
     }
