@@ -77,6 +77,20 @@ Persisted `run.json` files must not contain absolute local target paths. Runtime
 commands may return the caller's working directory in process-local JSON
 responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 
+## Subject Provenance
+
+`subject` is an optional, additive top-level field: structured provenance for
+what the computer-use backend actually drove (code pin plus state story). It
+is absent on pre-existing bundles and on bundles from backends that have not
+adopted it. The field shape, its three sources (`clone`, `app-url`,
+`local-tree`), and the `homun verify` checks that guard it are the schema doc's
+job, not this one: see the `subject` entry under
+[`schemas.md`](schemas.md#contract-schema-index). In short, `clone` carries a
+`repo`/`commit` pin, `local-tree` carries an `archiveSha256`/`dirty` pin
+instead (a dirty working tree cannot be commit-pinned), and `app-url` carries
+no code pin at all. No path, basename, or other host-machine string ever
+enters this field; identity is digests, a sha, a boolean, and counts.
+
 ## Adapter Score
 
 `adapterScore` is optional and namespaced. It lets a downstream adapter summarize

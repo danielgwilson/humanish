@@ -110,13 +110,17 @@ export function selectLabBackend(config: LabConfig): LabBackend {
   }
   if (routesToComputerUse(config)
     || config.subject.source === "app-url"
-    || config.subject.source === "local-app") {
+    || config.subject.source === "local-app"
+    || config.subject.source === "local-tree") {
     // app-url subjects with a computer-use actor, local-app subjects (an already-running local
-    // dev server driven in-process via a custom executor), and clone x e2b-desktop subjects
-    // whose first actor resolves to a registered computer-use actor (the lab clones AND serves
-    // the app in-sandbox). The bare app-url/local-app fallback keeps library-API configs with
-    // unknown actor types routing to the cua backend's fail-closed HOMUN_CUA_LAB_ACTOR_UNSUPPORTED
-    // (and, for local-app without hooks, HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR).
+    // dev server driven in-process via a custom executor), clone x e2b-desktop subjects whose
+    // first actor resolves to a registered computer-use actor (the lab clones AND serves the app
+    // in-sandbox), and local-tree subjects (the lab packs+uploads the working tree and serves it
+    // the same way). The bare app-url/local-app/local-tree fallback keeps library-API configs
+    // with unknown actor types routing to the cua backend's fail-closed
+    // HOMUN_CUA_LAB_ACTOR_UNSUPPORTED (and, for local-app without hooks,
+    // HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR) instead of silently falling through to the synthetic
+    // backend below, which would run no real actor at all against a packed tree.
     return "cua";
   }
   if (config.subject.source === "clone") {

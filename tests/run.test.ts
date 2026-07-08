@@ -2893,3 +2893,111 @@ describe("verify: subject state provenance", () => {
     });
   });
 });
+
+describe("verify: subject provenance (local-tree)", () => {
+  const engagedTrace = (): ActorTrace =>
+    cuaActorTrace({
+      counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+      items: [
+        { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
+        { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
+      ]
+    });
+  // Shape-valid fixtures (64-hex / 40-hex), not real digests.
+  const ARCHIVE_SHA = "a1".repeat(32);
+  const HOST_COMMIT = "b2".repeat(20);
+  const stateCheck = (verify: Awaited<ReturnType<typeof verifyRun>>) =>
+    verify.checks.find((entry) => entry.name === "subject state provenance");
+  const shapeCheck = (verify: Awaited<ReturnType<typeof verifyRun>>) =>
+    verify.checks.find((entry) => entry.name === "run bundle shape");
+
+  it("accepts a well-formed live local-tree subject at both the bundle-shape gate and the subject state check", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "local-tree-well-formed", {
+        dryRun: false,
+        trace: engagedTrace(),
+        subject: {
+          source: "local-tree",
+          archiveSha256: ARCHIVE_SHA,
+          commit: HOST_COMMIT,
+          dirty: true,
+          envNames: [],
+          state: { provenance: "undeclared" }
+        }
+      });
+      const verify = await verifyRun(cwd, "local-tree-well-formed");
+      expect(verify.ok).toBe(true);
+      expect(shapeCheck(verify)?.ok).toBe(true);
+      expect(stateCheck(verify)?.ok).toBe(true);
+    });
+  });
+
+  it("rejects a malformed archiveSha256 at the bundle-shape gate (not 64-hex)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "local-tree-bad-digest", {
+        dryRun: false,
+        trace: engagedTrace(),
+        subject: {
+          source: "local-tree",
+          archiveSha256: "not-a-hex-digest",
+          envNames: [],
+          state: { provenance: "undeclared" }
+        }
+      });
+      const verify = await verifyRun(cwd, "local-tree-bad-digest");
+      expect(verify.ok).toBe(false);
+      expect(shapeCheck(verify)?.ok).toBe(false);
+    });
+  });
+
+  it("FAILS a live local-tree bundle missing archiveSha256, and PASSES once it carries a well-formed one", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "local-tree-missing-pin", {
+        dryRun: false,
+        trace: engagedTrace(),
+        subject: {
+          source: "local-tree",
+          envNames: [],
+          state: { provenance: "undeclared" }
+        }
+      });
+      const missing = await verifyRun(cwd, "local-tree-missing-pin");
+      expect(missing.ok).toBe(false);
+      expect(stateCheck(missing)?.ok).toBe(false);
+      expect(stateCheck(missing)?.message).toContain("archiveSha256 is missing or malformed");
+      // Fail-closed discipline: the finding never echoes anything sensitive because there is
+      // nothing to echo here (the value is simply absent), matching the malformed-shape gate's
+      // never-echo rule for values that could themselves be leaked secrets.
+
+      await writeCuaRunFixture(cwd, "local-tree-with-pin", {
+        dryRun: false,
+        trace: engagedTrace(),
+        subject: {
+          source: "local-tree",
+          archiveSha256: ARCHIVE_SHA,
+          envNames: [],
+          state: { provenance: "undeclared" }
+        }
+      });
+      const withPin = await verifyRun(cwd, "local-tree-with-pin");
+      expect(withPin.ok).toBe(true);
+      expect(stateCheck(withPin)?.ok).toBe(true);
+    });
+  });
+
+  it("a dry-run local-tree bundle with NO archiveSha256 passes (nothing was packed, so nothing to pin)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "local-tree-dryrun", {
+        dryRun: true,
+        subject: {
+          source: "local-tree",
+          envNames: [],
+          state: { provenance: "undeclared" }
+        }
+      });
+      const verify = await verifyRun(cwd, "local-tree-dryrun");
+      expect(verify.ok).toBe(true);
+      expect(stateCheck(verify)?.ok).toBe(true);
+    });
+  });
+});

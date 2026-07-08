@@ -22,7 +22,7 @@
 //   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
 import { randomBytes, createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { runDesktopCommandOrThrow } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
@@ -83,6 +83,7 @@ import {
   type ObserverRuntimeStreamUrl
 } from "./observer.js";
 import { containsSensitive, redactText } from "./redaction.js";
+import { createLocalTreeArchive, type LocalTreeArchive } from "./source-archive.js";
 import type { StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
@@ -138,6 +139,9 @@ const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
 export const SUBJECT_DIR = "/home/user/subject";
+// Remote path for the once-per-run packed local-tree archive; removed by the extract step
+// after it unpacks into SUBJECT_DIR.
+const LOCAL_TREE_REMOTE_ARCHIVE_PATH = "/home/user/.homun-source.tar.gz";
 const CLONE_TIMEOUT_MS = 5 * 60_000;
 const INSTALL_TIMEOUT_MS = 10 * 60_000;
 const BUILD_TIMEOUT_MS = 10 * 60_000;
@@ -201,6 +205,18 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   renderObserverFn?: typeof renderObserver;
   /** Injected clock/sleep for the detached-step polling (tests only). */
   detachedTimers?: DetachedTimers;
+  /**
+   * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
+   * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced
+   * archive file into an ArrayBuffer. Called ONCE per run, before lane fan-out, on the live
+   * local-tree route; the result (archive metadata + bytes) is shared byte-identically across
+   * every fan-out lane, so one archiveSha256 describes every lane's packed content.
+   */
+  packLocalTree?: (args: {
+    root: string;
+    extraExclude?: string[];
+    maxArchiveBytes?: number;
+  }) => Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }>;
 }
 
 export interface RunCuaActorLabOptions {
@@ -319,16 +335,38 @@ export type CuaActorLabErrorCode =
 
 /** Subject provenance projection (invariant 5): what the actor actually drove. */
 export interface CuaSubjectProjection {
-  source: "app-url" | "clone";
+  source: "app-url" | "clone" | "local-tree";
+  /** Clone-route only: the (possibly redacted) owner/repo slug. */
   repo?: string;
-  /** Cloned commit SHA, when the clone route resolved one. */
+  /** Cloned commit SHA (clone route) or host-side HEAD at pack time (local-tree route, when
+   *  the packed root was a git work tree). */
   commit?: string;
+  /** Local-tree-route only: 64-hex sha256 over the sorted packed-entries list: the content
+   *  pin for a tree that cannot be commit-pinned. Absent on dry-run (nothing was packed). */
+  archiveSha256?: string;
+  /** Local-tree-route only: host-side porcelain status at pack time (true when the working
+   *  tree had uncommitted changes). Absent when the packed root was not a git work tree. */
+  dirty?: boolean;
   /** Declared env NAMES provisioned for the subject (values never surface anywhere). */
   envNames?: string[];
   /** The subject's state story (seeded digests / UNPINNED external / declared-not-run /
-   *  undeclared) — the same block the run bundle records. */
+   *  undeclared): the same block the run bundle records. */
   state: RunSubjectProvenance["state"];
 }
+
+/** The provisioned-route-only shape threaded through as buildCuaBundle's subjectProvenance arg
+ *  (clone or local-tree; an app-url subject stays undeclared, which buildCuaBundle's own
+ *  default branch already handles without this type). */
+export type CuaSubjectProvenanceArg =
+  | { source: "clone"; repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] }
+  | {
+      source: "local-tree";
+      archiveSha256?: string;
+      commit?: string;
+      dirty?: boolean;
+      envNames: string[];
+      state: RunSubjectProvenance["state"];
+    };
 
 export interface CuaActorLabResult {
   schema: typeof CUA_ACTOR_LAB_SCHEMA;
@@ -456,16 +494,19 @@ export function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefi
 }
 
 /** Per-lane sandbox deadline (each lane owns its own desktop). Mirrors the single-lane formula
- *  verbatim so N=1 stays byte-stable: explicit sandboxTimeoutMs, else session budget + (clone:
- *  provision budget + Σ state-step budgets) + the server-side reclamation buffer. */
+ *  verbatim so N=1 stays byte-stable: explicit sandboxTimeoutMs, else session budget + (clone
+ *  or local-tree: provision budget + Σ state-step budgets) + the server-side
+ *  reclamation buffer. Local-tree shares the clone route's provisioning budget: it swaps a
+ *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
+ *  costs the same wall-clock room either way. */
 function resolvePerLaneSandboxMs(config: LabConfig): number {
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-  const cloneRoute = config.subject.source === "clone";
-  const stateBudgetMs = cloneRoute
+  const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+  const stateBudgetMs = provisionedRoute
     ? (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
     : 0;
   return config.execution?.desktop?.sandboxTimeoutMs
-    ?? timeoutMs + (cloneRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) + SANDBOX_TIMEOUT_BUFFER_MS;
+    ?? timeoutMs + (provisionedRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) + SANDBOX_TIMEOUT_BUFFER_MS;
 }
 
 /**
@@ -725,10 +766,16 @@ export interface CuaLaneDeps {
   descriptor: CuaActorDescriptor;
   appUrl: string;
   cloneRoute: boolean;
+  /** Optional so out-of-scope callers building CuaLaneDeps directly (other engines reusing
+   *  runCuaLane) do not need to know about the local-tree route; undefined behaves as false. */
+  localTreeRoute?: boolean;
   serve?: LabSubjectServe;
   subjectRepo?: string;
   subjectEnvNames: string[];
   hasGithubToken: boolean;
+  /** Local-tree route only: the once-per-run packed archive bytes, shared byte-identically
+   *  across every fan-out lane's upload step. Absent on dry-run and every other route. */
+  localTreeArchiveBuffer?: ArrayBuffer;
   env: Record<string, string | undefined>;
   openaiApiKey: string;
   e2bApiKey: string;
@@ -1119,7 +1166,7 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
  * same artifacts (actor.json, screenshots/<name>) the bundle has always referenced.
  */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
-  const { config, appUrl, cloneRoute, serve, subjectRepo, subjectEnvNames } = deps;
+  const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
   const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
   const warnings: string[] = [];
@@ -1194,6 +1241,18 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           onCommit: (commit) => {
             subjectCommit = commit;
           },
+          onStateStep: (record) => {
+            stateStepRecords.push(record);
+          },
+          ...(deps.hooks.detachedTimers ?? {})
+        });
+      } else if (localTreeRoute && serve && deps.localTreeArchiveBuffer) {
+        await provisionLocalTreeSubject(desktop, {
+          archiveBuffer: deps.localTreeArchiveBuffer,
+          serve,
+          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          requestTimeoutMs: deps.requestTimeoutMs,
+          scrub: deps.scrubKnownValues,
           onStateStep: (record) => {
             stateStepRecords.push(record);
           },
@@ -1277,9 +1336,16 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     }
     if (desktop && desktopModule) {
       const failed = sessionError !== undefined || session === undefined;
-      const keepForDebug = config.subject.clone?.keep === true && failed;
+      // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
+      // a local-tree lane's teardown decision, and vice versa.
+      const keepReason = cloneRoute && config.subject.clone?.keep === true
+        ? "subject.clone.keep"
+        : localTreeRoute && config.subject.localTree?.keep === true
+          ? "subject.localTree.keep"
+          : undefined;
+      const keepForDebug = keepReason !== undefined && failed;
       if (keepForDebug) {
-        warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (subject.clone.keep on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
+        warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
       } else if (typeof desktopModule.Sandbox.kill === "function") {
         try {
           await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
@@ -1554,23 +1620,69 @@ function fanoutReviewVerdict(args: {
   return "pass";
 }
 
-/** Build the per-lane subject projection (invariant 5). */
+/** Build the per-lane subject projection (invariant 5). Local-tree lanes all share ONE
+ *  host-packed archive, so every lane's projection carries the identical archiveSha256/
+ *  commit/dirty (no per-lane divergence is possible, unlike the clone route's per-lane
+ *  in-sandbox commit). */
 function laneSubjectProjection(args: {
   cloneRoute: boolean;
+  localTreeRoute: boolean;
   publicRepo?: string;
   subjectEnvNames: string[];
   subjectCommit?: string;
+  localTreeArchive?: LocalTreeArchive;
   subjectState: RunSubjectProvenance["state"];
 }): CuaSubjectProjection {
-  return args.cloneRoute && args.publicRepo
-    ? {
-        source: "clone",
-        repo: args.publicRepo,
-        ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
-        envNames: args.subjectEnvNames,
-        state: args.subjectState
-      }
-    : { source: "app-url", state: args.subjectState };
+  if (args.cloneRoute && args.publicRepo) {
+    return {
+      source: "clone",
+      repo: args.publicRepo,
+      ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
+      envNames: args.subjectEnvNames,
+      state: args.subjectState
+    };
+  }
+  if (args.localTreeRoute) {
+    const archive = args.localTreeArchive;
+    return {
+      source: "local-tree",
+      ...(archive === undefined ? {} : { archiveSha256: archive.archiveSha256 }),
+      ...(archive?.git === undefined ? {} : { commit: archive.git.commit, dirty: archive.git.dirty }),
+      envNames: args.subjectEnvNames,
+      state: args.subjectState
+    };
+  }
+  return { source: "app-url", state: args.subjectState };
+}
+
+/** Narrow a resolved CuaSubjectProjection into the shape buildCuaBundle/buildSingleLaneBundle's
+ *  subjectProvenance param wants (provisioned-route sources only; app-url stays undeclared, the
+ *  default branch buildCuaBundle already handles). */
+function subjectProvenanceArg(
+  subject: CuaSubjectProjection,
+  publicRepo: string | undefined,
+  subjectEnvNames: string[]
+): CuaSubjectProvenanceArg | undefined {
+  if (subject.source === "clone" && publicRepo) {
+    return {
+      source: "clone",
+      repo: publicRepo,
+      ...(subject.commit === undefined ? {} : { commit: subject.commit }),
+      envNames: subjectEnvNames,
+      state: subject.state
+    };
+  }
+  if (subject.source === "local-tree") {
+    return {
+      source: "local-tree",
+      ...(subject.archiveSha256 === undefined ? {} : { archiveSha256: subject.archiveSha256 }),
+      ...(subject.commit === undefined ? {} : { commit: subject.commit }),
+      ...(subject.dirty === undefined ? {} : { dirty: subject.dirty }),
+      envNames: subjectEnvNames,
+      state: subject.state
+    };
+  }
+  return undefined;
 }
 
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
@@ -1593,10 +1705,16 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const render = hooks.renderObserverFn ?? renderObserver;
 
   const cloneRoute = config.subject.source === "clone";
+  const localTreeRoute = config.subject.source === "local-tree";
+  // Both routes provision the subject in-sandbox (clone via git, local-tree via pack+upload)
+  // and then share the identical install/build/state/start/probe pipeline, so every seam that
+  // gates on "does this route provision a subject" is keyed on this union, not on cloneRoute
+  // alone.
+  const provisionedRoute = cloneRoute || localTreeRoute;
   const serve = config.subject.serve;
-  const appUrl = (cloneRoute ? serve?.url : config.subject.appUrl) ?? "";
+  const appUrl = (provisionedRoute ? serve?.url : config.subject.appUrl) ?? "";
   const subjectRepo = cloneRoute ? config.subject.repos?.[0] ?? "" : undefined;
-  const subjectEnvNames = cloneRoute ? config.subject.env ?? [] : [];
+  const subjectEnvNames = provisionedRoute ? config.subject.env ?? [] : [];
   const actor = config.actors[0];
   const actorType = actor?.type ?? "";
 
@@ -1635,10 +1753,23 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     );
   }
 
+  // Engine re-enforcement of the local-tree-route structure (library API surface): a caller
+  // driving this function directly (bypassing parseLabConfig) still gets the same fail-closed
+  // shape the parser enforces, naming which requirement is missing.
+  if (localTreeRoute && (!serve || config.execution?.target !== "e2b-desktop")) {
+    return fail(
+      "HOMUN_CUA_LAB_SUBJECT_INVALID",
+      !serve
+        ? "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
+        : "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox.",
+      descriptor.id
+    );
+  }
+
   // Engine re-enforcement of the state declaration (library API surface).
   if (config.subject.state) {
-    const stateReason = !cloneRoute
-      ? "`subject.state` applies only to clone subjects (the lab seeds the state it serves)."
+    const stateReason = !provisionedRoute
+      ? "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
       : subjectStateInvalidReason(config.subject.state, config.subject.env);
     if (stateReason) {
       return fail("HOMUN_CUA_LAB_SUBJECT_INVALID", stateReason, descriptor.id);
@@ -1649,7 +1780,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
   const declaredTargets = [appUrl, ...(actor?.lanes ?? []).map((lane) => lane.target).filter((target): target is string => target !== undefined)];
   const entryTargetSafe = declaredTargets.every((target) =>
-    cloneRoute || localAppSubject
+    provisionedRoute || localAppSubject
       ? isLoopbackUrl(target)
       : allowPublicTargets
         ? isHttpUrl(target)
@@ -1657,7 +1788,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   if (!entryTargetSafe) {
     return fail(
       "HOMUN_CUA_LAB_SUBJECT_UNSAFE",
-      cloneRoute || localAppSubject || !allowPublicTargets
+      provisionedRoute || localAppSubject || !allowPublicTargets
         ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
       descriptor.id
@@ -1795,15 +1926,49 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     packageName: "homun"
   });
 
+  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
+  // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
+  // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
+  // archiveSha256). A packing failure fails the run closed here, before createDesktopSandbox is
+  // ever reached.
+  let localTreeArchive: LocalTreeArchive | undefined;
+  let localTreeArchiveBuffer: ArrayBuffer | undefined;
+  if (localTreeRoute && !dryRun) {
+    const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
+    try {
+      const packed = await packLocalTree({
+        root: cwd,
+        ...(config.subject.localTree?.exclude === undefined ? {} : { extraExclude: config.subject.localTree.exclude }),
+        ...(config.subject.localTree?.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes })
+      });
+      localTreeArchive = packed.archive;
+      localTreeArchiveBuffer = packed.buffer;
+      // One operator-facing line (stderr, same channel as emitPreflightPlan): what left the
+      // host, by counts and digest only, never paths or file names.
+      process.stderr.write(
+        `homun local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
+        + `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`
+      );
+    } catch (error) {
+      return fail(
+        "HOMUN_CUA_LAB_SUBJECT_INVALID",
+        `local-tree packing failed: ${redactText(scrubKnownValues(compactError(error)))}`,
+        descriptor.id
+      );
+    }
+  }
+
   const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
     config,
     descriptor,
     appUrl,
     cloneRoute,
+    localTreeRoute,
     ...(serve === undefined ? {} : { serve }),
     ...(subjectRepo === undefined ? {} : { subjectRepo }),
     subjectEnvNames,
     hasGithubToken,
+    ...(localTreeArchiveBuffer === undefined ? {} : { localTreeArchiveBuffer }),
     env,
     openaiApiKey,
     e2bApiKey,
@@ -1821,16 +1986,19 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const inProgressLaneSubjects = laneSpecs.map(() =>
     laneSubjectProjection({
       cloneRoute,
+      localTreeRoute,
       ...(publicRepo === undefined ? {} : { publicRepo }),
       subjectEnvNames,
+      ...(localTreeArchive === undefined ? {} : { localTreeArchive }),
       subjectState: resolveSubjectState({
-        declared: cloneRoute ? config.subject.state : undefined,
+        declared: provisionedRoute ? config.subject.state : undefined,
         dryRun: false,
         executed: []
       })
     })
   );
   const inProgressAggregateSubject = inProgressLaneSubjects[0]!;
+  const inProgressProvenance = subjectProvenanceArg(inProgressAggregateSubject, publicRepo, subjectEnvNames);
 
   if (!dryRun && options.onObserverReady) {
     const inProgressBundle = laneCount === 1 && rerunLineage === undefined
@@ -1846,15 +2014,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           source,
           redactScreenshots,
           inProgress: true,
-          ...(inProgressAggregateSubject.source === "clone" && publicRepo
-            ? {
-                subjectProvenance: {
-                  repo: publicRepo,
-                  envNames: subjectEnvNames,
-                  state: inProgressAggregateSubject.state
-                }
-              }
-            : {}),
+          ...(inProgressProvenance === undefined ? {} : { subjectProvenance: inProgressProvenance }),
           inProcessRoute,
           localAppSubject
         })
@@ -1872,6 +2032,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           plan,
           ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
           cloneRoute,
+          localTreeRoute,
           ...(publicRepo === undefined ? {} : { publicRepo }),
           subjectEnvNames,
           inProgress: true
@@ -1902,20 +2063,26 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const laneSubjects = laneSpecs.map((_spec, index) => {
     const outcome = outcomes?.[index];
     const subjectState = resolveSubjectState({
-      declared: cloneRoute ? config.subject.state : undefined,
+      declared: provisionedRoute ? config.subject.state : undefined,
       dryRun,
       executed: outcome?.stateStepRecords ?? []
     });
     return laneSubjectProjection({
       cloneRoute,
+      localTreeRoute,
       ...(publicRepo === undefined ? {} : { publicRepo }),
       subjectEnvNames,
       ...(outcome?.subjectCommit === undefined ? {} : { subjectCommit: outcome.subjectCommit }),
+      ...(localTreeArchive === undefined ? {} : { localTreeArchive }),
       subjectState
     });
   });
 
-  // Aggregate subject (top-level + bundle): unanimity-gated commit (+ divergence warning).
+  // Aggregate subject (top-level + bundle): unanimity-gated commit (+ divergence warning) on
+  // the clone route. Local-tree lanes all pack from the SAME once-per-run archive, so every
+  // lane's projection already carries the identical archiveSha256/commit/dirty: the
+  // `first.source !== "clone"` branch below returns it directly, with no unanimity math needed
+  // (there is nothing that could diverge).
   const aggregateWarnings: string[] = [];
   const aggregateSubject = ((): CuaSubjectProjection => {
     const first = laneSubjects[0]!;
@@ -1937,6 +2104,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       ...(unanimous && commits[0] !== undefined ? { commit: commits[0] } : {})
     };
   })();
+  const finalProvenance = subjectProvenanceArg(aggregateSubject, publicRepo, subjectEnvNames);
 
   const bundle = laneCount === 1 && rerunLineage === undefined
     ? buildSingleLaneBundle({
@@ -1950,16 +2118,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         runId,
         source,
         redactScreenshots,
-        ...(aggregateSubject.source === "clone" && publicRepo
-          ? {
-              subjectProvenance: {
-                repo: publicRepo,
-                ...(aggregateSubject.commit === undefined ? {} : { commit: aggregateSubject.commit }),
-                envNames: subjectEnvNames,
-                state: aggregateSubject.state
-              }
-            }
-          : {}),
+        ...(finalProvenance === undefined ? {} : { subjectProvenance: finalProvenance }),
         inProcessRoute,
         localAppSubject
       })
@@ -1979,6 +2138,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
         ...(failFastReason === undefined ? {} : { failFastReason }),
         cloneRoute,
+        localTreeRoute,
         ...(publicRepo === undefined ? {} : { publicRepo }),
         subjectEnvNames
       });
@@ -2197,7 +2357,7 @@ function buildSingleLaneBundle(args: {
   runId: string;
   source: RunBundle["source"];
   redactScreenshots: boolean;
-  subjectProvenance?: { repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] };
+  subjectProvenance?: CuaSubjectProvenanceArg;
   inProcessRoute: boolean;
   localAppSubject: boolean;
   inProgress?: boolean;
@@ -2243,19 +2403,149 @@ function buildSingleLaneBundle(args: {
 
 
 /**
- * Provision a clone subject inside the sandbox: clone → (install) → state(before-build) →
- * (build) → state(before-start) → start → readiness probe → state(after-ready). Returns the
- * latest subject HEAD after successful provisioning. Throws (with a capped log tail for the caller to redact) on any failing
- * step — the lab persists that as a failed-evidence bundle.
+ * Shared post-populate provisioning pipeline (clone AND local-tree routes): (install) ->
+ * state(before-build) -> (build) -> state(before-start) -> detached start -> readiness probe ->
+ * state(after-ready). Both provisioning routes populate SUBJECT_DIR by different means (git
+ * clone vs. upload+extract) and then run this identical pipeline unchanged.
  *
  * State steps run through the same detached primitive as serve steps (author-trusted, the
  * "serve commands are author-trusted" corollary) under the reserved `subject-state-<name>`
- * label prefix, so a step name can never collide with subject-clone/install/build/start.
- * after-ready steps complete BEFORE the caller opens the browser — the actor never drives a
- * half-seeded subject and seeding never eats the session budget.
+ * label prefix, so a step name can never collide with subject-clone/subject-extract/install/
+ * build/start. after-ready steps complete BEFORE the caller opens the browser: the actor never
+ * drives a half-seeded subject and seeding never eats the session budget.
+ */
+async function runSubjectServePipeline(
+  desktop: E2BDesktopSandbox,
+  args: {
+    serve: LabSubjectServe;
+    /** Declared subject state (seed steps; external declaration is provenance-only). */
+    state?: LabSubjectState;
+    requestTimeoutMs: number;
+    /** Literal scrubber for known provisioned values, applied to log tails PRE-truncation. */
+    scrub: (text: string) => string;
+    /** Called the moment each state step finishes, success or failure. */
+    onStateStep?: (record: RunSubjectStateStepRecord) => void;
+    /** Called after every phase completes. The clone route re-resolves HEAD here; the
+     *  local-tree route omits this entirely (identity is the host-side archive digest, never
+     *  an in-sandbox git refresh, because the archive excludes .git). */
+    onPhaseComplete?: () => Promise<void>;
+  } & DetachedTimers
+): Promise<void> {
+  const timers: DetachedTimers = {
+    ...(args.now === undefined ? {} : { now: args.now }),
+    ...(args.sleep === undefined ? {} : { sleep: args.sleep })
+  };
+  const refresh = args.onPhaseComplete ?? ((): Promise<void> => Promise.resolve());
+  const stateSteps = args.state?.seed ?? [];
+  const runStateSteps = async (when: LabStateStepWhen): Promise<void> => {
+    for (const step of stateSteps) {
+      if ((step.when ?? "before-start") !== when) {
+        continue;
+      }
+      const stepTimeoutMs = step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS;
+      const now = args.now ?? Date.now;
+      const startedAt = now();
+      const result = await runDetachedStep(desktop, {
+        name: `subject-state-${step.name}`,
+        command: step.command,
+        cwd: SUBJECT_DIR,
+        timeoutMs: stepTimeoutMs,
+        requestTimeoutMs: args.requestTimeoutMs,
+        ...timers
+      });
+      args.onStateStep?.({
+        name: step.name,
+        when,
+        // Digest only (sha256-16): the command text never persists: the lab YAML in the
+        // consumer's repo is the plaintext source of truth.
+        commandDigest: commandDigestOf(step.command),
+        ok: result.ok,
+        ...(result.exitCode === undefined ? {} : { exitCode: result.exitCode }),
+        ...(result.timedOut ? { timedOut: true } : {}),
+        durationMs: Math.max(0, now() - startedAt)
+      });
+      if (!result.ok) {
+        // Fail closed with the existing scrub-before-truncate tail chain: literal scrub of
+        // every provisioned value PRE-truncation, then pattern redaction + cap in tailOf.
+        throw new Error(`subject state step "${step.name}" ${result.timedOut ? `timed out after ${stepTimeoutMs}ms` : `failed (exit ${result.exitCode})`}: ${tailOf(args.scrub(result.logTail))}`);
+      }
+    }
+  };
+
+  if (args.serve.install) {
+    const install = await runDetachedStep(desktop, {
+      name: "subject-install",
+      command: args.serve.install,
+      cwd: SUBJECT_DIR,
+      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs,
+      ...timers
+    });
+    if (!install.ok) {
+      throw new Error(`subject install ${install.timedOut ? "timed out" : `failed (exit ${install.exitCode})`}: ${tailOf(args.scrub(install.logTail))}`);
+    }
+    await refresh();
+  }
+
+  // before-build: after install, before build (builds that read seeded state, e.g. SSG).
+  // When no build is declared this simply precedes start: equivalent to before-start.
+  await runStateSteps("before-build");
+  await refresh();
+
+  if (args.serve.build) {
+    const build = await runDetachedStep(desktop, {
+      name: "subject-build",
+      command: args.serve.build,
+      cwd: SUBJECT_DIR,
+      timeoutMs: args.serve.buildTimeoutMs ?? BUILD_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs,
+      ...timers
+    });
+    if (!build.ok) {
+      throw new Error(`subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${tailOf(args.scrub(build.logTail))}`);
+    }
+    await refresh();
+  }
+
+  // before-start (the default phase): migrations, SQL/file fixtures, an in-sandbox DB server
+  // (`sudo service postgresql start && pg_isready` is a bounded step; the daemon it forks is
+  // reclaimed by the sandbox lifecycle like everything else).
+  await runStateSteps("before-start");
+  await refresh();
+
+  await startDetachedProcess(desktop, {
+    name: "subject-start",
+    command: args.serve.start,
+    cwd: SUBJECT_DIR,
+    requestTimeoutMs: args.requestTimeoutMs
+  });
+
+  const ready = await probeUrl(desktop, args.serve.url, {
+    timeoutMs: args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
+    requestTimeoutMs: args.requestTimeoutMs,
+    ...timers
+  });
+  if (!ready) {
+    const startLog = await readDetachedLog(desktop, "subject-start", args.requestTimeoutMs).catch(() => "");
+    throw new Error(`subject did not answer at ${args.serve.url} within ${args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS}ms; server log tail: ${tailOf(args.scrub(startLog))}`);
+  }
+
+  // after-ready: fixture loading through the RUNNING app (loopback curl from in-sandbox:
+  // steps are author-trusted provisioning, not actors, so no new URL policy surface). These
+  // complete before the caller opens the browser and the session timer starts.
+  await runStateSteps("after-ready");
+  await refresh();
+}
+
+/**
+ * Provision a clone subject inside the sandbox: clone → the shared serve pipeline
+ * (install → state(before-build) → build → state(before-start) → start → readiness
+ * probe → state(after-ready)). Returns the latest subject HEAD after successful
+ * provisioning. Throws (with a capped log tail for the caller to redact) on any failing step:
+ * the lab persists that as a failed-evidence bundle.
  *
  * Auth: when GITHUB_TOKEN is among the declared subject env names, the clone authenticates
- * via an Authorization header computed IN-SANDBOX from the provisioned env — the token never
+ * via an Authorization header computed IN-SANDBOX from the provisioned env: the token never
  * appears in the script text, the process argv beyond the transient git call, the clone URL,
  * or .git/config.
  */
@@ -2293,41 +2583,7 @@ export async function provisionCloneSubject(
       args.onCommit?.(commit);
     }
   };
-  const stateSteps = args.state?.seed ?? [];
-  const runStateSteps = async (when: LabStateStepWhen): Promise<void> => {
-    for (const step of stateSteps) {
-      if ((step.when ?? "before-start") !== when) {
-        continue;
-      }
-      const stepTimeoutMs = step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS;
-      const now = args.now ?? Date.now;
-      const startedAt = now();
-      const result = await runDetachedStep(desktop, {
-        name: `subject-state-${step.name}`,
-        command: step.command,
-        cwd: SUBJECT_DIR,
-        timeoutMs: stepTimeoutMs,
-        requestTimeoutMs: args.requestTimeoutMs,
-        ...timers
-      });
-      args.onStateStep?.({
-        name: step.name,
-        when,
-        // Digest only (sha256-16): the command text never persists — the lab YAML in the
-        // consumer's repo is the plaintext source of truth.
-        commandDigest: commandDigestOf(step.command),
-        ok: result.ok,
-        ...(result.exitCode === undefined ? {} : { exitCode: result.exitCode }),
-        ...(result.timedOut ? { timedOut: true } : {}),
-        durationMs: Math.max(0, now() - startedAt)
-      });
-      if (!result.ok) {
-        // Fail closed with the existing scrub-before-truncate tail chain: literal scrub of
-        // every provisioned value PRE-truncation, then pattern redaction + cap in tailOf.
-        throw new Error(`subject state step "${step.name}" ${result.timedOut ? `timed out after ${stepTimeoutMs}ms` : `failed (exit ${result.exitCode})`}: ${tailOf(args.scrub(result.logTail))}`);
-      }
-    }
-  };
+
   const cloneCommand = args.hasGithubToken
     ? `auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0) && git -c http.extraHeader="Authorization: Basic $auth" clone --depth ${args.depth} https://github.com/${args.repo}.git ${SUBJECT_DIR}`
     : `git clone --depth ${args.depth} https://github.com/${args.repo}.git ${SUBJECT_DIR}`;
@@ -2345,71 +2601,100 @@ export async function provisionCloneSubject(
 
   await refreshCommit();
 
-  if (args.serve.install) {
-    const install = await runDetachedStep(desktop, {
-      name: "subject-install",
-      command: args.serve.install,
-      cwd: SUBJECT_DIR,
-      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
-      requestTimeoutMs: args.requestTimeoutMs,
-      ...timers
-    });
-    if (!install.ok) {
-      throw new Error(`subject install ${install.timedOut ? "timed out" : `failed (exit ${install.exitCode})`}: ${tailOf(args.scrub(install.logTail))}`);
-    }
-    await refreshCommit();
-  }
-
-  // before-build: after install, before build (builds that read seeded state, e.g. SSG).
-  // When no build is declared this simply precedes start — equivalent to before-start.
-  await runStateSteps("before-build");
-  await refreshCommit();
-
-  if (args.serve.build) {
-    const build = await runDetachedStep(desktop, {
-      name: "subject-build",
-      command: args.serve.build,
-      cwd: SUBJECT_DIR,
-      timeoutMs: args.serve.buildTimeoutMs ?? BUILD_TIMEOUT_MS,
-      requestTimeoutMs: args.requestTimeoutMs,
-      ...timers
-    });
-    if (!build.ok) {
-      throw new Error(`subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${tailOf(args.scrub(build.logTail))}`);
-    }
-    await refreshCommit();
-  }
-
-  // before-start (the default phase): migrations, SQL/file fixtures, an in-sandbox DB server
-  // (`sudo service postgresql start && pg_isready` is a bounded step; the daemon it forks is
-  // reclaimed by the sandbox lifecycle like everything else).
-  await runStateSteps("before-start");
-  await refreshCommit();
-
-  await startDetachedProcess(desktop, {
-    name: "subject-start",
-    command: args.serve.start,
-    cwd: SUBJECT_DIR,
-    requestTimeoutMs: args.requestTimeoutMs
+  await runSubjectServePipeline(desktop, {
+    serve: args.serve,
+    ...(args.state === undefined ? {} : { state: args.state }),
+    requestTimeoutMs: args.requestTimeoutMs,
+    scrub: args.scrub,
+    ...(args.onStateStep === undefined ? {} : { onStateStep: args.onStateStep }),
+    onPhaseComplete: refreshCommit,
+    ...timers
   });
 
-  const ready = await probeUrl(desktop, args.serve.url, {
-    timeoutMs: args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
+  return latestCommit;
+}
+
+/**
+ * Provision a local-tree subject inside the sandbox: upload the once-per-run packed archive
+ * (identical bytes across every fan-out lane) → extract it into SUBJECT_DIR → the
+ * same shared serve pipeline provisionCloneSubject uses. Unlike the clone route there is no
+ * in-sandbox git refresh: the archive excludes .git entirely (see source-archive.ts), so
+ * subject identity is the host-side LocalTreeArchive captured at pack time, never anything
+ * resolved in-sandbox.
+ */
+export async function provisionLocalTreeSubject(
+  desktop: E2BDesktopSandbox,
+  args: {
+    /** The once-per-run packed archive bytes (shared byte-identically across every lane). */
+    archiveBuffer: ArrayBuffer;
+    serve: LabSubjectServe;
+    /** Declared subject state (seed steps; external declaration is provenance-only). */
+    state?: LabSubjectState;
+    requestTimeoutMs: number;
+    /** Literal scrubber for known provisioned values, applied to log tails PRE-truncation. */
+    scrub: (text: string) => string;
+    /** Called the moment each state step finishes, success or failure. */
+    onStateStep?: (record: RunSubjectStateStepRecord) => void;
+  } & DetachedTimers
+): Promise<void> {
+  const timers: DetachedTimers = {
+    ...(args.now === undefined ? {} : { now: args.now }),
+    ...(args.sleep === undefined ? {} : { sleep: args.sleep })
+  };
+
+  try {
+    await desktop.files.write(LOCAL_TREE_REMOTE_ARCHIVE_PATH, args.archiveBuffer, {
+      requestTimeoutMs: args.requestTimeoutMs,
+      useOctetStream: true
+    });
+  } catch (error) {
+    throw new Error(`subject-upload failed: ${tailOf(args.scrub(compactError(error)))}`);
+  }
+
+  const extractCommand = `rm -rf ${SUBJECT_DIR} && mkdir -p ${SUBJECT_DIR} && tar -xzf ${LOCAL_TREE_REMOTE_ARCHIVE_PATH} -C ${SUBJECT_DIR} && rm -f ${LOCAL_TREE_REMOTE_ARCHIVE_PATH}`;
+  const extract = await runDetachedStep(desktop, {
+    name: "subject-extract",
+    command: extractCommand,
+    timeoutMs: CLONE_TIMEOUT_MS,
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers
   });
-  if (!ready) {
-    const startLog = await readDetachedLog(desktop, "subject-start", args.requestTimeoutMs).catch(() => "");
-    throw new Error(`subject did not answer at ${args.serve.url} within ${args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS}ms; server log tail: ${tailOf(args.scrub(startLog))}`);
+  if (!extract.ok) {
+    throw new Error(`subject extract ${extract.timedOut ? "timed out" : `failed (exit ${extract.exitCode})`}: ${tailOf(args.scrub(extract.logTail))}`);
   }
 
-  // after-ready: fixture loading through the RUNNING app (loopback curl from in-sandbox —
-  // steps are author-trusted provisioning, not actors, so no new URL policy surface). These
-  // complete before the caller opens the browser and the session timer starts.
-  await runStateSteps("after-ready");
-  await refreshCommit();
+  await runSubjectServePipeline(desktop, {
+    serve: args.serve,
+    ...(args.state === undefined ? {} : { state: args.state }),
+    requestTimeoutMs: args.requestTimeoutMs,
+    scrub: args.scrub,
+    ...(args.onStateStep === undefined ? {} : { onStateStep: args.onStateStep }),
+    ...timers
+  });
+}
 
-  return latestCommit;
+/**
+ * Default local-tree packing implementation: createLocalTreeArchive(root, opts) on the host,
+ * then a single read of the produced archive file into an ArrayBuffer for upload. The DI seam
+ * (CuaActorLabHooks.packLocalTree) overrides this in deterministic tests so they never require
+ * tar/git.
+ */
+async function defaultPackLocalTree(args: {
+  root: string;
+  extraExclude?: string[];
+  maxArchiveBytes?: number;
+}): Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }> {
+  const archive = createLocalTreeArchive(args.root, {
+    ...(args.extraExclude === undefined ? {} : { extraExclude: args.extraExclude }),
+    ...(args.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: args.maxArchiveBytes })
+  });
+  const bytes = await readFile(archive.archivePath);
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  // The archive was written to a fresh mkdtemp dir (no outputPath passed above); once the
+  // bytes are buffered the on-disk copy is pure residue, and a packed working tree left in
+  // the host tmpdir is itself a small leak surface. Best-effort removal.
+  await rm(path.dirname(archive.archivePath), { recursive: true, force: true }).catch(() => undefined);
+  return { archive, buffer };
 }
 
 /** sha256 hex of the exact command string, first 16 chars (the promptDigest convention). */
@@ -2519,9 +2804,9 @@ export function buildCuaBundle(args: {
   session?: CuaLoopResult;
   sessionError?: string;
   source: RunBundle["source"];
-  /** Clone-route provenance: what the actor actually drove (names + digests only, never
-   * values or command text), including the subject's state story. */
-  subjectProvenance?: { repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] };
+  /** Provisioned-route provenance (clone or local-tree): what the actor actually drove (names
+   * + digests only, never values or command text), including the subject's state story. */
+  subjectProvenance?: CuaSubjectProvenanceArg;
   /**
    * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
    * WAS). "local-app": an already-running LOCAL dev server driven in-process, un-pinnable —
@@ -2641,15 +2926,8 @@ export function buildCuaBundle(args: {
           at: args.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.provenance",
-          // HONEST WORDING: claim "cloned and served" only when it actually happened.
-          message: `${args.dryRun
-            ? `Subject declared: clone of ${args.subjectProvenance.repo}, to be served at ${publicAppUrl} in-sandbox (dry-run contract; nothing cloned)`
-            : args.subjectProvenance.commit
-              ? args.session
-                ? `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit} and served at ${publicAppUrl} in-sandbox`
-                : `Subject cloned from ${args.subjectProvenance.repo}@${args.subjectProvenance.commit}; serving at ${publicAppUrl} did not complete (see session error)`
-              : `Subject clone attempted from ${args.subjectProvenance.repo}; commit unresolved (provisioning failed before resolution)`
-          } (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
+          // HONEST WORDING: claim "cloned/packed and served" only when it actually happened.
+          message: `${subjectProvenanceMessage(args.subjectProvenance, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
           simId: "sim-001",
           streamId: "stream-001"
         }
@@ -2783,16 +3061,41 @@ export function buildCuaBundle(args: {
     ...(args.providerResources === undefined || args.providerResources.length === 0 ? {} : { providerResources: args.providerResources }),
     // Structured subject provenance (invariant 5): code pin + state story. Uniform and
     // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
-    subject: args.subjectProvenance
-      ? {
-          source: "clone",
-          repo: args.subjectProvenance.repo,
-          ...(args.subjectProvenance.commit === undefined ? {} : { commit: args.subjectProvenance.commit }),
-          envNames: args.subjectProvenance.envNames,
-          state: args.subjectProvenance.state
-        }
-      : { source: "app-url", state: { provenance: "undeclared" } }
+    // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
+    // shaped, so no reconstruction is needed beyond the app-url fallback.
+    subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } }
   };
+}
+
+/** Human-readable provenance line for the single-lane subject.provenance event (invariant 5):
+ *  claims "cloned/packed and served" ONLY when it actually happened. */
+function subjectProvenanceMessage(
+  provenance: CuaSubjectProvenanceArg,
+  publicAppUrl: string,
+  dryRun: boolean,
+  hasSession: boolean
+): string {
+  if (provenance.source === "clone") {
+    if (dryRun) {
+      return `Subject declared: clone of ${provenance.repo}, to be served at ${publicAppUrl} in-sandbox (dry-run contract; nothing cloned)`;
+    }
+    if (provenance.commit) {
+      return hasSession
+        ? `Subject cloned from ${provenance.repo}@${provenance.commit} and served at ${publicAppUrl} in-sandbox`
+        : `Subject cloned from ${provenance.repo}@${provenance.commit}; serving at ${publicAppUrl} did not complete (see session error)`;
+    }
+    return `Subject clone attempted from ${provenance.repo}; commit unresolved (provisioning failed before resolution)`;
+  }
+  if (dryRun) {
+    return `Subject declared: local working tree, to be packed and served at ${publicAppUrl} in-sandbox (dry-run contract; nothing packed)`;
+  }
+  if (provenance.archiveSha256) {
+    const dirtyLabel = provenance.dirty === true ? ", dirty working tree" : provenance.dirty === false ? ", clean working tree" : "";
+    return hasSession
+      ? `Subject packed (archiveSha256 ${provenance.archiveSha256}${dirtyLabel}) and served at ${publicAppUrl} in-sandbox`
+      : `Subject packed (archiveSha256 ${provenance.archiveSha256}${dirtyLabel}); serving at ${publicAppUrl} did not complete (see session error)`;
+  }
+  return "Subject local-tree packing attempted; archive digest unresolved (provisioning failed before resolution)";
 }
 
 /**
@@ -2818,6 +3121,7 @@ export function buildCuaFanoutBundle(args: {
   rerun?: RunRerunLineage;
   failFastReason?: string;
   cloneRoute: boolean;
+  localTreeRoute?: boolean;
   publicRepo?: string;
   subjectEnvNames: string[];
   inProgress?: boolean;
@@ -2967,6 +3271,23 @@ export function buildCuaFanoutBundle(args: {
               ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicLaneAppUrl} in-sandbox`
               : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
             : `subject clone attempted from ${args.publicRepo}; commit unresolved`
+        } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    } else if (subject.source === "local-tree") {
+      events.push({
+        id: nextEventId(`subject-${spec.laneId}`),
+        at: args.createdAt,
+        level: "info",
+        type: "cua-lab.subject.provenance",
+        message: `Lane ${spec.laneId}: ${args.dryRun
+          ? `subject declared: local working tree, to be packed and served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing packed)`
+          : subject.archiveSha256
+            ? session
+              ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicLaneAppUrl} in-sandbox`
+              : `subject packed (archiveSha256 ${subject.archiveSha256}); serving did not complete (see session error)`
+            : "subject local-tree packing attempted; archive digest unresolved"
         } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
         simId: spec.simId,
         streamId: spec.streamId

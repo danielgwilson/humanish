@@ -38,6 +38,7 @@ import type {
 } from "../src/index.js";
 import { containsSensitive } from "../src/redaction.js";
 import { verifyRun } from "../src/run.js";
+import type { LocalTreeArchive } from "../src/source-archive.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves BOTH faces of the sandbox: the
@@ -73,6 +74,14 @@ interface FakeSandbox extends E2BDesktopSandbox {
 function makeFakeSandbox(options: {
   withOpen?: boolean;
   commandHandler?: (command: string) => { stdout?: string; exitCode?: number } | undefined;
+  /**
+   * Throws a CommandExitError-shaped error (real-SDK-accurate: the real @e2b/desktop Sandbox
+   * throws on any non-zero exit rather than returning one) for commands the predicate matches.
+   * Mirrors tests/e2b-desktop-type-fallback.test.ts's makeFakeDesktop convention so both the
+   * throwing shape and the structural non-throwing shape (commandHandler) are coverable from
+   * the same fake.
+   */
+  commandThrow?: (command: string) => { exitCode?: number; stderr?: string; stdout?: string; message?: string } | undefined;
 } = {}): FakeSandbox {
   let frame = 0;
   const calls: Array<[string, ...unknown[]]> = [];
@@ -85,12 +94,24 @@ function makeFakeSandbox(options: {
     commands: {
       run: async (command: string) => {
         calls.push(["commands.run", command]);
+        const t = options.commandThrow?.(command);
+        if (t) {
+          throw Object.assign(new Error(t.message ?? `exit status ${t.exitCode ?? 1}`), {
+            name: "CommandExitError",
+            ...(t.exitCode === undefined ? {} : { exitCode: t.exitCode }),
+            ...(t.stderr === undefined ? {} : { stderr: t.stderr }),
+            ...(t.stdout === undefined ? {} : { stdout: t.stdout })
+          });
+        }
         return options.commandHandler?.(command) ?? { exitCode: 0, stdout: "" };
       }
     },
     files: {
-      write: async (filePath: string, data: string | ArrayBuffer) => {
-        calls.push(["files.write", filePath, String(data)]);
+      // Raw data (never String()-coerced): existing callers all write string script content
+      // (unchanged behavior), and the local-tree upload path writes a real ArrayBuffer that
+      // tests need to inspect directly (byteLength, instanceof ArrayBuffer).
+      write: async (filePath: string, data: string | ArrayBuffer, writeOpts?: { requestTimeoutMs?: number; useOctetStream?: boolean }) => {
+        calls.push(["files.write", filePath, data, writeOpts]);
         return undefined;
       }
     },
@@ -1790,6 +1811,270 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
 });
 
 describe("buildCuaBundle", () => {
+describe("local-tree route (subject.source: local-tree, computer-use)", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-local-tree-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  function localTreeCuaConfig(extra?: {
+    env?: string[];
+    state?: unknown;
+    count?: number;
+    localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
+  }): LabConfig {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-local-tree-proof",
+      title: "CUA local-tree proof",
+      subject: {
+        source: "local-tree",
+        serve: {
+          install: "pnpm install --frozen-lockfile",
+          build: "pnpm build",
+          start: "pnpm start",
+          url: "http://127.0.0.1:3000/"
+        },
+        ...(extra?.env ? { env: extra.env } : {}),
+        ...(extra?.state === undefined ? {} : { state: extra.state }),
+        ...(extra?.localTree === undefined ? {} : { localTree: extra.localTree })
+      },
+      actors: [{
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+        ...(extra?.count === undefined ? {} : { count: extra.count })
+      }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  // 64-hex archiveSha256 and a 40-hex commit: shape-valid fixtures, not real digests.
+  const FIXED_ARCHIVE: LocalTreeArchive = {
+    archivePath: "/unused-in-fake/source.tar.gz",
+    archiveSha256: "ab".repeat(32),
+    fileCount: 3,
+    totalBytes: 42,
+    git: { commit: "cd".repeat(20), dirty: true }
+  };
+  const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
+
+  it("dry-run yields the contract bundle with subject.source local-tree and NO archiveSha256", async () => {
+    const config = localTreeCuaConfig();
+    const outcome = await runLab(config, { cwd, dryRun: true });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+
+    expect(result.ok).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.sandbox).toBeUndefined();
+    expect(result.subject).toEqual({ source: "local-tree", envNames: [], state: { provenance: "undeclared" } });
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.subject).toEqual({ source: "local-tree", envNames: [], state: { provenance: "undeclared" } });
+    expect("archiveSha256" in bundle.subject).toBe(false);
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("live fan-out (2 lanes): packs the working tree ONCE, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
+    const config = localTreeCuaConfig({ count: 2 });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, created, killed } = makeFakeModule(sandbox);
+    const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> = [];
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async (args) => {
+          packCalls.push(args);
+          return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
+        },
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.ok).toBe(true);
+    expect(created.length).toBe(2);
+
+    // Packed exactly ONCE for the whole 2-lane fan-out, rooted at the lab resolution cwd.
+    expect(packCalls).toHaveLength(1);
+    expect(packCalls[0]?.root).toBe(cwd);
+
+    // Every lane uploaded the SAME archive bytes to the SAME remote path, octet-stream.
+    const uploads = sandbox.calls.filter(
+      (call): call is [string, string, ArrayBuffer, { useOctetStream?: boolean } | undefined] =>
+        call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz"
+    );
+    expect(uploads).toHaveLength(2);
+    for (const upload of uploads) {
+      expect(upload[2]).toBeInstanceOf(ArrayBuffer);
+      expect(upload[2]).toBe(FAKE_ARCHIVE_BYTES);
+      expect(upload[3]?.useOctetStream).toBe(true);
+    }
+
+    // The extract step ran one command: rm -rf/mkdir -p SUBJECT_DIR, tar -xzf, then rm -f the
+    // uploaded archive.
+    const extractScript = sandbox.calls.find(
+      (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh")
+    );
+    expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
+    expect(extractScript?.[2]).toContain("mkdir -p /home/user/subject");
+    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.homun-source.tar.gz -C /home/user/subject");
+    expect(extractScript?.[2]).toContain("rm -f /home/user/.homun-source.tar.gz");
+
+    // Provenance: aggregate + every lane carry archiveSha256/commit/dirty from the hook result.
+    const expectedSubject = {
+      source: "local-tree",
+      archiveSha256: FIXED_ARCHIVE.archiveSha256,
+      commit: FIXED_ARCHIVE.git!.commit,
+      dirty: true,
+      envNames: [],
+      state: { provenance: "undeclared" }
+    };
+    expect(result.subject).toEqual(expectedSubject);
+    expect(result.lanes).toHaveLength(2);
+    for (const lane of result.lanes ?? []) {
+      expect(lane.subject).toEqual(expectedSubject);
+    }
+
+    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.subject).toEqual(expectedSubject);
+
+    expect(killed.length).toBeGreaterThan(0);
+  });
+
+  it("extract failure, throwing CommandExitError shape: fails the lane with a scrubbed tail", async () => {
+    const config = localTreeCuaConfig();
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler(),
+      commandThrow: (command) =>
+        command.includes("setsid -f") && command.includes("subject-extract/run.sh")
+          ? { exitCode: 2, message: "tar: unexpected end of archive (extract failed)" }
+          : undefined
+    });
+    const { module, created } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        runSession: async () => {
+          throw new Error("runSession must not be reached: extract should fail first");
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+
+    expect(outcome.result.ok).toBe(false);
+    // The sandbox WAS created (provisioning is in-sandbox); only packing skips sandbox creation.
+    expect(created.length).toBe(1);
+    const message = outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
+    expect(message).toContain("tar: unexpected end of archive");
+  });
+
+  it("extract failure, structural fake returning a nonzero exitCode (not throwing): fails the lane with a scrubbed tail", async () => {
+    const config = localTreeCuaConfig();
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("subject-extract/status")) return { stdout: "2" };
+        if (command.includes("subject-extract/log.txt")) return { stdout: "tar: unexpected end of archive (exit 2)" };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        runSession: async () => {
+          throw new Error("runSession must not be reached: extract should fail first");
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+
+    expect(outcome.result.ok).toBe(false);
+    const message = outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
+    expect(message).toContain("subject extract");
+    expect(message).toContain("tar: unexpected end of archive");
+  });
+
+  it("packing failure (hook throws) fails the run closed BEFORE any sandbox is created", async () => {
+    const config = localTreeCuaConfig();
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, created } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => {
+          // A realistic createLocalTreeArchive-shaped failure: names counts, includes an
+          // absolute path the redaction pipeline must scrub before it reaches the result.
+          // Built from joined fragments (never a literal /Users/... path in source) so this
+          // fixture itself never trips the repo's own public-surface path scan.
+          const fakeAbsoluteRoot = ["", "Users", "fake-operator", "project"].join("/");
+          throw new Error(
+            `Local tree root "${fakeAbsoluteRoot}" produced zero packable entries after the always-on denylist; local-tree packing requires at least one non-denylisted file or symlink.`
+          );
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+
+    expect(outcome.result.ok).toBe(false);
+    expect(outcome.result.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(outcome.result.error?.message).toContain("zero packable entries");
+    expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
+    expect(created).toHaveLength(0);
+  });
+
+  it("subject.localTree.keep: true preserves the sandbox on a failed lane (mirrors subject.clone.keep)", async () => {
+    const config = localTreeCuaConfig({ localTree: { keep: true } });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module, killed } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        runSession: async () => {
+          throw new Error("boom during session");
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+
+    expect(outcome.result.ok).toBe(false);
+    // Failure + keep -> NOT killed, with a debug warning naming the flag that caused it.
+    expect(killed).toEqual([]);
+    expect(outcome.result.sandbox?.killed).toBe(false);
+    expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
+    expect(outcome.result.warnings.some((w) => w.includes("subject.localTree.keep"))).toBe(true);
+  });
+});
+
   it("dry-run bundle shape: contract verdict, no actor seam, public cwd", () => {
     const bundle = buildCuaBundle({
       actorId: "openai-computer-use",

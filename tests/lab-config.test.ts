@@ -1383,3 +1383,167 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     if (fanout.ok) expect(selectLabBackend(fanout.config)).toBe("cua");
   });
 });
+
+
+// RUNG 1: the local-tree subject.source (issue #261) - packs the operator's own working tree
+// (the lab resolution cwd) and provisions it in-sandbox in place of a clone. Routing requires
+// execution.target: e2b-desktop and a computer-use actor; everything else fails closed at parse.
+describe("parseLabConfig (local-tree subject - issue #261)", () => {
+  const validLocalTree = {
+    schema: LAB_CONFIG_SCHEMA,
+    id: "local-tree-lab",
+    subject: {
+      source: "local-tree",
+      serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" }
+    },
+    actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Explore the packed working tree." }],
+    execution: { target: "e2b-desktop" }
+  };
+
+  it("parses a minimal local-tree lab and routes to the cua backend with ZERO warnings", () => {
+    const result = parseLabConfig(validLocalTree);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.source).toBe("local-tree");
+    expect(result.config.subject.serve?.start).toBe("pnpm start");
+    expect(result.config.subject.serve?.url).toBe("http://127.0.0.1:3000/");
+    expect(routesToComputerUse(result.config)).toBe(true);
+    expect(selectLabBackend(result.config)).toBe("cua");
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("normalizes localTree.exclude entries (leading ./ and trailing / stripped)", () => {
+    const result = parseLabConfig({
+      ...validLocalTree,
+      subject: { ...validLocalTree.subject, localTree: { exclude: ["./big-media", "vendor/"] } }
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.localTree).toEqual({ exclude: ["big-media", "vendor"] });
+  });
+
+  it("round-trips subject.localTree fields (keep/exclude/maxArchiveBytes)", () => {
+    const result = parseLabConfig({
+      ...validLocalTree,
+      subject: {
+        ...validLocalTree.subject,
+        localTree: { keep: true, exclude: ["big-media", "vendor"], maxArchiveBytes: 100_000_000 }
+      }
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.localTree).toEqual({
+      keep: true,
+      exclude: ["big-media", "vendor"],
+      maxArchiveBytes: 100_000_000
+    });
+  });
+
+  it("localTree is optional - a bare local-tree lab has no subject.localTree at all", () => {
+    const result = parseLabConfig(validLocalTree);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.localTree).toBeUndefined();
+  });
+
+  it.each([
+    ["repos on local-tree", { ...validLocalTree, subject: { ...validLocalTree.subject, repos: ["a/b"] } }],
+    ["clone block on local-tree", { ...validLocalTree, subject: { ...validLocalTree.subject, clone: { depth: 1 } } }],
+    ["missing serve", { ...validLocalTree, subject: { source: "local-tree" } }],
+    ["missing execution.target e2b-desktop", { ...validLocalTree, execution: undefined }],
+    ["local execution.target (the whole point is a hosted desktop)", { ...validLocalTree, execution: { target: "local" } }],
+    ["non-computer-use actor (codex-app-server)", { ...validLocalTree, actors: [{ type: "codex-app-server" }] }],
+    ["localTree block on a clone subject", {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "clone-with-localtree",
+      subject: { source: "clone", repos: ["example-org/example-app"], localTree: { keep: true } },
+      actors: [{ type: "codex-app-server" }]
+    }],
+    ["topology: shared-world on a local-tree subject", { ...validLocalTree, subject: { ...validLocalTree.subject, topology: "shared-world" } }],
+    ["localTree.exclude with an empty string entry", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: ["ok", ""] } } }],
+    ["localTree.exclude with an absolute path", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: ["/etc/secrets"] } } }],
+    ["localTree.exclude with glob syntax", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: ["**/secrets"] } } }],
+    ["localTree.keep as a quoted YAML string", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { keep: "true" } } }],
+    ["localTree.maxArchiveBytes zero", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { maxArchiveBytes: 0 } } }],
+    ["localTree.maxArchiveBytes negative", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { maxArchiveBytes: -1 } } }]
+  ])("fails closed on local-tree mis-config: %s", (_label, input) => {
+    const result = parseLabConfig(input);
+    expect(result.ok, _label).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+  });
+
+  it("each local-tree fail-closed reason names its requirement precisely", () => {
+    const withRepos = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, repos: ["a/b"] } });
+    expect(withRepos.ok).toBe(false);
+    if (!withRepos.ok) expect(withRepos.error.message).toContain("subject.repos");
+
+    const withClone = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, clone: { depth: 1 } } });
+    expect(withClone.ok).toBe(false);
+    if (!withClone.ok) expect(withClone.error.message).toContain("subject.clone");
+
+    const noServe = parseLabConfig({ ...validLocalTree, subject: { source: "local-tree" } });
+    expect(noServe.ok).toBe(false);
+    if (!noServe.ok) expect(noServe.error.message).toContain("subject.serve");
+
+    const noTarget = parseLabConfig({ ...validLocalTree, execution: undefined });
+    expect(noTarget.ok).toBe(false);
+    if (!noTarget.ok) expect(noTarget.error.message).toContain("execution.target: e2b-desktop");
+
+    const badActor = parseLabConfig({ ...validLocalTree, actors: [{ type: "codex-app-server" }] });
+    expect(badActor.ok).toBe(false);
+    if (!badActor.ok) expect(badActor.error.message).toContain("computer-use actor");
+
+    const localTreeOnClone = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "clone-with-localtree",
+      subject: { source: "clone", repos: ["example-org/example-app"], localTree: { keep: true } },
+      actors: [{ type: "codex-app-server" }]
+    });
+    expect(localTreeOnClone.ok).toBe(false);
+    if (!localTreeOnClone.ok) expect(localTreeOnClone.error.message).toContain("subject.localTree");
+
+    // The existing requires-clone shared-world reason must stay TRUTHFUL for local-tree too: it
+    // still names clone as the requirement, never local-tree (shared-world + local-tree is an
+    // explicit follow-up non-goal, not a supported combination).
+    const sharedWorldOnLocalTree = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, topology: "shared-world" } });
+    expect(sharedWorldOnLocalTree.ok).toBe(false);
+    if (!sharedWorldOnLocalTree.ok) {
+      expect(sharedWorldOnLocalTree.error.message).toContain("`subject.source: clone`");
+    }
+
+    const badExclude = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: [""] } } });
+    expect(badExclude.ok).toBe(false);
+    if (!badExclude.ok) expect(badExclude.error.message).toContain("subject.localTree.exclude");
+
+    const badMax = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { maxArchiveBytes: 0 } } });
+    expect(badMax.ok).toBe(false);
+    if (!badMax.ok) expect(badMax.error.message).toContain("subject.localTree.maxArchiveBytes");
+  });
+
+  it("serve/env/state are shared with the clone route (same parsing + semantic validation)", () => {
+    const result = parseLabConfig({
+      ...validLocalTree,
+      subject: {
+        ...validLocalTree.subject,
+        env: ["DATABASE_URL"],
+        state: { seed: [{ name: "fixtures", command: "pnpm prisma db seed" }] }
+      }
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.env).toEqual(["DATABASE_URL"]);
+    expect(result.config.subject.state?.seed).toHaveLength(1);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("still fails closed on a malformed state block (semantic validation is shared with clone)", () => {
+    const result = parseLabConfig({
+      ...validLocalTree,
+      subject: { ...validLocalTree.subject, state: { external: ["REDIS_URL"] } }
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain("subject.env");
+  });
+});
