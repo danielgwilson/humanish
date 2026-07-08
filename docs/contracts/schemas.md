@@ -54,7 +54,9 @@ deleted when labs became config.
 A lab is a composition over code primitives, not a hardcoded kind:
 
 - `subject`: what the run acts on — `this-repo`, `clone` (owner/repo slugs,
-  optional in-sandbox `serve` + env var names + `state`), `app-url`
+  optional in-sandbox `serve` + env var names + `state`), `local-tree` (the
+  operator's own working tree, packed on the host and provisioned in-sandbox
+  in place of a clone; see below), `app-url`
   (loopback unless `policies.allowPublicTargets` declares an owned deployment),
   `local-app` (an already-running LOCAL dev server driven IN-PROCESS via a
   custom `CuaExecutor`, NO clone and NO E2B desktop — always loopback), or
@@ -65,6 +67,25 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `cuaHooks.buildExecutor` + `buildProvider`; with no hooks the engine fails
   closed (`HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
   [`docs/architecture/state-driven-executor.md`](../architecture/state-driven-executor.md);
+- `subject.localTree` (`local-tree` subjects, computer-use route): pack/upload
+  knobs for the packed working tree: `exclude[]` (extra archive excludes,
+  path prefixes or basenames, on top of the always-on denylist), `keep`
+  (preserve the sandbox on a failed lane for debugging, mirroring
+  `subject.clone.keep`), and `maxArchiveBytes` (upload size cap override;
+  default 256 MiB). Routing requires `execution.target: e2b-desktop` and a
+  computer-use actor; `subject.serve`/`env`/`state` apply exactly as they do
+  on the clone route (identical install/build/start/state semantics). The
+  packed root is the lab resolution cwd; there is no path field, by design
+  (an absolute path in a lab manifest would be a machine-specific,
+  unshareable, leak-prone artifact). Enumeration is git-aware when the root
+  is a git work tree (`git ls-files --cached --others --exclude-standard`,
+  honoring `.gitignore`) or a denylist-only recursive walk otherwise; an
+  always-on denylist (`.git`, `node_modules`, `.homun`, `.env*`, key/cert
+  file patterns) applies in both modes and is not overridable. The lab packs
+  ONCE per run and uploads the identical archive to every fan-out lane. The
+  in-sandbox commit refresh clone subjects use is skipped: `.git` is never
+  uploaded, so identity comes from the host-side archive digest instead. See
+  [`docs/goals/local-tree-subject/goal.md`](../goals/local-tree-subject/goal.md);
 - `subject.product` (terminal-product subjects): the product the agent studies.
   `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
@@ -74,13 +95,14 @@ A lab is a composition over code primitives, not a hardcoded kind:
   terminal-product subject (a field that cannot act on the route is a parse
   error, not silently dropped). See
   [`docs/architecture/terminal-product-lane.md`](../architecture/terminal-product-lane.md);
-- `subject.state` (clone subjects, computer-use route): the subject's state
-  story. `state.seed[]` declares ordered, bounded seed/migration/fixture steps
-  (`{ name, command, when: before-build | before-start | after-ready,
-  timeoutMs }`) executed in-sandbox around the serve sequence; `state.external[]`
-  declares env var NAMES (each must also appear in `subject.env`) pointing at
-  state the lab does not control, recorded as UNPINNED in provenance. Commands
-  persist in evidence as sha256-16 digests only, never as text;
+- `subject.state` (clone or local-tree subjects, computer-use route): the
+  subject's state story. `state.seed[]` declares ordered, bounded
+  seed/migration/fixture steps (`{ name, command, when: before-build |
+  before-start | after-ready, timeoutMs }`) executed in-sandbox around the
+  serve sequence; `state.external[]` declares env var NAMES (each must also
+  appear in `subject.env`) pointing at state the lab does not control,
+  recorded as UNPINNED in provenance. Commands persist in evidence as
+  sha256-16 digests only, never as text;
 - `actors`: who drives it. On the computer-use and scripted-browser routes
   `actors[0].type` is a real dispatch key resolved against the actor registry;
   elsewhere it is a descriptive label (e.g. `synthetic-persona`).
@@ -262,13 +284,20 @@ Core-owned fields:
 - `review`
 - `feedbackCandidates`
 - `subject` (optional, additive): structured subject provenance —
-  `{ source: clone | app-url, repo?, commit?, envNames?, state }` where `state`
-  is `{ provenance: seeded | unpinned | declared-not-run | undeclared,
-  seed?: [{ name, when, commandDigest, ok?, exitCode?, timedOut?, durationMs? }],
-  externalEnvNames? }`. Emitted by the computer-use backend; absent on
-  pre-existing and other backends' bundles. `commandDigest` is the sha256-16 of
-  the exact seed command — command text and env values never appear. Verified
-  by the `subject state provenance` check in `homun verify`.
+  `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
+  dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
+  unpinned | declared-not-run | undeclared, seed?: [{ name, when,
+  commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
+  }`. Emitted by the computer-use backend; absent on pre-existing and other
+  backends' bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
+  (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
+  porcelain status at pack time) are local-tree-route fields, additive under
+  `homun.run-bundle.v1`: a dirty working tree cannot be commit-pinned, so
+  the archive content digest stands in for it. `commandDigest` is the
+  sha256-16 of the exact seed command — command text and env values never
+  appear. `homun verify` fails closed when a LIVE `local-tree` bundle carries
+  no well-formed `archiveSha256`, in addition to the existing `subject state
+  provenance` check.
 - `desktopTemplate` (optional, additive): the custom E2B desktop TEMPLATE (image)
   the run's sandbox(es) launched on, from `execution.desktop.template` — so the
   evidence shows WHICH image ran. Present only when a template was configured;

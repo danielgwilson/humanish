@@ -387,15 +387,29 @@ export interface RunSubjectStateStepRecord {
 }
 
 /**
- * Structured subject provenance (invariant 5): what the subject WAS — code pin (repo/commit)
- * AND state story. Optional additive field on homun.run-bundle.v1; absent on bundles from
- * backends that have not adopted it (and on all pre-existing bundles).
+ * Structured subject provenance (invariant 5): what the subject WAS — code pin (repo/commit,
+ * or a local-tree archive digest) AND state story. Optional additive field on
+ * homun.run-bundle.v1; absent on bundles from backends that have not adopted it (and on all
+ * pre-existing bundles).
  */
 export interface RunSubjectProvenance {
-  source: "clone" | "app-url";
-  /** Honors policies.redactRepos exactly as the provenance event does. */
+  source: "clone" | "app-url" | "local-tree";
+  /** Clone-route only. Honors policies.redactRepos exactly as the provenance event does. */
   repo?: string;
+  /** Clone-route: the cloned commit SHA. Local-tree route: the host-side HEAD at pack time,
+   *  when the packed root was a git work tree. */
   commit?: string;
+  /**
+   * Local-tree-route only (additive): 64 lowercase-hex sha256 over the sorted packed-entries
+   * list (docs/contracts/schemas.md). This is the provenance PIN for the local-tree route: a
+   * dirty working tree cannot be commit-pinned, so the archive content digest stands in for it.
+   */
+  archiveSha256?: string;
+  /**
+   * Local-tree-route only (additive): true when the host git work tree had uncommitted changes
+   * at pack time. Absent when the packed root was not a git work tree at all.
+   */
+  dirty?: boolean;
   /** Declared env NAMES provisioned for the subject — names only, values never. */
   envNames?: string[];
   state: {
@@ -4814,10 +4828,11 @@ const COMMAND_DIGEST_PATTERN = /^[0-9a-f]{16}$/;
 const SUBJECT_ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 /**
- * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's state CLAIM
- * must match its recorded seed/external evidence. Bundles without a subject block (all
- * pre-existing and non-cua bundles) pass untouched. Live-vs-dry-run is judged from
- * bundle.mode, exactly like noEngagementActorFindings.
+ * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject CLAIM
+ * must match its recorded evidence. Bundles without a subject block (all pre-existing and
+ * non-cua bundles) pass untouched. Live-vs-dry-run is judged from bundle.mode, exactly like
+ * noEngagementActorFindings. Covers both the state story (seed/external) and, for the
+ * local-tree route, the archive content pin.
  */
 function subjectStateFindings(bundle: RunBundle): string[] {
   const subject = bundle.subject;
@@ -4829,6 +4844,18 @@ function subjectStateFindings(bundle: RunBundle): string[] {
   const state = subject.state;
   const seed = state.seed ?? [];
   const live = bundle.mode === "live";
+
+  // Local-tree fail-closed pin: a LIVE local-tree subject must carry a well-formed archive
+  // digest -- a dirty tree cannot be commit-pinned, so archiveSha256 is the only content pin
+  // this route has. Mirrors the seeded-on-dry-run discriminator immediately below: judged by
+  // bundle.mode, never by the presence/shape of other fields. Never echoes the malformed value
+  // (it could itself be a leaked value, same discipline as the externalEnvNames check below).
+  if (live && subject.source === "local-tree") {
+    const pin = (subject as { archiveSha256?: unknown }).archiveSha256;
+    if (typeof pin !== "string" || !ARCHIVE_SHA256_PATTERN.test(pin)) {
+      findings.push("subject.source is local-tree on a live run but archiveSha256 is missing or malformed (a local-tree subject must carry a well-formed 64-hex archive digest)");
+    }
+  }
 
   // Marker-independent rule: a passed LIVE run can never ride on a seed step that did not
   // complete ok (closes the hollow-seeded × unpinned hole — an unpinned bundle still carries
@@ -5684,11 +5711,20 @@ function isSharedWorldOutcome(value: unknown): boolean {
     && typeof value.ok === "boolean";
 }
 
+// The local-tree archive content pin: sha256 hex, full 64 chars (NOT the repo's 16-char
+// display-digest convention -- this value is the provenance pin itself, persisted in full).
+const ARCHIVE_SHA256_PATTERN = /^[a-f0-9]{64}$/;
+
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {
   if (!isRecord(value)) return false;
-  if (value.source !== "clone" && value.source !== "app-url") return false;
+  if (value.source !== "clone" && value.source !== "app-url" && value.source !== "local-tree") return false;
   if (value.repo !== undefined && typeof value.repo !== "string") return false;
   if (value.commit !== undefined && typeof value.commit !== "string") return false;
+  if (value.archiveSha256 !== undefined
+    && (typeof value.archiveSha256 !== "string" || !ARCHIVE_SHA256_PATTERN.test(value.archiveSha256))) {
+    return false;
+  }
+  if (value.dirty !== undefined && typeof value.dirty !== "boolean") return false;
   if (value.envNames !== undefined
     && !(Array.isArray(value.envNames) && value.envNames.every((name) => typeof name === "string"))) {
     return false;

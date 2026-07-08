@@ -59,14 +59,15 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 /**
  * Where the run acts: the host repo, a fresh clone, a running app a browser actor drives
- * (`app-url`), or an already-running LOCAL dev server driven IN-PROCESS via a custom
- * CuaExecutor with NO clone and NO E2B desktop (`local-app`). `local-app` routes to the cua
- * backend and is library-assisted: a caller supplies `cuaHooks.buildExecutor` + `buildProvider`
- * (no built-in driver exists yet), and the engine fails closed
- * (HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them — a structured error, never a
- * desktop attempt. See docs/architecture/state-driven-executor.md.
+ * (`app-url`), an already-running LOCAL dev server driven IN-PROCESS via a custom
+ * CuaExecutor with NO clone and NO E2B desktop (`local-app`), or the operator's own local
+ * working tree packed and provisioned in-sandbox in place of a clone (`local-tree`).
+ * `local-app` routes to the cua backend and is library-assisted: a caller supplies
+ * `cuaHooks.buildExecutor` + `buildProvider` (no built-in driver exists yet), and the engine
+ * fails closed (HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
+ * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
-export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product";
+export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product" | "local-tree";
 
 /**
  * How a subject's WORLD relates across actor lanes. `per-lane-worlds` (the default; absent ==
@@ -85,6 +86,19 @@ export interface LabSubjectClone {
   fanout?: number;
   /** keep the disposable clone for debugging instead of discarding. */
   keep?: boolean;
+}
+
+/**
+ * `local-tree`: how the operator's own working tree is packed and provisioned in-sandbox in
+ * place of a clone. Internal shape (not re-exported from src/index.ts, same as LabSubjectClone).
+ */
+export interface LabSubjectLocalTree {
+  /** extra archive excludes (path prefixes/basenames) added on top of the always-on denylist. */
+  exclude?: string[];
+  /** keep the disposable sandbox on failure for debugging (mirrors subject.clone.keep). */
+  keep?: boolean;
+  /** upload size cap override in bytes; default 256 MiB. */
+  maxArchiveBytes?: number;
 }
 
 /** How a cloned subject is installed/built/started inside the sandbox (computer-use route). */
@@ -249,6 +263,14 @@ export interface LabSubject {
    * PUBLIC surfaces only. Consumed on the terminal route; rejected on every other source.
    */
   product?: LabSubjectProduct;
+  /**
+   * `local-tree` (computer-use route): local-tree packs the lab resolution cwd (the project
+   * directory homun runs from) instead of cloning a repo. `exclude` adds extra archive excludes
+   * on top of the always-on denylist; `keep` preserves the sandbox on failure for debugging;
+   * `maxArchiveBytes` caps the upload. Consumed on the local-tree route; rejected on every other
+   * source.
+   */
+  localTree?: LabSubjectLocalTree;
 }
 
 export interface LabActorLaneFocus {
@@ -748,6 +770,20 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     // lanes/count rules and the 16 cap; the single-repo rule above is unchanged.
   }
 
+  // local-tree route: packs and uploads the operator's own working tree, then serves it exactly
+  // like a computer-use clone subject. There is no smoke/meta/scripted equivalent for a packed
+  // working tree in this slice, so e2b-desktop + a computer-use actor are the ONLY combination
+  // this source supports. `subject.serve` is already required at parse time (parseSubject); the
+  // repos/clone rejection also already happened there (local-tree never carries git slugs).
+  if (config.subject.source === "local-tree") {
+    if (config.execution?.target !== "e2b-desktop") {
+      return invalid("local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local/smoke route for a local-tree subject.");
+    }
+    if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
+      return invalid(`actors[0].type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${config.actors[0]?.type ?? ""}".`);
+    }
+  }
+
   // Shared computer-use fan-out cross-validation (per-lane worlds, the only topology this
   // slice). Runs for every route that resolves to the cua backend (app-url, clone, local-app).
   // The in-process/local-app route already forced a single lane above, so this is a no-op there
@@ -973,7 +1009,9 @@ export function routesToComputerUse(config: LabConfig): boolean {
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
     return actorResolvesToComputerUse(config.actors[0]?.type);
   }
-  return config.subject.source === "clone"
+  // local-tree packs+uploads the working tree, then serves it exactly like a computer-use clone
+  // subject: same e2b-desktop + computer-use-actor gate.
+  return (config.subject.source === "clone" || config.subject.source === "local-tree")
     && config.execution?.target === "e2b-desktop"
     && actorResolvesToComputerUse(config.actors[0]?.type);
 }
@@ -1201,8 +1239,8 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app" && source !== "terminal-product") {
-    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product.");
+  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app" && source !== "terminal-product" && source !== "local-tree") {
+    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, local-tree.");
   }
   const subject: LabSubject = { source };
 
@@ -1237,23 +1275,38 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("`subject.appUrl` does not apply to terminal-product subjects — declare `subject.product.publicSurfaces` (the agent works from public surfaces, not one loopback app).");
   }
 
-  if (source !== "clone" && raw.serve !== undefined) {
-    return invalid("`subject.serve` applies only to clone subjects (the lab serves the cloned app in-sandbox).");
+  // serve/env/state are shared between clone (cloned app) and local-tree (packed working
+  // tree): both routes serve a subject in-sandbox with the same install/build/start/url +
+  // env-name + seed/external/checkpoint shapes.
+  if (source !== "clone" && source !== "local-tree" && raw.serve !== undefined) {
+    return invalid("`subject.serve` applies only to clone subjects or local-tree subjects (the lab serves the cloned/packed app in-sandbox).");
   }
-  if (source !== "clone" && raw.env !== undefined) {
-    return invalid("`subject.env` applies only to clone subjects (the served app's environment channel).");
+  if (source !== "clone" && source !== "local-tree" && raw.env !== undefined) {
+    return invalid("`subject.env` applies only to clone subjects or local-tree subjects (the served app's environment channel).");
   }
-  if (source !== "clone" && raw.state !== undefined) {
-    return invalid("`subject.state` applies only to clone subjects (the lab seeds the state it serves).");
+  if (source !== "clone" && source !== "local-tree" && raw.state !== undefined) {
+    return invalid("`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves).");
   }
-  // repos/clone are clone-only too (a fresh-clone subject's git inputs). Rejected, never
-  // silently dropped, on app-url/local-app/this-repo subjects (invariant 6: a field that cannot
-  // act on this route is an honest parse error).
+  // repos/clone are clone-ONLY (a fresh-clone subject's git inputs). local-tree packs the
+  // resolution cwd itself, so it has no repo slug to clone and gets its own precise reasons
+  // rather than falling through to the generic clone-only message below.
+  if (source === "local-tree" && raw.repos !== undefined) {
+    return invalid("`subject.repos` does not apply to local-tree subjects. The local-tree route packs the lab resolution cwd itself; there is no owner/repo slug to clone.");
+  }
+  if (source === "local-tree" && raw.clone !== undefined) {
+    return invalid("`subject.clone` does not apply to local-tree subjects. Declare `subject.localTree` instead (keep/exclude/maxArchiveBytes).");
+  }
+  // Rejected, never silently dropped, on app-url/local-app/this-repo/terminal-product subjects
+  // too (invariant 6: a field that cannot act on this route is an honest parse error).
   if (source !== "clone" && raw.repos !== undefined) {
     return invalid("`subject.repos` applies only to clone subjects (the owner/repo slugs to clone).");
   }
   if (source !== "clone" && raw.clone !== undefined) {
     return invalid("`subject.clone` applies only to clone subjects (clone depth/fanout/keep).");
+  }
+  // localTree is local-tree-ONLY (pack/upload knobs for the packed working tree).
+  if (source !== "local-tree" && raw.localTree !== undefined) {
+    return invalid("`subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree).");
   }
 
   if (source === "clone") {
@@ -1294,6 +1347,49 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
         return invalid(reason);
       }
       subject.state = stateResult.value;
+    }
+  }
+
+  if (source === "local-tree") {
+    // A local-tree subject exists to be packed and served; there is no other way to boot it, so
+    // serve is REQUIRED here (unlike clone, where serve is optional for the smoke/meta routes).
+    if (raw.serve === undefined) {
+      return invalid("`subject.serve` is required when source is local-tree: a local-tree subject exists to be packed and served, so declare install/build/start/url exactly like the clone route.");
+    }
+    const serveResult = parseServe(raw.serve);
+    if (!serveResult.ok) {
+      return serveResult;
+    }
+    if (serveResult.value) subject.serve = serveResult.value;
+    if (raw.env !== undefined) {
+      const env = strList(raw.env);
+      if (!env || env.length === 0) {
+        return invalid("`subject.env` must be a non-empty list of env var NAMES when set.");
+      }
+      const badName = env.find((name) => !ENV_NAME_PATTERN.test(name));
+      if (badName) {
+        return invalid(`subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`);
+      }
+      subject.env = env;
+    }
+    const stateResult = parseState(raw.state);
+    if (!stateResult.ok) {
+      return stateResult;
+    }
+    if (stateResult.value) {
+      // Semantic validation is shared with the engine (same helper the clone route uses).
+      const reason = subjectStateInvalidReason(stateResult.value, subject.env);
+      if (reason) {
+        return invalid(reason);
+      }
+      subject.state = stateResult.value;
+    }
+    const localTreeResult = parseLocalTree(raw.localTree);
+    if (!localTreeResult.ok) {
+      return localTreeResult;
+    }
+    if (localTreeResult.value) {
+      subject.localTree = localTreeResult.value;
     }
   }
 
@@ -1551,6 +1647,39 @@ function parseClone(raw: unknown): LabSubjectClone | undefined {
   if (fanout !== undefined) clone.fanout = fanout;
   if (typeof raw.keep === "boolean") clone.keep = raw.keep;
   return Object.keys(clone).length > 0 ? clone : undefined;
+}
+
+/**
+ * Structural parse of `subject.localTree`, mirroring parseClone. Unlike parseClone (which
+ * silently drops an out-of-range depth/fanout), an invalid exclude/maxArchiveBytes value is
+ * REJECTED, never silently dropped: a caller who typed an empty exclude entry or a non-positive
+ * maxArchiveBytes almost certainly meant something, and the archive-size cap is a safety knob,
+ * not a cosmetic default.
+ */
+function parseLocalTree(raw: unknown): { ok: true; value: LabSubjectLocalTree | undefined } | LabConfigParseFailure {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (!isRecord(raw)) {
+    return invalid("`subject.localTree` must be an object ({ keep?, exclude?, maxArchiveBytes? }).");
+  }
+  const localTree: LabSubjectLocalTree = {};
+  if (typeof raw.keep === "boolean") localTree.keep = raw.keep;
+  if (raw.exclude !== undefined) {
+    if (!Array.isArray(raw.exclude) || raw.exclude.some((item) => typeof item !== "string" || item.trim().length === 0)) {
+      return invalid("`subject.localTree.exclude` must be a list of non-empty strings (extra archive excludes on top of the always-on denylist).");
+    }
+    const exclude = strList(raw.exclude);
+    if (exclude) localTree.exclude = exclude;
+  }
+  if (raw.maxArchiveBytes !== undefined) {
+    const maxArchiveBytes = posInt(raw.maxArchiveBytes);
+    if (maxArchiveBytes === undefined) {
+      return invalid("`subject.localTree.maxArchiveBytes` must be a positive integer number of bytes when set.");
+    }
+    localTree.maxArchiveBytes = maxArchiveBytes;
+  }
+  return { ok: true, value: Object.keys(localTree).length > 0 ? localTree : undefined };
 }
 
 function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigParseFailure {
