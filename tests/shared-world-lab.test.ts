@@ -15,7 +15,7 @@ import type {
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig, type LabDesktopBrowser } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runSharedWorldLab, type SharedWorldLabHooks } from "../src/shared-world-lab.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
+import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
@@ -219,16 +219,27 @@ function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: stri
   return parsed.config;
 }
 
-function baseHooks(state: { worldVersion: number }): { hooks: SharedWorldLabHooks; created: E2BDesktopCreateOptions[]; templates: (string | undefined)[]; killed: string[]; sandbox: FakeSandbox } {
+function baseHooks(state: { worldVersion: number }): {
+  hooks: SharedWorldLabHooks;
+  created: E2BDesktopCreateOptions[];
+  templates: (string | undefined)[];
+  killed: string[];
+  sandbox: FakeSandbox;
+  phaseEvents: SubjectPhaseEvent[];
+} {
   const sandbox = makeFakeSandbox(makeCommandHandler(state));
   const { module, created, templates, killed } = makeFakeModule(sandbox);
+  const phaseEvents: SubjectPhaseEvent[] = [];
   const hooks: SharedWorldLabHooks = {
     env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
     loadDesktopModule: async () => module,
     runSession: makeRunSession(state),
-    detachedTimers: { now: () => 0, sleep: async () => {} }
+    detachedTimers: { now: () => 0, sleep: async () => {} },
+    // Captures instead of writing to real stderr (the call-site default when this is absent);
+    // also lets tests assert the ordered phase-boundary sequence.
+    onPhase: (event) => { phaseEvents.push(event); }
   };
-  return { hooks, created, templates, killed, sandbox };
+  return { hooks, created, templates, killed, sandbox, phaseEvents };
 }
 
 const SHARED_WORLD_ADAPTER_NAMESPACE = "shared-world-adapter-proof";
@@ -390,6 +401,25 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json"]);
   });
 
+  it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, phaseEvents } = baseHooks(state);
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(phaseEvents.length).toBeGreaterThan(0);
+
+    const cloneStartedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.started");
+    const cloneCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.completed");
+    const readyCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.ready.completed");
+    expect(cloneStartedIndex).toBeGreaterThanOrEqual(0);
+    expect(cloneCompletedIndex).toBeGreaterThan(cloneStartedIndex);
+    expect(readyCompletedIndex).toBeGreaterThan(cloneCompletedIndex);
+
+    expect(phaseEvents[cloneCompletedIndex]!.ok).toBe(true);
+    expect(phaseEvents[readyCompletedIndex]!.ok).toBe(true);
+  });
+
   it("adapter fail score turns a coherent shared-world run red while keeping shared-world evidence verifiable", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
@@ -473,7 +503,9 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
       loadDesktopModule: async () => module,
       runSession: makeRunSession(state, (index) => (index === 0 ? { status: "failed", completionReason: "harness_error" } : undefined)),
-      detachedTimers: { now: () => 0, sleep: async () => {} }
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
+      onPhase: () => {}
     };
     const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
 
@@ -498,7 +530,9 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
       loadDesktopModule: async () => module,
       runSession: makeRunSession(state, (index) => (index === 0 ? { status: "failed", completionReason: "gave_up" } : undefined)),
-      detachedTimers: { now: () => 0, sleep: async () => {} }
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
+      onPhase: () => {}
     };
     const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
 
@@ -524,7 +558,9 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: secret },
       loadDesktopModule: async () => module,
       runSession: makeRunSession(state, (index) => (index === 0 ? { throwMessage: `connection failed using ${secret}` } : undefined)),
-      detachedTimers: { now: () => 0, sleep: async () => {} }
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
+      onPhase: () => {}
     };
     const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
     expect(result.ok).toBe(false);

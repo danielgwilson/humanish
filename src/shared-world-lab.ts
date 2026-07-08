@@ -48,7 +48,8 @@ import {
   resolveLaneDevice,
   resolveSubjectState,
   SUBJECT_DIR,
-  type DesktopBrowserEvidence
+  type DesktopBrowserEvidence,
+  type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
@@ -127,6 +128,13 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   renderObserverFn?: typeof renderObserver;
   /** Injected clock/sleep for the detached-step polling (tests only). */
   detachedTimers?: DetachedTimers;
+  /**
+   * Subject-provisioning phase sink (mirrors CuaActorLabHooks.onPhase): one call per
+   * started/completed boundary during the ONE shared-plane provision (clone, install, build,
+   * serve start, ready, subject.state seed-step groups). Defaults to one stderr line per event.
+   * Override in tests to capture instead of writing to real stderr.
+   */
+  onPhase?: (event: SubjectPhaseEvent) => void;
   /**
    * CONCURRENT route only (#164 phase 2): the harness clock used to MEASURE each actor's laneWindow
    * [start,end] (default Date.now). The deterministic heart test does NOT override this — overlap is
@@ -586,6 +594,13 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         scrub: scrubKnownValues,
         onCommit: (commit) => { subjectCommit = commit; },
         onStateStep: (record) => { stateStepRecords.push(record); },
+        // One stderr line per phase boundary by default; hooks.onPhase (DI seam, mirrors
+        // CuaActorLabHooks) overrides it so tests capture instead of writing to real stderr.
+        onPhase: hooks.onPhase ?? ((event) => {
+          process.stderr.write(
+            `homun shared-world: ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
+          );
+        }),
         ...timers
       });
 

@@ -525,6 +525,13 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         scrub: scrubKnownValues,
         onCommit: (commit) => { subjectCommit = commit; },
         onStateStep: (record) => { stateStepRecords.push(record); },
+        // One stderr line per phase boundary by default; hooks.onPhase (DI seam, mirrors
+        // CuaActorLabHooks) overrides it so tests capture instead of writing to real stderr.
+        onPhase: hooks.onPhase ?? ((event) => {
+          process.stderr.write(
+            `homun shared-world (concurrent): ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
+          );
+        }),
         ...timers
       });
 

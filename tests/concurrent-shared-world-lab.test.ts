@@ -14,7 +14,7 @@ import { concurrentSharedWorldValidationReason, LAB_CONFIG_SCHEMA, parseLabConfi
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
+import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 
@@ -245,16 +245,21 @@ function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<vo
   templates: (string | undefined)[];
   killed: string[];
   sandboxes: FakeSandbox[];
+  phaseEvents: SubjectPhaseEvent[];
 } {
   const { module, created, templates, killed, sandboxes } = makeFakeModule(makeCommandHandler(state));
+  const phaseEvents: SubjectPhaseEvent[] = [];
   const hooks: SharedWorldLabHooks = {
     env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
     loadDesktopModule: async () => module,
     runSession: makeRunSession(state, rendezvous, override),
     detachedTimers: { now: () => 0, sleep: async () => {} },
-    proberCadenceMs: 100_000 // large: no periodic snapshot fires in the fast test (baseline+final carry the gate)
+    proberCadenceMs: 100_000, // large: no periodic snapshot fires in the fast test (baseline+final carry the gate)
+    // Captures instead of writing to real stderr (the call-site default when this is absent);
+    // also lets tests assert the ordered phase-boundary sequence.
+    onPhase: (event) => { phaseEvents.push(event); }
   };
-  return { hooks, created, templates, killed, sandboxes };
+  return { hooks, created, templates, killed, sandboxes, phaseEvents };
 }
 
 const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
@@ -419,6 +424,25 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // Per-actor traces written.
     const actorsDir = await readdir(path.join(cwd, ".homun", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json", "stream-003.json"]);
+  });
+
+  it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, phaseEvents } = baseHooks(state, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(phaseEvents.length).toBeGreaterThan(0);
+
+    const cloneStartedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.started");
+    const cloneCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.completed");
+    const readyCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.ready.completed");
+    expect(cloneStartedIndex).toBeGreaterThanOrEqual(0);
+    expect(cloneCompletedIndex).toBeGreaterThan(cloneStartedIndex);
+    expect(readyCompletedIndex).toBeGreaterThan(cloneCompletedIndex);
+
+    expect(phaseEvents[cloneCompletedIndex]!.ok).toBe(true);
+    expect(phaseEvents[readyCompletedIndex]!.ok).toBe(true);
   });
 
   it("publishes an attached live Observer while concurrent actors are still running", async () => {
