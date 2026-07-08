@@ -1,6 +1,6 @@
 # Goal: `subject.source: local-tree`
 
-Status: in progress (design ratified, implementation slice 1)
+Status: shipped (slice 1 merged in PR #265; live receipts below; follow-ups in #266)
 Issue: [#261](https://github.com/danielgwilson/homun/issues/261)
 
 ## Why
@@ -227,3 +227,9 @@ subject: {
   synthetic fixture app from a working copy with an uncommitted change,
   boots it in a hosted desktop, a computer-use actor drives it, and
   `homun verify` passes with `archiveSha256` present and `dirty: true`.
+  DONE: `receipts/local-tree-live-2026-07-08.md`.
+- Self-dogfood rung: this repository packs its own working copy and a
+  computer-use actor drives the committed fixture app served from the
+  packed tree. DONE: `receipts/self-dogfood-live-2026-07-08.md`, which
+  also records the public-safe lessons from a same-day private real-app
+  validation.
