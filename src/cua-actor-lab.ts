@@ -153,6 +153,22 @@ const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
 const ERROR_TAIL_CHARS = 2000;
 
 /**
+ * One phase-boundary event from the shared subject provisioning pipeline (clone or local-tree
+ * route): started/completed pairs at each named boundary, never per poll tick (the detached
+ * primitive in e2b-detached.ts already polls every 1.5-3s internally; only the boundary itself
+ * is surfaced here). Message text is public-safe by construction: no URLs beyond the existing
+ * publicAppUrl convention, no paths, no command text. Completed events carry `ok` and
+ * `durationMs`; started events (and the fire-and-forget `subject.serve.started`) carry neither.
+ */
+export interface SubjectPhaseEvent {
+  at: string;
+  type: string;
+  ok?: boolean;
+  durationMs?: number;
+  message: string;
+}
+
+/**
  * Library-level hooks. `prepareDesktop` runs after sandbox creation and before subject
  * provisioning / browser launch — library callers use it for extra in-sandbox setup beyond
  * what `subject.serve` declares (or to provision an app-url subject entirely). The rest are
@@ -171,6 +187,14 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * scraping stderr. Identical plan in dry-run, marked $0.
    */
   onPreflight?: (plan: CuaLanePlan) => void;
+  /**
+   * Live subject-provisioning phase sink: one call per started/completed boundary (clone,
+   * upload/extract, install, build, serve start, ready, and each subject.state seed-step
+   * group). Defaults to one stderr line per event, prefixed with the lane id when laneCount > 1
+   * (single-lane emission is unconditional: single-lane silence for the whole boot is the bug
+   * this event stream closes). Override in tests to capture instead of writing to real stderr.
+   */
+  onPhase?: (event: SubjectPhaseEvent, ctx: { laneId: string; laneCount: number }) => void;
   /**
    * Runtime-only live desktop stream callback. The URL carries an auth key and must never be
    * persisted into run artifacts; callers use it to hydrate an attached Observer server.
@@ -760,6 +784,59 @@ function formatLanePlanEntry(lane: CuaLanePlanEntry): string {
   return `${lane.id}: persona=${lane.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}${lane.targetDigest ? ` target#${lane.targetDigest}` : ""}`;
 }
 
+/** ISO timestamp from an injectable clock (tests freeze `now` for deterministic durationMs). */
+function isoNow(now: () => number): string {
+  return new Date(now()).toISOString();
+}
+
+/** Emit a phase-started event (no ok/durationMs: those belong to the matching completed event). */
+function emitPhaseStarted(
+  onPhase: ((event: SubjectPhaseEvent) => void) | undefined,
+  now: () => number,
+  phase: string,
+  message: string
+): void {
+  onPhase?.({ at: isoNow(now), type: `cua-lab.subject.${phase}.started`, message });
+}
+
+/** Emit the matching phase-completed event: always carries ok and durationMs (>= 0). */
+function emitPhaseCompleted(
+  onPhase: ((event: SubjectPhaseEvent) => void) | undefined,
+  now: () => number,
+  startedAt: number,
+  phase: string,
+  ok: boolean,
+  message: string
+): void {
+  onPhase?.({
+    at: isoNow(now),
+    type: `cua-lab.subject.${phase}.completed`,
+    ok,
+    durationMs: Math.max(0, now() - startedAt),
+    message
+  });
+}
+
+/** Default phase-boundary sink (stderr): one line per event, prefixed with the lane id ONLY
+ *  when laneCount > 1. Single-lane emission is unconditional: total single-lane silence for the
+ *  whole clone/install/build/ready boot is the bug this event stream exists to close.
+ *  Overridable via CuaActorLabHooks.onPhase so deterministic tests capture instead of writing to
+ *  the real stderr. */
+function defaultSubjectPhaseSink(event: SubjectPhaseEvent, ctx: { laneId: string; laneCount: number }): void {
+  const durationSuffix = event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`;
+  const prefix = ctx.laneCount > 1 ? `homun cua [${ctx.laneId}]` : "homun cua";
+  process.stderr.write(`${prefix}: ${event.message}${durationSuffix}\n`);
+}
+
+/** Short id-safe suffix for a subject-phase RunEvent: drops the shared prefix/suffix so each
+ *  phase gets a distinct bundle event id (e.g. "clone", "state-before-build"). */
+function phaseEventIdSuffix(type: string): string {
+  return type
+    .replace(/^cua-lab\.subject\./, "")
+    .replace(/\.(started|completed)$/, "")
+    .replace(/\./g, "-");
+}
+
 /** Shared deps every lane runner needs (resolved once in the engine). */
 export interface CuaLaneDeps {
   config: LabConfig;
@@ -804,6 +881,9 @@ export interface LaneRunOutcome {
   subjectCommit?: string;
   desktopBrowser?: DesktopBrowserEvidence;
   stateStepRecords: RunSubjectStateStepRecord[];
+  /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups),
+   *  folded into bundle.events at build time. Empty on the in-process route (no provisioning). */
+  phaseRecords: SubjectPhaseEvent[];
   warnings: string[];
   /** Set when the lane was skipped by the pipeline gate / fail-fast (a pinned reason). */
   skippedReason?: string;
@@ -873,6 +953,7 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
     streamUrlPresent: false,
     screenshots: [],
     stateStepRecords: [],
+    phaseRecords: [],
     warnings: [],
     skippedReason: reason,
     noEngagement: false,
@@ -1173,6 +1254,16 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const screenshots: string[] = [];
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
+  // Completed-only trail (durationMs/ok are set on completed events, never on started ones):
+  // this is what survives into bundle.events. The default/injected sink below sees EVERY event,
+  // started and completed alike, so an operator watching stderr sees both halves of each phase.
+  const phaseRecords: SubjectPhaseEvent[] = [];
+  const onSubjectPhase = (event: SubjectPhaseEvent): void => {
+    if (event.ok !== undefined) {
+      phaseRecords.push(event);
+    }
+    (deps.hooks.onPhase ?? defaultSubjectPhaseSink)(event, { laneId: spec.laneId, laneCount: deps.laneCount });
+  };
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
   let failureCode: CuaActorLabErrorCode | undefined;
@@ -1244,6 +1335,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           onStateStep: (record) => {
             stateStepRecords.push(record);
           },
+          onPhase: onSubjectPhase,
           ...(deps.hooks.detachedTimers ?? {})
         });
       } else if (localTreeRoute && serve && deps.localTreeArchiveBuffer) {
@@ -1256,6 +1348,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           onStateStep: (record) => {
             stateStepRecords.push(record);
           },
+          onPhase: onSubjectPhase,
           ...(deps.hooks.detachedTimers ?? {})
         });
       }
@@ -1397,6 +1490,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     ...(subjectCommit === undefined ? {} : { subjectCommit }),
     ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
     stateStepRecords,
+    phaseRecords,
     warnings,
     noEngagement,
     selfReportedBlocker,
@@ -1463,6 +1557,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     streamUrlPresent: false,
     screenshots,
     stateStepRecords: [],
+    phaseRecords: [],
     warnings,
     noEngagement,
     selfReportedBlocker,
@@ -2397,7 +2492,8 @@ function buildSingleLaneBundle(args: {
       laneId: spec.laneId
     }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
-    ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {})
+    ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
+    phaseEvents: outcome?.phaseRecords ?? []
   });
 }
 
@@ -2425,6 +2521,9 @@ async function runSubjectServePipeline(
     scrub: (text: string) => string;
     /** Called the moment each state step finishes, success or failure. */
     onStateStep?: (record: RunSubjectStateStepRecord) => void;
+    /** Called at each phase boundary (started/completed): install, build, serve start, ready,
+     *  and each subject.state seed-step group (one pair per group, never per step). */
+    onPhase?: (event: SubjectPhaseEvent) => void;
     /** Called after every phase completes. The clone route re-resolves HEAD here; the
      *  local-tree route omits this entirely (identity is the host-side archive digest, never
      *  an in-sandbox git refresh, because the archive excludes .git). */
@@ -2435,15 +2534,20 @@ async function runSubjectServePipeline(
     ...(args.now === undefined ? {} : { now: args.now }),
     ...(args.sleep === undefined ? {} : { sleep: args.sleep })
   };
+  const now = args.now ?? Date.now;
   const refresh = args.onPhaseComplete ?? ((): Promise<void> => Promise.resolve());
   const stateSteps = args.state?.seed ?? [];
   const runStateSteps = async (when: LabStateStepWhen): Promise<void> => {
-    for (const step of stateSteps) {
-      if ((step.when ?? "before-start") !== when) {
-        continue;
-      }
+    const steps = stateSteps.filter((step) => (step.when ?? "before-start") === when);
+    if (steps.length === 0) {
+      // No declared steps for this group: no boundary to report (avoids empty-group noise on
+      // every run, since before-build/before-start/after-ready are always called).
+      return;
+    }
+    const groupStartedAt = now();
+    emitPhaseStarted(args.onPhase, now, `state.${when}`, `running subject state seed steps (${when})`);
+    for (const step of steps) {
       const stepTimeoutMs = step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS;
-      const now = args.now ?? Date.now;
       const startedAt = now();
       const result = await runDetachedStep(desktop, {
         name: `subject-state-${step.name}`,
@@ -2465,14 +2569,18 @@ async function runSubjectServePipeline(
         durationMs: Math.max(0, now() - startedAt)
       });
       if (!result.ok) {
+        emitPhaseCompleted(args.onPhase, now, groupStartedAt, `state.${when}`, false, `subject state seed steps failed (${when})`);
         // Fail closed with the existing scrub-before-truncate tail chain: literal scrub of
         // every provisioned value PRE-truncation, then pattern redaction + cap in tailOf.
         throw new Error(`subject state step "${step.name}" ${result.timedOut ? `timed out after ${stepTimeoutMs}ms` : `failed (exit ${result.exitCode})`}: ${tailOf(args.scrub(result.logTail))}`);
       }
     }
+    emitPhaseCompleted(args.onPhase, now, groupStartedAt, `state.${when}`, true, `subject state seed steps complete (${when})`);
   };
 
   if (args.serve.install) {
+    const installStartedAt = now();
+    emitPhaseStarted(args.onPhase, now, "install", "installing subject dependencies");
     const install = await runDetachedStep(desktop, {
       name: "subject-install",
       command: args.serve.install,
@@ -2481,6 +2589,7 @@ async function runSubjectServePipeline(
       requestTimeoutMs: args.requestTimeoutMs,
       ...timers
     });
+    emitPhaseCompleted(args.onPhase, now, installStartedAt, "install", install.ok, install.ok ? "subject dependencies installed" : "subject install failed");
     if (!install.ok) {
       throw new Error(`subject install ${install.timedOut ? "timed out" : `failed (exit ${install.exitCode})`}: ${tailOf(args.scrub(install.logTail))}`);
     }
@@ -2493,6 +2602,8 @@ async function runSubjectServePipeline(
   await refresh();
 
   if (args.serve.build) {
+    const buildStartedAt = now();
+    emitPhaseStarted(args.onPhase, now, "build", "building subject");
     const build = await runDetachedStep(desktop, {
       name: "subject-build",
       command: args.serve.build,
@@ -2501,6 +2612,7 @@ async function runSubjectServePipeline(
       requestTimeoutMs: args.requestTimeoutMs,
       ...timers
     });
+    emitPhaseCompleted(args.onPhase, now, buildStartedAt, "build", build.ok, build.ok ? "subject build complete" : "subject build failed");
     if (!build.ok) {
       throw new Error(`subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${tailOf(args.scrub(build.logTail))}`);
     }
@@ -2519,12 +2631,19 @@ async function runSubjectServePipeline(
     cwd: SUBJECT_DIR,
     requestTimeoutMs: args.requestTimeoutMs
   });
+  // Fire-and-forget: startDetachedProcess never waits for the long-lived server to exit, so
+  // there is no matching completed event here (no ok/durationMs to report yet); readiness is
+  // the next boundary.
+  args.onPhase?.({ at: isoNow(now), type: "cua-lab.subject.serve.started", message: "subject server launched (detached)" });
 
+  const readyStartedAt = now();
+  emitPhaseStarted(args.onPhase, now, "ready", "waiting for subject to become ready");
   const ready = await probeUrl(desktop, args.serve.url, {
     timeoutMs: args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers
   });
+  emitPhaseCompleted(args.onPhase, now, readyStartedAt, "ready", ready, ready ? "subject is ready" : "subject did not become ready in time");
   if (!ready) {
     const startLog = await readDetachedLog(desktop, "subject-start", args.requestTimeoutMs).catch(() => "");
     throw new Error(`subject did not answer at ${args.serve.url} within ${args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS}ms; server log tail: ${tailOf(args.scrub(startLog))}`);
@@ -2565,12 +2684,16 @@ export async function provisionCloneSubject(
     onCommit?: (commit: string) => void;
     /** Called the moment each state step finishes (mirrors onCommit), success or failure. */
     onStateStep?: (record: RunSubjectStateStepRecord) => void;
+    /** Called at each phase boundary (started/completed): clone, install, build, serve start,
+     *  ready, and each subject.state seed-step group. */
+    onPhase?: (event: SubjectPhaseEvent) => void;
   } & DetachedTimers
 ): Promise<string | undefined> {
   const timers: DetachedTimers = {
     ...(args.now === undefined ? {} : { now: args.now }),
     ...(args.sleep === undefined ? {} : { sleep: args.sleep })
   };
+  const now = args.now ?? Date.now;
   let latestCommit: string | undefined;
   const refreshCommit = async (): Promise<void> => {
     const head = await desktop.commands.run(
@@ -2588,6 +2711,8 @@ export async function provisionCloneSubject(
     ? `auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0) && git -c http.extraHeader="Authorization: Basic $auth" clone --depth ${args.depth} https://github.com/${args.repo}.git ${SUBJECT_DIR}`
     : `git clone --depth ${args.depth} https://github.com/${args.repo}.git ${SUBJECT_DIR}`;
 
+  const cloneStartedAt = now();
+  emitPhaseStarted(args.onPhase, now, "clone", "cloning subject repository");
   const clone = await runDetachedStep(desktop, {
     name: "subject-clone",
     command: cloneCommand,
@@ -2595,6 +2720,7 @@ export async function provisionCloneSubject(
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers
   });
+  emitPhaseCompleted(args.onPhase, now, cloneStartedAt, "clone", clone.ok, clone.ok ? "subject repository cloned" : "subject clone failed");
   if (!clone.ok) {
     throw new Error(`subject clone ${clone.timedOut ? "timed out" : `failed (exit ${clone.exitCode})`}: ${tailOf(args.scrub(clone.logTail))}`);
   }
@@ -2607,6 +2733,7 @@ export async function provisionCloneSubject(
     requestTimeoutMs: args.requestTimeoutMs,
     scrub: args.scrub,
     ...(args.onStateStep === undefined ? {} : { onStateStep: args.onStateStep }),
+    ...(args.onPhase === undefined ? {} : { onPhase: args.onPhase }),
     onPhaseComplete: refreshCommit,
     ...timers
   });
@@ -2635,23 +2762,33 @@ export async function provisionLocalTreeSubject(
     scrub: (text: string) => string;
     /** Called the moment each state step finishes, success or failure. */
     onStateStep?: (record: RunSubjectStateStepRecord) => void;
+    /** Called at each phase boundary (started/completed): upload, extract, install, build,
+     *  serve start, ready, and each subject.state seed-step group. */
+    onPhase?: (event: SubjectPhaseEvent) => void;
   } & DetachedTimers
 ): Promise<void> {
   const timers: DetachedTimers = {
     ...(args.now === undefined ? {} : { now: args.now }),
     ...(args.sleep === undefined ? {} : { sleep: args.sleep })
   };
+  const now = args.now ?? Date.now;
 
+  const uploadStartedAt = now();
+  emitPhaseStarted(args.onPhase, now, "upload", "uploading packed local-tree archive");
   try {
     await desktop.files.write(LOCAL_TREE_REMOTE_ARCHIVE_PATH, args.archiveBuffer, {
       requestTimeoutMs: args.requestTimeoutMs,
       useOctetStream: true
     });
   } catch (error) {
+    emitPhaseCompleted(args.onPhase, now, uploadStartedAt, "upload", false, "local-tree archive upload failed");
     throw new Error(`subject-upload failed: ${tailOf(args.scrub(compactError(error)))}`);
   }
+  emitPhaseCompleted(args.onPhase, now, uploadStartedAt, "upload", true, "local-tree archive uploaded");
 
   const extractCommand = `rm -rf ${SUBJECT_DIR} && mkdir -p ${SUBJECT_DIR} && tar -xzf ${LOCAL_TREE_REMOTE_ARCHIVE_PATH} -C ${SUBJECT_DIR} && rm -f ${LOCAL_TREE_REMOTE_ARCHIVE_PATH}`;
+  const extractStartedAt = now();
+  emitPhaseStarted(args.onPhase, now, "extract", "extracting local-tree archive");
   const extract = await runDetachedStep(desktop, {
     name: "subject-extract",
     command: extractCommand,
@@ -2659,6 +2796,7 @@ export async function provisionLocalTreeSubject(
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers
   });
+  emitPhaseCompleted(args.onPhase, now, extractStartedAt, "extract", extract.ok, extract.ok ? "local-tree archive extracted" : "local-tree archive extraction failed");
   if (!extract.ok) {
     throw new Error(`subject extract ${extract.timedOut ? "timed out" : `failed (exit ${extract.exitCode})`}: ${tailOf(args.scrub(extract.logTail))}`);
   }
@@ -2669,6 +2807,7 @@ export async function provisionLocalTreeSubject(
     requestTimeoutMs: args.requestTimeoutMs,
     scrub: args.scrub,
     ...(args.onStateStep === undefined ? {} : { onStateStep: args.onStateStep }),
+    ...(args.onPhase === undefined ? {} : { onPhase: args.onPhase }),
     ...timers
   });
 }
@@ -2820,6 +2959,9 @@ export function buildCuaBundle(args: {
   traceArtifactPath?: string;
   providerResources?: RunProviderResource[];
   inProgress?: boolean;
+  /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
+   *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
+  phaseEvents?: SubjectPhaseEvent[];
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   const status: RunSimulationStatus = args.inProgress === true
@@ -2986,6 +3128,23 @@ export function buildCuaBundle(args: {
             streamId: "stream-001"
           }
   ];
+
+  // Persisted phase trail (real boot timing, not just a coarse provenance sentence): one
+  // RunEvent per COMPLETED phase boundary (started events never persist here; they carry no
+  // durationMs). ok:false phases warn rather than error, since the failing phase's own thrown
+  // error already becomes the terminal cua-lab.session.error event above.
+  let phaseEventSeq = 3;
+  for (const phase of args.phaseEvents ?? []) {
+    events.push({
+      id: `event-${String(phaseEventSeq++).padStart(3, "0")}-phase-${phaseEventIdSuffix(phase.type)}`,
+      at: phase.at,
+      level: phase.ok === false ? "warn" : "info",
+      type: phase.type,
+      message: phase.durationMs === undefined ? phase.message : `${phase.message} (${phase.durationMs}ms)`,
+      simId: "sim-001",
+      streamId: "stream-001"
+    });
+  }
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
@@ -3352,6 +3511,22 @@ export function buildCuaFanoutBundle(args: {
         level: "info",
         type: "cua-lab.contract.ready",
         message: `Lane ${spec.laneId}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    }
+
+    // Persisted per-lane phase trail (real boot timing): one RunEvent per COMPLETED phase
+    // boundary this lane recorded (started events never persist here; they carry no durationMs).
+    for (const phase of outcome?.phaseRecords ?? []) {
+      events.push({
+        id: nextEventId(`phase-${spec.laneId}-${phaseEventIdSuffix(phase.type)}`),
+        at: phase.at,
+        level: phase.ok === false ? "warn" : "info",
+        type: phase.type,
+        message: phase.durationMs === undefined
+          ? `Lane ${spec.laneId}: ${phase.message}`
+          : `Lane ${spec.laneId}: ${phase.message} (${phase.durationMs}ms)`,
         simId: spec.simId,
         streamId: spec.streamId
       });

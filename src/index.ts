@@ -179,7 +179,8 @@ export type {
   CuaLaneResult,
   CuaLaneSummary,
   CuaSubjectProjection,
-  RunCuaActorLabOptions
+  RunCuaActorLabOptions,
+  SubjectPhaseEvent
 } from "./cua-actor-lab.js";
 export {
   SCRIPTED_BROWSER_PROVIDER,

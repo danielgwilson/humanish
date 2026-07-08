@@ -1166,6 +1166,113 @@ describe("runCuaActorLab", () => {
     }
   });
 
+  it("clone route: onPhase (injected capture sink) emits the ordered started/completed sequence for clone/install/build/ready (#263)", async () => {
+    const config = cloneCuaConfig();
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module } = makeFakeModule(sandbox);
+    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number; message: string }> = [];
+    const phaseCtxs: Array<{ laneId: string; laneCount: number }> = [];
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        // The default sink is process.stderr.write; a test-injected sink replaces it entirely
+        // (the CuaActorLabHooks seam this closes #263 with) so the ordering below is captured
+        // deterministically instead of scraping stderr.
+        onPhase: (event, ctx) => {
+          phaseEvents.push(event);
+          phaseCtxs.push(ctx);
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    // One event PER BOUNDARY, never per poll tick: exactly clone/install/build (started+completed),
+    // the lone fire-and-forget serve.started, then ready (started+completed). No subject.state
+    // events: cloneCuaConfig() declares no seed steps.
+    expect(phaseEvents.map((event) => event.type)).toEqual([
+      "cua-lab.subject.clone.started",
+      "cua-lab.subject.clone.completed",
+      "cua-lab.subject.install.started",
+      "cua-lab.subject.install.completed",
+      "cua-lab.subject.build.started",
+      "cua-lab.subject.build.completed",
+      "cua-lab.subject.serve.started",
+      "cua-lab.subject.ready.started",
+      "cua-lab.subject.ready.completed"
+    ]);
+
+    // Started events (including the lone serve.started) carry neither ok nor durationMs;
+    // every completed event on this all-succeeding fake run carries both.
+    for (const event of phaseEvents) {
+      if (event.type.endsWith(".started")) {
+        expect(event.ok).toBeUndefined();
+        expect(event.durationMs).toBeUndefined();
+      } else {
+        expect(event.ok).toBe(true);
+        expect(typeof event.durationMs).toBe("number");
+        expect(event.durationMs).toBeGreaterThanOrEqual(0);
+      }
+    }
+
+    // Messages are public-safe by construction: no URLs, no paths, no command text.
+    for (const event of phaseEvents) {
+      expect(event.message).not.toContain("http://");
+      expect(event.message).not.toContain("https://");
+      expect(event.message).not.toContain("/home/user");
+      expect(event.message).not.toContain("pnpm");
+    }
+
+    // Single lane: every sink call names lane-01 with laneCount 1 (no fan-out prefixing).
+    for (const ctx of phaseCtxs) {
+      expect(ctx).toEqual({ laneId: "lane-01", laneCount: 1 });
+    }
+  });
+
+  it("clone route: the completed phase trail persists into bundle.events with durationMs folded into each message (#263)", async () => {
+    const config = cloneCuaConfig();
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const phaseRunEvents = (bundle.events as Array<{ type: string; level: string; message: string }>).filter(
+      (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed")
+    );
+    // Only COMPLETED phases persist (started events carry no durationMs, so nothing to fold);
+    // subject.serve.started never persists here either (no completed pair, no durationMs).
+    expect(phaseRunEvents.map((event) => event.type)).toEqual([
+      "cua-lab.subject.clone.completed",
+      "cua-lab.subject.install.completed",
+      "cua-lab.subject.build.completed",
+      "cua-lab.subject.ready.completed"
+    ]);
+    for (const event of phaseRunEvents) {
+      expect(event.level).toBe("info");
+      expect(event.message).toMatch(/\(\d+ms\)$/);
+    }
+
+    const verified = await verifyRun(cwd, outcome.result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
   it("clone route with GITHUB_TOKEN: the clone authenticates via in-sandbox env — the token value never appears in any script or artifact", async () => {
     const config = cloneCuaConfig({ env: ["GITHUB_TOKEN"] });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
@@ -1884,6 +1991,46 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     expect(verified.ok).toBe(true);
   });
 
+  it("live (single lane): onPhase (injected capture sink) emits the upload/extract phase boundaries, then install/build/ready (#263)", async () => {
+    const config = localTreeCuaConfig();
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module } = makeFakeModule(sandbox);
+    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        onPhase: (event) => {
+          phaseEvents.push(event);
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    const types = phaseEvents.map((event) => event.type);
+    expect(types).toEqual([
+      "cua-lab.subject.upload.started",
+      "cua-lab.subject.upload.completed",
+      "cua-lab.subject.extract.started",
+      "cua-lab.subject.extract.completed",
+      "cua-lab.subject.install.started",
+      "cua-lab.subject.install.completed",
+      "cua-lab.subject.build.started",
+      "cua-lab.subject.build.completed",
+      "cua-lab.subject.serve.started",
+      "cua-lab.subject.ready.started",
+      "cua-lab.subject.ready.completed"
+    ]);
+    // The local-tree route never runs git: no clone phase on this route, ever.
+    expect(types.some((type) => type.includes(".clone."))).toBe(false);
+  });
+
   it("live fan-out (2 lanes): packs the working tree ONCE, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
     const config = localTreeCuaConfig({ count: 2 });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
@@ -1956,6 +2103,85 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     expect(killed.length).toBeGreaterThan(0);
   });
 
+  it("live fan-out (2 lanes): onPhase captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
+    const config = localTreeCuaConfig({ count: 2 });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module } = makeFakeModule(sandbox);
+    const phaseCalls: Array<{ event: { type: string; ok?: boolean }; ctx: { laneId: string; laneCount: number } }> = [];
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        onPhase: (event, ctx) => {
+          phaseCalls.push({ event, ctx });
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    // (c) laneCount > 1: the default-sink prefix logic (defaultSubjectPhaseSink) reads
+    // ctx.laneCount to decide whether to prefix lines with the lane id. Every captured ctx here
+    // carries the TOTAL fan-out width (2), never a per-lane count.
+    expect(phaseCalls.length).toBeGreaterThan(0);
+    expect(phaseCalls.every(({ ctx }) => ctx.laneCount === 2)).toBe(true);
+
+    // (a) BOTH lanes reported phase events under their OWN distinct lane id, and each lane's own
+    // boundary sequence is the full upload/extract/install/build/ready chain (no lane silently
+    // skipped, no cross-lane mixing within a single lane's sequence).
+    const laneIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.laneId))].sort();
+    expect(laneIds).toEqual(["lane-01", "lane-02"]);
+    const expectedTypes = [
+      "cua-lab.subject.upload.started",
+      "cua-lab.subject.upload.completed",
+      "cua-lab.subject.extract.started",
+      "cua-lab.subject.extract.completed",
+      "cua-lab.subject.install.started",
+      "cua-lab.subject.install.completed",
+      "cua-lab.subject.build.started",
+      "cua-lab.subject.build.completed",
+      "cua-lab.subject.serve.started",
+      "cua-lab.subject.ready.started",
+      "cua-lab.subject.ready.completed"
+    ];
+    for (const laneId of laneIds) {
+      const types = phaseCalls.filter(({ ctx }) => ctx.laneId === laneId).map(({ event }) => event.type);
+      expect(types).toEqual(expectedTypes);
+    }
+
+    // (b) the persisted fan-out bundle attributes each lane's COMPLETED phase events to that
+    // lane's OWN simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
+    // no cross-lane leakage into the wrong lane's stream.
+    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const persistedPhaseEvents = (bundle.events as Array<{ id: string; type: string; simId?: string; streamId?: string }>).filter(
+      (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed")
+    );
+    expect(persistedPhaseEvents.length).toBeGreaterThan(0);
+    for (const event of persistedPhaseEvents) {
+      if (event.id.includes("lane-01")) {
+        expect(event.simId).toBe("sim-001");
+        expect(event.streamId).toBe("stream-001");
+      } else if (event.id.includes("lane-02")) {
+        expect(event.simId).toBe("sim-002");
+        expect(event.streamId).toBe("stream-002");
+      } else {
+        throw new Error(`unexpected phase event id shape: ${event.id}`);
+      }
+    }
+    // Both lanes actually persisted (neither lane's phase trail silently swallowed).
+    expect(persistedPhaseEvents.some((event) => event.simId === "sim-001")).toBe(true);
+    expect(persistedPhaseEvents.some((event) => event.simId === "sim-002")).toBe(true);
+
+    const verified = await verifyRun(cwd, outcome.result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
   it("extract failure, throwing CommandExitError shape: fails the lane with a scrubbed tail", async () => {
     const config = localTreeCuaConfig();
     const sandbox = makeFakeSandbox({
@@ -2015,6 +2241,50 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     const message = outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
     expect(message).toContain("subject extract");
     expect(message).toContain("tar: unexpected end of archive");
+  });
+
+  it("failing extract: onPhase emits a completed event with ok false before the lane fails (#263)", async () => {
+    const config = localTreeCuaConfig();
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("subject-extract/status")) return { stdout: "2" };
+        if (command.includes("subject-extract/log.txt")) return { stdout: "tar: unexpected end of archive (exit 2)" };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        onPhase: (event) => {
+          phaseEvents.push(event);
+        },
+        runSession: async () => {
+          throw new Error("runSession must not be reached: extract should fail first");
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(false);
+
+    // Upload succeeded (started+completed ok:true); the failing extract still gets its
+    // completed event, with ok false and a real durationMs, BEFORE the thrown error unwinds.
+    // install/build/ready never ran.
+    expect(phaseEvents.map((event) => event.type)).toEqual([
+      "cua-lab.subject.upload.started",
+      "cua-lab.subject.upload.completed",
+      "cua-lab.subject.extract.started",
+      "cua-lab.subject.extract.completed"
+    ]);
+    const extractCompleted = phaseEvents[3];
+    expect(extractCompleted?.ok).toBe(false);
+    expect(typeof extractCompleted?.durationMs).toBe("number");
+    expect(extractCompleted?.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it("packing failure (hook throws) fails the run closed BEFORE any sandbox is created", async () => {
