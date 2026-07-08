@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -32,7 +33,7 @@ import { mapWithConcurrency } from "./concurrency.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
-import { containsSensitive, digestText, redactToSecretLabel } from "./redaction.js";
+import { containsSensitive, digestText, redactText, redactToSecretLabel } from "./redaction.js";
 import { loadE2BDesktopModule, type E2BDesktopModule } from "./e2b-desktop-launch.js";
 
 export const RUN_BUNDLE_SCHEMA = "homun.run-bundle.v1";
@@ -863,6 +864,10 @@ export interface RunsResult {
     path: string;
   }>;
   latest: string | null;
+  error?: {
+    code: "HOMUN_RUNS_UNAVAILABLE";
+    message: string;
+  };
 }
 
 export interface DoctorResult {
@@ -3947,10 +3952,29 @@ export async function loadRunBundle(
 export async function listRuns(cwdInput: string): Promise<RunsResult> {
   const cwd = path.resolve(cwdInput);
   const runsRoot = path.join(cwd, ".homun", "runs");
-  const entries = await readdir(runsRoot, { withFileTypes: true }).catch(() => []);
-  const runs = [];
-  const latest = await readLatest(cwd);
 
+  // ENOENT (no .homun/runs yet) is a normal empty state: ok:true, no runs. Any
+  // other readdir failure (e.g. permission denied) is a real I/O failure and must
+  // not be swallowed into a false "no runs" report.
+  let entries: Dirent[];
+  try {
+    entries = await readdir(runsRoot, { withFileTypes: true });
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      entries = [];
+    } else {
+      return runsUnavailableResult(cwd, error);
+    }
+  }
+
+  let latest: RunPointer | null;
+  try {
+    latest = await readLatest(cwd);
+  } catch (error) {
+    return runsUnavailableResult(cwd, error);
+  }
+
+  const runs = [];
   for (const entry of entries) {
     if (!entry.isDirectory()) {
       continue;
@@ -3971,6 +3995,20 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
     cwd,
     runs: runs.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
     latest: latest?.runId ?? null
+  };
+}
+
+function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
+  return {
+    schema: RUNS_SCHEMA,
+    ok: false,
+    cwd,
+    runs: [],
+    latest: null,
+    error: {
+      code: "HOMUN_RUNS_UNAVAILABLE",
+      message: redactText(error instanceof Error ? error.message : String(error))
+    }
   };
 }
 

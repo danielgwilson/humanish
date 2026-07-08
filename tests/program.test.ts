@@ -1,11 +1,18 @@
 import { CommanderError } from "commander";
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { createProgram, followObserver } from "../src/program.js";
+import { createProgram, followObserver, writeResult } from "../src/program.js";
+import * as homunIndex from "../src/index.js";
+
+// process.getuid is POSIX-only and absent under Node's typings on some platforms;
+// treat "no getuid" the same as "not root" (permission fault injection still works).
+function isRunningAsRoot(): boolean {
+  return typeof process.getuid === "function" && process.getuid() === 0;
+}
 
 interface CliResult {
   exitCode: number;
@@ -496,5 +503,155 @@ describe("homun CLI scaffold", () => {
       expect(result.stdout).toContain("HOMUN_RUN_NOT_FOUND");
       expect(result.stderr).toBe("");
     });
+  });
+
+  it("catches an unexpected fs error at the command boundary and emits a single HOMUN_UNEXPECTED envelope (issue #262 repro A)", async () => {
+    await withTempApp({}, async (cwd) => {
+      // .homun/runs as a FILE (not a directory) makes the unguarded mkdir inside
+      // runDryRun reject with ENOTDIR. Before the command-boundary catch-all this
+      // crashed raw to stderr with a Node stack trace and zero stdout.
+      await mkdir(path.join(cwd, ".homun"), { recursive: true });
+      await writeFile(path.join(cwd, ".homun", "runs"), "", "utf8");
+
+      const result = await runCli(["run", "--dry-run", "--cwd", cwd, "--json"]);
+
+      expect(result.stderr).toBe("");
+      const envelope = JSON.parse(result.stdout) as {
+        schema: string;
+        ok: boolean;
+        error: { code: string; message: string };
+      };
+      expect(result.exitCode).toBe(2);
+      expect(envelope.schema).toBe("homun.cli-response.v1");
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe("HOMUN_UNEXPECTED");
+      expect(envelope.error.message).toContain("ENOTDIR");
+      expect(envelope.error.message).not.toContain(cwd);
+    });
+  });
+
+  it("emits a concise HOMUN_UNEXPECTED stderr line (not a raw stack trace) without --json", async () => {
+    await withTempApp({}, async (cwd) => {
+      await mkdir(path.join(cwd, ".homun"), { recursive: true });
+      await writeFile(path.join(cwd, ".homun", "runs"), "", "utf8");
+
+      const result = await runCli(["run", "--dry-run", "--cwd", cwd]);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("HOMUN_UNEXPECTED:");
+      expect(result.stderr).toContain("ENOTDIR");
+      expect(result.stderr).not.toContain("at async");
+    });
+  });
+
+  it("never appends a second JSON document to stdout when the command boundary catch-all fires after a successful writeResult (issue #262 repro C)", async () => {
+    // Repro: `codex app-server --keep-open --json` calls writeResult to flush a
+    // success envelope, then awaits further work that can still reject
+    // (controller.completion; see codex-app-server-ui.ts's persistState()).
+    // Before this guard, the catch-all appended a second homun.cli-response.v1
+    // document to the same stdout stream and JSON.parse(stdout) broke for every
+    // --json consumer. This reproduces that shape directly at the command
+    // boundary: a scratch-only subcommand registered on a real createProgram()
+    // instance (inheriting the HomunCommand seam via createCommand, exactly
+    // like every real leaf command) writes a success envelope through the same
+    // writeResult funnel every command uses, then throws synchronously.
+    let exitCode = 0;
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const io = {
+      writeOut: (text: string) => stdout.push(text),
+      writeErr: (text: string) => stderr.push(text),
+      setExitCode: (code: number) => {
+        exitCode = code;
+      }
+    };
+    const program = createProgram(io);
+
+    program
+      .command("__test-scratch-envelope-then-throw")
+      .option("--json")
+      .action((_options: unknown, command) => {
+        writeResult(command, io, { schema: "homun.test-scratch-result.v1", ok: true }, () => "ok\n");
+        throw new Error("scratch failure after a successful write");
+      });
+
+    program.exitOverride();
+    await program.parseAsync(["node", "homun", "__test-scratch-envelope-then-throw", "--json"], { from: "node" });
+
+    const stdoutText = stdout.join("");
+    // The real-world failure mode this guards against: JSON.parse(stdout)
+    // throwing because a second document got appended. Parsing must succeed
+    // and yield exactly the success envelope, not the HOMUN_UNEXPECTED one.
+    const envelope = JSON.parse(stdoutText) as { schema: string; ok: boolean };
+    expect(envelope).toEqual({ schema: "homun.test-scratch-result.v1", ok: true });
+    // Exactly one write reached stdout: the success envelope. The catch-all did
+    // not additionally write there.
+    expect(stdout).toHaveLength(1);
+    expect(stderr.join("")).toContain("HOMUN_UNEXPECTED:");
+    expect(stderr.join("")).toContain("scratch failure after a successful write");
+    expect(exitCode).toBe(2);
+  });
+
+  it.skipIf(isRunningAsRoot())(
+    "discriminates a real runs I/O failure from an empty runs directory (issue #262 repro B)",
+    async () => {
+      await withTempApp({}, async (cwd) => {
+        const runsRoot = path.join(cwd, ".homun", "runs");
+        await mkdir(runsRoot, { recursive: true });
+        await chmod(runsRoot, 0o000);
+
+        try {
+          const result = await runCli(["runs", "--cwd", cwd, "--json"]);
+
+          expect(result.stderr).toBe("");
+          const envelope = JSON.parse(result.stdout) as {
+            schema: string;
+            ok: boolean;
+            runs: unknown[];
+            latest: string | null;
+            error: { code: string; message: string };
+          };
+          expect(result.exitCode).toBe(2);
+          expect(envelope.schema).toBe("homun.runs-result.v1");
+          expect(envelope.ok).toBe(false);
+          expect(envelope.runs).toEqual([]);
+          expect(envelope.latest).toBeNull();
+          expect(envelope.error.code).toBe("HOMUN_RUNS_UNAVAILABLE");
+          expect(envelope.error.message).not.toContain(cwd);
+        } finally {
+          await chmod(runsRoot, 0o755);
+        }
+      });
+    }
+  );
+
+  it("reports ok:true with an empty list for a fresh cwd with no .homun/runs yet (not an error)", async () => {
+    await withTempApp({}, async (cwd) => {
+      const result = await runCli(["runs", "--cwd", cwd, "--json"]);
+
+      expect(result.exitCode).toBe(0);
+      const envelope = JSON.parse(result.stdout) as { ok: boolean; runs: unknown[]; latest: string | null };
+      expect(envelope.ok).toBe(true);
+      expect(envelope.runs).toEqual([]);
+      expect(envelope.latest).toBeNull();
+    });
+  });
+
+  it("exits 2 on doctor failure, matching every other structured command", async () => {
+    await withTempApp({}, async (cwd) => {
+      const result = await runCli(["doctor", "--cwd", cwd, "--json"]);
+
+      expect(result.exitCode).toBe(2);
+      const envelope = JSON.parse(result.stdout) as { ok: boolean };
+      expect(envelope.ok).toBe(false);
+    });
+  });
+
+  it("no longer exports the dead planned-command scaffold from the public package entrypoint", () => {
+    expect(Object.prototype.hasOwnProperty.call(homunIndex, "plannedCommands")).toBe(false);
+    // The catch-all envelope helper stays: the schema string is still live.
+    expect(homunIndex.CLI_RESPONSE_SCHEMA).toBe("homun.cli-response.v1");
+    expect(typeof homunIndex.createProgram).toBe("function");
   });
 });

@@ -9,6 +9,7 @@ import { startCodexAppServerUi } from "./codex-app-server-ui.js";
 import type { CodexAppServerUiState } from "./codex-app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
 import type { EnvFileLoadResult } from "./env-file.js";
+import { redactText } from "./redaction.js";
 import {
   draftFeedback,
   listFeedback,
@@ -84,34 +85,22 @@ export interface CliIo {
   setExitCode(code: number): void;
 }
 
-export interface PlannedCommand {
-  name: string;
-  description: string;
-  issue: string;
-  docs: string[];
-  options?: Array<{
-    flags: string;
-    description: string;
-    defaultValue?: string | boolean;
-  }>;
-}
-
-export interface UnsupportedEnvelope {
+// The single structured envelope for errors the command-boundary catch-all
+// produces when an action handler throws or rejects unexpectedly (see
+// HomunCommand below). Reuses CLI_RESPONSE_SCHEMA so every homun.cli-response.v1
+// document on stdout, planned or not, carries the same schema string.
+export interface UnexpectedErrorEnvelope {
   schema: typeof CLI_RESPONSE_SCHEMA;
   ok: false;
-  command: string;
   error: {
-    code: "HOMUN_UNIMPLEMENTED";
+    code: "HOMUN_UNEXPECTED";
     message: string;
   };
-  docs: string[];
-  issue: string;
-  capabilities: {
-    githubMutation: false;
-    providerSpend: false;
-    productionData: false;
-  };
 }
+
+// Shared so the ~20 leaf commands that declare their own --json flag cannot drift
+// from each other in wording.
+const JSON_OPTION_DESCRIPTION = "Print a machine-readable JSON response.";
 
 interface LabCommandOptions {
   codexAppServer?: boolean | undefined;
@@ -156,91 +145,111 @@ const defaultIo: CliIo = {
   }
 };
 
-const commonDocs = [
-  "docs/product/open-source-install-experience.md",
-  "docs/roadmap/world-class-open-source-v0.md",
-  "docs/release/open-source-readiness.md"
-];
+// Command boundary catch-all (fix set point 1): every leaf command is created
+// through HomunCommand.createCommand, and HomunCommand.action wraps the caller's
+// handler so an uncaught throw or promise rejection can never escape as a raw
+// Node crash. On failure it emits the same structured envelope --json commands
+// already promise (schema homun.cli-response.v1, ok: false, error.code
+// HOMUN_UNEXPECTED) or a single concise stderr line otherwise, then sets exit
+// code 2 through the existing CliIo.setExitCode seam. This is the single seam:
+// none of the ~20 .action() handlers below need their own try/catch for this.
+class HomunCommand extends Command {
+  private readonly cliIo: CliIo;
 
-export const plannedCommands: PlannedCommand[] = [
-  {
-    name: "init",
-    description: "Set up committed homun/ source files and ignored .homun/ runtime state.",
-    issue: "https://github.com/danielgwilson/homun/issues/14",
-    docs: ["docs/architecture/project-layout.md", ...commonDocs],
-    options: [
-      { flags: "--dry-run", description: "Print planned changes without writing files." },
-      { flags: "--yes", description: "Apply safe generated changes without prompting." },
-      { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
-    ]
-  },
-  {
-    name: "doctor",
-    description: "Explain project readiness and missing Homun setup.",
-    issue: "https://github.com/danielgwilson/homun/issues/7",
-    docs: commonDocs
-  },
-  {
-    name: "run",
-    description: "Run a persona/scenario simulation or synthetic dry-run bundle.",
-    issue: "https://github.com/danielgwilson/homun/issues/7",
-    docs: commonDocs,
-    options: [
-      { flags: "[lab]", description: "Optional lab id or .yaml path." },
-      { flags: "--dry-run", description: "Generate contract proof without browser, keys, or provider spend." },
-      { flags: "--app-url <url>", description: "Capture live desktop/mobile browser evidence against a running loopback app URL." },
-      { flags: "--actor codex-tui|codex-exec|codex-app-server", description: "Explicitly opt into a local Codex actor." },
-      { flags: "--sims <count>", description: "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1." },
-      { flags: "--env-file <path>", description: "Load a local env file for this run without persisting values." },
-      { flags: "--cwd <path>", description: "Target project directory.", defaultValue: "." }
-    ]
-  },
-  {
-    name: "verify",
-    description: "Validate a run bundle and public-safety gates.",
-    issue: "https://github.com/danielgwilson/homun/issues/7",
-    docs: commonDocs,
-    options: [
-      { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" }
-    ]
-  },
-  {
-    name: "review",
-    description: "Build a review packet from verified run evidence.",
-    issue: "https://github.com/danielgwilson/homun/issues/7",
-    docs: commonDocs,
-    options: [
-      { flags: "--run <id>", description: "Run id or latest pointer.", defaultValue: "latest" }
-    ]
-  },
-  {
-    name: "watch",
-    description: "Run sims, open the observer, and keep the shell attached.",
-    issue: "https://github.com/danielgwilson/homun/issues/10",
-    docs: commonDocs,
-    options: [
-      { flags: "[lab]", description: "Optional lab id or .yaml path to run and observe." },
-      { flags: "--lab <id-or-path>", description: "Explicit lab id or .yaml path." },
-      { flags: "--run <id>", description: "Watch an existing run id or latest pointer." },
-      { flags: "--sims <count>", description: "Start a fresh synthetic run with this many sims before rendering.", defaultValue: "4 when --run is omitted" },
-      { flags: "--env-file <path>", description: "Load a local env file for this watch without persisting values." },
-      { flags: "--open", description: "Open the observer in the default browser.", defaultValue: "true for human output" },
-      { flags: "--detach", description: "Render/open once and exit without attached watch server." },
-      { flags: "--port <port>", description: "Local observer server port when following.", defaultValue: "0" },
-      { flags: "--no-open", description: "Render without opening a browser." }
-    ]
-  },
-  {
-    name: "runs",
-    description: "List local Homun runs and latest pointers.",
-    issue: "https://github.com/danielgwilson/homun/issues/7",
-    docs: commonDocs
+  constructor(name: string | undefined, cliIo: CliIo) {
+    super(name);
+    this.cliIo = cliIo;
   }
-];
+
+  override createCommand(name?: string): Command {
+    return new HomunCommand(name, this.cliIo);
+  }
+
+  override action(fn: (this: this, ...args: any[]) => void | Promise<void>): this {
+    const cliIo = this.cliIo;
+    const wrapped = function (this: Command, ...args: any[]): void | Promise<void> {
+      try {
+        // Reflect.apply (not fn.apply) sidesteps TS's special CallableFunction
+        // overload for functions typed with an explicit `this` parameter, which
+        // would otherwise reject the plain `Command` thisArg below.
+        const result = Reflect.apply(fn, this, args) as void | Promise<void>;
+        if (result && typeof result.then === "function") {
+          return result.catch((error: unknown) => {
+            reportUnexpectedActionError(this, cliIo, error);
+          });
+        }
+        return result;
+      } catch (error) {
+        reportUnexpectedActionError(this, cliIo, error);
+        return undefined;
+      }
+    };
+    return super.action(wrapped);
+  }
+}
+
+// Fix set point 1 (general guard): writeResult marks its own invocation's root
+// command the moment it flushes a result to stdout. Keyed by the root Command
+// of the invocation (a fresh object every createProgram() call) rather than a
+// module-level boolean, so tests that construct multiple `createProgram()`
+// instances in the same process never see one instance's writes bleed into
+// another's, and nothing needs explicit cleanup -- the entry is released once
+// that Command tree is garbage collected.
+const invocationEnvelopeWritten = new WeakSet<Command>();
+
+function rootCommandOf(command: Command): Command {
+  let current = command;
+  while (current.parent) {
+    current = current.parent;
+  }
+  return current;
+}
+
+function markInvocationEnvelopeWritten(command: Command): void {
+  invocationEnvelopeWritten.add(rootCommandOf(command));
+}
+
+function invocationEnvelopeAlreadyWritten(command: Command): boolean {
+  return invocationEnvelopeWritten.has(rootCommandOf(command));
+}
+
+function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown): void {
+  const message = redactText(error instanceof Error ? error.message : String(error));
+
+  if (wantsJson(command)) {
+    if (invocationEnvelopeAlreadyWritten(command)) {
+      // Some result already went to stdout for this invocation before the
+      // failure landed -- e.g. `codex app-server --keep-open --json` writes its
+      // "running" envelope via writeResult, then a later `await` can still
+      // reject (codex-app-server-ui.ts's persistState() write can fail on
+      // either branch of that command's completion handling). Appending a
+      // second JSON document to stdout would break every JSON.parse(stdout)
+      // consumer, so this failure goes to stderr instead, same as the non-json
+      // branch below.
+      io.writeErr(`HOMUN_UNEXPECTED: ${message}\n`);
+      io.setExitCode(2);
+      return;
+    }
+
+    const envelope: UnexpectedErrorEnvelope = {
+      schema: CLI_RESPONSE_SCHEMA,
+      ok: false,
+      error: {
+        code: "HOMUN_UNEXPECTED",
+        message
+      }
+    };
+    io.writeOut(`${JSON.stringify(envelope, null, 2)}\n`);
+  } else {
+    io.writeErr(`HOMUN_UNEXPECTED: ${message}\n`);
+  }
+
+  io.setExitCode(2);
+}
 
 export function createProgram(io: Partial<CliIo> = {}): Command {
   const cliIo: CliIo = { ...defaultIo, ...io };
-  const program = new Command();
+  const program = new HomunCommand(undefined, cliIo);
 
   program
     .name("homun")
@@ -283,12 +292,6 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerObserveCommand(program, cliIo);
   registerCodexCommands(program, cliIo);
   registerLabCommands(program, cliIo);
-
-  const implementedCommands = new Set(["init", "doctor", "run", "verify", "cleanup", "review", "runs", "watch", "codex", "lab"]);
-  for (const plannedCommand of plannedCommands.filter((command) => !implementedCommands.has(command.name))) {
-    registerUnsupportedCommand(program, plannedCommand, cliIo);
-  }
-
   registerFeedbackCommands(program, cliIo);
 
   return program;
@@ -301,7 +304,7 @@ function registerInitCommand(parent: Command, io: CliIo): void {
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; dryRun?: boolean; json?: boolean; yes?: boolean }, command) => {
       const initOptions = {
         cwd: options.cwd,
@@ -327,11 +330,12 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
     .command("doctor")
     .description("Explain project readiness and missing Homun setup.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
       const result = await doctor(options.cwd);
       writeResult(command, io, result, formatDoctorHuman);
-      io.setExitCode(result.ok ? 0 : 1);
+      // Behavioral change: was exit 1, every other structured command uses 2.
+      io.setExitCode(result.ok ? 0 : 2);
     });
 }
 
@@ -348,7 +352,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this run without persisting values.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (lab: string | undefined, options: {
       actor?: string;
       appUrl?: string;
@@ -454,7 +458,7 @@ function registerVerifyCommand(parent: Command, io: CliIo): void {
     .description("Validate a run bundle and public-safety gates.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await verifyRun(options.cwd, options.run);
       writeResult(command, io, result, formatVerifyHuman);
@@ -468,7 +472,7 @@ function registerCleanupCommand(parent: Command, io: CliIo): void {
     .description("Clean run-owned provider resources by exact recorded id and write a cleanup receipt.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await cleanupRun(options.cwd, options.run);
       writeResult(command, io, result, formatCleanupHuman);
@@ -482,7 +486,7 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
     .description("Build a review packet from verified run evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await readReview(options.cwd, options.run);
       writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
@@ -495,11 +499,11 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
     .command("runs")
     .description("List local Homun runs and latest pointers.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
       const result = await listRuns(options.cwd);
       writeResult(command, io, result, formatRunsHuman);
-      io.setExitCode(0);
+      io.setExitCode(result.ok ? 0 : 2);
     });
 }
 
@@ -522,7 +526,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
     .addOption(new Option("--sandbox <mode>", "Turn sandbox policy.").choices(["read-only", "workspace-write", "danger-full-access"]).default("read-only"))
     .option("--actor-command <command>", "Override app-server command. Defaults to codex app-server --listen stdio://.")
     .option("--keep-open", "Keep the browser UI process alive after the actor finishes.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: {
       actorCommand?: string;
       cwd: string;
@@ -585,12 +589,25 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       if (options.keepOpen === true) {
         writeResult(command, io, initial, formatCodexAppServerUiHuman);
         io.setExitCode(0);
-        await controller.completion;
-        await new Promise<void>((resolveWait) => {
-          process.once("SIGINT", () => {
-            void controller.close().finally(resolveWait);
+        try {
+          // Local hardening for the known double-envelope path: the "running"
+          // envelope above has already reached stdout, so a rejection here
+          // (codex-app-server-ui.ts's persistState() write can fail on either
+          // branch of session completion) must not go through the
+          // command-boundary catch-all's --json branch, which would otherwise
+          // append a second JSON document to stdout. Handling it here directly
+          // means this known path stays correct even if that general guard is
+          // ever weakened; it does not replace it.
+          await controller.completion;
+          await new Promise<void>((resolveWait) => {
+            process.once("SIGINT", () => {
+              void controller.close().finally(resolveWait);
+            });
           });
-        });
+        } catch (error) {
+          io.writeErr(`HOMUN_UNEXPECTED: ${redactText(error instanceof Error ? error.message : String(error))}\n`);
+          io.setExitCode(2);
+        }
         return;
       }
 
@@ -626,7 +643,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .addOption(new Option("--follow", "Deprecated; human output follows by default.").hideHelp())
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
       [
@@ -857,7 +874,7 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Serve without opening a browser.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
       [
@@ -999,7 +1016,7 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("List feedback draft state for a run.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await listFeedback(options.cwd, options.run);
       writeResult(command, io, result, formatFeedbackHuman);
@@ -1011,7 +1028,7 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("Generate a public-safe feedback draft from verified evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await draftFeedback(options.cwd, options.run);
       writeResult(command, io, result, formatFeedbackHuman);
@@ -1023,7 +1040,7 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("Verify the feedback draft for public issue eligibility.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await verifyFeedback(options.cwd, options.run);
       writeResult(command, io, result, formatFeedbackHuman);
@@ -1037,7 +1054,7 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in rendered filing instructions.")
     .option("--format <format>", "Output format.", "markdown")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
       const result = await renderIssueMarkdown(options.cwd, options.run, options.repo);
 
@@ -1062,7 +1079,7 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in the generated URL.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; repo: string; run: string }, command) => {
       const result = await renderIssueUrl(options.cwd, options.run, options.repo);
 
@@ -1087,7 +1104,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .command("list")
     .description("List committed and ignored Homun lab manifests.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
       const result = await listLabManifests(options.cwd);
       writeResult(command, io, result, formatLabListHuman);
@@ -1099,7 +1116,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Inspect a Homun lab manifest without running it.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
       const result = await inspectLabManifest(options.cwd, labName);
       writeResult(command, io, result, formatLabInspectHuman);
@@ -1114,7 +1131,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .addOption(new Option("--reachability <mode>", "Reachability mode.").choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"]).default("metadata"))
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
     .option("--env-file <path>", "Load a local env file for this preflight without persisting values.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, options: { cwd: string; envFile?: string; json?: boolean; reachability: LabPreflightReachabilityMode; timeoutMs: string }, command) => {
       if (!await applyEnvFileOption({
         command,
@@ -1162,7 +1179,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .command("cleanup")
     .argument("[lab]", "Provider-backed lab to clean up.", "oss")
     .description("Clean up stale provider resources for a lab without printing provider ids.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, _options: { json?: boolean }, command) => {
       if (labName !== "oss") {
         const result = {
@@ -1210,7 +1227,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--redact-repos", "Redact repo labels in durable lab artifacts.")
     .option("--no-redact-repos", "Persist repo labels in durable lab artifacts. Use only for public-safe runs.")
     .option("--keep", "Smoke labs only: keep disposable clone sandbox for debugging.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
       [
@@ -1265,7 +1282,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--smoke", "Run the disposable local clone smoke harness instead of headed meta-sims.")
     .option("--limit <count>", "Smoke mode only: number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
     .option("--keep", "Smoke mode only: keep disposable clone sandbox for debugging.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
       [
@@ -1445,7 +1462,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Host directory for ignored .homun lab report.", ".")
     .option("--keep", "Keep disposable clone sandbox for debugging.")
-    .option("--json", "Print a machine-readable JSON response.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
       [
@@ -1512,8 +1529,8 @@ async function runLabCommand(args: {
     return;
   }
 
-  // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect —
-  // otherwise a setting that does nothing is silently swallowed on the path users actually run.
+  // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect.
+  // Otherwise a setting that does nothing is silently swallowed on the path users actually run.
   for (const warning of resolved.warnings) {
     args.io.writeErr(`warning: ${warning}\n`);
   }
@@ -1838,7 +1855,7 @@ function formatSharedWorldLabHuman(result: SharedWorldLabResult): string {
     `sequence: ${result.sequence.join(" -> ") || "(none)"}`,
     ...(result.subject?.commit ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`] : []),
     ...result.roles.map((role) =>
-      `role ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""}${role.skippedReason ? ` — ${role.skippedReason}` : ""}`),
+      `role ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""}${role.skippedReason ? ` · ${role.skippedReason}` : ""}`),
     ...(result.sandbox ? [`sandbox: ${result.sandbox.sandboxId} killed=${result.sandbox.killed ? "yes" : "no"}`] : []),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
@@ -1998,7 +2015,7 @@ function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
       ? [`scenario: ${result.scenario.id} @ ${result.scenario.sourceDigest.slice(0, 12)} (${result.scenario.source}, ${result.scenario.steps} step${result.scenario.steps === 1 ? "" : "s"})`]
       : []),
     ...result.sessions.map((session) =>
-      `session ${session.surface}: ${session.status} (${session.completionReason}) — ${session.reason} [${session.screenshots} screenshot${session.screenshots === 1 ? "" : "s"}]`),
+      `session ${session.surface}: ${session.status} (${session.completionReason}) · ${session.reason} [${session.screenshots} screenshot${session.screenshots === 1 ? "" : "s"}]`),
     ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
     ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
     ...result.warnings.map((warning) => `warning: ${warning}`)
@@ -2020,7 +2037,7 @@ function formatCuaLabHuman(result: CuaActorLabResult): string {
       ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
       : []),
     ...(result.session
-      ? [`session: ${result.session.status} (${result.session.completionReason}) — ${result.session.reason}`,
+      ? [`session: ${result.session.status} (${result.session.completionReason}) · ${result.session.reason}`,
          `screenshots: ${result.session.screenshots}`]
       : []),
     ...(result.sandbox
@@ -2330,12 +2347,17 @@ function withOssMetaLabServer(result: OssMetaLabResult & { observer: ObserverRes
   };
 }
 
-function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
+// Exported so tests/program.test.ts can drive the command-boundary catch-all's
+// post-write guard (invocationEnvelopeAlreadyWritten above) through the same
+// funnel every real command uses, without duplicating its stdout-vs-formatHuman
+// branching. Not re-exported from src/index.ts; this stays an internal seam.
+export function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
   if (wantsJson(command)) {
     io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
   } else {
     io.writeOut(formatHuman(result));
   }
+  markInvocationEnvelopeWritten(command);
 }
 
 function formatDoctorHuman(result: DoctorResult): string {
@@ -2387,6 +2409,10 @@ function formatCleanupHuman(result: CleanupResult): string {
 }
 
 function formatRunsHuman(result: RunsResult): string {
+  if (!result.ok) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
   if (result.runs.length === 0) {
     return `No Homun runs found in ${result.cwd}\n`;
   }
@@ -2761,62 +2787,6 @@ function formatInitHuman(result: InitResult): string {
 
 function formatInitChange(change: InitChange): string {
   return `- ${change.action.padEnd(6)} ${change.path} (${change.target}: ${change.reason})`;
-}
-
-function registerUnsupportedCommand(
-  parent: Command,
-  plannedCommand: PlannedCommand,
-  io: CliIo,
-  commandName = plannedCommand.name
-): void {
-  const command = parent.command(commandName).description(plannedCommand.description);
-  command.option("--json", "Print a machine-readable JSON response.");
-
-  for (const option of plannedCommand.options ?? []) {
-    if (option.defaultValue === undefined) {
-      command.option(option.flags, option.description);
-    } else {
-      command.option(option.flags, option.description, option.defaultValue);
-    }
-  }
-
-  command.action((_options: unknown, actionCommand: Command) => {
-    emitUnsupported(plannedCommand, actionCommand, io);
-  });
-}
-
-function emitUnsupported(plannedCommand: PlannedCommand, command: Command, io: CliIo): void {
-  const envelope: UnsupportedEnvelope = {
-    schema: CLI_RESPONSE_SCHEMA,
-    ok: false,
-    command: plannedCommand.name,
-    error: {
-      code: "HOMUN_UNIMPLEMENTED",
-      message: `${plannedCommand.name} is planned but not implemented in this scaffold slice.`
-    },
-    docs: plannedCommand.docs,
-    issue: plannedCommand.issue,
-    capabilities: {
-      githubMutation: false,
-      providerSpend: false,
-      productionData: false
-    }
-  };
-
-  if (wantsJson(command)) {
-    io.writeOut(`${JSON.stringify(envelope, null, 2)}\n`);
-  } else {
-    io.writeErr(
-      [
-        `homun ${plannedCommand.name} is planned but not implemented yet.`,
-        `Track: ${plannedCommand.issue}`,
-        `Docs: ${plannedCommand.docs.join(", ")}`,
-        "This scaffold does not mutate GitHub, spend provider credits, or use production data."
-      ].join("\n") + "\n"
-    );
-  }
-
-  io.setExitCode(2);
 }
 
 export function shouldForceExitAfterOssMetaLab(

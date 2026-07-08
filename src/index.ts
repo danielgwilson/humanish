@@ -315,11 +315,9 @@ export type {
 } from "./lab-preflight.js";
 export {
   CLI_RESPONSE_SCHEMA,
-  createProgram,
-  plannedCommands
+  createProgram
 } from "./program.js";
 export type {
   CliIo,
-  PlannedCommand,
-  UnsupportedEnvelope
+  UnexpectedErrorEnvelope
 } from "./program.js";
