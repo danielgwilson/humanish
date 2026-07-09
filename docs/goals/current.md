@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-06-30 (rev 12)
+Status date: 2026-07-08 (rev 13)
 
 This page is the current public-safe operating goal for `homun`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -277,6 +277,30 @@ Attached CUA live Observer (next patch):
   `serveObserver` can hydrate desktop stream iframes while actors are still running, and stream auth
   URLs remain runtime-only through the Observer WeakMap rather than persisted into `run.json` or
   `observer-data.json`. `done`
+
+Local working-tree subject + operator observability (0.14.0):
+
+- `subject.source: local-tree` packs the lab resolution cwd on the host (git-aware
+  enumeration honoring `.gitignore` and including uncommitted work, an always-on
+  non-overridable secrets denylist, symlinks stored never dereferenced, one
+  enumeration driving both the tar file list and the digest), uploads the
+  once-per-run archive into each lane's desktop sandbox, extracts into the subject
+  dir, and reuses the clone route's install/build/state/start/probe pipeline
+  unchanged. Provenance pins the tree by `archiveSha256` (a dirty tree cannot be
+  commit-pinned) plus host-side commit/dirty; `verify` fails closed on a live
+  local-tree bundle without a well-formed pin. Live-proven twice with kept
+  receipts: a dirty synthetic fixture and this repo packing itself
+  (`docs/goals/local-tree-subject/receipts/`). `done`
+- Subject provisioning phase events: started/completed boundaries for
+  clone/upload/extract/install/build/serve/readiness/seed-step phases stream to
+  stderr by default (injectable via `CuaActorLabHooks.onPhase` /
+  `SharedWorldLabHooks.onPhase`) and the completed trail persists into
+  `bundle.events`; a single-lane provisioned boot is never silent again. `done`
+- Truthful CLI envelopes at the command boundary: any uncaught action error emits
+  one structured `homun.cli-response.v1` envelope (never a raw stack trace under
+  `--json`, never a second stdout document after a flushed envelope), `homun runs`
+  gained a real failure branch, and `doctor` failure now exits 2 like every other
+  structured command (behavioral change). `done`
 
 ### 6. Lab Manifest Shape
 
