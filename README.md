@@ -129,6 +129,15 @@ npx homun watch --json --no-open
 | `homun lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
 | `homun lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
 
+## Exit Codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success. |
+| `1` | Commander usage error: unknown command, unknown option, or a missing/invalid argument. |
+| `2` | Homun domain or validation failure. Check the JSON envelope's `error.code` for detail. |
+| `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP. |
+
 ## Lab Manifests
 
 Labs are authored as `.yaml` source:

@@ -301,6 +301,7 @@ function registerInitCommand(parent: Command, io: CliIo): void {
   parent
     .command("init")
     .description("Set up committed homun/ source files and ignored .homun/ runtime state.")
+    .summary("Set up homun/ source and .homun/ runtime state.")
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -329,6 +330,7 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
   parent
     .command("doctor")
     .description("Explain project readiness and missing Homun setup.")
+    .summary("Explain project readiness and missing setup.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -344,6 +346,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .command("run")
     .argument("[lab]", "Optional lab id or .yaml path.")
     .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
+    .summary("Run a persona/scenario simulation or dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
     .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
     .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec", "codex-app-server"]))
@@ -456,6 +459,7 @@ function registerVerifyCommand(parent: Command, io: CliIo): void {
   parent
     .command("verify")
     .description("Validate a run bundle and public-safety gates.")
+    .summary("Validate a run bundle and public-safety gates.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -470,6 +474,7 @@ function registerCleanupCommand(parent: Command, io: CliIo): void {
   parent
     .command("cleanup")
     .description("Clean run-owned provider resources by exact recorded id and write a cleanup receipt.")
+    .summary("Clean run-owned provider resources by exact id.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -484,6 +489,7 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
   parent
     .command("review")
     .description("Build a review packet from verified run evidence.")
+    .summary("Build a review packet from verified run evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -498,6 +504,7 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
     .description("List local Homun runs and latest pointers.")
+    .summary("List local Homun runs and latest pointers.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -510,7 +517,8 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerCodexCommands(parent: Command, io: CliIo): void {
   const codex = parent
     .command("codex")
-    .description("Run Codex-native Homun integration surfaces.");
+    .description("Run Codex-native Homun integration surfaces.")
+    .summary("Run Codex-native Homun integration surfaces.");
 
   codex
     .command("app-server")
@@ -623,6 +631,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .command("watch")
     .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
     .description("Run sims, open the observer, and keep the shell attached.")
+    .summary("Run sims, open the observer, keep the shell attached.")
     .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
@@ -836,7 +845,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
 
       const wantsMachine = wantsJson(command);
-      const shouldOpen = options.open === false ? false : wantsMachine ? options.open === true : true;
+      const shouldOpen = options.open === false ? false : options.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
       const wantsFollow = !wantsMachine && options.detach !== true && (options.follow !== false);
       const rendered = await renderObserver(options.cwd, runInput, { open: wantsFollow ? false : shouldOpen });
       let server: ObserverServer | null = null;
@@ -869,6 +878,7 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
   parent
     .command("observe")
     .description("Serve a finished run's Observer over loopback http://127.0.0.1 instead of a file:// path.")
+    .summary("Serve a finished run's Observer over loopback http.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--port <port>", "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.", "0")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -1009,7 +1019,8 @@ async function serveObserveUntilSignal(
 function registerFeedbackCommands(parent: Command, io: CliIo): void {
   const feedback = parent
     .command("feedback")
-    .description("Create public-safe feedback drafts without GitHub API mutation.");
+    .description("Create public-safe feedback drafts without GitHub API mutation.")
+    .summary("Create public-safe feedback drafts, no GitHub API.");
 
   feedback
     .command("list")
@@ -1098,7 +1109,8 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
 function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("List, inspect, and run Homun lab manifests.");
+    .description("List, inspect, and run Homun lab manifests.")
+    .summary("List, inspect, and run Homun lab manifests.");
 
   lab
     .command("list")
@@ -1210,22 +1222,22 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .description("Run a Homun lab manifest.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--dry-run", "Render contract evidence without live provider spend.")
-    .option("--codex-app-server", "Use Codex app-server client mode for headed desktop actor surfaces.")
+    .option("--codex-app-server", "Meta only: use Codex app-server client mode for headed desktop actor surfaces.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
-    .option("--count <count>", "Override headed desktop lane count.")
+    .option("--count <count>", "CUA/meta only: override headed desktop lane count.")
     .option("--rerun-failed-from <run>", "CUA fan-out only: create a new run for failed lanes from a prior run.")
     .option("--lanes <lane-ids>", "CUA rerun only: comma-separated lane ids to rerun from the source run.")
-    .option("--limit <count>", "Override smoke lab repo limit.")
+    .option("--limit <count>", "Smoke labs only: override repo limit.")
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
-    .option("--redact-repos", "Redact repo labels in durable lab artifacts.")
-    .option("--no-redact-repos", "Persist repo labels in durable lab artifacts. Use only for public-safe runs.")
+    .option("--repo <owner/repo>", "Smoke/meta only: GitHub repo slug. Repeatable.", collectRepeated, [])
+    .option("--repos <owner/repo,...>", "Smoke/meta only: comma-separated GitHub repo slugs.")
+    .option("--redact-repos", "Meta only: redact repo labels in durable lab artifacts.")
+    .option("--no-redact-repos", "Meta only: persist repo labels in durable lab artifacts. Use only for public-safe runs.")
     .option("--keep", "Smoke labs only: keep disposable clone sandbox for debugging.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
@@ -1373,7 +1385,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       }
 
       const wantsMachine = wantsJson(command);
-      const shouldOpen = options.open === false ? false : wantsMachine ? options.open === true : true;
+      const shouldOpen = options.open === false ? false : options.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
       const wantsFollow = !wantsMachine && options.detach !== true && options.dryRun !== true;
       const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
       const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
@@ -1655,6 +1667,23 @@ async function runSyntheticBackend(args: {
   });
 }
 
+/**
+ * Default browser-open policy for a lab backend run. Mirrors the observe/watch gate:
+ * an explicit --open/--no-open wins; --json (machine mode) never auto-opens; otherwise a
+ * lab-config `defaults.open` wins, and the final fallback opens only for an interactive
+ * `watch` on a real TTY. Extracted so all lab backends share one gate (and one test).
+ */
+export function resolveBackendShouldOpen(args: {
+  optionOpen: boolean | undefined;
+  defaultsOpen: boolean | undefined;
+  mode: string;
+  wantsMachine: boolean;
+}): boolean {
+  if (args.optionOpen === false) return false;
+  if (args.wantsMachine) return args.optionOpen === true;
+  return args.optionOpen ?? args.defaultsOpen ?? (process.stdout.isTTY === true && args.mode === "watch");
+}
+
 async function runCuaBackend(args: {
   command: Command;
   io: CliIo;
@@ -1663,11 +1692,12 @@ async function runCuaBackend(args: {
   options: LabCommandOptions;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = args.options.open === false
-    ? false
-    : wantsMachine
-      ? args.options.open === true
-      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const shouldOpen = resolveBackendShouldOpen({
+    optionOpen: args.options.open,
+    defaultsOpen: args.config.defaults?.open,
+    mode: args.mode,
+    wantsMachine
+  });
   const laneIds = parseLaneIds(args.options.lanes);
   if (laneIds.length > 0 && !args.options.rerunFailedFrom) {
     args.io.writeErr("error: --lanes requires --rerun-failed-from.\n");
@@ -1728,11 +1758,12 @@ async function runScriptedBackend(args: {
   options: LabCommandOptions;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = args.options.open === false
-    ? false
-    : wantsMachine
-      ? args.options.open === true
-      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const shouldOpen = resolveBackendShouldOpen({
+    optionOpen: args.options.open,
+    defaultsOpen: args.config.defaults?.open,
+    mode: args.mode,
+    wantsMachine
+  });
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
@@ -1772,11 +1803,12 @@ async function runTerminalBackend(args: {
   options: LabCommandOptions;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = args.options.open === false
-    ? false
-    : wantsMachine
-      ? args.options.open === true
-      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const shouldOpen = resolveBackendShouldOpen({
+    optionOpen: args.options.open,
+    defaultsOpen: args.config.defaults?.open,
+    mode: args.mode,
+    wantsMachine
+  });
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
@@ -1812,11 +1844,12 @@ async function runSharedWorldBackend(args: {
   options: LabCommandOptions;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = args.options.open === false
-    ? false
-    : wantsMachine
-      ? args.options.open === true
-      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const shouldOpen = resolveBackendShouldOpen({
+    optionOpen: args.options.open,
+    defaultsOpen: args.config.defaults?.open,
+    mode: args.mode,
+    wantsMachine
+  });
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
@@ -1872,11 +1905,12 @@ async function runConcurrentSharedWorldBackend(args: {
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
-  const shouldOpen = args.options.open === false
-    ? false
-    : wantsMachine
-      ? args.options.open === true
-      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const shouldOpen = resolveBackendShouldOpen({
+    optionOpen: args.options.open,
+    defaultsOpen: args.config.defaults?.open,
+    mode: args.mode,
+    wantsMachine
+  });
   const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
   const port = parseObserverPort(args.options.port ?? "0");
   if (wantsFollow && port === null) {
@@ -2130,11 +2164,12 @@ async function runMetaBackend(args: {
 
   const wantsMachine = wantsJson(args.command);
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, undefined);
-  const shouldOpen = args.options.open === false
-    ? false
-    : wantsMachine
-      ? args.options.open === true
-      : args.options.open ?? args.config.defaults?.open ?? args.mode === "watch";
+  const shouldOpen = resolveBackendShouldOpen({
+    optionOpen: args.options.open,
+    defaultsOpen: args.config.defaults?.open,
+    mode: args.mode,
+    wantsMachine
+  });
   const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
   const codexAppServer = args.options.codexAppServer ?? args.config.execution?.desktop?.codexAppServer;
   const repoOverrideRequested = (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
@@ -2245,7 +2280,7 @@ async function renderAndMaybeFollowObserver(args: {
   }
 
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = args.open === false ? false : wantsMachine ? args.open === true : true;
+  const shouldOpen = args.open === false ? false : args.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
   const wantsFollow = !wantsMachine && args.detach !== true;
   const rendered = await renderObserver(args.cwd, args.runInput, { open: wantsFollow ? false : shouldOpen });
   let server: ObserverServer | null = null;
