@@ -219,6 +219,15 @@ ONE shared world.
   phase-change proof, not scale. The next step is the real downstream sim migration (a
   synthetic-seeded multi-role app in the adopter's domain). Per-action causation,
   cross-sandbox concurrency beyond getHost, and #108 PII/PHI remain out of scope.
+- shared-world (sequential AND concurrent) now also accepts `subject.source: local-tree` alongside
+  `clone`: the ONE subject sandbox packs the operator's own working tree instead of cloning,
+  reusing `provisionLocalTreeSubject` from the local-tree keystone (0.14.0). Provenance carries
+  `archiveSha256` (the pin - one archive per run, so no per-lane unanimity math applies) plus
+  host-side commit/dirty when the packed root is a git work tree; local-tree has no repo/publicRepo
+  field. The N actor desktops on the concurrent route still drive the harness-minted getHost URL
+  exactly as before; only the subject's provisioning + provenance source changed. The multi-origin
+  design (`docs/goals/multi-origin-shared-world/design.md`) remains a separate, still-held
+  downstream slice. `next patch`
 
 Adopter-driven engine features (0.11.0; surfaced by real bespoke-sim migrations):
 

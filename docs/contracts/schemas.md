@@ -388,9 +388,13 @@ feedbackCandidates: []
 
 The shared-world topology (#164) is the DECLARED override of the per-lane-worlds
 default: N distinct actor ROLES drive ONE provisioned, mutable service plane (one
-app + one seeded DB) so their actions interact through shared state. A shared-world
-bundle adds TWO additive, optional fields to `homun.run-bundle.v1` (absent on
-every other bundle, so they stay byte-stable):
+app + one seeded DB) so their actions interact through shared state. The ONE
+subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
+`subject.source: local-tree` (the operator's own working tree, packed on the host
+and provisioned in-sandbox in place of a clone - see `subject.localTree` above);
+both sources are accepted on the sequential AND concurrent shared-world routes. A
+shared-world bundle adds TWO additive, optional fields to `homun.run-bundle.v1`
+(absent on every other bundle, so they stay byte-stable):
 
 - `attributionClass: isolated | shared-world` — a new, ORTHOGONAL honesty axis
   ("how well did the run attribute INTERACTION?"), distinct from the persona-sampling

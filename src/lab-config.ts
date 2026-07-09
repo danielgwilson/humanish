@@ -969,15 +969,15 @@ function declaredLaneTargets(config: LabConfig): string[] {
 /**
  * Cross-validate a `topology: shared-world` declaration (#164). Returns the failure message, or
  * null when valid. Enforced at parse AND re-enforced in the engine (runSharedWorldLab is exported
- * npm surface). The shared-world override REQUIRES: clone source + e2b-desktop target + a
- * computer-use actor + a `subject.serve` block + an `actors[0].lanes` roster of ≥2 roles (the
+ * npm surface). The shared-world override REQUIRES: a clone or local-tree source + e2b-desktop
+ * target + a computer-use actor + a `subject.serve` block + an `actors[0].lanes` roster of ≥2 roles (the
  * roster IS the role roster — no parallel roles[] field), and every role `entry` must resolve
  * same-origin (loopback) with serve.url. Fail-closed: a half-declared shared-world is rejected,
  * never silently downgraded.
  */
 export function sharedWorldValidationReason(config: LabConfig): string | null {
-  if (config.subject.source !== "clone") {
-    return "`subject.topology: shared-world` requires `subject.source: clone` — the shared world is ONE provisioned, served, seeded plane (#164).";
+  if (config.subject.source !== "clone" && config.subject.source !== "local-tree") {
+    return "`subject.topology: shared-world` requires `subject.source: clone` or `subject.source: local-tree` - the shared world is ONE provisioned, served, seeded plane (#164).";
   }
   if (config.execution?.target !== "e2b-desktop") {
     return "`subject.topology: shared-world` requires `execution.target: e2b-desktop` — the role seats drive hosted desktop browsers against one in-sandbox app.";
@@ -1018,15 +1018,15 @@ export function routesToComputerUse(config: LabConfig): boolean {
 }
 
 /**
- * True when this config routes to the SHARED-WORLD backend (#164): a clone subject on a hosted
- * desktop whose first actor resolves to a computer-use actor AND that declares the
+ * True when this config routes to the SHARED-WORLD backend (#164): a clone or local-tree subject
+ * on a hosted desktop whose first actor resolves to a computer-use actor AND that declares the
  * `shared-world` topology. Mirror of routesToComputerUse; the single source of truth shared by
- * selectLabBackend (which checks it BEFORE the cua route) and the warning logic. The same clone ×
- * e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
+ * selectLabBackend (which checks it BEFORE the cua route) and the warning logic. The same
+ * clone/local-tree × e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
  * (the cua route) — the topology declaration is the override switch.
  */
 export function routesToSharedWorld(config: LabConfig): boolean {
-  return config.subject.source === "clone"
+  return (config.subject.source === "clone" || config.subject.source === "local-tree")
     && config.subject.topology === "shared-world"
     && config.execution?.target === "e2b-desktop"
     && actorResolvesToComputerUse(config.actors[0]?.type);
@@ -1046,8 +1046,9 @@ export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
  * Cross-validate a CONCURRENT shared-world declaration (#164 phase 2). Returns the failure message,
  * or null when valid. Includes the base shared-world checks PLUS the concurrent extras: a synthetic
  * subject attestation (FIX-3), a 0.0.0.0 serve bind (FIX-4 — getHost only routes to a port bound on
- * all interfaces), and no `subject.clone.keep` (FIX-9 — it would orphan actor sandboxes). Enforced
- * at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
+ * all interfaces), and no `subject.clone.keep`/`subject.localTree.keep` (FIX-9 - either would
+ * orphan actor sandboxes). Enforced at parse AND re-enforced in the engine (runConcurrentSharedWorld
+ * is exported npm surface).
  */
 export function concurrentSharedWorldValidationReason(config: LabConfig): string | null {
   const base = sharedWorldValidationReason(config);
@@ -1064,8 +1065,9 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
   if (!serve || !serve.start.includes("0.0.0.0")) {
     return "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)";
   }
-  if (config.subject.clone?.keep === true) {
-    return "`subject.clone.keep` is not supported on the concurrent shared-world route — it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id.";
+  if (config.subject.clone?.keep === true || config.subject.localTree?.keep === true) {
+    const keepField = config.subject.clone?.keep === true ? "subject.clone.keep" : "subject.localTree.keep";
+    return `\`${keepField}\` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id.`;
   }
   return null;
 }

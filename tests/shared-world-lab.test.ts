@@ -17,6 +17,7 @@ import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { runSharedWorldLab, type SharedWorldLabHooks } from "../src/shared-world-lab.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
+import type { LocalTreeArchive } from "../src/source-archive.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module records create/kill BY id and exposes NO `list`
@@ -43,8 +44,11 @@ function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string;
       }
     },
     files: {
+      // Raw data (never String()-coerced): existing callers write string script content
+      // (String(data) === data for those, unchanged), and the local-tree upload path writes a
+      // real ArrayBuffer that tests need to inspect directly (byteLength, reference equality).
       write: async (filePath: string, data: string | ArrayBuffer) => {
-        calls.push(["files.write", filePath, String(data)]);
+        calls.push(["files.write", filePath, data]);
         return undefined;
       }
     },
@@ -569,6 +573,243 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       const text = await readFile(path.join(cwd, ".homun", "runs", result.runId, file), "utf8");
       expect(text, file).not.toContain(secret);
     }
+  });
+});
+
+// The same shared-world composition, but driven from the operator's own packed working tree
+// (subject.source: local-tree) instead of a clone - the follow-up to the local-tree keystone that
+// wires provisionLocalTreeSubject into the sequential shared-world engine (issue #261 follow-up).
+describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () => {
+  // 64-hex archiveSha256 and a 40-hex commit: shape-valid fixtures, not real digests.
+  const FIXED_ARCHIVE: LocalTreeArchive = {
+    archivePath: "/unused-in-fake/source.tar.gz",
+    archiveSha256: "ab".repeat(32),
+    fileCount: 3,
+    totalBytes: 42,
+    git: { commit: "cd".repeat(20), dirty: true }
+  };
+  const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
+
+  function localTreeSharedWorldConfig(overrides?: { subject?: Record<string, unknown>; execution?: Record<string, unknown> }): LabConfig {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "shared-world-local-tree-proof",
+      title: "Shared-world local-tree proof",
+      subject: {
+        source: "local-tree",
+        topology: "shared-world",
+        env: ["DATABASE_URL"],
+        serve: { install: "pnpm install", start: "pnpm start", url: "http://127.0.0.1:3000/" },
+        state: {
+          seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+          checkpoint: [
+            { name: "notes-count", command: "psql query notes" },
+            { name: "reviews-count", command: "psql query reviews" }
+          ]
+        },
+        ...(overrides?.subject ?? {})
+      },
+      actors: [
+        {
+          type: "openai-computer-use",
+          mission: "Use the shared app.",
+          lanes: [
+            { id: "role-author", persona: "author", entry: "/compose", instruction: "Create a note." },
+            { id: "role-reviewer", persona: "reviewer", entry: "/inbox", instruction: "Review the note." }
+          ]
+        }
+      ],
+      execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60_000 },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  it("dry-run: subject.source local-tree, no archiveSha256 (nothing packed), verified contract bundle", async () => {
+    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: true });
+    expect(result.ok).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.sandbox).toBeUndefined();
+    expect(result.subject).toEqual({ source: "local-tree", envNames: ["DATABASE_URL"], state: { provenance: "declared-not-run", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String) }] } });
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.subject.source).toBe("local-tree");
+    expect("archiveSha256" in bundle.subject).toBe(false);
+    expect(bundle.attributionClass).toBe("shared-world");
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+
+  it("GOOD live run: packs ONCE, uploads to the ONE subject sandbox, extracts, provisions via provisionLocalTreeSubject; bundle provenance carries archiveSha256 + commit + dirty; verify ok", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, created, killed, sandbox } = baseHooks(state);
+    const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> = [];
+    hooks.packLocalTree = async (args) => {
+      packCalls.push(args);
+      return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
+    };
+    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(result.error).toBeUndefined();
+
+    // Packed exactly ONCE, rooted at the lab resolution cwd - before the ONE sandbox is created.
+    expect(packCalls).toHaveLength(1);
+    expect(packCalls[0]?.root).toBe(cwd);
+    expect(created).toHaveLength(1);
+    expect(killed).toEqual([sandbox.sandboxId]);
+
+    // The archive uploaded to the ONE subject sandbox at the known remote path, octet-stream.
+    const uploads = sandbox.calls.filter(
+      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz"
+    );
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]?.[2]).toBe(FAKE_ARCHIVE_BYTES);
+
+    // The local-tree route never runs git: no clone script written, ever.
+    const cloneWrites = sandbox.calls.filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    expect(cloneWrites).toHaveLength(0);
+
+    // The extract step ran: rm -rf/mkdir -p SUBJECT_DIR, tar -xzf, then rm -f the uploaded archive.
+    const extractScript = sandbox.calls.find(
+      (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh")
+    );
+    expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
+    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.homun-source.tar.gz -C /home/user/subject");
+
+    // Provenance: source local-tree + archiveSha256 (the pin) + commit/dirty from the host-packed
+    // archive (never resolved in-sandbox: no repo/publicRepo for local-tree).
+    const expectedSubject = {
+      source: "local-tree",
+      archiveSha256: FIXED_ARCHIVE.archiveSha256,
+      commit: FIXED_ARCHIVE.git!.commit,
+      dirty: true,
+      envNames: ["DATABASE_URL"],
+      state: { provenance: "seeded", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String), ok: true, exitCode: 0, durationMs: expect.any(Number) }] }
+    };
+    expect(result.subject).toEqual(expectedSubject);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.subject).toEqual(expectedSubject);
+    expect(bundle.sharedWorld.plane.commit).toBe(FIXED_ARCHIVE.git!.commit);
+
+    // The interaction proof still holds (single-plane checkpoint delta) on the local-tree route.
+    const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; deltaFromPrev?: boolean }>;
+    expect(timeline.some((entry) => entry.kind === "checkpoint" && entry.deltaFromPrev === true)).toBe(true);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("fails closed: a live local-tree bundle with archiveSha256 stripped no longer verifies (the pin is load-bearing)", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state);
+    hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
+    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+
+    // Strip the content pin from the persisted bundle: a live local-tree subject has no other
+    // provenance anchor (a dirty tree cannot be commit-pinned), so verify must fail closed.
+    const runPath = path.join(cwd, ".homun", "runs", result.runId, "run.json");
+    const bundle = JSON.parse(await readFile(runPath, "utf8"));
+    delete bundle.subject.archiveSha256;
+    await writeFile(runPath, JSON.stringify(bundle));
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(false);
+  });
+
+  it("onPhase: the ONE shared-plane provision reports upload/extract (never clone), then install/build/ready, in order", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, phaseEvents } = baseHooks(state);
+    hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
+    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    const types = phaseEvents.map((event) => event.type);
+    expect(types).toEqual([
+      "cua-lab.subject.upload.started",
+      "cua-lab.subject.upload.completed",
+      "cua-lab.subject.extract.started",
+      "cua-lab.subject.extract.completed",
+      "cua-lab.subject.install.started",
+      "cua-lab.subject.install.completed",
+      "cua-lab.subject.state.before-start.started",
+      "cua-lab.subject.state.before-start.completed",
+      "cua-lab.subject.serve.started",
+      "cua-lab.subject.ready.started",
+      "cua-lab.subject.ready.completed"
+    ]);
+    expect(types.some((type) => type.includes(".clone."))).toBe(false);
+  });
+
+  it("packing failure (hook throws) fails the run closed BEFORE any sandbox is created", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, created } = baseHooks(state);
+    hooks.packLocalTree = async () => {
+      throw new Error("Local tree root produced zero packable entries after the always-on denylist.");
+    };
+    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.message).toContain("zero packable entries");
+    expect(created).toHaveLength(0);
+  });
+
+  it("subject.localTree.keep: true preserves the sandbox on a failed role (mirrors subject.clone.keep)", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, killed, sandbox } = baseHooks(state);
+    hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
+    hooks.runSession = async () => {
+      throw new Error("boom during session");
+    };
+    const result = await runSharedWorldLab({
+      cwd,
+      config: localTreeSharedWorldConfig({ subject: { localTree: { keep: true } } }),
+      dryRun: false,
+      hooks
+    });
+
+    expect(result.ok).toBe(false);
+    expect(killed).toEqual([]);
+    expect(result.warnings.some((w) => w.includes("subject.localTree.keep"))).toBe(true);
+    expect(result.sandbox).toEqual({ sandboxId: sandbox.sandboxId, killed: false });
+  });
+
+  it("engine re-enforcement (library API surface, bypassing the parser): a local-tree config missing subject.serve fails closed", async () => {
+    const valid = localTreeSharedWorldConfig();
+    const subjectWithoutServe: Record<string, unknown> = { ...valid.subject };
+    delete subjectWithoutServe.serve;
+    const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
+    const result = await runSharedWorldLab({ cwd, config: broken, dryRun: false });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.message).toContain("subject.serve");
+  });
+
+  it("engine re-enforcement: a local-tree config with the wrong execution.target fails closed", async () => {
+    const valid = localTreeSharedWorldConfig();
+    const executionWithoutTarget: Record<string, unknown> = { ...valid.execution };
+    delete executionWithoutTarget.target;
+    const broken = { ...valid, execution: executionWithoutTarget } as LabConfig;
+    const result = await runSharedWorldLab({ cwd, config: broken, dryRun: false });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.message).toContain("execution.target: e2b-desktop");
+  });
+
+  it("routes through runLab(sharedWorldHooks) to the shared-world backend", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state);
+    hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
+    const config = localTreeSharedWorldConfig();
+    expect(selectLabBackend(config)).toBe("shared-world");
+    const outcome = await runLab(config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+    expect(outcome.backend).toBe("shared-world");
+    if (outcome.backend !== "shared-world") return;
+    expect(outcome.result.ok).toBe(true);
   });
 });
 

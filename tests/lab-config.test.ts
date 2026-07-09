@@ -1106,6 +1106,38 @@ function validSharedWorld(overrides?: { subject?: Record<string, unknown>; actor
   };
 }
 
+// The same shared-world composition, but driven from the operator's own packed working tree
+// (subject.source: local-tree) instead of a clone - the follow-up to the local-tree keystone
+// (issue #261) that lets shared-world accept a local-tree subject alongside clone.
+function validSharedWorldLocalTree(overrides?: { subject?: Record<string, unknown>; actors?: unknown; execution?: Record<string, unknown> }): Record<string, unknown> {
+  return {
+    schema: LAB_CONFIG_SCHEMA,
+    id: "shared-world-local-tree-proof",
+    subject: {
+      source: "local-tree",
+      topology: "shared-world",
+      env: ["DATABASE_URL"],
+      serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+      state: {
+        seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+        checkpoint: [{ name: "notes-count", command: "echo count" }]
+      },
+      ...(overrides?.subject ?? {})
+    },
+    actors: overrides?.actors ?? [
+      {
+        type: "openai-computer-use",
+        mission: "Use the shared app.",
+        lanes: [
+          { id: "role-author", actorType: "author", surface: "studio", caseGroup: "case-001", persona: "author", entry: "/compose", instruction: "Create a note." },
+          { id: "role-reviewer", actorType: "reviewer", surface: "queue", caseGroup: "case-001", persona: "reviewer", entry: "/inbox", instruction: "Review the note." }
+        ]
+      }
+    ],
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000 }
+  };
+}
+
 describe("shared-world topology routing + cross-validation (#164)", () => {
   it("parses a valid shared-world lab, routes to the shared-world backend, no warnings", () => {
     const result = parseLabConfig(validSharedWorld());
@@ -1123,6 +1155,39 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
       ["reviewer", "queue", "case-001"]
     ]);
     expect(result.config.subject.state?.checkpoint?.map((probe) => probe.name)).toEqual(["notes-count"]);
+  });
+
+  it("accepts subject.source: local-tree (issue #261 follow-up): parses, routes to shared-world, no warnings", () => {
+    const result = parseLabConfig(validSharedWorldLocalTree());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.subject.source).toBe("local-tree");
+    expect(result.config.subject.topology).toBe("shared-world");
+    expect(routesToSharedWorld(result.config)).toBe(true);
+    expect(selectLabBackend(result.config)).toBe("shared-world");
+    expect(sharedWorldValidationReason(result.config)).toBeNull();
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("local-tree + concurrency>1 also routes to the concurrent shared-world backend", () => {
+    const result = parseLabConfig(validSharedWorldLocalTree({
+      subject: { exposure: "synthetic", serve: { start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" } },
+      execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 2 }
+    }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(routesToConcurrentSharedWorld(result.config)).toBe(true);
+    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
+    expect(concurrentSharedWorldValidationReason(result.config)).toBeNull();
+  });
+
+  it("local-tree shared-world still rejects subject.repos/subject.clone (invariant 6: local-tree never carries git slugs)", () => {
+    const withRepos = parseLabConfig(validSharedWorldLocalTree({ subject: { repos: ["a/b"] } }));
+    expect(withRepos.ok).toBe(false);
+    if (!withRepos.ok) expect(withRepos.error.message).toContain("subject.repos");
+    const withClone = parseLabConfig(validSharedWorldLocalTree({ subject: { clone: { depth: 1 } } }));
+    expect(withClone.ok).toBe(false);
+    if (!withClone.ok) expect(withClone.error.message).toContain("subject.clone");
   });
 
   it("execution.desktop.browser parses on sequential shared-world with zero warnings", () => {
@@ -1191,6 +1256,25 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     ["missing serve", validSharedWorld({ subject: { serve: undefined } })],
     ["roster < 2 roles", validSharedWorld({ actors: [{ type: "openai-computer-use", lanes: [{ id: "only-role", entry: "/x" }] }] })],
     ["wrong source (this-repo)", { schema: LAB_CONFIG_SCHEMA, id: "sw-src", subject: { source: "this-repo", topology: "shared-world" }, actors: [{ type: "synthetic-persona" }] }],
+    ["wrong source (app-url)", {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "sw-src-app-url",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/", topology: "shared-world" },
+      actors: [{ type: "openai-computer-use", mission: "x" }],
+      execution: { target: "e2b-desktop" }
+    }],
+    ["wrong source (local-app)", {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "sw-src-local-app",
+      subject: { source: "local-app", appUrl: "http://127.0.0.1:3000/", topology: "shared-world" },
+      actors: [{ type: "openai-computer-use", mission: "x" }]
+    }],
+    ["wrong source (terminal-product)", {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "sw-src-terminal",
+      subject: { source: "terminal-product", topology: "shared-world", product: { name: "widgetsmith", publicSurfaces: ["https://example.com/x"] } },
+      actors: [{ type: "codex-exec" }]
+    }],
     ["wrong target (no e2b-desktop)", validSharedWorld({ execution: { timeoutMs: 60000 } })],
     ["missing checkpoint", validSharedWorld({ subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } } })],
     ["entry not same-origin with serve.url", validSharedWorld({ actors: [{ type: "openai-computer-use", lanes: [{ id: "role-a", entry: "http://evil.example.com/x" }, { id: "role-b", entry: "/inbox" }] }] })]
@@ -1459,7 +1543,6 @@ describe("parseLabConfig (local-tree subject - issue #261)", () => {
       subject: { source: "clone", repos: ["example-org/example-app"], localTree: { keep: true } },
       actors: [{ type: "codex-app-server" }]
     }],
-    ["topology: shared-world on a local-tree subject", { ...validLocalTree, subject: { ...validLocalTree.subject, topology: "shared-world" } }],
     ["localTree.exclude with an empty string entry", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: ["ok", ""] } } }],
     ["localTree.exclude with an absolute path", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: ["/etc/secrets"] } } }],
     ["localTree.exclude with glob syntax", { ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: ["**/secrets"] } } }],
@@ -1503,13 +1586,16 @@ describe("parseLabConfig (local-tree subject - issue #261)", () => {
     expect(localTreeOnClone.ok).toBe(false);
     if (!localTreeOnClone.ok) expect(localTreeOnClone.error.message).toContain("subject.localTree");
 
-    // The existing requires-clone shared-world reason must stay TRUTHFUL for local-tree too: it
-    // still names clone as the requirement, never local-tree (shared-world + local-tree is an
-    // explicit follow-up non-goal, not a supported combination).
-    const sharedWorldOnLocalTree = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, topology: "shared-world" } });
-    expect(sharedWorldOnLocalTree.ok).toBe(false);
-    if (!sharedWorldOnLocalTree.ok) {
-      expect(sharedWorldOnLocalTree.error.message).toContain("`subject.source: clone`");
+    // local-tree is now a VALID shared-world source too (issue #261 follow-up): see
+    // validSharedWorldLocalTree() in the "shared-world topology routing" describe above for the
+    // full positive proof (roster + checkpoint declared, parses ok, routes to shared-world). Here,
+    // the bare validLocalTree fixture (no roster/checkpoint) still fails closed, but now on the
+    // roster requirement - never on a source rejection.
+    const sharedWorldOnBareLocalTree = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, topology: "shared-world" } });
+    expect(sharedWorldOnBareLocalTree.ok).toBe(false);
+    if (!sharedWorldOnBareLocalTree.ok) {
+      expect(sharedWorldOnBareLocalTree.error.message).not.toContain("requires `subject.source: clone` or `subject.source: local-tree`");
+      expect(sharedWorldOnBareLocalTree.error.message).toContain("at least 2 roles");
     }
 
     const badExclude = parseLabConfig({ ...validLocalTree, subject: { ...validLocalTree.subject, localTree: { exclude: [""] } } });

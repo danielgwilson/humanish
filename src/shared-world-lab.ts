@@ -1,6 +1,6 @@
 // The shared-world lab backend (#164): the SEQUENTIAL deterministic proof-of-concept of the
-// shared-world topology. ONE sandbox provisions a mutable service plane ONCE (clone + serve +
-// seed), then N role SEATS take turns IN DECLARED ORDER (each an isolated browser
+// shared-world topology. ONE sandbox provisions a mutable service plane ONCE (clone or packed
+// working tree + serve + seed), then N role SEATS take turns IN DECLARED ORDER (each an isolated browser
 // profile + identity) against the shared loopback app. A read-only state
 // CHECKPOINT (digest probe) runs at baseline + after each role's turn, producing a
 // harness-clocked timeline that PROVES role B acted on a world already containing role A's
@@ -42,9 +42,11 @@ import type { CuaLoopResult } from "./computer-use.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
+  defaultPackLocalTree,
   makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
   provisionCloneSubject,
+  provisionLocalTreeSubject,
   resolveLaneDevice,
   resolveSubjectState,
   SUBJECT_DIR,
@@ -70,6 +72,7 @@ import {
 } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
+import type { LocalTreeArchive } from "./source-archive.js";
 import type { StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
@@ -130,9 +133,10 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   detachedTimers?: DetachedTimers;
   /**
    * Subject-provisioning phase sink (mirrors CuaActorLabHooks.onPhase): one call per
-   * started/completed boundary during the ONE shared-plane provision (clone, install, build,
-   * serve start, ready, subject.state seed-step groups). Defaults to one stderr line per event.
-   * Override in tests to capture instead of writing to real stderr.
+   * started/completed boundary during the ONE shared-plane provision (clone route: clone, install,
+   * build, serve start, ready, subject.state seed-step groups; local-tree route: upload, extract,
+   * install, build, serve start, ready, seed-step groups - no clone phase). Defaults to one stderr
+   * line per event. Override in tests to capture instead of writing to real stderr.
    */
   onPhase?: (event: SubjectPhaseEvent) => void;
   /**
@@ -144,6 +148,17 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   now?: () => number;
   /** CONCURRENT route only: the background stateSeries prober cadence (ms). Default 1000. */
   proberCadenceMs?: number;
+  /**
+   * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
+   * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced archive
+   * file into an ArrayBuffer (the SAME default cua-actor-lab.ts uses). Called ONCE per run, before
+   * the ONE shared-plane sandbox is created, on the live local-tree route.
+   */
+  packLocalTree?: (args: {
+    root: string;
+    extraExclude?: string[];
+    maxArchiveBytes?: number;
+  }) => Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }>;
 }
 
 export interface RunSharedWorldLabOptions {
@@ -468,6 +483,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   }
 
   const serve = config.subject.serve!;
+  const localTreeRoute = config.subject.source === "local-tree";
   const subjectRepo = config.subject.repos?.[0] ?? "";
   const subjectEnvNames = config.subject.env ?? [];
   const checkpoints = config.subject.state?.checkpoint ?? [];
@@ -546,6 +562,34 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   let killed = false;
   let failFastReason: string | undefined;
 
+  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox is created (mirrors the
+  // cua route's ordering): a packing failure fails the run closed here, never spending sandbox
+  // cost. Dry-run packs nothing (no fs side effects; the contract bundle carries no archiveSha256).
+  let localTreeArchive: LocalTreeArchive | undefined;
+  let localTreeArchiveBuffer: ArrayBuffer | undefined;
+  if (localTreeRoute && !dryRun) {
+    const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
+    try {
+      const packed = await packLocalTree({
+        root: cwd,
+        ...(config.subject.localTree?.exclude === undefined ? {} : { extraExclude: config.subject.localTree.exclude }),
+        ...(config.subject.localTree?.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes })
+      });
+      localTreeArchive = packed.archive;
+      localTreeArchiveBuffer = packed.buffer;
+      process.stderr.write(
+        `homun shared-world local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
+        + `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`
+      );
+    } catch (error) {
+      return fail(
+        "HOMUN_SHARED_WORLD_LAB_FAILED",
+        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+        descriptor.id
+      );
+    }
+  }
+
   if (!dryRun) {
     let desktopModule: E2BDesktopModule | undefined;
     let desktop: E2BDesktopSandbox | undefined;
@@ -579,26 +623,42 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         await hooks.prepareDesktop(desktop);
       }
 
-      // Provision the shared plane ONCE (clone + install/build + seed + serve + readiness probe).
-      subjectCommit = await provisionCloneSubject(desktop, {
-        repo: subjectRepo,
-        depth: config.subject.clone?.depth ?? 1,
-        serve,
-        ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
-        hasGithubToken,
-        requestTimeoutMs,
-        scrub: scrubKnownValues,
-        onCommit: (commit) => { subjectCommit = commit; },
-        onStateStep: (record) => { stateStepRecords.push(record); },
-        // One stderr line per phase boundary by default; hooks.onPhase (DI seam, mirrors
-        // CuaActorLabHooks) overrides it so tests capture instead of writing to real stderr.
-        onPhase: hooks.onPhase ?? ((event) => {
-          process.stderr.write(
-            `homun shared-world: ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
-          );
-        }),
-        ...timers
+      // Provision the shared plane ONCE: clone + install/build + seed + serve + readiness probe
+      // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
+      // pipeline (local-tree route). One stderr line per phase boundary by default; hooks.onPhase
+      // (DI seam, mirrors CuaActorLabHooks) overrides it so tests capture instead of writing to
+      // real stderr.
+      const onSubjectPhase = hooks.onPhase ?? ((event: SubjectPhaseEvent) => {
+        process.stderr.write(
+          `homun shared-world: ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
+        );
       });
+      if (localTreeRoute) {
+        await provisionLocalTreeSubject(desktop, {
+          archiveBuffer: localTreeArchiveBuffer!,
+          serve,
+          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          requestTimeoutMs,
+          scrub: scrubKnownValues,
+          onStateStep: (record) => { stateStepRecords.push(record); },
+          onPhase: onSubjectPhase,
+          ...timers
+        });
+      } else {
+        subjectCommit = await provisionCloneSubject(desktop, {
+          repo: subjectRepo,
+          depth: config.subject.clone?.depth ?? 1,
+          serve,
+          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          hasGithubToken,
+          requestTimeoutMs,
+          scrub: scrubKnownValues,
+          onCommit: (commit) => { subjectCommit = commit; },
+          onStateStep: (record) => { stateStepRecords.push(record); },
+          onPhase: onSubjectPhase,
+          ...timers
+        });
+      }
 
       // Baseline checkpoint (before any role acts).
       baselineCheckpoint = await runCheckpointSnapshot({
@@ -718,9 +778,16 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         const anyRoleFailed = runFailed
           || failFastReason !== undefined
           || roleOutcomes.some((outcome) => outcome.harnessError || outcome.sessionError !== undefined);
-        const keepForDebug = config.subject.clone?.keep === true && anyRoleFailed;
+        // Each route's own keep flag gates its own run only: a clone.keep can never leak into a
+        // local-tree run's teardown decision, and vice versa (mirrors runCuaLane's keepReason).
+        const keepReason = config.subject.clone?.keep === true
+          ? "subject.clone.keep"
+          : config.subject.localTree?.keep === true
+            ? "subject.localTree.keep"
+            : undefined;
+        const keepForDebug = keepReason !== undefined && anyRoleFailed;
         if (keepForDebug) {
-          warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (subject.clone.keep on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
+          warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
         } else if (typeof desktopModule.Sandbox.kill === "function") {
           try {
             await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
@@ -735,19 +802,32 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     }
   }
 
-  // Subject provenance (invariant 5): the ONE shared plane.
+  // Subject provenance (invariant 5): the ONE shared plane. Local-tree carries archiveSha256 (the
+  // pin - one archive, so no per-lane unanimity math is needed, unlike the cua fan-out route) plus
+  // the host-side commit/dirty when the packed root was a git work tree; clone carries repo/commit
+  // as before. Mirrors laneSubjectProjection's local-tree branch in cua-actor-lab.ts.
   const subjectState = resolveSubjectState({
     declared: config.subject.state,
     dryRun,
     executed: stateStepRecords
   });
-  const subject: RunSubjectProvenance = {
-    source: "clone",
-    repo: publicRepo,
-    ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
-    envNames: subjectEnvNames,
-    state: subjectState
-  };
+  const planeCommit = localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit;
+  const subject: RunSubjectProvenance = localTreeRoute
+    ? {
+        source: "local-tree",
+        ...(localTreeArchive === undefined ? {} : { archiveSha256: localTreeArchive.archiveSha256 }),
+        ...(planeCommit === undefined ? {} : { commit: planeCommit }),
+        ...(localTreeArchive?.git === undefined ? {} : { dirty: localTreeArchive.git.dirty }),
+        envNames: subjectEnvNames,
+        state: subjectState
+      }
+    : {
+        source: "clone",
+        repo: publicRepo,
+        ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
+        envNames: subjectEnvNames,
+        state: subjectState
+      };
 
   const bundle = buildSharedWorldBundle({
     config,
@@ -763,7 +843,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     sandboxResolution,
     sandboxPreset,
     seedDigest: seedRecipeDigest(config),
-    ...(subjectCommit === undefined ? {} : { subjectCommit }),
+    ...(planeCommit === undefined ? {} : { subjectCommit: planeCommit }),
     ...(failFastReason === undefined ? {} : { failFastReason })
   });
 
@@ -916,14 +996,25 @@ export function buildSharedWorldBundle(args: {
     type: "shared-world.run.created",
     message: `Created shared-world run for ${config.id} (actor ${descriptor.id}, ${roleSpecs.length} role(s), ONE shared plane, sequential turns).`
   });
+  // Human-readable plane label, byte-stable for the clone route: "clone of <repo>[@<commit>]".
+  // The local-tree route has no repo slug, so it labels the packed archive instead (archiveSha256
+  // + dirty/clean when the packed root was a git work tree).
+  const dryRunPlaneLabel = args.subject.source === "local-tree"
+    ? "packed working tree"
+    : `clone of ${args.subject.repo}`;
+  const livePlaneLabel = args.subject.source === "local-tree"
+    ? (args.subject.archiveSha256
+        ? `packed working tree (archiveSha256 ${args.subject.archiveSha256}${args.subject.dirty === true ? ", dirty working tree" : args.subject.dirty === false ? ", clean working tree" : ""})`
+        : "packed working tree (archive digest unresolved; provisioning failed before resolution)")
+    : `clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}`;
   events.push({
     id: "event-001-plane",
     at: createdAt,
     level: "info",
     type: "shared-world.plane.provenance",
     message: dryRun
-      ? `Shared plane declared: clone of ${args.subject.repo}, served at ${appUrl} in-sandbox (dry-run contract; nothing cloned). Seed recipe ${args.seedDigest}; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
-      : `Shared plane: clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}, served at ${appUrl} in-sandbox; seed recipe ${args.seedDigest}; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
+      ? `Shared plane declared: ${dryRunPlaneLabel}, served at ${appUrl} in-sandbox (dry-run contract; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
+      : `Shared plane: ${livePlaneLabel}, served at ${appUrl} in-sandbox; seed recipe ${args.seedDigest}; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
     simId: roleSpecs[0]?.simId ?? "sim-001",
     streamId: roleSpecs[0]?.streamId ?? "stream-001"
   });

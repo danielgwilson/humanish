@@ -2818,7 +2818,7 @@ export async function provisionLocalTreeSubject(
  * (CuaActorLabHooks.packLocalTree) overrides this in deterministic tests so they never require
  * tar/git.
  */
-async function defaultPackLocalTree(args: {
+export async function defaultPackLocalTree(args: {
   root: string;
   extraExclude?: string[];
   maxArchiveBytes?: number;

@@ -17,6 +17,7 @@ import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
+import type { LocalTreeArchive } from "../src/source-archive.js";
 
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill BY id and exposes
@@ -58,8 +59,11 @@ function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdo
       }
     },
     files: {
+      // Raw data (never String()-coerced): existing callers write string script content
+      // (String(data) === data for those, unchanged), and the local-tree upload path writes a
+      // real ArrayBuffer that tests need to inspect directly (byteLength, reference equality).
       write: async (filePath: string, data: string | ArrayBuffer) => {
-        calls.push(["files.write", filePath, String(data)]);
+        calls.push(["files.write", filePath, data]);
         return undefined;
       }
     },
@@ -691,6 +695,196 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       const text = await readFile(path.join(cwd, ".homun", "runs", result.runId, file), "utf8");
       expect(text, file).not.toContain(secret);
     }
+  });
+});
+
+// The same concurrent shared-world composition, but driven from the operator's own packed working
+// tree (subject.source: local-tree) instead of a clone - the follow-up to the local-tree keystone
+// that wires provisionLocalTreeSubject into the ONE subject sandbox (issue #261 follow-up). The N
+// actor desktops still drive the getHost URL exactly as today - only the subject's provisioning +
+// provenance source changes.
+describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree)", () => {
+  // 64-hex archiveSha256 and a 40-hex commit: shape-valid fixtures, not real digests.
+  const FIXED_ARCHIVE: LocalTreeArchive = {
+    archivePath: "/unused-in-fake/source.tar.gz",
+    archiveSha256: "ef".repeat(32),
+    fileCount: 5,
+    totalBytes: 99,
+    git: { commit: "12".repeat(20), dirty: false }
+  };
+  const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
+
+  function localTreeConcurrentConfig(roleCount = 3, concurrency = 3): LabConfig {
+    const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
+      id: `persona-${String(i + 1).padStart(2, "0")}`,
+      persona: `persona-${i + 1}`,
+      entry: `/seat-${i + 1}`
+    }));
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "concurrent-shared-world-local-tree-proof",
+      title: "Concurrent shared-world local-tree proof",
+      subject: {
+        source: "local-tree",
+        topology: "shared-world",
+        exposure: "synthetic",
+        env: ["DATABASE_URL"],
+        serve: { install: "pnpm install", start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+        state: {
+          seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+          checkpoint: [
+            { name: "notes-count", command: "psql query notes" },
+            { name: "reviews-count", command: "psql query reviews" }
+          ]
+        }
+      },
+      actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  it("dry-run: subject.source local-tree, no archiveSha256, verified concurrent contract bundle", async () => {
+    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(), dryRun: true });
+    expect(result.ok).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.subjectSandbox).toBeUndefined();
+    expect(result.subject?.source).toBe("local-tree");
+    expect(result.subject && "archiveSha256" in result.subject).toBe(false);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+
+  it("GOOD run: packs ONCE, uploads to the SUBJECT sandbox only, extracts, provisions via provisionLocalTreeSubject; provenance carries archiveSha256 + commit + dirty; N actors unaffected; verify ok", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, created, killed, sandboxes } = baseHooks(state, makeRendezvous(3));
+    const packCalls: Array<{ root: string }> = [];
+    hooks.packLocalTree = async (args) => {
+      packCalls.push(args);
+      return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
+    };
+    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(result.error).toBeUndefined();
+
+    // Packed exactly ONCE, before ANY (subject or actor) sandbox is created.
+    expect(packCalls).toHaveLength(1);
+    expect(packCalls[0]?.root).toBe(cwd);
+
+    // ONE subject sandbox + 3 actor sandboxes = 4 created; ALL torn down BY exact id.
+    expect(created).toHaveLength(4);
+    const createdIds = sandboxes.map((s) => s.sandboxId).sort();
+    expect([...killed].sort()).toEqual(createdIds);
+
+    // The archive uploaded ONLY to the subject sandbox (sandboxes[0]), never any actor sandbox.
+    const subjectUploads = sandboxes[0]!.calls.filter(
+      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz"
+    );
+    expect(subjectUploads).toHaveLength(1);
+    expect(subjectUploads[0]?.[2]).toBe(FAKE_ARCHIVE_BYTES);
+    for (const actorSandbox of sandboxes.slice(1)) {
+      const actorUploads = actorSandbox.calls.filter((call) => call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz");
+      expect(actorUploads).toHaveLength(0);
+    }
+
+    // The local-tree route never runs git: no clone script written on any sandbox.
+    const cloneWrites = sandboxes.flatMap((s) => s.calls).filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    expect(cloneWrites).toHaveLength(0);
+
+    // Provenance: source local-tree + archiveSha256 (the pin - ONE archive, no per-lane unanimity
+    // math needed) + commit/dirty from the host-packed archive; no repo/publicRepo for local-tree.
+    const expectedSubject = {
+      source: "local-tree",
+      archiveSha256: FIXED_ARCHIVE.archiveSha256,
+      commit: FIXED_ARCHIVE.git!.commit,
+      dirty: false,
+      envNames: ["DATABASE_URL"],
+      state: { provenance: "seeded", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String), ok: true, exitCode: 0, durationMs: expect.any(Number) }] }
+    };
+    expect(result.subject).toEqual(expectedSubject);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.subject).toEqual(expectedSubject);
+    expect(bundle.sharedWorld.plane.commit).toBe(FIXED_ARCHIVE.git!.commit);
+    // The concurrency-on-pass gate still holds on the local-tree route (real overlap + a state delta).
+    expect(result.overlapProven).toBe(true);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("onPhase: the ONE subject sandbox's provision reports upload/extract (never clone), then install/ready, in order", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, phaseEvents } = baseHooks(state, makeRendezvous(3));
+    hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
+    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    const uploadStarted = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.upload.started");
+    const extractCompleted = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.extract.completed");
+    const readyCompleted = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.ready.completed");
+    expect(uploadStarted).toBeGreaterThanOrEqual(0);
+    expect(extractCompleted).toBeGreaterThan(uploadStarted);
+    expect(readyCompleted).toBeGreaterThan(extractCompleted);
+    expect(phaseEvents.some((e) => e.type.includes(".clone."))).toBe(false);
+  });
+
+  it("packing failure (hook throws) fails the run closed BEFORE any sandbox (subject or actor) is created", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks, created } = baseHooks(state, makeRendezvous(3));
+    hooks.packLocalTree = async () => {
+      throw new Error("Local tree root produced zero packable entries after the always-on denylist.");
+    };
+    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.message).toContain("zero packable entries");
+    expect(created).toHaveLength(0);
+  });
+
+  it("engine re-enforcement (library API surface, bypassing the parser): a local-tree config missing subject.serve fails closed", async () => {
+    const valid = localTreeConcurrentConfig();
+    const subjectWithoutServe: Record<string, unknown> = { ...valid.subject };
+    delete subjectWithoutServe.serve;
+    const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
+    const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.message).toContain("subject.serve");
+  });
+
+  it("engine re-enforcement: a local-tree config declaring subject.localTree.keep on the concurrent route fails closed (would orphan the N actor sandboxes)", async () => {
+    const valid = localTreeConcurrentConfig();
+    const broken: LabConfig = { ...valid, subject: { ...valid.subject, localTree: { keep: true } } };
+    const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.message).toContain("subject.localTree.keep");
+  });
+
+  it("engine re-enforcement: a local-tree config with a non-e2b-desktop execution.target fails closed", async () => {
+    const valid = localTreeConcurrentConfig();
+    const broken = { ...valid, execution: { ...valid.execution, target: "local" } } as unknown as LabConfig;
+    const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+  });
+
+  it("routes through runLab(sharedWorldHooks) to the concurrent-shared-world backend", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
+    const config = localTreeConcurrentConfig(3, 3);
+    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    const outcome = await runLab(config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+    expect(outcome.backend).toBe("concurrent-shared-world");
+    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.result.ok).toBe(true);
   });
 });
 

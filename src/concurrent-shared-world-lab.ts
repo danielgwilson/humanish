@@ -48,14 +48,17 @@ import { mapWithConcurrency } from "./concurrency.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
+  defaultPackLocalTree,
   provisionCloneSubject,
+  provisionLocalTreeSubject,
   resolveLaneDevice,
   resolveSubjectState,
   runCuaLane,
   type CuaActorLabHooks,
   type CuaLaneDeps,
   type CuaLaneSpec,
-  type LaneRunOutcome
+  type LaneRunOutcome,
+  type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
 import {
   createDesktopSandbox,
@@ -83,6 +86,7 @@ import {
   seedRecipeDigest,
   type SharedWorldLabHooks
 } from "./shared-world-lab.js";
+import type { LocalTreeArchive } from "./source-archive.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -255,6 +259,40 @@ function publicSafeRouteLabel(entry: string | undefined): string {
   return `[provisioned-subject]${entry ?? "/"}`;
 }
 
+/**
+ * Build the ONE subject sandbox's provenance (invariant 5): clone (repo + optional commit) or
+ * local-tree (archiveSha256 + optional commit/dirty from the once-per-run host-packed archive -
+ * archiveSha256 IS the pin; there is only ONE archive, so no per-lane unanimity math applies,
+ * unlike the cua fan-out route). Used for both the in-progress and final bundle: the archive
+ * never changes mid-run (packed before any sandbox exists).
+ */
+function buildSubjectProvenance(args: {
+  localTreeRoute: boolean;
+  publicRepo: string;
+  subjectCommit: string | undefined;
+  localTreeArchive: LocalTreeArchive | undefined;
+  subjectEnvNames: string[];
+  state: RunSubjectProvenance["state"];
+}): RunSubjectProvenance {
+  if (args.localTreeRoute) {
+    return {
+      source: "local-tree",
+      ...(args.localTreeArchive === undefined ? {} : { archiveSha256: args.localTreeArchive.archiveSha256 }),
+      ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
+      ...(args.localTreeArchive?.git === undefined ? {} : { dirty: args.localTreeArchive.git.dirty }),
+      envNames: args.subjectEnvNames,
+      state: args.state
+    };
+  }
+  return {
+    source: "clone",
+    repo: args.publicRepo,
+    ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
+    envNames: args.subjectEnvNames,
+    state: args.state
+  };
+}
+
 function laneTaxonomyLabel(spec: Pick<CuaLaneSpec, "actorType" | "surface" | "caseGroup">): string {
   const parts = [
     spec.actorType ? `type:${spec.actorType}` : undefined,
@@ -390,6 +428,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   }
 
   const serve = config.subject.serve!;
+  const localTreeRoute = config.subject.source === "local-tree";
   const subjectRepo = config.subject.repos?.[0] ?? "";
   const subjectEnvNames = config.subject.env ?? [];
   const checkpoints = config.subject.state?.checkpoint ?? [];
@@ -452,6 +491,34 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   let liveObserver: (ObserverResult & { ok: true }) | undefined;
   const runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [];
 
+  // Pack the working tree ONCE per run, on the host, BEFORE the subject sandbox is created
+  // (mirrors the sequential route + the cua route's ordering): a packing failure fails the run
+  // closed here, never spending sandbox cost. Dry-run packs nothing.
+  let localTreeArchive: LocalTreeArchive | undefined;
+  let localTreeArchiveBuffer: ArrayBuffer | undefined;
+  if (localTreeRoute && !dryRun) {
+    const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
+    try {
+      const packed = await packLocalTree({
+        root: cwd,
+        ...(config.subject.localTree?.exclude === undefined ? {} : { extraExclude: config.subject.localTree.exclude }),
+        ...(config.subject.localTree?.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes })
+      });
+      localTreeArchive = packed.archive;
+      localTreeArchiveBuffer = packed.buffer;
+      process.stderr.write(
+        `homun concurrent shared-world local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
+        + `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`
+      );
+    } catch (error) {
+      return fail(
+        "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+        descriptor.id
+      );
+    }
+  }
+
   if (!dryRun) {
     let subjectModule: E2BDesktopModule | undefined;
     let subjectDesktop: E2BDesktopSandbox | undefined;
@@ -511,26 +578,40 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         await hooks.prepareDesktop(subjectDesktop);
       }
 
-      // Provision the ONE shared plane (clone + install/build + seed + serve on 0.0.0.0 + probe).
-      subjectCommit = await provisionCloneSubject(subjectDesktop, {
-        repo: subjectRepo,
-        depth: config.subject.clone?.depth ?? 1,
-        serve,
-        ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
-        hasGithubToken,
-        requestTimeoutMs,
-        scrub: scrubKnownValues,
-        onCommit: (commit) => { subjectCommit = commit; },
-        onStateStep: (record) => { stateStepRecords.push(record); },
-        // One stderr line per phase boundary by default; hooks.onPhase (DI seam, mirrors
-        // CuaActorLabHooks) overrides it so tests capture instead of writing to real stderr.
-        onPhase: hooks.onPhase ?? ((event) => {
-          process.stderr.write(
-            `homun shared-world (concurrent): ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
-          );
-        }),
-        ...timers
+      // Provision the ONE shared plane: clone + install/build + seed + serve on 0.0.0.0 + probe
+      // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
+      // pipeline (local-tree route).
+      const onSubjectPhase = hooks.onPhase ?? ((event: SubjectPhaseEvent) => {
+        process.stderr.write(
+          `homun shared-world (concurrent): ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
+        );
       });
+      if (localTreeRoute) {
+        await provisionLocalTreeSubject(subjectDesktop, {
+          archiveBuffer: localTreeArchiveBuffer!,
+          serve,
+          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          requestTimeoutMs,
+          scrub: scrubKnownValues,
+          onStateStep: (record) => { stateStepRecords.push(record); },
+          onPhase: onSubjectPhase,
+          ...timers
+        });
+      } else {
+        subjectCommit = await provisionCloneSubject(subjectDesktop, {
+          repo: subjectRepo,
+          depth: config.subject.clone?.depth ?? 1,
+          serve,
+          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          hasGithubToken,
+          requestTimeoutMs,
+          scrub: scrubKnownValues,
+          onCommit: (commit) => { subjectCommit = commit; },
+          onStateStep: (record) => { stateStepRecords.push(record); },
+          onPhase: onSubjectPhase,
+          ...timers
+        });
+      }
 
       // Expose the served port via getHost (FIX-2). Fail closed if the SDK lacks it.
       if (typeof subjectDesktop.getHost !== "function") {
@@ -548,13 +629,15 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       // Baseline state snapshot, then start the background cadence prober.
       await proberSnapshot();
       if (options.onObserverReady) {
-        const inProgressSubject: RunSubjectProvenance = {
-          source: "clone",
-          repo: publicRepo,
-          ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
-          envNames: subjectEnvNames,
+        const inProgressPlaneCommit = localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit;
+        const inProgressSubject = buildSubjectProvenance({
+          localTreeRoute,
+          publicRepo,
+          subjectCommit: inProgressPlaneCommit,
+          localTreeArchive,
+          subjectEnvNames,
           state: resolveSubjectState({ declared: config.subject.state, dryRun: false, executed: stateStepRecords })
-        };
+        });
         const inProgressBundle = buildConcurrentSharedWorldBundle({
           config,
           descriptor,
@@ -569,7 +652,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
           stateSnapshots,
           subject: inProgressSubject,
           seedDigest,
-          ...(subjectCommit === undefined ? {} : { subjectCommit }),
+          ...(inProgressPlaneCommit === undefined ? {} : { subjectCommit: inProgressPlaneCommit }),
           hostDigest: hostOriginDigest(getHostUrl!)
         });
         await writeConcurrentRunArtifacts(cwd, artifactRoot, inProgressBundle);
@@ -664,13 +747,15 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   }
 
   const subjectState = resolveSubjectState({ declared: config.subject.state, dryRun, executed: stateStepRecords });
-  const subject: RunSubjectProvenance = {
-    source: "clone",
-    repo: publicRepo,
-    ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
-    envNames: subjectEnvNames,
+  const planeCommit = localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit;
+  const subject = buildSubjectProvenance({
+    localTreeRoute,
+    publicRepo,
+    subjectCommit: planeCommit,
+    localTreeArchive,
+    subjectEnvNames,
     state: subjectState
-  };
+  });
 
   // Collect per-actor warnings (each lane's own teardown/raw-screenshot notes).
   for (const result of actorResults) {
@@ -690,7 +775,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     stateSnapshots,
     subject,
     seedDigest,
-    ...(subjectCommit === undefined ? {} : { subjectCommit }),
+    ...(planeCommit === undefined ? {} : { subjectCommit: planeCommit }),
     ...(getHostUrl === undefined ? {} : { hostDigest: hostOriginDigest(getHostUrl) }),
     ...(runError === undefined ? {} : { runError })
   });
@@ -871,14 +956,25 @@ export function buildConcurrentSharedWorldBundle(args: {
     type: "concurrent-shared-world.run.created",
     message: `Created CONCURRENT shared-world run for ${config.id} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${config.execution?.concurrency ?? 1} concurrent).`
   });
+  // Human-readable plane label, byte-stable for the clone route (see shared-world-lab.ts's
+  // buildSharedWorldBundle for the same pattern). local-tree has no repo slug: it labels the
+  // packed archive instead (archiveSha256 + dirty/clean when the packed root was a git work tree).
+  const dryRunPlaneLabel = args.subject.source === "local-tree"
+    ? "packed working tree"
+    : `clone of ${args.subject.repo}`;
+  const livePlaneLabel = args.subject.source === "local-tree"
+    ? (args.subject.archiveSha256
+        ? `packed working tree (archiveSha256 ${args.subject.archiveSha256}${args.subject.dirty === true ? ", dirty working tree" : args.subject.dirty === false ? ", clean working tree" : ""})`
+        : "packed working tree (archive digest unresolved; provisioning failed before resolution)")
+    : `clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}`;
   events.push({
     id: "event-001-plane",
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.plane.provenance",
     message: dryRun
-      ? `Shared plane declared: clone of ${args.subject.repo}, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
-      : `Shared plane: clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}, served + exposed at the harness-minted getHost URL; seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
+      ? `Shared plane declared: ${dryRunPlaneLabel}, served + getHost-exposed in-sandbox (dry-run contract; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
+      : `Shared plane: ${livePlaneLabel}, served + exposed at the harness-minted getHost URL; seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
     simId: actorSpecs[0]?.simId ?? "sim-001",
     streamId: actorSpecs[0]?.streamId ?? "stream-001"
   });
