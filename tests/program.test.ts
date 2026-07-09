@@ -3,9 +3,9 @@ import { EventEmitter } from "node:events";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 
-import { createProgram, followObserver, writeResult } from "../src/program.js";
+import { createProgram, followObserver, resolveBackendShouldOpen, writeResult } from "../src/program.js";
 import * as homunIndex from "../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
@@ -144,6 +144,44 @@ describe("homun CLI scaffold", () => {
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("feedback");
     expect(result.stdout).toContain("Public-safety boundary");
+  });
+
+  it("sets a short .summary() on every top-level leaf command so the subcommand list de-wraps", () => {
+    // Commander lists .summary() (falling back to .description()) in the parent's
+    // subcommand table; a missing .summary() is how the top-level --help list used
+    // to wrap every long-description command onto two lines.
+    const program = createProgram();
+    const expectedSummaries: Record<string, string> = {
+      init: "Set up homun/ source and .homun/ runtime state.",
+      doctor: "Explain project readiness and missing setup.",
+      run: "Run a persona/scenario simulation or dry-run bundle.",
+      verify: "Validate a run bundle and public-safety gates.",
+      cleanup: "Clean run-owned provider resources by exact id.",
+      review: "Build a review packet from verified run evidence.",
+      runs: "List local Homun runs and latest pointers.",
+      watch: "Run sims, open the observer, keep the shell attached.",
+      observe: "Serve a finished run's Observer over loopback http.",
+      codex: "Run Codex-native Homun integration surfaces.",
+      lab: "List, inspect, and run Homun lab manifests.",
+      feedback: "Create public-safe feedback drafts, no GitHub API."
+    };
+
+    for (const [name, summary] of Object.entries(expectedSummaries)) {
+      const command = program.commands.find((candidate) => candidate.name() === name);
+      expect(command, `expected a top-level "${name}" command`).toBeDefined();
+      expect(command?.summary()).toBe(summary);
+      expect(summary.length).toBeLessThanOrEqual(60);
+    }
+  });
+
+  it("uses the short summaries, not the long descriptions, in the top-level --help subcommand list", async () => {
+    const result = await runCli(["--help"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Set up homun/ source and .homun/ runtime state.");
+    expect(result.stdout).toContain("Clean run-owned provider resources by exact id.");
+    expect(result.stdout).toContain("Serve a finished run's Observer over loopback http.");
+    expect(result.stdout).toContain("Create public-safe feedback drafts, no GitHub API.");
   });
 
   it("reports the package version", async () => {
@@ -360,6 +398,59 @@ describe("homun CLI scaffold", () => {
       expect(watchEnvelope.run).toBe("lab-watch-test");
       expect(watchEnvelope.observerPath).toContain("observer/index.html");
     });
+  });
+
+  it("gates human-mode auto-open behind a real TTY for both bare and lab-backed watch", async () => {
+    // watch defaulted shouldOpen to true in human mode with no TTY check at all
+    // (unlike observe, which already gated on process.stdout.isTTY). Force a
+    // non-TTY stdout here so the assertion holds regardless of how the test
+    // runner itself is invoked, then confirm neither the bare watch path nor the
+    // lab-backed watch path (synthetic backend via renderAndMaybeFollowObserver)
+    // attempts to auto-open a browser without --open, --json, or a real TTY.
+    const originalIsTTY = process.stdout.isTTY;
+    process.stdout.isTTY = false;
+
+    try {
+      await withTempApp({
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+        "homun/labs/first-run.yaml": [
+          "schema: homun.lab.v2",
+          "id: first-run",
+          "subject:",
+          "  source: this-repo",
+          "actors:",
+          "  - type: synthetic-persona",
+          "    count: 2",
+          "scenario:",
+          "  mode: dry-run"
+        ].join("\n")
+      }, async (cwd) => {
+        const bareWatch = await runCli([
+          "watch",
+          "--cwd",
+          cwd,
+          "--run-id",
+          "tty-gate-bare",
+          "--detach"
+        ]);
+        expect(bareWatch.exitCode).toBe(0);
+        expect(bareWatch.stdout).toContain("opened: no");
+
+        const labWatch = await runCli([
+          "watch",
+          "first-run",
+          "--cwd",
+          cwd,
+          "--run-id",
+          "tty-gate-lab",
+          "--detach"
+        ]);
+        expect(labWatch.exitCode).toBe(0);
+        expect(labWatch.stdout).toContain("opened: no");
+      });
+    } finally {
+      process.stdout.isTTY = originalIsTTY;
+    }
   });
 
   it("fails closed when rerun flags are used on a non-CUA lab", async () => {
@@ -653,5 +744,39 @@ describe("homun CLI scaffold", () => {
     // The catch-all envelope helper stays: the schema string is still live.
     expect(homunIndex.CLI_RESPONSE_SCHEMA).toBe("homun.cli-response.v1");
     expect(typeof homunIndex.createProgram).toBe("function");
+  });
+});
+
+
+describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
+  const origTTY = process.stdout.isTTY;
+  afterEach(() => { process.stdout.isTTY = origTTY; });
+
+  it("--no-open (open=false) never opens, even on a TTY watch", () => {
+    process.stdout.isTTY = true;
+    expect(resolveBackendShouldOpen({ optionOpen: false, defaultsOpen: undefined, mode: "watch", wantsMachine: false })).toBe(false);
+  });
+
+  it("--json (machine mode) only opens with an explicit --open", () => {
+    process.stdout.isTTY = true;
+    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "watch", wantsMachine: true })).toBe(false);
+    expect(resolveBackendShouldOpen({ optionOpen: true, defaultsOpen: undefined, mode: "watch", wantsMachine: true })).toBe(true);
+  });
+
+  it("human watch opens on a real TTY and NOT without one (the fix)", () => {
+    process.stdout.isTTY = true;
+    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "watch", wantsMachine: false })).toBe(true);
+    process.stdout.isTTY = false;
+    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "watch", wantsMachine: false })).toBe(false);
+  });
+
+  it("run mode never auto-opens by default (only watch does)", () => {
+    process.stdout.isTTY = true;
+    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "run", wantsMachine: false })).toBe(false);
+  });
+
+  it("lab-config defaults.open wins over the TTY fallback", () => {
+    process.stdout.isTTY = false;
+    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: true, mode: "run", wantsMachine: false })).toBe(true);
   });
 });
