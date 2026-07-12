@@ -34,8 +34,9 @@ explicitly approves that exact action.
    The package is `humanish`; the installed binary is `humanish`. After
    installation, `npx humanish ...` resolves the local project binary. For a
    one-shot command before installation, use
-   `npx --package humanish humanish ...` so npm does not resolve an unrelated
-   package named `humanish`.
+   `npx --package humanish humanish ...` to guarantee the binary comes from
+   the `humanish` registry package rather than a same-named command already
+   on the PATH.
 
 3. Preview setup:
 

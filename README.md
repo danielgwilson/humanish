@@ -9,8 +9,6 @@ It creates committed simulation source under `humanish/`, ignored run evidence
 under `.humanish/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Humanish Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/humanish@latest/docs/assets/humanish-oss-lab-observer.png?v=0.12.1)
-
 ## Install
 
 ```bash
@@ -20,8 +18,9 @@ npx humanish watch
 ```
 
 The package is `humanish`; the installed binary is `humanish`. For a one-shot
-command before installation, use `npx --package humanish humanish ...` so npm
-does not resolve an unrelated package named `humanish`.
+command before installation, use `npx --package humanish humanish ...` to
+guarantee the binary comes from the `humanish` registry package rather than a
+same-named command already on your PATH.
 
 For coding agents, install the repo skill first:
 

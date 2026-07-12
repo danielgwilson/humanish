@@ -162,8 +162,18 @@ the tag name exactly matches `package.json`'s version.
 
 ## Trusted Publishing Setup
 
-The npm package page exists. Trusted Publishing should be configured for GitHub
-Actions before cutting the next tag:
+The npm package page exists. For the first tag after a repository rename, the
+order is load-bearing (the OIDC binding is exact owner/repo + workflow path):
+
+1. Rename the GitHub repository first.
+2. Configure/point the npm Trusted Publisher at the NEW repository name.
+3. Merge the release commit, then tag.
+
+A tag pushed before steps 1-2 fails auth (OIDC repository claim mismatch) or
+provenance validation (package.json repository.url vs actual workflow repo).
+
+Trusted Publishing should be configured for GitHub Actions before cutting the
+next tag:
 
 - provider: GitHub Actions
 - repository owner: `danielgwilson`

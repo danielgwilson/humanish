@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("release readiness", () => {
@@ -111,14 +111,6 @@ describe("release readiness", () => {
     for (const term of forbidden) {
       expect(`${ramp}\n${goals}`).not.toContain(term);
     }
-  });
-
-  it("ships the npm README screenshot asset", async () => {
-    const readme = await readFile("README.md", "utf8");
-    const screenshot = await stat("docs/assets/humanish-oss-lab-observer.png");
-
-    expect(readme).toContain("https://unpkg.com/humanish@latest/docs/assets/humanish-oss-lab-observer.png");
-    expect(screenshot.size).toBeGreaterThan(50_000);
   });
 
   it("defines tag-gated npm trusted publishing", async () => {
