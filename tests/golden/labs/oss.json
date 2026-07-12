@@ -3,7 +3,7 @@
   "runId": "golden-oss",
   "mode": "dry-run",
   "simCount": 4,
-  "createdAt": "2026-07-07T03:11:44.162Z",
+  "createdAt": "2026-07-12T22:49:42.365Z",
   "cwd": "[target-cwd]",
   "artifactRoot": ".humanish/runs/golden-oss",
   "source": {
@@ -12,16 +12,16 @@
     "git": {
       "schema": "humanish.git-state.v1",
       "status": "dirty",
-      "capturedAt": "2026-07-07T03:11:44.162Z",
+      "capturedAt": "2026-07-12T22:49:42.365Z",
       "head": {
-        "shortSha": "ed7d56f7fac0",
+        "shortSha": "9099f6af47dc",
         "refState": "attached"
       },
       "changes": {
-        "staged": 47,
-        "unstaged": 215,
+        "staged": 0,
+        "unstaged": 1,
         "untracked": 0,
-        "total": 222
+        "total": 1
       },
       "note": "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names."
     }
@@ -41,17 +41,17 @@
   },
   "lifecycle": [
     {
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "event": "oss-meta.run.created",
       "message": "Created OSS meta-lab run with 4 headed desktop lanes."
     },
     {
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "event": "oss-meta.repos.assigned",
       "message": "Assigned repos: CorentinTh/it-tools, drawdb-io/drawdb, maciekt07/TodoApp, lissy93/dashy."
     },
     {
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "event": "oss-meta.observer.ready",
       "message": "Top-level Observer is ready to watch nested Humanish Observers."
     }
@@ -71,8 +71,8 @@
       "streamIds": [
         "oss-01-desktop"
       ],
-      "startedAt": "2026-07-07T03:11:44.162Z",
-      "updatedAt": "2026-07-07T03:11:44.162Z"
+      "startedAt": "2026-07-12T22:49:42.365Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z"
     },
     {
       "id": "oss-02",
@@ -88,8 +88,8 @@
       "streamIds": [
         "oss-02-desktop"
       ],
-      "startedAt": "2026-07-07T03:11:44.162Z",
-      "updatedAt": "2026-07-07T03:11:44.162Z"
+      "startedAt": "2026-07-12T22:49:42.365Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z"
     },
     {
       "id": "oss-03",
@@ -105,8 +105,8 @@
       "streamIds": [
         "oss-03-desktop"
       ],
-      "startedAt": "2026-07-07T03:11:44.162Z",
-      "updatedAt": "2026-07-07T03:11:44.162Z"
+      "startedAt": "2026-07-12T22:49:42.365Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z"
     },
     {
       "id": "oss-04",
@@ -122,8 +122,8 @@
       "streamIds": [
         "oss-04-desktop"
       ],
-      "startedAt": "2026-07-07T03:11:44.162Z",
-      "updatedAt": "2026-07-07T03:11:44.162Z"
+      "startedAt": "2026-07-12T22:49:42.365Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z"
     }
   ],
   "streams": [
@@ -134,7 +134,7 @@
       "label": "E2B desktop - CorentinTh/it-tools",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-07-07T03:11:44.162Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 1"
@@ -180,7 +180,7 @@
       "label": "E2B desktop - drawdb-io/drawdb",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-07-07T03:11:44.162Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 2"
@@ -226,7 +226,7 @@
       "label": "E2B desktop - maciekt07/TodoApp",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-07-07T03:11:44.162Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 3"
@@ -272,7 +272,7 @@
       "label": "E2B desktop - lissy93/dashy",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-07-07T03:11:44.162Z",
+      "updatedAt": "2026-07-12T22:49:42.365Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 4"
@@ -315,14 +315,14 @@
   "events": [
     {
       "id": "event-000",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.contract.created",
       "message": "Created public-safe OSS meta-lab Observer-of-Observers contract."
     },
     {
       "id": "event-001-assigned",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned CorentinTh/it-tools to Codex desktop lane 1.",
@@ -331,7 +331,7 @@
     },
     {
       "id": "event-001-prompt",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -340,7 +340,7 @@
     },
     {
       "id": "event-002-assigned",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned drawdb-io/drawdb to Codex desktop lane 2.",
@@ -349,7 +349,7 @@
     },
     {
       "id": "event-002-prompt",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -358,7 +358,7 @@
     },
     {
       "id": "event-003-assigned",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned maciekt07/TodoApp to Codex desktop lane 3.",
@@ -367,7 +367,7 @@
     },
     {
       "id": "event-003-prompt",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -376,7 +376,7 @@
     },
     {
       "id": "event-004-assigned",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned lissy93/dashy to Codex desktop lane 4.",
@@ -385,7 +385,7 @@
     },
     {
       "id": "event-004-prompt",
-      "at": "2026-07-07T03:11:44.162Z",
+      "at": "2026-07-12T22:49:42.365Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",

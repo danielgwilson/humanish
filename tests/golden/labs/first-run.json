@@ -3,7 +3,7 @@
   "runId": "golden-first-run",
   "mode": "dry-run",
   "simCount": 4,
-  "createdAt": "2026-07-12T22:35:04.161Z",
+  "createdAt": "2026-07-12T22:49:41.760Z",
   "cwd": "[target-cwd]",
   "artifactRoot": ".humanish/runs/golden-first-run",
   "source": {
@@ -11,19 +11,19 @@
     "humanishSource": "present",
     "git": {
       "schema": "humanish.git-state.v1",
-      "status": "dirty",
-      "capturedAt": "2026-07-12T22:35:04.161Z",
+      "status": "clean",
+      "capturedAt": "2026-07-12T22:49:41.760Z",
       "head": {
-        "shortSha": "bfd35713d7b0",
+        "shortSha": "9099f6af47dc",
         "refState": "attached"
       },
       "changes": {
-        "staged": 46,
-        "unstaged": 192,
-        "untracked": 1,
-        "total": 209
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
       },
-      "note": "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names."
+      "note": "Git work tree was clean; branch names, remotes, paths, and file names were not captured."
     }
   },
   "persona": {
@@ -41,22 +41,22 @@
   },
   "lifecycle": [
     {
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "event": "run.created",
       "message": "Synthetic dry-run contract bundle created with 4 sims."
     },
     {
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "event": "persona.selected",
       "message": "Selected public-safe synthetic persona."
     },
     {
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "event": "scenario.selected",
       "message": "Selected public-safe first-run scenario."
     },
     {
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "event": "review.skeleton.created",
       "message": "Created review skeleton without claiming product proof."
     }
@@ -76,8 +76,8 @@
       "streamIds": [
         "sim-01-ui"
       ],
-      "startedAt": "2026-07-12T22:35:04.161Z",
-      "updatedAt": "2026-07-12T22:35:04.161Z"
+      "startedAt": "2026-07-12T22:49:41.760Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z"
     },
     {
       "id": "sim-02",
@@ -93,8 +93,8 @@
       "streamIds": [
         "sim-02-terminal"
       ],
-      "startedAt": "2026-07-12T22:35:04.161Z",
-      "updatedAt": "2026-07-12T22:35:04.161Z"
+      "startedAt": "2026-07-12T22:49:41.760Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z"
     },
     {
       "id": "sim-03",
@@ -110,8 +110,8 @@
       "streamIds": [
         "sim-03-tui"
       ],
-      "startedAt": "2026-07-12T22:35:04.161Z",
-      "updatedAt": "2026-07-12T22:35:04.161Z"
+      "startedAt": "2026-07-12T22:49:41.760Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z"
     },
     {
       "id": "sim-04",
@@ -127,8 +127,8 @@
       "streamIds": [
         "sim-04-codex-ui"
       ],
-      "startedAt": "2026-07-12T22:35:04.161Z",
-      "updatedAt": "2026-07-12T22:35:04.161Z"
+      "startedAt": "2026-07-12T22:49:41.760Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z"
     }
   ],
   "streams": [
@@ -139,7 +139,7 @@
       "label": "UI journey",
       "status": "contract_proof_only",
       "transport": "polling",
-      "updatedAt": "2026-07-12T22:35:04.161Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
       "embed": {
         "kind": "placeholder",
         "title": "UI journey"
@@ -185,7 +185,7 @@
       "label": "CLI actor",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-07-12T22:35:04.161Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
       "embed": {
         "kind": "terminal",
         "title": "CLI actor"
@@ -221,7 +221,7 @@
       "label": "TUI actor",
       "status": "contract_proof_only",
       "transport": "pty",
-      "updatedAt": "2026-07-12T22:35:04.161Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
       "embed": {
         "kind": "terminal",
         "title": "TUI actor"
@@ -257,7 +257,7 @@
       "label": "Codex UI",
       "status": "contract_proof_only",
       "transport": "app-server",
-      "updatedAt": "2026-07-12T22:35:04.161Z",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
       "embed": {
         "kind": "placeholder",
         "title": "Codex UI"
@@ -305,14 +305,14 @@
   "events": [
     {
       "id": "event-000",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "info",
       "type": "observer.contract.created",
       "message": "Created public-safe observer stream contract."
     },
     {
       "id": "event-001-a",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "UI journey stream contract ready.",
@@ -321,7 +321,7 @@
     },
     {
       "id": "event-001-b",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -330,7 +330,7 @@
     },
     {
       "id": "event-002-a",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "CLI actor stream contract ready.",
@@ -339,7 +339,7 @@
     },
     {
       "id": "event-002-b",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -348,7 +348,7 @@
     },
     {
       "id": "event-003-a",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "TUI actor stream contract ready.",
@@ -357,7 +357,7 @@
     },
     {
       "id": "event-003-b",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
@@ -366,7 +366,7 @@
     },
     {
       "id": "event-004-a",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "info",
       "type": "sim.contract.ready",
       "message": "Codex UI stream contract ready.",
@@ -375,7 +375,7 @@
     },
     {
       "id": "event-004-b",
-      "at": "2026-07-12T22:35:04.161Z",
+      "at": "2026-07-12T22:49:41.760Z",
       "level": "warn",
       "type": "sim.live-substrate.missing",
       "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
