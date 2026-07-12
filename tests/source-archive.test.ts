@@ -17,10 +17,10 @@ import {
 // user.name/user.email.
 const GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: "Homun Test",
-  GIT_AUTHOR_EMAIL: "homun-test@example.com",
-  GIT_COMMITTER_NAME: "Homun Test",
-  GIT_COMMITTER_EMAIL: "homun-test@example.com",
+  GIT_AUTHOR_NAME: "Humanish Test",
+  GIT_AUTHOR_EMAIL: "humanish-test@example.com",
+  GIT_COMMITTER_NAME: "Humanish Test",
+  GIT_COMMITTER_EMAIL: "humanish-test@example.com",
 };
 
 function runGit(cwd: string, args: string[]): string {
@@ -53,7 +53,7 @@ function listTarEntriesVerbose(archivePath: string): string[] {
 const tempDirsToClean: string[] = [];
 
 async function makeTempRoot(label: string): Promise<string> {
-  const dir = await mkdtemp(path.join(tmpdir(), `homun-source-archive-${label}-`));
+  const dir = await mkdtemp(path.join(tmpdir(), `humanish-source-archive-${label}-`));
   tempDirsToClean.push(dir);
   return dir;
 }
@@ -95,7 +95,7 @@ async function buildGitFixture(): Promise<{ root: string }> {
 
 describe("always-on denylist constants", () => {
   it("exposes the documented path segments, basename patterns, and byte cap", () => {
-    expect(LOCAL_TREE_DENYLIST_PATH_SEGMENTS).toEqual([".git", "node_modules", ".homun"]);
+    expect(LOCAL_TREE_DENYLIST_PATH_SEGMENTS).toEqual([".git", "node_modules", ".humanish", ".homun"]);
     expect(LOCAL_TREE_DENYLIST_BASENAME_PATTERNS).toEqual([
       ".env*",
       "*.pem",

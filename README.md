@@ -1,40 +1,39 @@
-# homun
+# humanish
 
 Open-source-safe persona simulation for apps, CLIs, and agent-facing product
 flows.
 
-Homun gives a project a repeatable way to ask: what happens when realistic
+Humanish gives a project a repeatable way to ask: what happens when realistic
 synthetic users, with different goals and tolerances, try to use this thing?
-It creates committed simulation source under `homun/`, ignored run evidence
-under `.homun/`, a watchable Observer UI, verification gates, and public-safe
+It creates committed simulation source under `humanish/`, ignored run evidence
+under `.humanish/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
-
-![Homun Observer mission control showing synthetic lanes, filesystem evidence, terminal status, nested app proof, and public-safe review state](https://unpkg.com/homun@latest/docs/assets/homun-oss-lab-observer.png?v=0.12.1)
 
 ## Install
 
 ```bash
-npm i -D homun
-npx homun init --yes
-npx homun watch
+npm i -D humanish
+npx humanish init --yes
+npx humanish watch
 ```
 
-The package is `homun`; the installed binary is `homun`. For a one-shot
-command before installation, use `npx --package homun homun ...` so npm
-does not resolve an unrelated package named `homun`.
+The package is `humanish`; the installed binary is `humanish`. For a one-shot
+command before installation, use `npx --package humanish humanish ...` to
+guarantee the binary comes from the `humanish` registry package rather than a
+same-named command already on your PATH.
 
 For coding agents, install the repo skill first:
 
 ```bash
-npx skills add danielgwilson/homun --skill homun
+npx skills add danielgwilson/humanish --skill humanish
 ```
 
-The skill lives at [`skills/homun/SKILL.md`](skills/homun/SKILL.md)
+The skill lives at [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md)
 for skills.sh discovery.
 
 ## Public-Safety Boundary
 
-Homun is designed for public repositories and public issue queues. The
+Humanish is designed for public repositories and public issue queues. The
 boundary is three planks, each enforced where it actually holds:
 
 **1. This repo and the published package are kept public-safe by CI.** Every
@@ -51,21 +50,21 @@ evidence; values never are. Pixels are the exception: a raw screenshot shows
 whatever was on screen, which is why plank 3 exists.
 
 **3. Run bundles are local by default.** Evidence lands under gitignored
-`.homun/`, and no command publishes it for you. Sharing evidence — committing
+`.humanish/`, and no command publishes it for you. Sharing evidence — committing
 screenshots, pasting transcripts, attaching bundles to issues — is a deliberate
 act, and reviewing what you share is on you. Use synthetic personas and
 synthetic data so there is nothing sensitive to capture in the first place.
 
-**What the automated gate enforces.** `homun verify` scans public-bound
+**What the automated gate enforces.** `humanish verify` scans public-bound
 artifacts and fails closed on secret, key, and token shapes and on known local
 path shapes. It does not yet detect free-form PII or PHI such as names, emails,
 phone numbers, dates of birth, or medical identifiers. Keeping those out depends
 on using synthetic data and on review, so `redaction: passed` means the
 automated secret and path scan found no matches, not that the artifact was
 certified free of PII or PHI. A first-class PII/PHI detector is on the roadmap
-([#108](https://github.com/danielgwilson/homun/issues/108)).
+([#108](https://github.com/danielgwilson/humanish/issues/108)).
 
-`homun verify --json` also reports `shareSafety.status`:
+`humanish verify --json` also reports `shareSafety.status`:
 
 - `share_ready`: the verified bundle is eligible for public feedback drafts;
 - `local_only`: the bundle is valid local evidence, but should not be shared as-is
@@ -78,56 +77,56 @@ reviewed in Observer without being promoted into a public issue draft.
 ## How It Works
 
 ```text
-homun/      committed source plane: labs, personas, scenarios, policy, adapters
-.homun/    ignored runtime plane: runs, Observer output, reviews, local state
+humanish/      committed source plane: labs, personas, scenarios, policy, adapters
+.humanish/    ignored runtime plane: runs, Observer output, reviews, local state
 ```
 
 The first-run path does not require credentials:
 
 ```bash
-npx homun doctor
-npx homun watch
-npx homun verify --run latest --json
-npx homun feedback issue --run latest --repo owner/repo --format markdown
+npx humanish doctor
+npx humanish watch
+npx humanish verify --run latest --json
+npx humanish feedback issue --run latest --repo owner/repo --format markdown
 ```
 
-`homun watch` starts a fresh four-lane synthetic run, renders the Observer,
+`humanish watch` starts a fresh four-lane synthetic run, renders the Observer,
 opens it in the browser, serves it over localhost, and keeps the shell attached.
-After `homun init`, named lab manifests can be run the same way:
+After `humanish init`, named lab manifests can be run the same way:
 
 ```bash
-npx homun watch first-run
-npx homun lab list
-npx homun lab inspect first-run
-npx homun lab preflight first-run
+npx humanish watch first-run
+npx humanish lab list
+npx humanish lab inspect first-run
+npx humanish lab preflight first-run
 ```
 
 The CI-safe equivalent is:
 
 ```bash
-npx homun watch --json --no-open
+npx humanish watch --json --no-open
 ```
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `homun init` | Scaffold committed `homun/` source and ignored `.homun/` runtime state. |
-| `homun doctor` | Explain readiness and missing setup. |
-| `homun run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
-| `homun run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
-| `homun watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
-| `homun lab list` | List committed and ignored lab manifests. |
-| `homun lab inspect <lab>` | Show the source manifest for a lab without running it. |
-| `homun lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
-| `homun lab run <lab>` | Run a lab manifest in human or JSON mode. |
-| `homun verify` | Validate a run bundle and public-safety gates. |
-| `homun cleanup` | Clean resources explicitly recorded as owned by a run and write `cleanup.json`. |
-| `homun review` | Read review evidence for a run. |
-| `homun runs` | List local runs and latest pointers. |
-| `homun feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
-| `homun lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
-| `homun lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
+| `humanish init` | Scaffold committed `humanish/` source and ignored `.humanish/` runtime state. |
+| `humanish doctor` | Explain readiness and missing setup. |
+| `humanish run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
+| `humanish run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
+| `humanish watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
+| `humanish lab list` | List committed and ignored lab manifests. |
+| `humanish lab inspect <lab>` | Show the source manifest for a lab without running it. |
+| `humanish lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
+| `humanish lab run <lab>` | Run a lab manifest in human or JSON mode. |
+| `humanish verify` | Validate a run bundle and public-safety gates. |
+| `humanish cleanup` | Clean resources explicitly recorded as owned by a run and write `cleanup.json`. |
+| `humanish review` | Read review evidence for a run. |
+| `humanish runs` | List local runs and latest pointers. |
+| `humanish feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
+| `humanish lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
+| `humanish lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
 
 ## Exit Codes
 
@@ -135,7 +134,7 @@ npx homun watch --json --no-open
 | --- | --- |
 | `0` | Success. |
 | `1` | Commander usage error: unknown command, unknown option, or a missing/invalid argument. |
-| `2` | Homun domain or validation failure. Check the JSON envelope's `error.code` for detail. |
+| `2` | Humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
 | `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP. |
 
 ## Lab Manifests
@@ -143,21 +142,21 @@ npx homun watch --json --no-open
 Labs are authored as `.yaml` source:
 
 ```text
-homun/labs/*.yaml          committed public-safe labs
-.homun/labs/*.yaml         ignored local labs
-.homun/local/labs/*.yaml   ignored private or machine-specific labs
+humanish/labs/*.yaml          committed public-safe labs
+.humanish/labs/*.yaml         ignored local labs
+.humanish/local/labs/*.yaml   ignored private or machine-specific labs
 ```
 
 Committed labs should be useful to anyone who clones the project. Private repo
 targets, token-backed provider settings, and local-only dogfood variants belong
-in ignored `.homun/` lab manifests and can be run explicitly:
+in ignored `.humanish/` lab manifests and can be run explicitly:
 
 ```bash
-npx homun watch .homun/labs/local-dogfood.yaml --env-file .homun/local/provider.env
-npx homun lab run .homun/labs/local-dogfood.yaml --json --no-open
+npx humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
+npx humanish lab run .humanish/labs/local-dogfood.yaml --json --no-open
 ```
 
-`--env-file` loads values for the current process only. Homun reports loaded
+`--env-file` loads values for the current process only. Humanish reports loaded
 env var names, never values, and does not persist those values into run bundles
 or Observer data.
 
@@ -166,8 +165,8 @@ or Observer data.
 A computer-use lab dispatches a **registered computer-use actor** (`actors[0].type`,
 resolved against the actor registry — e.g. `openai-computer-use`) to drive an app in
 a hosted E2B desktop browser and emit an evidence bundle under gitignored
-`.homun/` (full-fidelity screenshots by default — see below; length-only typed
-text; provider-neutral `homun.actor-trace.v1` on the stream). Two subjects route
+`.humanish/` (full-fidelity screenshots by default — see below; length-only typed
+text; provider-neutral `humanish.actor-trace.v1` on the stream). Two subjects route
 here:
 
 - **`subject.source: clone`** (+ `execution.target: e2b-desktop` + a computer-use
@@ -197,7 +196,7 @@ scenario: { mode: live }
 ```
 
 ```bash
-npx homun lab run cua-browser                 # dry-run contract bundle (no spend)
+npx humanish lab run cua-browser                 # dry-run contract bundle (no spend)
 ```
 
 Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass via
@@ -205,19 +204,19 @@ Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass vi
 subject is served **inside** the sandbox on loopback; to instead drive a deployment
 you own (a Vercel preview, staging), use an `app-url` subject with
 `policies.allowPublicTargets: true`. The actor's API key never enters the sandbox;
-only declared subject env names do. `homun init` scaffolds an example at
-`homun/labs/cua-browser.yaml`.
+only declared subject env names do. `humanish init` scaffolds an example at
+`humanish/labs/cua-browser.yaml`.
 
 **Screenshots are full-fidelity by default.** Run bundles live in gitignored
-`.homun/`, so the Observer shows exactly what the persona saw — the point of
+`.humanish/`, so the Observer shows exactly what the persona saw — the point of
 simming your own app. Set `policies.redactScreenshots: true` to persist blurred
 thumbnails at capture instead (for unowned subjects, or bundles you intend to share
-as-is). Raw bundles stay local in gitignored `.homun/`; nothing scans the pixels,
+as-is). Raw bundles stay local in gitignored `.humanish/`; nothing scans the pixels,
 so review them before sharing anywhere — a redact-on-export step is planned. The
 frame sent to the model is always full-resolution regardless. (Doctrine:
 `docs/principles/invariants-and-defaults.md` — redaction binds the publish boundary,
-not capture.) `homun verify` reports raw-screenshot bundles as
-`shareSafety.status: local_only`; `homun feedback issue` refuses them until the
+not capture.) `humanish verify` reports raw-screenshot bundles as
+`shareSafety.status: local_only`; `humanish feedback issue` refuses them until the
 run is share-ready.
 
 **Device presets.** `execution.desktop.device` picks the viewport the run renders at —
@@ -274,8 +273,8 @@ browser-observed stops, set `execution.desktop.browser: chrome` or `chromium`.
 the source run:
 
 ```bash
-npx homun lab run cua-browser --rerun-failed-from latest --json --no-open
-npx homun lab run cua-browser --rerun-failed-from <run-id> --lanes lane-02,lane-04
+npx humanish lab run cua-browser --rerun-failed-from latest --json --no-open
+npx humanish lab run cua-browser --rerun-failed-from <run-id> --lanes lane-02,lane-04
 ```
 
 This creates a new linked run containing only the failed/blocked/timed-out/hollow lanes
@@ -288,11 +287,11 @@ nondeterminism candidate, not permission to erase the original red lane.
 After a run, reclaim only those resources and write a durable receipt:
 
 ```bash
-npx homun cleanup --run latest
-npx homun verify --run latest
+npx humanish cleanup --run latest
+npx humanish verify --run latest
 ```
 
-Cleanup is exact-id only; Homun does not enumerate or bulk-delete provider
+Cleanup is exact-id only; Humanish does not enumerate or bulk-delete provider
 accounts from this command.
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
@@ -316,14 +315,14 @@ desktop and NO clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
 
 ## Browser Scenario Manifests
 
-`homun run --app-url http://127.0.0.1:<port>` looks for executable browser
-steps in committed `homun/scenarios/*.yaml`. If none are present, Homun
+`humanish run --app-url http://127.0.0.1:<port>` looks for executable browser
+steps in committed `humanish/scenarios/*.yaml`. If none are present, Humanish
 falls back to the built-in two-step browser persona proof. Browser steps are
 public-safe source, so use synthetic fixture values and committed relative app
 paths only.
 
 ```yaml
-schema: homun.scenario.v1
+schema: humanish.scenario.v1
 id: todo-onboarding
 title: Todo onboarding
 persona: synthetic-new-user
@@ -355,24 +354,24 @@ browser:
 Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
 and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
 `urlIncludes`, and `stateChanged`. Generated traces are stored as JSON under
-`.homun/runs/<run>/traces/` and summarized in the Observer.
+`.humanish/runs/<run>/traces/` and summarized in the Observer.
 
 ## Maintainer OSS Meta-Lab Example
 
 This repository includes an experimental authorized-repo dogfood lab:
 
 ```bash
-pnpm homun -- watch oss
-pnpm homun -- lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+pnpm humanish -- watch oss
+pnpm humanish -- lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
 ```
 
 Default lab targets are intentionally app/tool-like repos with visible,
 locally runnable user surfaces. Avoid libraries and frameworks for public
 dogfood unless the scenario is explicitly testing developer experience.
 
-With `E2B_API_KEY` and `OPENAI_API_KEY` present, Homun launches headed E2B
+With `E2B_API_KEY` and `OPENAI_API_KEY` present, Humanish launches headed E2B
 desktop lanes, uploads the local package tarball, clones each assigned
-repository inside the sandbox, initializes Homun, runs nested proof commands,
+repository inside the sandbox, initializes Humanish, runs nested proof commands,
 starts the target app when a runnable script is present, opens desktop/mobile
 app windows plus the nested Observer in the sandbox browser, and starts a
 nonblocking Codex actor attempt.
@@ -385,7 +384,7 @@ npm i -D @e2b/desktop
 The contract-safe path for agents and CI is:
 
 ```bash
-pnpm homun -- lab run oss --dry-run --json --no-open
+pnpm humanish -- lab run oss --dry-run --json --no-open
 ```
 
 The `oss` lab accepts GitHub `owner/repo` slugs. Private repositories are
@@ -395,7 +394,7 @@ token is present, durable run artifacts redact repo labels by default; pass
 `--no-redact-repos` only for public-safe repo selections. Live E2B stream URLs
 are runtime-only for the attached Observer server and are not persisted to
 `run.json` or `observer-data.json`. Local bundles remain ignored under
-`.homun/`; do not publish private screenshots, logs, or upstream details.
+`.humanish/`; do not publish private screenshots, logs, or upstream details.
 
 ## Development
 
@@ -409,10 +408,10 @@ pnpm pack:dry-run
 Local dogfood:
 
 ```bash
-pnpm homun:watch
-pnpm homun:verify
-pnpm homun:feedback
-pnpm homun:lab:list
+pnpm humanish:watch
+pnpm humanish:verify
+pnpm humanish:feedback
+pnpm humanish:lab:list
 ```
 
 ## Docs

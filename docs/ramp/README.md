@@ -1,8 +1,8 @@
-# Homun Ramp
+# Humanish Ramp
 
 Status: public-safe contributor and agent ramp.
 
-Use this page when you are starting cold on `homun`. It is meant to be
+Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
 context.
 
@@ -14,7 +14,7 @@ Read these in order:
 2. [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md) — the constitution: which rules are invariants and which are overridable defaults.
 3. [`README.md`](../../README.md) for install, commands, and package shape.
 4. [`docs/goals/current.md`](../goals/current.md) for the active product goal.
-5. [`docs/goals/proof-roadmap/goal.md`](https://github.com/danielgwilson/homun/blob/main/docs/goals/proof-roadmap/goal.md) for the ratified proof architecture (repo-only; not shipped in the npm package, hence the absolute link).
+5. [`docs/goals/proof-roadmap/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md) for the ratified proof architecture (repo-only; not shipped in the npm package, hence the absolute link).
 6. [`docs/product/open-source-install-experience.md`](../product/open-source-install-experience.md) for first-run UX.
 7. [`docs/roadmap/world-class-open-source-v0.md`](../roadmap/world-class-open-source-v0.md) for staged delivery history (historical; see its status banner).
 8. [`docs/architecture/observer.md`](../architecture/observer.md) for Observer architecture.
@@ -24,14 +24,14 @@ Read these in order:
 
 ## Mental Model
 
-Homun is a persona simulation harness for apps, CLIs, and agent-facing product
+Humanish is a persona simulation harness for apps, CLIs, and agent-facing product
 flows.
 
-- `homun/` is committed source: personas, scenarios, policy, adapters, and
+- `humanish/` is committed source: personas, scenarios, policy, adapters, and
   lab manifests.
-- `.homun/` is ignored runtime state: runs, Observer output, transcripts,
+- `.humanish/` is ignored runtime state: runs, Observer output, transcripts,
   reviews, temporary clones, and local evidence.
-- Homun source uses `.yaml` for human-authored simulation intent, `.ts` for
+- Humanish source uses `.yaml` for human-authored simulation intent, `.ts` for
   executable integration, and JSON/NDJSON for generated artifacts.
 - A run bundle is the source of truth.
 - The Observer is the projection that makes that truth reviewable.
@@ -41,13 +41,13 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
 
-Homun has a working public package shape and a safe first-run path:
+Humanish has a working public package shape and a safe first-run path:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm release:check
-pnpm homun -- watch --json --no-open
-pnpm homun -- verify --run latest --json
+pnpm humanish -- watch --json --no-open
+pnpm humanish -- verify --run latest --json
 ```
 
 Implemented:
@@ -61,8 +61,8 @@ Implemented:
 - public-safe feedback issue drafts without GitHub API mutation, gated on
   `share_ready` evidence;
 - skills.sh-compatible agent skill;
-- first-class lab manifest resolution through `homun/labs/*.yaml` and
-  ignored `.homun/labs/*.yaml` overlays — `homun.lab.v2` compositions
+- first-class lab manifest resolution through `humanish/labs/*.yaml` and
+  ignored `.humanish/labs/*.yaml` overlays — `humanish.lab.v2` compositions
   (`src/lab-config.ts`), one engine, no hardcoded lab kinds;
 - a pluggable actor registry with four registered actors
   (`src/actor-registry.ts`); on the computer-use routes `actors[0].type` is a
@@ -78,7 +78,7 @@ Implemented:
 Still not good enough:
 
 - live `--app-url` browser proof now supports app-specific executable
-  `browser.steps` in `homun/scenarios/*.yaml`, with headed provider-backed
+  `browser.steps` in `humanish/scenarios/*.yaml`, with headed provider-backed
   public proof against two app/tool targets;
 - live PTY and Codex UI lanes need stronger completion health;
 - OSS lab lanes can report nested Observer health, target app readiness, actor
@@ -97,37 +97,37 @@ From a clean checkout:
 git status --short --branch
 pnpm install --frozen-lockfile
 pnpm release:check
-pnpm homun -- watch --json --no-open
-pnpm homun -- runs --json
-pnpm homun -- lab list
+pnpm humanish -- watch --json --no-open
+pnpm humanish -- runs --json
+pnpm humanish -- lab list
 ```
 
 For local product feel:
 
 ```bash
-pnpm homun -- watch
+pnpm humanish -- watch
 ```
 
 For public OSS dogfood without credentials:
 
 ```bash
-pnpm homun -- lab run oss --dry-run --json --no-open
-pnpm homun -- lab run oss-smoke --limit 1 --json
+pnpm humanish -- lab run oss --dry-run --json --no-open
+pnpm humanish -- lab run oss-smoke --limit 1 --json
 ```
 
 For private/local dogfood, author an ignored lab manifest under
-`.homun/labs/` or `.homun/local/labs/`, then invoke it explicitly with an
+`.humanish/labs/` or `.humanish/local/labs/`, then invoke it explicitly with an
 ignored env file:
 
 ```bash
-pnpm homun -- watch .homun/labs/local-dogfood.yaml --env-file .homun/local/provider.env
+pnpm humanish -- watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
 ```
 
 ## How To Pick Work
 
 Start from [`docs/goals/current.md`](../goals/current.md).
 
-Prefer work that makes Homun more believable to a new maintainer:
+Prefer work that makes Humanish more believable to a new maintainer:
 
 - a command becomes easier to run;
 - a run bundle becomes more truthful;
@@ -148,9 +148,9 @@ Useful proof includes:
 
 - `pnpm release:check`;
 - focused unit or contract tests;
-- a generated run bundle under ignored `.homun/`;
+- a generated run bundle under ignored `.humanish/`;
 - Observer screenshots or health output;
-- `homun verify` results;
+- `humanish verify` results;
 - public-surface scan output;
 - fresh clone checks for packaging or release work.
 

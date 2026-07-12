@@ -15,10 +15,10 @@
 //   artifacts — only its presence is recorded, mirroring the meta lab's convention.
 // - Evidence redaction is mode-aware (docs/principles/invariants-and-defaults.md, the
 //   capture-vs-publish rule): screenshots persist RAW (full fidelity) by default into gitignored
-//   .homun/; `policies.redactScreenshots: true` opts into blur-at-capture for a share-as-is
+//   .humanish/; `policies.redactScreenshots: true` opts into blur-at-capture for a share-as-is
 //   bundle. Length-only typed text and text redaction of reasoning/messages are UNCONDITIONAL;
 //   harness errors are redacted at THIS boundary; the bundle's `stream.actor` carries the
-//   conformant homun.actor-trace.v1 projection, whose `redaction.screenshots` records the
+//   conformant humanish.actor-trace.v1 projection, whose `redaction.screenshots` records the
 //   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
 import { randomBytes } from "node:crypto";
@@ -103,7 +103,7 @@ import {
   type RunSubjectStateStepRecord
 } from "./run.js";
 
-export const CUA_ACTOR_LAB_SCHEMA = "homun.cua-lab-result.v2";
+export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
 // The only fan-out topology this slice ships: N lanes = N independent E2B desktop sandboxes,
 // each its own world (clone/serve + subject.state per lane). Shared-world is layer 7 (#164).
@@ -112,11 +112,11 @@ export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
 const DEFAULT_CUA_CONCURRENCY = 3;
 // Env override that may only LOWER the effective concurrency (never raise concurrent paid
 // desktops — invariant 3). Read names-only into a local; the value never persists.
-const CUA_MAX_CONCURRENCY_ENV = "HOMUN_CUA_MAX_CONCURRENCY";
+const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 
 export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
   mode: "cua-actor-lab",
-  tool: "homun"
+  tool: "humanish"
 } as const;
 
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
@@ -141,7 +141,7 @@ const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
 export const SUBJECT_DIR = "/home/user/subject";
 // Remote path for the once-per-run packed local-tree archive; removed by the extract step
 // after it unpacks into SUBJECT_DIR.
-const LOCAL_TREE_REMOTE_ARCHIVE_PATH = "/home/user/.homun-source.tar.gz";
+const LOCAL_TREE_REMOTE_ARCHIVE_PATH = "/home/user/.humanish-source.tar.gz";
 const CLONE_TIMEOUT_MS = 5 * 60_000;
 const INSTALL_TIMEOUT_MS = 10 * 60_000;
 const BUILD_TIMEOUT_MS = 10 * 60_000;
@@ -345,17 +345,17 @@ export interface CuaLaneSummary {
 }
 
 export type CuaActorLabErrorCode =
-  | "HOMUN_CUA_LAB_FAILED"
-  | "HOMUN_CUA_LAB_KEYS_MISSING"
-  | "HOMUN_CUA_LAB_SUBJECT_ENV_MISSING"
-  | "HOMUN_CUA_LAB_ACTOR_UNSUPPORTED"
-  | "HOMUN_CUA_LAB_SUBJECT_INVALID"
-  | "HOMUN_CUA_LAB_SUBJECT_UNSAFE"
-  | "HOMUN_CUA_LAB_EXECUTOR_NO_PROVIDER"
-  | "HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
-  | "HOMUN_CUA_LAB_FANOUT_INVALID"
-  | "HOMUN_CUA_LAB_RERUN_INVALID"
-  | "HOMUN_CUA_LAB_DEVICE_GEOMETRY";
+  | "HUMANISH_CUA_LAB_FAILED"
+  | "HUMANISH_CUA_LAB_KEYS_MISSING"
+  | "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING"
+  | "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED"
+  | "HUMANISH_CUA_LAB_SUBJECT_INVALID"
+  | "HUMANISH_CUA_LAB_SUBJECT_UNSAFE"
+  | "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER"
+  | "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
+  | "HUMANISH_CUA_LAB_FANOUT_INVALID"
+  | "HUMANISH_CUA_LAB_RERUN_INVALID"
+  | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
 
 /** Subject provenance projection (invariant 5): what the actor actually drove. */
 export interface CuaSubjectProjection {
@@ -764,7 +764,7 @@ export function resolveCuaLanePlan(
 function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
-    `homun cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}, ${plan.waves} wave(s).`
+    `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}, ${plan.waves} wave(s).`
   );
   lines.push(
     `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`
@@ -824,7 +824,7 @@ function emitPhaseCompleted(
  *  the real stderr. */
 function defaultSubjectPhaseSink(event: SubjectPhaseEvent, ctx: { laneId: string; laneCount: number }): void {
   const durationSuffix = event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`;
-  const prefix = ctx.laneCount > 1 ? `homun cua [${ctx.laneId}]` : "homun cua";
+  const prefix = ctx.laneCount > 1 ? `humanish cua [${ctx.laneId}]` : "humanish cua";
   process.stderr.write(`${prefix}: ${event.message}${durationSuffix}\n`);
 }
 
@@ -942,7 +942,7 @@ async function checkLaneGeometry(
   if (width === expectedWidth && height === expectedHeight) {
     return undefined;
   }
-  return `HOMUN_CUA_LAB_DEVICE_GEOMETRY: lane ${spec.laneId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`;
+  return `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: lane ${spec.laneId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`;
 }
 
 /** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
@@ -1048,7 +1048,7 @@ async function openDesktopBrowserTarget(
       "set -euo pipefail",
       `target_url=${shellSingleQuote(targetUrl)}`,
       `browser_preference=${shellSingleQuote(requestedBrowser)}`,
-      "chrome_profile_dir=/tmp/homun-chrome-profile",
+      "chrome_profile_dir=/tmp/humanish-chrome-profile",
       `chrome_preferences_json=${shellSingleQuote(chromiumEvidenceProfilePreferencesJson())}`,
       "prepare_chrome_profile() {",
       "  mkdir -p \"$chrome_profile_dir/Default\"",
@@ -1059,8 +1059,8 @@ async function openDesktopBrowserTarget(
       "  local binary=\"$2\"",
       "  shift 2",
       "  if command -v \"$binary\" >/dev/null 2>&1; then",
-      "    nohup \"$binary\" \"$@\" \"$target_url\" >/tmp/homun-browser-open.log 2>&1 &",
-      "    printf 'HOMUN_BROWSER_RESOLVED=%s\\n' \"$label\"",
+      "    nohup \"$binary\" \"$@\" \"$target_url\" >/tmp/humanish-browser-open.log 2>&1 &",
+      "    printf 'HUMANISH_BROWSER_RESOLVED=%s\\n' \"$label\"",
       "    return 0",
       "  fi",
       "  return 1",
@@ -1114,7 +1114,7 @@ async function openDesktopBrowserTarget(
     if (result.exitCode !== undefined && result.exitCode !== 0) {
       throw new Error(`browser launch failed with exit ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
     }
-    const resolved = (result.stdout ?? "").match(/^HOMUN_BROWSER_RESOLVED=(\S+)$/m)?.[1];
+    const resolved = (result.stdout ?? "").match(/^HUMANISH_BROWSER_RESOLVED=(\S+)$/m)?.[1];
     return browserPreference === undefined ? undefined : {
       requested: requestedBrowser,
       ...(resolved === undefined ? {} : { resolved })
@@ -1318,7 +1318,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     const geometryError = await checkLaneGeometry(desktop, spec, deps.requestTimeoutMs);
     if (geometryError) {
       sessionError = geometryError;
-      failureCode = "HOMUN_CUA_LAB_DEVICE_GEOMETRY";
+      failureCode = "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
     } else {
       if (cloneRoute && serve && subjectRepo) {
         subjectCommit = await provisionCloneSubject(desktop, {
@@ -1456,7 +1456,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     await mkdir(path.dirname(path.join(deps.artifactRoot, spec.traceArtifactPath)), { recursive: true });
     await writeFile(path.join(deps.artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
     if (session.trace.redaction.screenshots === "raw") {
-      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .homun and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
     }
   }
 
@@ -1529,7 +1529,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     await mkdir(path.dirname(path.join(deps.artifactRoot, spec.traceArtifactPath)), { recursive: true });
     await writeFile(path.join(deps.artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
     if (session.trace.redaction.screenshots === "raw") {
-      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .homun and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
     }
   }
 
@@ -1645,7 +1645,7 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
       status: "blocked",
       ok: false,
       skippedReason: outcome.skippedReason,
-      error: { code: "HOMUN_CUA_LAB_FAILED", message: outcome.skippedReason }
+      error: { code: "HUMANISH_CUA_LAB_FAILED", message: outcome.skippedReason }
     };
   }
   const session = outcome.session;
@@ -1672,7 +1672,7 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
       ? {}
       : {
           error: {
-            code: outcome.failureCode ?? "HOMUN_CUA_LAB_FAILED",
+            code: outcome.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
             message: outcome.sessionError
               ?? (outcome.noEngagement
                 ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
@@ -1831,7 +1831,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // closed rather than trusting a config that arrived through another door.
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail("HOMUN_CUA_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
+    return fail("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
   const inProcessRoute = hooks.buildExecutor !== undefined;
@@ -1840,7 +1840,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // Engine re-enforcement of the clone-route structure (library API surface).
   if (cloneRoute && (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))) {
     return fail(
-      "HOMUN_CUA_LAB_SUBJECT_INVALID",
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
       !serve
         ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
         : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`,
@@ -1853,7 +1853,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // shape the parser enforces, naming which requirement is missing.
   if (localTreeRoute && (!serve || config.execution?.target !== "e2b-desktop")) {
     return fail(
-      "HOMUN_CUA_LAB_SUBJECT_INVALID",
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
       !serve
         ? "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
         : "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox.",
@@ -1867,7 +1867,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       ? "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
       : subjectStateInvalidReason(config.subject.state, config.subject.env);
     if (stateReason) {
-      return fail("HOMUN_CUA_LAB_SUBJECT_INVALID", stateReason, descriptor.id);
+      return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", stateReason, descriptor.id);
     }
   }
 
@@ -1882,7 +1882,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         : isLoopbackUrl(target));
   if (!entryTargetSafe) {
     return fail(
-      "HOMUN_CUA_LAB_SUBJECT_UNSAFE",
+      "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
       provisionedRoute || localAppSubject || !allowPublicTargets
         ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
@@ -1894,7 +1894,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // custom provider too (the default OpenAI provider is vision-based and would fail closed).
   if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined) {
     return fail(
-      "HOMUN_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
       "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
       descriptor.id
     );
@@ -1903,7 +1903,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // local-app fail-closed (BEFORE key-gating): there is no built-in in-process driver.
   if (localAppSubject && !inProcessRoute) {
     return fail(
-      "HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
       "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)",
       descriptor.id
     );
@@ -1913,7 +1913,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // device XOR raw resolution, cap, unique ids, allowPublicTargets+N>1, clone.fanout.
   const fanoutReason = cuaLaneValidationReason(config);
   if (fanoutReason) {
-    return fail("HOMUN_CUA_LAB_FANOUT_INVALID", fanoutReason, descriptor.id);
+    return fail("HUMANISH_CUA_LAB_FANOUT_INVALID", fanoutReason, descriptor.id);
   }
 
   // Resolve the lane plan (pure) — the SAME table for dry-run and live.
@@ -1926,14 +1926,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   if (laneCount > MAX_CUA_LANES) {
     return fail(
-      "HOMUN_CUA_LAB_FANOUT_INVALID",
+      "HUMANISH_CUA_LAB_FANOUT_INVALID",
       `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (resolved ${laneCount}); N concurrent paid desktops is real spend.`,
       descriptor.id
     );
   }
   if (inProcessRoute && laneCount > 1) {
     return fail(
-      "HOMUN_CUA_LAB_FANOUT_INVALID",
+      "HUMANISH_CUA_LAB_FANOUT_INVALID",
       "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
       descriptor.id
     );
@@ -1950,7 +1950,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       plan
     });
     if (!selected.ok) {
-      return fail("HOMUN_CUA_LAB_RERUN_INVALID", selected.message, descriptor.id);
+      return fail("HUMANISH_CUA_LAB_RERUN_INVALID", selected.message, descriptor.id);
     }
     laneSpecs = selected.laneSpecs;
     plan = selected.plan;
@@ -1991,7 +1991,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     ];
     if (missingKeys.length > 0) {
       return fail(
-        "HOMUN_CUA_LAB_KEYS_MISSING",
+        "HUMANISH_CUA_LAB_KEYS_MISSING",
         `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`,
         descriptor.id
       );
@@ -1999,7 +1999,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
       return fail(
-        "HOMUN_CUA_LAB_SUBJECT_ENV_MISSING",
+        "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING",
         `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
         descriptor.id
       );
@@ -2007,18 +2007,18 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   }
 
   const runId = options.runId ?? makeCuaRunId();
-  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
+  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-  const requestTimeoutMs = readPositiveInt(env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
 
   await mkdir(path.join(artifactRoot, "screenshots"), { recursive: true });
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd,
-    homunSource: "present",
-    packageName: "homun"
+    humanishSource: "present",
+    packageName: "humanish"
   });
 
   // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
@@ -2041,12 +2041,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       // One operator-facing line (stderr, same channel as emitPreflightPlan): what left the
       // host, by counts and digest only, never paths or file names.
       process.stderr.write(
-        `homun local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
+        `humanish local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
         + `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`
       );
     } catch (error) {
       return fail(
-        "HOMUN_CUA_LAB_SUBJECT_INVALID",
+        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
         `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
         descriptor.id
       );
@@ -2281,14 +2281,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     if (ok) return undefined;
     if (adapterFailure !== undefined) {
       return {
-        code: "HOMUN_CUA_LAB_FAILED",
+        code: "HUMANISH_CUA_LAB_FAILED",
         message: adapterFailure
       };
     }
     if (laneCount === 1) {
       const outcome = firstOutcome;
       return {
-        code: outcome?.failureCode ?? "HOMUN_CUA_LAB_FAILED",
+        code: outcome?.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
         message: outcome?.sessionError
           ?? (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
@@ -2302,8 +2302,8 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       };
     }
     const failingLane = (outcomes ?? []).find((outcome) => !laneOk(outcome));
-    const geometryLane = (outcomes ?? []).find((outcome) => outcome.failureCode === "HOMUN_CUA_LAB_DEVICE_GEOMETRY");
-    const code: CuaActorLabErrorCode = geometryLane?.failureCode ?? "HOMUN_CUA_LAB_FAILED";
+    const geometryLane = (outcomes ?? []).find((outcome) => outcome.failureCode === "HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
+    const code: CuaActorLabErrorCode = geometryLane?.failureCode ?? "HUMANISH_CUA_LAB_FAILED";
     return {
       code,
       message: observer.ok
@@ -2405,11 +2405,11 @@ async function writeCuaRunArtifacts(
     "utf8"
   );
   await writeFile(
-    path.join(cwd, ".homun", "runs", "latest.json"),
+    path.join(cwd, ".humanish", "runs", "latest.json"),
     `${JSON.stringify({
-      schema: "homun.latest-run.v1",
+      schema: "humanish.latest-run.v1",
       runId: publicBundle.runId,
-      path: path.join(".homun", "runs", publicBundle.runId),
+      path: path.join(".humanish", "runs", publicBundle.runId),
       updatedAt
     }, null, 2)}\n`,
     "utf8"
@@ -2426,7 +2426,7 @@ function observerResultForCuaArtifacts(
   const observerDataPath = path.join(artifactRoot, "observer", "observer-data.json");
   const eventsPath = path.join(artifactRoot, "events.ndjson");
   return {
-    schema: "homun.observer-result.v1",
+    schema: "humanish.observer-result.v1",
     ok: true,
     cwd,
     run: runId,
@@ -2906,7 +2906,7 @@ function tailOf(log: string): string {
 }
 
 /**
- * Project a computer-use session into a homun.run-bundle.v1. The load-bearing line is
+ * Project a computer-use session into a humanish.run-bundle.v1. The load-bearing line is
  * `stream.actor = session.trace` — the provider-neutral ActorTrace seam the Observer renders.
  * Exported for the bundle-builder tests.
  */
@@ -3166,7 +3166,7 @@ export function buildCuaBundle(args: {
     simCount: 1,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".homun", "runs", args.runId),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {
       id: args.persona.id,
@@ -3254,7 +3254,7 @@ function subjectProvenanceMessage(
 }
 
 /**
- * Project N>1 fan-out lanes into a homun.run-bundle.v1 (the evidence schema is unchanged; this
+ * Project N>1 fan-out lanes into a humanish.run-bundle.v1 (the evidence schema is unchanged; this
  * is a new producer for the multi-stream shape). One sim + one stream per lane; per-lane
  * provenance/session events; a recorded `cua-lab.fanout.plan` event (and a `cua-lab.fanout.fail-fast`
  * event when a harness error skipped queued lanes). N-ary verify/Observer already handle multiple
@@ -3606,7 +3606,7 @@ export function buildCuaFanoutBundle(args: {
     simCount: specs.length,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".homun", "runs", args.runId),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {
       id: specs[0]!.persona.id,
@@ -3671,11 +3671,11 @@ function providerResourcesForOutcome(args: {
   }
 
   return [{
-    schema: "homun.provider-resource.v1",
+    schema: "humanish.provider-resource.v1",
     provider: "e2b-desktop",
     kind: "sandbox",
     id: args.outcome.sandboxId,
-    owner: "homun",
+    owner: "humanish",
     status: args.outcome.killed ? "killed" : "running",
     simId: args.simId,
     streamId: args.streamId,

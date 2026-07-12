@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("release readiness", () => {
@@ -19,14 +19,14 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.14.0");
+    expect(packageJson.version).toBe("0.15.0");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
     expect(packageJson.peerDependencies?.["@e2b/desktop"]).toBe("^2.2.3");
     expect(packageJson.peerDependenciesMeta?.["@e2b/desktop"]).toEqual({ optional: true });
-    expect(packageJson.homepage).toBe("https://github.com/danielgwilson/homun#readme");
-    expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/homun/issues");
+    expect(packageJson.homepage).toBe("https://github.com/danielgwilson/humanish#readme");
+    expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/humanish/issues");
     expect(packageJson.keywords).toContain("persona-simulation");
     expect(packageJson.files).toEqual([
       "AGENTS.md",
@@ -67,7 +67,7 @@ describe("release readiness", () => {
     expect(readiness).toContain("reachable commit author and committer emails are GitHub noreply-style");
     expect(readiness).toContain("npm dry-run payload");
     expect(readiness).toContain("explicitly allowlisted by SHA-256");
-    expect(readiness).toContain("skills/homun/SKILL.md");
+    expect(readiness).toContain("skills/humanish/SKILL.md");
     expect(readiness).toContain("pnpm skill:check");
     expect(readiness).toContain("Prefer the tag-gated GitHub Actions workflow");
     expect(readiness).toContain("npm version patch --no-git-tag-version");
@@ -76,7 +76,7 @@ describe("release readiness", () => {
     expect(readiness).toContain("workflow filename: `publish.yml`");
     expect(readiness).toContain("npm pack --dry-run");
     expect(readiness).toContain("No agent should run `npm publish` locally without explicit human approval");
-    expect(readiness).toContain("`.homun/`");
+    expect(readiness).toContain("`.humanish/`");
     expect(readiness).toContain("`.npmrc`");
     expect(readiness).toContain("unapproved durable commit email metadata");
     expect(readiness).toContain("internal");
@@ -111,14 +111,6 @@ describe("release readiness", () => {
     for (const term of forbidden) {
       expect(`${ramp}\n${goals}`).not.toContain(term);
     }
-  });
-
-  it("ships the npm README screenshot asset", async () => {
-    const readme = await readFile("README.md", "utf8");
-    const screenshot = await stat("docs/assets/homun-oss-lab-observer.png");
-
-    expect(readme).toContain("https://unpkg.com/homun@latest/docs/assets/homun-oss-lab-observer.png");
-    expect(screenshot.size).toBeGreaterThan(50_000);
   });
 
   it("defines tag-gated npm trusted publishing", async () => {

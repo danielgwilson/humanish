@@ -67,7 +67,7 @@ CANNOT claim (declared, verify-enforced):
 ## Doctrine deliverable (extends the sequential PoC's, does not replace it)
 
 - `RunBundle.attributionClass: "shared-world"` (already shipped) — now carried by concurrent runs.
-- The `homun.shared-world.v1` block gains a concurrent shape: `laneWindows[]` (per-actor
+- The `humanish.shared-world.v1` block gains a concurrent shape: `laneWindows[]` (per-actor
   start/end + verdict), `stateSeries[]` (cadence checkpoints, digest-only), and `outcomes[]`
   (per-persona goal result). `timeline` (the strict alternating one) is the SEQUENTIAL shape;
   concurrent uses `laneWindows` + `stateSeries`. Both are valid `shared-world.v1` variants
@@ -119,7 +119,7 @@ the sequential PoC's tripwire); the getHost URL is harness-minted + synthetic-su
   actually concurrent), (b) missing `best-effort-causal-attribution`, (c) a value-shaped
   stateSeries field, (d) divergent plane provenance, (e) a no-delta passed run, (f) per-lane
   no-engagement.
-- Live rung WRITTEN + gated (`HOMUN_LIVE_SHARED_WORLD=1` + keys), NOT run in the autonomous
+- Live rung WRITTEN + gated (`HUMANISH_LIVE_SHARED_WORLD=1` + keys), NOT run in the autonomous
   build — a separately-authorized receipt on the team E2B key: a real seeded app + ≥3 concurrent
   personas, N+1 sandboxes all reclaimed by id, real overlap + state evolution, verify ok.
 
@@ -162,7 +162,7 @@ name). The implementation must satisfy every one.
   confirms every actor lane drove EXACTLY the harness-minted getHost URL recorded in the plane.
   Confirm getHost returns a TOKENLESS host (`https://<port>-<sandboxId>.e2b.app`) before persisting
   it (unlike `stream.getUrl`, no authKey may be recorded — invariant 1).
-- **FIX-3 (synthetic-subject = verify mechanism, NOT a "route invariant").** Homun can't tell
+- **FIX-3 (synthetic-subject = verify mechanism, NOT a "route invariant").** Humanish can't tell
   synthetic from real data, so enforce: (a) verify FAIL-CLOSED that `subject.state.provenance ==
   "seeded"` on the getHost route (reject external/unpinned/undeclared — real/external data behind
   an internet-reachable URL is the hazard, and this IS checkable); (b) a REQUIRED author

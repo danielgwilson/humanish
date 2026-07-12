@@ -152,7 +152,7 @@ describe("terminal-product parse matrix", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "wrong-substrate-clone",
       subject: { source: "clone", repos: ["owner/repo"] },
-      actors: [{ type: "homun-setup" }],
+      actors: [{ type: "humanish-setup" }],
       execution: { target: "e2b-terminal" }
     });
     expect(viaClone.ok).toBe(false);
@@ -308,7 +308,7 @@ describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings u
 describe("runTerminalProductLab (dry-run)", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-terminal-lab-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-lab-"));
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -326,9 +326,9 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(result.product).toBe("widgetsmith-cli");
     expect(result.observer?.ok).toBe(true);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("homun.run-bundle.v1");
+    expect(bundle.schema).toBe("humanish.run-bundle.v1");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
@@ -362,7 +362,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(verified.ok).toBe(true);
 
     // latest.json points at THIS run so `verify --run latest` stays honest.
-    const pointer = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "latest.json"), "utf8"));
+    const pointer = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"));
     expect(pointer.runId).toBe(result.runId);
 
     // Public safety: no absolute machine paths in any text artifact.
@@ -385,17 +385,17 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(result.dryRun).toBe(false);
     // It is NO LONGER the not-implemented stub — the live path is wired and fails closed on the
     // missing runtime key (never reaching sandbox creation).
-    expect(result.error?.code).toBe("HOMUN_TERMINAL_LAB_RUNTIME_AUTH_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING");
     expect(result.runId).toBe("not-created");
     // No sandbox, no spend, no artifacts.
-    await expect(readdir(path.join(cwd, ".homun", "runs"))).rejects.toThrow();
+    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
   });
 
   it("rejects a non-terminal actor at the engine even if a config bypasses the parser", async () => {
     const tampered = { ...parsedTerminalConfig(), actors: [{ type: "codex-app-server" }] } as LabConfig;
     const result = await runTerminalProductLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_TERMINAL_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED");
     expect(result.runId).toBe("not-created");
   });
 });
@@ -417,7 +417,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   });
   program.exitOverride();
   try {
-    await program.parseAsync(["node", "homun", ...args], { from: "node" });
+    await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
     if (!(error instanceof CommanderError && (error.code === "commander.helpDisplayed" || error.code === "commander.version"))) {
       throw error;
@@ -426,14 +426,14 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   return { exitCode, stdout: stdout.join(""), stderr: stderr.join("") };
 }
 
-describe("homun lab run terminal-product-demo (CLI)", () => {
+describe("humanish lab run terminal-product-demo (CLI)", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-terminal-cli-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-cli-"));
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }, null, 2));
-    const lab = await readFile(path.join(ROOT, "homun", "labs", "terminal-product-demo.yaml"), "utf8");
-    await mkdir(path.join(cwd, "homun", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "homun", "labs", "terminal-product-demo.yaml"), lab, "utf8");
+    const lab = await readFile(path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"), "utf8");
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "labs", "terminal-product-demo.yaml"), lab, "utf8");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -443,7 +443,7 @@ describe("homun lab run terminal-product-demo (CLI)", () => {
     const result = await runCli(["lab", "run", "terminal-product-demo", "--cwd", cwd, "--dry-run", "--json", "--no-open", "--run-id", "terminal-cli-json"]);
     expect(result.exitCode).toBe(0);
     const envelope = JSON.parse(result.stdout) as { schema: string; ok: boolean; dryRun: boolean; actor: string; product: string; labId: string; runId: string };
-    expect(envelope.schema).toBe("homun.terminal-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.terminal-lab-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("codex-exec");
@@ -458,7 +458,7 @@ describe("homun lab run terminal-product-demo (CLI)", () => {
   it("dry-run human output names run/lab/actor/product", async () => {
     const result = await runCli(["lab", "run", "terminal-product-demo", "--cwd", cwd, "--dry-run", "--no-open", "--run-id", "terminal-cli-human"]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("homun lab terminal dry-run");
+    expect(result.stdout).toContain("humanish lab terminal dry-run");
     expect(result.stdout).toContain("run: terminal-cli-human");
     expect(result.stdout).toContain("lab: terminal-product-demo");
     expect(result.stdout).toContain("actor: codex-exec");

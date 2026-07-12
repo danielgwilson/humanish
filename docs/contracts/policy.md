@@ -39,7 +39,7 @@ status. It never records credential values.
 Synthetic fixture:
 
 ```yaml
-schema: homun.policy.v1
+schema: humanish.policy.v1
 kind: credentials
 credentials:
   executor:
@@ -80,7 +80,7 @@ for credentials.
 Synthetic fixture:
 
 ```yaml
-schema: homun.policy.v1
+schema: humanish.policy.v1
 kind: network
 mode: public_oss
 allowedHosts:
@@ -114,14 +114,14 @@ Spend policy names when provider costs may be incurred.
 Synthetic fixture:
 
 ```yaml
-schema: homun.policy.v1
+schema: humanish.policy.v1
 kind: spend
 mode: explicit_live_provider
 providerClasses:
   - model
   - desktop_substrate
 operatorIntent:
-  command: homun lab run oss --json --no-open
+  command: humanish lab run oss --json --no-open
   explicit: true
 budget:
   limit: unspecified
@@ -136,7 +136,7 @@ redaction result is `passed`.
 
 ### Enforcement scope
 
-Be precise about what the automated gate does. `homun verify` runs a
+Be precise about what the automated gate does. `humanish verify` runs a
 public-safety scan that detects secret/key/token shapes and known local-path
 shapes, and fails closed on a match. It does **not** detect free-form PII/PHI
 (names, emails, phone numbers, dates of birth, MRNs, medical detail); avoiding
@@ -154,7 +154,7 @@ Required redaction gates:
 - issue Markdown or issue URL rendering;
 - PR or issue comments that summarize local live evidence.
 
-`homun verify` separates bundle validity from public promotion with
+`humanish verify` separates bundle validity from public promotion with
 `shareSafety`:
 
 | Status | Meaning |
@@ -170,7 +170,7 @@ letting agents mistake "verify passed" for "safe to post publicly."
 Synthetic fixture:
 
 ```yaml
-schema: homun.policy.v1
+schema: humanish.policy.v1
 kind: redaction
 status: passed
 deny:
@@ -216,12 +216,12 @@ Not allowed by default:
 - use maintainer tokens from the environment.
 
 Maintainer automation can be built later as a separate, token-explicit,
-dry-run-first tool. It must not be required for ordinary Homun feedback.
+dry-run-first tool. It must not be required for ordinary Humanish feedback.
 
 Synthetic fixture:
 
 ```yaml
-schema: homun.policy.v1
+schema: humanish.policy.v1
 kind: maintainer-authority
 github:
   publicCliRequiresToken: false
@@ -252,7 +252,7 @@ assisted.
 Synthetic fixture:
 
 ```yaml
-schema: homun.policy.v1
+schema: humanish.policy.v1
 kind: run-comparability
 assistance:
   status: assisted
@@ -270,7 +270,7 @@ Policy checks should produce small, public-safe decisions that can be copied
 into run bundles, reviews, or feedback drafts.
 
 ```yaml
-schema: homun.policy-decision.v1
+schema: humanish.policy-decision.v1
 ok: true
 checkedAt: "2026-06-02T10:00:00.000Z"
 policies:

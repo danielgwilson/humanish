@@ -15,12 +15,12 @@ import { verifyRun } from "../src/run.js";
 // runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0
 // BY MECHANISM (no model exists on this lane); the env gate exists for real-browser ACTUATION
 // + environment dependence (a local Chrome/Chromium must be installed), mirroring the
-// HOMUN_LIVE_CUA convention:
-//   HOMUN_LIVE_SCRIPTED=1 must be set explicitly (the actuation opt-in); the browser binary
-//   resolves via HOMUN_BROWSER_COMMAND or the usual chrome/chromium PATH candidates.
-const LIVE = process.env.HOMUN_LIVE_SCRIPTED === "1";
+// HUMANISH_LIVE_CUA convention:
+//   HUMANISH_LIVE_SCRIPTED=1 must be set explicitly (the actuation opt-in); the browser binary
+//   resolves via HUMANISH_BROWSER_COMMAND or the usual chrome/chromium PATH candidates.
+const LIVE = process.env.HUMANISH_LIVE_SCRIPTED === "1";
 
-// A tiny app that satisfies homun/scenarios/scripted-first-run.yaml: a <main> landing page
+// A tiny app that satisfies humanish/scenarios/scripted-first-run.yaml: a <main> landing page
 // with an email input and a submit button whose click renders the "Welcome" success state.
 const PROOF_HTML = [
   "<!doctype html><html><head><meta charset=\"utf-8\"><title>Scripted live proof</title></head>",
@@ -41,10 +41,10 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
   let appUrl: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-scripted-live-"));
-    const scenario = await readFile(path.resolve("homun", "scenarios", "scripted-first-run.yaml"), "utf8");
-    await mkdir(path.join(cwd, "homun", "scenarios"), { recursive: true });
-    await writeFile(path.join(cwd, "homun", "scenarios", "scripted-first-run.yaml"), scenario, "utf8");
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-live-"));
+    const scenario = await readFile(path.resolve("humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
+    await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "scenarios", "scripted-first-run.yaml"), scenario, "utf8");
     server = createServer((_request, response) => {
       response.writeHead(200, { "content-type": "text/html" });
       response.end(PROOF_HTML);
@@ -84,7 +84,7 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.cwd).toBe("[target-cwd]");
 

@@ -1,0 +1,17 @@
+schema: humanish.scenario.v1
+id: first-run-smoke
+title: Humanish CLI first-run smoke
+persona: synthetic-new-user
+goal: Prove that Humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.
+mode: dry-run
+steps:
+  - name: Inspect help
+    expectation: Commander help lists setup, run, verify, watch, and feedback commands.
+  - name: Check dogfood readiness
+    expectation: Doctor sees committed humanish/ source and ignored .humanish/ runtime state.
+  - name: Watch with sims
+    expectation: One command creates a fresh 4-sim bundle from committed dogfood persona and scenario files.
+  - name: Open observer
+    expectation: Observer HTML is rendered, opened in a browser when requested, and can keep the shell attached.
+  - name: Draft feedback
+    expectation: Feedback Markdown says GitHub mutation was not performed and dry-run proof is not product proof.

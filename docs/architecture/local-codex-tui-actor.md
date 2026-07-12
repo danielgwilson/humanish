@@ -7,12 +7,12 @@ local Codex TUI actor with sanitized lifecycle evidence and fail-fast Codex
 workspace-trust preflight. It also supports explicit noninteractive
 `codex-exec` actor fanout for autonomous local dogfood proof. Requested exec
 lanes are not capped by total run count; they run through bounded concurrency
-controlled by `HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` (default 4). TUI
+controlled by `HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` (default 4). TUI
 autonomous completion and TUI live Observer follow remain follow-up work.
 
 ## Goal
 
-Let `homun run` dogfood `homun` with a real local Codex TUI actor while
+Let `humanish run` dogfood `humanish` with a real local Codex TUI actor while
 preserving the public-safe harness contract:
 
 ```text
@@ -35,40 +35,40 @@ without opt-in should continue to fail closed.
 Suggested gate:
 
 ```bash
-homun run --actor codex-tui --sims 1 --timeout-ms 240000
+humanish run --actor codex-tui --sims 1 --timeout-ms 240000
 ```
 
 or, for noninteractive local autonomy:
 
 ```bash
-homun run --actor codex-exec --sims 4 --timeout-ms 240000
+humanish run --actor codex-exec --sims 4 --timeout-ms 240000
 ```
 
 or:
 
 ```bash
-HOMUN_ENABLE_LOCAL_CODEX_TUI=1 homun run --sims 1
+HUMANISH_ENABLE_LOCAL_CODEX_TUI=1 humanish run --sims 1
 ```
 
 or:
 
 ```bash
-HOMUN_ENABLE_LOCAL_CODEX_EXEC=1 homun run --sims 1
+HUMANISH_ENABLE_LOCAL_CODEX_EXEC=1 humanish run --sims 1
 ```
 
 Provider spend, E2B, GitHub mutation, and external network calls remain off
 unless separately and explicitly requested. When real Codex exec auth is used,
-`HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` is the cost/resource rail; there is
+`HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY` is the cost/resource rail; there is
 no arbitrary total lane cap.
 
-For deterministic tests or local substrate debugging, `HOMUN_CODEX_ACTOR_COMMAND`
+For deterministic tests or local substrate debugging, `HUMANISH_CODEX_ACTOR_COMMAND`
 can point at a safe fixture command. Real Codex TUI launch uses a Linux
 `script` PTY wrapper when available because the Codex TUI requires a terminal.
-Homun answers the minimal terminal cursor/color queries needed for headless
+Humanish answers the minimal terminal cursor/color queries needed for headless
 TUI startup and normalizes terminal control sequences before classifying the
 final actor transcript. Once a final
-`HOMUN_ACTOR_VERDICT=* HOMUN_ACTOR_NONCE=<run-nonce>` marker appears,
-Homun terminates the local actor process and records the marker verdict rather
+`HUMANISH_ACTOR_VERDICT=* HUMANISH_ACTOR_NONCE=<run-nonce>` marker appears,
+Humanish terminates the local actor process and records the marker verdict rather
 than waiting for the TUI session to stay open until timeout. The nonce prevents
 the classifier from accepting an echoed prompt or inspected docs as a final
 actor verdict.
@@ -104,10 +104,10 @@ served Observer poll the same local evidence path during the run.
 
 ## Runtime State
 
-All generated state stays under ignored `.homun/`:
+All generated state stays under ignored `.humanish/`:
 
 ```text
-.homun/runs/<run-id>/
+.humanish/runs/<run-id>/
   run.json
   review.json
   review.md
@@ -125,9 +125,9 @@ All generated state stays under ignored `.homun/`:
 No raw terminal output is public by default. The transcript artifact must be
 sanitized before it is linked from the bundle.
 
-For TUI runs, `.homun/runs/latest.json` is published only after a valid
+For TUI runs, `.humanish/runs/latest.json` is published only after a valid
 running bundle, review, and Observer data exist, then refreshed after final
-artifacts exist. This keeps `homun verify --run latest` from pointing at an
+artifacts exist. This keeps `humanish verify --run latest` from pointing at an
 incomplete TUI run while still allowing live Observer follow on the active run.
 
 ## Redaction Rules
@@ -144,11 +144,11 @@ Before any transcript tail or event payload is written:
 
 The first actor prompt should be bounded to public-safe dogfood work:
 
-- inspect `homun/` dogfood config;
+- inspect `humanish/` dogfood config;
 - run at most two read-only inspection commands;
 - avoid commands that write runtime artifacts or temp config, including
-  `pnpm homun`, `homun watch`, `homun feedback`, `homun init`, tests,
-  builds, installs, and commands that write `.homun/`;
+  `pnpm humanish`, `humanish watch`, `humanish feedback`, `humanish init`, tests,
+  builds, installs, and commands that write `.humanish/`;
 - inspect existing artifacts and explain the strongest write-required proof as a
   follow-up when the TUI actor is running in a read-only sandbox;
 - use `passed` when read-only inspection confirms the committed harness and
@@ -156,7 +156,7 @@ The first actor prompt should be bounded to public-safe dogfood work:
 - do not commit, push, publish, file issues, or print secrets;
 - summarize blockers using public-safe evidence paths;
 - finish with exactly one final
-  `HOMUN_ACTOR_VERDICT=<status> HOMUN_ACTOR_NONCE=<run-nonce>` line, where
+  `HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=<run-nonce>` line, where
   `<status>` is `passed`, `blocked`, or `failed`.
 
 The raw prompt can live in source only if it contains no private context and no
@@ -179,12 +179,12 @@ The first real local TUI proof in this environment reached Codex's workspace
 trust prompt. The current TUI implementation detects missing exact project-root
 trust before spawn and writes a `blocked` run bundle instead of waiting for the
 TUI timeout. A follow-up PTY probe showed that the Codex TUI still prompts when
-only a trusted ancestor is configured, so Homun only treats the exact trust
+only a trusted ancestor is configured, so Humanish only treats the exact trust
 root as sufficient for autonomous launch.
 
-With exact trust present, Homun answers Codex's terminal startup query, strips
+With exact trust present, Humanish answers Codex's terminal startup query, strips
 TUI control sequences from the captured transcript, and terminates/classifies on
-an explicit nonce-bearing `HOMUN_ACTOR_VERDICT=*` marker when present. If
+an explicit nonce-bearing `HUMANISH_ACTOR_VERDICT=*` marker when present. If
 Codex exits cleanly without a marker, the run is still considered process-passed
 but the transcript remains available for review.
 
@@ -203,11 +203,11 @@ needed beyond the current 1x TUI proof plus bounded-concurrency noninteractive
 The implementation slice for this spec should prove:
 
 ```bash
-pnpm homun:doctor
-pnpm homun -- run --actor codex-tui --sims 1 --timeout-ms 240000 --json
-pnpm homun -- run --actor codex-exec --sims 1 --timeout-ms 240000 --json
-pnpm homun -- run --actor codex-exec --sims 4 --timeout-ms 240000 --json
-pnpm homun -- watch --run latest --detach --json --no-open
-pnpm homun -- verify --run latest --json
+pnpm humanish:doctor
+pnpm humanish -- run --actor codex-tui --sims 1 --timeout-ms 240000 --json
+pnpm humanish -- run --actor codex-exec --sims 1 --timeout-ms 240000 --json
+pnpm humanish -- run --actor codex-exec --sims 4 --timeout-ms 240000 --json
+pnpm humanish -- watch --run latest --detach --json --no-open
+pnpm humanish -- verify --run latest --json
 pnpm check
 ```

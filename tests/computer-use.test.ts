@@ -148,7 +148,7 @@ describe("runComputerUseLoop", () => {
     expect(result.status).toBe("passed");
     expect(result.completionReason).toBe("goal_satisfied");
     expect(result.reason).toBe("Booked the appointment.");
-    expect(result.trace.schema).toBe("homun.actor-trace.v1");
+    expect(result.trace.schema).toBe("humanish.actor-trace.v1");
     expect(result.trace.lane).toBe("computer-use");
     expect(result.trace.protocol).toBe("cua-loop");
     expect(result.trace.provider).toBe("fake-cua");

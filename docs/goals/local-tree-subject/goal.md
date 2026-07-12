@@ -1,16 +1,16 @@
 # Goal: `subject.source: local-tree`
 
 Status: shipped (slice 1 merged in PR #265; live receipts below; follow-ups in #266)
-Issue: [#261](https://github.com/danielgwilson/homun/issues/261)
+Issue: [#261](https://github.com/danielgwilson/humanish/issues/261)
 
 ## Why
 
-Homun can boot a subject app today only by cloning a public remote repo
+Humanish can boot a subject app today only by cloning a public remote repo
 (`subject.source: clone`) or by pointing at an app the operator already
 started (`app-url` / `local-app`). `this-repo` is dry-run only. There is no
 path from a local working copy into the sandbox.
 
-That blocks the primary UX this tool exists for: run `npx homun` from your
+That blocks the primary UX this tool exists for: run `npx humanish` from your
 project directory and have the harness pack, upload, boot, and drive **your
 working tree**, including uncommitted changes and apps whose repos are
 private. The tree you are iterating on is exactly the tree you want personas
@@ -29,7 +29,7 @@ tree can contain secrets. That is what this document specifies.
 ## Config surface
 
 ```yaml
-schema: homun.lab.v2
+schema: humanish.lab.v2
 id: my-app-local
 subject:
   source: local-tree
@@ -49,7 +49,7 @@ actors:
   - type: openai-computer-use
 ```
 
-- The packed root is the lab resolution cwd (the project directory homun
+- The packed root is the lab resolution cwd (the project directory humanish
   runs from). No path field exists, by design: an absolute path in a lab
   manifest would be a machine-specific, unshareable, leak-prone artifact.
 - `subject.serve` is required and identical in shape and semantics to the
@@ -88,7 +88,7 @@ deliberately design out here).
    recursive walk applies only the denylist. `.gitignore` semantics require
    git; the fallback is documented as coarser.
 3. **Always-on denylist (fail closed, applied in both modes, not
-   overridable).** Path segments: `.git`, `node_modules`, `.homun`. Basename
+   overridable).** Path segments: `.git`, `node_modules`, `.humanish`. Basename
    patterns: `.env*` (all of them, including `.env.example`; boot env comes
    from `subject.env`, never from packed files), key material (`*.pem`,
    `*.key`, `*.p12`, `*.pfx`, `*.keystore`, `*.jks`, `*.ppk`, `*.gpg`,
@@ -177,10 +177,10 @@ subject: {
   enters the bundle. Identity is digests, a sha, a boolean, and counts.
   This mirrors the two existing guardrails: the `[target-cwd]` sentinel and
   the closed `SAFE_GIT_NOTES` enum for the harness's own git state.
-- `homun verify` extends the fail-closed provenance guard: a `local-tree`
+- `humanish verify` extends the fail-closed provenance guard: a `local-tree`
   subject must carry a well-formed `archiveSha256`; a malformed value fails
   verification without echoing the value into the finding.
-- The bundle schema change is additive under `homun.run-bundle.v1`, and
+- The bundle schema change is additive under `humanish.run-bundle.v1`, and
   `docs/contracts/schemas.md` is updated in the same change.
 
 ## Failure modes (all fail closed)
@@ -202,7 +202,7 @@ subject: {
 - Snapshot / prepared-runtime caching of an installed subject.
 - Multi-origin serve.
 - `.gitignore` semantics without git installed.
-- `homun lab preflight` reachability probes (`sandbox-loopback`) for
+- `humanish lab preflight` reachability probes (`sandbox-loopback`) for
   local-tree labs; the route error names this gap and a dry run is the
   current no-spend check.
 - Content-based secret scanning of the packed tree (the denylist is
@@ -226,7 +226,7 @@ subject: {
 - One live rung with a kept receipt under `receipts/`: a lab packs a
   synthetic fixture app from a working copy with an uncommitted change,
   boots it in a hosted desktop, a computer-use actor drives it, and
-  `homun verify` passes with `archiveSha256` present and `dirty: true`.
+  `humanish verify` passes with `archiveSha256` present and `dirty: true`.
   DONE: `receipts/local-tree-live-2026-07-08.md`.
 - Self-dogfood rung: this repository packs its own working copy and a
   computer-use actor drives the committed fixture app served from the

@@ -69,7 +69,7 @@ import type {
   VerifyResult
 } from "./run.js";
 
-export const CLI_RESPONSE_SCHEMA = "homun.cli-response.v1";
+export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";
 
 function readCliVersion(): string {
   const packageJsonPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
@@ -87,13 +87,13 @@ export interface CliIo {
 
 // The single structured envelope for errors the command-boundary catch-all
 // produces when an action handler throws or rejects unexpectedly (see
-// HomunCommand below). Reuses CLI_RESPONSE_SCHEMA so every homun.cli-response.v1
+// HumanishCommand below). Reuses CLI_RESPONSE_SCHEMA so every humanish.cli-response.v1
 // document on stdout, planned or not, carries the same schema string.
 export interface UnexpectedErrorEnvelope {
   schema: typeof CLI_RESPONSE_SCHEMA;
   ok: false;
   error: {
-    code: "HOMUN_UNEXPECTED";
+    code: "HUMANISH_UNEXPECTED";
     message: string;
   };
 }
@@ -124,7 +124,7 @@ interface LabCommandOptions {
 }
 
 interface CodexAppServerUiCliResult {
-  schema: "homun.codex-app-server-ui-result.v1";
+  schema: "humanish.codex-app-server-ui-result.v1";
   ok: boolean;
   cwd: string;
   reason: string;
@@ -132,7 +132,7 @@ interface CodexAppServerUiCliResult {
   status?: string;
   url?: string;
   error?: {
-    code: "HOMUN_CODEX_APP_SERVER_PROMPT_REQUIRED" | "HOMUN_INVALID_PORT" | "HOMUN_INVALID_TIMEOUT";
+    code: "HUMANISH_CODEX_APP_SERVER_PROMPT_REQUIRED" | "HUMANISH_INVALID_PORT" | "HUMANISH_INVALID_TIMEOUT";
     message: string;
   };
 }
@@ -146,14 +146,14 @@ const defaultIo: CliIo = {
 };
 
 // Command boundary catch-all (fix set point 1): every leaf command is created
-// through HomunCommand.createCommand, and HomunCommand.action wraps the caller's
+// through HumanishCommand.createCommand, and HumanishCommand.action wraps the caller's
 // handler so an uncaught throw or promise rejection can never escape as a raw
 // Node crash. On failure it emits the same structured envelope --json commands
-// already promise (schema homun.cli-response.v1, ok: false, error.code
-// HOMUN_UNEXPECTED) or a single concise stderr line otherwise, then sets exit
+// already promise (schema humanish.cli-response.v1, ok: false, error.code
+// HUMANISH_UNEXPECTED) or a single concise stderr line otherwise, then sets exit
 // code 2 through the existing CliIo.setExitCode seam. This is the single seam:
 // none of the ~20 .action() handlers below need their own try/catch for this.
-class HomunCommand extends Command {
+class HumanishCommand extends Command {
   private readonly cliIo: CliIo;
 
   constructor(name: string | undefined, cliIo: CliIo) {
@@ -162,7 +162,7 @@ class HomunCommand extends Command {
   }
 
   override createCommand(name?: string): Command {
-    return new HomunCommand(name, this.cliIo);
+    return new HumanishCommand(name, this.cliIo);
   }
 
   override action(fn: (this: this, ...args: any[]) => void | Promise<void>): this {
@@ -226,7 +226,7 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
       // second JSON document to stdout would break every JSON.parse(stdout)
       // consumer, so this failure goes to stderr instead, same as the non-json
       // branch below.
-      io.writeErr(`HOMUN_UNEXPECTED: ${message}\n`);
+      io.writeErr(`HUMANISH_UNEXPECTED: ${message}\n`);
       io.setExitCode(2);
       return;
     }
@@ -235,13 +235,13 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
       schema: CLI_RESPONSE_SCHEMA,
       ok: false,
       error: {
-        code: "HOMUN_UNEXPECTED",
+        code: "HUMANISH_UNEXPECTED",
         message
       }
     };
     io.writeOut(`${JSON.stringify(envelope, null, 2)}\n`);
   } else {
-    io.writeErr(`HOMUN_UNEXPECTED: ${message}\n`);
+    io.writeErr(`HUMANISH_UNEXPECTED: ${message}\n`);
   }
 
   io.setExitCode(2);
@@ -249,10 +249,10 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
 
 export function createProgram(io: Partial<CliIo> = {}): Command {
   const cliIo: CliIo = { ...defaultIo, ...io };
-  const program = new HomunCommand(undefined, cliIo);
+  const program = new HumanishCommand(undefined, cliIo);
 
   program
-    .name("homun")
+    .name("humanish")
     .description("Open-source-safe persona simulation CLI and proof harness.")
     .version(CLI_VERSION)
     .showHelpAfterError()
@@ -266,17 +266,17 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
       [
         "",
         "Examples:",
-        "  homun watch",
-        "  homun watch first-run",
-        "  homun watch --lab .homun/labs/local.yaml",
-        "  homun watch --run latest --detach",
-        "  homun watch --json --no-open",
-        "  homun lab list",
-        "  homun lab run first-run --json --no-open",
-        "  homun verify --run latest --json",
+        "  humanish watch",
+        "  humanish watch first-run",
+        "  humanish watch --lab .humanish/labs/local.yaml",
+        "  humanish watch --run latest --detach",
+        "  humanish watch --json --no-open",
+        "  humanish lab list",
+        "  humanish lab run first-run --json --no-open",
+        "  humanish verify --run latest --json",
         "",
         "Public-safety boundary:",
-        "  Homun must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
+        "  Humanish must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
         "  private screenshots, or private upstream artifacts."
       ].join("\n")
     );
@@ -300,8 +300,8 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
 function registerInitCommand(parent: Command, io: CliIo): void {
   parent
     .command("init")
-    .description("Set up committed homun/ source files and ignored .homun/ runtime state.")
-    .summary("Set up homun/ source and .homun/ runtime state.")
+    .description("Set up committed humanish/ source files and ignored .humanish/ runtime state.")
+    .summary("Set up humanish/ source and .humanish/ runtime state.")
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -329,7 +329,7 @@ function registerInitCommand(parent: Command, io: CliIo): void {
 function registerDoctorCommand(parent: Command, io: CliIo): void {
   parent
     .command("doctor")
-    .description("Explain project readiness and missing Homun setup.")
+    .description("Explain project readiness and missing Humanish setup.")
     .summary("Explain project readiness and missing setup.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -379,13 +379,13 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       if (lab) {
         if (options.appUrl !== undefined || options.actor !== undefined) {
           const result: RunResult = {
-            schema: "homun.run-result.v1",
+            schema: "humanish.run-result.v1",
             ok: false,
             cwd: options.cwd,
             warnings: [],
             error: {
-              code: "HOMUN_APP_URL_OPTION_CONFLICT",
-              message: "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `homun run`."
+              code: "HUMANISH_APP_URL_OPTION_CONFLICT",
+              message: "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `humanish run`."
             }
           };
           writeResult(command, io, result, formatRunHuman);
@@ -412,12 +412,12 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       const timeoutMs = options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
       if (options.sims !== undefined && simCount === null) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_INVALID_SIM_COUNT",
+            code: "HUMANISH_INVALID_SIM_COUNT",
             message: "--sims must be a positive integer."
           }
         };
@@ -427,12 +427,12 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       }
       if (options.timeoutMs !== undefined && timeoutMs === null) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_INVALID_TIMEOUT",
+            code: "HUMANISH_INVALID_TIMEOUT",
             message: "--timeout-ms must be an integer between 1 and 600000."
           }
         };
@@ -503,8 +503,8 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
 function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
-    .description("List local Homun runs and latest pointers.")
-    .summary("List local Homun runs and latest pointers.")
+    .description("List local Humanish runs and latest pointers.")
+    .summary("List local Humanish runs and latest pointers.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -517,8 +517,8 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerCodexCommands(parent: Command, io: CliIo): void {
   const codex = parent
     .command("codex")
-    .description("Run Codex-native Homun integration surfaces.")
-    .summary("Run Codex-native Homun integration surfaces.");
+    .description("Run Codex-native Humanish integration surfaces.")
+    .summary("Run Codex-native Humanish integration surfaces.");
 
   codex
     .command("app-server")
@@ -526,7 +526,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--prompt <text>", "Prompt to submit to Codex app-server.")
     .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
-    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.", ".homun/codex-app-server-ui")
+    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.", ".humanish/codex-app-server-ui")
     .option("--state-file <path>", "State JSON file for external observers.")
     .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(240_000))
     .option("--port <port>", "Local browser UI port.", "0")
@@ -552,13 +552,13 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       const timeoutMs = parseTimeoutMs(options.timeoutMs);
       const port = parseObserverPort(options.port);
       if (timeoutMs === null) {
-        const result = codexAppServerUiError(options.cwd, "HOMUN_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 600000.");
+        const result = codexAppServerUiError(options.cwd, "HUMANISH_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 600000.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
       }
       if (port === null) {
-        const result = codexAppServerUiError(options.cwd, "HOMUN_INVALID_PORT", "--port must be an integer between 0 and 65535.");
+        const result = codexAppServerUiError(options.cwd, "HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
@@ -566,7 +566,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
 
       const prompt = await readCodexAppServerPrompt(options);
       if (!prompt) {
-        const result = codexAppServerUiError(options.cwd, "HOMUN_CODEX_APP_SERVER_PROMPT_REQUIRED", "Provide --prompt or --prompt-file.");
+        const result = codexAppServerUiError(options.cwd, "HUMANISH_CODEX_APP_SERVER_PROMPT_REQUIRED", "Provide --prompt or --prompt-file.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
@@ -586,7 +586,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       });
 
       const initial = {
-        schema: "homun.codex-app-server-ui-result.v1" as const,
+        schema: "humanish.codex-app-server-ui-result.v1" as const,
         ok: true,
         cwd: resolve(options.cwd),
         stateFile: controller.stateFile,
@@ -613,7 +613,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
             });
           });
         } catch (error) {
-          io.writeErr(`HOMUN_UNEXPECTED: ${redactText(error instanceof Error ? error.message : String(error))}\n`);
+          io.writeErr(`HUMANISH_UNEXPECTED: ${redactText(error instanceof Error ? error.message : String(error))}\n`);
           io.setExitCode(2);
         }
         return;
@@ -658,15 +658,15 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       [
         "",
         "Happy path:",
-        "  homun watch",
-        "  homun watch first-run",
-        "  homun watch --lab .homun/labs/local.yaml",
+        "  humanish watch",
+        "  humanish watch first-run",
+        "  humanish watch --lab .humanish/labs/local.yaml",
         "",
         "Agent/CI path:",
-        "  homun watch --json --no-open",
+        "  humanish watch --json --no-open",
         "",
         "Existing evidence:",
-        "  homun watch --run latest --detach"
+        "  humanish watch --run latest --detach"
       ].join("\n")
     )
     .action(async (labArg: string | undefined, options: {
@@ -693,12 +693,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       const lab = options.lab ?? labArg;
       if (options.lab !== undefined && labArg !== undefined) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_WATCH_OPTION_CONFLICT",
+            code: "HUMANISH_WATCH_OPTION_CONFLICT",
             message: "Use either positional lab or --lab, not both."
           }
         };
@@ -719,12 +719,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       if (lab) {
         if (options.run !== undefined) {
           const result: RunResult = {
-            schema: "homun.run-result.v1",
+            schema: "humanish.run-result.v1",
             ok: false,
             cwd: options.cwd,
             warnings: [],
             error: {
-              code: "HOMUN_WATCH_OPTION_CONFLICT",
+              code: "HUMANISH_WATCH_OPTION_CONFLICT",
               message: "Use either a lab to start evidence or --run to watch existing evidence, not both."
             }
           };
@@ -766,12 +766,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       const port = parseObserverPort(options.port);
       if (options.sims !== undefined && simCount === null) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_INVALID_SIM_COUNT",
+            code: "HUMANISH_INVALID_SIM_COUNT",
             message: "--sims must be a positive integer."
           }
         };
@@ -781,12 +781,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
       if (!runWasOmitted && options.sims !== undefined) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_WATCH_OPTION_CONFLICT",
+            code: "HUMANISH_WATCH_OPTION_CONFLICT",
             message: "Use either --run to watch existing evidence or --sims to start a fresh run, not both."
           }
         };
@@ -796,12 +796,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
       if (!runWasOmitted && options.runId !== undefined) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_WATCH_OPTION_CONFLICT",
+            code: "HUMANISH_WATCH_OPTION_CONFLICT",
             message: "--run-id only applies to fresh watch runs; remove --run or remove --run-id."
           }
         };
@@ -811,12 +811,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       }
       if (port === null) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_INVALID_PORT",
+            code: "HUMANISH_INVALID_PORT",
             message: "--port must be an integer between 0 and 65535."
           }
         };
@@ -890,10 +890,10 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  homun observe",
-        "  homun observe --run latest",
-        "  homun observe --run <runId> --port 8732",
-        "  homun observe --no-open --json",
+        "  humanish observe",
+        "  humanish observe --run latest",
+        "  humanish observe --run <runId> --port 8732",
+        "  humanish observe --no-open --json",
         "",
         "The server binds 127.0.0.1 only and exposes just the run's bundle directory.",
         "It stays attached until Ctrl-C; file:// security policy and live refresh are why",
@@ -910,12 +910,12 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
       const port = parseObserverPort(options.port);
       if (port === null) {
         const result: RunResult = {
-          schema: "homun.run-result.v1",
+          schema: "humanish.run-result.v1",
           ok: false,
           cwd: options.cwd,
           warnings: [],
           error: {
-            code: "HOMUN_INVALID_PORT",
+            code: "HUMANISH_INVALID_PORT",
             message: "--port must be an integer between 0 and 65535."
           }
         };
@@ -935,7 +935,7 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
       // links (../run.json, ../review.json, ../events.ndjson) resolve, then land
       // visitors on observer/index.html. The loopback root is the run dir; the
       // traversal guard still refuses anything above it (sibling runs, the
-      // .homun/runs/ parent, etc.).
+      // .humanish/runs/ parent, etc.).
       const observerIndexAbs = join(resolve(options.cwd), rendered.observerPath);
       const runDir = dirname(dirname(observerIndexAbs));
 
@@ -1109,12 +1109,12 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
 function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("List, inspect, and run Homun lab manifests.")
-    .summary("List, inspect, and run Homun lab manifests.");
+    .description("List, inspect, and run Humanish lab manifests.")
+    .summary("List, inspect, and run Humanish lab manifests.");
 
   lab
     .command("list")
-    .description("List committed and ignored Homun lab manifests.")
+    .description("List committed and ignored Humanish lab manifests.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -1126,7 +1126,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("inspect")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Inspect a Homun lab manifest without running it.")
+    .description("Inspect a Humanish lab manifest without running it.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
@@ -1157,7 +1157,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const timeoutMs = parsePositiveInteger(options.timeoutMs);
       if (timeoutMs === null) {
         const result: LabPreflightResult = {
-          schema: "homun.lab-preflight-result.v1",
+          schema: "humanish.lab-preflight-result.v1",
           ok: false,
           cwd: resolve(options.cwd),
           lab: labName,
@@ -1168,7 +1168,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
           spend: { e2bDesktop: false, model: false },
           warnings: [],
           error: {
-            code: "HOMUN_LAB_PREFLIGHT_INVALID_OPTION",
+            code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
             message: "--timeout-ms must be a positive integer."
           }
         };
@@ -1190,12 +1190,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("cleanup")
     .argument("[lab]", "Provider-backed lab to clean up.", "oss")
-    .description("Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. homun never enumerates an account by default: set HOMUN_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.")
+    .description("Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, _options: { json?: boolean }, command) => {
       if (labName !== "oss") {
         const result = {
-          schema: "homun.oss-meta-lab-cleanup-result.v1" as const,
+          schema: "humanish.oss-meta-lab-cleanup-result.v1" as const,
           ok: false,
           lab: labName,
           cleanup: { killed: 0, skipped: 0, errors: [`Unsupported cleanup lab '${labName}'.`] }
@@ -1207,7 +1207,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       const cleanup = await cleanupStaleOssMetaLabSandboxes();
       const result = {
-        schema: "homun.oss-meta-lab-cleanup-result.v1" as const,
+        schema: "humanish.oss-meta-lab-cleanup-result.v1" as const,
         ok: cleanup.errors.length === 0,
         lab: "oss",
         cleanup
@@ -1219,7 +1219,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("run")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Run a Homun lab manifest.")
+    .description("Run a Humanish lab manifest.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--dry-run", "Render contract evidence without live provider spend.")
     .option("--codex-app-server", "Meta only: use Codex app-server client mode for headed desktop actor surfaces.")
@@ -1245,14 +1245,14 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  homun lab run first-run",
-        "  homun lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
-        "  homun lab run oss --dry-run --json --no-open",
-        "  homun lab run .homun/labs/private-dogfood.yaml --env-file .homun/local/provider.env",
+        "  humanish lab run first-run",
+        "  humanish lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
+        "  humanish lab run oss --dry-run --json --no-open",
+        "  humanish lab run .humanish/labs/private-dogfood.yaml --env-file .humanish/local/provider.env",
         "",
         "Human watch path:",
-        "  homun watch first-run",
-        "  homun watch --lab .homun/labs/local.yaml"
+        "  humanish watch first-run",
+        "  humanish watch --lab .humanish/labs/local.yaml"
       ].join("\n")
     )
     .action(async (labName: string, options: LabCommandOptions, command) => {
@@ -1283,7 +1283,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--count <count>", "Number of headed desktop sims to assign.", String(DEFAULT_OSS_REPOS.length))
     .option("--sims <count>", "Alias for --count.")
     .option("--run-id <id>", "Explicit lab run id.")
-    .option("--cwd <path>", "Host directory for ignored .homun lab report.", ".")
+    .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
     .option("--dry-run", "Render the Observer-of-Observers contract without provider spend or live E2B launch.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
@@ -1300,24 +1300,24 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Preferred paths:",
-        "  homun watch oss",
-        "  homun lab run oss",
+        "  humanish watch oss",
+        "  humanish lab run oss",
         "",
         "Repo selection:",
-        "  homun watch --lab .homun/labs/local-oss.yaml",
-        "  homun lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
-        "  homun lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
+        "  humanish watch --lab .humanish/labs/local-oss.yaml",
+        "  humanish lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
+        "  humanish lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
         "",
         "Agent/CI path:",
-        "  homun lab run oss --dry-run --json --no-open",
+        "  humanish lab run oss --dry-run --json --no-open",
         "",
         "Disposable clone smoke:",
-        "  homun lab run oss-smoke --limit 1 --keep",
-        "  homun lab oss-smoke --limit 1 --keep",
+        "  humanish lab run oss-smoke --limit 1 --keep",
+        "  humanish lab oss-smoke --limit 1 --keep",
         "",
         "Shape:",
         "  The top-level Observer shows headed E2B desktop lanes. Each desktop clones",
-        "  its assigned authorized repo, sets up Homun, starts the target app where",
+        "  its assigned authorized repo, sets up Humanish, starts the target app where",
         "  feasible, opens desktop/mobile app windows plus the nested Observer, and",
         "  starts a nonblocking Codex actor attempt.",
         "",
@@ -1365,13 +1365,13 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       const port = parseObserverPort(options.port);
       if (port === null) {
         const result: OssMetaLabResult = {
-          schema: "homun.oss-meta-lab-result.v1",
+          schema: "humanish.oss-meta-lab-result.v1",
           ok: false,
           assignments: [],
           cwd: options.cwd,
           dryRun: options.dryRun === true,
           error: {
-            code: "HOMUN_META_RUN_FAILED",
+            code: "HUMANISH_META_RUN_FAILED",
             message: "--port must be an integer between 0 and 65535."
           },
           liveRequested: options.dryRun !== true,
@@ -1467,12 +1467,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
   lab
     .command("oss-smoke", { hidden: true })
-    .description("Clone lightweight public OSS repos, try Homun setup/proof, then discard clones.")
+    .description("Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.")
     .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
     .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
     .option("--limit <count>", "Number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
     .option("--run-id <id>", "Explicit lab run id.")
-    .option("--cwd <path>", "Host directory for ignored .homun lab report.", ".")
+    .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
     .option("--keep", "Keep disposable clone sandbox for debugging.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
@@ -1480,12 +1480,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       [
         "",
         "Examples:",
-        "  homun lab oss-smoke",
-        "  homun lab oss-smoke --repos CorentinTh/it-tools,drawdb-io/drawdb",
-        "  homun lab oss-smoke --limit 1 --keep --json",
+        "  humanish lab oss-smoke",
+        "  humanish lab oss-smoke --repos CorentinTh/it-tools,drawdb-io/drawdb",
+        "  humanish lab oss-smoke --limit 1 --keep --json",
         "",
         "Safety:",
-        "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .homun/",
+        "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .humanish/",
         "  runtime state and are removed by default."
       ].join("\n")
     )
@@ -1594,12 +1594,12 @@ function writeUnsupportedRerunFlagsResult(args: {
   options: LabCommandOptions;
 }, backend: string): void {
   const result: RunResult = {
-    schema: "homun.run-result.v1",
+    schema: "humanish.run-result.v1",
     ok: false,
     cwd: resolve(args.options.cwd),
     warnings: [],
     error: {
-      code: "HOMUN_UNSUPPORTED_RERUN_FLAGS",
+      code: "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
       message: `--rerun-failed-from/--lanes apply only to CUA fan-out labs; this lab resolved to ${backend}.`
     }
   };
@@ -1618,12 +1618,12 @@ async function runSyntheticBackend(args: {
   const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
   if (simCount === null) {
     const result: RunResult = {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: args.options.cwd,
       warnings: [],
       error: {
-        code: "HOMUN_INVALID_SIM_COUNT",
+        code: "HUMANISH_INVALID_SIM_COUNT",
         message: "--sims must be a positive integer."
       }
     };
@@ -1879,7 +1879,7 @@ async function runSharedWorldBackend(args: {
 
 function formatSharedWorldLabHuman(result: SharedWorldLabResult): string {
   return [
-    `homun lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `humanish lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -1915,7 +1915,7 @@ async function runConcurrentSharedWorldBackend(args: {
   const port = parseObserverPort(args.options.port ?? "0");
   if (wantsFollow && port === null) {
     const result: ConcurrentSharedWorldLabResult = {
-      schema: "homun.concurrent-shared-world-lab-result.v1",
+      schema: "humanish.concurrent-shared-world-lab-result.v1",
       ok: false,
       cwd: args.options.cwd,
       labId: args.config.id,
@@ -1929,7 +1929,7 @@ async function runConcurrentSharedWorldBackend(args: {
       roles: [],
       warnings: [],
       error: {
-        code: "HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+        code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
         message: "--port must be an integer between 0 and 65535."
       }
     };
@@ -2005,7 +2005,7 @@ async function runConcurrentSharedWorldBackend(args: {
 
 function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabResult): string {
   return [
-    `homun lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `humanish lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -2025,7 +2025,7 @@ function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabRes
 
 function formatTerminalLabHuman(result: TerminalProductLabResult): string {
   return [
-    `homun lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `humanish lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -2039,7 +2039,7 @@ function formatTerminalLabHuman(result: TerminalProductLabResult): string {
 
 function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
   return [
-    `homun lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `humanish lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -2058,7 +2058,7 @@ function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
 
 function formatCuaLabHuman(result: CuaActorLabResult): string {
   return [
-    `homun lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+    `humanish lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId}`,
     `lab: ${result.labId}`,
@@ -2094,18 +2094,18 @@ async function runSmokeBackend(args: {
   const limit = parseLabCount(args.options.limit ?? args.options.sims, fanout);
   if (limit === null) {
     const result: OssLabResult = {
-      schema: "homun.oss-lab-result.v1",
+      schema: "humanish.oss-lab-result.v1",
       ok: false,
       cleanup: { kept: Boolean(args.options.keep), sandboxRemoved: false },
       completedAt: new Date().toISOString(),
       cwd: args.options.cwd,
       error: {
-        code: "HOMUN_INVALID_OSS_LIMIT",
+        code: "HUMANISH_INVALID_OSS_LIMIT",
         message: "--limit must be a positive integer."
       },
       repos: [],
       runId: args.options.runId ?? "not-created",
-      sandboxPath: ".homun/tmp/oss-lab/not-created",
+      sandboxPath: ".humanish/tmp/oss-lab/not-created",
       startedAt: new Date().toISOString(),
       warnings: []
     };
@@ -2143,13 +2143,13 @@ async function runMetaBackend(args: {
   const port = parseObserverPort(args.options.port ?? "0");
   if (port === null) {
     const result: OssMetaLabResult = {
-      schema: "homun.oss-meta-lab-result.v1",
+      schema: "humanish.oss-meta-lab-result.v1",
       ok: false,
       assignments: [],
       cwd: args.options.cwd,
       dryRun: args.options.dryRun === true,
       error: {
-        code: "HOMUN_META_RUN_FAILED",
+        code: "HUMANISH_META_RUN_FAILED",
         message: "--port must be an integer between 0 and 65535."
       },
       liveRequested: args.options.dryRun !== true,
@@ -2265,12 +2265,12 @@ async function renderAndMaybeFollowObserver(args: {
   const port = parseObserverPort(args.port);
   if (port === null) {
     const result: RunResult = {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: args.cwd,
       warnings: [],
       error: {
-        code: "HOMUN_INVALID_PORT",
+        code: "HUMANISH_INVALID_PORT",
         message: "--port must be an integer between 0 and 65535."
       }
     };
@@ -2397,7 +2397,7 @@ export function writeResult<T>(command: Command, io: CliIo, result: T, formatHum
 
 function formatDoctorHuman(result: DoctorResult): string {
   return [
-    `homun doctor ${result.ok ? "ok" : "needs setup"}`,
+    `humanish doctor ${result.ok ? "ok" : "needs setup"}`,
     `cwd: ${result.cwd}`,
     ...result.checks.map((check) => `- ${check.ok ? "ok" : "missing"} ${check.name}: ${check.message}`)
   ].join("\n") + "\n";
@@ -2409,7 +2409,7 @@ function formatRunHuman(result: RunResult): string {
   }
 
   return [
-    `homun run ${result.mode}`,
+    `humanish run ${result.mode}`,
     `run: ${result.runId}`,
     ...(result.simCount === undefined ? [] : [`sims: ${result.simCount}`]),
     `bundle: ${result.bundlePath}`,
@@ -2420,7 +2420,7 @@ function formatRunHuman(result: RunResult): string {
 
 function formatVerifyHuman(result: VerifyResult): string {
   return [
-    `homun verify ${result.ok ? "passed" : "failed"}`,
+    `humanish verify ${result.ok ? "passed" : "failed"}`,
     `run: ${result.run}`,
     `share-safety: ${result.shareSafety.status}`,
     ...result.shareSafety.reasons.map((reason) => `share-safety reason: ${reason.code}: ${reason.message}`),
@@ -2435,7 +2435,7 @@ function formatCleanupHuman(result: CleanupResult): string {
   }
 
   return [
-    `homun cleanup ${result.ok ? "passed" : "failed"}`,
+    `humanish cleanup ${result.ok ? "passed" : "failed"}`,
     `run: ${result.runId ?? result.run}`,
     `resources: killed ${result.summary.killed}, already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
     ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
@@ -2449,7 +2449,7 @@ function formatRunsHuman(result: RunsResult): string {
   }
 
   if (result.runs.length === 0) {
-    return `No Homun runs found in ${result.cwd}\n`;
+    return `No Humanish runs found in ${result.cwd}\n`;
   }
 
   return [
@@ -2464,7 +2464,7 @@ function formatObserverHuman(result: ObserverResult): string {
   }
 
   return [
-    "homun observer rendered",
+    "humanish observer rendered",
     `run: ${result.run}`,
     `observer: ${result.observerPath}`,
     ...(result.observerUrl ? [`url: ${result.observerUrl}`] : []),
@@ -2480,7 +2480,7 @@ function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): string 
   }
 
   return [
-    "homun codex app-server",
+    "humanish codex app-server",
     `url: ${result.url ?? "not-started"}`,
     `status: ${result.status ?? "unknown"}`,
     `state: ${result.stateFile ?? "none"}`,
@@ -2494,7 +2494,7 @@ function formatEnvFileHuman(result: EnvFileLoadResult): string {
   }
 
   return [
-    "homun env-file loaded",
+    "humanish env-file loaded",
     `env-file: ${result.envFile}`,
     `loaded: ${result.loaded.length ? result.loaded.join(", ") : "none"}`,
     `skipped-existing: ${result.skipped.length ? result.skipped.join(", ") : "none"}`
@@ -2504,14 +2504,14 @@ function formatEnvFileHuman(result: EnvFileLoadResult): string {
 function formatLabListHuman(result: LabListResult): string {
   if (result.labs.length === 0) {
     return [
-      `No Homun labs found in ${result.cwd}`,
-      "Create one under homun/labs/*.yaml, .homun/labs/*.yaml, or pass a .yaml path.",
+      `No Humanish labs found in ${result.cwd}`,
+      "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
       ...result.warnings.map((warning) => `warning: ${warning}`)
     ].join("\n") + "\n";
   }
 
   return [
-    "homun labs",
+    "humanish labs",
     ...result.labs.map((lab) => `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
@@ -2524,7 +2524,7 @@ function formatLabInspectHuman(result: LabInspectResult): string {
 
   const config = result.config;
   return [
-    "homun lab",
+    "humanish lab",
     `id: ${config.id}`,
     `subject: ${config.subject.source}`,
     ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
@@ -2543,7 +2543,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");
   return [
-    `homun lab preflight ${result.ok ? "passed" : "failed"}`,
+    `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
     `lab: ${result.labId ?? result.lab}`,
     ...(result.backend ? [`backend: ${result.backend}`] : []),
     `reachability: ${result.reachability}`,
@@ -2588,7 +2588,7 @@ function codexAppServerUiError(
   message: string
 ): CodexAppServerUiCliResult {
   return {
-    schema: "homun.codex-app-server-ui-result.v1",
+    schema: "humanish.codex-app-server-ui-result.v1",
     ok: false,
     cwd: resolve(cwd),
     reason: message,
@@ -2598,7 +2598,7 @@ function codexAppServerUiError(
 
 function codexAppServerUiResultFromState(state: CodexAppServerUiState): CodexAppServerUiCliResult {
   return {
-    schema: "homun.codex-app-server-ui-result.v1",
+    schema: "humanish.codex-app-server-ui-result.v1",
     ok: state.status === "passed",
     cwd: state.cwd,
     reason: state.reason,
@@ -2719,7 +2719,7 @@ function formatFeedbackHuman(result: FeedbackResult): string {
   }
 
   return [
-    "homun feedback ready",
+    "humanish feedback ready",
     `run: ${result.run}`,
     ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
     ...(result.issuePath ? [`issue: ${result.issuePath}`] : [])
@@ -2732,7 +2732,7 @@ function formatOssLabHuman(result: OssLabResult): string {
   }
 
   return [
-    `homun lab oss-smoke ${result.ok ? "passed" : "failed"}`,
+    `humanish lab oss-smoke ${result.ok ? "passed" : "failed"}`,
     `run: ${result.runId}`,
     ...(result.reportMarkdownPath ? [`report: ${result.reportMarkdownPath}`] : []),
     `sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
@@ -2746,7 +2746,7 @@ function formatOssLabHuman(result: OssLabResult): string {
 
 function formatOssMetaLabHuman(result: OssMetaLabResult): string {
   return [
-    `homun lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
+    `humanish lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     `run: ${result.runId ?? "not-created"}`,
     `repos: ${result.repos.join(", ")}`,
@@ -2755,7 +2755,7 @@ function formatOssMetaLabHuman(result: OssMetaLabResult): string {
     ...(result.observer?.observerUrl ? [`url: ${result.observer.observerUrl}`] : []),
     ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
     ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
-    ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Homun Observer`),
+    ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Humanish Observer`),
     ...result.sandboxes.map((sandbox) => {
       const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
       const bootstrapLabel = sandbox.bootstrapStatus ? ` bootstrap=${sandbox.bootstrapStatus}` : "";
@@ -2780,7 +2780,7 @@ function formatOssMetaLabCleanupHuman(result: {
   schema: string;
 }): string {
   return [
-    `homun lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
+    `humanish lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
     ...(result.cleanup.matched === undefined ? [] : [`matched: ${result.cleanup.matched}`]),
     `killed: ${result.cleanup.killed}`,
     `skipped: ${result.cleanup.skipped}`,
@@ -2795,8 +2795,8 @@ function collectRepeated(value: string, previous: string[]): string[] {
 
 function formatInitHuman(result: InitResult): string {
   const title = result.ok
-    ? `homun init ${result.mode}`
-    : `homun init ${result.mode} blocked`;
+    ? `humanish init ${result.mode}`
+    : `humanish init ${result.mode} blocked`;
   const lines = [
     title,
     `cwd: ${result.cwd}`,

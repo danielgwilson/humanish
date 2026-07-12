@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 
-export const GIT_STATE_SCHEMA = "homun.git-state.v1";
+export const GIT_STATE_SCHEMA = "humanish.git-state.v1";
 
 export type GitStateStatus = "clean" | "dirty" | "missing" | "unavailable";
 export type GitRefState = "attached" | "detached" | "unborn" | "unknown";

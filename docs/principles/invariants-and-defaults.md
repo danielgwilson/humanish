@@ -1,6 +1,6 @@
 # Invariants and Defaults
 
-Homun's safety and honesty rules come in exactly two strengths. Confusing them is how
+Humanish's safety and honesty rules come in exactly two strengths. Confusing them is how
 harnesses rot: a route-scoped default gets written down as if it were doctrine, then the next
 legitimate use case looks like a violation and either gets blocked (capability loss) or
 waved through ad hoc (safety loss). This page is the boundary.
@@ -18,7 +18,7 @@ certify (see the conformance suite).
    persisting, because SDK error strings can echo secrets. The enforcement point is the
    PUBLISH/VERIFY boundary, not capture: a local run's text artifacts are scrubbed of
    secret-shaped values unconditionally, and raw screenshots (which may render on-screen
-   content) are retained locally under gitignored `.homun/` and never emitted by a publish
+   content) are retained locally under gitignored `.humanish/` and never emitted by a publish
    command (feedback/review carry path strings, not pixels). In this repo the CI binary-asset
    scan additionally blocks them from commit; downstream projects do not get that scan — their
    protection is the init-scaffolded `.gitignore` plus their own review. To share a bundle
@@ -51,7 +51,7 @@ certify (see the conformance suite).
    reclaims and PROVES cleanup against that id alone (a returned found-and-killed boolean, a
    getInfo-by-id NotFound check). No route ever calls a provider's list-everything endpoint to
    discover or verify its own cleanup, because that endpoint enumerates the whole account/team,
-   not just what homun created. This is what makes a single shared operator key safe: homun
+   not just what humanish created. This is what makes a single shared operator key safe: humanish
    only ever reaches a resource it created, never anything else the key's owner is running.
    The one narrow exception is an explicit, maintainer-run orphan sweep (never a default, never
    reachable by a normal lab run) that is itself opt-in gated (an explicit flag or env var) and
@@ -69,7 +69,7 @@ silently drifting from one is not.
 | Per-lane worlds | Isolation, attribution, reproducibility | `subject.topology: shared-world` — N seats against ONE provisioned, mutable plane for scenarios that ARE about interaction between roles (#164). `execution.concurrency: 1` (default) = SEQUENTIAL turns (one sandbox); `> 1` = CONCURRENT (one getHost-exposed subject sandbox + N actor sandboxes driving it at once, synthetic-subject only). The bundle declares the weaker `attributionClass: shared-world` + a verify-enforced `attributionLimits` ceiling (the concurrent set drops `sequential-only` and adds `best-effort-causal-attribution` etc.), so the looser per-role attribution is honest, not hidden. |
 | External key placement | Smallest blast radius: when the keyed process (e.g. a computer-use provider loop) runs outside the sandbox, its key never enters | In-sandbox placement when the keyed process runs inside (an agent harness under test); declared per actor type, with a spend budget |
 | Loopback entry URLs | Public-safety: never drive third-party sites unbidden | `policies.allowPublicTargets` for an owner-declared deployment/preview (a Vercel preview of your own app). Multi-lane public/preview fan-out needs explicit `actors[0].lanes[].target` for every lane, so the adapter-owned topology is declared rather than inferred. Provisioned clone subjects always serve in-sandbox on loopback |
-| Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.homun/` (this repo's CI adds a binary-asset commit scan; downstream projects rely on the scaffolded `.gitignore` and their own review) | `policies.redactScreenshots: true` blurs at capture for share-as-is bundles (a redact-on-export step for raw bundles is planned) |
+| Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.humanish/` (this repo's CI adds a binary-asset commit scan; downstream projects rely on the scaffolded `.gitignore` and their own review) | `policies.redactScreenshots: true` blurs at capture for share-as-is bundles (a redact-on-export step for raw bundles is planned) |
 | Synthetic, seeded state | Pinned provenance; no real user data in evidence paths | Declared external state, recorded as UNPINNED in provenance |
 | Single lane | Cost + evidence simplicity | Declared fan-out where the backend supports it — `actors[0].count: N` (homogeneous), explicit `actors[0].lanes[]` (differentiated persona/device/instruction), or compact `actors[0].roster[]` groups that normalize into lanes on the computer-use E2B route (per-lane worlds, cap 16; `execution.concurrency` bounds concurrent paid lanes) |
 | Stock `desktop` template | The stock E2B desktop image is right for most subjects; absent `execution.desktop.template` keeps `Sandbox.create(opts)` byte-stable | `execution.desktop.template` names a custom E2B desktop image (any name/id, no allowlist) for a subject needing baked-in runtimes the stock image lacks (e.g. node/bun/a local Postgres) — threaded to `Sandbox.create(template, opts)` on every desktop-creating route and recorded in the bundle as `desktopTemplate` (public-safe) |
@@ -113,7 +113,7 @@ loop never retained a usable frame. That destroyed the core deliverable for the 
 (a developer watching a sim of their OWN app locally) to defend against a leak that can only
 happen at *publish*. The proof it was a default, not an invariant: the same product already
 shipped raw full-resolution frames on the meta route with only a "do not publish" warning +
-the `.homun/` gitignore + the binary-asset scan. Two routes, opposite policies, identical
+the `.humanish/` gitignore + the binary-asset scan. Two routes, opposite policies, identical
 threat. The corrected principle:
 
 > **A default's enforcement point belongs at the PUBLISH/VERIFY boundary, never at
@@ -121,7 +121,7 @@ threat. The corrected principle:
 
 Consequences:
 
-- Screenshots are retained **raw and full-fidelity** by default, in gitignored `.homun/`.
+- Screenshots are retained **raw and full-fidelity** by default, in gitignored `.humanish/`.
   `policies.redactScreenshots: true` blurs at capture for a share-as-is bundle; a
   redact-on-export step for already-captured raw bundles is planned (not yet shipped). The
   frame sent to the provider is always raw regardless — the model must see the screen to act.

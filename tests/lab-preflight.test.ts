@@ -29,7 +29,7 @@ async function runCli(args: string[]): Promise<CliResult> {
   program.exitOverride();
 
   try {
-    await program.parseAsync(["node", "homun", ...args], { from: "node" });
+    await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
     if (error instanceof CommanderError && error.code === "commander.helpDisplayed") {
       return { exitCode: 0, stderr: stderr.join(""), stdout: stdout.join("") };
@@ -47,7 +47,7 @@ async function runCli(args: string[]): Promise<CliResult> {
 describe("lab preflight", () => {
   it("preflights public-preview targets from a sandbox without exposing raw URLs", async () => {
     await withTempLab({
-      "homun/labs/preview.yaml": publicPreviewLab("https://preview.example.test/start")
+      "humanish/labs/preview.yaml": publicPreviewLab("https://preview.example.test/start")
     }, async (cwd) => {
       let created = 0;
       let killed = 0;
@@ -81,7 +81,7 @@ describe("lab preflight", () => {
 
   it("blocks loopback targets in public-preview mode before launching a sandbox", async () => {
     await withTempLab({
-      "homun/labs/loopback.yaml": publicPreviewLab("http://127.0.0.1:3000/start")
+      "humanish/labs/loopback.yaml": publicPreviewLab("http://127.0.0.1:3000/start")
     }, async (cwd) => {
       let created = 0;
       const result = await runLabPreflight({
@@ -101,15 +101,15 @@ describe("lab preflight", () => {
 
       expect(result.ok).toBe(false);
       expect(created).toBe(0);
-      expect(result.error?.code).toBe("HOMUN_LAB_PREFLIGHT_TARGET_POLICY");
+      expect(result.error?.code).toBe("HUMANISH_LAB_PREFLIGHT_TARGET_POLICY");
       expect(result.targets.some((target) => target.status === "blocked")).toBe(true);
     });
   });
 
   it("checks lane targets instead of blocking an unused loopback appUrl", async () => {
     await withTempLab({
-      "homun/labs/target-roster.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/target-roster.yaml": [
+        "schema: humanish.lab.v2",
         "id: target-roster",
         "subject:",
         "  source: app-url",
@@ -154,8 +154,8 @@ describe("lab preflight", () => {
 
   it("fails public-preview without allowPublicTargets before launching a sandbox", async () => {
     await withTempLab({
-      "homun/labs/no-policy.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/no-policy.yaml": [
+        "schema: humanish.lab.v2",
         "id: no-policy",
         "subject:",
         "  source: app-url",
@@ -171,15 +171,15 @@ describe("lab preflight", () => {
       const result = await runLabPreflight({ cwd, lab: "no-policy", reachability: "public-preview" });
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HOMUN_LAB_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_LAB_INVALID");
       expect(result.sandbox.created).toBe(false);
     });
   });
 
   it("supports metadata-only CLI preflight with clean JSON", async () => {
     await withTempLab({
-      "homun/labs/first-run.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/first-run.yaml": [
+        "schema: humanish.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -204,7 +204,7 @@ describe("lab preflight", () => {
 
 function publicPreviewLab(target: string): string {
   return [
-    "schema: homun.lab.v2",
+    "schema: humanish.lab.v2",
     "id: preview",
     "subject:",
     "  source: app-url",
@@ -263,7 +263,7 @@ function fakeDesktopModule(args: {
 }
 
 async function withTempLab<T>(files: Record<string, string>, callback: (cwd: string) => Promise<T>): Promise<T> {
-  const cwd = await mkdtemp(path.join(tmpdir(), "homun-lab-preflight-"));
+  const cwd = await mkdtemp(path.join(tmpdir(), "humanish-lab-preflight-"));
   try {
     for (const [relativePath, contents] of Object.entries(files)) {
       const filePath = path.join(cwd, relativePath);

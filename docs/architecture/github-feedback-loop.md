@@ -14,12 +14,12 @@ infrastructure or GitHub credentials.
 Target loop:
 
 ```text
-homun run
+humanish run
 -> run bundle
--> homun review
--> homun verify
--> homun feedback draft
--> homun feedback issue
+-> humanish review
+-> humanish verify
+-> humanish feedback draft
+-> humanish feedback issue
 -> user files public GitHub issue
 -> maintainer triage / project cockpit
 -> scoped implementation when accepted
@@ -41,11 +41,11 @@ before printing an issue body or issue URL.
 Likely v0 commands:
 
 ```bash
-homun feedback list --run latest
-homun feedback draft --run latest --json
-homun feedback verify --run latest --json
-homun feedback issue --run latest --repo owner/repo --format markdown
-homun feedback issue-url --run latest --repo owner/repo
+humanish feedback list --run latest
+humanish feedback draft --run latest --json
+humanish feedback verify --run latest --json
+humanish feedback issue --run latest --repo owner/repo --format markdown
+humanish feedback issue-url --run latest --repo owner/repo
 ```
 
 `issue` and `issue-url` should fail closed unless the draft contains:
@@ -85,8 +85,8 @@ produce a high-quality issue draft and clear filing instructions.
 Promoted feedback should use this stable body shape:
 
 ```yaml
-homun_feedback:
-  schema: homun.feedback.v1
+humanish_feedback:
+  schema: humanish.feedback.v1
   run_id: "<run-id>"
   adapter_id: "<adapter-id>"
   scenario_id: "<scenario-id>"
@@ -107,8 +107,8 @@ homun_feedback:
 For maintainer/agent-ready work, the issue can also include:
 
 ```yaml
-homun_swarm:
-  schema: homun.swarm-readiness.v1
+humanish_swarm:
+  schema: humanish.swarm-readiness.v1
   status: needs_spec
   authority: draft_spec
   blocked_by: []
@@ -120,7 +120,7 @@ homun_swarm:
     - .env*
     - .github/workflows/**
     - infra/**
-  artifact_schema_version: homun.run-bundle.v1
+  artifact_schema_version: humanish.run-bundle.v1
   credential_manifest: []
   network_policy: no_network
   spend_policy: no_spend

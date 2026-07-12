@@ -16,7 +16,7 @@ import { createProgram } from "../src/program.js";
 import { runDryRun } from "../src/run.js";
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-feedback-fixture-"));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-feedback-fixture-"));
   const tempApp = path.join(tempRoot, "minimal-app");
 
   try {
@@ -39,7 +39,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stderr: strin
     }
   });
 
-  await program.parseAsync(["node", "homun", ...args], { from: "node" });
+  await program.parseAsync(["node", "humanish", ...args], { from: "node" });
 
   return {
     exitCode,
@@ -59,12 +59,12 @@ describe("feedback issue drafts", () => {
 
       const drafted = await draftFeedback(cwd, "latest");
       expect(drafted.ok).toBe(true);
-      expect(drafted.draftPath).toBe(".homun/runs/feedback-test/feedback/draft.json");
+      expect(drafted.draftPath).toBe(".humanish/runs/feedback-test/feedback/draft.json");
       expect(drafted.draft?.schema).toBe(FEEDBACK_SCHEMA);
       expect(drafted.draft?.redaction.status).toBe("passed");
-      expect(drafted.draft?.idempotency_key).toBe("homun:feedback-test:dry-run-contract-proof");
+      expect(drafted.draft?.idempotency_key).toBe("humanish:feedback-test:dry-run-contract-proof");
 
-      await expect(stat(path.join(cwd, ".homun/runs/feedback-test/feedback/draft.json"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".humanish/runs/feedback-test/feedback/draft.json"))).resolves.toBeTruthy();
 
       const listed = await listFeedback(cwd, "latest");
       expect(listed.ok).toBe(true);
@@ -83,7 +83,7 @@ describe("feedback issue drafts", () => {
         runId: "feedback-local-only"
       });
 
-      const runPath = path.join(cwd, ".homun/runs/feedback-local-only/run.json");
+      const runPath = path.join(cwd, ".humanish/runs/feedback-local-only/run.json");
       const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
         streams: Array<{ actor?: unknown }>;
       };
@@ -99,7 +99,7 @@ describe("feedback issue drafts", () => {
 
       const drafted = await draftFeedback(cwd, "latest");
       expect(drafted.ok).toBe(false);
-      expect(drafted.error?.code).toBe("HOMUN_FEEDBACK_SHARE_SAFETY_BLOCKED");
+      expect(drafted.error?.code).toBe("HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED");
       expect(drafted.error?.message).toContain("local_only");
       expect(drafted.error?.message).toContain("RAW_SCREENSHOTS");
       expect(drafted.shareSafety?.status).toBe("local_only");
@@ -119,7 +119,7 @@ describe("feedback issue drafts", () => {
       ]);
       expect(issue.exitCode).toBe(2);
       expect(issue.stdout).toBe("");
-      expect(issue.stderr).toContain("HOMUN_FEEDBACK_SHARE_SAFETY_BLOCKED");
+      expect(issue.stderr).toContain("HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED");
     });
   });
 
@@ -133,14 +133,14 @@ describe("feedback issue drafts", () => {
 
       const rendered = await renderIssueMarkdown(cwd, "latest", "example/app");
       expect(rendered.ok).toBe(true);
-      expect(rendered.issuePath).toBe(".homun/runs/feedback-issue/feedback/issue.md");
-      expect(rendered.issueMarkdown).toContain("homun_feedback:");
+      expect(rendered.issuePath).toBe(".humanish/runs/feedback-issue/feedback/issue.md");
+      expect(rendered.issueMarkdown).toContain("humanish_feedback:");
       expect(rendered.issueMarkdown).toContain("GitHub mutation: not performed");
       expect(rendered.issueMarkdown).toContain("claim unobserved product behavior");
       expect(rendered.issueMarkdown).not.toMatch(/\bcloses?\b/i);
 
       const issueMarkdown = await readFile(
-        path.join(cwd, ".homun/runs/feedback-issue/feedback/issue.md"),
+        path.join(cwd, ".humanish/runs/feedback-issue/feedback/issue.md"),
         "utf8"
       );
       expect(issueMarkdown).toBe(rendered.issueMarkdown);
@@ -148,7 +148,7 @@ describe("feedback issue drafts", () => {
       const issueUrl = await renderIssueUrl(cwd, "latest", "example/app");
       expect(issueUrl.ok).toBe(true);
       expect(issueUrl.issueUrl).toMatch(/^https:\/\/github\.com\/example\/app\/issues\/new\?/);
-      expect(decodeURIComponent(issueUrl.issueUrl ?? "")).toContain("homun_feedback:");
+      expect(decodeURIComponent(issueUrl.issueUrl ?? "")).toContain("humanish_feedback:");
     });
   });
 
@@ -160,17 +160,17 @@ describe("feedback issue drafts", () => {
         runId: "feedback-candidate"
       });
 
-      const runPath = path.join(cwd, ".homun/runs/feedback-candidate/run.json");
-      const setupPath = path.join(cwd, ".homun/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json");
+      const runPath = path.join(cwd, ".humanish/runs/feedback-candidate/run.json");
+      const setupPath = path.join(cwd, ".humanish/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json");
       await mkdir(path.dirname(setupPath), { recursive: true });
-      await writeFile(setupPath, JSON.stringify({ schema: "homun.setup-quality.v1", status: "needs_review" }, null, 2), "utf8");
+      await writeFile(setupPath, JSON.stringify({ schema: "humanish.setup-quality.v1", status: "needs_review" }, null, 2), "utf8");
 
       const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
         feedbackCandidates: unknown[];
       };
       bundle.feedbackCandidates = [
         {
-          schema: "homun.feedback-candidate.v1",
+          schema: "humanish.feedback-candidate.v1",
           id: "setup-quality-oss-01",
           run_id: "feedback-candidate",
           stream_id: "oss-01",
@@ -181,7 +181,7 @@ describe("feedback issue drafts", () => {
           substrate: "e2b-desktop",
           failure_owner: "actor",
           summary: "Fixture setup needs review",
-          expected: "The actor should create a complete Homun setup.",
+          expected: "The actor should create a complete Humanish setup.",
           actual: "The package script was missing.",
           evidence: [
             {
@@ -194,10 +194,10 @@ describe("feedback issue drafts", () => {
             status: "passed",
             notes: "Public-safe fixture candidate."
           },
-          idempotency_key: "homun:feedback-candidate:setup-quality",
+          idempotency_key: "humanish:feedback-candidate:setup-quality",
           proposed_next_state: "setup-quality-review",
           acceptance_proof: [
-            "pnpm homun -- verify --run feedback-candidate --json"
+            "pnpm humanish -- verify --run feedback-candidate --json"
           ]
         }
       ];
@@ -209,7 +209,7 @@ describe("feedback issue drafts", () => {
       expect(drafted.draft?.source_candidate_id).toBe("setup-quality-oss-01");
       expect(drafted.draft?.substrate).toBe("e2b-desktop");
       expect(drafted.draft?.evidence).toContainEqual({
-        path: ".homun/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json",
+        path: ".humanish/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json",
         kind: "filesystem",
         note: "Setup-quality snapshot."
       });
@@ -243,7 +243,7 @@ describe("feedback issue drafts", () => {
       ]);
       expect(issue.exitCode).toBe(0);
       expect(issue.stderr).toBe("");
-      expect(issue.stdout).toContain("homun_feedback:");
+      expect(issue.stdout).toContain("humanish_feedback:");
       expect(issue.stdout).toContain("GitHub mutation: not performed");
 
       const issueUrl = await runCli([

@@ -14,13 +14,13 @@ because this lane is the first to place a real provider key *inside* the sandbox
 
 ## The ask (issue #154)
 
-The reference adopter cannot delete its bespoke real-agent sim for homun yet. homun has
+The reference adopter cannot delete its bespoke real-agent sim for humanish yet. humanish has
 strong Observer/browser/lab primitives but no **terminal-product real-agent study lane**: a
 real autonomous agent (Codex) discovering and using a CLI/product from *public surfaces
 only*, running *inside* an E2B shell with command-scoped runtime auth, capped at no-spend,
 and emitting durable terminal/substrate/cost/no-spend/cleanup/intervention proof that
 verifies fail-closed. This is proof-roadmap **layer 6** (the extension seam + in-sandbox
-command-scoped key placement) and depth-phase-2 (delete a bespoke sim for homun + a thin
+command-scoped key placement) and depth-phase-2 (delete a bespoke sim for humanish + a thin
 adapter).
 
 ## The safety contract (every slice enforces this — by construction and by verifier)
@@ -67,7 +67,7 @@ by key scoping and budgets, not by hoping.*
 8. **Cleanup is proven BY EXACT CREATED ID, never by enumeration.** The sandbox is killed
    (`Sandbox.kill(id)`) in a finally; the cleanup proof is BY ID: `kill(id)`'s own
    found-and-killed boolean, confirmed further by `Sandbox.getInfo(id)` when the SDK exposes it
-   (a thrown `SandboxNotFoundError` means the exact sandbox is gone). homun NEVER calls
+   (a thrown `SandboxNotFoundError` means the exact sandbox is gone). humanish NEVER calls
    `Sandbox.list` to prove cleanup, so a shared operator key never reaches a sandbox it did not
    create; a live run that cannot prove teardown fails closed.
 

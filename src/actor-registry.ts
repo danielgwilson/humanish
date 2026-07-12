@@ -166,7 +166,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   },
   // Same naming convention: the ActorId names the slot; the trace's `provider` stays the
   // concrete driver name "browser-persona" (matching the native
-  // homun.browser-persona-trace.v1 evidence it already emits).
+  // humanish.browser-persona-trace.v1 evidence it already emits).
   "scripted-browser": {
     id: "scripted-browser",
     label: "Scripted Browser (deterministic Playwright steps)",

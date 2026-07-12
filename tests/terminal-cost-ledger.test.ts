@@ -35,8 +35,8 @@ function makeFakeModule(opts: {
                 if (behavior.stdout && runOptions?.onStdout) runOptions.onStdout(behavior.stdout);
                 return { exitCode: behavior.exitCode };
               }
-              if (runOptions?.onStdout) runOptions.onStdout("HOMUN_SHELL_READY\n");
-              return { exitCode: 0, stdout: "HOMUN_SHELL_READY\n" };
+              if (runOptions?.onStdout) runOptions.onStdout("HUMANISH_SHELL_READY\n");
+              return { exitCode: 0, stdout: "HUMANISH_SHELL_READY\n" };
             }
           },
           files: { async write() { return undefined; } },
@@ -63,7 +63,7 @@ function makeFakeModule(opts: {
 }
 
 function nonceFrom(command: string): string {
-  const m = /HOMUN_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command);
+  const m = /HUMANISH_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command);
   return m?.[1] ?? "unknown-nonce";
 }
 
@@ -91,12 +91,12 @@ function baseEnv(): Record<string, string | undefined> {
 }
 
 function passingCodex() {
-  return (cmd: string) => ({ exitCode: 0, stdout: `done\nHOMUN_ACTOR_VERDICT=passed HOMUN_ACTOR_NONCE=${nonceFrom(cmd)}\n` });
+  return (cmd: string) => ({ exitCode: 0, stdout: `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n` });
 }
 
 describe("terminal-product cost ledger + no-spend proof + caps enforcement (deterministic, $0)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-tp-cost-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-cost-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("(a) a no-spend run produces a VERIFIED no-spend proof derived from the ledger", async () => {
@@ -117,10 +117,10 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(result.noSpend?.unmeasuredLines.sort()).toEqual(["media", "payment", "product", "provider"]);
     expect(result.noSpend?.knownZeroLines).toEqual([]);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
-    expect(ledgers.cost.schema).toBe("homun.terminal-cost-ledger.v1");
-    expect(ledgers.noSpendProof.schema).toBe("homun.terminal-no-spend-proof.v1");
+    expect(ledgers.cost.schema).toBe("humanish.terminal-cost-ledger.v1");
+    expect(ledgers.noSpendProof.schema).toBe("humanish.terminal-no-spend-proof.v1");
     expect(ledgers.noSpendProof.satisfied).toBe(true);
     expect(ledgers.cost.knownTotalUsd).toBe(0);
     expect(ledgers.cost.fullyMeasured).toBe(false); // all four lines are null = unmeasured
@@ -145,7 +145,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const result = await runTerminalProductLab({ cwd, config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }), dryRun: false, open: false, hooks });
     expect(result.ok).toBe(true);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
 
     // KNOWN ZERO: the injected product line is a literal 0 (not null).
@@ -187,7 +187,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const result = await runTerminalProductLab({ cwd, config: liveConfig({ maxUsd: 1, maxJobs: 0, maxMinutes: 10 }), dryRun: false, open: false, hooks });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_TERMINAL_LAB_CAPS_EXCEEDED");
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED");
     // The sandbox was still torn down (cleanup runs in finally before the cap evaluation).
     expect(killed.length).toBe(1);
     // The agent's own verdict does NOT survive as a green pass — the cap blew the run.
@@ -212,7 +212,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
     // Tamper the persisted proof to claim zero on a line the ledger marks null — the proof now claims
     // MORE than the ledger measured. verify must fail closed.
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgersPath = path.join(runDir, "terminal-ledgers.json");
     const ledgers = JSON.parse(await readFile(ledgersPath, "utf8"));
     expect(ledgers.cost.lines.provider.usd).toBeNull(); // provider IS null (unmeasured)

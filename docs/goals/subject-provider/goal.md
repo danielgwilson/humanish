@@ -75,7 +75,7 @@ gives the state story a mechanism. Seed/migration/fixture steps declared under
 structured provenance (marker `seeded`, sha256-16 command digests — never command text);
 declared external state (`subject.state.external[]`, names backed by `subject.env`) is
 recorded as UNPINNED; dry-run and failed provisioning record `declared-not-run`; everything
-else is explicitly `undeclared`. `homun verify` fail-closes on state claims that do not
+else is explicitly `undeclared`. `humanish verify` fail-closes on state claims that do not
 match the recorded evidence. Snapshot memoization of seeded state remains a later layer.
 
 ## Out of scope (deliberate, per roadmap layer order)

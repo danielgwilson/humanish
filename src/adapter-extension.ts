@@ -80,7 +80,7 @@ export async function applyBrowserAdapterHooks(args: {
         bundle.adapterScore = cleaned;
         applyAdapterScoreFailureToReview(bundle);
       } else {
-        warnings.push(`${hookLabel}.score returned a value that is not a well-formed homun.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`);
+        warnings.push(`${hookLabel}.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`);
       }
     } catch (error) {
       warnings.push(`${hookLabel}.score threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
@@ -94,7 +94,7 @@ export async function applyBrowserAdapterHooks(args: {
       for (const candidate of Array.isArray(candidates) ? candidates : []) {
         const cleaned = scrubValue(candidate);
         if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
-        else warnings.push(`${hookLabel}.deriveFeedback returned a candidate that is not a well-formed homun.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.`);
+        else warnings.push(`${hookLabel}.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.`);
       }
       if (accepted.length > 0) {
         bundle.feedbackCandidates = [...bundle.feedbackCandidates, ...accepted];
@@ -111,7 +111,7 @@ export async function applyBrowserAdapterHooks(args: {
       for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
         const cleaned = scrubValue(artifact);
         if (isAdapterArtifactShape(cleaned)) accepted.push(cleaned);
-        else warnings.push(`${hookLabel}.deriveArtifacts returned an artifact that is not a well-formed homun.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`);
+        else warnings.push(`${hookLabel}.deriveArtifacts returned an artifact that is not a well-formed humanish.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`);
       }
       if (accepted.length > 0) {
         bundle.adapterArtifacts = [...(bundle.adapterArtifacts ?? []), ...accepted];
@@ -144,7 +144,7 @@ export function applyAdapterScoreFailureToReview(bundle: RunBundle): string | un
 
 function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-    && (value as RunAdapterScore).schema === "homun.adapter-score.v1"
+    && (value as RunAdapterScore).schema === "humanish.adapter-score.v1"
     && typeof (value as RunAdapterScore).namespace === "string"
     && (value as RunAdapterScore).namespace.trim().length > 0
     && ["pass", "partial", "fail"].includes((value as RunAdapterScore).status)
@@ -160,7 +160,7 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
   if (!isRecord(value)) return false;
   const candidate = value as Partial<RunFeedbackCandidate>;
-  if (candidate.schema !== "homun.feedback-candidate.v1"
+  if (candidate.schema !== "humanish.feedback-candidate.v1"
     || typeof candidate.id !== "string"
     || typeof candidate.run_id !== "string"
     || (candidate.stream_id !== undefined && typeof candidate.stream_id !== "string")
@@ -199,7 +199,7 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
 function isAdapterArtifactShape(value: unknown): value is RunAdapterArtifact {
   if (!isRecord(value)) return false;
   const artifact = value as Partial<RunAdapterArtifact>;
-  return artifact.schema === "homun.adapter-artifact.v1"
+  return artifact.schema === "humanish.adapter-artifact.v1"
     && typeof artifact.namespace === "string"
     && artifact.namespace.trim().length > 0
     && typeof artifact.label === "string"

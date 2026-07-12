@@ -9,13 +9,13 @@ import { runLab } from "../src/lab-engine.js";
 import { verifyRun } from "../src/run.js";
 
 // The LIVE rung for the shared-world topology (#164). WRITTEN + gated, NOT run in the autonomous
-// proof: it needs (1) HOMUN_LIVE_SHARED_WORLD=1 (the spend opt-in), (2) OPENAI_API_KEY +
+// proof: it needs (1) HUMANISH_LIVE_SHARED_WORLD=1 (the spend opt-in), (2) OPENAI_API_KEY +
 // E2B_API_KEY, AND (3) a REAL STATEFUL SEEDED APP whose checkpoint probes observe role mutations.
 // The fixture repo/serve/seed/checkpoint below are PLACEHOLDERS for that authorized receipt — a
 // generic multi-role app with a migrated+seeded DB and read-only digest probes. This rung is
 // DEFERRED to a separately-authorized receipt (per the goal packet's Provider Spend Policy): the
 // deterministic fake-substrate proof in shared-world-lab.test.ts is the merge gate at $0.
-const LIVE = process.env.HOMUN_LIVE_SHARED_WORLD === "1"
+const LIVE = process.env.HUMANISH_LIVE_SHARED_WORLD === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
@@ -23,7 +23,7 @@ describe.skipIf(!LIVE)("shared-world topology (LIVE, spend-gated — deferred to
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-shared-world-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-shared-world-live-"));
   });
 
   afterEach(async () => {
@@ -88,7 +88,7 @@ describe.skipIf(!LIVE)("shared-world topology (LIVE, spend-gated — deferred to
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.attributionClass).toBe("shared-world");
     // The interaction proof: the checkpoint after role-author shows a delta and precedes role-reviewer.
     const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; name?: string; deltaFromPrev?: boolean; roleId?: string }>;

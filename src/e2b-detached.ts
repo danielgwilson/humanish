@@ -18,7 +18,7 @@
 
 import type { E2BDesktopSandbox } from "./e2b-desktop-launch.js";
 
-const WORK_ROOT = "/tmp/homun-subject";
+const WORK_ROOT = "/tmp/humanish-subject";
 const DEFAULT_POLL_INTERVAL_MS = 3000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const LOG_TAIL_BYTES = 8192;

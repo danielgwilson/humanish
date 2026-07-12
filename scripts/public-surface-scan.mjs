@@ -43,13 +43,6 @@ const staleInternalContextNames = [
   ["private", "factory"].join("-"),
   ["source", "system"].join("-"),
   ["tbrowser", "sim"].join("-"),
-  // Private product codenames — must never appear in the public repo/package. Built from
-  // joined fragments so this denylist file does not match itself. Use neutral descriptors
-  // ("a consumer web app", "the in-house ui-sim", etc.) in committed source/docs.
-  ["north", "star"].join(""),
-  ["no", "bg"].join(""),
-  ["image", "skill"].join("-"),
-  ["legion", "health"].join("")
 ];
 
 const privateResiduePatterns = [
@@ -58,7 +51,7 @@ const privateResiduePatterns = [
   ["provider_sandbox_id", /\b(?:(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?|sandboxId["']?\s*[:=]\s*["']?)(?!\[redacted-sandbox-id\])i[a-z0-9]{18,}`?/g],
   ["stale_internal_docs_path", new RegExp(`\\bdocs/(?:${staleInternalDocDirs.join("|")})\\b`, "g")],
   ["stale_internal_context_name", new RegExp(`\\b(?:${staleInternalContextNames.join("|")})\\b`, "gi")],
-  ...((process.env.HOMUN_PUBLIC_DENYLIST_PATTERN ?? "")
+  ...((process.env.HUMANISH_PUBLIC_DENYLIST_PATTERN ?? "")
     .split("\n")
     .map((pattern, index) => pattern.trim() ? [`custom_private_residue_${index + 1}`, new RegExp(pattern, "g")] : null)
     .filter(Boolean))
@@ -86,12 +79,13 @@ const allowedEmailDomains = new Set([
   "npmjs.com"
 ]);
 
-const approvedBinaryAssets = new Map([
-  ["docs/assets/homun-oss-lab-observer.png", "fad58feb832facd0b1a6828585936d07d5e766d0a1a09c39fea7ee3b5d3f23d7"]
-]);
+// Binary public assets must be explicitly allowlisted here with a sha256 pin.
+// Currently empty: the Observer hero screenshot was retired at the humanish
+// rename and a rebranded capture will be re-allowlisted when it lands.
+const approvedBinaryAssets = new Map([]);
 const approvedPublicCommitEmails = new Set([
   "daniel@danielgwilson.com",
-  ...(process.env.HOMUN_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")
+  ...(process.env.HUMANISH_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")
     .split("\n")
     .map((email) => email.trim())
     .filter(Boolean)

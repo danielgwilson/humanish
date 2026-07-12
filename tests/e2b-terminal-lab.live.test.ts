@@ -13,7 +13,7 @@ import { verifyRun } from "../src/run.js";
 // no-spend. It exercises the credential-placement inversion against a real provider, so it is
 // gated EXACTLY like the other live rungs (never run in CI) and kept as a receipt by the
 // orchestrator post-merge:
-//   1. HOMUN_LIVE_CODEX=1 must be set explicitly (the live opt-in);
+//   1. HUMANISH_LIVE_CODEX=1 must be set explicitly (the live opt-in);
 //   2. CODEX_API_KEY or OPENAI_API_KEY, plus E2B_API_KEY, must be present (operator-side; the
 //      runtime key is injected ONLY into the command-scoped codex invocation, never
 //      sandbox-global). CODEX_API_KEY is preferred (it is the documented single-invocation
@@ -23,7 +23,7 @@ import { verifyRun } from "../src/run.js";
 // Asserts the safety contract holds against a real agent: real sandbox created + reclaimed,
 // runtime auth command-scoped (never in metadata), no banned creds in artifacts, the bundle
 // verifies (incl. the terminal-product evidence check). NEVER asserts task success.
-const LIVE = process.env.HOMUN_LIVE_CODEX === "1"
+const LIVE = process.env.HUMANISH_LIVE_CODEX === "1"
   && (Boolean(process.env.CODEX_API_KEY) || Boolean(process.env.OPENAI_API_KEY))
   && Boolean(process.env.E2B_API_KEY);
 
@@ -65,7 +65,7 @@ function liveConfig(): LabConfig {
 
 describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-tp-livereal-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-livereal-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("runs a real Codex agent in an E2B shell with a command-scoped key and a verified bundle", { timeout: 600_000 }, async () => {
@@ -84,7 +84,7 @@ describe.skipIf(!LIVE)("terminal-product lane (LIVE, key-gated, E2B + Codex)", (
 
     // No credential VALUE in evidence: neither real key (whichever the operator exported, or both
     // if the lane dual-injected OPENAI_API_KEY under CODEX_API_KEY too) ever appears in any artifact.
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const realKeys = [process.env.CODEX_API_KEY, process.env.OPENAI_API_KEY]
       .map((value) => (value ?? "").trim())
       .filter((value) => value.length >= 8);

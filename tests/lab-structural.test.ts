@@ -37,7 +37,7 @@ describe("lab refactor structural necessity (rung 1)", () => {
 
   it("the v1 lab schema is gone from src (no back-compat)", () => {
     for (const rel of ["src/labs.ts", "src/lab-config.ts", "src/program.ts", "src/init-templates.ts"]) {
-      expect(read(rel)).not.toContain("homun.lab.v1");
+      expect(read(rel)).not.toContain("humanish.lab.v1");
     }
   });
 });
@@ -51,13 +51,13 @@ describe("lab config expressiveness (rung 3)", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "migration-rehearsal",
-      title: "bespoke-sim to homun migration",
+      title: "bespoke-sim to humanish migration",
       subject: { source: "clone", repos: ["example-org/private-app"], clone: { depth: 1, fanout: 1 } },
       // A free-form (non-registered) actor label on the clone+e2b route stays a label and routes
       // to meta. (codex-exec is now a REGISTERED terminal actor — it would be a mis-config here, so
       // this expressiveness test uses a generic migrator label to keep its point: clone+e2b config
       // routes config-only with the mission forward-declared.)
-      actors: [{ type: "codex-migrator", mission: "Remove the bespoke UI sim package and adopt homun." }],
+      actors: [{ type: "codex-migrator", mission: "Remove the bespoke UI sim package and adopt humanish." }],
       execution: { target: "e2b-desktop" },
       policies: { redactRepos: true }
     });
@@ -81,10 +81,10 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(selectLabBackend(resolved.config)).toBe("scripted");
 
     // The referenced committed scenario is genuinely executable (4 browser steps).
-    const scenarioText = read("homun/scenarios/scripted-first-run.yaml");
+    const scenarioText = read("humanish/scenarios/scripted-first-run.yaml");
     const parsed = parseBrowserPersonaJourneyFromScenario({
       raw: parseYaml(scenarioText),
-      relativePath: "homun/scenarios/scripted-first-run.yaml",
+      relativePath: "humanish/scenarios/scripted-first-run.yaml",
       sourceDigest: digestText(scenarioText)
     });
     expect(parsed.failure).toBeUndefined();

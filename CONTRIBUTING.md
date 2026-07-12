@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for helping make Homun better.
+Thanks for helping make Humanish better.
 
 ## Ground Rules
 
 - Keep examples synthetic and public-safe.
-- Do not commit `.env*`, `.npmrc`, `.homun/`, generated run bundles, provider
+- Do not commit `.env*`, `.npmrc`, `.humanish/`, generated run bundles, provider
   credentials, private screenshots, raw transcripts, or customer data.
 - Prefer small PRs with explicit proof commands.
 - Keep product-specific route names, milestones, and vocabulary in adapters.
@@ -23,9 +23,9 @@ pnpm public-surface:scan
 ## Useful Commands
 
 ```bash
-pnpm homun -- --help
-pnpm homun -- watch --json --no-open
-pnpm homun -- verify --run latest --json
+pnpm humanish -- --help
+pnpm humanish -- watch --json --no-open
+pnpm humanish -- verify --run latest --json
 pnpm pack:dry-run
 ```
 

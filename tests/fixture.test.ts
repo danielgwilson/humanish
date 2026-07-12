@@ -16,12 +16,12 @@ describe("minimal target app fixture", () => {
 
     expect(result.ok).toBe(true);
     expect(result.mode).toBe("dry-run");
-    expect(result.changes.some((change) => change.path === "homun/config.ts")).toBe(true);
-    await expect(stat(path.join(fixturePath, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(result.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
+    await expect(stat(path.join(fixturePath, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("can be copied to a temp app and initialized without committing runtime artifacts", async () => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-fixture-copy-"));
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-fixture-copy-"));
     const tempApp = path.join(tempRoot, "minimal-app");
 
     try {
@@ -32,11 +32,11 @@ describe("minimal target app fixture", () => {
       });
 
       expect(result.ok).toBe(true);
-      await expect(stat(path.join(tempApp, "homun/scenarios/first-run-smoke.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(tempApp, ".homun/runs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(tempApp, "humanish/scenarios/first-run-smoke.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(tempApp, ".humanish/runs"))).resolves.toBeTruthy();
 
       const gitignore = await readFile(path.join(tempApp, ".gitignore"), "utf8");
-      expect(gitignore).toContain(".homun/");
+      expect(gitignore).toContain(".humanish/");
       expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(gitignore.lastIndexOf(".env*"));
     } finally {
       await rm(tempRoot, { force: true, recursive: true });

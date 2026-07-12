@@ -11,9 +11,9 @@ export interface RuntimeDirectory {
 
 export const starterFiles: StarterFile[] = [
   {
-    path: "homun/README.md",
+    path: "humanish/README.md",
     plane: "source",
-    contents: `# Homun
+    contents: `# Humanish
 
 This directory is the committed source of persona simulation intent for this app.
 
@@ -24,43 +24,43 @@ Keep this directory public-safe:
 - env var names only, never values;
 - no PII, PHI, secrets, raw private transcripts, private screenshots, customer data, or patient data.
 
-Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.homun/\`.
+Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.humanish/\`.
 
 Labs:
 
-- committed reusable labs live in homun/labs/*.yaml;
-- private or machine-local labs live in ignored .homun/labs/*.yaml or .homun/local/labs/*.yaml;
-- run a lab with \`homun watch <lab>\` or \`homun lab run <lab>\`.
+- committed reusable labs live in humanish/labs/*.yaml;
+- private or machine-local labs live in ignored .humanish/labs/*.yaml or .humanish/local/labs/*.yaml;
+- run a lab with \`humanish watch <lab>\` or \`humanish lab run <lab>\`.
 
 Format standard:
 
-- human-authored Homun source uses .yaml;
+- human-authored Humanish source uses .yaml;
 - executable integration uses .ts;
 - generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
-- .yml is reserved for outside ecosystem files such as GitHub Actions, not Homun source.
+- .yml is reserved for outside ecosystem files such as GitHub Actions, not Humanish source.
 `
   },
   {
-    path: "homun/config.ts",
+    path: "humanish/config.ts",
     plane: "source",
     contents: `export default {
-  schema: "homun.config.v1",
+  schema: "humanish.config.v1",
   app: {
     name: "synthetic-app",
     baseUrl: "http://localhost:3000",
     startCommand: "npm run dev"
   },
-  personasDir: "homun/personas",
-  scenariosDir: "homun/scenarios",
-  policiesDir: "homun/policies",
-  artifactsDir: ".homun/runs"
+  personasDir: "humanish/personas",
+  scenariosDir: "humanish/scenarios",
+  policiesDir: "humanish/policies",
+  artifactsDir: ".humanish/runs"
 };
 `
   },
   {
-    path: "homun/personas/synthetic-new-user.yaml",
+    path: "humanish/personas/synthetic-new-user.yaml",
     plane: "source",
-    contents: `schema: homun.persona.v1
+    contents: `schema: humanish.persona.v1
 id: synthetic-new-user
 name: Synthetic New User
 summary: A privacy-safe first-time user evaluating the app with realistic but synthetic needs.
@@ -75,9 +75,9 @@ constraints:
 `
   },
   {
-    path: "homun/personas/skeptical-power-user.yaml",
+    path: "humanish/personas/skeptical-power-user.yaml",
     plane: "source",
-    contents: `schema: homun.persona.v1
+    contents: `schema: humanish.persona.v1
 id: skeptical-power-user
 name: Skeptical Power User
 summary: A privacy-safe experienced user looking for speed, reversibility, and clear proof.
@@ -92,9 +92,9 @@ constraints:
 `
   },
   {
-    path: "homun/scenarios/first-run-smoke.yaml",
+    path: "humanish/scenarios/first-run-smoke.yaml",
     plane: "source",
-    contents: `schema: homun.scenario.v1
+    contents: `schema: humanish.scenario.v1
 id: first-run-smoke
 title: First-run smoke
 persona: synthetic-new-user
@@ -110,9 +110,9 @@ steps:
 `
   },
   {
-    path: "homun/scenarios/onboarding-regression.yaml",
+    path: "humanish/scenarios/onboarding-regression.yaml",
     plane: "source",
-    contents: `schema: homun.scenario.v1
+    contents: `schema: humanish.scenario.v1
 id: onboarding-regression
 title: Onboarding regression
 persona: skeptical-power-user
@@ -128,9 +128,9 @@ steps:
 `
   },
   {
-    path: "homun/labs/first-run.yaml",
+    path: "humanish/labs/first-run.yaml",
     plane: "source",
-    contents: `schema: homun.lab.v2
+    contents: `schema: humanish.lab.v2
 id: first-run
 title: First-run synthetic Observer
 description: Public-safe starter lab that generates a synthetic run bundle and Observer without provider spend.
@@ -146,14 +146,14 @@ defaults:
 `
   },
   {
-    path: "homun/labs/cua-browser.yaml",
+    path: "humanish/labs/cua-browser.yaml",
     plane: "source",
-    contents: `schema: homun.lab.v2
+    contents: `schema: humanish.lab.v2
 id: cua-browser
 title: Computer-use browser lab
 description: >-
   A registered computer-use actor drives your app in a hosted desktop browser and emits an
-  evidence bundle into gitignored .homun/. Screenshots are full-fidelity (raw) by default;
+  evidence bundle into gitignored .humanish/. Screenshots are full-fidelity (raw) by default;
   set policies.redactScreenshots: true to blur at capture for a share-as-is bundle. Typed
   text is recorded as length only. Dry-run by default; switch scenario.mode to live (with
   OPENAI_API_KEY + E2B_API_KEY via --env-file) for a real session. The clone subject below
@@ -213,12 +213,12 @@ defaults:
 `
   },
   {
-    path: "homun/policies/redaction.yaml",
+    path: "humanish/policies/redaction.yaml",
     plane: "source",
-    contents: `schema: homun.redaction-policy.v1
+    contents: `schema: humanish.redaction-policy.v1
 # Public-safety policy of intent for this project.
 #
-# Enforcement scope: \`homun verify\` detects the classes under \`enforced\`
+# Enforcement scope: \`humanish verify\` detects the classes under \`enforced\`
 # (secret/key/token shapes and known local-path shapes) and fails closed on a
 # match. It does NOT detect free-form PII/PHI (names, emails, DOBs, MRNs). The
 # classes under \`author_responsibility\` are forbidden in public output but rely
@@ -250,9 +250,9 @@ allow:
 `
   },
   {
-    path: "homun/policies/network.yaml",
+    path: "humanish/policies/network.yaml",
     plane: "source",
-    contents: `schema: homun.network-policy.v1
+    contents: `schema: humanish.network-policy.v1
 default: local_only
 allowed_hosts:
   - localhost
@@ -262,9 +262,9 @@ notes:
 `
   },
   {
-    path: "homun/policies/credentials.example.yaml",
+    path: "humanish/policies/credentials.example.yaml",
     plane: "source",
-    contents: `schema: homun.credentials-policy.v1
+    contents: `schema: humanish.credentials-policy.v1
 env_names:
   openai: OPENAI_API_KEY
   e2b: E2B_API_KEY
@@ -275,10 +275,10 @@ rules:
 `
   },
   {
-    path: "homun/adapters/app.ts",
+    path: "humanish/adapters/app.ts",
     plane: "source",
     contents: `export const appAdapter = {
-  schema: "homun.adapter.v1",
+  schema: "humanish.adapter.v1",
   id: "synthetic-app",
   name: "Synthetic App",
   routes: [
@@ -292,9 +292,9 @@ rules:
 `
   },
   {
-    path: "homun/review/vocabulary.yaml",
+    path: "humanish/review/vocabulary.yaml",
     plane: "source",
-    contents: `schema: homun.review-vocabulary.v1
+    contents: `schema: humanish.review-vocabulary.v1
 verdicts:
   - pass
   - fail
@@ -307,9 +307,9 @@ labels:
 `
   },
   {
-    path: "homun/review/milestones.yaml",
+    path: "humanish/review/milestones.yaml",
     plane: "source",
-    contents: `schema: homun.milestones.v1
+    contents: `schema: humanish.milestones.v1
 milestones:
   - id: first-visible-state
     description: The first meaningful app state is visible.
@@ -320,7 +320,7 @@ milestones:
 `
   },
   {
-    path: "homun/coverage-map.md",
+    path: "humanish/coverage-map.md",
     plane: "source",
     contents: `# Coverage Map
 
@@ -330,7 +330,7 @@ Current starter coverage is intentionally minimal and synthetic.
 `
   },
   {
-    path: "homun/coverage-matrix.md",
+    path: "humanish/coverage-matrix.md",
     plane: "source",
     contents: `# Coverage Matrix
 
@@ -341,10 +341,10 @@ Current starter coverage is intentionally minimal and synthetic.
 `
   },
   {
-    path: "homun/fixtures/synthetic-login-state.json",
+    path: "humanish/fixtures/synthetic-login-state.json",
     plane: "source",
     contents: `{
-  "schema": "homun.synthetic-fixture.v1",
+  "schema": "humanish.synthetic-fixture.v1",
   "kind": "login-state",
   "user": {
     "id": "synthetic-user-001",
@@ -360,22 +360,22 @@ Current starter coverage is intentionally minimal and synthetic.
 ];
 
 export const runtimeDirectories: RuntimeDirectory[] = [
-  { path: ".homun/runs", plane: "runtime" },
-  { path: ".homun/cache", plane: "runtime" },
-  { path: ".homun/tmp", plane: "runtime" },
-  { path: ".homun/logs", plane: "runtime" },
-  { path: ".homun/labs", plane: "runtime" },
-  { path: ".homun/local/labs", plane: "runtime" },
-  { path: ".homun/local/personas", plane: "runtime" },
-  { path: ".homun/local/policies", plane: "runtime" },
-  { path: ".homun/secrets", plane: "runtime" }
+  { path: ".humanish/runs", plane: "runtime" },
+  { path: ".humanish/cache", plane: "runtime" },
+  { path: ".humanish/tmp", plane: "runtime" },
+  { path: ".humanish/logs", plane: "runtime" },
+  { path: ".humanish/labs", plane: "runtime" },
+  { path: ".humanish/local/labs", plane: "runtime" },
+  { path: ".humanish/local/personas", plane: "runtime" },
+  { path: ".humanish/local/policies", plane: "runtime" },
+  { path: ".humanish/secrets", plane: "runtime" }
 ];
 
-export const homunScripts: Record<string, string> = {
-  homun: "homun",
-  "homun:doctor": "homun doctor",
-  "homun:run": "homun run --dry-run",
-  "homun:watch": "homun watch",
-  "homun:watch:ci": "homun watch --json --no-open",
-  "homun:verify": "homun verify"
+export const humanishScripts: Record<string, string> = {
+  humanish: "humanish",
+  "humanish:doctor": "humanish doctor",
+  "humanish:run": "humanish run --dry-run",
+  "humanish:watch": "humanish watch",
+  "humanish:watch:ci": "humanish watch --json --no-open",
+  "humanish:verify": "humanish verify"
 };

@@ -93,7 +93,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(desktop.calls).toContainEqual(["leftClick", 11, 22]);
   });
 
-  it("T3: emits a conformant homun.actor-trace.v1", async () => {
+  it("T3: emits a conformant humanish.actor-trace.v1", async () => {
     const fetchFn = scriptedFetch([
       { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }
     ]);

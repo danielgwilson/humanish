@@ -1,12 +1,12 @@
 # Goal: the two-axis proof roadmap
 
-Status: ratified 2026-06-10. This is the standing definition of "homun has succeeded,"
+Status: ratified 2026-06-10. This is the standing definition of "humanish has succeeded,"
 against which individual PRs carve their scope.
 
 ## The proof goal
 
-> **Homun core is proven when (depth) each first-party bespoke simulation harness can be
-> deleted in favor of homun core plus at most a thin, declared, in-repo extension — with
+> **Humanish core is proven when (depth) each first-party bespoke simulation harness can be
+> deleted in favor of humanish core plus at most a thin, declared, in-repo extension — with
 > decision-equivalent evidence — and (breadth) a stratified panel of foreign repositories
 > goes from install to verified evidence with failures attributed, both gated by the same
 > invariant set that extensions are certified against.**
@@ -20,16 +20,16 @@ Three first-party private products run bespoke sims today: a consumer web app, a
 agent-facing skill product, and a multi-party clinical platform. Each is a forcing event:
 
 - The bar is **decision-equivalence**, not feature parity: the same product decisions are
-  supported by homun-produced evidence, on a branch where the bespoke sim is deleted and
+  supported by humanish-produced evidence, on a branch where the bespoke sim is deleted and
   the product's own CI gate is green.
 - The success metric is the **extension budget**: how thin is the in-repo extension (custom
-  actor, provider, or scorer registered against homun's contracts) needed to close the
+  actor, provider, or scorer registered against humanish's contracts) needed to close the
   gap? Zero is not the goal; small, honest, and declared is. The extension seam — how a
   consumer repo plugs code into the registries without forking core — is therefore a
   first-class deliverable, certified by the same conformance suite first-party actors pass.
 - Replacement inherits the bespoke sims' *questions*, never their *flaws*. (Example: a
   bespoke sim that points lanes at an unpinned external database answers its question with
-  unreproducible evidence; the homun replacement records `state: UNPINNED` and the
+  unreproducible evidence; the humanish replacement records `state: UNPINNED` and the
   consumer decides whether to keep that trade.)
 
 Sequencing: consumer web app first (simplest; forces the subject provider), then the
@@ -78,7 +78,7 @@ replay analytics) can measure and shrink the persona gap for `plausible-use` cla
 fidelity score against a named real-traffic baseline), with two standing cautions: replays
 sample surviving users, so calibrating toward them can overfit away from the tails — tail
 coverage requires deliberately synthetic adversarial panels, scored and claimed separately;
-and raw sessions are PII by definition — they never enter homun evidence; only aggregate
+and raw sessions are PII by definition — they never enter humanish evidence; only aggregate
 divergence findings do. Calibration is the LAST layer of the roadmap: it needs traces
 flowing from real labs first.
 

@@ -7,53 +7,53 @@ compatibility aliases.
 
 ## Decision
 
-`homun/labs/oss.yaml` is this repo's authorized-repo meta-simulation
+`humanish/labs/oss.yaml` is this repo's authorized-repo meta-simulation
 dogfood loop. It is intentionally a lab manifest, not the canonical consumer
-shape. Consumer projects should author their own `homun/labs/*.yaml` files
-and run them with `homun watch <lab>` or `homun lab run <lab>`.
+shape. Consumer projects should author their own `humanish/labs/*.yaml` files
+and run them with `humanish watch <lab>` or `humanish lab run <lab>`.
 
-The lab should feel like `homun watch`: it opens the Observer and, for human
+The lab should feel like `humanish watch`: it opens the Observer and, for human
 output, keeps the shell attached. Its top-level Observer is an
 Observer-of-Observers: each lane represents a headed E2B desktop assigned to a
 GitHub `owner/repo` slug. Inside each desktop, the bootstrap clones the repo,
-gets it into local dev mode where feasible, installs and initializes Homun,
-runs nested Homun proof commands, starts the target app when a runnable
+gets it into local dev mode where feasible, installs and initializes Humanish,
+runs nested Humanish proof commands, starts the target app when a runnable
 script is present, opens desktop/mobile app windows plus the nested Observer in
 the E2B browser, and starts a nonblocking Codex actor attempt.
 
 The previous clone/discard proof loop remains useful, but it is now explicitly
-named `homun/labs/oss-smoke.yaml`.
+named `humanish/labs/oss-smoke.yaml`.
 
 ## Commands
 
 Main operator path:
 
 ```bash
-homun watch oss
-homun lab run oss
-homun lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
-homun lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4
+humanish watch oss
+humanish lab run oss
+humanish lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+humanish lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4
 ```
 
 Agent/CI contract path:
 
 ```bash
-homun lab run oss --dry-run --json --no-open
+humanish lab run oss --dry-run --json --no-open
 ```
 
 Disposable clone smoke path:
 
 ```bash
-homun lab run oss-smoke
-homun lab run oss-smoke --limit 1 --keep
+humanish lab run oss-smoke
+humanish lab run oss-smoke --limit 1 --keep
 ```
 
 Local dogfood shortcuts:
 
 ```bash
-pnpm homun:lab:oss
-pnpm homun:lab:oss:ci
-pnpm homun:lab:oss:smoke
+pnpm humanish:lab:oss
+pnpm humanish:lab:oss:ci
+pnpm humanish:lab:oss:smoke
 ```
 
 ## Repo Selection
@@ -70,7 +70,7 @@ Good defaults expose an app, CLI, or agent-facing tool that can be tried out of
 the box, preferably with a local dev script and no account setup. Libraries,
 frameworks, starters, and infrastructure packages belong only in scenarios that
 explicitly test developer experience. They are poor defaults for proving
-Homun as a user-simulation harness because they add another abstract setup
+Humanish as a user-simulation harness because they add another abstract setup
 layer before any product behavior is visible.
 
 `--repos` accepts a comma-separated list. Repeated `--repo` is also supported.
@@ -90,7 +90,7 @@ draft text.
 The safe local shape is:
 
 ```bash
-homun watch .homun/labs/private-app.yaml --env-file .homun/local/provider.env
+humanish watch .humanish/labs/private-app.yaml --env-file .humanish/local/provider.env
 ```
 
 with an authorized runtime GitHub token and default repo redaction enabled.
@@ -105,7 +105,7 @@ names, stream URLs, or operational details.
 The meta-lab writes ignored local Observer evidence:
 
 ```text
-.homun/
+.humanish/
   runs/<oss-meta-run-id>/
     run.json
     review.json
@@ -127,9 +127,9 @@ Each stream lane records:
 - nested Observer presence and nested verification status;
 - headed desktop visual-window status and browser window count;
 - Codex actor status, optionally moved before deterministic setup with
-  `HOMUN_OSS_META_ACTOR_FIRST=1` and required through
-  `HOMUN_OSS_META_REQUIRE_ACTOR=1`;
-- setup-quality filesystem evidence: shallow tree, Homun setup checks,
+  `HUMANISH_OSS_META_ACTOR_FIRST=1` and required through
+  `HUMANISH_OSS_META_REQUIRE_ACTOR=1`;
+- setup-quality filesystem evidence: shallow tree, Humanish setup checks,
   package scripts, study-quality rating, and allowlisted previews for public
   runs;
 - public-safe remote bootstrap log tail;
@@ -138,15 +138,15 @@ Each stream lane records:
 The current implementation launches live E2B desktop streams when
 `E2B_API_KEY` and `OPENAI_API_KEY` are present, overlays those stream URLs only
 in the attached Observer server, and marks missing key or launch failures
-in-lane. It also packs the local Homun package, uploads it into each sandbox,
+in-lane. It also packs the local Humanish package, uploads it into each sandbox,
 raises a visible bootstrap terminal, clones the assigned repo, runs nested
-Homun setup and proof commands, starts the target app, opens desktop/mobile
+Humanish setup and proof commands, starts the target app, opens desktop/mobile
 app windows, opens the nested Observer in the sandbox browser, arranges visible
 browser windows for screenshot proof, and starts the Codex actor attempt. By
 default the actor remains nonblocking and runs after deterministic readback; with
-`HOMUN_OSS_META_ACTOR_FIRST=1`, the actor attempts setup/use before
-deterministic validation; with `HOMUN_OSS_META_REQUIRE_ACTOR=1`, the bootstrap
-waits up to `HOMUN_OSS_META_ACTOR_TIMEOUT_MS` for terminal actor readback and
+`HUMANISH_OSS_META_ACTOR_FIRST=1`, the actor attempts setup/use before
+deterministic validation; with `HUMANISH_OSS_META_REQUIRE_ACTOR=1`, the bootstrap
+waits up to `HUMANISH_OSS_META_ACTOR_TIMEOUT_MS` for terminal actor readback and
 will not mark the lane passed unless the actor exits cleanly.
 
 When the remote bootstrap completes, the host persists a local
@@ -155,7 +155,7 @@ render it inline from the served Observer. Static `file://` observers keep the
 artifact link openable but do not hydrate it inline. Token-backed/private runs
 suppress raw file previews by default while preserving the setup checks and
 tree shape. They also preserve `studyQuality` structural signals so an actor
-that merely installs Homun receives a `ceremonial` rating instead of being
+that merely installs Humanish receives a `ceremonial` rating instead of being
 treated as successful user-study leverage.
 
 The live desktop substrate is an optional peer dependency. Install it in the
@@ -171,14 +171,14 @@ and live-prove actor-first setup/use, not only deterministic bootstrap readback.
 
 ## Smoke Harness Runtime
 
-`homun lab run oss-smoke` shallow clones lightweight public GitHub repos into
-ignored runtime state, applies Homun setup inside each throwaway clone, runs
+`humanish lab run oss-smoke` shallow clones lightweight public GitHub repos into
+ignored runtime state, applies Humanish setup inside each throwaway clone, runs
 the synthetic four-lane proof path, verifies the generated bundle, records
 git-status evidence, writes an ignored report, and removes cloned repos by
 default.
 
 ```text
-.homun/
+.humanish/
   lab/oss/<run-id>/
     report.json
     report.md
@@ -188,14 +188,14 @@ default.
 
 Each cloned repo receives disposable uncommitted changes:
 
-- `homun/` source starter files;
-- `.homun/` runtime state;
+- `humanish/` source starter files;
+- `.humanish/` runtime state;
 - `.gitignore` updates;
 - `package.json` script updates;
-- synthetic run/Observer evidence under the clone's ignored `.homun/`.
+- synthetic run/Observer evidence under the clone's ignored `.humanish/`.
 
 The clone is removed unless `--keep` is passed. The host report remains under
-ignored `.homun/lab/oss/<run-id>/`.
+ignored `.humanish/lab/oss/<run-id>/`.
 
 ## Safety Rules
 
@@ -209,7 +209,7 @@ ignored `.homun/lab/oss/<run-id>/`.
 - No credential prompts; smoke clone calls set `GIT_TERMINAL_PROMPT=0`.
 - No commits, pushes, branches, tags, GitHub API mutation, deploys, or issue
   filing.
-- Do not write key values into committed `homun/` source.
+- Do not write key values into committed `humanish/` source.
 - Do not emit PII, PHI, raw private transcripts, private screenshots, secrets,
   keys, or private upstream artifacts.
 
@@ -224,12 +224,12 @@ desktop/mobile browser proof when the target app runs, nested Observer opening,
 and top-level lane completion from remote evidence. It does not yet prove a
 general provider-backed multi-step target-app persona runtime.
 
-The smoke harness proves first-run Homun package compatibility against
+The smoke harness proves first-run Humanish package compatibility against
 arbitrary public JavaScript repositories:
 
 - setup can patch real package.json files without committing;
-- generated `homun/` source can coexist with external repo layout;
-- ignored `.homun/` runtime proof can be generated;
+- generated `humanish/` source can coexist with external repo layout;
+- ignored `.humanish/` runtime proof can be generated;
 - the Observer can render from those disposable proofs;
 - verification passes before the clone is discarded.
 
@@ -237,6 +237,6 @@ Neither path may claim private product behavior proof without live, redacted,
 public-safe evidence.
 
 Feedback candidates are derived from this evidence when a lane records concrete
-setup-quality gaps, ceremonial/absent study quality, or actor-reported Homun
-CLI blockers. `homun feedback` uses those candidates before falling back to
+setup-quality gaps, ceremonial/absent study quality, or actor-reported Humanish
+CLI blockers. `humanish feedback` uses those candidates before falling back to
 generic dry-run follow-up drafts.

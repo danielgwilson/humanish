@@ -21,7 +21,7 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-export const OSS_LAB_SCHEMA = "homun.oss-lab-result.v1";
+export const OSS_LAB_SCHEMA = "humanish.oss-lab-result.v1";
 
 export const DEFAULT_OSS_REPOS = [
   "CorentinTh/it-tools",
@@ -48,7 +48,7 @@ export interface OssLabStep {
 export interface OssLabRepoResult {
   changedFiles: string[];
   clonePath: string;
-  homunRunId?: string;
+  humanishRunId?: string;
   observerPath?: string;
   ok: boolean;
   repo: string;
@@ -67,7 +67,7 @@ export interface OssLabResult {
   completedAt: string;
   cwd: string;
   error?: {
-    code: "HOMUN_INVALID_OSS_REPO" | "HOMUN_INVALID_OSS_LIMIT";
+    code: "HUMANISH_INVALID_OSS_REPO" | "HUMANISH_INVALID_OSS_LIMIT";
     message: string;
   };
   reportJsonPath?: string;
@@ -115,8 +115,8 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
   const cwd = path.resolve(options.cwd);
   const startedAt = new Date().toISOString();
   const runId = options.runId ?? makeRunId();
-  const reportRoot = path.join(cwd, ".homun", "lab", "oss", runId);
-  const sandboxPath = path.join(cwd, ".homun", "tmp", "oss-lab", runId);
+  const reportRoot = path.join(cwd, ".humanish", "lab", "oss", runId);
+  const sandboxPath = path.join(cwd, ".humanish", "tmp", "oss-lab", runId);
   const warnings: string[] = [];
   const repos = normalizeOssRepoSlugs(options.repos);
   const limit = options.limit ?? repos.length;
@@ -129,7 +129,7 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       completedAt: new Date().toISOString(),
       cwd,
       error: {
-        code: "HOMUN_INVALID_OSS_LIMIT",
+        code: "HUMANISH_INVALID_OSS_LIMIT",
         message: "--limit must be a positive integer."
       },
       repos: [],
@@ -150,7 +150,7 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       completedAt: new Date().toISOString(),
       cwd,
       error: {
-        code: "HOMUN_INVALID_OSS_REPO",
+        code: "HUMANISH_INVALID_OSS_REPO",
         message: `Only public GitHub owner/repo slugs are supported: ${invalid}`
       },
       repos: [],
@@ -215,7 +215,7 @@ async function runRepoTrial(args: {
   const url = `https://github.com/${args.repo}.git`;
   const steps: OssLabStep[] = [];
   const warnings: string[] = [];
-  const homunRunId = `${args.runId}-${repoSlug(args.repo)}`;
+  const humanishRunId = `${args.runId}-${repoSlug(args.repo)}`;
 
   const clone = await measureStep("clone", async () => {
     const result = await runCommand(args.cwd, "git", [
@@ -244,7 +244,7 @@ async function runRepoTrial(args: {
     };
   }
 
-  const init = await measureStep("homun init", async () => {
+  const init = await measureStep("humanish init", async () => {
     const result: InitResult = await runInit({ cwd: clonePath, yes: true });
     warnings.push(...result.warnings.map((warning) => `init: ${warning}`));
     return {
@@ -256,7 +256,7 @@ async function runRepoTrial(args: {
   });
   steps.push(init);
 
-  const readiness = await measureStep("homun doctor", async () => {
+  const readiness = await measureStep("humanish doctor", async () => {
     const result: DoctorResult = await doctor(clonePath);
     return {
       ok: result.ok,
@@ -265,11 +265,11 @@ async function runRepoTrial(args: {
   });
   steps.push(readiness);
 
-  const run = await measureStep("homun watch evidence", async () => {
+  const run = await measureStep("humanish watch evidence", async () => {
     const runResult: RunResult = await runDryRun({
       cwd: clonePath,
       dryRun: true,
-      runId: homunRunId,
+      runId: humanishRunId,
       simCount: 4
     });
     if (!runResult.ok || !runResult.runId) {
@@ -289,8 +289,8 @@ async function runRepoTrial(args: {
   });
   steps.push(run);
 
-  const verify = await measureStep("homun verify", async () => {
-    const result: VerifyResult = await verifyRun(clonePath, homunRunId);
+  const verify = await measureStep("humanish verify", async () => {
+    const result: VerifyResult = await verifyRun(clonePath, humanishRunId);
     return {
       ok: result.ok,
       summary: `${result.checks.filter((check) => check.ok).length}/${result.checks.length} checks passed`
@@ -307,8 +307,8 @@ async function runRepoTrial(args: {
   return {
     changedFiles,
     clonePath,
-    homunRunId,
-    observerPath: `.homun/runs/${homunRunId}/observer/index.html`,
+    humanishRunId,
+    observerPath: `.humanish/runs/${humanishRunId}/observer/index.html`,
     ok: steps.every((step) => step.ok),
     repo: args.repo,
     steps,

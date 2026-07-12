@@ -11,7 +11,7 @@ and the designs differ.
 
 Drive an already-running local web app through its in-process `window.*` JS
 contract (`getState`/`sendChat`/`dispatch`/`navigate`) via a custom, state-driven
-`CuaExecutor` — keeping homun's composition (personas, Observer, `ActorTrace`
+`CuaExecutor` — keeping humanish's composition (personas, Observer, `ActorTrace`
 bundle, redaction, friction loop) — **without** the clone + E2B-desktop path and
 **without** screenshot vision. The progress signal is `getState()`, not pixels.
 
@@ -37,7 +37,7 @@ for the library path.
   writeScreenshot/persona/friction composition below the session call is
   desktop-agnostic and runs unchanged.
 - **`buildProvider` is REQUIRED alongside `buildExecutor`** — boot-time
-  `HOMUN_CUA_LAB_EXECUTOR_NO_PROVIDER`, emitted in the early fail-closed block
+  `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`, emitted in the early fail-closed block
   before key-gating. (`buildProvider` alone is allowed — a model swap on the
   normal E2B route.) The default OpenAI provider is vision-based and cannot drive
   a state-only executor.
@@ -56,7 +56,7 @@ for the library path.
 - **B — `subject.source: local-app`, fail-closed/library-assisted.** A real,
   parse-validated source (loopback `appUrl`, computer-use actor only,
   `execution.target` local/absent, clone-only fields rejected) that routes to the
-  cua backend and returns `HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR` when no
+  cua backend and returns `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` when no
   `buildExecutor` hook is present — a structured error, never a desktop attempt.
   Shareable YAML; honest unsupported-combo error (acceptance #2's letter).
 - **E — docs.** `docs/architecture/state-driven-executor.md` (the `CuaExecutor`

@@ -1,5 +1,5 @@
 {
-  "schema": "homun.adapter.v1",
+  "schema": "humanish.adapter.v1",
   "id": "terminal-feedback-lifecycle",
   "name": "Terminal Feedback Lifecycle Fixture",
   "authority": {

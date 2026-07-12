@@ -1,6 +1,6 @@
 # Minimal Synthetic App Fixture
 
-This is a public-safe target app fixture for Homun CLI tests.
+This is a public-safe target app fixture for Humanish CLI tests.
 
 It intentionally contains:
 
@@ -9,5 +9,5 @@ It intentionally contains:
 - no customer or patient data;
 - no screenshots, transcripts, tokens, keys, or generated run bundles.
 
-Use this fixture to prove `homun init`, dry-run bundle generation, verify,
+Use this fixture to prove `humanish init`, dry-run bundle generation, verify,
 observer rendering, and feedback issue drafts without touching a private app.

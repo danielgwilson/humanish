@@ -46,10 +46,10 @@ actor id `scripted-browser`, dispatched by capability lane (mirror of
 `isCuaActorDescriptor`). New composition routes to a new backend: `subject.source:
 app-url` (loopback-only, mechanical) × `execution.target: local` × scripted-browser
 actor, with `scenario.ref` promoted from forward-declared to CONSUMED (names a
-`homun/scenarios/*.yaml`; no builtin fallback on the lab route — the steps ARE the
-actor). `homun run --app-url` behavior stays byte-identical.
+`humanish/scenarios/*.yaml`; no builtin fallback on the lab route — the steps ARE the
+actor). `humanish run --app-url` behavior stays byte-identical.
 
-Ratified trace-vocabulary additions to `homun.actor-trace.v1` (additive, conformance
+Ratified trace-vocabulary additions to `humanish.actor-trace.v1` (additive, conformance
 suite updated in the same PR): lane `"scripted-browser"`, protocol `"scripted-steps"`,
 completionReason `"step_failed"` (the subject failed the script's predicate — distinct
 from `actor_error`, where the harness failed to execute).
@@ -82,7 +82,7 @@ strategy; per-lane worlds is the only topology this layer.
   `execution.desktop.resolution`; hard cap **16** lanes; `subject.clone.fanout`
   REJECTED on the cua route (was inert-warned — declared behavior change);
 - `execution.concurrency` promoted to consumed on the cua route: default
-  `min(laneCount, 3)`; env `HOMUN_CUA_MAX_CONCURRENCY` may only LOWER the effective
+  `min(laneCount, 3)`; env `HUMANISH_CUA_MAX_CONCURRENCY` may only LOWER the effective
   bound (an env var must never raise concurrent paid lanes — invariant 3);
 - app-url fan-out: loopback + N lanes ALLOWED (each sandbox is its own world,
   provisioned per-lane via the widened `prepareDesktop(desktop, {laneId, laneIndex,
@@ -90,7 +90,7 @@ strategy; per-lane worlds is the only topology this layer.
 - preflight: lane table + strategy + concurrency/waves + per-lane budgets + worst-case
   sandbox-minutes printed to stderr BEFORE any sandbox or provider call; identical plan
   in dry-run marked $0; recorded as a `cua-lab.fanout.plan` bundle event;
-- per-lane xdpyinfo geometry assertion (fail-closed `HOMUN_CUA_LAB_DEVICE_GEOMETRY`)
+- per-lane xdpyinfo geometry assertion (fail-closed `HUMANISH_CUA_LAB_DEVICE_GEOMETRY`)
   — the per-lane device claim is verified in-sandbox, never assumed;
 - pipeline gate (lane 1 provisions before others start) + session fail-fast on HARNESS
   errors only (skipped lanes = status `blocked` with a pinned reason string; mission
@@ -98,9 +98,9 @@ strategy; per-lane worlds is the only topology this layer.
 - `execution.timeoutMs` becomes the PER-LANE session budget (semantics change on an
   existing field — release-notes line required); no run-level wall clock (emergent
   bound, printed in preflight);
-- evidence: run bundle stays `homun.run-bundle.v1` (N streams; verify/Observer
+- evidence: run bundle stays `humanish.run-bundle.v1` (N streams; verify/Observer
   untouched — verified N-ary already); result bumps honestly to
-  `homun.cua-lab-result.v2` with `lanes[]` ALWAYS present (length 1 at N=1; N=1
+  `humanish.cua-lab-result.v2` with `lanes[]` ALWAYS present (length 1 at N=1; N=1
   mechanism stays today's path verbatim); per-lane commits with unanimity-gated
   top-level commit + divergence warning; `mapWithConcurrency` hoists to
   `src/concurrency.ts`;
@@ -114,7 +114,7 @@ once → `Sandbox.createSnapshot` (feature-detected; absent → `FORK_UNSUPPORTE
 both remedies) → kill seed → N forks on fresh `display: ":1"` with per-lane resolution
 → readiness probe with serve-restart fallback (`worldOrigin: fork | fork-restarted`) →
 phase barrier: zero provider tokens until every world is proven up → sessions in waves
-→ teardown kills all + always deletes the snapshot (deterministic `homun-<runId>`
+→ teardown kills all + always deletes the snapshot (deterministic `humanish-<runId>`
 name; host-crash leak documented).
 
 **State × fork interaction (decided now, not when the bug ships):** `after-ready`
@@ -130,14 +130,14 @@ Layer 5: snapshot reuse across runs (`retain: true` + commit/source/env fingerpr
 the cache key). Layer 6: per-lane budgets/ledger, per-lane model, `failFast: false`.
 Layer 7: shared-world topology declaration (the `allowPublicTargets`+N>1 rejection
 message names it). `RunSimulationStatus` gains no `skipped` value this layer. No
-`HOMUN_MAX_LANES` escape above 16 until a reference panel demands it.
+`HUMANISH_MAX_LANES` escape above 16 until a reference panel demands it.
 
 ## Proof discipline (every PR)
 
 Deterministic rungs are the merge gate ($0): parse matrix incl. other-routes-warnings
 regression, real-engine dry-run bundles, live-with-fakes orchestration (call order,
 fail-fast, teardown, scrub-on-every-lane). Exactly one spend-gated live rung per slice
-(`HOMUN_LIVE_CUA=1`), run manually, asserting ENGAGEMENT (actions+messages>0, read
+(`HUMANISH_LIVE_CUA=1`), run manually, asserting ENGAGEMENT (actions+messages>0, read
 the trace — the 0.6.1 landmine rule) and, where shipped, geometry and teardown
 (zero sandboxes, zero snapshots left). Every live-proven claim cites a kept receipt
 under this packet's `receipts/`.

@@ -18,13 +18,13 @@ mkdirSync(outDir, { recursive: true });
 // real shallow clone even under --dry-run, so its backend (runOssLab) is covered directly by
 // tests/oss-lab.test.ts; a network-dependent golden would be flaky and add no faithfulness.
 const LABS = [
-  { id: "first-run", runId: "golden-first-run", extra: [], artifact: (rid) => `.homun/runs/${rid}/run.json` },
-  { id: "oss", runId: "golden-oss", extra: ["--dry-run"], artifact: (rid) => `.homun/runs/${rid}/run.json` }
+  { id: "first-run", runId: "golden-first-run", extra: [], artifact: (rid) => `.humanish/runs/${rid}/run.json` },
+  { id: "oss", runId: "golden-oss", extra: ["--dry-run"], artifact: (rid) => `.humanish/runs/${rid}/run.json` }
 ];
 
 for (const lab of LABS) {
   console.log(`[golden] capturing ${lab.id} ...`);
-  execFileSync("pnpm", ["homun", "--", "lab", "run", lab.id, ...lab.extra, "--run-id", lab.runId, "--json", "--no-open"], {
+  execFileSync("pnpm", ["humanish", "--", "lab", "run", lab.id, ...lab.extra, "--run-id", lab.runId, "--json", "--no-open"], {
     cwd: root,
     stdio: "inherit",
     env: { ...process.env, CI: "true" }

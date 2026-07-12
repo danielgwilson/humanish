@@ -76,7 +76,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-wire-capture-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-wire-capture-"));
   });
 
   afterEach(async () => {

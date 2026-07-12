@@ -1,0 +1,16 @@
+{
+  "schema": "humanish.synthetic-fixture.v1",
+  "kind": "cli-session",
+  "commands": [
+    "humanish --help",
+    "humanish doctor",
+    "humanish watch",
+    "humanish verify --run latest",
+    "humanish feedback issue --run latest --repo danielgwilson/humanish --format markdown"
+  ],
+  "notes": [
+    "Synthetic fixture only.",
+    "Do not replace with real terminal transcripts.",
+    "Do not include real credentials or upstream artifacts."
+  ]
+}

@@ -2,7 +2,7 @@
 
 ## Why
 
-Homun's thesis is "install once, configure a reusable user-study (lab) per project" — not
+Humanish's thesis is "install once, configure a reusable user-study (lab) per project" — not
 rebuild a bespoke sim per project. The lab system contradicted that: `LabKind` was a closed
 enum (`synthetic | oss-meta | oss-smoke`), each kind routed to a bespoke engine, and the OSS
 actor's task was a hardcoded mission string. Every hardcoded kind was a bespoke sim smuggled
@@ -10,7 +10,7 @@ into the framework.
 
 ## What changed (PR #1 — structural, behavior-preserving)
 
-- **`homun.lab.v2`** (`src/lab-config.ts`): a lab is a composition — `subject` × `actors[]` ×
+- **`humanish.lab.v2`** (`src/lab-config.ts`): a lab is a composition — `subject` × `actors[]` ×
   `execution` × `scenario` × `policies` × `review`. There is **no `kind`**. `actors[].type` is
   resolved against the registries at dispatch, not enumerated in the schema, so new actors
   extend the lab vocabulary by registering. **No v1 back-compat** (v1 had zero real users).
@@ -18,7 +18,7 @@ into the framework.
   to the three execution backends (synthetic dry/browser, clone smoke, clone+E2B-desktop meta).
   The backends are genuinely distinct execution substrates and stay as proven primitives; the
   closed enum + kind switch + three per-kind command functions are deleted.
-- The three built-ins are now example v2 configs (`homun/labs/*.yaml`); `homun init`
+- The three built-ins are now example v2 configs (`humanish/labs/*.yaml`); `humanish init`
   scaffolds v2.
 
 ## Proof ladder
@@ -26,7 +26,7 @@ into the framework.
 Merge gate = rungs 1–3 (deterministic, zero-spend):
 
 1. **Necessity** (`tests/lab-structural.test.ts`): `LabKind`, `isLabKind`, the
-   `switch (resolved.manifest.kind)`, the three `run*LabCommand` fns, and the `homun.lab.v1`
+   `switch (resolved.manifest.kind)`, the three `run*LabCommand` fns, and the `humanish.lab.v1`
    schema are all asserted absent from `src/`. One path, by construction.
 2. **Faithfulness** (`tests/lab-golden.test.ts` + `scripts/capture-lab-goldens.mjs`): `first-run`
    and `oss` v2 configs reproduce the pre-refactor golden bundles byte-for-byte (normalizing
@@ -42,9 +42,9 @@ Capstone (post-merge, paid): rung 4 = three real private bespoke sims re-express
 
 Distinct capabilities exercised by three real, structurally-different private bespoke sims —
 Project A (desktop computer-use), Project B (LLM-vs-LLM conversation), Project C (coding-agent
-study) — vs homun primitives:
+study) — vs humanish primitives:
 
-| Capability | homun today | Status |
+| Capability | humanish today | Status |
 |---|---|---|
 | Headless coding agent in sandbox | `codex-app-server`, `claude-agent-sdk` registry actors | covered |
 | Headed desktop computer-use actor | `computer-use.ts` + `e2b-desktop-executor.ts` engine | **MISSING: not registered as an actor (PR #2)** |
@@ -63,7 +63,7 @@ study) — vs homun primitives:
 - Thread per-actor `mission`/`laneFocus.instruction` (already in the v2 schema) into the live E2B
   bootstrap (3 in-sandbox prompt sites) — the "configurable mission" last mile.
 - **Wire the OpenAI Computer Use loop as a registered `computer-use` actor** — required for
-  homun to replace a computer-use bespoke sim. Then a live migration sim against an authorized
+  humanish to replace a computer-use bespoke sim. Then a live migration sim against an authorized
   private app (redacted label).
 - Re-introduce `app-url` as a lab subject + restore the safety policy fields (`approval`/`noPush`/
   etc.) once they are actually enforced — both removed from v2 here to avoid shipping unenforced

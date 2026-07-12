@@ -205,7 +205,7 @@ async function pasteTextViaClipboard(
     ]);
   }
 
-  const path = `/tmp/homun-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
+  const path = `/tmp/humanish-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
   try {
     await files.write(path, text, { requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS });
   } catch (writeError) {

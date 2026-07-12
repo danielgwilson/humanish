@@ -3,7 +3,7 @@
 Date: 2026-06-06 (updated 2026-06-11)
 
 Status: accepted design, partially implemented. Shipped: the evidence schema
-`homun.actor-trace.v1` (`src/actor-contract.ts`) and a registry of five
+`humanish.actor-trace.v1` (`src/actor-contract.ts`) and a registry of five
 actors (`src/actor-registry.ts`: `codex-app-server`, `pi-agent-core`,
 `claude-agent-sdk`, `openai-computer-use`, `scripted-browser`), with
 `actors[0].type` a real dispatch key on the computer-use and scripted-browser
@@ -21,13 +21,13 @@ the capture-vs-publish rule in
 > removed — the registry now holds the four actors listed in the status note.
 
 An actor is the thing that drives a persona scenario and produces evidence. Today
-Homun has exactly one real actor: the local Codex integration in
+Humanish has exactly one real actor: the local Codex integration in
 `src/codex-app-server.ts` (plus the `codex-exec` and `codex-tui` variants in
 `src/run.ts`). The actor selection is a hardcoded `if (actor === ...)` dispatch,
 `RunStream.codex` is Codex-shaped, and the evidence schema is
-`homun.codex-app-server-trace.v1`.
+`humanish.codex-app-server-trace.v1`.
 
-That is a ceiling. Homun's value is being a public-safe harness for persona and
+That is a ceiling. Humanish's value is being a public-safe harness for persona and
 agent user-studies, and the agent harnesses our users actually run are plural:
 OpenAI Codex, the pi stack (`@earendil-works/pi-agent-core`, `pi-coding-agent`,
 OpenClaw), Claude Code and the Claude Agent SDK, and computer-use models that
@@ -50,10 +50,10 @@ API surface.
    reference adapter; `pi-agent-core` is the first in-process-SDK adapter, chosen
    to prove both shapes early.
 
-2. **One normalized evidence schema: `homun.actor-trace.v1`.** Codex `item/*`
+2. **One normalized evidence schema: `humanish.actor-trace.v1`.** Codex `item/*`
    events, Claude `ToolUse`/`ToolResult` blocks, pi `tool_execution_*` events,
    and computer-use `computer_call` cycles all map onto one `ActorTrace` with a
-   typed `items[]`. `homun.codex-app-server-trace.v1` remains a back-compat
+   typed `items[]`. `humanish.codex-app-server-trace.v1` remains a back-compat
    alias during migration.
 
 3. **A run is multi-turn within one trace; it stops on goal, abandonment,
@@ -83,7 +83,7 @@ API surface.
    (field-blurred plus OCR-scrubbed before any public artifact, fail-closed)
    enforced a default at capture-time; 0.6.0 recanted it. Current policy:
    frames are retained raw and full-fidelity by default in the gitignored
-   `.homun/` tree (never emitted by a publish command; this repo's CI
+   `.humanish/` tree (never emitted by a publish command; this repo's CI
    binary-asset scan additionally blocks them from commit), and
    `policies.redactScreenshots: true` blurs at capture for share-as-is
    bundles. See the capture-vs-publish rule in
@@ -92,7 +92,7 @@ API surface.
 ## The contract
 
 ```ts
-export const ACTOR_TRACE_SCHEMA = "homun.actor-trace.v1";
+export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 
 export type ActorStatus = "passed" | "failed" | "blocked" | "timed_out";
 
@@ -228,7 +228,7 @@ browser steps with playwright against a loopback app; the steps ARE the behavior
 `byoModel: false` means there is NO model, and `tokenUsage` records zeros as an affirmative
 $0 declaration that is true by mechanism (no provider client is importable from that code
 path). Its trace keeps the concrete driver name `provider: "browser-persona"` (matching the
-native `homun.browser-persona-trace.v1` it also emits) with `protocol: "scripted-steps"`.
+native `humanish.browser-persona-trace.v1` it also emits) with `protocol: "scripted-steps"`.
 
 Completion semantics: `goal_satisfied` means the scenario's `expect` blocks — the success
 predicate — all held ("the app still affords this exact journey", nothing about user
@@ -411,7 +411,7 @@ turns as a stop signal.
   capabilities do not satisfy the scenario.
 - Screenshot PII in the computer-use lane. Redaction binds the PUBLISH
   boundary, not capture (0.6.0): raw frames stay local in gitignored
-  `.homun/` and are never emitted by a publish command (this repo's CI
+  `.humanish/` and are never emitted by a publish command (this repo's CI
   binary-asset scan additionally blocks them from commit);
   `policies.redactScreenshots: true` blurs at capture for share-as-is
   bundles. The earlier fail-closed redacted-thumbnail default was recanted —

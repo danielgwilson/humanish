@@ -1,0 +1,42 @@
+schema: humanish.lab.v2
+id: fanout-demo
+title: Multi-lane computer-use fan-out (per-lane worlds, deterministic dry-run)
+description: >
+  Four differentiated persona lanes against one loopback app, each lane its own
+  independent E2B desktop (per-lane worlds — the only fan-out topology this slice).
+  Dry-run (the default) emits ONE run bundle with four contract streams plus the
+  pre-flight spend/lane plan at $0; no desktops launch and no provider tokens are
+  spent. A live run requires OPENAI_API_KEY + E2B_API_KEY and scenario.mode: live,
+  and is bounded by execution.concurrency (max concurrent paid desktops).
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/ # loopback: each lane drives its own sandbox copy
+actors:
+  - type: openai-computer-use # REAL dispatch key: resolves in the actor registry
+    mission: Explore the app, complete the primary task for your persona, and stop when done.
+    # A differentiated roster: per-lane persona + device + starting steer. `lanes` is XOR with
+    # `count` (homogeneous) and XOR with `laneFocus`; a lane's `device` is XOR with a raw
+    # execution.desktop.resolution. Hard cap 16 lanes; ids default lane-01..lane-NN.
+    lanes:
+      - id: mobile-newcomer
+        persona: first-time-visitor
+        device: mobile
+        instruction: Sign up and reach the first value moment from a phone.
+      - id: small-mobile-skimmer
+        persona: impatient-skimmer
+        device: small-mobile
+        instruction: Skim the landing page and bounce if the value is not obvious in 10 seconds.
+      - id: desktop-power
+        persona: power-user
+        device: desktop
+        instruction: Find the advanced settings and change one preference.
+      - id: wide-researcher
+        persona: comparison-shopper
+        device: wide
+        instruction: Compare plans and locate the pricing details.
+execution:
+  target: e2b-desktop # required: each lane drives a hosted desktop browser
+  timeoutMs: 120000 # PER-LANE session budget (no run-level wall clock)
+  concurrency: 2 # max in-flight (paid) lanes; the env override may only LOWER this
+  # scenario:
+  #   mode: live # uncomment to spend: needs OPENAI_API_KEY + E2B_API_KEY

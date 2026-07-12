@@ -2,18 +2,18 @@
 
 Date: 2026-06-01
 
-Status: target layout for apps that install `homun`.
+Status: target layout for apps that install `humanish`.
 
 ## Decision
 
 Use two roots:
 
 ```text
-homun/   # committed source of simulation intent
-.homun/  # ignored runtime state, evidence, local overlays, and secrets
+humanish/   # committed source of simulation intent
+.humanish/  # ignored runtime state, evidence, local overlays, and secrets
 ```
 
-Do not gitignore all Homun state. Labs, personas, scenarios, policies,
+Do not gitignore all Humanish state. Labs, personas, scenarios, policies,
 adapters, coverage maps, and review vocabulary are the harness. They must be
 versioned, reviewed, and reproducible from a clean clone.
 
@@ -22,10 +22,10 @@ draft issue bodies before verification, local auth, local overrides, or secrets.
 
 ## Committed Source Plane
 
-`homun/` is the project-owned simulation contract:
+`humanish/` is the project-owned simulation contract:
 
 ```text
-homun/
+humanish/
   README.md
   config.ts
   personas/
@@ -51,26 +51,26 @@ homun/
     synthetic-login-state.json
 ```
 
-## Homun Format Stack
+## Humanish Format Stack
 
 Use formats based on who edits the file and how it is consumed:
 
-- `.yaml` for human-authored Homun source: personas, scenarios, policies,
+- `.yaml` for human-authored Humanish source: personas, scenarios, policies,
   labs, review vocabulary, and review milestones. Prefer `.yaml` over `.yml`
-  for Homun-owned source files.
-- `.ts` for executable project integration: `homun/config.ts`, adapters,
+  for Humanish-owned source files.
+- `.ts` for executable project integration: `humanish/config.ts`, adapters,
   route catalogs, app launch plans, and logic that benefits from imports or
   type checking.
 - `.json` for generated machine artifacts and synthetic fixtures: run bundles,
   observer data, review JSON, latest/history pointers, and fixture records.
 - `.ndjson` for appendable event or transcript streams.
 - `.yml` is acceptable for ecosystem files that conventionally use it, such as
-  `.github/workflows/*.yml`; do not use `.yml` for Homun-owned authored
+  `.github/workflows/*.yml`; do not use `.yml` for Humanish-owned authored
   source.
 
 Do not convert personas or scenarios to JSON because parser implementation is
 easier. Keep authored simulation intent readable, then validate it through
-schemas and CLI checks. TOML is not part of the current Homun stack; add it
+schemas and CLI checks. TOML is not part of the current Humanish stack; add it
 only if a concrete scalar global-config need appears that is better served by
 TOML than YAML, TypeScript, or JSON.
 
@@ -87,10 +87,10 @@ visible in PR review.
 
 ## Ignored Runtime Plane
 
-`.homun/` is local/generated state:
+`.humanish/` is local/generated state:
 
 ```text
-.homun/
+.humanish/
   runs/
     <run-id>/
       run.json
@@ -115,7 +115,7 @@ visible in PR review.
 Default `.gitignore` entry:
 
 ```gitignore
-.homun/
+.humanish/
 .env*
 ```
 
@@ -126,15 +126,15 @@ If a target repo already uses `.env.example`, preserve its existing exception.
 When a team needs private local personas or credentials, use ignored overlays:
 
 ```text
-.homun/local/personas/*.yaml
-.homun/local/policies/*.yaml
-.homun/local/labs/*.yaml
-.homun/labs/*.yaml
-.homun/secrets/*
+.humanish/local/personas/*.yaml
+.humanish/local/policies/*.yaml
+.humanish/local/labs/*.yaml
+.humanish/labs/*.yaml
+.humanish/secrets/*
 ```
 
-Committed `homun/labs/*.yaml` should be useful to anyone with a clean clone.
-Ignored `.homun/labs/*.yaml` and `.homun/local/labs/*.yaml` are for
+Committed `humanish/labs/*.yaml` should be useful to anyone with a clean clone.
+Ignored `.humanish/labs/*.yaml` and `.humanish/local/labs/*.yaml` are for
 machine-specific or private dogfood labs. The CLI should warn that local
 overlays cannot be used for reproducible CI or public issue drafts unless
 redacted into committed synthetic equivalents.
@@ -144,8 +144,8 @@ redacted into committed synthetic equivalents.
 CI should reproduce proof from committed inputs:
 
 - app commit;
-- `homun` version;
-- `homun/config.ts`;
+- `humanish` version;
+- `humanish/config.ts`;
 - scenario and persona catalog;
 - lab manifest;
 - policy files;
@@ -154,13 +154,13 @@ CI should reproduce proof from committed inputs:
 
 CI should store generated run bundles as artifacts, not commit them.
 
-## Why Not `.homun/` For Everything?
+## Why Not `.humanish/` For Everything?
 
-A fully ignored `.homun/` makes setup feel tidy, but it hides the product
+A fully ignored `.humanish/` makes setup feel tidy, but it hides the product
 contract. Future agents and contributors cannot see what the harness is meant
 to prove, CI cannot validate it from a clean clone, and PR review cannot catch
 weakened personas or dropped hard paths.
 
 A partially tracked dotdir is possible but worse UX. Dotdirs read as local,
 editors hide them, and negated gitignore rules are easy to break. A visible
-`homun/` source root plus ignored `.homun/` runtime root is clearer.
+`humanish/` source root plus ignored `.humanish/` runtime root is clearer.

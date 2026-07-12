@@ -61,7 +61,7 @@ const FANOUT_ADAPTER_NAMESPACE = "fanout-browser-adapter-proof";
 
 function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
   return {
-    schema: "homun.adapter-score.v1",
+    schema: "humanish.adapter-score.v1",
     namespace: FANOUT_ADAPTER_NAMESPACE,
     status: "fail",
     score: 15,
@@ -214,7 +214,7 @@ function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["act
 
 describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-fanout-dry-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-dry-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("a 4-lane roster yields ONE bundle, simCount 4, per-lane persona/device/viewport, a plan event, contract statuses; verifyRun ok", async () => {
@@ -236,8 +236,8 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(planSeen[0]?.concurrency).toBe(2);
     expect(planSeen[0]?.waves).toBe(2);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("homun.run-bundle.v1");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.schema).toBe("humanish.run-bundle.v1");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(4);
     expect(bundle.streams).toHaveLength(4);
@@ -266,10 +266,10 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     const planDefault = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } });
     expect(planDefault.concurrency).toBe(3);
     // Env override LOWERS to 2.
-    const planLowered = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } }, { env: { HOMUN_CUA_MAX_CONCURRENCY: "2" } });
+    const planLowered = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } }, { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } });
     expect(planLowered.concurrency).toBe(2);
     // Env override may NOT raise above the config/default (clamped to laneCount + the base).
-    const planRaiseAttempt = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop", concurrency: 2 } }, { env: { HOMUN_CUA_MAX_CONCURRENCY: "9" } });
+    const planRaiseAttempt = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop", concurrency: 2 } }, { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } });
     expect(planRaiseAttempt.concurrency).toBe(2);
   });
 
@@ -310,10 +310,10 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       }
     ];
     const source: RunBundle["source"] = {
-      packageName: "homun",
-      homunSource: "present",
+      packageName: "humanish",
+      humanishSource: "present",
       git: {
-        schema: "homun.git-state.v1",
+        schema: "humanish.git-state.v1",
         status: "clean",
         capturedAt: "2026-01-01T00:00:00.000Z",
         head: { shortSha: "abc1234", refState: "attached" },
@@ -355,7 +355,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
 
 describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-fanout-live-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-live-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   function passingHooks(handle: FanoutModuleHandle, extra?: Partial<CuaActorLabHooks> & { active?: { count: number; max: number } }): CuaActorLabHooks {
@@ -388,7 +388,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ]
     });
     const runId = "cua-fanout-live-observer";
-    const runRoot = path.join(cwd, ".homun", "runs", runId);
+    const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
     let resolveActorsStarted: () => void = () => {};
     const actorsStarted = new Promise<void>((resolve) => { resolveActorsStarted = resolve; });
@@ -487,7 +487,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       "acme-desktop-with-runtimes",
       "acme-desktop-with-runtimes"
     ]);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
   });
 
@@ -498,7 +498,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     if (outcome.backend !== "cua") return;
     expect(handle.created).toHaveLength(4);
     expect(handle.templates).toEqual([undefined, undefined, undefined, undefined]);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.desktopTemplate).toBeUndefined();
   });
 
@@ -539,7 +539,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(verified.ok).toBe(true);
 
     // Per-lane evidence on disk: one screenshots/<laneId>/ dir + one actors/<streamId>.json each.
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams).toHaveLength(4);
     for (const laneId of ["mobile-newcomer", "small-skimmer", "desktop-power", "wide-researcher"]) {
@@ -572,7 +572,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(sourceOutcome.result.laneSummary?.passed).toBe(3);
     expect(sourceOutcome.result.laneSummary?.harnessErrors).toBe(1);
 
-    const sourceBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", sourceOutcome.result.runId, "run.json"), "utf8")) as RunBundle;
+    const sourceBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"), "utf8")) as RunBundle;
     expect(sourceBundle.review.verdict).toBe("fail");
     expect(sourceBundle.streams.find((stream) => stream.laneId === "desktop-power")?.status).toBe("failed");
 
@@ -595,19 +595,19 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(rerunHandle.created).toHaveLength(1);
     expect(rerunHandle.created[0]?.metadata?.laneId).toBe("desktop-power");
 
-    const rerunBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "fanout-rerun-proof", "run.json"), "utf8")) as RunBundle;
+    const rerunBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"), "utf8")) as RunBundle;
     expect(rerunBundle.rerun).toEqual(rerunOutcome.result.rerun);
     expect(rerunBundle.events.some((event) => event.type === "cua-lab.fanout.rerun")).toBe(true);
     expect(rerunBundle.review.summary).toContain(`Rerun from ${sourceOutcome.result.runId}`);
 
-    const sourceAfterRerun = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", sourceOutcome.result.runId, "run.json"), "utf8")) as RunBundle;
+    const sourceAfterRerun = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"), "utf8")) as RunBundle;
     expect(sourceAfterRerun.review.verdict).toBe("fail");
 
     const verified = await verifyRun(cwd, "fanout-rerun-proof");
     expect(verified.ok).toBe(true);
 
     await writeFile(
-      path.join(cwd, ".homun", "runs", "fanout-rerun-proof", "run.json"),
+      path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
       `${JSON.stringify({ ...rerunBundle, rerun: { ...rerunBundle.rerun!, previous: [] } }, null, 2)}\n`,
       "utf8"
     );
@@ -616,7 +616,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(weakLineage.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
 
     await writeFile(
-      path.join(cwd, ".homun", "runs", "fanout-rerun-proof", "run.json"),
+      path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
       `${JSON.stringify({ ...rerunBundle, events: rerunBundle.events.filter((event) => event.type !== "cua-lab.fanout.rerun") }, null, 2)}\n`,
       "utf8"
     );
@@ -627,7 +627,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(rerunCheck?.message).toContain("missing cua-lab.fanout.rerun event");
 
     await writeFile(
-      path.join(cwd, ".homun", "runs", "fanout-rerun-proof", "run.json"),
+      path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
       `${JSON.stringify({ ...rerunBundle, rerun: { ...rerunBundle.rerun!, selectedLaneIds: ["desktop-power", "ghost-lane"] } }, null, 2)}\n`,
       "utf8"
     );
@@ -682,7 +682,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       expect.stringMatching(/^[a-f0-9]{16}$/)
     ]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.streams.map((stream: { ui: { route: string } }) => stream.ui.route)).toEqual([
       "http://127.0.0.1:3001/role-a",
       "http://127.0.0.1:3002/role-b"
@@ -722,7 +722,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(outcome.result.ok).toBe(true);
     expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a?scenario=alpha"]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.streams).toHaveLength(1);
     expect(bundle.streams[0]).toMatchObject({
       laneId: "role-a",
@@ -750,7 +750,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(FANOUT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.laneCount).toBe(4);
@@ -817,7 +817,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     // Every created sandbox was torn down by id (no leak, no enumerate).
     expect([...handle.killed].sort()).toEqual([...handle.createdIds].sort());
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     // A fail-fast event is recorded.
     expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.fail-fast")).toBe(true);
@@ -872,7 +872,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_DEVICE_GEOMETRY");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
     // The sandbox was still torn down by id (fail-closed never leaks).
     expect(handle.killed).toEqual(handle.createdIds);
   });
@@ -898,7 +898,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain(secret);
@@ -916,7 +916,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
 describe("cua fan-out — engine fail-closed guards", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-fanout-guard-")); });
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-guard-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
   it("rejects multi-lane fan-out on the in-process route (buildExecutor) — single lane only", async () => {
@@ -932,7 +932,7 @@ describe("cua fan-out — engine fail-closed guards", () => {
       }
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
     // Nothing was provisioned.
     expect(handle.created).toHaveLength(0);
   });
@@ -942,6 +942,6 @@ describe("cua fan-out — engine fail-closed guards", () => {
     const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as LabConfig;
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
   });
 });

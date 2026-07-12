@@ -6,7 +6,7 @@ import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
 import { createProgram, followObserver, resolveBackendShouldOpen, writeResult } from "../src/program.js";
-import * as homunIndex from "../src/index.js";
+import * as humanishIndex from "../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
 // treat "no getuid" the same as "not root" (permission fault injection still works).
@@ -35,7 +35,7 @@ async function runCli(args: string[]): Promise<CliResult> {
   program.exitOverride();
 
   try {
-    await program.parseAsync(["node", "homun", ...args], { from: "node" });
+    await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
     if (
       error instanceof CommanderError &&
@@ -62,7 +62,7 @@ async function withTempApp<T>(
   files: Record<string, string>,
   callback: (cwd: string) => Promise<T>
 ): Promise<T> {
-  const cwd = await mkdtemp(path.join(os.tmpdir(), "homun-init-test-"));
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-init-test-"));
 
   try {
     for (const [relativePath, contents] of Object.entries(files)) {
@@ -81,7 +81,7 @@ async function readJson(filePath: string): Promise<unknown> {
   return JSON.parse(await readFile(filePath, "utf8")) as unknown;
 }
 
-describe("homun CLI scaffold", () => {
+describe("humanish CLI scaffold", () => {
   it("cleans up attached Observer watches on package-manager style termination signals", async () => {
     let exitCode = 0;
     const stdout: string[] = [];
@@ -99,10 +99,10 @@ describe("homun CLI scaffold", () => {
         }
       },
       {
-        schema: "homun.observer-result.v1",
+        schema: "humanish.observer-result.v1",
         ok: true,
-        cwd: "/tmp/homun",
-        observerPath: ".homun/runs/run/observer/index.html",
+        cwd: "/tmp/humanish",
+        observerPath: ".humanish/runs/run/observer/index.html",
         run: "run",
         warnings: []
       },
@@ -139,7 +139,7 @@ describe("homun CLI scaffold", () => {
     const result = await runCli(["--help"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Usage: homun [options] [command]");
+    expect(result.stdout).toContain("Usage: humanish [options] [command]");
     expect(result.stdout).toContain("init");
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("feedback");
@@ -152,17 +152,17 @@ describe("homun CLI scaffold", () => {
     // to wrap every long-description command onto two lines.
     const program = createProgram();
     const expectedSummaries: Record<string, string> = {
-      init: "Set up homun/ source and .homun/ runtime state.",
+      init: "Set up humanish/ source and .humanish/ runtime state.",
       doctor: "Explain project readiness and missing setup.",
       run: "Run a persona/scenario simulation or dry-run bundle.",
       verify: "Validate a run bundle and public-safety gates.",
       cleanup: "Clean run-owned provider resources by exact id.",
       review: "Build a review packet from verified run evidence.",
-      runs: "List local Homun runs and latest pointers.",
+      runs: "List local Humanish runs and latest pointers.",
       watch: "Run sims, open the observer, keep the shell attached.",
       observe: "Serve a finished run's Observer over loopback http.",
-      codex: "Run Codex-native Homun integration surfaces.",
-      lab: "List, inspect, and run Homun lab manifests.",
+      codex: "Run Codex-native Humanish integration surfaces.",
+      lab: "List, inspect, and run Humanish lab manifests.",
       feedback: "Create public-safe feedback drafts, no GitHub API."
     };
 
@@ -178,7 +178,7 @@ describe("homun CLI scaffold", () => {
     const result = await runCli(["--help"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Set up homun/ source and .homun/ runtime state.");
+    expect(result.stdout).toContain("Set up humanish/ source and .humanish/ runtime state.");
     expect(result.stdout).toContain("Clean run-owned provider resources by exact id.");
     expect(result.stdout).toContain("Serve a finished run's Observer over loopback http.");
     expect(result.stdout).toContain("Create public-safe feedback drafts, no GitHub API.");
@@ -210,12 +210,12 @@ describe("homun CLI scaffold", () => {
         changes: Array<{ action: string; path: string }>;
       };
 
-      expect(envelope.schema).toBe("homun.init-result.v1");
+      expect(envelope.schema).toBe("humanish.init-result.v1");
       expect(envelope.ok).toBe(true);
       expect(envelope.mode).toBe("dry-run");
-      expect(envelope.changes.some((change) => change.path === "homun/config.ts")).toBe(true);
+      expect(envelope.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
 
-      await expect(stat(path.join(cwd, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
       const packageJson = await readJson(path.join(cwd, "package.json")) as {
         scripts: Record<string, string>;
       };
@@ -239,15 +239,15 @@ describe("homun CLI scaffold", () => {
       };
       expect(envelope.ok).toBe(true);
       expect(envelope.mode).toBe("applied");
-      expect(envelope.changes.some((change) => change.path === ".homun/runs" && change.action === "mkdir")).toBe(true);
+      expect(envelope.changes.some((change) => change.path === ".humanish/runs" && change.action === "mkdir")).toBe(true);
 
-      await expect(stat(path.join(cwd, "homun/personas/synthetic-new-user.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, "homun/labs/first-run.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, ".homun/runs"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, ".homun/local/labs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, "humanish/personas/synthetic-new-user.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, "humanish/labs/first-run.yaml"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".humanish/runs"))).resolves.toBeTruthy();
+      await expect(stat(path.join(cwd, ".humanish/local/labs"))).resolves.toBeTruthy();
 
       const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
-      expect(gitignore).toContain(".homun/");
+      expect(gitignore).toContain(".humanish/");
       expect(gitignore).toContain(".env*");
       expect(gitignore).toContain("!.env.example");
       expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(gitignore.lastIndexOf(".env*"));
@@ -256,10 +256,10 @@ describe("homun CLI scaffold", () => {
         scripts: Record<string, string>;
       };
       expect(packageJson.scripts.dev).toBe("vite");
-      expect(packageJson.scripts.homun).toBe("homun");
-      expect(packageJson.scripts["homun:watch"]).toBe("homun watch");
-      expect(packageJson.scripts["homun:watch:ci"]).toBe("homun watch --json --no-open");
-      expect(packageJson.scripts["homun:verify"]).toBe("homun verify");
+      expect(packageJson.scripts.humanish).toBe("humanish");
+      expect(packageJson.scripts["humanish:watch"]).toBe("humanish watch");
+      expect(packageJson.scripts["humanish:watch:ci"]).toBe("humanish watch --json --no-open");
+      expect(packageJson.scripts["humanish:verify"]).toBe("humanish verify");
     });
   });
 
@@ -272,14 +272,14 @@ describe("homun CLI scaffold", () => {
       const envelope = JSON.parse(result.stdout) as { mode: string };
       expect(result.exitCode).toBe(0);
       expect(envelope.mode).toBe("dry-run");
-      await expect(stat(path.join(cwd, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 
   it("does not overwrite existing starter files or conflicting scripts", async () => {
     await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app", scripts: { homun: "custom command" } }, null, 2),
-      "homun/README.md": "# Existing harness\n"
+      "package.json": JSON.stringify({ name: "fixture-app", scripts: { humanish: "custom command" } }, null, 2),
+      "humanish/README.md": "# Existing harness\n"
     }, async (cwd) => {
       const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
 
@@ -292,30 +292,30 @@ describe("homun CLI scaffold", () => {
       expect(envelope.ok).toBe(true);
       expect(envelope.changes).toContainEqual(expect.objectContaining({
         action: "skip",
-        path: "homun/README.md"
+        path: "humanish/README.md"
       }));
       expect(envelope.changes).toContainEqual(expect.objectContaining({
         action: "update",
         path: "package.json",
         reason: expect.stringContaining("add scripts")
       }));
-      expect(envelope.warnings.join("\n")).toContain("Skipped existing homun/README.md");
+      expect(envelope.warnings.join("\n")).toContain("Skipped existing humanish/README.md");
       expect(envelope.warnings.join("\n")).toContain("Preserved existing script values");
-      expect(await readFile(path.join(cwd, "homun/README.md"), "utf8")).toBe("# Existing harness\n");
+      expect(await readFile(path.join(cwd, "humanish/README.md"), "utf8")).toBe("# Existing harness\n");
       const packageJson = await readJson(path.join(cwd, "package.json")) as {
         scripts: Record<string, string>;
       };
-      expect(packageJson.scripts.homun).toBe("custom command");
-      expect(packageJson.scripts["homun:run"]).toBe("homun run --dry-run");
-      expect(packageJson.scripts["homun:watch"]).toBe("homun watch");
+      expect(packageJson.scripts.humanish).toBe("custom command");
+      expect(packageJson.scripts["humanish:run"]).toBe("humanish run --dry-run");
+      expect(packageJson.scripts["humanish:watch"]).toBe("humanish watch");
     });
   });
 
   it("lists and inspects lab manifests from the CLI", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "homun/labs/first-run.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/first-run.yaml": [
+        "schema: humanish.lab.v2",
         "id: first-run",
         "title: First run",
         "subject:",
@@ -329,7 +329,7 @@ describe("homun CLI scaffold", () => {
       const inspect = await runCli(["lab", "inspect", "first-run", "--cwd", cwd, "--json"]);
 
       expect(list.exitCode).toBe(0);
-      expect(list.stdout).toContain("homun labs");
+      expect(list.stdout).toContain("humanish labs");
       expect(list.stdout).toContain("first-run this-repo committed");
 
       const envelope = JSON.parse(inspect.stdout) as {
@@ -349,8 +349,8 @@ describe("homun CLI scaffold", () => {
   it("runs a synthetic lab manifest through run and watch", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "homun/labs/first-run.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/first-run.yaml": [
+        "schema: humanish.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -413,8 +413,8 @@ describe("homun CLI scaffold", () => {
     try {
       await withTempApp({
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-        "homun/labs/first-run.yaml": [
-          "schema: homun.lab.v2",
+        "humanish/labs/first-run.yaml": [
+          "schema: humanish.lab.v2",
           "id: first-run",
           "subject:",
           "  source: this-repo",
@@ -456,8 +456,8 @@ describe("homun CLI scaffold", () => {
   it("fails closed when rerun flags are used on a non-CUA lab", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "homun/labs/first-run.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/first-run.yaml": [
+        "schema: humanish.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -484,7 +484,7 @@ describe("homun CLI scaffold", () => {
       };
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HOMUN_UNSUPPORTED_RERUN_FLAGS");
+      expect(envelope.error.code).toBe("HUMANISH_UNSUPPORTED_RERUN_FLAGS");
       expect(envelope.error.message).toContain("CUA fan-out");
       expect(envelope.error.message).toContain("synthetic");
     });
@@ -493,8 +493,8 @@ describe("homun CLI scaffold", () => {
   it("fails closed when direct run-only options are mixed with lab manifests", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "homun/labs/first-run.yaml": [
-        "schema: homun.lab.v2",
+      "humanish/labs/first-run.yaml": [
+        "schema: humanish.lab.v2",
         "id: first-run",
         "subject:",
         "  source: this-repo",
@@ -518,13 +518,13 @@ describe("homun CLI scaffold", () => {
       };
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HOMUN_APP_URL_OPTION_CONFLICT");
+      expect(envelope.error.code).toBe("HUMANISH_APP_URL_OPTION_CONFLICT");
       expect(envelope.error.message).toContain("lab-compatible options");
     });
   });
 
   it("fails closed for invalid target cwd and invalid package.json", async () => {
-    const missingRoot = await mkdtemp(path.join(os.tmpdir(), "homun-missing-root-"));
+    const missingRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-missing-root-"));
     const missing = path.join(missingRoot, "missing");
     await rm(missingRoot, { force: true, recursive: true });
     const missingResult = await runCli(["init", "--dry-run", "--json", "--cwd", missing]);
@@ -535,7 +535,7 @@ describe("homun CLI scaffold", () => {
 
     expect(missingResult.exitCode).toBe(2);
     expect(missingEnvelope.ok).toBe(false);
-    expect(missingEnvelope.error.code).toBe("HOMUN_INVALID_CWD");
+    expect(missingEnvelope.error.code).toBe("HUMANISH_INVALID_CWD");
 
     await withTempApp({
       "package.json": "{ nope"
@@ -548,8 +548,8 @@ describe("homun CLI scaffold", () => {
 
       expect(result.exitCode).toBe(2);
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HOMUN_INVALID_PACKAGE_JSON");
-      await expect(stat(path.join(cwd, "homun"))).rejects.toMatchObject({ code: "ENOENT" });
+      expect(envelope.error.code).toBe("HUMANISH_INVALID_PACKAGE_JSON");
+      await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 
@@ -578,9 +578,9 @@ describe("homun CLI scaffold", () => {
       };
 
       expect(result.exitCode).toBe(2);
-      expect(envelope.schema).toBe("homun.feedback-result.v1");
+      expect(envelope.schema).toBe("humanish.feedback-result.v1");
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HOMUN_RUN_NOT_FOUND");
+      expect(envelope.error.code).toBe("HUMANISH_RUN_NOT_FOUND");
     });
   });
 
@@ -591,18 +591,18 @@ describe("homun CLI scaffold", () => {
       const result = await runCli(["feedback", "draft", "--run", "latest", "--cwd", cwd]);
 
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HOMUN_RUN_NOT_FOUND");
+      expect(result.stdout).toContain("HUMANISH_RUN_NOT_FOUND");
       expect(result.stderr).toBe("");
     });
   });
 
-  it("catches an unexpected fs error at the command boundary and emits a single HOMUN_UNEXPECTED envelope (issue #262 repro A)", async () => {
+  it("catches an unexpected fs error at the command boundary and emits a single HUMANISH_UNEXPECTED envelope (issue #262 repro A)", async () => {
     await withTempApp({}, async (cwd) => {
-      // .homun/runs as a FILE (not a directory) makes the unguarded mkdir inside
+      // .humanish/runs as a FILE (not a directory) makes the unguarded mkdir inside
       // runDryRun reject with ENOTDIR. Before the command-boundary catch-all this
       // crashed raw to stderr with a Node stack trace and zero stdout.
-      await mkdir(path.join(cwd, ".homun"), { recursive: true });
-      await writeFile(path.join(cwd, ".homun", "runs"), "", "utf8");
+      await mkdir(path.join(cwd, ".humanish"), { recursive: true });
+      await writeFile(path.join(cwd, ".humanish", "runs"), "", "utf8");
 
       const result = await runCli(["run", "--dry-run", "--cwd", cwd, "--json"]);
 
@@ -613,24 +613,24 @@ describe("homun CLI scaffold", () => {
         error: { code: string; message: string };
       };
       expect(result.exitCode).toBe(2);
-      expect(envelope.schema).toBe("homun.cli-response.v1");
+      expect(envelope.schema).toBe("humanish.cli-response.v1");
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HOMUN_UNEXPECTED");
+      expect(envelope.error.code).toBe("HUMANISH_UNEXPECTED");
       expect(envelope.error.message).toContain("ENOTDIR");
       expect(envelope.error.message).not.toContain(cwd);
     });
   });
 
-  it("emits a concise HOMUN_UNEXPECTED stderr line (not a raw stack trace) without --json", async () => {
+  it("emits a concise HUMANISH_UNEXPECTED stderr line (not a raw stack trace) without --json", async () => {
     await withTempApp({}, async (cwd) => {
-      await mkdir(path.join(cwd, ".homun"), { recursive: true });
-      await writeFile(path.join(cwd, ".homun", "runs"), "", "utf8");
+      await mkdir(path.join(cwd, ".humanish"), { recursive: true });
+      await writeFile(path.join(cwd, ".humanish", "runs"), "", "utf8");
 
       const result = await runCli(["run", "--dry-run", "--cwd", cwd]);
 
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toBe("");
-      expect(result.stderr).toContain("HOMUN_UNEXPECTED:");
+      expect(result.stderr).toContain("HUMANISH_UNEXPECTED:");
       expect(result.stderr).toContain("ENOTDIR");
       expect(result.stderr).not.toContain("at async");
     });
@@ -640,11 +640,11 @@ describe("homun CLI scaffold", () => {
     // Repro: `codex app-server --keep-open --json` calls writeResult to flush a
     // success envelope, then awaits further work that can still reject
     // (controller.completion; see codex-app-server-ui.ts's persistState()).
-    // Before this guard, the catch-all appended a second homun.cli-response.v1
+    // Before this guard, the catch-all appended a second humanish.cli-response.v1
     // document to the same stdout stream and JSON.parse(stdout) broke for every
     // --json consumer. This reproduces that shape directly at the command
     // boundary: a scratch-only subcommand registered on a real createProgram()
-    // instance (inheriting the HomunCommand seam via createCommand, exactly
+    // instance (inheriting the HumanishCommand seam via createCommand, exactly
     // like every real leaf command) writes a success envelope through the same
     // writeResult funnel every command uses, then throws synchronously.
     let exitCode = 0;
@@ -663,23 +663,23 @@ describe("homun CLI scaffold", () => {
       .command("__test-scratch-envelope-then-throw")
       .option("--json")
       .action((_options: unknown, command) => {
-        writeResult(command, io, { schema: "homun.test-scratch-result.v1", ok: true }, () => "ok\n");
+        writeResult(command, io, { schema: "humanish.test-scratch-result.v1", ok: true }, () => "ok\n");
         throw new Error("scratch failure after a successful write");
       });
 
     program.exitOverride();
-    await program.parseAsync(["node", "homun", "__test-scratch-envelope-then-throw", "--json"], { from: "node" });
+    await program.parseAsync(["node", "humanish", "__test-scratch-envelope-then-throw", "--json"], { from: "node" });
 
     const stdoutText = stdout.join("");
     // The real-world failure mode this guards against: JSON.parse(stdout)
     // throwing because a second document got appended. Parsing must succeed
-    // and yield exactly the success envelope, not the HOMUN_UNEXPECTED one.
+    // and yield exactly the success envelope, not the HUMANISH_UNEXPECTED one.
     const envelope = JSON.parse(stdoutText) as { schema: string; ok: boolean };
-    expect(envelope).toEqual({ schema: "homun.test-scratch-result.v1", ok: true });
+    expect(envelope).toEqual({ schema: "humanish.test-scratch-result.v1", ok: true });
     // Exactly one write reached stdout: the success envelope. The catch-all did
     // not additionally write there.
     expect(stdout).toHaveLength(1);
-    expect(stderr.join("")).toContain("HOMUN_UNEXPECTED:");
+    expect(stderr.join("")).toContain("HUMANISH_UNEXPECTED:");
     expect(stderr.join("")).toContain("scratch failure after a successful write");
     expect(exitCode).toBe(2);
   });
@@ -688,7 +688,7 @@ describe("homun CLI scaffold", () => {
     "discriminates a real runs I/O failure from an empty runs directory (issue #262 repro B)",
     async () => {
       await withTempApp({}, async (cwd) => {
-        const runsRoot = path.join(cwd, ".homun", "runs");
+        const runsRoot = path.join(cwd, ".humanish", "runs");
         await mkdir(runsRoot, { recursive: true });
         await chmod(runsRoot, 0o000);
 
@@ -704,11 +704,11 @@ describe("homun CLI scaffold", () => {
             error: { code: string; message: string };
           };
           expect(result.exitCode).toBe(2);
-          expect(envelope.schema).toBe("homun.runs-result.v1");
+          expect(envelope.schema).toBe("humanish.runs-result.v1");
           expect(envelope.ok).toBe(false);
           expect(envelope.runs).toEqual([]);
           expect(envelope.latest).toBeNull();
-          expect(envelope.error.code).toBe("HOMUN_RUNS_UNAVAILABLE");
+          expect(envelope.error.code).toBe("HUMANISH_RUNS_UNAVAILABLE");
           expect(envelope.error.message).not.toContain(cwd);
         } finally {
           await chmod(runsRoot, 0o755);
@@ -717,7 +717,7 @@ describe("homun CLI scaffold", () => {
     }
   );
 
-  it("reports ok:true with an empty list for a fresh cwd with no .homun/runs yet (not an error)", async () => {
+  it("reports ok:true with an empty list for a fresh cwd with no .humanish/runs yet (not an error)", async () => {
     await withTempApp({}, async (cwd) => {
       const result = await runCli(["runs", "--cwd", cwd, "--json"]);
 
@@ -740,10 +740,10 @@ describe("homun CLI scaffold", () => {
   });
 
   it("no longer exports the dead planned-command scaffold from the public package entrypoint", () => {
-    expect(Object.prototype.hasOwnProperty.call(homunIndex, "plannedCommands")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(humanishIndex, "plannedCommands")).toBe(false);
     // The catch-all envelope helper stays: the schema string is still live.
-    expect(homunIndex.CLI_RESPONSE_SCHEMA).toBe("homun.cli-response.v1");
-    expect(typeof homunIndex.createProgram).toBe("function");
+    expect(humanishIndex.CLI_RESPONSE_SCHEMA).toBe("humanish.cli-response.v1");
+    expect(typeof humanishIndex.createProgram).toBe("function");
   });
 });
 

@@ -38,6 +38,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:check
+        env:
+          HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}
 
   secret-scan:
     runs-on: ubuntu-latest

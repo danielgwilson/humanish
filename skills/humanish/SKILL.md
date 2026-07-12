@@ -1,0 +1,244 @@
+---
+name: humanish
+description: Install and configure Humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
+---
+
+# Humanish CLI
+
+Use this skill to add Humanish to a target app without relying on chat memory or
+private artifacts. Keep every example synthetic and public-safe.
+
+## Hard Boundary
+
+Never read, copy, commit, summarize, or generate PII, PHI, secrets, keys,
+tokens, raw private transcripts, private screenshots, raw customer data, raw
+patient data, or private upstream artifacts.
+
+Do not edit `.env` or secret files. Do not paste credential values. Use env var
+names only, usually `OPENAI_API_KEY` and `E2B_API_KEY`. For live local runs,
+prefer an explicit ignored env file passed with `--env-file <path>`; do not
+assume broad inherited job env is safe. Stop before live provider spend,
+hosted execution, deploys, public tunnels, or GitHub mutation unless the user
+explicitly approves that exact action.
+
+## Setup Workflow
+
+1. Inspect public target-repo files only: `package.json`, docs, route/app
+   structure, test scripts, and `.gitignore`.
+2. Install Humanish with the repo's package manager:
+
+   ```bash
+   npm i -D humanish
+   ```
+
+   The package is `humanish`; the installed binary is `humanish`. After
+   installation, `npx humanish ...` resolves the local project binary. For a
+   one-shot command before installation, use
+   `npx --package humanish humanish ...` to guarantee the binary comes from
+   the `humanish` registry package rather than a same-named command already
+   on the PATH.
+
+3. Preview setup:
+
+   ```bash
+   npx humanish init --dry-run --json
+   ```
+
+4. Apply setup after the planned changes are understood:
+
+   ```bash
+   npx humanish init --yes --json
+   ```
+
+5. Confirm the layout:
+   - commit `humanish/` source files;
+   - ignore `.humanish/` runtime artifacts;
+   - keep committed labs under `humanish/labs/*.yaml`;
+   - keep private/local labs under ignored `.humanish/labs/*.yaml` or
+     `.humanish/local/labs/*.yaml`;
+   - keep `.env.example` commit-safe and value-free;
+   - never commit generated run bundles.
+
+## Format Stack
+
+When creating or editing Humanish files:
+
+- use `.yaml` for human-authored Humanish source: personas, scenarios,
+  policies, labs, review vocabulary, and milestones;
+- use `.ts` for executable integration: `humanish/config.ts`, adapters, route
+  catalogs, and app launch logic;
+- use `.json` or `.ndjson` for generated machine artifacts, Observer data, run
+  bundles, event streams, and synthetic fixtures.
+
+Do not create `.yml` files under `humanish/`; `.yml` is for outside ecosystem
+conventions such as GitHub Actions workflows. Do not introduce TOML unless the
+target project has a concrete scalar global-config need that YAML, TypeScript,
+or JSON does not serve.
+
+## Authoring Personas And Scenarios
+
+Create or edit only synthetic files under `humanish/`.
+
+Personas should describe motivations, accessibility needs, experience level,
+device assumptions, and risk tolerance. Avoid names, emails, addresses,
+accounts, screenshots, logs, tickets, transcripts, analytics rows, or anything
+copied from a real user.
+
+Scenarios should define the target app surface, start URL, task intent,
+success signals, and failure signals. Keep app-specific truth in the target
+repo's `humanish/` files, not in the package or this skill.
+
+When the app can run locally, make at least one scenario executable with a
+`browser.steps` manifest so `humanish run --app-url` can drive the app instead
+of falling back to the generic two-step proof:
+
+```yaml
+schema: humanish.scenario.v1
+id: product-core-flow
+title: Product core flow
+persona: synthetic-new-user
+goal: Reach and verify the first meaningful app state with synthetic data.
+mode: browser
+browser:
+  startPath: /
+  steps:
+    - id: open-home
+      label: Open the app
+      action: goto
+      path: /
+      expect:
+        text: "Get started"
+    - id: enter-synthetic-input
+      label: Enter synthetic fixture input
+      action: fill
+      selector: "input[name='query']"
+      value: "synthetic fixture"
+    - id: submit-primary-action
+      label: Submit the primary action
+      action: click
+      selector: "button[type='submit']"
+      expect:
+        stateChanged: true
+```
+
+Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
+and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
+`urlIncludes`, and `stateChanged`. Use public-safe selectors and synthetic
+values only. Do not write real emails, names, customer data, tickets, logs, or
+tokens into scenario files.
+
+## Authoring Labs
+
+Create reusable simulation runs as `.yaml` lab manifests:
+
+```yaml
+schema: humanish.lab.v2
+id: first-run
+title: First-run synthetic Observer
+subject:
+  source: this-repo
+actors:
+  - type: synthetic-persona
+    count: 4
+scenario:
+  mode: dry-run
+defaults:
+  open: true
+```
+
+A lab is a composition (`subject` × `actors` × `execution` × `scenario` ×
+`policies`), not a hardcoded kind; there is no v1 compatibility. Run
+`npx humanish lab inspect <lab>` to see how a manifest parses, including
+warnings for fields the engine does not consume yet.
+
+Use committed `humanish/labs/*.yaml` for public-safe, reproducible labs. Use
+ignored `.humanish/labs/*.yaml` or `.humanish/local/labs/*.yaml` for private repo
+targets, local-only dogfood, or machine-specific settings. Never commit private
+repo names, stream URLs, credential values, screenshots, logs, source snippets,
+or operational details.
+
+Useful commands:
+
+```bash
+npx humanish lab list
+npx humanish lab inspect first-run
+npx humanish watch first-run
+npx humanish lab run first-run --json --no-open
+```
+
+## First Proof Run
+
+Run the no-credentials path first. This proves Humanish artifact plumbing, not
+target app behavior:
+
+```bash
+npx humanish doctor
+npx humanish watch
+npx humanish verify --run latest --json
+npx humanish feedback issue --run latest --repo example/app --format markdown
+```
+
+For CI or non-interactive proof:
+
+```bash
+npx humanish watch --json --no-open
+npx humanish lab run first-run --json --no-open
+```
+
+The feedback command prints a public-safe Markdown draft. It must not call the
+GitHub API, require a token, update Projects, use provider credits, or claim
+product behavior proof from a dry run.
+
+When the target app can run locally, prove real browser behavior with
+`run --app-url` after starting the app on loopback:
+
+```bash
+# in another terminal, start the target app on 127.0.0.1 or localhost
+npx humanish run --app-url http://127.0.0.1:<port> --sims 2 --json
+npx humanish verify --run latest --json
+npx humanish watch --run latest --detach --no-open --json
+```
+
+Do not use `humanish watch --sims ...` as a substitute for app-url proof.
+`watch` renders or follows Observer evidence; `run --app-url` is the command
+that captures live desktop/mobile browser evidence against a running app.
+
+## Optional Live E2B Lab
+
+Live headed E2B desktop lanes are optional. Add the substrate dependency only
+when the user explicitly wants live E2B execution:
+
+```bash
+npm i -D @e2b/desktop
+```
+
+Then confirm env var names are documented without values:
+
+```bash
+E2B_API_KEY
+OPENAI_API_KEY
+```
+
+Do not paste values into files, prompts, run bundles, issue drafts, or logs.
+Load local values only at invocation time:
+
+```bash
+npx humanish watch .humanish/labs/local-live.yaml --env-file .humanish/local/provider.env
+```
+
+When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a
+real observable user surface and local run path. Do not use libraries,
+frameworks, starters, or infrastructure packages as default targets unless the
+declared scenario is developer-experience testing. Private repos are allowed
+only as explicit maintainer-authorized runs with repo redaction left on; never
+publish their names, screenshots, logs, source snippets, or operational details.
+
+## Reporting Back
+
+Report:
+
+- files changed in the target repo;
+- exact proof commands run;
+- generated local artifact paths under `.humanish/`;
+- whether redaction passed;
+- what remains blocked before live browser, OpenAI, E2B, or GitHub mutation.

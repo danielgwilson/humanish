@@ -1,4 +1,4 @@
-export const LAB_APP_RUNNER_PLAN_SCHEMA = "homun.lab-app-runner-plan.v1";
+export const LAB_APP_RUNNER_PLAN_SCHEMA = "humanish.lab-app-runner-plan.v1";
 
 export type LabAppFramework = "next" | "vite" | "generic" | "none";
 export type LabPackageManager = "npm" | "pnpm" | "yarn" | "bun";
@@ -179,11 +179,11 @@ export function renderLabAppRunnerShell(args: {
     script: [
       "#!/usr/bin/env bash",
       "set -Eeuo pipefail",
-      "export HOMUN_PUBLIC_SAFE=1",
+      "export HUMANISH_PUBLIC_SAFE=1",
       `APP_PORT="\${APP_PORT:-${args.devServer?.port ?? DEFAULT_PORTS.generic}}"`,
       "APP_HOST=\"${APP_HOST:-0.0.0.0}\"",
       "APP_URL=\"${APP_URL:-http://127.0.0.1:${APP_PORT}}\"",
-      "APP_RUNNER_LOG=\"${APP_RUNNER_LOG:-homun-app-runner.log}\"",
+      "APP_RUNNER_LOG=\"${APP_RUNNER_LOG:-humanish-app-runner.log}\"",
       "",
       renderWaitFunction(),
       "",
@@ -496,7 +496,7 @@ function renderOpenFunction(): string {
   local width="$3"
   local height="$4"
   if command -v google-chrome >/dev/null 2>&1; then
-    nohup google-chrome --no-first-run --no-default-browser-check --disable-default-apps --user-data-dir=".homun-lab-\${profile}-chrome" --window-size="\${width},\${height}" "$url" >/dev/null 2>&1 &
+    nohup google-chrome --no-first-run --no-default-browser-check --disable-default-apps --user-data-dir=".humanish-lab-\${profile}-chrome" --window-size="\${width},\${height}" "$url" >/dev/null 2>&1 &
   elif command -v firefox >/dev/null 2>&1; then
     nohup firefox --width "$width" --height "$height" "$url" >/dev/null 2>&1 &
   else

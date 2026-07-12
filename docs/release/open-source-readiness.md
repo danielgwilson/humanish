@@ -18,11 +18,11 @@ acceptable public metadata such as maintainer-approved public commit email.
 
 ## Package State
 
-- Package name: `homun`
+- Package name: `humanish`
 - Version: `0.1.3`
-- Binary: `homun`
+- Binary: `humanish`
 - License: MIT
-- Repository: `https://github.com/danielgwilson/homun`
+- Repository: `https://github.com/danielgwilson/humanish`
 - npm access: public via `publishConfig.access`
 - npm contents: compiled `dist`, public docs directories, including ramp and
   current-goal docs, `skills/`,
@@ -39,14 +39,14 @@ tarball with `npm pack` or `npm publish`.
 The installable agent skill lives at:
 
 ```text
-skills/homun/SKILL.md
+skills/humanish/SKILL.md
 ```
 
 This matches skills.sh discovery for `skills/<name>/SKILL.md`. The required
 frontmatter fields are present:
 
 ```yaml
-name: homun
+name: humanish
 description: ...
 ```
 
@@ -59,7 +59,7 @@ DISABLE_TELEMETRY=1 npx skills add . --list
 Expected install command after the repository is public:
 
 ```bash
-npx skills add danielgwilson/homun --skill homun
+npx skills add danielgwilson/humanish --skill humanish
 ```
 
 ## Public Boundary
@@ -126,7 +126,7 @@ pnpm pack:dry-run
 `pnpm pack:dry-run` delegates to `npm pack --dry-run` after `prepack` builds
 `dist`.
 
-The tarball must not include `.env*`, `.homun/`, generated run bundles,
+The tarball must not include `.env*`, `.humanish/`, generated run bundles,
 private screenshots, raw transcripts, `.npmrc`, tests, fixtures, internal
 operations notes, local runtime caches, or private operator packets. Public
 `docs/ramp/`, `docs/goals/`, and repo-local `AGENTS.md` files are allowed when
@@ -162,12 +162,22 @@ the tag name exactly matches `package.json`'s version.
 
 ## Trusted Publishing Setup
 
-The npm package page exists. Trusted Publishing should be configured for GitHub
-Actions before cutting the next tag:
+The npm package page exists. For the first tag after a repository rename, the
+order is load-bearing (the OIDC binding is exact owner/repo + workflow path):
+
+1. Rename the GitHub repository first.
+2. Configure/point the npm Trusted Publisher at the NEW repository name.
+3. Merge the release commit, then tag.
+
+A tag pushed before steps 1-2 fails auth (OIDC repository claim mismatch) or
+provenance validation (package.json repository.url vs actual workflow repo).
+
+Trusted Publishing should be configured for GitHub Actions before cutting the
+next tag:
 
 - provider: GitHub Actions
 - repository owner: `danielgwilson`
-- repository name: `homun`
+- repository name: `humanish`
 - workflow filename: `publish.yml`
 - environment: blank
 - registry: npm public registry

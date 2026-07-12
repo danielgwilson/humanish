@@ -5,7 +5,7 @@ import readline from "node:readline";
 
 import { digestText, publicPathForTrace, redactText, tailText } from "./redaction.js";
 
-export const CODEX_APP_SERVER_TRACE_SCHEMA = "homun.codex-app-server-trace.v1";
+export const CODEX_APP_SERVER_TRACE_SCHEMA = "humanish.codex-app-server-trace.v1";
 
 type JsonObject = Record<string, unknown>;
 type JsonRpcId = number | string;
@@ -54,8 +54,8 @@ export interface CodexAppServerTrace {
     notes: string;
   };
   client: {
-    name: "homun_cli";
-    title: "Homun CLI";
+    name: "humanish_cli";
+    title: "Humanish CLI";
     experimentalApi: boolean;
   };
   server: {
@@ -386,8 +386,8 @@ export async function runCodexAppServerSession(
   try {
     const initialize = request("initialize", {
       clientInfo: {
-        name: "homun_cli",
-        title: "Homun CLI",
+        name: "humanish_cli",
+        title: "Humanish CLI",
         version: "0.1.0"
       },
       capabilities: {
@@ -406,7 +406,7 @@ export async function runCodexAppServerSession(
       cwd: options.cwd,
       approvalPolicy: normalizeApprovalPolicy(options.approvalPolicy),
       sandbox: normalizeSandbox(options.sandbox),
-      serviceName: options.serviceName ?? "homun",
+      serviceName: options.serviceName ?? "humanish",
       ...(options.model === undefined ? {} : { model: options.model })
     }), "thread/start");
     threadId = readNestedString(threadResponse, ["thread", "id"]) ?? threadId;
@@ -476,8 +476,8 @@ function resolveAppServerCommand(overrideCommand: string[] | undefined): { args:
 }
 
 function resolveCodexAppServerEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const privateApiKey = env.HOMUN_PRIVATE_CODEX_API_KEY?.trim();
-  const privateAccessToken = env.HOMUN_PRIVATE_CODEX_ACCESS_TOKEN?.trim();
+  const privateApiKey = env.HUMANISH_PRIVATE_CODEX_API_KEY?.trim();
+  const privateAccessToken = env.HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN?.trim();
   return {
     ...env,
     TERM: env.TERM ?? "xterm-256color",
@@ -488,7 +488,7 @@ function resolveCodexAppServerEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 }
 
 function appServerApiKeyForLogin(env: NodeJS.ProcessEnv): string | undefined {
-  return env.HOMUN_PRIVATE_CODEX_API_KEY?.trim()
+  return env.HUMANISH_PRIVATE_CODEX_API_KEY?.trim()
     || env.CODEX_API_KEY?.trim()
     || env.OPENAI_API_KEY?.trim()
     || undefined;
@@ -573,8 +573,8 @@ class CodexTraceRecorder {
         notes: "Trace envelopes and text were redacted before persistence. App-server schemas are version-specific and are not embedded in this run artifact."
       },
       client: {
-        name: "homun_cli",
-        title: "Homun CLI",
+        name: "humanish_cli",
+        title: "Humanish CLI",
         experimentalApi: args.experimentalApi
       },
       server: {
@@ -668,7 +668,7 @@ class CodexTraceRecorder {
       method: typeof message.method === "string" ? message.method : "unknown",
       ...(itemId === undefined ? {} : { itemId }),
       decision: typeof response.decision === "string" && response.decision === "denied" ? "denied" : typeof response.decision === "string" ? "decline" : "empty",
-      reason: "Homun records app-server approval requests and declines by default unless a future explicit policy says otherwise."
+      reason: "Humanish records app-server approval requests and declines by default unless a future explicit policy says otherwise."
     });
   }
 

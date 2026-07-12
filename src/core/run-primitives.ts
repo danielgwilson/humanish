@@ -1,6 +1,6 @@
 export const CORE_RUN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/;
-export const LATEST_POINTER_SCHEMA = "homun.latest-run.v1";
-export const HISTORY_ENTRY_SCHEMA = "homun.run-history-entry.v1";
+export const LATEST_POINTER_SCHEMA = "humanish.latest-run.v1";
+export const HISTORY_ENTRY_SCHEMA = "humanish.run-history-entry.v1";
 
 export type CoreRunMode = "dry-run" | "live";
 
@@ -68,7 +68,7 @@ export function assertRunId(value: string): void {
   }
 }
 
-export function buildArtifactLayout(runId: string, runsRoot = ".homun/runs"): ArtifactLayout {
+export function buildArtifactLayout(runId: string, runsRoot = ".humanish/runs"): ArtifactLayout {
   assertRunId(runId);
 
   const normalizedRoot = normalizeRelativePath(runsRoot);

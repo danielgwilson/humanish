@@ -11,14 +11,14 @@ import { runLab } from "../src/lab-engine.js";
 // The LIVE rung for the clone subject provider: a config-only lab that clones a small public
 // static-site repo INTO a real E2B desktop, serves it with the declared command, probes
 // readiness, and lets the real actor drive it. Spend-gated exactly like the other live rungs:
-//   1. HOMUN_LIVE_CUA=1 must be set explicitly (the spend opt-in),
+//   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
 // The subject repo is a tiny, long-stable MDN sample site (public, no build step). Asserts a
 // verified bundle with provenance and a terminal session — never task success.
-// Fixture refreshes: additionally set HOMUN_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
-// under .homun/) to capture redacted RESPONSE wire bodies — see src/openai-responses-cu.ts.
-const LIVE = process.env.HOMUN_LIVE_CUA === "1"
+// Fixture refreshes: additionally set HUMANISH_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
+// under .humanish/) to capture redacted RESPONSE wire bodies — see src/openai-responses-cu.ts.
+const LIVE = process.env.HUMANISH_LIVE_CUA === "1"
   && Boolean(process.env.OPENAI_API_KEY)
   && Boolean(process.env.E2B_API_KEY);
 
@@ -26,7 +26,7 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => 
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-clone-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-clone-live-"));
   });
 
   afterEach(async () => {
@@ -77,7 +77,7 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => 
     expect(result.subject?.repo).toBe("mdn/beginner-html-site-styled");
     expect(result.subject?.commit).toMatch(/^[0-9a-f]{40}$/);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
     // Engagement: the actor must have actually perceived/driven the app (>=1 action or message),

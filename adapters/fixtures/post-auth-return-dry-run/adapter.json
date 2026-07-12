@@ -1,5 +1,5 @@
 {
-  "schema": "homun.adapter.v1",
+  "schema": "humanish.adapter.v1",
   "id": "post-auth-return-web-app",
   "name": "Post-Auth Return Web App Fixture",
   "authority": {

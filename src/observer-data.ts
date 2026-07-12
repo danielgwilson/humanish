@@ -1,6 +1,6 @@
 import type { RunBundle, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
 
-export const OBSERVER_DATA_SCHEMA = "homun.observer-data.v1";
+export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 
 export interface ObserverArtifactLink {
   label: string;
@@ -130,7 +130,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
     ],
     publicSafety: {
       publishable: false,
-      note: "Observer artifacts are local evidence. Before filing a public issue, use `homun feedback issue` so redaction and public-safety checks gate the payload."
+      note: "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     },
     raw: {
       bundleSchema: bundle.schema,

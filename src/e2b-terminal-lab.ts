@@ -5,7 +5,7 @@
 // intervention proof. Mirrors cua-actor-lab.ts / scripted-browser-lab.ts.
 //
 // SLICE 2 SCOPE: BOTH paths are now implemented.
-//   - DRY-RUN: a contract-only `homun.run-bundle.v1`, honestly labeled (unchanged from SLICE 1).
+//   - DRY-RUN: a contract-only `humanish.run-bundle.v1`, honestly labeled (unchanged from SLICE 1).
 //   - LIVE: the real create -> inject (command-scoped) -> run `codex exec --json` -> capture
 //     (scrub+redact at the source) -> score (verdict-nonce marker) -> teardown (proven cleanup)
 //     orchestrator on the @e2b/desktop commands.run surface.
@@ -34,7 +34,7 @@
 //   8. PROVEN CLEANUP, BY ID, NEVER ACCOUNT-WIDE. Sandbox.kill(id) in a finally; the cleanup
 //      proof is BY EXACT ID: kill(id)'s own found-and-killed boolean, confirmed further by
 //      Sandbox.getInfo(id) when the SDK exposes it (a thrown SandboxNotFoundError means gone).
-//      homun NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
+//      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
 import { randomBytes, randomUUID } from "node:crypto";
@@ -75,11 +75,11 @@ import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
 /** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
 export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
   mode: "terminal-product-lab",
-  tool: "homun"
+  tool: "humanish"
 } as const;
 
 // The terminal-product ledger schemas the verifier asserts present on a LIVE bundle. They ride the
-// existing terminal stream + events (homun.run-bundle.v1 is unchanged); these constants name the
+// existing terminal stream + events (humanish.run-bundle.v1 is unchanged); these constants name the
 // artifact files so the producer and verifier cannot drift on the path.
 export const TERMINAL_EVENTS_ARTIFACT = "terminal-events.ndjson";
 export const TERMINAL_TRANSCRIPT_ARTIFACT = "terminal-transcript.txt";
@@ -114,7 +114,7 @@ const TAIL_CHARS = 2000;
 // bundle. Redaction runs PRE-truncation so a cut can never split a secret past the scrubber.
 const MAX_TRANSCRIPT_BYTES = 512 * 1024;
 
-export const TERMINAL_PRODUCT_LAB_SCHEMA = "homun.terminal-lab-result.v1";
+export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
 
 /**
  * Library-level hooks: the DI seams that drive the full live path against a fake sandbox + mock
@@ -127,7 +127,7 @@ export const TERMINAL_PRODUCT_LAB_SCHEMA = "homun.terminal-lab-result.v1";
  * issue #154 acceptance #8). It is the FULLY-ASSEMBLED, redacted, verifiable evidence — the live run
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
  * interventions/cleanup/cost/no-spend). Every member is an EXPORTED public type, so a thin adapter
- * types against `import("homun")` alone — never a deep `src/` import. The adapter reads this
+ * types against `import("humanish")` alone — never a deep `src/` import. The adapter reads this
  * to score the product attempt and derive feedback; it cannot mutate core's evidence (the lane
  * attaches only the namespaced `RunAdapterScore` it returns + the feedback candidates it derives).
  */
@@ -246,15 +246,15 @@ export interface TerminalProductLabResult {
   warnings: string[];
   error?: {
     code:
-      | "HOMUN_TERMINAL_LAB_FAILED"
-      | "HOMUN_TERMINAL_LAB_ACTOR_UNSUPPORTED"
-      | "HOMUN_TERMINAL_LAB_SUBJECT_INVALID"
-      | "HOMUN_TERMINAL_LAB_KEYPLACEMENT_INVALID"
-      | "HOMUN_TERMINAL_LAB_RUNTIME_AUTH_MISSING"
-      | "HOMUN_TERMINAL_LAB_CAPS_MISSING"
-      | "HOMUN_TERMINAL_LAB_CAPS_EXCEEDED"
-      | "HOMUN_TERMINAL_LAB_CREDENTIAL_DENIED"
-      | "HOMUN_TERMINAL_LAB_CLEANUP_UNPROVEN"
+      | "HUMANISH_TERMINAL_LAB_FAILED"
+      | "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED"
+      | "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID"
+      | "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID"
+      | "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING"
+      | "HUMANISH_TERMINAL_LAB_CAPS_MISSING"
+      | "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
+      | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"
+      | "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
       | typeof TERMINAL_AGENT_NOT_IMPLEMENTED_CODE;
     message: string;
   };
@@ -292,7 +292,7 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isTerminalActorDescriptor(descriptor)) {
     return failed(
-      "HOMUN_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
       `actors[0].type "${actorType}" is not a registered terminal actor.`
     );
   }
@@ -301,7 +301,7 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   // npm surface). A terminal-product subject MUST declare product.name + public surfaces.
   if (!product || !product.name || product.publicSurfaces.length === 0) {
     return failed(
-      "HOMUN_TERMINAL_LAB_SUBJECT_INVALID",
+      "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
       "terminal-product subjects require `subject.product` with a name and at least one public surface URL.",
       { actor: descriptor.id }
     );
@@ -326,14 +326,14 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   const persona: ActorPersonaRef = { id: personaId, traitsApplied: [], promptDigest };
 
   const runId = options.runId ?? makeTerminalRunId();
-  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
+  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
   const createdAt = new Date().toISOString();
   await mkdir(artifactRoot, { recursive: true });
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd,
-    homunSource: "present",
-    packageName: "homun"
+    humanishSource: "present",
+    packageName: "humanish"
   });
 
   const bundle = buildTerminalProductBundle({
@@ -365,11 +365,11 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
   await writeFile(
-    path.join(cwd, ".homun", "runs", "latest.json"),
+    path.join(cwd, ".humanish", "runs", "latest.json"),
     `${JSON.stringify({
-      schema: "homun.latest-run.v1",
+      schema: "humanish.latest-run.v1",
       runId,
-      path: path.join(".homun", "runs", runId),
+      path: path.join(".humanish", "runs", runId),
       updatedAt: createdAt
     }, null, 2)}\n`,
     "utf8"
@@ -393,7 +393,7 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
       ? {}
       : {
           error: {
-            code: "HOMUN_TERMINAL_LAB_FAILED" as const,
+            code: "HUMANISH_TERMINAL_LAB_FAILED" as const,
             message: observer.error?.message ?? "Observer failed for the terminal-product lab run."
           }
         })
@@ -481,7 +481,7 @@ export type CostCategory = "product" | "media" | "payment" | "provider";
  * asserted independently. Every applicable category appears as a line; unknowns are `null`.
  */
 export interface TerminalCostLedger {
-  schema: "homun.terminal-cost-ledger.v1";
+  schema: "humanish.terminal-cost-ledger.v1";
   /** USD currency unit (recorded explicitly so a future multi-currency lane is unambiguous). */
   currency: "usd";
   lines: Record<CostCategory, CostLine>;
@@ -500,7 +500,7 @@ export interface TerminalCostLedger {
  * says it could not measure them — it never claims zero on a line the ledger marks null.
  */
 export interface NoSpendProof {
-  schema: "homun.terminal-no-spend-proof.v1";
+  schema: "humanish.terminal-no-spend-proof.v1";
   /** The maxUsd cap this proof was evaluated against (the no-spend scenario declares maxUsd: 0). */
   maxUsd: number | null;
   /** True iff every KNOWN (measured) line is <= maxUsd (for a no-spend run, == 0). */
@@ -520,7 +520,7 @@ export interface NoSpendProof {
 
 /** The persisted terminal-product ledgers artifact (substrate lifecycle + command log + interventions + cleanup + cost). */
 export interface TerminalLedgers {
-  schema: "homun.terminal-ledgers.v1";
+  schema: "humanish.terminal-ledgers.v1";
   lifecycle: LifecycleRecord[];
   commandLog: CommandLogRecord[];
   /** ALWAYS present; ALWAYS empty this slice (no assisted-input path) — the safety contract. */
@@ -602,7 +602,7 @@ function buildCostLedger(args: {
     }
   }
   return {
-    schema: "homun.terminal-cost-ledger.v1",
+    schema: "humanish.terminal-cost-ledger.v1",
     currency: "usd",
     lines,
     knownTotalUsd: roundUsd(knownTotalUsd),
@@ -636,7 +636,7 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
       : "All applicable spend lines were measured."
   ].join(" ");
   return {
-    schema: "homun.terminal-no-spend-proof.v1",
+    schema: "humanish.terminal-no-spend-proof.v1",
     maxUsd,
     satisfied,
     knownZeroLines,
@@ -704,13 +704,13 @@ function buildCommandScopedRuntimeEnv(args: {
   env: Record<string, string | undefined>;
 }):
   | { ok: true; envs: Record<string, string>; keyName: string; keyValue: string }
-  | { ok: false; code: "HOMUN_TERMINAL_LAB_RUNTIME_AUTH_MISSING" | "HOMUN_TERMINAL_LAB_CREDENTIAL_DENIED"; message: string } {
+  | { ok: false; code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"; message: string } {
   // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key SOURCE
   // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
   // (developers.openai.com/codex/noninteractive) document it as the channel for a SINGLE codex exec
   // invocation, which is exactly this lane's shape (no persisted auth.json/CODEX_HOME, per-command
   // envs only). A dated in-repo receipt
-  // (docs/goals/homun-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
+  // (docs/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
   // job-wide OPENAI_API_KEY alone failing bearer auth for this same pinned-exec pattern. When the
   // operator only exported OPENAI_API_KEY, its value is ALSO injected under CODEX_API_KEY below, so
   // the documented exec auth channel is always populated regardless of which name the operator
@@ -727,7 +727,7 @@ function buildCommandScopedRuntimeEnv(args: {
   if (ALLOWED_RUNTIME_KEY_NAMES.some((name) => isNonRuntimeCredentialName(name))) {
     return {
       ok: false,
-      code: "HOMUN_TERMINAL_LAB_CREDENTIAL_DENIED",
+      code: "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED",
       message: "Internal invariant violated: a runtime-key allowlist entry is a non-runtime credential (GitHub/payment/deploy/db)."
     };
   }
@@ -735,7 +735,7 @@ function buildCommandScopedRuntimeEnv(args: {
   if (!keyName) {
     return {
       ok: false,
-      code: "HOMUN_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
+      code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
       message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the value is injected ONLY into the command-scoped codex invocation and is never persisted).`
     };
   }
@@ -836,7 +836,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const keyPlacement = descriptor?.capabilities.keyPlacement;
   if (keyPlacement !== "in-sandbox-command-scoped") {
     return failed(
-      "HOMUN_TERMINAL_LAB_KEYPLACEMENT_INVALID",
+      "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID",
       `Terminal actor "${descriptorId}" must declare keyPlacement "in-sandbox-command-scoped" for the live lane (got "${String(keyPlacement)}"). The engine routes the runtime key by this capability; without it the lane cannot place the key safely and fails closed.`,
       { actor: descriptorId }
     );
@@ -848,7 +848,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const maxMinutes = caps?.maxMinutes;
   if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0) {
     return failed(
-      "HOMUN_TERMINAL_LAB_CAPS_MISSING",
+      "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
       "A live terminal-product run places a real key inside the sandbox and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
       { actor: descriptorId }
     );
@@ -871,8 +871,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   }
 
   // Compose the prompt from PUBLIC surfaces + the author mission ONLY (safety contract item 3).
-  // Inject a per-run verdict nonce: the agent echoes HOMUN_ACTOR_VERDICT=<status>
-  // HOMUN_ACTOR_NONCE=<nonce>; the scorer verifies the nonce so replayed text cannot forge it.
+  // Inject a per-run verdict nonce: the agent echoes HUMANISH_ACTOR_VERDICT=<status>
+  // HUMANISH_ACTOR_NONCE=<nonce>; the scorer verifies the nonce so replayed text cannot forge it.
   const mission = config.actors[0]?.mission ?? defaultMission(product.name);
   const personaId = config.actors[0]?.persona ?? "autonomous-terminal-agent";
   const verdictNonce = randomUUID().slice(0, 12);
@@ -897,10 +897,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
 
   const runId = options.runId ?? makeTerminalRunId();
-  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
+  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
   const createdAt = nowIso();
   await mkdir(artifactRoot, { recursive: true });
-  const source = await buildRunSource({ capturedAt: createdAt, cwd, homunSource: "present", packageName: "homun" });
+  const source = await buildRunSource({ capturedAt: createdAt, cwd, humanishSource: "present", packageName: "humanish" });
 
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
@@ -956,7 +956,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env (runtime key is command-scoped).`);
 
     // Readiness: a tiny in-sandbox probe (no key) confirms the shell answers before the keyed run.
-    const ready = await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR} && echo HOMUN_SHELL_READY`, { requestTimeoutMs });
+    const ready = await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR} && echo HUMANISH_SHELL_READY`, { requestTimeoutMs });
     recordLifecycle("terminal-lab.sandbox.ready", `Shell readiness probe exit=${ready.exitCode ?? "null"}; workdir ${SANDBOX_WORKDIR} prepared.`);
 
     // --- Runtime bootstrap: ensure Node/npm are present (UNKEYED, no envs) before the keyed exec. ---
@@ -1072,7 +1072,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
         // evidence — still structurally verifiable), not a silent pass.
         sessionStatus = "blocked";
         completionReason = "gave_up";
-        sessionReason = `codex exec exit=${exitCode ?? "null"} but no nonce-verified HOMUN_ACTOR_VERDICT marker was emitted; recorded as blocked (the missing verdict is the evidence).`;
+        sessionReason = `codex exec exit=${exitCode ?? "null"} but no nonce-verified HUMANISH_ACTOR_VERDICT marker was emitted; recorded as blocked (the missing verdict is the evidence).`;
         recordLifecycle("terminal-lab.exec.blocked", sessionReason);
       }
     }
@@ -1149,7 +1149,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // Assemble + persist the ledgers (now carrying the cost block + no-spend proof), the redacted
   // event stream, the normalized transcript, the actor trace, and the run bundle.
   const ledgers: TerminalLedgers = {
-    schema: "homun.terminal-ledgers.v1",
+    schema: "humanish.terminal-ledgers.v1",
     lifecycle,
     commandLog,
     interventions, // ALWAYS present, ALWAYS empty (no assisted-input path this slice).
@@ -1209,8 +1209,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   await writeFile(path.join(artifactRoot, "review.md"), renderTerminalReviewMarkdown(bundle), "utf8");
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   await writeFile(
-    path.join(cwd, ".homun", "runs", "latest.json"),
-    `${JSON.stringify({ schema: "homun.latest-run.v1", runId, path: path.join(".homun", "runs", runId), updatedAt: createdAt }, null, 2)}\n`,
+    path.join(cwd, ".humanish", "runs", "latest.json"),
+    `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: path.join(".humanish", "runs", runId), updatedAt: createdAt }, null, 2)}\n`,
     "utf8"
   );
 
@@ -1260,10 +1260,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       : {
           error: {
             code: (!cleanupProven
-              ? "HOMUN_TERMINAL_LAB_CLEANUP_UNPROVEN"
+              ? "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
               : capsExceeded
-                ? "HOMUN_TERMINAL_LAB_CAPS_EXCEEDED"
-                : "HOMUN_TERMINAL_LAB_FAILED") as NonNullable<TerminalProductLabResult["error"]>["code"],
+                ? "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
+                : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<TerminalProductLabResult["error"]>["code"],
             message: !cleanupProven
               ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.`
               : sessionError ?? observer.error?.message ?? sessionReason
@@ -1313,7 +1313,7 @@ async function applyAdapterExtensionSeam(args: {
       if (isAdapterScoreShape(cleaned)) {
         bundle.adapterScore = cleaned;
       } else {
-        warnings.push("terminalHooks.score returned a value that is not a well-formed homun.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.");
+        warnings.push("terminalHooks.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.");
       }
     } catch (error) {
       warnings.push(`terminalHooks.score threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
@@ -1327,7 +1327,7 @@ async function applyAdapterExtensionSeam(args: {
       for (const candidate of Array.isArray(candidates) ? candidates : []) {
         const cleaned = scrubValue(candidate);
         if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
-        else warnings.push("terminalHooks.deriveFeedback returned a candidate that is not a well-formed homun.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.");
+        else warnings.push("terminalHooks.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.");
       }
       if (accepted.length > 0) {
         bundle.feedbackCandidates = [...bundle.feedbackCandidates, ...accepted];
@@ -1342,7 +1342,7 @@ async function applyAdapterExtensionSeam(args: {
  *  local so the lane fails closed at the seam BEFORE the bundle verifier re-checks it). */
 function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-    && (value as RunAdapterScore).schema === "homun.adapter-score.v1"
+    && (value as RunAdapterScore).schema === "humanish.adapter-score.v1"
     && typeof (value as RunAdapterScore).namespace === "string"
     && (value as RunAdapterScore).namespace.trim().length > 0
     && ["pass", "partial", "fail"].includes((value as RunAdapterScore).status)
@@ -1357,7 +1357,7 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const candidate = value as Partial<RunFeedbackCandidate>;
-  const baseOk = candidate.schema === "homun.feedback-candidate.v1"
+  const baseOk = candidate.schema === "humanish.feedback-candidate.v1"
     && typeof candidate.id === "string"
     && typeof candidate.summary === "string" && candidate.summary.trim().length > 0
     && Array.isArray(candidate.evidence)
@@ -1375,7 +1375,7 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
 }
 
 /**
- * Tear the sandbox down and PROVE it BY EXACT ID -- NEVER Sandbox.list (homun must never
+ * Tear the sandbox down and PROVE it BY EXACT ID -- NEVER Sandbox.list (humanish must never
  * enumerate the operator's E2B account; see docs/principles/invariants-and-defaults.md). After
  * Sandbox.kill(id) resolves, its own boolean return ("found and killed", per the SDK) is the
  * PRIMARY proof. Where the SDK exposes Sandbox.getInfo(id), a thrown SandboxNotFoundError is a
@@ -1504,7 +1504,7 @@ function composeLivePrompt(args: {
     `mission: ${args.mission}`,
     "",
     "Work ONLY from the public surfaces above. Do NOT clone or inspect any private repository.",
-    `When finished, print exactly one final machine-readable line in this format: HOMUN_ACTOR_VERDICT=<status> HOMUN_ACTOR_NONCE=${args.verdictNonce} where <status> is passed, blocked, or failed.`
+    `When finished, print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${args.verdictNonce} where <status> is passed, blocked, or failed.`
   ].join("\n");
 }
 
@@ -1514,7 +1514,7 @@ function tailOf(text: string): string {
 }
 
 /**
- * Project the live terminal session into the provider-neutral homun.actor-trace.v1 (lane
+ * Project the live terminal session into the provider-neutral humanish.actor-trace.v1 (lane
  * "terminal", protocol "terminal-exec"). counts.actions/messages drive the no-engagement honesty
  * guard (a real run bumps them; a no-op is caught). No screenshots on this lane.
  */
@@ -1581,7 +1581,7 @@ function buildTerminalActorTrace(args: {
 }
 
 /**
- * Project the terminal-product lab run into a homun.run-bundle.v1 (no schema change — a new
+ * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change — a new
  * producer only). DRY-RUN: a contract bundle. The terminal stream is a contract placeholder
  * (stdin disabled, no captured tail — honest: nothing ran), the subject is declared UNPINNED, and
  * the caps/policies/runtime-auth declarations + empty ledgers are recorded so SLICE 2 has a stable
@@ -1726,7 +1726,7 @@ export function buildTerminalProductBundle(args: {
     simCount: 1,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".homun", "runs", args.runId),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {
       id: args.persona.id,
@@ -1914,7 +1914,7 @@ export function buildLiveTerminalProductBundle(args: {
     simCount: 1,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".homun", "runs", args.runId),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {
       id: args.persona.id,

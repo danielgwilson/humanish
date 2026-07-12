@@ -213,7 +213,7 @@ export const browserSurfaces: BrowserSurface[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Surface capture engines (moved from run.ts). The HOMUN_BROWSER_PERSONA_DRIVER=fixture env
+// Surface capture engines (moved from run.ts). The HUMANISH_BROWSER_PERSONA_DRIVER=fixture env
 // switch stays a `run --app-url` affordance only; the lab route never consults it (its test
 // seam is the launchBrowser DI hook — an env-switched semi-real driver inside a lab would blur
 // what the evidence claims).
@@ -227,7 +227,7 @@ export async function captureBrowserSurface(args: {
   surface: BrowserSurface;
   timeoutMs: number;
 }): Promise<BrowserSurfaceCapture> {
-  if (process.env.HOMUN_BROWSER_PERSONA_DRIVER === "fixture") {
+  if (process.env.HUMANISH_BROWSER_PERSONA_DRIVER === "fixture") {
     return captureBrowserSurfaceFixture(args);
   }
 
@@ -247,7 +247,7 @@ export async function captureBrowserSurfaceFixture(args: {
   const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   const capturedAt = new Date().toISOString();
-  const profileDir = await mkdtemp(path.join(os.tmpdir(), "homun-browser-profile-"));
+  const profileDir = await mkdtemp(path.join(os.tmpdir(), "humanish-browser-profile-"));
   const steps: BrowserPersonaStepCapture[] = [];
   let currentUrl = args.appUrl;
 
@@ -777,7 +777,7 @@ export function buildBrowserTrace(args: {
   surface: BrowserSurface;
 }): Record<string, unknown> {
   return {
-    schema: "homun.browser-persona-trace.v1",
+    schema: "humanish.browser-persona-trace.v1",
     capturedAt: args.capturedAt,
     appUrl: args.appUrl,
     browserCommand: args.browserCommand,
@@ -920,7 +920,7 @@ export async function probeAppUrl(appUrl: string, timeoutMs: number): Promise<{ 
 
 export async function resolveBrowserCommand(): Promise<string | null> {
   const candidates = [
-    await resolveBrowserCandidate(process.env.HOMUN_BROWSER_COMMAND),
+    await resolveBrowserCandidate(process.env.HUMANISH_BROWSER_COMMAND),
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     await resolveExecutableFromPath("google-chrome"),
     await resolveExecutableFromPath("chromium"),
@@ -1176,7 +1176,7 @@ export function builtinBrowserPersonaJourney(): BrowserPersonaJourney {
 // The registry-facing actor session. NEW code (not moved): it reuses the moved
 // primitives — the REAL step executor, expectation evaluator, blocked-step
 // builder, native trace writer — against an injected or playwright-launched
-// browser, and projects the result into homun.actor-trace.v1.
+// browser, and projects the result into humanish.actor-trace.v1.
 // ---------------------------------------------------------------------------
 
 export const SCRIPTED_BROWSER_PROVIDER = "browser-persona";
@@ -1210,9 +1210,9 @@ export interface ScriptedBrowserSessionResult {
   status: ActorStatus;
   completionReason: ActorCompletionReason;
   reason: string;
-  /** Native evidence incl. tracePath (homun.browser-persona-trace.v1, written to disk). */
+  /** Native evidence incl. tracePath (humanish.browser-persona-trace.v1, written to disk). */
   capture: BrowserSurfaceCapture;
-  /** homun.actor-trace.v1 projection. */
+  /** humanish.actor-trace.v1 projection. */
   trace: ActorTrace;
 }
 
@@ -1541,7 +1541,7 @@ async function persistScriptedFailureCapture(args: {
   };
 }
 
-/** Project one surface capture into homun.actor-trace.v1. screenshotRefs are attached only
+/** Project one surface capture into humanish.actor-trace.v1. screenshotRefs are attached only
  *  for frames that actually exist on disk (honest counts; blocked-not-executed steps name a
  *  path that was never written). */
 async function projectScriptedActorTrace(args: {
@@ -1595,7 +1595,7 @@ async function projectScriptedActorTrace(args: {
     redaction: {
       status: "passed",
       screenshots: writtenScreenshots.size > 0 ? "raw" : "n/a",
-      notes: "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .homun."
+      notes: "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
     },
     startedAt: args.startedAt,
     completedAt: args.completedAt,

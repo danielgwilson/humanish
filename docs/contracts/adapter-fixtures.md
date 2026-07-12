@@ -6,7 +6,7 @@ Status: v0 draft contract for public-safe adapter fixture parity.
 
 ## Purpose
 
-Adapter fixtures prove that Homun can carry target-specific evidence without
+Adapter fixtures prove that Humanish can carry target-specific evidence without
 moving target truth into core schemas. A fixture is not a product claim. It is a
 public-safe contract packet that shows the routes, personas, milestones,
 terminal evidence, feedback drafts, and policy decisions a real adapter must

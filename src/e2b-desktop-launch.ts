@@ -139,7 +139,7 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
       throw new Error(
-        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `homun lab run oss --dry-run`."
+        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `humanish lab run oss --dry-run`."
       );
     }
 
@@ -159,7 +159,7 @@ export function isMissingE2BDesktopDependency(error: unknown): boolean {
  * deprecated NotFoundError), so checking `.name` is the stable, import-free detection contract.
  * The constructor-name fallback covers a bundler/transpile shape where `.name` was not copied
  * onto the instance. A thrown SandboxNotFoundError from Sandbox.getInfo(id) is the by-id proof
- * that the exact sandbox homun created is gone (confirmed reclaimed), never a re-list.
+ * that the exact sandbox humanish created is gone (confirmed reclaimed), never a re-list.
  */
 export function isSandboxNotFoundError(error: unknown): boolean {
   if (error === null || typeof error !== "object") return false;

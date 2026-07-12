@@ -13,6 +13,8 @@ coverage/
 *.tsbuildinfo
 
 # proof/runtime artifacts
+.humanish/
+# legacy runtime dir from before the humanish rename; old checkouts still carry it
 .homun/
 artifacts/proof/
 proof/

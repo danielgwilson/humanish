@@ -199,7 +199,7 @@ const BROWSER_ADAPTER_NAMESPACE = "browser-adapter-proof";
 
 function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
   return {
-    schema: "homun.adapter-score.v1",
+    schema: "humanish.adapter-score.v1",
     namespace: BROWSER_ADAPTER_NAMESPACE,
     status: "fail",
     score: 12,
@@ -214,7 +214,7 @@ function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
 
 function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] {
   return [{
-    schema: "homun.feedback-candidate.v1",
+    schema: "humanish.feedback-candidate.v1",
     id: `${BROWSER_ADAPTER_NAMESPACE}-${ctx.runId}`,
     run_id: ctx.runId,
     stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
@@ -231,7 +231,7 @@ function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] 
     redaction: { status: "passed", notes: "Synthetic adapter feedback references local public-safe artifacts only." },
     idempotency_key: `${BROWSER_ADAPTER_NAMESPACE}:${ctx.runId}:missing-product-evidence`,
     proposed_next_state: "actor-auth",
-    acceptance_proof: [`homun verify --run ${ctx.runId} --json`],
+    acceptance_proof: [`humanish verify --run ${ctx.runId} --json`],
     adapter: {
       namespace: BROWSER_ADAPTER_NAMESPACE,
       data: {
@@ -314,7 +314,7 @@ describe("lab routing (app-url → cua)", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "c",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "homun-setup" }]
+      actors: [{ type: "humanish-setup" }]
     });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -358,7 +358,7 @@ describe("runCuaActorLab", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-lab-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-lab-"));
   });
 
   afterEach(async () => {
@@ -378,8 +378,8 @@ describe("runCuaActorLab", () => {
     expect(result.session).toBeUndefined();
     expect(result.observer?.ok).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("homun.run-bundle.v1");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.schema).toBe("humanish.run-bundle.v1");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");
@@ -446,7 +446,7 @@ describe("runCuaActorLab", () => {
     expect(result.sandbox).toEqual({ sandboxId: "fake-sandbox-001", killed: true, streamUrlPresent: true });
 
     // The persisted bundle fills the provider-neutral actor seam and keeps evidence local.
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(bundle.streams[0].actor.lane).toBe("computer-use");
@@ -500,7 +500,7 @@ describe("runCuaActorLab", () => {
     expect(result.error).toBeUndefined();
     expect(result.warnings.some((warning) => warning.includes("NOT counted as a pass"))).toBe(false);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("pass");
     expect(bundle.review.gaps).toEqual([]);
   });
@@ -530,7 +530,7 @@ describe("runCuaActorLab", () => {
             "utf8"
           );
           return [{
-            schema: "homun.adapter-artifact.v1",
+            schema: "humanish.adapter-artifact.v1",
             namespace: BROWSER_ADAPTER_NAMESPACE,
             label: "Browser adapter state proof",
             path: "adapter/browser-state-proof.json",
@@ -548,7 +548,7 @@ describe("runCuaActorLab", () => {
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(BROWSER_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
@@ -559,7 +559,7 @@ describe("runCuaActorLab", () => {
     expect(bundle.feedbackCandidates[0]?.adapter?.namespace).toBe(BROWSER_ADAPTER_NAMESPACE);
     expect(bundle.feedbackCandidates[0]?.substrate).toBe("e2b-desktop");
     expect(bundle.adapterArtifacts).toEqual([{
-      schema: "homun.adapter-artifact.v1",
+      schema: "humanish.adapter-artifact.v1",
       namespace: BROWSER_ADAPTER_NAMESPACE,
       label: "Browser adapter state proof",
       path: "adapter/browser-state-proof.json",
@@ -594,9 +594,9 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        score: () => ({ schema: "homun.adapter-score.v1", namespace: "", status: "fail", score: 0, summary: "bad" }) as RunAdapterScore,
+        score: () => ({ schema: "humanish.adapter-score.v1", namespace: "", status: "fail", score: 0, summary: "bad" }) as RunAdapterScore,
         deriveArtifacts: () => ([{
-          schema: "homun.adapter-artifact.v1",
+          schema: "humanish.adapter-artifact.v1",
           namespace: BROWSER_ADAPTER_NAMESPACE,
           label: "Bad artifact",
           path: "../secret.json",
@@ -604,7 +604,7 @@ describe("runCuaActorLab", () => {
           note: "bad path"
         }]),
         deriveFeedback: () => ([{
-          schema: "homun.feedback-candidate.v1",
+          schema: "humanish.feedback-candidate.v1",
           id: "bad",
           summary: "Malformed candidate missing required run fields.",
           evidence: [],
@@ -619,7 +619,7 @@ describe("runCuaActorLab", () => {
     expect(result.ok).toBe(true);
     expect(result.warnings.some((warning) => warning.includes("adapter-score.v1") || warning.includes("feedback-candidate.v1"))).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore).toBeUndefined();
     expect(bundle.adapterArtifacts).toBeUndefined();
     expect(bundle.feedbackCandidates).toHaveLength(0);
@@ -642,7 +642,7 @@ describe("runCuaActorLab", () => {
       }
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("raw");
     expect(bundle.streams[0].actor.items.filter((i: { kind: string }) => i.kind === "screenshot")
@@ -664,9 +664,9 @@ describe("runCuaActorLab", () => {
       expect(text).not.toContain("redacted screenshot");
     }
     // The raw warning must not promise a commit-blocking scan downstream users do not have
-    // (the binary-asset scan is homun's own CI, not part of the package).
+    // (the binary-asset scan is humanish's own CI, not part of the package).
     const rawWarning = outcome.result.warnings.find((w) => w.includes("full-fidelity"));
-    expect(rawWarning).toContain(".homun");
+    expect(rawWarning).toContain(".humanish");
     expect(rawWarning).toContain("review");
     expect(rawWarning).not.toContain("binary-asset scan");
     expect(rawWarning).not.toContain("blocked from commit");
@@ -687,7 +687,7 @@ describe("runCuaActorLab", () => {
       }
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("blurred");
     expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity"))).toBe(false);
@@ -737,7 +737,7 @@ describe("runCuaActorLab", () => {
     });
     if (blocked.backend !== "cua") throw new Error("expected cua backend");
     expect(blocked.result.ok).toBe(false);
-    expect(blocked.result.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_UNSAFE");
+    expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
   });
 
   it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {
@@ -821,7 +821,7 @@ describe("runCuaActorLab", () => {
     expect(sessionOptionsSeen[0]?.instructions).toContain("mobile user");
     expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
     // The bundle's stream viewport carries the honest device metadata.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.streams[0].viewport).toMatchObject({ width: 414, height: 896, deviceScaleFactor: 3, isMobile: true });
   });
 
@@ -849,7 +849,7 @@ describe("runCuaActorLab", () => {
     // Consistency: a raw resolution override must NOT inherit a named preset's mobile/DSF — the
     // prompt + bundle metadata reflect the actual (custom, non-mobile) geometry, not "mobile".
     expect(ovSeen[0]?.instructions).not.toContain("mobile user");
-    const ovBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", r2.result.runId, "run.json"), "utf8"));
+    const ovBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", r2.result.runId, "run.json"), "utf8"));
     expect(ovBundle.streams[0].viewport).toMatchObject({ width: 1024, height: 768, deviceScaleFactor: 1, isMobile: false });
   });
 
@@ -889,7 +889,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) =>
         command.includes("browser_preference='chrome'")
-          ? { stdout: "HOMUN_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 }
+          ? { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 }
           : undefined
     });
     const { module } = makeFakeModule(sandbox);
@@ -911,7 +911,7 @@ describe("runCuaActorLab", () => {
     expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
     expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.desktopBrowser).toEqual({ requested: "chrome", resolved: "google-chrome" });
   });
 
@@ -925,7 +925,7 @@ describe("runCuaActorLab", () => {
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_KEYS_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_KEYS_MISSING");
     expect(result.error?.message).toContain("E2B_API_KEY");
     expect(result.error?.message).not.toContain("OPENAI_API_KEY and");
     expect(result.error?.message).not.toContain("present-key");
@@ -950,12 +950,12 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
     expect(result.error?.message).toContain("provider exploded");
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = JSON.parse(
-      await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")
     );
     expect(bundle.simulations[0].status).toBe("failed");
     expect(bundle.review.verdict).toBe("fail");
@@ -966,7 +966,7 @@ describe("runCuaActorLab", () => {
     const tampered = { ...config, actors: [{ type: "codex-app-server" }] };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
   });
 
   it("re-enforces the loopback entry boundary at the engine even if a config bypasses the parser", async () => {
@@ -974,10 +974,10 @@ describe("runCuaActorLab", () => {
     const tampered = { ...config, subject: { source: "app-url" as const, appUrl: "https://example.com/" } };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_UNSAFE");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
     // Nothing was persisted, so no artifact can mislabel the public URL as loopback.
     expect(result.runId).toBe("not-created");
-    await expect(readdir(path.join(cwd, ".homun", "runs"))).rejects.toThrow();
+    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
   });
 
   it("redacts harness-level session errors before they reach ANY persisted artifact", async () => {
@@ -1007,7 +1007,7 @@ describe("runCuaActorLab", () => {
     expect(result.error?.message).not.toContain(secretToken);
     expect(result.observer?.ok).toBe(true);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain(secretToken);
@@ -1029,24 +1029,24 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
     expect(result.error?.message).toContain("@e2b/desktop");
     // The run dir is a complete failed-evidence bundle, not an orphan screenshots/ shell.
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const files = await readdir(runDir);
     expect(files).toContain("run.json");
     expect(files).toContain("review.md");
     expect(result.observer?.ok).toBe(true);
   });
 
-  it("points .homun/runs/latest.json at the cua run so `verify --run latest` stays honest", async () => {
+  it("points .humanish/runs/latest.json at the cua run so `verify --run latest` stays honest", async () => {
     const outcome = await runLab(cuaConfig(), { cwd, dryRun: true });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(true);
 
-    const pointer = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "latest.json"), "utf8"));
-    expect(pointer.schema).toBe("homun.latest-run.v1");
+    const pointer = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"));
+    expect(pointer.schema).toBe("humanish.latest-run.v1");
     expect(pointer.runId).toBe(result.runId);
 
     const verified = await verifyRun(cwd, "latest");
@@ -1146,7 +1146,7 @@ describe("runCuaActorLab", () => {
       envNames: ["DATABASE_URL"],
       state: { provenance: "undeclared" }
     });
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(revParseCount).toBeGreaterThan(1);
     expect(bundle.subject.commit).toBe(servedHead);
@@ -1251,7 +1251,7 @@ describe("runCuaActorLab", () => {
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
-    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const phaseRunEvents = (bundle.events as Array<{ type: string; level: string; message: string }>).filter(
       (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed")
@@ -1301,7 +1301,7 @@ describe("runCuaActorLab", () => {
     expect(cloneScript?.[2]).not.toContain("ghp-token-value");
     expect(cloneScript?.[2]).not.toMatch(/https:\/\/[^@\s]+@github\.com/);
 
-    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     for (const file of ["run.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain("ghp-token-value");
@@ -1321,7 +1321,7 @@ describe("runCuaActorLab", () => {
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_ENV_MISSING");
+    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING");
     expect(outcome.result.error?.message).toContain("DATABASE_URL");
     expect(created).toHaveLength(0);
   });
@@ -1358,7 +1358,7 @@ describe("runCuaActorLab", () => {
     expect(result.error?.message).toContain("subject install failed");
     expect(result.error?.message).toContain("[REDACTED_SECRET]");
     expect(result.error?.message).not.toContain(plainValue);
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain(plainValue);
@@ -1396,7 +1396,7 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
     expect(result.ok).toBe(false);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, `${file} full token`).not.toContain(token);
@@ -1410,7 +1410,7 @@ describe("runCuaActorLab", () => {
     const dry = await runLab(cloneCuaConfig(), { cwd, dryRun: true });
     if (dry.backend !== "cua") throw new Error("expected cua backend");
     const dryBundle = JSON.parse(
-      await readFile(path.join(cwd, ".homun", "runs", dry.result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", dry.result.runId, "run.json"), "utf8")
     );
     const dryProvenance = dryBundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
     expect(dryProvenance?.message).toContain("dry-run contract; nothing cloned");
@@ -1434,7 +1434,7 @@ describe("runCuaActorLab", () => {
     });
     if (failed.backend !== "cua") throw new Error("expected cua backend");
     const failedBundle = JSON.parse(
-      await readFile(path.join(cwd, ".homun", "runs", failed.result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", failed.result.runId, "run.json"), "utf8")
     );
     const failedProvenance = failedBundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
     expect(failedProvenance?.message).toContain("did not complete");
@@ -1454,7 +1454,7 @@ describe("runCuaActorLab", () => {
     const redacted = await runLab(cloneCuaConfig({ env: ["GITHUB_TOKEN"] }), { cwd, cuaHooks: tokenHooks });
     if (redacted.backend !== "cua") throw new Error("expected cua backend");
     expect(redacted.result.subject?.repo).toBe("repo-01");
-    const runDir = path.join(cwd, ".homun", "runs", redacted.result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", redacted.result.runId);
     for (const file of ["run.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain("example-org/example-app");
@@ -1479,7 +1479,7 @@ describe("runCuaActorLab", () => {
     const tampered: LabConfig = { ...config, subject: subjectWithoutServe };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
   });
 
   it("persists a failed-evidence bundle (with the server log tail) when the subject never answers the probe", async () => {
@@ -1509,13 +1509,13 @@ describe("runCuaActorLab", () => {
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
     expect(result.error?.message).toContain("did not answer");
     expect(result.error?.message).toContain("server crashed at boot");
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = JSON.parse(
-      await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")
     );
     expect(bundle.simulations[0].status).toBe("failed");
   });
@@ -1524,7 +1524,7 @@ describe("runCuaActorLab", () => {
 describe("execution.desktop.template (custom E2B desktop image, single-lane cua route)", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-template-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-template-"));
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -1559,7 +1559,7 @@ describe("execution.desktop.template (custom E2B desktop image, single-lane cua 
     };
     const outcome = await runLab(config, { cwd, cuaHooks: hooks });
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     return { created, templates, bundle };
   }
 
@@ -1589,7 +1589,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-state-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-state-"));
   });
 
   afterEach(async () => {
@@ -1672,7 +1672,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     ];
     expect(result.subject?.state).toEqual({ provenance: "seeded", seed: expectedSeed });
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.subject).toEqual({
       source: "clone",
@@ -1752,7 +1752,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       { name: "db-migrate", when: "before-start", commandDigest: sha16("run migrations"), ok: false, exitCode: 1, durationMs: 0 }
     ]);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simulations[0].status).toBe("failed");
     expect(bundle.review.verdict).toBe("fail");
@@ -1818,7 +1818,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       ]
     });
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.subject.state.provenance).toBe("declared-not-run");
@@ -1857,7 +1857,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(result.subject?.state.externalEnvNames).toEqual(["DATABASE_URL"]);
     expect(result.subject?.state.seed?.[0]).toMatchObject({ name: "db-migrate", ok: true });
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
     expect(provenance?.message).toContain("state: UNPINNED (external: DATABASE_URL)");
@@ -1876,7 +1876,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const result = outcome.result;
     expect(result.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
     const bundle = JSON.parse(
-      await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")
     );
     expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
   });
@@ -1889,7 +1889,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     // Bad step name (interpolates into in-sandbox paths — must fail closed).
     const badName = await runCuaActorLab({ cwd, config: tamper({ seed: [{ name: "Bad Name!", command: "true" }] }), dryRun: true });
     expect(badName.ok).toBe(false);
-    expect(badName.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(badName.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
     expect(badName.runId).toBe("not-created");
 
     // Duplicate step names.
@@ -1898,11 +1898,11 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       config: tamper({ seed: [{ name: "a", command: "true" }, { name: "a", command: "false" }] }),
       dryRun: true
     });
-    expect(dupe.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(dupe.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
 
     // external must name a provisioned channel (subset of subject.env).
     const unbacked = await runCuaActorLab({ cwd, config: tamper({ external: ["REDIS_URL"] }), dryRun: true });
-    expect(unbacked.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(unbacked.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
 
     // state on an app-url subject is rejected, never silently inert (invariant 6).
     const appUrlBase = cuaConfig();
@@ -1912,7 +1912,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     } as LabConfig;
     const onAppUrl = await runCuaActorLab({ cwd, config: appUrlTampered, dryRun: true });
     expect(onAppUrl.ok).toBe(false);
-    expect(onAppUrl.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(onAppUrl.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
     expect(onAppUrl.error?.message).toContain("clone subjects");
   });
 });
@@ -1921,7 +1921,7 @@ describe("buildCuaBundle", () => {
 describe("local-tree route (subject.source: local-tree, computer-use)", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-local-tree-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-local-tree-"));
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -1983,7 +1983,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     expect(result.sandbox).toBeUndefined();
     expect(result.subject).toEqual({ source: "local-tree", envNames: [], state: { provenance: "undeclared" } });
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.subject).toEqual({ source: "local-tree", envNames: [], state: { provenance: "undeclared" } });
     expect("archiveSha256" in bundle.subject).toBe(false);
 
@@ -2062,7 +2062,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     // Every lane uploaded the SAME archive bytes to the SAME remote path, octet-stream.
     const uploads = sandbox.calls.filter(
       (call): call is [string, string, ArrayBuffer, { useOctetStream?: boolean } | undefined] =>
-        call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz"
+        call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz"
     );
     expect(uploads).toHaveLength(2);
     for (const upload of uploads) {
@@ -2078,8 +2078,8 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     );
     expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
     expect(extractScript?.[2]).toContain("mkdir -p /home/user/subject");
-    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.homun-source.tar.gz -C /home/user/subject");
-    expect(extractScript?.[2]).toContain("rm -f /home/user/.homun-source.tar.gz");
+    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.humanish-source.tar.gz -C /home/user/subject");
+    expect(extractScript?.[2]).toContain("rm -f /home/user/.humanish-source.tar.gz");
 
     // Provenance: aggregate + every lane carry archiveSha256/commit/dirty from the hook result.
     const expectedSubject = {
@@ -2096,7 +2096,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       expect(lane.subject).toEqual(expectedSubject);
     }
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.subject).toEqual(expectedSubject);
 
@@ -2157,7 +2157,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     // (b) the persisted fan-out bundle attributes each lane's COMPLETED phase events to that
     // lane's OWN simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
     // no cross-lane leakage into the wrong lane's stream.
-    const runDir = path.join(cwd, ".homun", "runs", outcome.result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     const persistedPhaseEvents = (bundle.events as Array<{ id: string; type: string; simId?: string; streamId?: string }>).filter(
       (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed")
@@ -2312,7 +2312,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HOMUN_CUA_LAB_SUBJECT_INVALID");
+    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
     expect(outcome.result.error?.message).toContain("zero packable entries");
     expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
     expect(created).toHaveLength(0);
@@ -2358,9 +2358,9 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       runId: "cua-test-run",
       screenshots: [],
       source: {
-        packageName: "homun",
-        homunSource: "present",
-        git: { schema: "homun.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
+        packageName: "humanish",
+        humanishSource: "present",
+        git: { schema: "humanish.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
       }
     });
     expect(bundle.streams[0]?.actor).toBeUndefined();
@@ -2398,9 +2398,9 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       runId: "cua-test-run",
       screenshots: [],
       source: {
-        packageName: "homun",
-        homunSource: "present",
-        git: { schema: "homun.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
+        packageName: "humanish",
+        humanishSource: "present",
+        git: { schema: "humanish.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
       }
     });
 
@@ -2432,9 +2432,9 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       screenshots: ["screenshots/turn-001.png"],
       sessionError: "provider exploded mid-loop",
       source: {
-        packageName: "homun",
-        homunSource: "present" as const,
-        git: { schema: "homun.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
+        packageName: "humanish",
+        humanishSource: "present" as const,
+        git: { schema: "humanish.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
       }
     };
 
@@ -2518,7 +2518,7 @@ function localAppConfig(appUrl = "http://localhost:5173/"): LabConfig {
 describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-cua-inproc-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-inproc-"));
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -2562,7 +2562,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(result.observer?.ok).toBe(true);
 
     // The trace's provider id is the INJECTED brain's id (no new lane needed); zero screenshots.
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.provider).toBe("fake-state-brain");
     expect(bundle.streams[0].actor.lane).toBe("computer-use");
@@ -2647,7 +2647,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(laneSummary.passed).toBe(0);
     expect(result.error?.message).toContain("failed");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("gave up");
   });
@@ -2668,7 +2668,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
-    expect(outcome.error?.code).toBe("HOMUN_CUA_LAB_EXECUTOR_NO_PROVIDER");
+    expect(outcome.error?.code).toBe("HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER");
     expect(outcome.sandbox).toBeUndefined();
   });
 
@@ -2686,7 +2686,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
-    expect(outcome.error?.code).toBe("HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
+    expect(outcome.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
     expect(outcome.error?.message).toContain("buildExecutor");
     expect(outcome.sandbox).toBeUndefined();
   });
@@ -2702,6 +2702,6 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    expect(outcome.result.error?.code).not.toBe("HOMUN_CUA_LAB_EXECUTOR_NO_PROVIDER");
+    expect(outcome.result.error?.code).not.toBe("HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER");
   });
 });

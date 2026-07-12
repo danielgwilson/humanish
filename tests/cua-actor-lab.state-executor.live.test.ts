@@ -17,14 +17,14 @@ import { verifyRun } from "../src/run.js";
 // pixel-bae library snippet shape from issue #148. It is $0 BY MECHANISM (no provider spend, no
 // E2B sandbox), but it is gated EXACTLY like the other live rungs so CI never runs it by
 // accident and the orchestrator can run it post-merge for a kept receipt:
-//   1. HOMUN_LIVE_CUA=1 must be set explicitly (the live opt-in convention).
+//   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the live opt-in convention).
 // Unlike the desktop rungs it needs NO OPENAI_API_KEY / E2B_API_KEY — the caller's own executor
 // and provider drive the loop. The subject is a REAL already-running LOCAL app (a node http
 // server on loopback) exposing a window.app.* style state contract; a REAL CuaExecutor reads
 // getState() (NO screenshot), and a fake-but-real-shaped NON-vision provider (requiresFrame
 // falsey) reasons over appState. Asserts: the run reaches goal_satisfied via getState(), NO E2B
 // sandbox was created (result.sandbox === undefined), and the bundle verifies.
-const LIVE = process.env.HOMUN_LIVE_CUA === "1";
+const LIVE = process.env.HUMANISH_LIVE_CUA === "1";
 
 // A minimal "already-running local app" with an in-process JS automation contract. The HTTP
 // server stands in for the real dev server; the contract is reached here directly (a library
@@ -103,7 +103,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (LIVE rung, no E2B, 
   let appUrl: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-state-live-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-state-live-"));
     // A real already-running local dev server on loopback (the subject the lab points at).
     server = createServer((_req, res) => {
       res.writeHead(200, { "content-type": "text/html" });
@@ -149,7 +149,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (LIVE rung, no E2B, 
     expect("streamUrl" in result).toBe(false);
     expect(result.ok).toBe(true);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(bundle.streams[0].actor.provider).toBe("pixel-bae-state-brain");

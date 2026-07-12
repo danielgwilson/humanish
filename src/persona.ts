@@ -1,4 +1,4 @@
-// Compiles a committed persona (homun/personas/*.yaml) into actor-neutral
+// Compiles a committed persona (humanish/personas/*.yaml) into actor-neutral
 // behavioral directives so persona traits actually drive how the actor uses the
 // product, instead of being inert metadata. See docs/architecture/actor-contract.md.
 //
@@ -59,7 +59,7 @@ function sanitizePersonaText(value: unknown, maxLength: number): string | undefi
   const cleaned = stripControlChars(value)
     // Neutralize the actor verdict/nonce markers so persona text injected into a
     // prompt cannot forge a verdict line an actor might echo back.
-    .replace(/HOMUN_ACTOR_(?:VERDICT|NONCE)/gi, "HOMUN_ACTOR_[neutralized]")
+    .replace(/HUMANISH_ACTOR_(?:VERDICT|NONCE)/gi, "HUMANISH_ACTOR_[neutralized]")
     .replace(/\s+/g, " ")
     .trim();
   if (cleaned.length === 0) {

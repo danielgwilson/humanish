@@ -193,7 +193,7 @@ export interface CuaLoopOptions {
   /**
    * Redact (blur+downscale) persisted screenshots. Default FALSE — full-fidelity frames are
    * retained, because the common case is a developer watching a sim of their OWN app locally
-   * (gitignored .homun), where blur destroys the core deliverable. Set true for unowned
+   * (gitignored .humanish), where blur destroys the core deliverable. Set true for unowned
    * subjects or when the bundle is meant to be shared as-is. The frame sent to the PROVIDER is
    * always full-resolution regardless (the model must see the screen to act); this flag only
    * governs what is PERSISTED. Publish-safety belongs at the publish boundary (commit scan / redactScreenshots), not capture.

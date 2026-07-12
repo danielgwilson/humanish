@@ -14,7 +14,7 @@ decision-grade evidence about the interaction (not just that N sessions ran).
 
 ## The substrate reality (tech-lead correction to the workshop)
 
-The workshop concluded concurrent multi-seat is "impossible" — but it only inspected homun's
+The workshop concluded concurrent multi-seat is "impossible" — but it only inspected humanish's
 wrapper (`src/e2b-desktop-launch.ts`). The base `e2b` SDK (v2.27.0) DOES expose
 `getHost(port): string` (`sandbox.getHost(3000)` → a reachable URL). So there are TWO honest
 shared-world topologies, and concurrent IS buildable:
@@ -47,7 +47,7 @@ attribution is weaker and states its ceiling — verify FAILS CLOSED if the ceil
   We use a self-contained field (not a new evidence-class-in-schema) because evidence-classes-
   in-schema is layer 8 (unbuilt); when it lands, `attributionClass` composes as the orthogonal
   axis. Conflating the two would itself be dishonest (invariant 6).
-- **`RunBundle.sharedWorld?` (schema `homun.shared-world.v1`)** — additive block: `topology`,
+- **`RunBundle.sharedWorld?` (schema `humanish.shared-world.v1`)** — additive block: `topology`,
   `roleCount`, the ONE shared-plane provenance (commit + seedDigest + envNames), the declared
   executed `sequence` of role identities, and a harness-clocked alternating `timeline`
   (`cp-baseline → turn → cp → turn → … → cp`) where each `turn` references a real
@@ -104,7 +104,7 @@ existing value-shape tripwire). Same lockdown as the seed-step surface.
   is data, never trips fail-fast. ONE teardown BY exact `sandboxId` in a finally — NEVER
   `Sandbox.list` (the prod-incident rail). `selectLabBackend` routes `routesToSharedWorld` to it.
 - **Evidence (`src/run.ts`):** `RunBundle.attributionClass` + `RunBundle.sharedWorld`
-  (`homun.shared-world.v1`). `validateSharedWorldEvidence` wired into `verifyRun` (mirror
+  (`humanish.shared-world.v1`). `validateSharedWorldEvidence` wired into `verifyRun` (mirror
   `validateTerminalProductEvidence`): timeline well-formed (starts baseline, alternates, ends on
   a checkpoint, order == sequence); every turn sim/stream resolves; every checkpoint digest
   matches `COMMAND_DIGEST_PATTERN` and carries NO value-shaped field; `attributionLimits` contains

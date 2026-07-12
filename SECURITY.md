@@ -2,7 +2,7 @@
 
 ## Public-Safety Boundary
 
-Homun must not contain or emit PII, PHI, secrets, keys, tokens, raw private
+Humanish must not contain or emit PII, PHI, secrets, keys, tokens, raw private
 transcripts, private screenshots, private customer data, private patient data,
 or private source snippets.
 
@@ -21,7 +21,7 @@ Include:
 - command run;
 - safe reproduction steps;
 - redacted evidence path or synthetic fixture;
-- whether any generated `.homun/` artifact may contain sensitive data.
+- whether any generated `.humanish/` artifact may contain sensitive data.
 
 ## Maintainer Release Checks
 

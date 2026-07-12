@@ -14,7 +14,7 @@ import {
 } from "../src/lab-config.js";
 import { selectLabBackend } from "../src/lab-engine.js";
 
-describe("parseLabConfig (homun.lab.v2)", () => {
+describe("parseLabConfig (humanish.lab.v2)", () => {
   it("parses an oss-meta-shaped lab (clone + e2b-desktop + codex actor)", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -93,7 +93,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
   });
 
   it.each([
-    ["wrong schema", { schema: "homun.lab.v1", id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
+    ["wrong schema", { schema: "humanish.lab.v1", id: "x", subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
     ["missing id", { schema: LAB_CONFIG_SCHEMA, subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
     ["id with space", { schema: LAB_CONFIG_SCHEMA, id: "has space", subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
     ["id not starting alphanumeric", { schema: LAB_CONFIG_SCHEMA, id: ".hidden", subject: { source: "this-repo" }, actors: [{ type: "a" }] }],
@@ -110,7 +110,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
     const result = parseLabConfig(input);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
   });
 
   describe("app-url (computer-use route)", () => {
@@ -238,7 +238,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
     });
 
     describe("multi-lane fan-out (#163)", () => {
@@ -375,7 +375,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
         const result = parseLabConfig(input);
         expect(result.ok, _label).toBe(false);
         if (result.ok) return;
-        expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+        expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
       });
 
       it("warns actors[0].lanes as inert on a non-cua route (regression: other routes' rules fire)", () => {
@@ -478,7 +478,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
         schema: LAB_CONFIG_SCHEMA,
         id: "clone-smoke-device",
         subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "homun-setup" }],
+        actors: [{ type: "humanish-setup" }],
         execution: { desktop: { device: "mobile" } }
       });
       expect(result.ok).toBe(true);
@@ -491,7 +491,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
         schema: LAB_CONFIG_SCHEMA,
         id: "clone-smoke-browser",
         subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "homun-setup" }],
+        actors: [{ type: "humanish-setup" }],
         execution: { desktop: { browser: "chrome" } }
       });
       expect(result.ok).toBe(true);
@@ -597,7 +597,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
     });
 
     it("rejects subject.state on the scripted route (a clone-only field on an app-url subject)", () => {
@@ -812,7 +812,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
       });
       expect(rejected.ok).toBe(false);
       if (rejected.ok) return;
-      expect(rejected.error.code).toBe("HOMUN_LAB_INVALID");
+      expect(rejected.error.code).toBe("HUMANISH_LAB_INVALID");
       expect(rejected.error.message).toContain("subject.clone.fanout");
 
       // clone.keep + depth alone parse clean (keep is honored on failure; depth is consumed).
@@ -835,7 +835,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
     it("warns serve/env/depth as inert on clone routes that do NOT serve (smoke/meta)", () => {
       const smoke = parseLabConfig({
         ...validCloneCua,
-        actors: [{ type: "homun-setup" }],
+        actors: [{ type: "humanish-setup" }],
         execution: undefined,
         scenario: undefined
       });
@@ -873,7 +873,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
     });
   });
 
@@ -969,7 +969,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
       const result = parseLabConfig(input);
       expect(result.ok, _label).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
     });
 
     it("names the provisioned-channel rule when external is not backed by subject.env", () => {
@@ -985,7 +985,7 @@ describe("parseLabConfig (homun.lab.v2)", () => {
       // state warning must not displace the existing ones.
       const smoke = parseLabConfig({
         ...withState({ seed: [{ name: "fixtures", command: "pnpm prisma db seed" }] }),
-        actors: [{ type: "homun-setup" }],
+        actors: [{ type: "humanish-setup" }],
         execution: undefined,
         scenario: undefined
       });
@@ -1063,7 +1063,7 @@ describe("parseLabConfig (local-app subject — issue #148)", () => {
     const result = parseLabConfig(input);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
   });
 
   it("the e2b-desktop rejection names the right remedy (app-url for the hosted desktop route)", () => {
@@ -1282,7 +1282,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     const result = parseLabConfig(input as Record<string, unknown>);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
   });
 
   it("each fail-closed reason names its requirement precisely", () => {
@@ -1336,7 +1336,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
 
     // Every existing route still parses + routes unchanged (regression guard).
     const synthetic = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "s", subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] });
-    const smoke = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "homun-setup" }] });
+    const smoke = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "humanish-setup" }] });
     const meta = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "m", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "codex-app-server" }], execution: { target: "e2b-desktop" } });
     const scripted = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "sc", subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" }, actors: [{ type: "scripted-browser" }], scenario: { ref: "scripted-first-run" } });
     const terminal = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "t", subject: { source: "terminal-product", product: { name: "widgetsmith", publicSurfaces: ["https://example.com/x"] } }, actors: [{ type: "codex-exec" }] });
@@ -1421,7 +1421,7 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     const result = parseLabConfig(input as Record<string, unknown>);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
   });
 
   it("each concurrent fail-closed reason names its requirement precisely", () => {
@@ -1456,7 +1456,7 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
 
   it("existing routes stay byte-stable (none route to concurrent shared-world)", () => {
     const synthetic = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "s", subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] });
-    const smoke = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "homun-setup" }] });
+    const smoke = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "humanish-setup" }] });
     const meta = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "m", subject: { source: "clone", repos: ["a/b"] }, actors: [{ type: "codex-app-server" }], execution: { target: "e2b-desktop" } });
     // A plain cua fan-out (concurrency>1 but NO shared-world topology) stays cua, NOT concurrent shared-world.
     const fanout = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "f", subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" }, actors: [{ type: "openai-computer-use", count: 3 }], execution: { target: "e2b-desktop", concurrency: 2 } });
@@ -1553,7 +1553,7 @@ describe("parseLabConfig (local-tree subject - issue #261)", () => {
     const result = parseLabConfig(input);
     expect(result.ok, _label).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("HOMUN_LAB_INVALID");
+    expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
   });
 
   it("each local-tree fail-closed reason names its requirement precisely", () => {

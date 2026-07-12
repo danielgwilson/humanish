@@ -71,7 +71,7 @@ import {
   type ScriptedBrowserSessionResult
 } from "./scripted-browser-actor.js";
 
-export const SCRIPTED_BROWSER_LAB_SCHEMA = "homun.scripted-lab-result.v1";
+export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 
 // Journey wall-clock budget per surface — same default as `run --app-url`.
 const DEFAULT_SESSION_TIMEOUT_MS = 60_000;
@@ -101,7 +101,7 @@ export interface ScriptedBrowserLabHooks {
   prepareDesktop?: (desktop: E2BDesktopSandbox) => Promise<void>;
   /** Detached-step timers for deterministic tests around clone/seed/start provisioning. */
   detachedTimers?: DetachedTimers;
-  /** Override the resolved browser binary (tests; operators use HOMUN_BROWSER_COMMAND). */
+  /** Override the resolved browser binary (tests; operators use HUMANISH_BROWSER_COMMAND). */
   browserCommand?: string;
   renderObserverFn?: typeof renderObserver;
   now?: () => number;
@@ -153,14 +153,14 @@ export interface ScriptedBrowserLabResult {
   warnings: string[];
   error?: {
     code:
-      | "HOMUN_SCRIPTED_LAB_FAILED"
-      | "HOMUN_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
-      | "HOMUN_SCRIPTED_LAB_SCENARIO_INVALID"
-      | "HOMUN_SCRIPTED_LAB_SUBJECT_UNSAFE"
-      | "HOMUN_SCRIPTED_LAB_BROWSER_MISSING"
-      | "HOMUN_SCRIPTED_LAB_KEYS_MISSING"
-      | "HOMUN_SCRIPTED_LAB_SUBJECT_ENV_MISSING"
-      | "HOMUN_SCRIPTED_LAB_GETHOST_UNAVAILABLE";
+      | "HUMANISH_SCRIPTED_LAB_FAILED"
+      | "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
+      | "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"
+      | "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE"
+      | "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING"
+      | "HUMANISH_SCRIPTED_LAB_KEYS_MISSING"
+      | "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING"
+      | "HUMANISH_SCRIPTED_LAB_GETHOST_UNAVAILABLE";
     message: string;
   };
 }
@@ -197,7 +197,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isScriptedBrowserActorDescriptor(descriptor)) {
     return failed(
-      "HOMUN_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
+      "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
       `actors[0].type "${actorType}" is not a registered scripted-browser actor.`
     );
   }
@@ -227,14 +227,14 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   let appUrl = provisionedRoute ? serve?.url ?? "" : evidenceAppUrl;
   if (!provisionedRoute && !appUrl) {
     return failed(
-      "HOMUN_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
       "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route.",
       { actor: descriptor.id }
     );
   }
   if (provisionedRoute && (!serve || !subjectRepo || !publicRepo)) {
     return failed(
-      "HOMUN_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
       "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config.",
       { actor: descriptor.id, appUrl: evidenceAppUrl }
     );
@@ -244,14 +244,14 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   // built-in journey fallback on the lab route).
   const scenario = await resolveScriptedScenario(cwd, config.scenario?.ref);
   if (!scenario.ok) {
-    return failed("HOMUN_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
+    return failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
   }
   const journey = scenario.journey;
 
   if (!dryRun && provisionedRoute) {
       if (!e2bApiKey) {
       return failed(
-        "HOMUN_SCRIPTED_LAB_KEYS_MISSING",
+        "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
         "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject).",
         { actor: descriptor.id, appUrl: evidenceAppUrl }
       );
@@ -259,7 +259,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
       return failed(
-        "HOMUN_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
+        "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
         `Subject env values missing for live clone scripted-browser lab: ${missingSubjectEnv.join(", ")}.`,
         { actor: descriptor.id, appUrl: evidenceAppUrl }
       );
@@ -282,8 +282,8 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     const resolved = await resolveBrowserCommand();
     if (!resolved) {
       return failed(
-        "HOMUN_SCRIPTED_LAB_BROWSER_MISSING",
-        "No Chrome/Chromium browser command was found for the scripted-browser actor. Set HOMUN_BROWSER_COMMAND to a browser binary playwright-core can launch.",
+        "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING",
+        "No Chrome/Chromium browser command was found for the scripted-browser actor. Set HUMANISH_BROWSER_COMMAND to a browser binary playwright-core can launch.",
         { actor: descriptor.id, appUrl: evidenceAppUrl }
       );
     }
@@ -291,14 +291,14 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   }
 
   const runId = options.runId ?? makeScriptedRunId();
-  const artifactRoot = path.join(cwd, ".homun", "runs", runId);
+  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
   const createdAt = new Date().toISOString();
   await mkdir(path.join(artifactRoot, "screenshots"), { recursive: true });
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd,
-    homunSource: "present",
-    packageName: "homun"
+    humanishSource: "present",
+    packageName: "humanish"
   });
 
   let sessionResults: ScriptedBrowserSessionResult[] = [];
@@ -314,7 +314,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     let subjectDesktop: E2BDesktopSandbox | undefined;
     try {
       if (provisionedRoute) {
-        const requestTimeoutMs = readPositiveInt(env.HOMUN_E2B_REQUEST_TIMEOUT_MS, 60_000);
+        const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
         const timers: DetachedTimers = hooks.detachedTimers ?? {};
         subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
         subjectDesktop = await createDesktopSandbox(subjectModule, {
@@ -325,7 +325,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
             + SANDBOX_TIMEOUT_BUFFER_MS,
           metadata: {
             mode: "scripted-browser-lab",
-            tool: "homun",
+            tool: "humanish",
             labId: config.id,
             role: "subject",
             actor: descriptor.id
@@ -460,11 +460,11 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
   await writeFile(
-    path.join(cwd, ".homun", "runs", "latest.json"),
+    path.join(cwd, ".humanish", "runs", "latest.json"),
     `${JSON.stringify({
-      schema: "homun.latest-run.v1",
+      schema: "humanish.latest-run.v1",
       runId,
-      path: path.join(".homun", "runs", runId),
+      path: path.join(".humanish", "runs", runId),
       updatedAt: createdAt
     }, null, 2)}\n`,
     "utf8"
@@ -472,7 +472,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
 
   // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
   if (sessionResults.some((result) => result.trace.redaction.screenshots === "raw")) {
-    warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .homun and nothing scans these pixels; review them before sharing anywhere. policies.redactScreenshots is not yet supported on the scripted route.");
+    warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. policies.redactScreenshots is not yet supported on the scripted route.");
   }
 
   const observer = await render(cwd, runId, { open: options.open === true });
@@ -513,7 +513,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
       ? {}
       : {
           error: {
-            code: "HOMUN_SCRIPTED_LAB_FAILED" as const,
+            code: "HUMANISH_SCRIPTED_LAB_FAILED" as const,
             message: sessionError
               ?? (observer.ok
                 ? harnessError
@@ -537,7 +537,7 @@ interface ResolvedScriptedScenario {
  * Resolve and consume `scenario.ref`. Path-style refs (contain a separator or end .yaml/.yml)
  * resolve against cwd and are CLAMPED inside it — a ../../ escape is rejected, never recorded
  * as repo-relative provenance. Id-style refs must be public-safe tokens and resolve to
- * homun/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed.
+ * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed.
  */
 async function resolveScriptedScenario(
   cwd: string,
@@ -571,8 +571,8 @@ async function resolveScriptedScenario(
       };
     }
     const candidates = [
-      path.posix.join("homun", "scenarios", `${trimmed}.yaml`),
-      path.posix.join("homun", "scenarios", `${trimmed}.yml`)
+      path.posix.join("humanish", "scenarios", `${trimmed}.yaml`),
+      path.posix.join("humanish", "scenarios", `${trimmed}.yml`)
     ];
     const found = await firstExistingFile(cwd, candidates);
     if (!found) {
@@ -648,7 +648,7 @@ async function existingScreenshots(artifactRoot: string, result: ScriptedBrowser
 }
 
 /**
- * Project the scripted lab run into a homun.run-bundle.v1 (no schema change — a new
+ * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change — a new
  * producer only). The load-bearing line is `stream.actor = result.trace`: the provider-neutral
  * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
  * the bundle-builder tests.
@@ -825,7 +825,7 @@ export function buildScriptedLabBundle(args: {
     simCount: args.surfaces.length,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".homun", "runs", args.runId),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {
       id: args.persona.id,
@@ -853,7 +853,7 @@ export function buildScriptedLabBundle(args: {
     redaction: {
       status: "passed",
       notes: ranLive
-        ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .homun — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+        ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
         : "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs."
     },
     artifacts: {

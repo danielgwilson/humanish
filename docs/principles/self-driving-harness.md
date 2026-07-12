@@ -2,11 +2,11 @@
 
 Date: 2026-06-01
 
-Status: initial repo doctrine for `homun`.
+Status: initial repo doctrine for `humanish`.
 
 ## Thesis
 
-`homun` should be a closed-loop product simulation system, not just a
+`humanish` should be a closed-loop product simulation system, not just a
 CLI that launches agents.
 
 The operating loop is:
@@ -39,7 +39,7 @@ synthetic or redacted.
 ### 1. Model, Harness, Environment
 
 Reliable agentic work is the composition of model, harness, and environment.
-`homun` owns the harness layer: replay, invariants, observability,
+`humanish` owns the harness layer: replay, invariants, observability,
 policy, artifacts, review, and feedback routing.
 
 ### 2. Verifiability Defines Throughput

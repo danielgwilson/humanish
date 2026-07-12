@@ -14,18 +14,18 @@ feedback drafts and future public issues.
 ## Minimum Bundle Shape
 
 ```yaml
-schema: homun.run-bundle.v1
+schema: humanish.run-bundle.v1
 runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
 createdAt: "<ISO timestamp>"
 cwd: "[target-cwd]"
-artifactRoot: ".homun/runs/<run-id>"
+artifactRoot: ".humanish/runs/<run-id>"
 source:
   packageName: "<public package name or null>"
-  homunSource: "present|missing"
+  humanishSource: "present|missing"
   git:
-    schema: homun.git-state.v1
+    schema: humanish.git-state.v1
     status: "clean|dirty|missing|unavailable"
     capturedAt: "<ISO timestamp>"
     head:
@@ -48,24 +48,24 @@ artifacts:
   observerData: "observer/observer-data.json"
   events: "events.ndjson"
 review:
-  schema: homun.review.v1
+  schema: humanish.review.v1
   verdict: "contract_proof_only|pass|fail|blocked|timed_out"
 adapterScore:
-  schema: homun.adapter-score.v1
+  schema: humanish.adapter-score.v1
   namespace: "<adapter namespace>"
   status: "pass|partial|fail"
   score: 0
   summary: "<public-safe adapter score summary>"
   data: {}
 feedbackCandidates:
-  - schema: homun.feedback-candidate.v1
+  - schema: humanish.feedback-candidate.v1
     id: "<stable candidate id>"
     failure_owner: "harness|target-app|actor|environment|unknown"
     evidence:
       - path: "<relative run artifact path>"
         kind: "review|state|log|trace|screenshot|filesystem"
 adapterArtifacts:
-  - schema: homun.adapter-artifact.v1
+  - schema: humanish.adapter-artifact.v1
     namespace: "<adapter namespace>"
     label: "<human-readable artifact label>"
     path: "<relative run artifact path>"
@@ -83,7 +83,7 @@ responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 what the computer-use backend actually drove (code pin plus state story). It
 is absent on pre-existing bundles and on bundles from backends that have not
 adopted it. The field shape, its three sources (`clone`, `app-url`,
-`local-tree`), and the `homun verify` checks that guard it are the schema doc's
+`local-tree`), and the `humanish verify` checks that guard it are the schema doc's
 job, not this one: see the `subject` entry under
 [`schemas.md`](schemas.md#contract-schema-index). In short, `clone` carries a
 `repo`/`commit` pin, `local-tree` carries an `archiveSha256`/`dirty` pin
@@ -102,23 +102,23 @@ Terminal-product runs record `adapterScore` additively. Browser/computer-use
 runs treat `status: fail` as product-red: the route result returns `ok: false`,
 the persisted `review.verdict` becomes `fail` when it was pass-like, and a
 generic adapter gap is appended. The bundle remains valid evidence for
-`homun verify` because the failure is an observed product-acceptance outcome,
+`humanish verify` because the failure is an observed product-acceptance outcome,
 not corrupt evidence.
 
 ## Adapter Artifacts
 
 `adapterArtifacts` is optional and namespaced. It lets a downstream adapter
-attach product/state proof outputs to the Homun bundle without making the
+attach product/state proof outputs to the Humanish bundle without making the
 payload shape a core concept. Core validates only:
 
-- `schema: homun.adapter-artifact.v1`;
+- `schema: humanish.adapter-artifact.v1`;
 - non-empty `namespace`, `label`, `path`, and `note`;
 - local relative paths only, with no absolute paths, traversal, or URLs;
 - supported generic artifact kinds.
 
 Adapters that use browser/shared-world hooks may write files under the ignored
 run directory and return relative references through `deriveArtifacts`. Core
-stores those references, Observer links them, and `homun verify` fails closed
+stores those references, Observer links them, and `humanish verify` fails closed
 when any referenced file is missing. The adapter owns the artifact payload schema
 under its namespace.
 
@@ -158,7 +158,7 @@ is mutually exclusive with explicit `lanes`, homogeneous `count`, and
 
 These fields are adapter-owned labels, not core enums. They let downstream
 projects express "N actors of M app-defined types across S surfaces" without
-teaching Homun private product nouns. Values must be public-safe tokens and
+teaching Humanish private product nouns. Values must be public-safe tokens and
 are projected into:
 
 - the preflight lane plan;
@@ -167,7 +167,7 @@ are projected into:
 - human-readable Observer stream labels.
 
 `actorType` is deliberately separate from `actors[0].type`. The latter selects
-the Homun execution actor, such as `openai-computer-use` or `scripted-browser`.
+the Humanish execution actor, such as `openai-computer-use` or `scripted-browser`.
 The former is the app-defined simulated user bucket, such as `viewer`,
 `maintainer`, or a downstream adapter's own role label.
 
@@ -179,7 +179,7 @@ it records actor/app/nested-Observer status, terminal tails that have already
 passed redaction, and optional setup-quality evidence.
 
 `completion.meaningfulUse` is the first-class scored verdict for meta-lab
-lanes where a coding agent is asked to set up Homun inside another project.
+lanes where a coding agent is asked to set up Humanish inside another project.
 It is a rubric over already-redacted evidence, not a raw transcript dump.
 
 ```yaml
@@ -192,7 +192,7 @@ completion:
   nestedVerifyPassed: true
   visualStatus: "not_started|visible|blocked|unknown"
   meaningfulUse:
-    schema: homun.meaningful-use-score.v1
+    schema: humanish.meaningful-use-score.v1
     status: "pass|partial|fail"
     score: 0
     summary: "<public-safe score explanation>"
@@ -210,7 +210,7 @@ The current OSS meta-lab rubric totals 100 points:
 
 - setup correctness: 15;
 - filesystem evidence: 10;
-- nested Homun evidence: 20;
+- nested Humanish evidence: 20;
 - actor activity: 15;
 - product surface: 15;
 - feedback quality: 25.
@@ -218,7 +218,7 @@ The current OSS meta-lab rubric totals 100 points:
 A score of 80 or higher is `pass` only when no hard failure is present and
 every rubric component passes. Scores from 45 through 79, or scores of 80 or
 higher with any non-passing component, are `partial`. Scores below 45,
-failed/timed-out bootstraps, missing nested Homun proof, required actor
+failed/timed-out bootstraps, missing nested Humanish proof, required actor
 failure, or completed lanes without a running visible product surface are
 `fail`.
 
@@ -227,12 +227,12 @@ failure, or completed lanes without a running visible product surface are
 For run id `example-2026-06-02t10-00-00-000z-proof`, the core layout is:
 
 ```text
-.homun/runs/example-2026-06-02t10-00-00-000z-proof/run.json
-.homun/runs/example-2026-06-02t10-00-00-000z-proof/review.json
-.homun/runs/example-2026-06-02t10-00-00-000z-proof/review.md
-.homun/runs/example-2026-06-02t10-00-00-000z-proof/observer/observer-data.json
-.homun/runs/example-2026-06-02t10-00-00-000z-proof/events.ndjson
-.homun/runs/latest.json
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/run.json
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/review.json
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/review.md
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/observer/observer-data.json
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/events.ndjson
+.humanish/runs/latest.json
 ```
 
 Absolute paths, traversal segments, remotes, hosted logs, and private artifact
@@ -241,27 +241,27 @@ URLs are not part of the core layout.
 ## Filesystem Evidence
 
 Filesystem setup evidence is first-class when a lane asks an actor to install
-or configure Homun inside another project. It is not a repo dump.
+or configure Humanish inside another project. It is not a repo dump.
 
 The durable artifact kind is `filesystem`. The current schema is:
 
 ```yaml
-schema: homun.setup-quality.v1
+schema: humanish.setup-quality.v1
 status: "passed|needs_review|blocked"
 redaction:
   status: "passed"
   rawPreviews: "included|suppressed"
 checks:
-  - id: "homun-config"
+  - id: "humanish-config"
     ok: true
 tree:
-  - path: "homun/config.ts"
+  - path: "humanish/config.ts"
     type: "file"
 previews:
-  - path: "homun/config.ts"
+  - path: "humanish/config.ts"
     language: "typescript"
 studyQuality:
-  schema: homun.study-quality.v1
+  schema: humanish.study-quality.v1
   rating: "none|ceremonial|useful|high_leverage"
   checks:
     - id: "coverage-customized"
@@ -274,8 +274,8 @@ studyQuality:
     personaCustomized: true
     scenarioCustomized: true
 packageScripts:
-  homun: "homun watch"
-homun:
+  humanish: "humanish watch"
+humanish:
   configPresent: true
   personaCount: 1
   scenarioCount: 1
@@ -284,11 +284,11 @@ homun:
 ```
 
 For public OSS runs, previews may include allowlisted setup files such as
-`package.json`, `.gitignore`, `homun/config.ts`, and
-`homun/labs/*.yaml` / `homun/personas/*.yaml` /
-`homun/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
+`package.json`, `.gitignore`, `humanish/config.ts`, and
+`humanish/labs/*.yaml` / `humanish/personas/*.yaml` /
+`humanish/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
 previews are suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
-browser profiles, `node_modules`, `.homun/`, and arbitrary source files are
+browser profiles, `node_modules`, `.humanish/`, and arbitrary source files are
 not included. `studyQuality` is deliberately structural: it stores booleans,
 checks, and a rating so private runs can preserve the useful quality signal
 without committing raw private persona, scenario, or coverage text.
@@ -298,31 +298,31 @@ without committing raw private persona, scenario, or coverage text.
 The latest pointer is a small local index:
 
 ```yaml
-schema: homun.latest-run.v1
+schema: humanish.latest-run.v1
 runId: "<run-id>"
-path: ".homun/runs/<run-id>"
+path: ".humanish/runs/<run-id>"
 updatedAt: "<ISO timestamp>"
 ```
 
 History entries use:
 
 ```yaml
-schema: homun.run-history-entry.v1
+schema: humanish.run-history-entry.v1
 runId: "<run-id>"
 createdAt: "<ISO timestamp>"
 mode: "dry-run|live"
-path: ".homun/runs/<run-id>"
+path: ".humanish/runs/<run-id>"
 ```
 
 The latest pointer may move. Run bundle directories should not.
 
 ## Verify Result Share Safety
 
-`homun.verify-result.v1` includes a machine-readable `shareSafety` block in
+`humanish.verify-result.v1` includes a machine-readable `shareSafety` block in
 addition to `ok`, `checks[]`, and `warnings[]`:
 
 ```yaml
-schema: homun.verify-result.v1
+schema: humanish.verify-result.v1
 ok: true
 shareSafety:
   status: "share_ready|local_only|blocked"

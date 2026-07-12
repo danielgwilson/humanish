@@ -17,12 +17,12 @@ const ENTRY = "observer/index.html";
 interface RunFixture {
   /** The served loopback root: a single run's bundle directory. */
   runDir: string;
-  /** Parent of runDir (simulates `.homun/runs/`), holds out-of-scope files. */
+  /** Parent of runDir (simulates `.humanish/runs/`), holds out-of-scope files. */
   runsDir: string;
 }
 
 async function withRunDir<T>(callback: (fixture: RunFixture) => Promise<T>): Promise<T> {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-observer-static-"));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-static-"));
   const runsDir = path.join(tempRoot, "runs");
   const runDir = path.join(runsDir, "run");
   const observerDir = path.join(runDir, "observer");
@@ -30,12 +30,12 @@ async function withRunDir<T>(callback: (fixture: RunFixture) => Promise<T>): Pro
   try {
     await mkdir(observerDir, { recursive: true });
     // Files inside the run dir — all of these SHOULD be reachable over loopback.
-    await writeFile(path.join(observerDir, "index.html"), "<!doctype html><title>Homun Observer</title>", "utf8");
-    await writeFile(path.join(observerDir, "observer-data.json"), JSON.stringify({ schema: "homun.observer-data.v1" }), "utf8");
+    await writeFile(path.join(observerDir, "index.html"), "<!doctype html><title>Humanish Observer</title>", "utf8");
+    await writeFile(path.join(observerDir, "observer-data.json"), JSON.stringify({ schema: "humanish.observer-data.v1" }), "utf8");
     await writeFile(path.join(observerDir, "client.js"), "console.log('observer');", "utf8");
     await writeFile(path.join(observerDir, "theme.css"), ":root{color:white}", "utf8");
     await writeFile(path.join(observerDir, "badge.svg"), "<svg xmlns='http://www.w3.org/2000/svg'></svg>", "utf8");
-    await writeFile(path.join(runDir, "run.json"), JSON.stringify({ schema: "homun.run-bundle.v1" }), "utf8");
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify({ schema: "humanish.run-bundle.v1" }), "utf8");
     await writeFile(path.join(runDir, "events.ndjson"), "{\"event\":\"start\"}\n", "utf8");
 
     // Out-of-scope files: a sibling run and a secret in the parent runs/ dir.
@@ -110,7 +110,7 @@ describe("observer static request handler", () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers["content-type"]).toBe("text/html; charset=utf-8");
       expect(response.headers["cache-control"]).toBe("no-store");
-      expect(response.body).toContain("Homun Observer");
+      expect(response.body).toContain("Humanish Observer");
     });
   });
 
@@ -201,22 +201,22 @@ describe("observer static server", () => {
         const entryResponse = await fetch(server.url);
         expect(entryResponse.status).toBe(200);
         expect(entryResponse.headers.get("content-type")).toBe("text/html; charset=utf-8");
-        expect(await entryResponse.text()).toContain("Homun Observer");
+        expect(await entryResponse.text()).toContain("Humanish Observer");
 
         // Hitting the root follows the redirect to the entry page.
         const base = `http://${server.host}:${server.port}/`;
         const rootResponse = await fetch(base);
         expect(rootResponse.status).toBe(200);
-        expect(await rootResponse.text()).toContain("Homun Observer");
+        expect(await rootResponse.text()).toContain("Humanish Observer");
 
         // Artifact link target inside the run dir resolves.
         const runJson = await fetch(new URL("run.json", base));
         expect(runJson.status).toBe(200);
-        expect(((await runJson.json()) as { schema: string }).schema).toBe("homun.run-bundle.v1");
+        expect(((await runJson.json()) as { schema: string }).schema).toBe("humanish.run-bundle.v1");
 
         const observerData = await fetch(new URL("observer/observer-data.json", base));
         expect(observerData.status).toBe(200);
-        expect(((await observerData.json()) as { schema: string }).schema).toBe("homun.observer-data.v1");
+        expect(((await observerData.json()) as { schema: string }).schema).toBe("humanish.observer-data.v1");
 
         const missing = await fetch(new URL("observer/nope.json", base));
         expect(missing.status).toBe(404);

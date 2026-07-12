@@ -3,16 +3,16 @@ active_task: "PR-1 (per-lane worlds) implemented + deterministic proof green; PR
 tasks:
   - "DONE config + routing: actors[0].lanes roster XOR count; lanes XOR laneFocus; lanes[].device XOR raw resolution; cap 16; unique ids; execution.concurrency consumed (env may only LOWER); allowPublicTargets+N>1 rejected; clone.fanout rejected on cua; count>1 rejections lifted on the E2B cua route; other routes' rules/warnings unchanged"
   - "DONE orchestration: mapWithConcurrency hoisted to src/concurrency.ts; resolveCuaLanePlan (pure pre-flight) + onPreflight + cua-lab.fanout.plan event; runCuaLane per-lane runner (per-lane metadata, device, geometry assertion, teardown kill-by-id in finally); pipeline gate (lane 1 provisions first); session fail-fast on harness errors only; per-lane session budget (execution.timeoutMs)"
-  - "DONE evidence: N-stream homun.run-bundle.v1 (per-lane sims/streams/traces/screenshots); per-lane verify coverage; result bumped to homun.cua-lab-result.v2 with plan/lanes[]/laneSummary; N=1 byte-stable"
+  - "DONE evidence: N-stream humanish.run-bundle.v1 (per-lane sims/streams/traces/screenshots); per-lane verify coverage; result bumped to humanish.cua-lab-result.v2 with plan/lanes[]/laneSummary; N=1 byte-stable"
   - "DONE deterministic proof: tests/cua-actor-lab.fanout.test.ts (dry-run 4-lane + live-with-fakes N=4/conc 2: bounded concurrency, per-lane cleanup-by-id, pipeline gate, fail-fast, hollow-lane, geometry mismatch, secret scrub) + parser matrix additions in tests/lab-config.test.ts"
-  - "DONE docs + fixture (homun/labs/fanout-demo.yaml) + receipt; PR opened (do not merge)"
-  - "WRITTEN-NOT-RUN: tests/cua-actor-lab.fanout.live.test.ts (HOMUN_LIVE_CUA=1) — separately-authorized paid receipt"
+  - "DONE docs + fixture (humanish/labs/fanout-demo.yaml) + receipt; PR opened (do not merge)"
+  - "WRITTEN-NOT-RUN: tests/cua-actor-lab.fanout.live.test.ts (HUMANISH_LIVE_CUA=1) — separately-authorized paid receipt"
 receipts:
   - "docs/goals/multi-lane-fanout/receipts/deterministic-fanout-proof-2026-06-17.md"
 verification:
   status: passed
   last_command: "pnpm check && node scripts/public-surface-scan.mjs"
-  last_artifact: "tests/cua-actor-lab.fanout.test.ts (10 passed); homun/labs/fanout-demo.yaml dry-run → verifyRun ok"
+  last_artifact: "tests/cua-actor-lab.fanout.test.ts (10 passed); humanish/labs/fanout-demo.yaml dry-run → verifyRun ok"
 evidence:
   environment_state:
     - "Dry-run fanout-demo: ONE run-bundle.v1, simCount 4, per-lane viewports [414x896,360x740,1440x950,1920x1080], cua-lab.fanout.plan event, contract statuses; verifyRun ok"

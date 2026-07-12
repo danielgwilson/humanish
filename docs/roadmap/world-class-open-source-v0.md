@@ -5,16 +5,16 @@ Date: 2026-06-01
 Status: HISTORICAL (banner added 2026-06-11). This was the staged v0 build
 plan; it is kept as delivery history and is not maintained. Several "Non-Goals
 For V0" have since shipped as explicit opt-ins (the OpenAI computer-use actor,
-live E2B desktop labs), and the lab schema is now `homun.lab.v2`. For the
+live E2B desktop labs), and the lab schema is now `humanish.lab.v2`. For the
 live goal state read [`docs/goals/current.md`](../goals/current.md).
 
 ## Target Outcome
 
-A maintainer can install `homun` into a normal JavaScript app, let their
+A maintainer can install `humanish` into a normal JavaScript app, let their
 coding agent run setup, and get a public-safe persona simulation harness with:
 
-- committed `homun/` source plane;
-- ignored `.homun/` runtime plane;
+- committed `humanish/` source plane;
+- ignored `.humanish/` runtime plane;
 - `commander` CLI;
 - safe `init`;
 - synthetic dry-run bundle;
@@ -29,7 +29,7 @@ Status: complete enough to start implementation.
 
 Proof:
 
-- GitHub project `homun`;
+- GitHub project `humanish`;
 - seeded issues;
 - future-public boundary docs;
 - feedback issue-draft doctrine.
@@ -38,15 +38,15 @@ Proof:
 
 Primary issue queue:
 
-- [#13 package: scaffold npm package and Commander homun binary](https://github.com/danielgwilson/homun/issues/13)
-- [#14 init: scaffold committed homun source and ignored .homun runtime layout](https://github.com/danielgwilson/homun/issues/14)
-- [#16 fixtures: create target app fixture for init, dry-run, verify, and observer proof](https://github.com/danielgwilson/homun/issues/16)
-- [#7 cli: scaffold doctor, run --dry-run, review, verify, runs, and watch](https://github.com/danielgwilson/homun/issues/7)
-- [#6 core: run IDs, artifact paths, git state, history, and lifecycle primitives](https://github.com/danielgwilson/homun/issues/6)
-- [#10 observer: static mission-control viewer over fixture bundle](https://github.com/danielgwilson/homun/issues/10)
-- [#5 feedback: specify public issue-draft CLI command](https://github.com/danielgwilson/homun/issues/5)
-- [#15 skill: package agent setup guidance for installing Homun](https://github.com/danielgwilson/homun/issues/15)
-- [#17 release: open-source readiness, package metadata, license, and publish dry-run](https://github.com/danielgwilson/homun/issues/17)
+- [#13 package: scaffold npm package and Commander humanish binary](https://github.com/danielgwilson/humanish/issues/13)
+- [#14 init: scaffold committed humanish source and ignored .humanish runtime layout](https://github.com/danielgwilson/humanish/issues/14)
+- [#16 fixtures: create target app fixture for init, dry-run, verify, and observer proof](https://github.com/danielgwilson/humanish/issues/16)
+- [#7 cli: scaffold doctor, run --dry-run, review, verify, runs, and watch](https://github.com/danielgwilson/humanish/issues/7)
+- [#6 core: run IDs, artifact paths, git state, history, and lifecycle primitives](https://github.com/danielgwilson/humanish/issues/6)
+- [#10 observer: static mission-control viewer over fixture bundle](https://github.com/danielgwilson/humanish/issues/10)
+- [#5 feedback: specify public issue-draft CLI command](https://github.com/danielgwilson/humanish/issues/5)
+- [#15 skill: package agent setup guidance for installing Humanish](https://github.com/danielgwilson/humanish/issues/15)
+- [#17 release: open-source readiness, package metadata, license, and publish dry-run](https://github.com/danielgwilson/humanish/issues/17)
 
 ## Stage 1: Package Scaffold
 
@@ -58,7 +58,7 @@ Build the minimum npm package:
 - `commander`;
 - test runner;
 - lint/typecheck/check scripts;
-- binary name `homun`;
+- binary name `humanish`;
 - stable JSON command envelope.
 
 Proof:
@@ -66,15 +66,15 @@ Proof:
 ```bash
 pnpm install
 pnpm check
-pnpm homun -- --help
+pnpm humanish -- --help
 ```
 
 ## Stage 2: Project Layout And Init
 
-Implement `homun init`:
+Implement `humanish init`:
 
-- creates committed `homun/`;
-- creates ignored `.homun/`;
+- creates committed `humanish/`;
+- creates ignored `.humanish/`;
 - writes starter synthetic personas/scenarios/policies;
 - patches `package.json` scripts;
 - updates `.gitignore`;
@@ -84,7 +84,7 @@ Proof:
 
 ```bash
 pnpm test
-pnpm homun -- init --dry-run --json
+pnpm humanish -- init --dry-run --json
 ```
 
 Fixture proof should run against a temporary app fixture, not this repo only.
@@ -102,13 +102,13 @@ Implement a synthetic dry-run bundle:
 - artifact paths;
 - source/git state.
 
-Implement `homun verify` over that bundle.
+Implement `humanish verify` over that bundle.
 
 Proof:
 
 ```bash
-pnpm homun -- run --dry-run --json
-pnpm homun -- verify --run latest --json
+pnpm humanish -- run --dry-run --json
+pnpm humanish -- verify --run latest --json
 ```
 
 ## Stage 4: Observer
@@ -138,7 +138,7 @@ Still next:
 Proof:
 
 ```bash
-pnpm homun -- watch
+pnpm humanish -- watch
 ```
 
 If browser verification is added, use screenshots of the observer as proof.
@@ -150,9 +150,9 @@ Status: implemented for the synthetic dry-run bundle path.
 Implement:
 
 ```bash
-homun feedback draft --run latest --json
-homun feedback issue --run latest --repo owner/repo --format markdown
-homun feedback issue-url --run latest --repo owner/repo
+humanish feedback draft --run latest --json
+humanish feedback issue --run latest --repo owner/repo --format markdown
+humanish feedback issue-url --run latest --repo owner/repo
 ```
 
 Rules:
@@ -162,26 +162,26 @@ Rules:
 - no Projects;
 - redaction must pass;
 - dry-run-only claims are labeled as contract proof, not product proof;
-- issue body includes `homun_feedback` block.
+- issue body includes `humanish_feedback` block.
 
 Proof:
 
 ```bash
-pnpm homun -- feedback issue --run latest --repo example/app --format markdown
+pnpm humanish -- feedback issue --run latest --repo example/app --format markdown
 ```
 
 ## Stage 6: Agent Skill
 
 Status: implemented as an installer-visible skills.sh skill under
-`skills/homun/SKILL.md`.
+`skills/humanish/SKILL.md`.
 
 Create a shareable skill package that teaches agents to install and configure
-Homun in target repos.
+Humanish in target repos.
 
 It should cover:
 
-- `npm i -D homun`;
-- `npx homun init`;
+- `npm i -D humanish`;
+- `npx humanish init`;
 - committed vs ignored layout;
 - public-safety rules;
 - creating personas;
@@ -212,21 +212,21 @@ remains a human release action.
 
 Status: implemented for dry-run contract proof.
 
-The repository now includes committed `homun/` source files so Homun can run
-against `homun` itself. This makes `doctor` green on the repo, lets
-dry-run bundles read and digest `homun/personas/synthetic-new-user.yaml` and
-`homun/scenarios/first-run-smoke.yaml`, and keeps the live Codex TUI actor gap
+The repository now includes committed `humanish/` source files so Humanish can run
+against `humanish` itself. This makes `doctor` green on the repo, lets
+dry-run bundles read and digest `humanish/personas/synthetic-new-user.yaml` and
+`humanish/scenarios/first-run-smoke.yaml`, and keeps the live Codex TUI actor gap
 explicit. The live Codex TUI dogfood path and noninteractive `codex-exec`
 fanout hardening are tracked in
-[#28](https://github.com/danielgwilson/homun/issues/28).
+[#28](https://github.com/danielgwilson/humanish/issues/28).
 
 ## Stage 6.8: One-Command Watch UX
 
 Status: implemented for synthetic contract-proof stream lanes.
 
-`homun watch` now creates a fresh four-lane synthetic run, renders Observer,
+`humanish watch` now creates a fresh four-lane synthetic run, renders Observer,
 starts a localhost watch server, opens the served Observer in the browser, and
-keeps the shell attached. The CI-safe form is `homun watch --json --no-open`.
+keeps the shell attached. The CI-safe form is `humanish watch --json --no-open`.
 `--sims <n>` remains the explicit scale control, and `--run <id>` watches
 existing evidence.
 
@@ -234,11 +234,11 @@ existing evidence.
 
 Status: implemented as the generic source shape for reusable runs.
 
-Homun now resolves `.yaml` lab manifests from committed `homun/labs/`,
-ignored `.homun/labs/`, ignored `.homun/local/labs/`, or an explicit
-`.yaml` path. The human path is `homun watch <lab>`; the agent/CI path is
-`homun lab run <lab> --json --no-open`; discovery is `homun lab list` and
-`homun lab inspect <lab>`.
+Humanish now resolves `.yaml` lab manifests from committed `humanish/labs/`,
+ignored `.humanish/labs/`, ignored `.humanish/local/labs/`, or an explicit
+`.yaml` path. The human path is `humanish watch <lab>`; the agent/CI path is
+`humanish lab run <lab> --json --no-open`; discovery is `humanish lab list` and
+`humanish lab inspect <lab>`.
 
 Private or maintainer-only dogfood belongs in ignored lab manifests plus
 explicit `--env-file`; the public package should not hardcode private target
@@ -246,38 +246,38 @@ names or require broad inherited job env.
 
 ## Stage 6.9: Maintainer OSS Meta-Lab
 
-Status: implemented as repo-owned `homun/labs/oss.yaml` plus compatibility
+Status: implemented as repo-owned `humanish/labs/oss.yaml` plus compatibility
 aliases, with a retained disposable smoke harness.
 
-`homun watch oss` opens the top-level Observer for authorized-repo meta-sims.
+`humanish watch oss` opens the top-level Observer for authorized-repo meta-sims.
 Each lane is assigned a GitHub `owner/repo` slug from `--repos` or repeated
-`--repo` values and carries a headed E2B desktop for setting up Homun inside
+`--repo` values and carries a headed E2B desktop for setting up Humanish inside
 that repo, starting the target app where feasible, and keeping the nested
 Observer visible.
 Default public targets should be apps, CLIs, or agent-facing tools with
 observable user surfaces. Frameworks, starters, and utility libraries are
 acceptable only when the explicit scenario is developer-experience testing.
-When live keys are present, Homun launches E2B desktops, uploads the locally
-packed Homun package, starts visible bootstrap terminals, clones each assigned
-repo inside the desktop, runs nested Homun setup/proof commands, opens
+When live keys are present, Humanish launches E2B desktops, uploads the locally
+packed Humanish package, starts visible bootstrap terminals, clones each assigned
+repo inside the desktop, runs nested Humanish setup/proof commands, opens
 desktop/mobile app windows plus the nested Observer in the sandbox browser, and
 starts a nonblocking Codex actor attempt. Attached watch mode overlays live E2B
 stream URLs only in memory; durable run artifacts keep screenshots/status, not
 auth-bearing URLs. Private repos are maintainer-only, require an authorized
 runtime GitHub token, and redact repo labels in durable artifacts by default.
 
-`homun lab run oss-smoke` keeps the earlier clone/discard proof loop: shallow
-clone lightweight public GitHub repositories into ignored `.homun/tmp`, apply
-Homun setup in disposable clones, run the four-lane synthetic Observer proof,
+`humanish lab run oss-smoke` keeps the earlier clone/discard proof loop: shallow
+clone lightweight public GitHub repositories into ignored `.humanish/tmp`, apply
+Humanish setup in disposable clones, run the four-lane synthetic Observer proof,
 verify it, record git-status evidence, write an ignored
-`.homun/lab/oss/<run-id>/` report, and remove clones by default.
+`.humanish/lab/oss/<run-id>/` report, and remove clones by default.
 
 Proof:
 
 ```bash
-pnpm homun -- watch oss --detach --open --repos CorentinTh/it-tools,drawdb-io/drawdb
-pnpm homun -- lab run oss --dry-run --json --no-open --repos CorentinTh/it-tools,drawdb-io/drawdb
-pnpm homun -- lab run oss-smoke --limit 1 --json
+pnpm humanish -- watch oss --detach --open --repos CorentinTh/it-tools,drawdb-io/drawdb
+pnpm humanish -- lab run oss --dry-run --json --no-open --repos CorentinTh/it-tools,drawdb-io/drawdb
+pnpm humanish -- lab run oss-smoke --limit 1 --json
 ```
 
 Next substrate work: upgrade nested app-url render proof into provider-backed
@@ -295,7 +295,7 @@ Only after the package and dry-run path are stable:
 
 Proof:
 
-- real browser screenshots in `.homun/runs`;
+- real browser screenshots in `.humanish/runs`;
 - observer renders screenshots;
 - `verify` validates bundle.
 

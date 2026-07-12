@@ -61,7 +61,8 @@ export interface CreateLocalTreeArchiveOptions {
  * Path segments that are always excluded, wherever they appear in a relPath,
  * in both git and fallback enumeration modes. Not overridable by callers.
  */
-export const LOCAL_TREE_DENYLIST_PATH_SEGMENTS = [".git", "node_modules", ".homun"] as const;
+// ".homun" stays denied: user trees may still carry runtime dirs from before the humanish rename.
+export const LOCAL_TREE_DENYLIST_PATH_SEGMENTS = [".git", "node_modules", ".humanish", ".homun"] as const;
 
 /**
  * Basename glob patterns (single leading or trailing `*` only) that are always
@@ -183,7 +184,7 @@ export function createLocalTreeArchive(
 
   const archivePath = options.outputPath
     ? path.resolve(options.outputPath)
-    : path.join(mkdtempSync(path.join(tmpdir(), "homun-local-tree-")), "source.tar.gz");
+    : path.join(mkdtempSync(path.join(tmpdir(), "humanish-local-tree-")), "source.tar.gz");
   mkdirSync(path.dirname(archivePath), { recursive: true });
 
   writeTarArchive(resolvedRoot, entries, archivePath);
@@ -428,7 +429,7 @@ function computeArchiveSha256(
 }
 
 function writeTarArchive(root: string, entries: readonly LocalTreeEntry[], archivePath: string): void {
-  const listDir = mkdtempSync(path.join(tmpdir(), "homun-local-tree-list-"));
+  const listDir = mkdtempSync(path.join(tmpdir(), "humanish-local-tree-list-"));
   const listFile = path.join(listDir, "files.list");
   try {
     writeFileSync(listFile, `${entries.map((entry) => entry.relPath).join("\0")}\0`);

@@ -4,7 +4,7 @@ Status: shipped (0.4.0).
 
 ## What
 
-`homun.lab.v2` configs with `subject.source: app-url` now dispatch end-to-end:
+`humanish.lab.v2` configs with `subject.source: app-url` now dispatch end-to-end:
 
 - `actors[0].type` is resolved against the **actor registry** at parse time and at the engine
   (fail closed both places); the resolved `CuaActorDescriptor.runSession` runs the session.
@@ -16,7 +16,7 @@ Status: shipped (0.4.0).
   orthogonal: subject × execution selects the substrate; `actors[0].type` selects which
   registered actor runs inside it.
 - The lab fills the previously-declared-but-unfilled `RunStream.actor` seam with the loop's
-  `homun.actor-trace.v1`, persists a full run bundle (`run.json` / `review.*` /
+  `humanish.actor-trace.v1`, persists a full run bundle (`run.json` / `review.*` /
   `events.ndjson` / `actor.json` / `screenshots/`), and renders the existing Observer with
   zero Observer changes.
 - Consumed config fields on this route (and de-warned accordingly):
@@ -53,6 +53,6 @@ Status: shipped (0.4.0).
   the filled `stream.actor` seam, evidence-on-disk equality, and that neither keys nor the
   stream URL appear in any persisted artifact), parse-time fail-closed matrix, zero-warning
   consumption proof on the cua route.
-- Live (spend-gated, `HOMUN_LIVE_CUA=1` + both keys): `tests/cua-actor-lab.live.test.ts`
+- Live (spend-gated, `HUMANISH_LIVE_CUA=1` + both keys): `tests/cua-actor-lab.live.test.ts`
   dispatches a real config through `runLab` to a real E2B desktop with the subject served from
   loopback inside the sandbox via `prepareDesktop`.

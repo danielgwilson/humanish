@@ -151,8 +151,8 @@ describe("cross-harness ActorTrace conformance", () => {
 // The scripted-browser actor has no pure mapper (runSession returns the fully-formed trace),
 // so its conformance fixture runs the REAL session against a fake browser at $0.
 describe("scripted-browser ActorTrace conformance", () => {
-  it("a scripted session trace conforms to homun.actor-trace.v1", async () => {
-    const artifactRoot = await mkdtemp(path.join(tmpdir(), "homun-scripted-conformance-"));
+  it("a scripted session trace conforms to humanish.actor-trace.v1", async () => {
+    const artifactRoot = await mkdtemp(path.join(tmpdir(), "humanish-scripted-conformance-"));
     const server: Server = createServer((_request, response) => {
       response.writeHead(200, { "content-type": "text/html" });
       response.end("<main>conformance fixture</main>");
@@ -166,7 +166,7 @@ describe("scripted-browser ActorTrace conformance", () => {
           goal: "Conformance fixture journey.",
           scenarioId: "conformance-journey",
           scenarioTitle: "Conformance journey",
-          source: "homun/scenarios/conformance-journey.yaml",
+          source: "humanish/scenarios/conformance-journey.yaml",
           sourceDigest: "abcdef123456",
           startPath: "/",
           steps: [

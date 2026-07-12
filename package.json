@@ -1,6 +1,6 @@
 {
-  "name": "homun",
-  "version": "0.14.0",
+  "name": "humanish",
+  "version": "0.15.0",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "keywords": [
@@ -25,7 +25,7 @@
     "node": ">=20"
   },
   "bin": {
-    "homun": "./dist/cli.js"
+    "humanish": "./dist/cli.js"
   },
   "files": [
     "AGENTS.md",
@@ -51,7 +51,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node --eval \"import('node:fs').then(({ chmodSync }) => chmodSync('dist/cli.js', 0o755))\"",
     "check": "pnpm typecheck && pnpm test && pnpm build",
-    "homun": "tsx src/cli.ts",
+    "humanish": "tsx src/cli.ts",
     "pack:dry-run": "npm pack --dry-run",
     "prepack": "pnpm build",
     "public-surface:scan": "node scripts/public-surface-scan.mjs",
@@ -59,26 +59,26 @@
     "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "homun:doctor": "pnpm homun -- doctor",
-    "homun:run": "pnpm homun -- run --dry-run",
-    "homun:watch": "pnpm homun -- watch",
-    "homun:watch:ci": "pnpm homun -- watch --json --no-open",
-    "homun:dogfood": "pnpm homun -- watch",
-    "homun:verify": "pnpm homun -- verify",
-    "homun:feedback": "pnpm homun -- feedback issue --repo danielgwilson/homun",
-    "homun:lab:list": "pnpm homun -- lab list",
-    "homun:lab:oss": "pnpm homun -- lab run oss",
-    "homun:lab:oss:ci": "pnpm homun -- lab run oss --dry-run --json --no-open",
-    "homun:lab:oss:smoke": "pnpm homun -- lab run oss-smoke"
+    "humanish:doctor": "pnpm humanish -- doctor",
+    "humanish:run": "pnpm humanish -- run --dry-run",
+    "humanish:watch": "pnpm humanish -- watch",
+    "humanish:watch:ci": "pnpm humanish -- watch --json --no-open",
+    "humanish:dogfood": "pnpm humanish -- watch",
+    "humanish:verify": "pnpm humanish -- verify",
+    "humanish:feedback": "pnpm humanish -- feedback issue --repo danielgwilson/humanish",
+    "humanish:lab:list": "pnpm humanish -- lab list",
+    "humanish:lab:oss": "pnpm humanish -- lab run oss",
+    "humanish:lab:oss:ci": "pnpm humanish -- lab run oss --dry-run --json --no-open",
+    "humanish:lab:oss:smoke": "pnpm humanish -- lab run oss-smoke"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/danielgwilson/homun.git"
+    "url": "https://github.com/danielgwilson/humanish.git"
   },
   "bugs": {
-    "url": "https://github.com/danielgwilson/homun/issues"
+    "url": "https://github.com/danielgwilson/humanish/issues"
   },
-  "homepage": "https://github.com/danielgwilson/homun#readme",
+  "homepage": "https://github.com/danielgwilson/humanish#readme",
   "dependencies": {
     "commander": "^14.0.3",
     "playwright-core": "^1.60.0",

@@ -11,7 +11,7 @@ import { redactText } from "./redaction.js";
 // and land with the load-bearing-personas and adapter PRs; they are intentionally
 // not declared here yet to avoid unimplemented placeholder types.
 
-export const ACTOR_TRACE_SCHEMA = "homun.actor-trace.v1";
+export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 
 export type ActorStatus = "passed" | "failed" | "blocked" | "timed_out";
 
@@ -185,7 +185,7 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
 // and using a CLI/product from inside an E2B shell, capturing its non-interactive exec output as
 // a redacted event stream + normalized transcript. The "terminal" lane is the autonomous-agent
 // study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the
-// agent runs its own model via the command-scoped runtime auth, not a homun-supplied provider.
+// agent runs its own model via the command-scoped runtime auth, not a humanish-supplied provider.
 // keyPlacement is "in-sandbox-command-scoped" — the load-bearing inversion of every existing
 // E2B route's external-key default (the agent is the keyed process and it runs INSIDE). DECLARED
 // here this slice; the engine enforcement of the command-scoped boundary lands in SLICE 2.

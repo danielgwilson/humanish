@@ -1,4 +1,4 @@
-objective: "Run a bounded public-safe private-repo agent dogfood study for Homun and classify setup quality, meaningful use, feedback, blockers, and cleanup evidence."
+objective: "Run a bounded public-safe private-repo agent dogfood study for Humanish and classify setup quality, meaningful use, feedback, blockers, and cleanup evidence."
 status: completed
 active_task: null
 tasks:
@@ -11,9 +11,9 @@ tasks:
   - id: lane_evaluation
     status: completed
     summary: "Evaluate each lane for setup correctness, filesystem evidence, agent evidence, meaningful use, and feedback quality."
-  - id: homun_iteration
+  - id: humanish_iteration
     status: completed
-    summary: "Fix or ticket Homun-owned blockers discovered by the study; scoped local fixes are present, issue #88 tracks scoring/cleanup receipt follow-up, and issue #99 tracks package-manager interrupt cleanup hardening."
+    summary: "Fix or ticket Humanish-owned blockers discovered by the study; scoped local fixes are present, issue #88 tracks scoring/cleanup receipt follow-up, and issue #99 tracks package-manager interrupt cleanup hardening."
   - id: independent_audit
     status: completed
     summary: "Map every success invariant to evidence before any completion claim."
@@ -28,7 +28,7 @@ tasks:
     summary: "After publishing 0.1.6, rerun the four redacted lanes, verify 4/4 app-url proof success, confirm zero feedback candidates, and clean up 4/4 provider desktops."
   - id: codex_app_server_four_lane
     status: completed
-    summary: "Run four redacted headed lanes in Codex app-server mode; verify 4/4 actor telemetry, setup-quality filesystem evidence, local nested Homun proof, meaningful-use scoring, and explicit provider cleanup."
+    summary: "Run four redacted headed lanes in Codex app-server mode; verify 4/4 actor telemetry, setup-quality filesystem evidence, local nested Humanish proof, meaningful-use scoring, and explicit provider cleanup."
   - id: provider_browser_persona_public_lane
     status: completed
     summary: "Use a public disposable app target to advance issue #74: nested live app-url proof now drives a bounded desktop/mobile two-step browser persona journey, failed once on provider browser executable resolution, passed after the fix, and cleaned provider desktops by metadata readback."
@@ -36,7 +36,7 @@ receipts:
   - path: docs/goals/private-repo-agent-dogfood/receipts/initial-readiness-2026-06-05.md
     summary: "Orientation receipt only: auth path was proven, one-lane pass and four-lane 3/4 pass were observed, #86 blocker was filed, and sandbox cleanup killed 5/5. Future goals must rerun current proof before completion."
   - path: docs/goals/private-repo-agent-dogfood/receipts/formal-run-2026-06-05.md
-    summary: "Formal actor-required four-lane run passed setup/app/Observer evidence, classified meaningful use, captured Homun-owned follow-up, and cleaned up 4/4 running E2B sandboxes."
+    summary: "Formal actor-required four-lane run passed setup/app/Observer evidence, classified meaningful use, captured Humanish-owned follow-up, and cleaned up 4/4 running E2B sandboxes."
   - path: docs/goals/private-repo-agent-dogfood/receipts/completion-audit-2026-06-05.md
     summary: "Invariant-by-invariant completion audit mapped every goal success condition to public-safe evidence, caveat, fix, or follow-up issue."
   - path: docs/goals/private-repo-agent-dogfood/receipts/meaningful-loop-2026-06-05.md
@@ -46,13 +46,13 @@ receipts:
   - path: docs/goals/private-repo-agent-dogfood/receipts/post-016-confirmation-2026-06-05.md
     summary: "Post-0.1.6 confirmation: four lanes passed top-level health, 4/4 app-url proof succeeded, feedback candidates dropped to zero, and cleanup killed 4/4."
   - path: docs/goals/private-repo-agent-dogfood/receipts/codex-app-server-four-lane-2026-06-05.md
-    summary: "Codex app-server four-lane proof: 4/4 redacted lanes passed with app-server events/transcripts/summaries, setup-quality filesystem evidence, local nested Homun proof, meaningful-use score 100/100, manual cleanup of stale interrupted sandboxes, and zero active E2B sandboxes after cleanup."
-  - path: docs/goals/homun-recursive-proof-critical-point/receipts/provider-browser-persona-2026-06-05.md
+    summary: "Codex app-server four-lane proof: 4/4 redacted lanes passed with app-server events/transcripts/summaries, setup-quality filesystem evidence, local nested Humanish proof, meaningful-use score 100/100, manual cleanup of stale interrupted sandboxes, and zero active E2B sandboxes after cleanup."
+  - path: docs/goals/humanish-recursive-proof-critical-point/receipts/provider-browser-persona-2026-06-05.md
     summary: "Public provider-backed browser persona proof: local desktop/mobile two-step trace passed, first E2B run exposed the google-chrome executable-path bug, rerun passed with nested live proof and headed Observer visible, and cleanup read back zero matching desktops."
 verification:
   status: passed
-  last_command: "pnpm homun -- verify --run oss-meta-2026-06-06T03-05-38-681Z-a8ca327a --json"
-  last_artifact: "docs/goals/homun-recursive-proof-critical-point/receipts/provider-browser-persona-2026-06-05.md"
+  last_command: "pnpm humanish -- verify --run oss-meta-2026-06-06T03-05-38-681Z-a8ca327a --json"
+  last_artifact: "docs/goals/humanish-recursive-proof-critical-point/receipts/provider-browser-persona-2026-06-05.md"
 evidence:
   environment_state:
     - "GH_TOKEN/E2B_API_KEY/OPENAI_API_KEY names loaded from ignored env file without printing values."
@@ -71,7 +71,7 @@ evidence:
     - "Ignored run artifact scan for oss-meta-2026-06-05T08-00-44-050Z-c8e0daeb found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
     - "Ignored run artifact scan for oss-meta-2026-06-05T16-07-27-703Z-1ce7e253 found 0 private repo term hits, 0 stream URL hits, and 0 sandboxId key hits."
     - "Ignored run artifact scan for oss-meta-2026-06-05T16-25-58-003Z-515846ab found 0 private repo label hits, 0 stream URL hits, 0 sandboxId key hits, and 0 credential assignment hits."
-    - "Local browser-persona run browser-2026-06-06T02-57-15-842Z-8315e202 verified desktop/mobile homun.browser-persona-trace.v1 traces with step-01-load and step-02-interact screenshots."
+    - "Local browser-persona run browser-2026-06-06T02-57-15-842Z-8315e202 verified desktop/mobile humanish.browser-persona-trace.v1 traces with step-01-load and step-02-interact screenshots."
     - "Focused tests passed for browser-persona and cleanup changes: tests/run.test.ts, tests/oss-lab.test.ts, tests/program.test.ts, 74 tests."
   observer_runs:
     - "oss-meta-2026-06-05T06-06-30-955Z-1914b164"
@@ -87,7 +87,7 @@ evidence:
     - "Post-0.1.6 setup-quality artifacts rated all four lanes high_leverage with 5/5 signals and appUrlProofBlocked=false."
   actor_feedback:
     - "Manual lane classification: repo-01 ceremonial, repo-02 ceremonial, repo-03 useful, repo-04 ceremonial."
-    - "Actionable Homun-owned proof-path confusion observed and addressed locally; issue #88 filed for cleanup receipts and meaningful-use scoring."
+    - "Actionable Humanish-owned proof-path confusion observed and addressed locally; issue #88 filed for cleanup receipts and meaningful-use scoring."
     - "Follow-up loop produced four feedback candidates for the published npm app-url proof blocker."
     - "Post-publish loop reduced the published-cli app-url feedback candidate to one lane and converted it into a local-bin execution fix for 0.1.6."
     - "Post-0.1.6 confirmation produced zero feedback candidates; the stale-binary candidate disappeared."
@@ -99,13 +99,13 @@ evidence:
     - "Completion audit records meaningful-use ratings and the caveat that most lanes were setup/Observer proof rather than high-leverage product study."
   cleanup_readbacks:
     - "Killed 5/5 disposable E2B sandboxes after initial proof runs."
-    - "Killed 4/4 running Homun OSS meta-lab sandboxes after formal run; post-cleanup provider readback found 0 running."
-    - "Killed 4/4 running Homun OSS meta-lab sandboxes after the follow-up loop; post-cleanup provider readback found 0 running."
-    - "Killed 4/4 running Homun OSS meta-lab sandboxes after the post-publish rerun; post-cleanup provider readback found 0 running."
-    - "Killed 4/4 running Homun OSS meta-lab sandboxes after the post-0.1.6 confirmation; post-cleanup provider readback found 0 running."
-    - "After stopping the Codex app-server four-lane headed watcher, explicit E2B SDK cleanup killed 14 stale Homun OSS meta-lab sandboxes from interrupted/candidate runs; final provider readback found 0 active sandboxes."
-    - "After the failed provider browser-persona attempt, cleanup matched 1, killed 1, and read back 0 remaining matching Homun OSS meta-lab desktops."
-    - "After the successful provider browser-persona rerun, cleanup matched 1, killed 1, and read back 0 remaining matching Homun OSS meta-lab desktops."
+    - "Killed 4/4 running Humanish OSS meta-lab sandboxes after formal run; post-cleanup provider readback found 0 running."
+    - "Killed 4/4 running Humanish OSS meta-lab sandboxes after the follow-up loop; post-cleanup provider readback found 0 running."
+    - "Killed 4/4 running Humanish OSS meta-lab sandboxes after the post-publish rerun; post-cleanup provider readback found 0 running."
+    - "Killed 4/4 running Humanish OSS meta-lab sandboxes after the post-0.1.6 confirmation; post-cleanup provider readback found 0 running."
+    - "After stopping the Codex app-server four-lane headed watcher, explicit E2B SDK cleanup killed 14 stale Humanish OSS meta-lab sandboxes from interrupted/candidate runs; final provider readback found 0 active sandboxes."
+    - "After the failed provider browser-persona attempt, cleanup matched 1, killed 1, and read back 0 remaining matching Humanish OSS meta-lab desktops."
+    - "After the successful provider browser-persona rerun, cleanup matched 1, killed 1, and read back 0 remaining matching Humanish OSS meta-lab desktops."
   missing: []
 completion_audit:
   status: passed

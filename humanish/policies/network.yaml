@@ -1,0 +1,7 @@
+schema: humanish.network-policy.v1
+default: local_only
+allowed_hosts:
+  - localhost
+  - 127.0.0.1
+notes:
+  - Add external hosts only after confirming they are safe for public proof artifacts.

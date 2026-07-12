@@ -25,7 +25,7 @@ shared-state depth work.
 
 - A lab declares a roster of N differentiated lanes (each with its own persona, device
   preset, and per-lane starting surface) OR a homogeneous `count: N`, and produces ONE
-  `homun.run-bundle.v1` with N simulations/streams that passes `verifyRun`.
+  `humanish.run-bundle.v1` with N simulations/streams that passes `verifyRun`.
 - `per-lane worlds` is the default: N independent sandboxes, each provisioned via the
   existing clone/serve + `subject.state` machinery. (Shared-world is #164, out of scope.)
 - `execution.concurrency` bounds in-flight lanes; an env override may only LOWER the
@@ -44,10 +44,10 @@ shared-state depth work.
 - Read/write: `src/lab-config.ts`, `src/lab-engine.ts`, `src/cua-actor-lab.ts`, a new
   `src/concurrency.ts` (hoist `mapWithConcurrency` if the design calls for it),
   `src/run.ts` ONLY where the bundle/result genuinely needs it (additive), `src/index.ts`
-  (exports), the lab fixture(s) under `homun/labs/`, tests under `tests/`, docs under
+  (exports), the lab fixture(s) under `humanish/labs/`, tests under `tests/`, docs under
   `docs/goals/multi-lane-fanout/` and `docs/contracts/schemas.md`.
 - Commands: `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm build`,
-  `node scripts/public-surface-scan.mjs`, `pnpm homun -- lab ...` (dry-run only), `gh`.
+  `node scripts/public-surface-scan.mjs`, `pnpm humanish -- lab ...` (dry-run only), `gh`.
 
 ## Non-Goals
 
@@ -76,8 +76,8 @@ shared-state depth work.
 - `pnpm check` (typecheck + vitest + build) — exit 0.
 - `node scripts/public-surface-scan.mjs` — exit 0 (check its OWN exit code; do not pipe
   through `tail`, which masks it).
-- `pnpm homun -- lab run <fanout-fixture> --dry-run --json --no-open` then
-  `pnpm homun -- verify --run latest --json` — ok.
+- `pnpm humanish -- lab run <fanout-fixture> --dry-run --json --no-open` then
+  `pnpm humanish -- verify --run latest --json` — ok.
 
 ## Proof Artifacts
 
@@ -119,7 +119,7 @@ shared-state depth work.
   run-count cap); cleanup/readback = each lane's sandbox killed by id in a finally + a
   post-run by-id confirmation that THIS run's sandboxes are gone (never a list, never a bulk kill);
   a usage receipt path under `receipts/`.
-- A shared operator E2B key is safe: homun reclaims and verifies only the exact sandbox ids
+- A shared operator E2B key is safe: humanish reclaims and verifies only the exact sandbox ids
   it created, by id, and never enumerates the account (see the invariants doc). If the dollar
   or wall-clock cap is hit, stop and report.
 

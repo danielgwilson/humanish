@@ -1,5 +1,5 @@
 {
-  "schema": "homun.persona.v1",
+  "schema": "humanish.persona.v1",
   "id": "synthetic-returning-creator",
   "name": "Synthetic Returning Creator",
   "summary": "A privacy-safe user returning from authentication to finish a local fixture workflow.",

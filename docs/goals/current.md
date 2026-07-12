@@ -2,13 +2,13 @@
 
 Status date: 2026-07-08 (rev 13)
 
-This page is the current public-safe operating goal for `homun`. Keep it
+This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
 agents can choose useful work without private context.
 
 ## North Star
 
-Homun should be the open-source CLI that lets a maintainer ask:
+Humanish should be the open-source CLI that lets a maintainer ask:
 
 > What happens when realistic synthetic personas try to use this app, CLI, or
 > agent-facing workflow?
@@ -18,7 +18,7 @@ actionable feedback.
 
 ## Definition Of Awesome
 
-A world-class Homun run should eventually provide:
+A world-class Humanish run should eventually provide:
 
 - one human-friendly command that starts simulations and opens Observer;
 - multiple synthetic personas with different goals, patience, and skill levels;
@@ -37,10 +37,10 @@ A world-class Homun run should eventually provide:
 Make the public package and repo credible enough that an external maintainer can:
 
 1. install the skill;
-2. install `homun`;
-3. run `homun init`;
-4. run `homun watch`;
-5. run `homun watch first-run` or another lab manifest;
+2. install `humanish`;
+3. run `humanish init`;
+4. run `humanish watch`;
+5. run `humanish watch first-run` or another lab manifest;
 6. inspect Observer evidence;
 7. verify the bundle;
 8. produce a public-safe feedback draft;
@@ -81,11 +81,11 @@ context.
 Target proof:
 
 ```bash
-npm i -D homun
-npx homun init --yes
-npx homun watch --json --no-open
-npx homun verify --run latest --json
-npx homun feedback issue --run latest --repo owner/repo --format markdown
+npm i -D humanish
+npx humanish init --yes
+npx humanish watch --json --no-open
+npx humanish verify --run latest --json
+npx humanish feedback issue --run latest --repo owner/repo --format markdown
 ```
 
 The proof target must use synthetic personas and no real user data.
@@ -147,7 +147,7 @@ Minimum acceptance:
 - no raw private transcript or credential values.
 
 Terminal-product real-agent lane (0.8.0; depth-axis layer 6, so an adopter can delete a
-bespoke real-agent sim for homun + a thin adapter — see
+bespoke real-agent sim for humanish + a thin adapter — see
 `docs/goals/terminal-product-lane/goal.md`):
 
 - `subject.source: terminal-product` + `execution.target: e2b-terminal` + the registered
@@ -165,9 +165,9 @@ bespoke real-agent sim for homun + a thin adapter — see
   adapter-namespaced product nouns, so an adopter attaches scoring/feedback as a thin
   in-repo extension without forking core. `done`
 - Cleanup is proven BY EXACT CREATED ID: `Sandbox.kill(id)`, confirmed further by
-  `Sandbox.getInfo(id)` where the SDK exposes it, and homun never calls `Sandbox.list`. A live
+  `Sandbox.getInfo(id)` where the SDK exposes it, and humanish never calls `Sandbox.list`. A live
   rung never needs a dedicated or isolated E2B key; the SAME shared operator key used everywhere
-  else in this repo is safe, because homun only ever reaches a sandbox it created (see
+  else in this repo is safe, because humanish only ever reaches a sandbox it created (see
   "The placement rule" corollary in `docs/principles/invariants-and-defaults.md`).
 - LIVE-PROVEN (2026-07-09): a real Codex agent, bootstrapped in a stock E2B shell (Node
   installed in-sandbox, run via `npx -y @openai/codex@latest exec`), studied a public
@@ -237,7 +237,7 @@ Adopter-driven engine features (0.11.0; surfaced by real bespoke-sim migrations)
   concurrent shared-world subject+actors). Absent == the byte-stable stock-template call; recorded
   as `RunBundle.desktopTemplate`. Lets a Node/bun/DB-bearing adopter image run without
   installing the runtime per lane. `done`
-- `homun observe --run <id>` — serves a run's Observer over `http://127.0.0.1:<port>` (loopback
+- `humanish observe --run <id>` — serves a run's Observer over `http://127.0.0.1:<port>` (loopback
   only, path-traversal-guarded to the run dir, `/`->`/observer/index.html`) instead of `file://`,
   so browsers/automation can open it and artifact links resolve. `done`
 
@@ -253,7 +253,7 @@ Adopter-driven roster/readback ergonomics (0.12.0):
 
 - Lane grouping metadata (`actorType`, `surface`, `caseGroup`) is adapter-owned and projected into
   Observer `laneGroups[]` plus stream labels, so downstream projects can group simulated users
-  without teaching Homun private role names. `done`
+  without teaching Humanish private role names. `done`
 - `actors[0].roster[]` is compact authoring sugar for repeated lane groups. The parser expands it
   into deterministic `lanes[]` (`<group.id>-01`, `<group.id>-02`, ...) before the engine runs, so
   the runtime and run bundle keep one normalized lane shape. `done`
@@ -268,7 +268,7 @@ Provenance hardening (0.12.1):
 Adapter artifact evidence (0.12.15):
 
 - Browser/shared-world adapter hooks may now write product/state proof files under the ignored run
-  directory and return namespaced `homun.adapter-artifact.v1` references. Core validates only the
+  directory and return namespaced `humanish.adapter-artifact.v1` references. Core validates only the
   generic reference shape and local-path safety, Observer links the artifacts, and `verify` fails
   closed if a referenced file disappears. The payload schema and product nouns stay in the adapter's
   namespace. `done`
@@ -314,8 +314,8 @@ Local working-tree subject + operator observability (0.14.0):
   `SharedWorldLabHooks.onPhase`) and the completed trail persists into
   `bundle.events`; a single-lane provisioned boot is never silent again. `done`
 - Truthful CLI envelopes at the command boundary: any uncaught action error emits
-  one structured `homun.cli-response.v1` envelope (never a raw stack trace under
-  `--json`, never a second stdout document after a flushed envelope), `homun runs`
+  one structured `humanish.cli-response.v1` envelope (never a raw stack trace under
+  `--json`, never a second stdout document after a flushed envelope), `humanish runs`
   gained a real failure branch, and `doctor` failure now exits 2 like every other
   structured command (behavioral change). `done`
 
@@ -326,11 +326,11 @@ branches.
 
 Minimum acceptance:
 
-- `homun/labs/*.yaml` is the committed lab source convention;
-- `.homun/labs/*.yaml` and `.homun/local/labs/*.yaml` are ignored local
+- `humanish/labs/*.yaml` is the committed lab source convention;
+- `.humanish/labs/*.yaml` and `.humanish/local/labs/*.yaml` are ignored local
   overlays;
-- `homun watch [lab]`, `homun lab list`, `homun lab inspect <lab>`, and
-  `homun lab run <lab>` are supported;
+- `humanish watch [lab]`, `humanish lab list`, `humanish lab inspect <lab>`, and
+  `humanish lab run <lab>` are supported;
 - `--env-file <path>` loads local values for the current command without
   persisting values into artifacts;
 - maintainer dogfood labs such as `oss` are examples, not the canonical
@@ -354,11 +354,11 @@ Minimum acceptance:
 - Codex app-server actor telemetry is persisted as redacted trace, event, and
   transcript artifacts; `done`
 - each lane receives a meaningful-use score over setup, filesystem, nested
-  Homun proof, actor activity, product surface, and feedback; `done`
+  Humanish proof, actor activity, product surface, and feedback; `done`
 - provider-backed nested app-url proof now drives a bounded two-step
   desktop/mobile browser persona journey in a headed E2B lane; `done`
 - app-specific executable browser steps can now be authored under
-  `homun/scenarios/*.yaml` and are summarized into top-level nested proof
+  `humanish/scenarios/*.yaml` and are summarized into top-level nested proof
   evidence; `done`
 - repeated public app/tool headed proofs with app-specific manifests have passed
   against two public targets; `done`
@@ -401,9 +401,9 @@ apps and tools, while preserving the public-safety boundary:
 - public/open-source fixture proof for publishable examples;
 - private maintainer dogfood through the repo-only public-safe packet, which is
   intentionally not part of the npm payload, at
-  [`docs/goals/private-repo-agent-dogfood/goal.md`](https://github.com/danielgwilson/homun/blob/main/docs/goals/private-repo-agent-dogfood/goal.md);
+  [`docs/goals/private-repo-agent-dogfood/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/private-repo-agent-dogfood/goal.md);
 - then richer provider-backed app-specific browser persona manifests.
 
 That sequence keeps the package honest: first prove a new maintainer or agent
-can start, then prove Homun can observe real product behavior, then use the
+can start, then prove Humanish can observe real product behavior, then use the
 failures to improve the harness.

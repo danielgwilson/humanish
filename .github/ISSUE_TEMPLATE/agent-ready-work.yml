@@ -20,12 +20,12 @@ body:
   - type: textarea
     id: readiness-block
     attributes:
-      label: homun_swarm block
+      label: humanish_swarm block
       description: Required before autonomous mutation.
       value: |
         ```yaml
-        homun_swarm:
-          schema: homun.swarm-readiness.v1
+        humanish_swarm:
+          schema: humanish.swarm-readiness.v1
           status: needs_spec
           authority: draft_spec
           blocked_by: []
@@ -37,7 +37,7 @@ body:
             - .env*
             - .github/workflows/**
             - infra/**
-          artifact_schema_version: homun.run-bundle.v1
+          artifact_schema_version: humanish.run-bundle.v1
           credential_manifest: []
           network_policy: no_network
           spend_policy: no_spend

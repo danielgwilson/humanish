@@ -1,4 +1,4 @@
-// homun.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
+// humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
 // HONEST SCOPE (read before trusting field names): the engine routes by
 // subject.source × execution.target (disambiguated by the actor lane where both axes
@@ -38,7 +38,7 @@
 // `count` (declare a differentiated roster OR a homogeneous count, never both); `lanes|roster`
 // XOR `actors[0].laneFocus` (per-lane `instruction` is the roster's steer); `lanes[].device` XOR
 // raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight lanes (default
-// min(laneCount, 3); env HOMUN_CUA_MAX_CONCURRENCY may only LOWER it — invariant 3). On every
+// min(laneCount, 3); env HUMANISH_CUA_MAX_CONCURRENCY may only LOWER it — invariant 3). On every
 // non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is REJECTED on the cua
 // route. `lanes[].target` is app-url × computer-use ONLY: an absolute browser URL this lane opens
 // instead of `subject.appUrl`; it is the generic setup-produced-target handoff, not a service
@@ -52,7 +52,7 @@ import { actorRegistry } from "./actor-registry.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 
-export const LAB_CONFIG_SCHEMA = "homun.lab.v2";
+export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 
 // Must start alphanumeric so an id never collides with the path-vs-id resolver heuristic
 // (a leading "." or "/" is read as a file path; a leading "-" collides with CLI flags).
@@ -65,7 +65,7 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * working tree packed and provisioned in-sandbox in place of a clone (`local-tree`).
  * `local-app` routes to the cua backend and is library-assisted: a caller supplies
  * `cuaHooks.buildExecutor` + `buildProvider` (no built-in driver exists yet), and the engine
- * fails closed (HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
+ * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
 export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product" | "local-tree";
@@ -266,7 +266,7 @@ export interface LabSubject {
   product?: LabSubjectProduct;
   /**
    * `local-tree` (computer-use route): local-tree packs the lab resolution cwd (the project
-   * directory homun runs from) instead of cloning a repo. `exclude` adds extra archive excludes
+   * directory humanish runs from) instead of cloning a repo. `exclude` adds extra archive excludes
    * on top of the always-on denylist; `keep` preserves the sandbox on failure for debugging;
    * `maxArchiveBytes` caps the upload. Consumed on the local-tree route; rejected on every other
    * source.
@@ -315,7 +315,7 @@ export interface LabActorLane {
   /**
    * App-url computer-use ONLY: absolute browser URL this lane opens instead of `subject.appUrl`.
    * This is the generic setup-produced-target handoff for crawler/swarm labs: product adapters may
-   * start any topology they need, then hand Homun explicit lane targets. Public/non-loopback
+   * start any topology they need, then hand Humanish explicit lane targets. Public/non-loopback
    * targets still require `policies.allowPublicTargets: true`. Inert/rejected on clone, local-app,
    * shared-world, scripted-browser, and terminal routes.
    */
@@ -347,7 +347,7 @@ export interface LabActor {
    * registered computer-use actor (e.g. openai-computer-use, paired with e2b-desktop) or a
    * registered scripted-browser actor (e.g. scripted-browser, local execution), and that
    * descriptor runs the session. On other routes it remains a free-form label (built-ins use
-   * descriptive labels like synthetic-persona, homun-setup, codex-app-server).
+   * descriptive labels like synthetic-persona, humanish-setup, codex-app-server).
    */
   type: string;
   /** Lane count — route-specific (see HONEST SCOPE header): synthetic simCount; scripted
@@ -470,7 +470,7 @@ export interface LabScenarioCaps {
 }
 
 export interface LabScenario {
-  /** Reference a committed scenario by id (homun/scenarios/<ref>.yaml) or path. CONSUMED
+  /** Reference a committed scenario by id (humanish/scenarios/<ref>.yaml) or path. CONSUMED
    *  (and REQUIRED) on the scripted-browser route; FORWARD-DECLARED elsewhere. */
   ref?: string;
   /** Or inline the scenario body. FORWARD-DECLARED (PR #2). */
@@ -492,7 +492,7 @@ export interface LabPolicies {
   redactRepos?: boolean;
   /**
    * Blur+downscale persisted screenshots on the computer-use route. Default FALSE — the common
-   * case is watching a sim of your OWN app locally (gitignored .homun), where full fidelity is
+   * case is watching a sim of your OWN app locally (gitignored .humanish), where full fidelity is
    * the deliverable. Set true for unowned subjects or bundles meant to be shared as-is. The
    * provider always sees raw frames; this only governs what is persisted. Raw bundles stay
    * local (gitignored, commit-scan-guarded); a redact-on-export step for them is planned.
@@ -559,7 +559,7 @@ export interface LabConfigParseSuccess {
 
 export interface LabConfigParseFailure {
   ok: false;
-  error: { code: "HOMUN_LAB_INVALID"; message: string };
+  error: { code: "HUMANISH_LAB_INVALID"; message: string };
 }
 
 export type LabConfigParseResult = LabConfigParseSuccess | LabConfigParseFailure;
@@ -638,7 +638,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // desktop), and no public-target policy (it is always loopback; the loopback shape was already
   // enforced in parseSubject). The actual "no buildExecutor hook supplied" case is inherently an
   // engine-time decision (the parser cannot know whether a library caller will pass hooks), so
-  // it fails closed in runCuaActorLab with HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR.
+  // it fails closed in runCuaActorLab with HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR.
   if (config.subject.source === "local-app") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "local") {
@@ -676,7 +676,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
         return invalid("scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.");
       }
       if (config.policies?.redactScreenshots === true) {
-        return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .homun; a silently ignored redaction policy would be a safety lie, so it is rejected.");
+        return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.");
       }
       if (config.policies?.allowPublicTargets === true) {
         return invalid("`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice.");
@@ -736,7 +736,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       return invalid("`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster.");
     }
     if (config.policies?.redactScreenshots === true) {
-      return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .homun; a silently ignored redaction policy would be a safety lie, so it is rejected.");
+      return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.");
     }
     if (config.policies?.allowPublicTargets === true) {
       return invalid("`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject.");
@@ -846,7 +846,7 @@ const ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 const LANE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 const LANE_ID_MAX_CHARS = 40;
 const LANE_METADATA_MAX_CHARS = 80;
-// Hard cap on fan-out lanes (per the ratified design). No HOMUN_MAX_LANES escape above this
+// Hard cap on fan-out lanes (per the ratified design). No HUMANISH_MAX_LANES escape above this
 // until a reference panel demands it — N concurrent paid desktops is real money.
 export const MAX_CUA_LANES = 16;
 
@@ -2183,7 +2183,7 @@ function parseDefaults(raw: unknown): LabDefaults | undefined {
 }
 
 function invalid(message: string): LabConfigParseFailure {
-  return { ok: false, error: { code: "HOMUN_LAB_INVALID", message } };
+  return { ok: false, error: { code: "HUMANISH_LAB_INVALID", message } };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -16,7 +16,7 @@ const PNG_1X1 = Buffer.from(
 );
 
 async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "homun-observer-fixture-"));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-fixture-"));
   const tempApp = path.join(tempRoot, "minimal-app");
 
   try {
@@ -33,10 +33,10 @@ async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<
 }
 
 async function attachScreenshotToObserverProofRun(cwd: string, screenshotPath: string): Promise<void> {
-  await mkdir(path.join(cwd, ".homun/runs/observer-proof/screenshots"), { recursive: true });
-  await writeFile(path.join(cwd, ".homun/runs/observer-proof", screenshotPath), PNG_1X1);
+  await mkdir(path.join(cwd, ".humanish/runs/observer-proof/screenshots"), { recursive: true });
+  await writeFile(path.join(cwd, ".humanish/runs/observer-proof", screenshotPath), PNG_1X1);
 
-  const bundlePath = path.join(cwd, ".homun/runs/observer-proof/run.json");
+  const bundlePath = path.join(cwd, ".humanish/runs/observer-proof/run.json");
   const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
     streams: Array<{
       artifacts: Array<{ label: string; path: string; kind: string }>;
@@ -65,7 +65,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     }
   });
 
-  await program.parseAsync(["node", "homun", ...args], { from: "node" });
+  await program.parseAsync(["node", "humanish", ...args], { from: "node" });
 
   return {
     exitCode,
@@ -104,7 +104,7 @@ function renderObserverClientForTest(data: unknown, hash = ""): { click: (action
   };
   const location = {
     hash,
-    href: `file:///tmp/homun/observer/index.html${hash}`,
+    href: `file:///tmp/humanish/observer/index.html${hash}`,
     protocol: "file:"
   };
   const sandbox = {
@@ -157,8 +157,8 @@ function renderObserverClientForTest(data: unknown, hash = ""): { click: (action
 }
 
 function browserLabObserverData(): Record<string, unknown> {
-  const terminalTail = "$ npx homun verify\nnested observer: ready";
-  const actorLogTail = "$ npx --no-install homun init --yes\n$ npx --no-install homun run --app-url http://localhost:5173 --sims 2\nobserved product friction: none observed";
+  const terminalTail = "$ npx humanish verify\nnested observer: ready";
+  const actorLogTail = "$ npx --no-install humanish init --yes\n$ npx --no-install humanish run --app-url http://localhost:5173 --sims 2\nobserved product friction: none observed";
   return {
     run: {
       createdAt: "2026-06-03T12:00:00.000Z",
@@ -204,7 +204,7 @@ function browserLabObserverData(): Record<string, unknown> {
           checkedAt: "2026-06-03T12:00:06.000Z",
           logTail: "== bootstrap complete ==\napp_status=running",
           meaningfulUse: {
-            schema: "homun.meaningful-use-score.v1",
+            schema: "humanish.meaningful-use-score.v1",
             status: "partial",
             score: 78,
             summary: "Meaningful-use partial (78/100): needs stronger feedback quality.",
@@ -509,7 +509,7 @@ function renderObserverClientWithDomForTest(data: unknown): {
 
   const location = {
     hash: "",
-    href: "file:///tmp/homun/observer/index.html",
+    href: "file:///tmp/humanish/observer/index.html",
     protocol: "file:"
   };
   const sandbox = {
@@ -573,7 +573,7 @@ describe("observer rendering", () => {
       const result = await renderObserver(cwd, "latest");
 
       expect(result.ok).toBe(true);
-      expect(result.observerPath).toBe(".homun/runs/observer-proof/observer/index.html");
+      expect(result.observerPath).toBe(".humanish/runs/observer-proof/observer/index.html");
       const observerPath = result.observerPath;
       if (!observerPath) {
         throw new Error("observerPath missing");
@@ -582,7 +582,7 @@ describe("observer rendering", () => {
 
       const html = await readFile(path.join(cwd, observerPath), "utf8");
       // Title + brand of the redesigned mission-control shell.
-      expect(html).toContain("Homun Observer");
+      expect(html).toContain("Humanish Observer");
       // Embedded observer-data carries the lane status verbatim.
       expect(html).toContain("contract_proof_only");
       expect(html).toContain('id="observer-data"');
@@ -593,7 +593,7 @@ describe("observer rendering", () => {
       expect(html).toContain("tile-surface");
 
       const data = JSON.parse(
-        await readFile(path.join(cwd, ".homun/runs/observer-proof/observer/observer-data.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/observer-proof/observer/observer-data.json"), "utf8")
       ) as {
         schema: string;
         streams: Array<{ kind: string; kindLabel: string }>;
@@ -766,7 +766,7 @@ describe("observer rendering", () => {
       await attachScreenshotToObserverProofRun(cwd, screenshotPath);
       const rendered = await renderObserver(cwd, "latest");
       await writeFile(
-        path.join(cwd, ".homun/runs/observer-proof/observer/observer-data.json"),
+        path.join(cwd, ".humanish/runs/observer-proof/observer/observer-data.json"),
         `${JSON.stringify({
           schema: OBSERVER_DATA_SCHEMA,
           run: { runId: "observer-proof" },
@@ -783,7 +783,7 @@ describe("observer rendering", () => {
       try {
         expect(server.url).toMatch(/^http:\/\/127\.0\.0\.1:/);
         const html = await (await fetch(server.url)).text();
-        expect(html).toContain("Homun Observer");
+        expect(html).toContain("Humanish Observer");
         expect(html).toContain("statusbar");
 
         const dataUrl = new URL("observer-data.json", server.url);
@@ -849,8 +849,8 @@ describe("observer rendering", () => {
         observerPath: string;
       };
       expect(envelope.ok).toBe(true);
-      expect(envelope.observerPath).toBe(".homun/runs/observer-proof/observer/index.html");
-      expect(envelope.observerDataPath).toBe(".homun/runs/observer-proof/observer/observer-data.json");
+      expect(envelope.observerPath).toBe(".humanish/runs/observer-proof/observer/index.html");
+      expect(envelope.observerDataPath).toBe(".humanish/runs/observer-proof/observer/observer-data.json");
     });
   });
 
@@ -861,7 +861,7 @@ describe("observer rendering", () => {
       expect(result.exitCode).toBe(2);
       const envelope = JSON.parse(result.stdout) as { error?: { code: string }; ok: boolean };
       expect(envelope.ok).toBe(false);
-      expect(envelope.error?.code).toBe("HOMUN_INVALID_PORT");
+      expect(envelope.error?.code).toBe("HUMANISH_INVALID_PORT");
     });
   });
 
@@ -872,7 +872,7 @@ describe("observer rendering", () => {
       expect(result.exitCode).toBe(2);
       const envelope = JSON.parse(result.stdout) as { error?: { code: string }; ok: boolean };
       expect(envelope.ok).toBe(false);
-      expect(envelope.error?.code).toBe("HOMUN_RUN_NOT_FOUND");
+      expect(envelope.error?.code).toBe("HUMANISH_RUN_NOT_FOUND");
     });
   });
 
@@ -899,11 +899,11 @@ describe("observer rendering", () => {
       expect(envelope.ok).toBe(true);
       expect(envelope.run).toBe("watch-sims-proof");
       expect(envelope.opened).toBe(false);
-      expect(envelope.observerPath).toBe(".homun/runs/watch-sims-proof/observer/index.html");
+      expect(envelope.observerPath).toBe(".humanish/runs/watch-sims-proof/observer/index.html");
       expect(envelope.observerUrl).toMatch(/^file:/);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".homun/runs/watch-sims-proof/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/watch-sims-proof/run.json"), "utf8")
       ) as {
         simCount: number;
         simulations: Array<{ id: string; status: string; streamKind: string }>;
@@ -917,7 +917,7 @@ describe("observer rendering", () => {
       expect(bundle.streams.map((stream) => stream.transport)).toEqual(["polling", "snapshot", "pty", "app-server"]);
 
       const observerData = JSON.parse(
-        await readFile(path.join(cwd, ".homun/runs/watch-sims-proof/observer/observer-data.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/watch-sims-proof/observer/observer-data.json"), "utf8")
       ) as {
         streams: Array<{ kindLabel: string }>;
       };
@@ -944,7 +944,7 @@ describe("observer rendering", () => {
         error: { code: string; message: string };
       };
       expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HOMUN_WATCH_OPTION_CONFLICT");
+      expect(envelope.error.code).toBe("HUMANISH_WATCH_OPTION_CONFLICT");
       expect(envelope.error.message).toContain("Use either --run");
     });
   });

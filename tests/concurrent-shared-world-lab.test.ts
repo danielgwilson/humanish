@@ -270,7 +270,7 @@ const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
 
 function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
   return {
-    schema: "homun.adapter-score.v1",
+    schema: "humanish.adapter-score.v1",
     namespace: CONCURRENT_ADAPTER_NAMESPACE,
     status: "fail",
     score: 20,
@@ -283,7 +283,7 @@ function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
 }
 
 let cwd: string;
-beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "homun-concurrent-sw-")); });
+beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-sw-")); });
 afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
 describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous latch, $0)", () => {
@@ -296,7 +296,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.roleCount).toBe(3);
     expect(result.concurrency).toBe(3);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.attributionClass).toBe("shared-world");
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.timeline).toBeUndefined();
@@ -319,7 +319,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(withTemplate.created).toHaveLength(4); // 1 subject + 3 actors
     expect(withTemplate.templates).toHaveLength(4);
     expect(withTemplate.templates.every((t) => t === "acme-desktop-with-runtimes")).toBe(true);
-    const withBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const withBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
 
     // Byte-stable default: NO template → every create called with NO template arg, bundle omits it.
@@ -329,7 +329,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result2.ok).toBe(true);
     expect(noTemplate.templates).toHaveLength(4);
     expect(noTemplate.templates.every((t) => t === undefined)).toBe(true);
-    const noBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result2.runId, "run.json"), "utf8"));
+    const noBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result2.runId, "run.json"), "utf8"));
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
@@ -373,7 +373,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The published bundle records the host as a DIGEST (public-safe), never the raw e2b URL; the
     // raw tokenless URL is surfaced only on the ephemeral result.
     expect(result.host).toBe(getHostUrl);
-    const runText = await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8");
+    const runText = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8");
     expect(runText).not.toContain("e2b.app");
 
     const bundle = JSON.parse(runText);
@@ -417,7 +417,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(verify.ok).toBe(true);
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
 
-    const observerData = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "observer", "observer-data.json"), "utf8"));
+    const observerData = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8"));
     expect(observerData.laneGroups).toEqual([
       expect.objectContaining({ roleId: "persona-01", actorType: "initiator", surface: "intake", caseGroup: "case-001", status: "passed" }),
       expect.objectContaining({ roleId: "persona-02", actorType: "collaborator", surface: "review", caseGroup: "case-001", status: "passed" }),
@@ -426,7 +426,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(observerData.streams.map((stream: { label: string }) => stream.label).join("\n")).toContain("type:initiator / surface:intake / case:case-001");
 
     // Per-actor traces written.
-    const actorsDir = await readdir(path.join(cwd, ".homun", "runs", result.runId, "actors"));
+    const actorsDir = await readdir(path.join(cwd, ".humanish", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json", "stream-003.json"]);
   });
 
@@ -453,7 +453,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const state = { worldVersion: 0 };
     const { hooks, sandboxes } = baseHooks(state, async () => {});
     const runId = "concurrent-shared-world-live-observer";
-    const runRoot = path.join(cwd, ".homun", "runs", runId);
+    const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
     let resolveActorsStarted: () => void = () => {};
     const actorsStarted = new Promise<void>((resolve) => { resolveActorsStarted = resolve; });
@@ -582,7 +582,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         "utf8"
       );
       return [{
-        schema: "homun.adapter-artifact.v1",
+        schema: "humanish.adapter-artifact.v1",
         namespace: CONCURRENT_ADAPTER_NAMESPACE,
         label: "Concurrent adapter readback",
         path: "adapter/concurrent-readback.json",
@@ -596,7 +596,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.error?.message).toContain("Adapter scorer failed the run");
     expect(result.overlapProven).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(CONCURRENT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("concurrent-shared-world");
@@ -619,7 +619,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("2/3 actor(s) reached a terminal, engaged passed session");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("2/3 reached their goal");
     expect(bundle.review.gaps.some((gap) => gap.includes("persona-02"))).toBe(true);
@@ -647,7 +647,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.roles[0]?.ok).toBe(false);
     expect(result.roles[0]?.error?.message).toContain("not a credible pass");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("APP_USER_ID is not set"))).toBe(true);
     expect(bundle.events.some((event) =>
@@ -674,7 +674,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     // The swarm did not run fully coherently → ok false, but the other actors STILL ran (no gate).
     expect(result.ok).toBe(false);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     // All 3 windows + outcomes intact (no pipeline-gate / fail-fast corrupting the "M of N").
     expect(bundle.sharedWorld.laneWindows).toHaveLength(3);
     expect(bundle.sharedWorld.outcomes).toHaveLength(3);
@@ -692,7 +692,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
     expect(result.ok).toBe(false);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
-      const text = await readFile(path.join(cwd, ".homun", "runs", result.runId, file), "utf8");
+      const text = await readFile(path.join(cwd, ".humanish", "runs", result.runId, file), "utf8");
       expect(text, file).not.toContain(secret);
     }
   });
@@ -782,12 +782,12 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
 
     // The archive uploaded ONLY to the subject sandbox (sandboxes[0]), never any actor sandbox.
     const subjectUploads = sandboxes[0]!.calls.filter(
-      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz"
+      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz"
     );
     expect(subjectUploads).toHaveLength(1);
     expect(subjectUploads[0]?.[2]).toBe(FAKE_ARCHIVE_BYTES);
     for (const actorSandbox of sandboxes.slice(1)) {
-      const actorUploads = actorSandbox.calls.filter((call) => call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz");
+      const actorUploads = actorSandbox.calls.filter((call) => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz");
       expect(actorUploads).toHaveLength(0);
     }
 
@@ -806,7 +806,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       state: { provenance: "seeded", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String), ok: true, exitCode: 0, durationMs: expect.any(Number) }] }
     };
     expect(result.subject).toEqual(expectedSubject);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.subject).toEqual(expectedSubject);
     expect(bundle.sharedWorld.plane.commit).toBe(FIXED_ARCHIVE.git!.commit);
     // The concurrency-on-pass gate still holds on the local-tree route (real overlap + a state delta).
@@ -842,7 +842,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
     expect(result.error?.message).toContain("zero packable entries");
     expect(created).toHaveLength(0);
   });
@@ -854,7 +854,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
     expect(result.error?.message).toContain("subject.serve");
   });
 
@@ -863,7 +863,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const broken: LabConfig = { ...valid, subject: { ...valid.subject, localTree: { keep: true } } };
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
     expect(result.error?.message).toContain("subject.localTree.keep");
   });
 
@@ -872,7 +872,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const broken = { ...valid, execution: { ...valid.execution, target: "local" } } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
   });
 
   it("routes through runLab(sharedWorldHooks) to the concurrent-shared-world backend", async () => {
@@ -896,7 +896,7 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
     expect(result.ok).toBe(true);
     const baseline = await verifyRun(cwd, result.runId);
     expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
-    return { runId: result.runId, bundlePath: path.join(cwd, ".homun", "runs", result.runId, "run.json") };
+    return { runId: result.runId, bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json") };
   }
 
   async function mutateAndVerify(mutate: (bundle: Record<string, unknown>) => void): Promise<boolean> {
@@ -986,12 +986,12 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
 
 // --- The committed live-fixture lab: deterministic $0 wiring proof (#164) ----------------------
 // Proves the live rung's lab + synthetic fixture are wired correctly BEFORE any spend: the
-// committed homun/labs/shared-world-concurrent-live.yaml parses, routes to the concurrent
+// committed humanish/labs/shared-world-concurrent-live.yaml parses, routes to the concurrent
 // backend, passes the synthetic/seeded/0.0.0.0 validations, dry-runs to a verified bundle, AND
 // drives the REAL orchestrator on the fake N+1 substrate at $0.
 describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
   function loadLiveLab(): LabConfig {
-    const raw = parse(readFileSync(path.join(process.cwd(), "homun/labs/shared-world-concurrent-live.yaml"), "utf8"));
+    const raw = parse(readFileSync(path.join(process.cwd(), "humanish/labs/shared-world-concurrent-live.yaml"), "utf8"));
     const parsed = parseLabConfig(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -1004,8 +1004,8 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(concurrentSharedWorldValidationReason(config)).toBeNull();
     expect(config.subject.exposure).toBe("synthetic");
     expect(config.subject.serve?.start).toContain("0.0.0.0");
-    expect(config.subject.serve?.start).toContain("homun/fixtures/shared-world-app/server.py");
-    expect(config.subject.repos).toEqual(["danielgwilson/homun"]);
+    expect(config.subject.serve?.start).toContain("humanish/fixtures/shared-world-app/server.py");
+    expect(config.subject.repos).toEqual(["danielgwilson/humanish"]);
     expect((config.subject.state?.seed ?? []).length).toBeGreaterThan(0);
     expect((config.subject.state?.checkpoint ?? []).length).toBeGreaterThan(0);
     expect(config.actors[0]?.lanes).toHaveLength(3);
@@ -1022,7 +1022,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(outcome.backend).toBe("concurrent-shared-world");
     if (outcome.backend !== "concurrent-shared-world") return;
     expect(outcome.result.ok).toBe(true);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.attributionClass).toBe("shared-world");
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.laneWindows.map((lane: { actorType?: string; surface?: string; caseGroup?: string }) => [lane.actorType, lane.surface, lane.caseGroup])).toEqual([
@@ -1030,7 +1030,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
       ["coordinator", "task-board", "board-001"],
       ["contributor", "task-board", "board-001"]
     ]);
-    const observerData = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "observer", "observer-data.json"), "utf8"));
+    const observerData = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "observer", "observer-data.json"), "utf8"));
     expect(observerData.laneGroups.map((lane: { actorType?: string; surface?: string; caseGroup?: string }) => [lane.actorType, lane.surface, lane.caseGroup])).toEqual([
       ["planner", "task-board", "board-001"],
       ["coordinator", "task-board", "board-001"],
@@ -1053,7 +1053,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(result.subjectSandbox?.killed).toBe(true);
     expect(result.overlapProven).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.outcomes).toHaveLength(3);
     const series = bundle.sharedWorld.stateSeries as Array<{ digest: string }>;

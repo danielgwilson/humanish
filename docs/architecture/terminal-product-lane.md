@@ -64,7 +64,7 @@ and a minimal fail-closed cap.
 ## SLICE 1 scope (DRY-RUN only — what is honest now)
 
 `runTerminalProductLab` implements ONLY the dry-run path: it builds a valid
-`homun.run-bundle.v1` contract bundle, honestly labeled contract-only, with:
+`humanish.run-bundle.v1` contract bundle, honestly labeled contract-only, with:
 
 - the subject declared as a terminal-product with its public surfaces, provenance
   **UNPINNED** (the agent drives public surfaces, not a clone — invariant 5);
@@ -84,7 +84,7 @@ The dry-run bundle passes the EXISTING `verifyRun`. Terminal-specific verifier
 checks (terminal/transcript presence, lifecycle, cleanup, interventions,
 metadata allowlist, no-credential-in-artifacts, no-spend) are SLICE 2/3.
 
-A non-dry-run (live) call returns a structured `HOMUN_TERMINAL_AGENT_NOT_IMPLEMENTED`
+A non-dry-run (live) call returns a structured `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED`
 failure (fail-closed, clear code) — it never creates a sandbox, never injects a
 key, never spends. SLICE 2 implements the real session.
 
@@ -101,7 +101,7 @@ ships the SEAM (not a built-in product scorer — the adopter's scorecard lives 
 the adopter's repo):
 
 - **Exported contract types** a thin adapter types against from the package
-  barrel (`homun`) alone — never a deep `src/` import: `RunBundle`,
+  barrel (`humanish`) alone — never a deep `src/` import: `RunBundle`,
   `RunFeedbackCandidate`, `RunAdapterScore`, `RunMeaningfulUseScore`
   (+ `RunMeaningfulUseComponentId`), `ActorTrace`, and the terminal-lane
   `TerminalProductScoringContext` / `TerminalLedgers` / `TerminalCostLedger` /
@@ -142,7 +142,7 @@ SLICE 5.
 The requesting adopter is a public creative-CLI product (see issue #154 for its
 concrete public surfaces). Committed source and docs here stay codename-neutral
 per the public-surface scan; the committed CI fixture
-([`homun/labs/terminal-product-demo.yaml`](../../homun/labs/terminal-product-demo.yaml))
+([`humanish/labs/terminal-product-demo.yaml`](../../humanish/labs/terminal-product-demo.yaml))
 uses a FICTIONAL mock CLI (`widgetsmith-cli`) with `example.com` surfaces. The
 adopter's real public surfaces appear only in operator-run docs and the GitHub
 issue, never in scanned committed text.

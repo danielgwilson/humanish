@@ -1,4 +1,4 @@
-// Homun Observer: client assets (CSS + browser JS).
+// Humanish Observer: client assets (CSS + browser JS).
 //
 // This file is the redesigned Observer surface ported from the Claude Design
 // handoff (HTML/CSS/JS prototype) into the repo's self-contained renderer.
@@ -14,7 +14,7 @@
 export function observerCss(): string {
   return `
 /* ============================================================
-   Homun Observer · redesign
+   Humanish Observer · redesign
    Design tokens + shell. Dark is default; [data-theme="light"]
    on <html> flips the palette. All accent/status colors are
    semantic tokens so the whole UI re-themes from one place.
@@ -1086,11 +1086,11 @@ export function observerClientJs(): string {
 
   // ---------------------------------------------------------------- prefs
   function readPref(key, fallback) {
-    try { var raw = window.localStorage.getItem("homun-observer:" + key); return raw == null ? fallback : JSON.parse(raw); }
+    try { var raw = window.localStorage.getItem("humanish-observer:" + key); return raw == null ? fallback : JSON.parse(raw); }
     catch (e) { return fallback; }
   }
   function writePref(key, value) {
-    try { window.localStorage.setItem("homun-observer:" + key, JSON.stringify(value)); } catch (e) {}
+    try { window.localStorage.setItem("humanish-observer:" + key, JSON.stringify(value)); } catch (e) {}
   }
 
   function focusFromHash() {
@@ -1780,10 +1780,10 @@ export function observerClientJs(): string {
     var run = currentData.run;
     var overall = overallStatus(), pct = overallPct();
     var counts = statusCountsModel();
-    var title = (run.scenario && run.scenario.title) || "Homun run";
+    var title = (run.scenario && run.scenario.title) || "Humanish run";
     var persona = (run.persona && run.persona.name) || "";
     return '<header class="hdr">'
-      + '<div class="hdr-brand"><span class="brand-mark">' + icon("live", 15) + '</span><span class="brand-word">Homun <b>Observer</b></span></div>'
+      + '<div class="hdr-brand"><span class="brand-mark">' + icon("live", 15) + '</span><span class="brand-word">Humanish <b>Observer</b></span></div>'
       + '<div class="hdr-run">'
       + '<div class="hdr-run-title" title="' + esc(title) + '">' + esc(title) + '</div>'
       + '<div class="hdr-run-sub"><span class="hdr-persona">' + esc(persona) + '</span><span class="dot-sep"></span>'
@@ -1998,12 +1998,12 @@ export function observerClientJs(): string {
       + '<div class="fi-section"><pre class="fi-pre">' + esc(state.text || "") + '</pre></div></div>';
   }
   function renderSetupQualityArtifact(a, state) {
-    if (!state || state.status !== "loaded" || !state.json || state.json.schema !== "homun.setup-quality.v1") {
+    if (!state || state.status !== "loaded" || !state.json || state.json.schema !== "humanish.setup-quality.v1") {
       return renderGenericArtifact(a, state);
     }
     var q = state.json;
     var checks = q.checks || [];
-    var mim = q.homun || {};
+    var mim = q.humanish || {};
     var scripts = q.packageScripts || {};
     var tree = q.tree || [];
     var previews = q.previews || [];
@@ -2134,7 +2134,7 @@ export function observerClientJs(): string {
     }).join("");
     var caretT = lines.length ? lines[lines.length - 1].t : "";
     return '<section class="console" style="height:230px" role="dialog" aria-label="Run console">'
-      + '<header class="console-head"><span class="console-title">' + icon("terminal", 14) + ' Run console <span class="mono console-cmd">homun watch</span></span>'
+      + '<header class="console-head"><span class="console-title">' + icon("terminal", 14) + ' Run console <span class="mono console-cmd">humanish watch</span></span>'
       + (hasLive() ? '<span class="console-live">' + pip("running", true) + ' tailing</span>' : '')
       + '<div class="tb-spacer"></div><span class="console-meta mono">' + lines.length + ' lines</span>'
       + '<button class="icon-btn" style="width:28px;height:28px" data-action="toggle-console" aria-label="Close console">' + icon("x", 15) + '</button></header>'
@@ -2492,7 +2492,7 @@ export function observerClientJs(): string {
   function gotoRun(runId) {
     if (runId === currentData.run.runId) { S.historyOpen = false; render(); return; }
     if (location.protocol === "file:") { S.historyOpen = false; render(); return; }
-    window.location.href = "/_homun/runs/" + encodeURIComponent(runId) + "/observer/index.html";
+    window.location.href = "/_humanish/runs/" + encodeURIComponent(runId) + "/observer/index.html";
   }
 
   // ================================================================ EVENTS (bound once)
@@ -2608,7 +2608,7 @@ export function observerClientJs(): string {
   }
   function refreshHistoryIndex() {
     if (location.protocol === "file:") return Promise.resolve();
-    return fetch("/_homun/history.json", { cache: "no-store" }).then(function (r) {
+    return fetch("/_humanish/history.json", { cache: "no-store" }).then(function (r) {
       if (!r.ok) throw new Error("history " + r.status);
       return r.json();
     }).then(function (d) {

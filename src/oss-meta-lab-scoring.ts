@@ -33,7 +33,7 @@ export function scoreOssMetaMeaningfulUse(input: OssMetaMeaningfulUseInput): Run
   const components: Component[] = [
     scoreSetupCorrectness(input.setupQuality),
     scoreFilesystemEvidence(input.setupQuality),
-    scoreNestedHomunEvidence(input, hardFailures),
+    scoreNestedHumanishEvidence(input, hardFailures),
     scoreActorActivity(input, hardFailures),
     scoreProductSurface(input, hardFailures),
     scoreFeedbackQuality(input)
@@ -56,7 +56,7 @@ export function scoreOssMetaMeaningfulUse(input: OssMetaMeaningfulUseInput): Run
       : "partial";
 
   return {
-    schema: "homun.meaningful-use-score.v1",
+    schema: "humanish.meaningful-use-score.v1",
     status,
     score,
     summary: meaningfulUseSummary(status, score, hardFailures, components),
@@ -88,9 +88,9 @@ function scoreFilesystemEvidence(setupQuality: RunSetupQualitySnapshot | undefin
 
   const treeCount = setupQuality.tree.length;
   const previewCount = setupQuality.previews.length;
-  const hasHomunSource = setupQuality.tree.some((entry) => entry.path === "homun" || entry.path.startsWith("homun/"));
+  const hasHumanishSource = setupQuality.tree.some((entry) => entry.path === "humanish" || entry.path.startsWith("humanish/"));
   const previewsSuppressed = setupQuality.redaction.rawPreviews === "suppressed";
-  if (treeCount >= 3 && hasHomunSource && (previewCount > 0 || previewsSuppressed)) {
+  if (treeCount >= 3 && hasHumanishSource && (previewCount > 0 || previewsSuppressed)) {
     return component(
       "filesystem-evidence",
       "Filesystem evidence",
@@ -102,25 +102,25 @@ function scoreFilesystemEvidence(setupQuality: RunSetupQualitySnapshot | undefin
     );
   }
   if (treeCount > 0) {
-    return component("filesystem-evidence", "Filesystem evidence", "partial", 8, `Captured ${treeCount} safe tree entr${treeCount === 1 ? "y" : "ies"}, but Homun setup evidence is thin.`);
+    return component("filesystem-evidence", "Filesystem evidence", "partial", 8, `Captured ${treeCount} safe tree entr${treeCount === 1 ? "y" : "ies"}, but Humanish setup evidence is thin.`);
   }
   return component("filesystem-evidence", "Filesystem evidence", "fail", 0, "Filesystem tree evidence is empty.");
 }
 
-function scoreNestedHomunEvidence(input: OssMetaMeaningfulUseInput, hardFailures: string[]): Component {
+function scoreNestedHumanishEvidence(input: OssMetaMeaningfulUseInput, hardFailures: string[]): Component {
   if (input.nestedVerifyPassed === true && input.nestedObserverPresent === true) {
-    return component("nested-homun-evidence", "Nested Homun evidence", "pass", SCORE.nested, "Nested verify passed and the nested Observer is present.");
+    return component("nested-humanish-evidence", "Nested Humanish evidence", "pass", SCORE.nested, "Nested verify passed and the nested Observer is present.");
   }
 
   if (input.status !== "running") {
-    if (input.nestedVerifyPassed === false) hardFailures.push("Nested Homun verification failed.");
-    if (input.nestedObserverPresent === false) hardFailures.push("Nested Homun Observer was missing.");
+    if (input.nestedVerifyPassed === false) hardFailures.push("Nested Humanish verification failed.");
+    if (input.nestedObserverPresent === false) hardFailures.push("Nested Humanish Observer was missing.");
   }
 
   if (input.nestedVerifyPassed === true || input.nestedObserverPresent === true) {
-    return component("nested-homun-evidence", "Nested Homun evidence", "partial", 10, "Only one of nested verify or nested Observer presence was proven.");
+    return component("nested-humanish-evidence", "Nested Humanish evidence", "partial", 10, "Only one of nested verify or nested Observer presence was proven.");
   }
-  return component("nested-homun-evidence", "Nested Homun evidence", input.status === "running" ? "partial" : "fail", input.status === "running" ? 5 : 0, "Nested Homun proof is not complete.");
+  return component("nested-humanish-evidence", "Nested Humanish evidence", input.status === "running" ? "partial" : "fail", input.status === "running" ? 5 : 0, "Nested Humanish proof is not complete.");
 }
 
 function scoreActorActivity(input: OssMetaMeaningfulUseInput, hardFailures: string[]): Component {

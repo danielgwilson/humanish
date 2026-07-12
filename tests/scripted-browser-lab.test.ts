@@ -165,9 +165,9 @@ async function withHttpServer<T>(callback: (appUrl: string) => Promise<T>): Prom
 
 /** Copy the COMMITTED demo scenario into the temp cwd so the test binds to the real file. */
 async function writeCommittedScenario(cwd: string): Promise<string> {
-  const text = await readFile(path.join(ROOT, "homun", "scenarios", "scripted-first-run.yaml"), "utf8");
-  await mkdir(path.join(cwd, "homun", "scenarios"), { recursive: true });
-  await writeFile(path.join(cwd, "homun", "scenarios", "scripted-first-run.yaml"), text, "utf8");
+  const text = await readFile(path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
+  await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+  await writeFile(path.join(cwd, "humanish", "scenarios", "scripted-first-run.yaml"), text, "utf8");
   return text;
 }
 
@@ -242,7 +242,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "c",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "homun-setup" }]
+      actors: [{ type: "humanish-setup" }]
     });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -265,11 +265,11 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       actors: [{ type: "not-a-registered-actor" }]
     } as LabConfig;
     expect(selectLabBackend(tampered)).toBe("cua");
-    const cwd = await mkdtemp(path.join(tmpdir(), "homun-scripted-fallback-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-fallback-"));
     try {
       const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HOMUN_CUA_LAB_ACTOR_UNSUPPORTED");
+      expect(result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -280,7 +280,7 @@ describe("runScriptedBrowserLab", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-scripted-lab-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-lab-"));
   });
 
   afterEach(async () => {
@@ -302,14 +302,14 @@ describe("runScriptedBrowserLab", () => {
     // scenario.ref CONSUMED: digest-pinned provenance.
     expect(result.scenario).toEqual({
       id: "scripted-first-run",
-      source: "homun/scenarios/scripted-first-run.yaml",
+      source: "humanish/scenarios/scripted-first-run.yaml",
       sourceDigest: digestText(scenarioText),
       steps: 4
     });
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("homun.run-bundle.v1");
+    expect(bundle.schema).toBe("humanish.run-bundle.v1");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(2);
     expect(bundle.cwd).toBe("[target-cwd]");
@@ -335,7 +335,7 @@ describe("runScriptedBrowserLab", () => {
     expect(verified.ok).toBe(true);
 
     // latest.json points at THIS run so `verify --run latest` stays honest.
-    const pointer = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", "latest.json"), "utf8"));
+    const pointer = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"));
     expect(pointer.runId).toBe(result.runId);
   });
 
@@ -343,7 +343,7 @@ describe("runScriptedBrowserLab", () => {
     await writeCommittedScenario(cwd);
     const outcome = await runLab(scriptedConfig(), { cwd, dryRun: true });
     if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.simCount).toBe(1);
     expect(bundle.simulations.map((sim: { id: string }) => sim.id)).toEqual(["scripted-desktop"]);
   });
@@ -368,7 +368,7 @@ describe("runScriptedBrowserLab", () => {
         expect(session.screenshots).toBe(4);
       }
 
-      const runDir = path.join(cwd, ".homun", "runs", result.runId);
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
       expect(bundle.mode).toBe("live");
       expect(bundle.simCount).toBe(2);
@@ -387,7 +387,7 @@ describe("runScriptedBrowserLab", () => {
 
         // Native + projected traces persist on disk; the projection matches the seam.
         const nativeTrace = JSON.parse(await readFile(path.join(runDir, "traces", `${surface}.json`), "utf8"));
-        expect(nativeTrace.schema).toBe("homun.browser-persona-trace.v1");
+        expect(nativeTrace.schema).toBe("humanish.browser-persona-trace.v1");
         const actorTrace = JSON.parse(await readFile(path.join(runDir, `actor-${surface}.json`), "utf8"));
         expect(actorTrace).toEqual(stream.actor);
       }
@@ -456,7 +456,7 @@ describe("runScriptedBrowserLab", () => {
           tracePath
         };
         await writeFile(path.join(options.artifactRoot, tracePath), `${JSON.stringify({
-          schema: "homun.browser-persona-trace.v1",
+          schema: "humanish.browser-persona-trace.v1",
           capturedAt,
           appUrl: "[provisioned-subject]",
           browserCommand: "injected-browser",
@@ -523,7 +523,7 @@ describe("runScriptedBrowserLab", () => {
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
     expect(rawSessionUrls).toEqual(["https://3000-fake-subject-001.e2b.app"]);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");
     const bundle = JSON.parse(bundleText);
     expect(bundle.subject).toMatchObject({
@@ -571,7 +571,7 @@ describe("runScriptedBrowserLab", () => {
       expect(result.sessions[0]?.completionReason).toBe("step_failed");
       expect(result.sessions[0]?.status).toBe("failed");
 
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
       expect(bundle.review.verdict).toBe("fail");
       expect(bundle.review.gaps.join("\n")).toContain("desktop");
       const sessionEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.session.step_failed");
@@ -595,9 +595,9 @@ describe("runScriptedBrowserLab", () => {
       const result = outcome.result;
 
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HOMUN_SCRIPTED_LAB_FAILED");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
       expect(result.sessions[0]?.completionReason).toBe("harness_error");
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
       expect(bundle.review.verdict).toBe("fail");
     });
   });
@@ -616,10 +616,10 @@ describe("runScriptedBrowserLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_SCRIPTED_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
     expect(result.error?.message).not.toContain(secretToken);
 
-    const runDir = path.join(cwd, ".homun", "runs", result.runId);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).not.toContain(secretToken);
@@ -634,7 +634,7 @@ describe("runScriptedBrowserLab", () => {
       ["missing scenario file", "does-not-exist", undefined],
       ["invalid YAML", "broken-scenario", "id: broken\n  bad:\n indent: [unclosed"],
       ["zero executable browser steps", "no-browser-steps", [
-        "schema: homun.scenario.v1",
+        "schema: humanish.scenario.v1",
         "id: no-browser-steps",
         "title: Prose-only scenario",
         "goal: No executable steps here.",
@@ -642,16 +642,16 @@ describe("runScriptedBrowserLab", () => {
         "  - name: look around",
         "    expectation: something is visible"
       ].join("\n")]
-    ])("returns HOMUN_SCRIPTED_LAB_SCENARIO_INVALID with no artifacts: %s", async (_label, ref, text) => {
+    ])("returns HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID with no artifacts: %s", async (_label, ref, text) => {
       if (text !== undefined) {
-        await mkdir(path.join(cwd, "homun", "scenarios"), { recursive: true });
-        await writeFile(path.join(cwd, "homun", "scenarios", `${ref}.yaml`), text, "utf8");
+        await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+        await writeFile(path.join(cwd, "humanish", "scenarios", `${ref}.yaml`), text, "utf8");
       }
       const result = await runScriptedBrowserLab({ cwd, config: scriptedConfig({ ref }), dryRun: true });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HOMUN_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
       expect(result.runId).toBe("not-created");
-      await expect(readdir(path.join(cwd, ".homun", "runs"))).rejects.toThrow();
+      await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
     });
 
     it("clamps path-style refs inside the target cwd (no ../../ escape recorded as provenance)", async () => {
@@ -661,13 +661,13 @@ describe("runScriptedBrowserLab", () => {
         dryRun: true
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HOMUN_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
       expect(result.error?.message).toContain("inside the target cwd");
-      await expect(readdir(path.join(cwd, ".homun", "runs"))).rejects.toThrow();
+      await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
     });
 
     it("resolves a path-style ref and records repo-relative provenance", async () => {
-      const text = await readFile(path.join(ROOT, "homun", "scenarios", "scripted-first-run.yaml"), "utf8");
+      const text = await readFile(path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
       await mkdir(path.join(cwd, "custom"), { recursive: true });
       await writeFile(path.join(cwd, "custom", "journey.yaml"), text, "utf8");
       const result = await runScriptedBrowserLab({
@@ -686,7 +686,7 @@ describe("runScriptedBrowserLab", () => {
     const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as LabConfig;
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_SCRIPTED_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED");
   });
 
   it("re-enforces the loopback boundary at the engine even if a config bypasses the parser", async () => {
@@ -695,9 +695,9 @@ describe("runScriptedBrowserLab", () => {
     const tampered = { ...config, subject: { source: "app-url" as const, appUrl: "https://example.com/" } };
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_SCRIPTED_LAB_SUBJECT_UNSAFE");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE");
     expect(result.runId).toBe("not-created");
-    await expect(readdir(path.join(cwd, ".homun", "runs"))).rejects.toThrow();
+    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
   });
 });
 
@@ -718,7 +718,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   });
   program.exitOverride();
   try {
-    await program.parseAsync(["node", "homun", ...args], { from: "node" });
+    await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
     if (!(error instanceof CommanderError && (error.code === "commander.helpDisplayed" || error.code === "commander.version"))) {
       throw error;
@@ -727,15 +727,15 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   return { exitCode, stdout: stdout.join(""), stderr: stderr.join("") };
 }
 
-describe("homun lab run scripted-demo (CLI)", () => {
+describe("humanish lab run scripted-demo (CLI)", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "homun-scripted-cli-"));
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-cli-"));
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }, null, 2));
-    const lab = await readFile(path.join(ROOT, "homun", "labs", "scripted-demo.yaml"), "utf8");
-    await mkdir(path.join(cwd, "homun", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "homun", "labs", "scripted-demo.yaml"), lab, "utf8");
+    const lab = await readFile(path.join(ROOT, "humanish", "labs", "scripted-demo.yaml"), "utf8");
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "labs", "scripted-demo.yaml"), lab, "utf8");
     await writeCommittedScenario(cwd);
   });
 
@@ -755,7 +755,7 @@ describe("homun lab run scripted-demo (CLI)", () => {
       runId: string;
       scenario: { id: string; source: string; steps: number };
     };
-    expect(envelope.schema).toBe("homun.scripted-lab-result.v1");
+    expect(envelope.schema).toBe("humanish.scripted-lab-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
     expect(envelope.actor).toBe("scripted-browser");
@@ -763,7 +763,7 @@ describe("homun lab run scripted-demo (CLI)", () => {
     expect(envelope.runId).toBe("scripted-cli-json");
     expect(envelope.scenario).toEqual(expect.objectContaining({
       id: "scripted-first-run",
-      source: "homun/scenarios/scripted-first-run.yaml",
+      source: "humanish/scenarios/scripted-first-run.yaml",
       steps: 4
     }));
   });
@@ -771,12 +771,12 @@ describe("homun lab run scripted-demo (CLI)", () => {
   it("dry-run human output names run/lab/actor/subject/scenario", async () => {
     const result = await runCli(["lab", "run", "scripted-demo", "--cwd", cwd, "--dry-run", "--no-open", "--run-id", "scripted-cli-human"]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("homun lab scripted dry-run");
+    expect(result.stdout).toContain("humanish lab scripted dry-run");
     expect(result.stdout).toContain("run: scripted-cli-human");
     expect(result.stdout).toContain("lab: scripted-demo");
     expect(result.stdout).toContain("actor: scripted-browser");
     expect(result.stdout).toContain("subject: http://127.0.0.1:5173/");
     expect(result.stdout).toContain("scenario: scripted-first-run @");
-    expect(result.stdout).toContain("(homun/scenarios/scripted-first-run.yaml, 4 steps)");
+    expect(result.stdout).toContain("(humanish/scenarios/scripted-first-run.yaml, 4 steps)");
   });
 });

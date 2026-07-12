@@ -5,45 +5,45 @@ import type { RunSetupQualitySnapshot } from "../src/run.js";
 
 function setupQualityFixture(): RunSetupQualitySnapshot {
   return {
-    schema: "homun.setup-quality.v1",
+    schema: "humanish.setup-quality.v1",
     generatedAt: "2026-06-05T12:00:00.000Z",
     redaction: {
       status: "passed",
       rawPreviews: "included",
       notes: "Only allowlisted setup files are previewed."
     },
-    summary: "Homun setup is app-specific and proof-oriented.",
+    summary: "Humanish setup is app-specific and proof-oriented.",
     status: "passed",
     checks: [
       {
-        id: "homun-config",
-        label: "Homun config",
+        id: "humanish-config",
+        label: "Humanish config",
         ok: true,
-        detail: "homun/config.ts exists."
+        detail: "humanish/config.ts exists."
       },
       {
         id: "package-script",
         label: "Package script",
         ok: true,
-        detail: "package.json exposes a Homun watch script."
+        detail: "package.json exposes a Humanish watch script."
       }
     ],
     tree: [
       { path: "package.json", type: "file", sizeBytes: 540 },
-      { path: "homun", type: "directory" },
-      { path: "homun/config.ts", type: "file", sizeBytes: 180 },
-      { path: "homun/personas/product-researcher.yaml", type: "file", sizeBytes: 220 }
+      { path: "humanish", type: "directory" },
+      { path: "humanish/config.ts", type: "file", sizeBytes: 180 },
+      { path: "humanish/personas/product-researcher.yaml", type: "file", sizeBytes: 220 }
     ],
     previews: [
       {
-        path: "homun/config.ts",
+        path: "humanish/config.ts",
         language: "typescript",
         truncated: false,
         text: "export default { run: { appUrl: 'http://127.0.0.1:5173', sims: 2 } };"
       }
     ],
     studyQuality: {
-      schema: "homun.study-quality.v1",
+      schema: "humanish.study-quality.v1",
       rating: "high_leverage",
       summary: "Study-quality rating high_leverage from app-specific personas, scenarios, app URL proof, and actor insight.",
       checks: [
@@ -65,9 +65,9 @@ function setupQualityFixture(): RunSetupQualitySnapshot {
     },
     packageScripts: {
       dev: "vite",
-      homun: "homun watch"
+      humanish: "humanish watch"
     },
-    homun: {
+    humanish: {
       configPresent: true,
       gitignoreContainsRuntimeIgnore: true,
       packageScriptPresent: true,
@@ -80,7 +80,7 @@ function setupQualityFixture(): RunSetupQualitySnapshot {
 describe("OSS meta-lab meaningful-use scoring", () => {
   it("passes only when every evidence component passes", () => {
     const result = scoreOssMetaMeaningfulUse({
-      actorLastMessageTail: "Finished an app-specific Homun study and summarized useful feedback.",
+      actorLastMessageTail: "Finished an app-specific Humanish study and summarized useful feedback.",
       actorRequired: true,
       actorStatus: "passed",
       appStatus: "running",
@@ -93,7 +93,7 @@ describe("OSS meta-lab meaningful-use scoring", () => {
     });
 
     expect(result).toMatchObject({
-      schema: "homun.meaningful-use-score.v1",
+      schema: "humanish.meaningful-use-score.v1",
       hardFailures: [],
       score: 100,
       status: "pass"
@@ -153,7 +153,7 @@ describe("OSS meta-lab meaningful-use scoring", () => {
     setupQuality.previews = [];
 
     const result = scoreOssMetaMeaningfulUse({
-      actorLastMessageTail: "Finished an app-specific Homun study and summarized useful feedback.",
+      actorLastMessageTail: "Finished an app-specific Humanish study and summarized useful feedback.",
       actorRequired: true,
       actorStatus: "passed",
       appStatus: "running",

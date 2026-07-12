@@ -97,10 +97,10 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
 /** A scripted command handler whose checkpoint output reflects the shared world version. */
 function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string; exitCode?: number } | undefined {
   return (command: string): { stdout?: string; exitCode?: number } | undefined => {
-    if (command.includes("browser_preference='firefox'")) return { stdout: "HOMUN_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
-    if (command.includes("browser_preference='chrome'")) return { stdout: "HOMUN_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
-    if (command.includes("browser_preference='chromium'")) return { stdout: "HOMUN_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
-    if (command.includes("browser_preference='default'")) return { stdout: "HOMUN_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='firefox'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
+    if (command.includes("browser_preference='chrome'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='chromium'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
+    if (command.includes("browser_preference='default'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
     if (command.includes("/status")) return { stdout: "0" }; // every detached step exits 0
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" }; // commit SHA
     if (command.includes("curl")) return { stdout: "READY" }; // readiness probe
@@ -250,7 +250,7 @@ const SHARED_WORLD_ADAPTER_NAMESPACE = "shared-world-adapter-proof";
 
 function sharedWorldFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
   return {
-    schema: "homun.adapter-score.v1",
+    schema: "humanish.adapter-score.v1",
     namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
     status: "fail",
     score: 18,
@@ -264,7 +264,7 @@ function sharedWorldFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
 
 let cwd: string;
 beforeEach(async () => {
-  cwd = await mkdtemp(path.join(tmpdir(), "homun-shared-world-"));
+  cwd = await mkdtemp(path.join(tmpdir(), "humanish-shared-world-"));
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
@@ -279,9 +279,9 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.topology).toBe("shared-world");
     expect(result.roleCount).toBe(2);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.attributionClass).toBe("shared-world");
-    expect(bundle.sharedWorld.schema).toBe("homun.shared-world.v1");
+    expect(bundle.sharedWorld.schema).toBe("humanish.shared-world.v1");
     expect(bundle.sharedWorld.attributionLimits).toEqual(
       expect.arrayContaining(["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"])
     );
@@ -301,7 +301,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.ok).toBe(true);
     expect(withTemplate.created).toHaveLength(1);
     expect(withTemplate.templates).toEqual(["acme-desktop-with-runtimes"]);
-    const withBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const withBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
 
     // Byte-stable default: NO template → create called with NO template arg, bundle omits the field.
@@ -310,7 +310,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const result2 = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks: noTemplate.hooks });
     expect(result2.ok).toBe(true);
     expect(noTemplate.templates).toEqual([undefined]);
-    const noBundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result2.runId, "run.json"), "utf8"));
+    const noBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result2.runId, "run.json"), "utf8"));
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
@@ -328,7 +328,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(String(seatLaunches[0]!.call[1])).toContain("launch_firefox");
     expect(String(seatLaunches[0]!.call[1])).not.toContain("setsid -f google-chrome");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
 
     const verify = await verifyRun(cwd, result.runId);
@@ -373,7 +373,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(firstSeatCommand).toContain("\"password_manager_enabled\":false");
 
     // A checkpoint at baseline + after each turn → timeline = cp, turn, cp, turn, cp.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
     const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; name?: string; deltaFromPrev?: boolean; roleId?: string }>;
     expect(timeline.map((e) => e.kind)).toEqual(["checkpoint", "turn", "checkpoint", "turn", "checkpoint"]);
@@ -401,7 +401,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
 
     // Per-role actor traces written.
-    const actorsDir = await readdir(path.join(cwd, ".homun", "runs", result.runId, "actors"));
+    const actorsDir = await readdir(path.join(cwd, ".humanish", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json"]);
   });
 
@@ -441,7 +441,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
         "utf8"
       );
       return [{
-        schema: "homun.adapter-artifact.v1",
+        schema: "humanish.adapter-artifact.v1",
         namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
         label: "Shared-world adapter readback",
         path: "adapter/shared-world-readback.json",
@@ -454,7 +454,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(SHARED_WORLD_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("shared-world");
@@ -522,7 +522,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // Still ONE sandbox, still killed by id.
     expect(killed).toEqual([sandbox.sandboxId]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.events.some((e: { type: string }) => e.type === "shared-world.fail-fast")).toBe(true);
   });
 
@@ -547,7 +547,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.roles[1]?.status).not.toBe("blocked");
     expect(result.sequence).toEqual(["role-author", "role-reviewer"]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("1/2 role(s)");
     expect(bundle.review.gaps[0]).toContain("failed (gave_up)");
@@ -570,7 +570,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.ok).toBe(false);
 
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
-      const text = await readFile(path.join(cwd, ".homun", "runs", result.runId, file), "utf8");
+      const text = await readFile(path.join(cwd, ".humanish", "runs", result.runId, file), "utf8");
       expect(text, file).not.toContain(secret);
     }
   });
@@ -633,7 +633,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     expect(result.sandbox).toBeUndefined();
     expect(result.subject).toEqual({ source: "local-tree", envNames: ["DATABASE_URL"], state: { provenance: "declared-not-run", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String) }] } });
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.subject.source).toBe("local-tree");
     expect("archiveSha256" in bundle.subject).toBe(false);
     expect(bundle.attributionClass).toBe("shared-world");
@@ -663,7 +663,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
 
     // The archive uploaded to the ONE subject sandbox at the known remote path, octet-stream.
     const uploads = sandbox.calls.filter(
-      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.homun-source.tar.gz"
+      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz"
     );
     expect(uploads).toHaveLength(1);
     expect(uploads[0]?.[2]).toBe(FAKE_ARCHIVE_BYTES);
@@ -677,7 +677,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
       (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh")
     );
     expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
-    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.homun-source.tar.gz -C /home/user/subject");
+    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.humanish-source.tar.gz -C /home/user/subject");
 
     // Provenance: source local-tree + archiveSha256 (the pin) + commit/dirty from the host-packed
     // archive (never resolved in-sandbox: no repo/publicRepo for local-tree).
@@ -690,7 +690,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
       state: { provenance: "seeded", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String), ok: true, exitCode: 0, durationMs: expect.any(Number) }] }
     };
     expect(result.subject).toEqual(expectedSubject);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".homun", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.subject).toEqual(expectedSubject);
     expect(bundle.sharedWorld.plane.commit).toBe(FIXED_ARCHIVE.git!.commit);
 
@@ -713,7 +713,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
 
     // Strip the content pin from the persisted bundle: a live local-tree subject has no other
     // provenance anchor (a dirty tree cannot be commit-pinned), so verify must fail closed.
-    const runPath = path.join(cwd, ".homun", "runs", result.runId, "run.json");
+    const runPath = path.join(cwd, ".humanish", "runs", result.runId, "run.json");
     const bundle = JSON.parse(await readFile(runPath, "utf8"));
     delete bundle.subject.archiveSha256;
     await writeFile(runPath, JSON.stringify(bundle));
@@ -753,7 +753,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_SHARED_WORLD_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_LAB_FAILED");
     expect(result.error?.message).toContain("zero packable entries");
     expect(created).toHaveLength(0);
   });
@@ -785,7 +785,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     const broken = { ...valid, subject: subjectWithoutServe } as unknown as LabConfig;
     const result = await runSharedWorldLab({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_LAB_INVALID");
     expect(result.error?.message).toContain("subject.serve");
   });
 
@@ -796,7 +796,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     const broken = { ...valid, execution: executionWithoutTarget } as LabConfig;
     const result = await runSharedWorldLab({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HOMUN_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_LAB_INVALID");
     expect(result.error?.message).toContain("execution.target: e2b-desktop");
   });
 
@@ -821,7 +821,7 @@ describe("verifyRun fails closed on each injected shared-world overclaim", () =>
     expect(result.ok).toBe(true);
     const baseline = await verifyRun(cwd, result.runId);
     expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
-    return { runId: result.runId, bundlePath: path.join(cwd, ".homun", "runs", result.runId, "run.json") };
+    return { runId: result.runId, bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json") };
   }
 
   async function mutateAndVerify(mutate: (bundle: Record<string, unknown>) => void): Promise<boolean> {

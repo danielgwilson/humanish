@@ -9,7 +9,7 @@ import {
   type CodexAppServerStatus
 } from "./codex-app-server.js";
 
-export const CODEX_APP_SERVER_UI_SCHEMA = "homun.codex-app-server-ui.v1";
+export const CODEX_APP_SERVER_UI_SCHEMA = "humanish.codex-app-server-ui.v1";
 
 type CodexAppServerUiStatus = "starting" | "running" | CodexAppServerStatus;
 
@@ -123,7 +123,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     experimentalApi: true,
     ...(options.model === undefined ? {} : { model: options.model }),
     sandbox: options.sandbox ?? "read-only",
-    serviceName: options.serviceName ?? "homun"
+    serviceName: options.serviceName ?? "humanish"
   }).then(async (result): Promise<CodexAppServerUiState> => {
     state = {
       ...state,
@@ -241,7 +241,7 @@ function renderCodexAppServerUiHtml(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Homun Codex App-Server</title>
+  <title>Humanish Codex App-Server</title>
   <style>
     :root {
       --bg: #080a0d;
@@ -301,7 +301,7 @@ function renderCodexAppServerUiHtml(): string {
       <div class="mark">CT</div>
       <div class="title">
         <h1>Codex App-Server Actor</h1>
-        <p id="subtitle">Connecting to Homun state...</p>
+        <p id="subtitle">Connecting to Humanish state...</p>
       </div>
       <div class="pill" id="status" data-status="starting">STARTING</div>
     </header>

@@ -156,7 +156,7 @@ describe("adapter fixture parity contracts", () => {
     const bundle = await readJson<RunBundleFixture>(`${root}/run-bundle.json`);
 
     expectPublicSafeFixture({ adapter, milestones, bundle });
-    expect(adapter.schema).toBe("homun.adapter.v1");
+    expect(adapter.schema).toBe("humanish.adapter.v1");
     expect(adapter.authority).toEqual(expect.objectContaining({
       github_mutation: "not_requested",
       mode: "contract_fixture",
@@ -208,7 +208,7 @@ describe("adapter fixture parity contracts", () => {
     const sanitizedTranscript = await readFile(`${root}/transcripts/sanitized-terminal.txt`, "utf8");
 
     expectPublicSafeFixture({ adapter, policy, bundle, feedbackDraft, verifyResult, sanitizedTranscript });
-    expect(adapter.schema).toBe("homun.adapter.v1");
+    expect(adapter.schema).toBe("humanish.adapter.v1");
     expect(adapter.commands?.map((command) => command.id).sort()).toEqual(["feedback-draft", "start"]);
     expect(adapter.authority.hosted_product_memory_required).toBe(false);
     expect(policy.network_policy).toBe("no_network");
@@ -244,7 +244,7 @@ describe("adapter fixture parity contracts", () => {
     expect(feedbackDraft.evidence.map((item) => item.kind).sort()).toEqual(["state", "terminal", "trace"]);
 
     expect(sanitizedTranscript).toContain("synthetic sanitized transcript only");
-    expect(verifyResult.schema).toBe("homun.verify-result.v1");
+    expect(verifyResult.schema).toBe("humanish.verify-result.v1");
     expect(verifyResult.ok).toBe(true);
     expect(verifyResult.checks.every((check) => check.ok)).toBe(true);
     expect(verifyResult.checks.map((check) => check.name).sort()).toEqual([

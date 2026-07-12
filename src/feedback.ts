@@ -4,8 +4,8 @@ import path from "node:path";
 import { loadRunBundle, verifyRun } from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
 
-export const FEEDBACK_SCHEMA = "homun.feedback.v1";
-export const FEEDBACK_RESULT_SCHEMA = "homun.feedback-result.v1";
+export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
+export const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";
 
 export interface FeedbackDraft {
   schema: typeof FEEDBACK_SCHEMA;
@@ -48,10 +48,10 @@ export interface FeedbackResult {
   shareSafety?: VerifyResult["shareSafety"];
   error?: {
     code:
-      | "HOMUN_RUN_NOT_FOUND"
-      | "HOMUN_INVALID_RUN_BUNDLE"
-      | "HOMUN_INVALID_FEEDBACK_DRAFT"
-      | "HOMUN_FEEDBACK_SHARE_SAFETY_BLOCKED";
+      | "HUMANISH_RUN_NOT_FOUND"
+      | "HUMANISH_INVALID_RUN_BUNDLE"
+      | "HUMANISH_INVALID_FEEDBACK_DRAFT"
+      | "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED";
     message: string;
   };
 }
@@ -67,7 +67,7 @@ export async function draftFeedback(cwdInput: string, runInput: string): Promise
       cwd,
       run: runInput,
       error: {
-        code: "HOMUN_RUN_NOT_FOUND",
+        code: "HUMANISH_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
       }
     };
@@ -81,7 +81,7 @@ export async function draftFeedback(cwdInput: string, runInput: string): Promise
       cwd,
       run: runInput,
       error: {
-        code: "HOMUN_INVALID_RUN_BUNDLE",
+        code: "HUMANISH_INVALID_RUN_BUNDLE",
         message: verified.error?.message ?? "Run bundle failed verification."
       }
     };
@@ -95,7 +95,7 @@ export async function draftFeedback(cwdInput: string, runInput: string): Promise
       run: runInput,
       shareSafety: verified.shareSafety,
       error: {
-        code: "HOMUN_FEEDBACK_SHARE_SAFETY_BLOCKED",
+        code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
         message: `Run is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((reason) => reason.code).join(", ")}`
       }
     };
@@ -136,7 +136,7 @@ export async function verifyFeedback(cwdInput: string, runInput: string): Promis
       ...drafted,
       ok: false,
       error: {
-        code: "HOMUN_INVALID_FEEDBACK_DRAFT",
+        code: "HUMANISH_INVALID_FEEDBACK_DRAFT",
         message: `Feedback evidence missing: ${missingEvidence.join(", ")}`
       }
     };
@@ -179,7 +179,7 @@ export async function renderIssueUrl(cwdInput: string, runInput: string, repo: s
     return rendered;
   }
 
-  const title = `[Homun] ${rendered.draft.summary}`;
+  const title = `[Humanish] ${rendered.draft.summary}`;
   return {
     ...rendered,
     issueUrl: `https://github.com/${encodeGitHubRepoPath(repo)}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(rendered.issueMarkdown)}`
@@ -197,7 +197,7 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
       cwd,
       run: runInput,
       error: {
-        code: "HOMUN_RUN_NOT_FOUND",
+        code: "HUMANISH_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
       }
     };
@@ -265,7 +265,7 @@ function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
     substrate: "local-filesystem",
     failure_owner: "harness",
     summary: "Dry-run contract proof needs product-evidence follow-up",
-    expected: "Homun should produce verified, public-safe evidence before product claims are filed.",
+    expected: "Humanish should produce verified, public-safe evidence before product claims are filed.",
     actual: "This dry-run produced a contract-proof bundle only; no browser or product behavior was exercised.",
     source_bundle: bundlePath,
     evidence: [
@@ -284,18 +284,18 @@ function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
       status: "passed",
       notes: bundle.redaction.notes
     },
-    idempotency_key: `homun:${bundle.runId}:dry-run-contract-proof`,
+    idempotency_key: `humanish:${bundle.runId}:dry-run-contract-proof`,
     proposed_next_state: "watch",
     acceptance_proof: [
-      `pnpm homun -- verify --run ${bundle.runId} --json`,
-      `pnpm homun -- watch --run ${bundle.runId} --no-open`
+      `pnpm humanish -- verify --run ${bundle.runId} --json`,
+      `pnpm humanish -- watch --run ${bundle.runId} --no-open`
     ]
   };
 }
 
 function isUsableFeedbackCandidate(candidate: unknown): candidate is RunFeedbackCandidate {
   if (!isRecord(candidate)
-    || candidate.schema !== "homun.feedback-candidate.v1"
+    || candidate.schema !== "humanish.feedback-candidate.v1"
     || !isRecord(candidate.redaction)
     || candidate.redaction.status !== "passed"
     || typeof candidate.summary !== "string"
@@ -320,7 +320,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function renderMarkdown(draft: FeedbackDraft, repo: string): string {
-  return `This issue was drafted by Homun from a verified Homun run bundle.
+  return `This issue was drafted by Humanish from a verified Humanish run bundle.
 
 It contributes to public-safe simulation harness coverage. The feedback command did not mutate GitHub, commit code, or claim unobserved product behavior.
 
@@ -348,7 +348,7 @@ ${draft.evidence.map((item) => `- ${item.kind}: \`${item.path}\` - ${item.note}`
 - Production data: not used
 
 \`\`\`yaml
-homun_feedback:
+humanish_feedback:
   schema: ${draft.schema}
   run_id: ${draft.run_id}
   adapter_id: ${draft.adapter_id}

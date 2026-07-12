@@ -36,13 +36,13 @@ import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, 
 import { containsSensitive, digestText, redactText, redactToSecretLabel, tailText } from "./redaction.js";
 import { loadE2BDesktopModule, type E2BDesktopModule } from "./e2b-desktop-launch.js";
 
-export const RUN_BUNDLE_SCHEMA = "homun.run-bundle.v1";
-export const SHARED_WORLD_SCHEMA = "homun.shared-world.v1";
-export const REVIEW_SCHEMA = "homun.review.v1";
-export const VERIFY_SCHEMA = "homun.verify-result.v1";
-export const RUNS_SCHEMA = "homun.runs-result.v1";
-export const DOCTOR_SCHEMA = "homun.doctor-result.v1";
-export const CLEANUP_SCHEMA = "homun.cleanup-result.v1";
+export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
+export const SHARED_WORLD_SCHEMA = "humanish.shared-world.v1";
+export const REVIEW_SCHEMA = "humanish.review.v1";
+export const VERIFY_SCHEMA = "humanish.verify-result.v1";
+export const RUNS_SCHEMA = "humanish.runs-result.v1";
+export const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
+export const CLEANUP_SCHEMA = "humanish.cleanup-result.v1";
 export const PUBLIC_TARGET_CWD = "[target-cwd]";
 const SAFE_GIT_NOTES = new Set([
   "Git command could not be started.",
@@ -104,7 +104,7 @@ export interface RunStreamCompletion {
 }
 
 export interface RunSetupQualitySnapshot {
-  schema: "homun.setup-quality.v1";
+  schema: "humanish.setup-quality.v1";
   generatedAt: string;
   redaction: {
     status: "passed";
@@ -131,7 +131,7 @@ export interface RunSetupQualitySnapshot {
     text: string;
   }>;
   studyQuality?: {
-    schema: "homun.study-quality.v1";
+    schema: "humanish.study-quality.v1";
     rating: "none" | "ceremonial" | "useful" | "high_leverage";
     summary: string;
     checks: Array<{
@@ -150,7 +150,7 @@ export interface RunSetupQualitySnapshot {
     };
   };
   packageScripts: Record<string, string>;
-  homun: {
+  humanish: {
     configPresent: boolean;
     personaCount: number;
     scenarioCount: number;
@@ -170,13 +170,13 @@ export interface RunSetupQualitySnapshot {
 export type RunMeaningfulUseComponentId =
   | "setup-correctness"
   | "filesystem-evidence"
-  | "nested-homun-evidence"
+  | "nested-humanish-evidence"
   | "actor-activity"
   | "product-surface"
   | "feedback-quality";
 
 export interface RunMeaningfulUseScore {
-  schema: "homun.meaningful-use-score.v1";
+  schema: "humanish.meaningful-use-score.v1";
   status: "pass" | "partial" | "fail";
   score: number;
   summary: string;
@@ -201,7 +201,7 @@ export interface RunMeaningfulUseScore {
  * adopter's scorer plugs into without forking core.
  */
 export interface RunAdapterScore {
-  schema: "homun.adapter-score.v1";
+  schema: "humanish.adapter-score.v1";
   /** The adapter's namespace — non-core, product-scoped (e.g. an adopter slug). Required + non-empty. */
   namespace: string;
   status: "pass" | "partial" | "fail";
@@ -213,7 +213,7 @@ export interface RunAdapterScore {
 }
 
 export interface RunFeedbackCandidate {
-  schema: "homun.feedback-candidate.v1";
+  schema: "humanish.feedback-candidate.v1";
   id: string;
   run_id: string;
   stream_id?: string;
@@ -260,11 +260,11 @@ export interface RunFeedbackCandidate {
 
 /**
  * Optional, adapter-namespaced artifact references. These let a thin in-repo
- * adapter attach product/state proof outputs to the Homun evidence packet
+ * adapter attach product/state proof outputs to the Humanish evidence packet
  * without teaching core product nouns or inventing fake streams.
  */
 export interface RunAdapterArtifact {
-  schema: "homun.adapter-artifact.v1";
+  schema: "humanish.adapter-artifact.v1";
   namespace: string;
   label: string;
   path: string;
@@ -347,7 +347,7 @@ export interface RunStream {
     tracePath?: string;
     turnId?: string;
   };
-  // Provider-neutral projection of the actor's evidence (homun.actor-trace.v1).
+  // Provider-neutral projection of the actor's evidence (humanish.actor-trace.v1).
   // Populated alongside the raw `codex` evidence; carries persona.traitsApplied.
   actor?: ActorTrace;
   completion?: RunStreamCompletion;
@@ -390,7 +390,7 @@ export interface RunSubjectStateStepRecord {
 /**
  * Structured subject provenance (invariant 5): what the subject WAS — code pin (repo/commit,
  * or a local-tree archive digest) AND state story. Optional additive field on
- * homun.run-bundle.v1; absent on bundles from backends that have not adopted it (and on all
+ * humanish.run-bundle.v1; absent on bundles from backends that have not adopted it (and on all
  * pre-existing bundles).
  */
 export interface RunSubjectProvenance {
@@ -550,7 +550,7 @@ export interface SharedWorldTurn {
 export type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
 
 /**
- * The shared-world evidence block (`homun.shared-world.v1`). TWO variants discriminated by
+ * The shared-world evidence block (`humanish.shared-world.v1`). TWO variants discriminated by
  * `topologyMode` (FIX-8 — renamed off `RunBundle.mode` to avoid the dry-run|live collision):
  *
  * - SEQUENTIAL (`topologyMode: "sequential"`, the PoC): `sequence` + an alternating `timeline`
@@ -558,7 +558,7 @@ export type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
  * - CONCURRENT (`topologyMode: "concurrent"`, #164 phase 2): `laneWindows` + `stateSeries` +
  *   `outcomes`; limits `concurrent` etc. NO `timeline`.
  *
- * Additive + optional on `homun.run-bundle.v1` — absent on every non-shared-world bundle.
+ * Additive + optional on `humanish.run-bundle.v1` — absent on every non-shared-world bundle.
  * The mandatory `attributionLimits` are verify-enforced (FAIL CLOSED on a missing required or a
  * present forbidden limit).
  */
@@ -595,7 +595,7 @@ export interface RunBundle {
   artifactRoot: string;
   source: {
     packageName: string | null;
-    homunSource: "present" | "missing";
+    humanishSource: "present" | "missing";
     git: CapturedGitState;
   };
   persona: {
@@ -664,7 +664,7 @@ export interface RunBundle {
    */
   attributionClass?: RunAttributionClass;
   /**
-   * Shared-world evidence block (`homun.shared-world.v1`). Optional + additive; present only on
+   * Shared-world evidence block (`humanish.shared-world.v1`). Optional + additive; present only on
    * shared-world runs. Verified fail-closed by validateSharedWorldEvidence.
    */
   sharedWorld?: SharedWorldEvidence;
@@ -690,11 +690,11 @@ export interface RunBundle {
 }
 
 export interface RunProviderResource {
-  schema: "homun.provider-resource.v1";
+  schema: "humanish.provider-resource.v1";
   provider: "e2b-desktop";
   kind: "sandbox";
   id: string;
-  owner: "homun";
+  owner: "humanish";
   status: "running" | "killed" | "unknown";
   simId?: string;
   streamId?: string;
@@ -729,19 +729,19 @@ export interface ReviewSummary {
 export async function buildRunSource(args: {
   cwd: string;
   capturedAt?: Date | string;
-  homunSource: RunBundle["source"]["homunSource"];
+  humanishSource: RunBundle["source"]["humanishSource"];
   packageName: string | null;
 }): Promise<RunBundle["source"]> {
   const gitOptions = args.capturedAt === undefined ? {} : { capturedAt: args.capturedAt };
   return {
     packageName: args.packageName,
-    homunSource: args.homunSource,
+    humanishSource: args.humanishSource,
     git: await captureGitState(args.cwd, gitOptions)
   };
 }
 
 export interface RunResult {
-  schema: "homun.run-result.v1";
+  schema: "humanish.run-result.v1";
   ok: boolean;
   runId?: string;
   mode?: "dry-run" | "live";
@@ -754,22 +754,22 @@ export interface RunResult {
   warnings: string[];
   error?: {
     code:
-      | "HOMUN_ACTOR_FANOUT_UNIMPLEMENTED"
-      | "HOMUN_APP_URL_OPTION_CONFLICT"
-      | "HOMUN_BROWSER_APP_CAPTURE_FAILED"
-      | "HOMUN_CODEX_APP_SERVER_FAILED"
-      | "HOMUN_LIVE_RUN_UNIMPLEMENTED"
-      | "HOMUN_LOCAL_CODEX_EXEC_FAILED"
-      | "HOMUN_LOCAL_CODEX_TUI_FAILED"
-      | "HOMUN_INVALID_APP_URL"
-      | "HOMUN_INVALID_ACTOR_CONCURRENCY"
-      | "HOMUN_INVALID_CWD"
-      | "HOMUN_INVALID_SIM_COUNT"
-      | "HOMUN_INVALID_TIMEOUT"
-      | "HOMUN_INVALID_PORT"
-      | "HOMUN_UNSUPPORTED_ACTOR"
-      | "HOMUN_UNSUPPORTED_RERUN_FLAGS"
-      | "HOMUN_WATCH_OPTION_CONFLICT";
+      | "HUMANISH_ACTOR_FANOUT_UNIMPLEMENTED"
+      | "HUMANISH_APP_URL_OPTION_CONFLICT"
+      | "HUMANISH_BROWSER_APP_CAPTURE_FAILED"
+      | "HUMANISH_CODEX_APP_SERVER_FAILED"
+      | "HUMANISH_LIVE_RUN_UNIMPLEMENTED"
+      | "HUMANISH_LOCAL_CODEX_EXEC_FAILED"
+      | "HUMANISH_LOCAL_CODEX_TUI_FAILED"
+      | "HUMANISH_INVALID_APP_URL"
+      | "HUMANISH_INVALID_ACTOR_CONCURRENCY"
+      | "HUMANISH_INVALID_CWD"
+      | "HUMANISH_INVALID_SIM_COUNT"
+      | "HUMANISH_INVALID_TIMEOUT"
+      | "HUMANISH_INVALID_PORT"
+      | "HUMANISH_UNSUPPORTED_ACTOR"
+      | "HUMANISH_UNSUPPORTED_RERUN_FLAGS"
+      | "HUMANISH_WATCH_OPTION_CONFLICT";
     message: string;
   };
 }
@@ -799,7 +799,7 @@ export interface VerifyResult {
   // flip ok: overriding a default is supported, but ok: true must not read as "share-ready".
   warnings: string[];
   error?: {
-    code: "HOMUN_RUN_NOT_FOUND" | "HOMUN_INVALID_RUN_BUNDLE";
+    code: "HUMANISH_RUN_NOT_FOUND" | "HUMANISH_INVALID_RUN_BUNDLE";
     message: string;
   };
 }
@@ -838,7 +838,7 @@ export interface CleanupResult {
   adapterResults: CleanupAdapterResult[];
   warnings: string[];
   error?: {
-    code: "HOMUN_RUN_NOT_FOUND" | "HOMUN_INVALID_RUN_BUNDLE";
+    code: "HUMANISH_RUN_NOT_FOUND" | "HUMANISH_INVALID_RUN_BUNDLE";
     message: string;
   };
 }
@@ -865,7 +865,7 @@ export interface RunsResult {
   }>;
   latest: string | null;
   error?: {
-    code: "HOMUN_RUNS_UNAVAILABLE";
+    code: "HUMANISH_RUNS_UNAVAILABLE";
     message: string;
   };
 }
@@ -882,13 +882,13 @@ export interface DoctorResult {
 }
 
 interface RunPointer {
-  schema: "homun.latest-run.v1";
+  schema: "humanish.latest-run.v1";
   runId: string;
   path: string;
   updatedAt: string;
 }
 
-const CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA = "homun.codex-app-server-trace.projected.v1";
+const CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA = "humanish.codex-app-server-trace.projected.v1";
 
 const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 240_000;
 const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 600_000;
@@ -920,7 +920,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
 
   if (cwdError) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd,
       warnings,
@@ -930,12 +930,12 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
 
   if (options.actor !== undefined && !isLocalCodexActor(options.actor)) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd,
       warnings,
       error: {
-        code: "HOMUN_UNSUPPORTED_ACTOR",
+        code: "HUMANISH_UNSUPPORTED_ACTOR",
         message: `Unsupported actor: ${options.actor}`
       }
     };
@@ -944,12 +944,12 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const simCount = normalizeSimCount(options.appUrl ? options.simCount ?? 2 : options.simCount);
   if (simCount === null) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd,
       warnings,
       error: {
-        code: "HOMUN_INVALID_SIM_COUNT",
+        code: "HUMANISH_INVALID_SIM_COUNT",
         message: "--sims must be a positive integer."
       }
     };
@@ -958,12 +958,12 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   if (options.appUrl !== undefined) {
     if (options.dryRun) {
       return {
-        schema: "homun.run-result.v1",
+        schema: "humanish.run-result.v1",
         ok: false,
         cwd,
         warnings,
         error: {
-          code: "HOMUN_APP_URL_OPTION_CONFLICT",
+          code: "HUMANISH_APP_URL_OPTION_CONFLICT",
           message: "Use --app-url for a live browser app proof; remove --dry-run."
         }
       };
@@ -971,12 +971,12 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
 
     if (simCount > 2) {
       return {
-        schema: "homun.run-result.v1",
+        schema: "humanish.run-result.v1",
         ok: false,
         cwd,
         warnings,
         error: {
-          code: "HOMUN_INVALID_SIM_COUNT",
+          code: "HUMANISH_INVALID_SIM_COUNT",
           message: "--sims must be 1 or 2 when --app-url is used."
         }
       };
@@ -998,13 +998,13 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     }
 
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd,
       warnings,
       error: {
-        code: "HOMUN_LIVE_RUN_UNIMPLEMENTED",
-        message: "Only run --dry-run is implemented unless --actor codex-tui, --actor codex-exec, --actor codex-app-server, or the matching HOMUN_ENABLE_LOCAL_CODEX_* env var is set."
+        code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
+        message: "Only run --dry-run is implemented unless --actor codex-tui, --actor codex-exec, --actor codex-app-server, or the matching HUMANISH_ENABLE_LOCAL_CODEX_* env var is set."
       }
     };
   }
@@ -1012,15 +1012,15 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".homun", "runs", runId);
+  const artifactRoot = path.join(".humanish", "runs", runId);
   const absoluteArtifactRoot = path.join(cwd, artifactRoot);
   const packageName = await readPackageName(cwd);
-  const homunSource = await directoryExists(path.join(cwd, "homun")) ? "present" : "missing";
-  const source = await buildRunSource({ cwd, capturedAt: createdAt, homunSource, packageName });
-  const selection = await loadDryRunSelection(cwd, homunSource);
+  const humanishSource = await directoryExists(path.join(cwd, "humanish")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd, capturedAt: createdAt, humanishSource, packageName });
+  const selection = await loadDryRunSelection(cwd, humanishSource);
 
-  if (homunSource === "missing") {
-    warnings.push("Committed homun/ source was not found; using built-in synthetic dry-run defaults.");
+  if (humanishSource === "missing") {
+    warnings.push("Committed humanish/ source was not found; using built-in synthetic dry-run defaults.");
   }
   warnings.push(...selection.warnings);
 
@@ -1084,15 +1084,15 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
 
   await mkdir(absoluteArtifactRoot, { recursive: true });
   await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
-  await writeJson(path.join(cwd, ".homun", "runs", "latest.json"), {
-    schema: "homun.latest-run.v1",
+  await writeJson(path.join(cwd, ".humanish", "runs", "latest.json"), {
+    schema: "humanish.latest-run.v1",
     runId,
     path: artifactRoot,
     updatedAt: createdAt
   } satisfies RunPointer);
 
   return {
-    schema: "homun.run-result.v1",
+    schema: "humanish.run-result.v1",
     ok: true,
     runId,
     mode: "dry-run",
@@ -1101,7 +1101,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".homun", "runs", "latest.json"),
+    latestPath: path.join(".humanish", "runs", "latest.json"),
     warnings
   };
 }
@@ -1115,12 +1115,12 @@ async function runBrowserAppProof(options: RunOptions & {
   const appUrl = normalizeLocalAppUrl(options.appUrl);
   if (!appUrl) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_INVALID_APP_URL",
+        code: "HUMANISH_INVALID_APP_URL",
         message: "--app-url must be an http(s) loopback URL such as http://127.0.0.1:5173."
       }
     };
@@ -1129,13 +1129,13 @@ async function runBrowserAppProof(options: RunOptions & {
   const browserCommand = await resolveBrowserCommand();
   if (!browserCommand) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_BROWSER_APP_CAPTURE_FAILED",
-        message: "No Chrome/Chromium browser command was found. Set HOMUN_BROWSER_COMMAND to a browser binary that supports --headless and --screenshot."
+        code: "HUMANISH_BROWSER_APP_CAPTURE_FAILED",
+        message: "No Chrome/Chromium browser command was found. Set HUMANISH_BROWSER_COMMAND to a browser binary that supports --headless and --screenshot."
       }
     };
   }
@@ -1143,28 +1143,28 @@ async function runBrowserAppProof(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `browser-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".homun", "runs", runId);
+  const artifactRoot = path.join(".humanish", "runs", runId);
   const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
   const packageName = await readPackageName(options.cwd);
-  const homunSource = await directoryExists(path.join(options.cwd, "homun")) ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, homunSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, homunSource);
+  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const selection = await loadDryRunSelection(options.cwd, humanishSource);
   if (selection.browserJourneyFailure) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings: [...warnings, ...selection.warnings],
       error: {
-        code: "HOMUN_BROWSER_APP_CAPTURE_FAILED",
+        code: "HUMANISH_BROWSER_APP_CAPTURE_FAILED",
         message: selection.browserJourneyFailure
       }
     };
   }
 
   const browserJourney = selection.browserJourney ?? builtinBrowserPersonaJourney();
-  if (homunSource === "missing") {
-    warnings.push("Committed homun/ source was not found; using built-in synthetic browser-app defaults.");
+  if (humanishSource === "missing") {
+    warnings.push("Committed humanish/ source was not found; using built-in synthetic browser-app defaults.");
   }
   if (!selection.browserJourney) {
     warnings.push("No executable browser scenario manifest was found; using built-in browser persona two-step journey.");
@@ -1320,15 +1320,15 @@ async function runBrowserAppProof(options: RunOptions & {
   };
 
   await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
-  await writeJson(path.join(options.cwd, ".homun", "runs", "latest.json"), {
-    schema: "homun.latest-run.v1",
+  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
+    schema: "humanish.latest-run.v1",
     runId,
     path: artifactRoot,
     updatedAt: completedAt
   } satisfies RunPointer);
 
   return {
-    schema: "homun.run-result.v1",
+    schema: "humanish.run-result.v1",
     ok: allPassed,
     runId,
     mode: "live",
@@ -1337,13 +1337,13 @@ async function runBrowserAppProof(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".homun", "runs", "latest.json"),
+    latestPath: path.join(".humanish", "runs", "latest.json"),
     warnings,
     ...(allPassed
       ? {}
       : {
           error: {
-            code: "HOMUN_BROWSER_APP_CAPTURE_FAILED" as const,
+            code: "HUMANISH_BROWSER_APP_CAPTURE_FAILED" as const,
             message: review.summary
           }
       })
@@ -1426,15 +1426,15 @@ function resolveRequestedLocalCodexActor(actor: string | undefined): LocalCodexA
     return actor;
   }
 
-  if (process.env.HOMUN_ENABLE_LOCAL_CODEX_TUI === "1") {
+  if (process.env.HUMANISH_ENABLE_LOCAL_CODEX_TUI === "1") {
     return "codex-tui";
   }
 
-  if (process.env.HOMUN_ENABLE_LOCAL_CODEX_EXEC === "1") {
+  if (process.env.HUMANISH_ENABLE_LOCAL_CODEX_EXEC === "1") {
     return "codex-exec";
   }
 
-  if (process.env.HOMUN_ENABLE_LOCAL_CODEX_APP_SERVER === "1") {
+  if (process.env.HUMANISH_ENABLE_LOCAL_CODEX_APP_SERVER === "1") {
     return "codex-app-server";
   }
 
@@ -1450,26 +1450,26 @@ async function runLocalCodexTui(options: RunOptions & {
 
   if (options.simCount !== 1) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_ACTOR_FANOUT_UNIMPLEMENTED",
+        code: "HUMANISH_ACTOR_FANOUT_UNIMPLEMENTED",
         message: "Local Codex TUI actor support is currently single-lane because it owns one PTY/UI session. Use codex-exec for bounded-concurrency fanout."
       }
     };
   }
 
-  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HOMUN_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
   if (timeoutMs === null) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_INVALID_TIMEOUT",
+        code: "HUMANISH_INVALID_TIMEOUT",
         message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
       }
     };
@@ -1478,24 +1478,24 @@ async function runLocalCodexTui(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `codex-tui-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".homun", "runs", runId);
+  const artifactRoot = path.join(".humanish", "runs", runId);
   const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
   const transcriptPath = path.join(absoluteArtifactRoot, "transcripts", "codex-tui-sanitized.txt");
   const actorTracePath = path.join(absoluteArtifactRoot, "actor.json");
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
-  const homunSource = await directoryExists(path.join(options.cwd, "homun")) ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, homunSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, homunSource);
-  if (homunSource === "missing") {
-    warnings.push("Committed homun/ source was not found; using built-in synthetic local actor defaults.");
+  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  if (humanishSource === "missing") {
+    warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
   }
   warnings.push(...selection.warnings);
   const verdictNonce = randomUUID().slice(0, 12);
   const prompt = buildLocalCodexTuiPrompt(selection, verdictNonce);
   const promptDigest = digestText(prompt);
   const command = resolveLocalCodexTuiCommand(options.cwd, prompt, options.actorCommand);
-  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.HOMUN_CODEX_ACTOR_COMMAND === undefined;
+  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.HUMANISH_CODEX_ACTOR_COMMAND === undefined;
   const simId = "sim-01";
   const streamId = "sim-01-codex-tui";
   const events: RunEvent[] = [];
@@ -1636,8 +1636,8 @@ async function runLocalCodexTui(options: RunOptions & {
       feedbackCandidates: []
     };
     await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
-    await writeJson(path.join(options.cwd, ".homun", "runs", "latest.json"), {
-      schema: "homun.latest-run.v1",
+    await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
+      schema: "humanish.latest-run.v1",
       runId,
       path: artifactRoot,
       updatedAt: runningAt
@@ -1661,7 +1661,7 @@ async function runLocalCodexTui(options: RunOptions & {
 
   await writeFile(transcriptPath, redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n", "utf8");
   await writeJson(actorTracePath, {
-    schema: "homun.local-codex-tui-actor.v1",
+    schema: "humanish.local-codex-tui-actor.v1",
     actor: "codex-tui",
     commandName: command.name,
     promptDigest,
@@ -1798,15 +1798,15 @@ async function runLocalCodexTui(options: RunOptions & {
   };
 
   await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
-  await writeJson(path.join(options.cwd, ".homun", "runs", "latest.json"), {
-    schema: "homun.latest-run.v1",
+  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
+    schema: "humanish.latest-run.v1",
     runId,
     path: artifactRoot,
     updatedAt: completedAt
   } satisfies RunPointer);
 
   return {
-    schema: "homun.run-result.v1",
+    schema: "humanish.run-result.v1",
     ok: status === "passed",
     runId,
     mode: "live",
@@ -1815,13 +1815,13 @@ async function runLocalCodexTui(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".homun", "runs", "latest.json"),
+    latestPath: path.join(".humanish", "runs", "latest.json"),
     warnings,
     ...(status === "passed"
       ? {}
       : {
           error: {
-            code: "HOMUN_LOCAL_CODEX_TUI_FAILED" as const,
+            code: "HUMANISH_LOCAL_CODEX_TUI_FAILED" as const,
             message: `Local Codex TUI actor ${status}: ${verdictReason}`
           }
       })
@@ -1850,7 +1850,7 @@ function buildLocalCodexExecBundle(args: {
   events: RunEvent[];
   lanes: LocalCodexExecLaneBundleInput[];
   lifecycle: RunBundle["lifecycle"];
-  homunSource: RunBundle["source"]["homunSource"];
+  humanishSource: RunBundle["source"]["humanishSource"];
   packageName: string | null;
   review: ReviewSummary;
   runId: string;
@@ -1941,31 +1941,31 @@ async function runLocalCodexExec(options: RunOptions & {
 }): Promise<RunResult> {
   const warnings: string[] = [];
 
-  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HOMUN_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
   if (timeoutMs === null) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_INVALID_TIMEOUT",
+        code: "HUMANISH_INVALID_TIMEOUT",
         message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
       }
     };
   }
   const maxConcurrency = normalizePositiveInteger(
-    readEnvInteger("HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY") ?? LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY
+    readEnvInteger("HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY") ?? LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY
   );
   if (maxConcurrency === null) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_INVALID_ACTOR_CONCURRENCY",
-        message: "HOMUN_LOCAL_CODEX_EXEC_MAX_CONCURRENCY must be a positive integer."
+        code: "HUMANISH_INVALID_ACTOR_CONCURRENCY",
+        message: "HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY must be a positive integer."
       }
     };
   }
@@ -1973,15 +1973,15 @@ async function runLocalCodexExec(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `codex-exec-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".homun", "runs", runId);
+  const artifactRoot = path.join(".humanish", "runs", runId);
   const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
-  const homunSource = await directoryExists(path.join(options.cwd, "homun")) ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, homunSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, homunSource);
-  if (homunSource === "missing") {
-    warnings.push("Committed homun/ source was not found; using built-in synthetic local actor defaults.");
+  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  if (humanishSource === "missing") {
+    warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
   }
   warnings.push(...selection.warnings);
   const verdictNonce = randomUUID().slice(0, 12);
@@ -2007,8 +2007,8 @@ async function runLocalCodexExec(options: RunOptions & {
   await mkdir(path.join(absoluteArtifactRoot, "transcripts"), { recursive: true });
   await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
   await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
-  await writeJson(path.join(options.cwd, ".homun", "runs", "latest.json"), {
-    schema: "homun.latest-run.v1",
+  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
+    schema: "humanish.latest-run.v1",
     runId,
     path: artifactRoot,
     updatedAt: createdAt
@@ -2086,7 +2086,7 @@ async function runLocalCodexExec(options: RunOptions & {
     cwd: options.cwd,
     artifactRoot,
     packageName,
-    homunSource,
+    humanishSource,
     source,
     persona: selection.persona,
     scenario: selection.scenario,
@@ -2137,7 +2137,7 @@ async function runLocalCodexExec(options: RunOptions & {
       "utf8"
     );
     await writeJson(path.join(absoluteArtifactRoot, tracePath), {
-      schema: "homun.local-codex-exec-actor.v1",
+      schema: "humanish.local-codex-exec-actor.v1",
       actor: "codex-exec",
       commandName: lane.command.name,
       focusId: lane.focus.id,
@@ -2214,7 +2214,7 @@ async function runLocalCodexExec(options: RunOptions & {
     cwd: options.cwd,
     artifactRoot,
     packageName,
-    homunSource,
+    humanishSource,
     source,
     persona: selection.persona,
     scenario: selection.scenario,
@@ -2253,7 +2253,7 @@ async function runLocalCodexExec(options: RunOptions & {
   await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
 
   return {
-    schema: "homun.run-result.v1",
+    schema: "humanish.run-result.v1",
     ok: status === "passed",
     runId,
     mode: "live",
@@ -2262,13 +2262,13 @@ async function runLocalCodexExec(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".homun", "runs", "latest.json"),
+    latestPath: path.join(".humanish", "runs", "latest.json"),
     warnings,
     ...(status === "passed"
       ? {}
       : {
           error: {
-            code: "HOMUN_LOCAL_CODEX_EXEC_FAILED" as const,
+            code: "HUMANISH_LOCAL_CODEX_EXEC_FAILED" as const,
             message: `Local Codex exec actor ${status}: ${verdictReason}`
           }
         })
@@ -2305,7 +2305,7 @@ function buildLocalCodexAppServerBundle(args: {
   events: RunEvent[];
   lanes: LocalCodexAppServerLaneBundleInput[];
   lifecycle: RunBundle["lifecycle"];
-  homunSource: RunBundle["source"]["homunSource"];
+  humanishSource: RunBundle["source"]["humanishSource"];
   packageName: string | null;
   persona: RunBundle["persona"];
   resolvedPersona: ResolvedPersona;
@@ -2384,7 +2384,7 @@ function buildLocalCodexAppServerBundle(args: {
         },
         codex: {
           provider: "codex-app-server",
-          contract: "Homun captures Codex app-server Thread, Turn, Item, approval, command, file, tool, message, and reasoning evidence as redacted local artifacts.",
+          contract: "Humanish captures Codex app-server Thread, Turn, Item, approval, command, file, tool, message, and reasoning evidence as redacted local artifacts.",
           state: codexStateForStream(lane.status),
           ...(result?.experimentalApi === undefined ? {} : { experimentalApi: result.experimentalApi }),
           ...(result?.counts === undefined ? {} : { eventCount: result.counts.envelopes }),
@@ -2423,15 +2423,15 @@ async function runLocalCodexAppServer(options: RunOptions & {
   simCount: number;
 }): Promise<RunResult> {
   const warnings: string[] = [];
-  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HOMUN_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
   if (timeoutMs === null) {
     return {
-      schema: "homun.run-result.v1",
+      schema: "humanish.run-result.v1",
       ok: false,
       cwd: options.cwd,
       warnings,
       error: {
-        code: "HOMUN_INVALID_TIMEOUT",
+        code: "HUMANISH_INVALID_TIMEOUT",
         message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
       }
     };
@@ -2440,15 +2440,15 @@ async function runLocalCodexAppServer(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `codex-app-server-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".homun", "runs", runId);
+  const artifactRoot = path.join(".humanish", "runs", runId);
   const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
   const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
   const packageName = await readPackageName(options.cwd);
-  const homunSource = await directoryExists(path.join(options.cwd, "homun")) ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, homunSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, homunSource);
-  if (homunSource === "missing") {
-    warnings.push("Committed homun/ source was not found; using built-in synthetic Codex app-server actor defaults.");
+  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  if (humanishSource === "missing") {
+    warnings.push("Committed humanish/ source was not found; using built-in synthetic Codex app-server actor defaults.");
   }
   warnings.push(...selection.warnings);
 
@@ -2473,8 +2473,8 @@ async function runLocalCodexAppServer(options: RunOptions & {
 
   await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
   await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
-  await writeJson(path.join(options.cwd, ".homun", "runs", "latest.json"), {
-    schema: "homun.latest-run.v1",
+  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
+    schema: "humanish.latest-run.v1",
     runId,
     path: artifactRoot,
     updatedAt: createdAt
@@ -2545,7 +2545,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     cwd: options.cwd,
     artifactRoot,
     packageName,
-    homunSource,
+    humanishSource,
     source,
     persona: selection.persona,
     resolvedPersona: selection.resolvedPersona,
@@ -2588,10 +2588,10 @@ async function runLocalCodexAppServer(options: RunOptions & {
       timeoutMs,
       ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
       approvalPolicy: "never",
-      experimentalApi: process.env.HOMUN_CODEX_APP_SERVER_EXPERIMENTAL === "1",
-      ...(process.env.HOMUN_CODEX_APP_SERVER_MODEL ? { model: process.env.HOMUN_CODEX_APP_SERVER_MODEL } : {}),
+      experimentalApi: process.env.HUMANISH_CODEX_APP_SERVER_EXPERIMENTAL === "1",
+      ...(process.env.HUMANISH_CODEX_APP_SERVER_MODEL ? { model: process.env.HUMANISH_CODEX_APP_SERVER_MODEL } : {}),
       sandbox: readCodexAppServerSandboxFromEnv(),
-      serviceName: "homun"
+      serviceName: "humanish"
     });
     return {
       lane,
@@ -2630,7 +2630,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     cwd: options.cwd,
     artifactRoot,
     packageName,
-    homunSource,
+    humanishSource,
     source,
     persona: selection.persona,
     resolvedPersona: selection.resolvedPersona,
@@ -2669,7 +2669,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
   await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
 
   return {
-    schema: "homun.run-result.v1",
+    schema: "humanish.run-result.v1",
     ok: status === "passed",
     runId,
     mode: "live",
@@ -2678,13 +2678,13 @@ async function runLocalCodexAppServer(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".homun", "runs", "latest.json"),
+    latestPath: path.join(".humanish", "runs", "latest.json"),
     warnings,
     ...(status === "passed"
       ? {}
       : {
           error: {
-            code: "HOMUN_CODEX_APP_SERVER_FAILED" as const,
+            code: "HUMANISH_CODEX_APP_SERVER_FAILED" as const,
             message: `Codex app-server actor ${status}: ${verdictReason}`
           }
         })
@@ -2717,7 +2717,7 @@ function buildSyntheticObserverFixtures(args: {
       label: "CLI actor",
       currentStep: "Command transcript contract captured",
       summary: "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
-      tail: "$ homun doctor\nok target cwd\nok homun source\n$ homun run --scenario first-run-smoke\ncontract proof emitted",
+      tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted",
       viewport: undefined
     },
     {
@@ -2726,7 +2726,7 @@ function buildSyntheticObserverFixtures(args: {
       label: "TUI actor",
       currentStep: "Terminal UI frame contract captured",
       summary: "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
-      tail: "\u001b[2mHomun TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
+      tail: "\u001b[2mHumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
       viewport: undefined
     },
     {
@@ -2892,7 +2892,7 @@ function resolveLocalCodexTuiCommand(
   prompt: string,
   overrideCommand: string[] | undefined
 ): LocalActorCommand {
-  const envCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
+  const envCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
   const commandParts = overrideCommand && overrideCommand.length > 0
     ? overrideCommand
     : envCommand
@@ -2941,7 +2941,7 @@ function resolveLocalCodexExecCommand(
   prompt: string,
   overrideCommand: string[] | undefined
 ): LocalActorCommand {
-  const envCommand = process.env.HOMUN_CODEX_ACTOR_COMMAND;
+  const envCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
   const commandParts = overrideCommand && overrideCommand.length > 0
     ? overrideCommand
     : envCommand
@@ -3024,7 +3024,7 @@ function executeLocalActorCommand(
         TERM: process.env.TERM ?? "xterm-256color",
         COLUMNS: process.env.COLUMNS ?? "120",
         LINES: process.env.LINES ?? "40",
-        HOMUN_ACTOR_VERDICT_NONCE: options.verdictNonce
+        HUMANISH_ACTOR_VERDICT_NONCE: options.verdictNonce
       },
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -3162,18 +3162,18 @@ export function normalizeLocalActorTranscript(transcript: string): string {
 
 /**
  * Extract the per-run verdict from a normalized transcript: the agent must print exactly
- * `HOMUN_ACTOR_VERDICT=<status> HOMUN_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
+ * `HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
  * bare marker (echoed or replayed from untrusted text) can never forge a verdict. Pure (no IO).
  * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the SAME marker
  * — divergent verdict logic would let the two lanes disagree about what "passed" means.
  */
 export function extractLocalActorVerdict(transcript: string, verdictNonce: string): LocalActorTerminalStatus | null {
   const compactTranscript = transcript.replace(/\s+/g, "");
-  // The per-run nonce is mandatory: a bare HOMUN_ACTOR_VERDICT=<status>
+  // The per-run nonce is mandatory: a bare HUMANISH_ACTOR_VERDICT=<status>
   // marker echoed by an actor (or replayed from untrusted text) must never
   // satisfy verdict extraction.
   const match = new RegExp(
-    `HOMUN_ACTOR_VERDICT=(passed|blocked|failed)HOMUN_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
+    `HUMANISH_ACTOR_VERDICT=(passed|blocked|failed)HUMANISH_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
     "i"
   ).exec(compactTranscript);
   if (!match) {
@@ -3184,7 +3184,7 @@ export function extractLocalActorVerdict(transcript: string, verdictNonce: strin
 }
 
 async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPreflight> {
-  if (process.env.HOMUN_SKIP_CODEX_TRUST_PREFLIGHT === "1") {
+  if (process.env.HUMANISH_SKIP_CODEX_TRUST_PREFLIGHT === "1") {
     return { ok: true };
   }
 
@@ -3315,17 +3315,17 @@ function buildLocalCodexTuiPrompt(selection: {
   scenario: RunBundle["scenario"];
 }, verdictNonce: string): string {
   return [
-    "You are a Homun local Codex TUI dogfood actor.",
+    "You are a Humanish local Codex TUI dogfood actor.",
     personaPromptLine(selection),
     `Scenario: ${selection.scenario.title}.`,
-    "Inspect this public repository's Homun setup, run evidence, and Observer affordances.",
+    "Inspect this public repository's Humanish setup, run evidence, and Observer affordances.",
     "Run at most two read-only inspection commands; prefer file reads, `node dist/cli.js --help`, or `pnpm typecheck` when available.",
-    "Do not run commands that write runtime artifacts or temp config, including `pnpm homun`, `homun watch`, `homun feedback`, `homun init`, tests, builds, installs, or commands that write `.homun/`.",
+    "Do not run commands that write runtime artifacts or temp config, including `pnpm humanish`, `humanish watch`, `humanish feedback`, `humanish init`, tests, builds, installs, or commands that write `.humanish/`.",
     "If the strongest proof would require writes in this read-only sandbox, inspect existing artifacts instead and name the write-required proof as a follow-up.",
     "Use passed when read-only inspection confirms the committed harness and existing evidence contract; write-required follow-ups alone are not blockers.",
     "Do not print secrets, do not commit, do not push, do not open GitHub issues, and do not use private data.",
     "Finish by summarizing one public-safe harness improvement.",
-    `Then print exactly one final machine-readable line in this format: HOMUN_ACTOR_VERDICT=<status> HOMUN_ACTOR_NONCE=${verdictNonce}.`,
+    `Then print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${verdictNonce}.`,
     "Replace <status> with exactly one lowercase word: passed, blocked, or failed."
   ].join(" ");
 }
@@ -3335,10 +3335,10 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
     {
       id: "install-readability",
       label: "install/readability",
-      instruction: "audit whether a new user can understand the committed Homun dogfood setup quickly",
+      instruction: "audit whether a new user can understand the committed Humanish dogfood setup quickly",
       suggestedCommands: [
-        "test -r homun/README.md && sed -n '1,40p' homun/README.md",
-        "test -r homun/config.ts && wc -l homun/config.ts"
+        "test -r humanish/README.md && sed -n '1,40p' humanish/README.md",
+        "test -r humanish/config.ts && wc -l humanish/config.ts"
       ]
     },
     {
@@ -3346,7 +3346,7 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
       label: "public-safety/trust",
       instruction: "check the local actor boundaries, public-safety claims, and trust-bootstrap language",
       suggestedCommands: [
-        "test -r homun/coverage-map.md && sed -n '1,80p' homun/coverage-map.md",
+        "test -r humanish/coverage-map.md && sed -n '1,80p' humanish/coverage-map.md",
         "test -r docs/architecture/local-codex-tui-actor.md && sed -n '1,80p' docs/architecture/local-codex-tui-actor.md"
       ]
     },
@@ -3355,8 +3355,8 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
       label: "Observer/evidence",
       instruction: "inspect whether run evidence and Observer expectations are easy to verify",
       suggestedCommands: [
-        "test -r homun/coverage-matrix.md && sed -n '1,80p' homun/coverage-matrix.md",
-        "test -r homun/scenarios/onboarding-regression.yaml && sed -n '1,120p' homun/scenarios/onboarding-regression.yaml"
+        "test -r humanish/coverage-matrix.md && sed -n '1,80p' humanish/coverage-matrix.md",
+        "test -r humanish/scenarios/onboarding-regression.yaml && sed -n '1,120p' humanish/scenarios/onboarding-regression.yaml"
       ]
     },
     {
@@ -3365,7 +3365,7 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
       instruction: "inspect the verification and release-gate promises exposed to local dogfood actors",
       suggestedCommands: [
         "test -r package.json && node -e \"const p=require('./package.json'); console.log(p.scripts.check); console.log(p.scripts['public-surface:scan']);\"",
-        "test -r homun/README.md && sed -n '1,80p' homun/README.md"
+        "test -r humanish/README.md && sed -n '1,80p' humanish/README.md"
       ]
     }
   ] satisfies [LocalCodexExecFocus, LocalCodexExecFocus, LocalCodexExecFocus, LocalCodexExecFocus];
@@ -3409,12 +3409,12 @@ function buildLocalCodexExecPrompt(selection: {
   total: number;
 }): string {
   const suggestedCommands: [string, string] = lane?.focus.suggestedCommands ?? [
-    "test -r homun/config.ts && wc -l homun/config.ts",
-    "test -r homun/README.md && sed -n '1,40p' homun/README.md"
+    "test -r humanish/config.ts && wc -l humanish/config.ts",
+    "test -r humanish/README.md && sed -n '1,40p' humanish/README.md"
   ];
 
   return [
-    "You are a Homun local Codex exec dogfood actor running noninteractively.",
+    "You are a Humanish local Codex exec dogfood actor running noninteractively.",
     personaPromptLine(selection),
     `Scenario: ${selection.scenario.title}.`,
     ...(lane ? [`Fanout lane ${lane.index}/${lane.total}. Focus: ${lane.focus.instruction}.`] : []),
@@ -3423,14 +3423,14 @@ function buildLocalCodexExecPrompt(selection: {
     "Do not edit files, do not run network commands, do not commit, do not push, do not open GitHub issues, and do not print secrets.",
     "Do not inspect additional files unless one suggested command fails.",
     "Finish within three public-safe sentences.",
-    `Then print exactly one final machine-readable line in this format: HOMUN_ACTOR_VERDICT=<status> HOMUN_ACTOR_NONCE=${verdictNonce}.`,
+    `Then print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${verdictNonce}.`,
     "Replace <status> with exactly one lowercase word: passed, blocked, or failed."
   ].join(" ");
 }
 
 // The app-server lane intentionally carries no verdict nonce: its verdict
 // comes from the structured turn/completed status on the app-server JSON-RPC
-// channel (see codex-app-server.ts), never from HOMUN_ACTOR_VERDICT marker
+// channel (see codex-app-server.ts), never from HUMANISH_ACTOR_VERDICT marker
 // extraction, so transcript text cannot set the run verdict on that lane.
 function buildLocalCodexAppServerPrompt(selection: {
   persona: RunBundle["persona"];
@@ -3442,22 +3442,22 @@ function buildLocalCodexAppServerPrompt(selection: {
   total: number;
 }): string {
   return [
-    "You are a Homun Codex app-server dogfood actor running through the official Codex app-server protocol.",
+    "You are a Humanish Codex app-server dogfood actor running through the official Codex app-server protocol.",
     personaPromptLine(selection),
     `Scenario: ${selection.scenario.title}.`,
     `Fanout lane ${lane.index}/${lane.total}. Focus: ${lane.focus.instruction}.`,
     "Work read-only unless the host explicitly configured a stronger sandbox.",
-    "Inspect the current repository's Homun setup, Observer proof contract, and public-safety posture.",
+    "Inspect the current repository's Humanish setup, Observer proof contract, and public-safety posture.",
     "Use at most two lightweight local commands or file reads.",
     `Suggested commands: \`${lane.focus.suggestedCommands[0]}\` and \`${lane.focus.suggestedCommands[1]}\`.`,
     "Do not print secrets, keys, raw private transcripts, private screenshots, or private source snippets.",
     "Do not commit, push, open GitHub issues, mutate remote systems, or run provider-spend-heavy commands.",
-    "End with one concise public-safe recommendation for improving Homun as a closed-loop user-study harness."
+    "End with one concise public-safe recommendation for improving Humanish as a closed-loop user-study harness."
   ].join(" ");
 }
 
 function readCodexAppServerSandboxFromEnv(): "read-only" | "workspace-write" | "danger-full-access" {
-  const value = process.env.HOMUN_CODEX_APP_SERVER_SANDBOX;
+  const value = process.env.HUMANISH_CODEX_APP_SERVER_SANDBOX;
   if (value === "workspace-write" || value === "danger-full-access") {
     return value;
   }
@@ -3601,7 +3601,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       },
       warnings: [],
       error: {
-        code: "HOMUN_RUN_NOT_FOUND",
+        code: "HUMANISH_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
       }
     };
@@ -3621,7 +3621,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
   checks.push({
     name: "run schema",
     ok: isRecord(bundle) && bundle.schema === RUN_BUNDLE_SCHEMA,
-    message: "run bundle schema is homun.run-bundle.v1"
+    message: "run bundle schema is humanish.run-bundle.v1"
   });
   checks.push({
     name: "run bundle shape",
@@ -3760,7 +3760,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       ? {}
       : {
           error: {
-            code: "HOMUN_INVALID_RUN_BUNDLE" as const,
+            code: "HUMANISH_INVALID_RUN_BUNDLE" as const,
             message: "Run bundle failed verification."
           }
         })
@@ -3784,7 +3784,7 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       adapterResults: [],
       warnings: [],
       error: {
-        code: "HOMUN_RUN_NOT_FOUND",
+        code: "HUMANISH_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
       }
     };
@@ -3807,7 +3807,7 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       adapterResults: [],
       warnings: [],
       error: {
-        code: "HOMUN_INVALID_RUN_BUNDLE",
+        code: "HUMANISH_INVALID_RUN_BUNDLE",
         message: "Run bundle failed cleanup shape validation."
       }
     };
@@ -3943,9 +3943,9 @@ export async function loadRunBundle(
 
 export async function listRuns(cwdInput: string): Promise<RunsResult> {
   const cwd = path.resolve(cwdInput);
-  const runsRoot = path.join(cwd, ".homun", "runs");
+  const runsRoot = path.join(cwd, ".humanish", "runs");
 
-  // ENOENT (no .homun/runs yet) is a normal empty state: ok:true, no runs. Any
+  // ENOENT (no .humanish/runs yet) is a normal empty state: ok:true, no runs. Any
   // other readdir failure (e.g. permission denied) is a real I/O failure and must
   // not be swallowed into a false "no runs" report.
   let entries: Dirent[];
@@ -3977,7 +3977,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
       runId: entry.name,
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
       mode: isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : null,
-      path: path.join(".homun", "runs", entry.name)
+      path: path.join(".humanish", "runs", entry.name)
     });
   }
 
@@ -3998,7 +3998,7 @@ function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
     runs: [],
     latest: null,
     error: {
-      code: "HOMUN_RUNS_UNAVAILABLE",
+      code: "HUMANISH_RUNS_UNAVAILABLE",
       message: redactText(error instanceof Error ? error.message : String(error))
     }
   };
@@ -4020,7 +4020,7 @@ export async function readReview(cwdInput: string, runInput: string): Promise<Ve
       ...verified,
       ok: false,
       error: {
-        code: "HOMUN_INVALID_RUN_BUNDLE",
+        code: "HUMANISH_INVALID_RUN_BUNDLE",
         message: "review.json is missing or invalid."
       }
     };
@@ -4047,14 +4047,14 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
       message: "package.json is present"
     },
     {
-      name: "homun source",
-      ok: await directoryExists(path.join(cwd, "homun")),
-      message: "committed homun/ source directory is present"
+      name: "humanish source",
+      ok: await directoryExists(path.join(cwd, "humanish")),
+      message: "committed humanish/ source directory is present"
     },
     {
       name: "runtime ignore",
-      ok: (await readTextIfExists(path.join(cwd, ".gitignore")))?.includes(".homun/") ?? false,
-      message: ".gitignore contains .homun/"
+      ok: (await readTextIfExists(path.join(cwd, ".gitignore")))?.includes(".humanish/") ?? false,
+      message: ".gitignore contains .humanish/"
     }
   ];
 
@@ -4070,7 +4070,7 @@ function createReviewSummary(): ReviewSummary {
   return {
     schema: REVIEW_SCHEMA,
     verdict: "contract_proof_only",
-    summary: "Synthetic dry-run bundle was generated. This proves Homun artifact plumbing, not product behavior.",
+    summary: "Synthetic dry-run bundle was generated. This proves Humanish artifact plumbing, not product behavior.",
     gaps: [
       "No browser was launched.",
       "No product state was verified.",
@@ -4119,7 +4119,7 @@ function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTer
 
 async function loadDryRunSelection(
   cwd: string,
-  homunSource: "present" | "missing"
+  humanishSource: "present" | "missing"
 ): Promise<{
   browserJourney?: BrowserPersonaJourney;
   browserJourneyFailure?: string;
@@ -4130,7 +4130,7 @@ async function loadDryRunSelection(
 }> {
   const warnings: string[] = [];
 
-  if (homunSource === "missing") {
+  if (humanishSource === "missing") {
     return {
       persona: builtinPersona,
       resolvedPersona: parseResolvedPersona({}, { id: builtinPersona.id, name: builtinPersona.name }),
@@ -4139,8 +4139,8 @@ async function loadDryRunSelection(
     };
   }
 
-  const personaPath = "homun/personas/synthetic-new-user.yaml";
-  const scenarioPath = "homun/scenarios/first-run-smoke.yaml";
+  const personaPath = "humanish/personas/synthetic-new-user.yaml";
+  const scenarioPath = "humanish/scenarios/first-run-smoke.yaml";
   const personaText = await readTextIfExists(path.join(cwd, personaPath));
   const scenarioText = await readTextIfExists(path.join(cwd, scenarioPath));
   const browserJourneySelection = await loadBrowserPersonaJourneySelection(cwd);
@@ -4198,7 +4198,7 @@ async function loadBrowserPersonaJourneySelection(cwd: string): Promise<{
   warnings: string[];
 }> {
   const warnings: string[] = [];
-  const scenarioDir = path.join(cwd, "homun", "scenarios");
+  const scenarioDir = path.join(cwd, "humanish", "scenarios");
   const names = await readdir(scenarioDir).catch((error: unknown) => {
     if (isNodeError(error) && error.code === "ENOENT") {
       return [] as string[];
@@ -4214,7 +4214,7 @@ async function loadBrowserPersonaJourneySelection(cwd: string): Promise<{
     });
 
   for (const name of files) {
-    const relativePath = path.join("homun", "scenarios", name);
+    const relativePath = path.join("humanish", "scenarios", name);
     const absolutePath = path.join(cwd, relativePath);
     const text = await readTextIfExists(absolutePath);
     if (text === null) {
@@ -4253,7 +4253,7 @@ async function loadBrowserPersonaJourneySelection(cwd: string): Promise<{
 }
 
 function renderReviewMarkdown(bundle: RunBundle): string {
-  return `# Homun Run Review
+  return `# Humanish Run Review
 
 Run: ${bundle.runId}
 
@@ -4301,12 +4301,12 @@ async function resolveRunPath(cwd: string, runInput: string): Promise<string | n
     return latest ? path.join(cwd, latest.path) : null;
   }
 
-  const direct = path.join(cwd, ".homun", "runs", runInput);
+  const direct = path.join(cwd, ".humanish", "runs", runInput);
   return await directoryExists(direct) ? direct : null;
 }
 
 async function readLatest(cwd: string): Promise<RunPointer | null> {
-  const latest = await readJsonIfExists(path.join(cwd, ".homun", "runs", "latest.json"));
+  const latest = await readJsonIfExists(path.join(cwd, ".humanish", "runs", "latest.json"));
 
   if (isRunPointer(latest)) {
     return latest;
@@ -4493,8 +4493,8 @@ async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundl
 
   // The lane writes exactly one terminal run's ledgers/evidence at fixed paths in the run root.
   const ledgers = await readJsonIfExists(path.join(runRoot, TERMINAL_LEDGERS_FILE));
-  if (!isRecord(ledgers) || ledgers.schema !== "homun.terminal-ledgers.v1") {
-    findings.push(`missing or malformed ${TERMINAL_LEDGERS_FILE} (homun.terminal-ledgers.v1)`);
+  if (!isRecord(ledgers) || ledgers.schema !== "humanish.terminal-ledgers.v1") {
+    findings.push(`missing or malformed ${TERMINAL_LEDGERS_FILE} (humanish.terminal-ledgers.v1)`);
     return findings;
   }
 
@@ -4518,7 +4518,7 @@ async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundl
   }
 
   // Cleanup proof: the sandbox must be killed and proven reclaimed BY EXACT ID (remaining===0).
-  // homun never calls Sandbox.list to derive this field; a live run that cannot prove teardown
+  // humanish never calls Sandbox.list to derive this field; a live run that cannot prove teardown
   // fails closed (remaining===1 still-present-unconfirmed, remaining===-1 kill(id) itself
   // failed -- the server-side kill-on-timeout is the backstop for both).
   const cleanup = isRecord(ledgers.cleanup) ? ledgers.cleanup : undefined;
@@ -4577,8 +4577,8 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   const findings: string[] = [];
 
   const cost = isRecord(ledgers.cost) ? ledgers.cost : undefined;
-  if (!cost || cost.schema !== "homun.terminal-cost-ledger.v1") {
-    findings.push("missing or malformed cost ledger (homun.terminal-cost-ledger.v1) — a live terminal-product run must derive a cost ledger");
+  if (!cost || cost.schema !== "humanish.terminal-cost-ledger.v1") {
+    findings.push("missing or malformed cost ledger (humanish.terminal-cost-ledger.v1) — a live terminal-product run must derive a cost ledger");
     return findings;
   }
   const lines = isRecord(cost.lines) ? cost.lines : undefined;
@@ -4606,8 +4606,8 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   }
 
   const proof = isRecord(ledgers.noSpendProof) ? ledgers.noSpendProof : undefined;
-  if (!proof || proof.schema !== "homun.terminal-no-spend-proof.v1") {
-    findings.push("missing or malformed no-spend proof (homun.terminal-no-spend-proof.v1) — the no-spend proof must be derived from the ledger");
+  if (!proof || proof.schema !== "humanish.terminal-no-spend-proof.v1") {
+    findings.push("missing or malformed no-spend proof (humanish.terminal-no-spend-proof.v1) — the no-spend proof must be derived from the ledger");
     return findings;
   }
 
@@ -4784,7 +4784,7 @@ function actorVerdictConsistencyFindings(bundle: RunBundle): string[] {
 
 /**
  * redaction.screenshots: "raw" is the SUPPORTED local default (full-fidelity frames in
- * gitignored .homun), not a verify failure — but ok: true must never read as "share-ready",
+ * gitignored .humanish), not a verify failure — but ok: true must never read as "share-ready",
  * so verify surfaces the posture as a warning in both human and JSON output. Read defensively
  * for the same reason as noEngagementActorFindings.
  */
@@ -5467,7 +5467,7 @@ async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
 
     if (!stats.isDirectory()) {
       return {
-        code: "HOMUN_INVALID_CWD",
+        code: "HUMANISH_INVALID_CWD",
         message: `Target cwd is not a directory: ${cwd}`
       };
     }
@@ -5476,7 +5476,7 @@ async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return {
-        code: "HOMUN_INVALID_CWD",
+        code: "HUMANISH_INVALID_CWD",
         message: `Target cwd does not exist: ${cwd}`
       };
     }
@@ -5566,12 +5566,12 @@ function isRunBundle(value: unknown): value is RunBundle {
 
 function isRunProviderResource(value: unknown): value is RunProviderResource {
   return isRecord(value)
-    && value.schema === "homun.provider-resource.v1"
+    && value.schema === "humanish.provider-resource.v1"
     && value.provider === "e2b-desktop"
     && value.kind === "sandbox"
     && typeof value.id === "string"
     && value.id.trim().length > 0
-    && value.owner === "homun"
+    && value.owner === "humanish"
     && (value.status === "running" || value.status === "killed" || value.status === "unknown")
     && (value.simId === undefined || typeof value.simId === "string")
     && (value.streamId === undefined || typeof value.streamId === "string")
@@ -5654,7 +5654,7 @@ function isDesktopBrowserEvidence(value: unknown): value is RunBundle["desktopBr
 
 function isRunAdapterScore(value: unknown): value is RunAdapterScore {
   return isRecord(value)
-    && value.schema === "homun.adapter-score.v1"
+    && value.schema === "humanish.adapter-score.v1"
     && typeof value.namespace === "string"
     && value.namespace.trim().length > 0
     && (value.status === "pass" || value.status === "partial" || value.status === "fail")
@@ -5795,7 +5795,7 @@ function isRunSubjectStateStepRecord(value: unknown): value is RunSubjectStateSt
 function isRunSource(value: unknown): value is RunBundle["source"] {
   return isRecord(value)
     && (typeof value.packageName === "string" || value.packageName === null)
-    && (value.homunSource === "present" || value.homunSource === "missing")
+    && (value.humanishSource === "present" || value.humanishSource === "missing")
     && isCapturedGitState(value.git);
 }
 
@@ -5889,7 +5889,7 @@ function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][nu
 
 function isRunAdapterArtifact(value: unknown): value is RunAdapterArtifact {
   return isRecord(value)
-    && value.schema === "homun.adapter-artifact.v1"
+    && value.schema === "humanish.adapter-artifact.v1"
     && typeof value.namespace === "string"
     && value.namespace.trim().length > 0
     && typeof value.label === "string"
@@ -5930,7 +5930,7 @@ function isRunArtifactIndex(value: unknown): value is RunBundle["artifacts"] {
 
 function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCandidate {
   return isRecord(value)
-    && value.schema === "homun.feedback-candidate.v1"
+    && value.schema === "humanish.feedback-candidate.v1"
     && typeof value.id === "string"
     && typeof value.run_id === "string"
     && (typeof value.stream_id === "string" || value.stream_id === undefined)
@@ -6105,7 +6105,7 @@ function isReviewSummary(value: unknown): value is ReviewSummary {
 
 function isRunPointer(value: unknown): value is RunPointer {
   return isRecord(value)
-    && value.schema === "homun.latest-run.v1"
+    && value.schema === "humanish.latest-run.v1"
     && typeof value.runId === "string"
     && typeof value.path === "string"
     && typeof value.updatedAt === "string";

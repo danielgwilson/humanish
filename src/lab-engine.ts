@@ -1,4 +1,4 @@
-// The single lab engine. A lab is a config (homun.lab.v2); runLab routes it to an execution
+// The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
 // The four backends (synthetic dry/browser, clone smoke, clone+E2B-desktop meta, app-url
@@ -93,7 +93,7 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // terminal-product subjects whose first actor resolves to a registered terminal actor: a real
     // autonomous agent studying a CLI/product from public surfaces inside an E2B shell. The bare
     // terminal-product fallback keeps library-API configs with unknown actor types routing to the
-    // terminal backend's fail-closed HOMUN_TERMINAL_LAB_ACTOR_UNSUPPORTED.
+    // terminal backend's fail-closed HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED.
     return "terminal";
   }
   if (routesToConcurrentSharedWorld(config)) {
@@ -118,8 +118,8 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // in-sandbox), and local-tree subjects (the lab packs+uploads the working tree and serves it
     // the same way). The bare app-url/local-app/local-tree fallback keeps library-API configs
     // with unknown actor types routing to the cua backend's fail-closed
-    // HOMUN_CUA_LAB_ACTOR_UNSUPPORTED (and, for local-app without hooks,
-    // HOMUN_CUA_LAB_LOCAL_APP_NO_EXECUTOR) instead of silently falling through to the synthetic
+    // HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED (and, for local-app without hooks,
+    // HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) instead of silently falling through to the synthetic
     // backend below, which would run no real actor at all against a packed tree.
     return "cua";
   }
