@@ -21,7 +21,6 @@
 // (composed into its persona context) — physical per-role geometry is the concurrent topology's
 // job. Each role's stream viewport records the sandbox's actual rendered resolution (honest).
 
-import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
@@ -72,6 +71,8 @@ import {
 } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
+import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
+import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./selected-output-paths.js";
 import type { LocalTreeArchive } from "./source-archive.js";
 import type { StopWhen } from "./stop-conditions.js";
 import {
@@ -533,7 +534,8 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   }
 
   const runId = options.runId ?? makeSharedWorldRunId();
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
@@ -549,7 +551,6 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
       + (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
       + SANDBOX_TIMEOUT_BUFFER_MS;
 
-  await mkdir(artifactRoot, { recursive: true });
   const source = await buildRunSource({ capturedAt: createdAt, cwd, humanishSource: "present", packageName: "humanish" });
 
   const warnings: string[] = [];
@@ -688,7 +689,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         }
 
         const screenshots: string[] = [];
-        const writeScreenshot = makeLaneWriteScreenshot(artifactRoot, { screenshotDir: spec.screenshotDir }, screenshots);
+        const writeScreenshot = makeLaneWriteScreenshot(runPaths, { screenshotDir: spec.screenshotDir }, screenshots);
         let session: CuaLoopResult | undefined;
         let sessionError: string | undefined;
         let desktopBrowser: DesktopBrowserEvidence | undefined;
@@ -724,8 +725,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         }
 
         if (session) {
-          await mkdir(path.dirname(path.join(artifactRoot, spec.traceArtifactPath)), { recursive: true });
-          await writeFile(path.join(artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+          await writeContainedOutputFile(runPaths, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
           if (session.trace.redaction.screenshots === "raw") {
             warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
           }
@@ -853,7 +853,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     bundle,
     context: {
       bundle,
-      runDir: artifactRoot,
+      runDir: physicalArtifactRoot,
       labId: config.id,
       runId,
       actor: descriptor.id,
@@ -866,13 +866,14 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     hookLabel: "sharedWorldHooks"
   });
 
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderSharedWorldReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", "latest.json"),
-    `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: path.join(".humanish", "runs", runId), updatedAt: createdAt }, null, 2)}\n`,
+  await validatePreparedRunArtifactPaths(runPaths);
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderSharedWorldReviewMarkdown(bundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: runPaths.relativeRunRoot, updatedAt: createdAt }, null, 2)}\n`,
     "utf8"
   );
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { lstat, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -6,6 +6,14 @@ import {
   runtimeDirectories,
   starterFiles
 } from "./init-templates.js";
+import {
+  assertPreparedSelectedOutputDirectory,
+  prepareContainedOutputDirectory,
+  prepareSelectedOutputDirectory,
+  readContainedRegularFile,
+  type PreparedSelectedOutputDirectory,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 
 export const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
 
@@ -35,7 +43,8 @@ export interface InitResult {
     code:
       | "HUMANISH_CONFIRMATION_REQUIRED"
       | "HUMANISH_INVALID_CWD"
-      | "HUMANISH_INVALID_PACKAGE_JSON";
+      | "HUMANISH_INVALID_PACKAGE_JSON"
+      | "HUMANISH_UNSAFE_PROJECT_PATH";
     message: string;
   };
 }
@@ -55,29 +64,43 @@ interface PackagePlan {
 }
 
 export async function runInit(options: InitOptions): Promise<InitResult> {
-  const cwd = path.resolve(options.cwd);
+  const requestedCwd = path.resolve(options.cwd);
   const mode = getMode(options);
   const warnings: string[] = [];
   const changes: InitChange[] = [];
   const writes: PlannedWrite[] = [];
   const dirs: Array<{ absolutePath: string; relativePath: string }> = [];
-  const cwdCheck = await validateCwd(cwd);
+  const cwdCheck = await validateCwd(requestedCwd);
 
   if (cwdCheck) {
     return {
       schema: INIT_RESPONSE_SCHEMA,
       ok: false,
       mode,
-      cwd,
+      cwd: requestedCwd,
       changes,
       warnings,
       error: cwdCheck
     };
   }
+  const cwd = await realpath(requestedCwd);
+  const preparedProjectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
+  const initialPathCheck = await validateInitProjectPaths(cwd);
+  if (initialPathCheck) {
+    return {
+      schema: INIT_RESPONSE_SCHEMA,
+      ok: false,
+      mode,
+      cwd: requestedCwd,
+      changes,
+      warnings,
+      error: initialPathCheck
+    };
+  }
 
   for (const file of starterFiles) {
     const absolutePath = path.join(cwd, file.path);
-    const existing = await readTextIfExists(absolutePath);
+    const existing = await readTextIfExists(preparedProjectRoot, file.path);
 
     if (existing === null) {
       changes.push({
@@ -112,7 +135,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 
   for (const directory of runtimeDirectories) {
     const absolutePath = path.join(cwd, directory.path);
-    const exists = await pathExists(absolutePath);
+    const exists = await pathExists(preparedProjectRoot, directory.path);
 
     changes.push({
       path: directory.path,
@@ -126,14 +149,14 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     }
   }
 
-  const gitignorePlan = await planGitignore(cwd);
+  const gitignorePlan = await planGitignore(preparedProjectRoot, cwd);
   changes.push(gitignorePlan.change);
 
   if (gitignorePlan.write) {
     writes.push(gitignorePlan.write);
   }
 
-  const packagePlan = await planPackageJson(cwd);
+  const packagePlan = await planPackageJson(preparedProjectRoot, cwd);
   changes.push(packagePlan.change);
   warnings.push(...packagePlan.warnings);
 
@@ -142,7 +165,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       schema: INIT_RESPONSE_SCHEMA,
       ok: false,
       mode,
-      cwd,
+      cwd: requestedCwd,
       changes,
       warnings,
       error: packagePlan.error
@@ -158,7 +181,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       schema: INIT_RESPONSE_SCHEMA,
       ok: false,
       mode,
-      cwd,
+      cwd: requestedCwd,
       changes,
       warnings,
       error: {
@@ -169,13 +192,26 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   }
 
   if (mode === "applied") {
+    await assertPreparedSelectedOutputDirectory(preparedProjectRoot);
+    const applyPathCheck = await validateInitProjectPaths(cwd);
+    if (applyPathCheck) {
+      return {
+        schema: INIT_RESPONSE_SCHEMA,
+        ok: false,
+        mode,
+        cwd: requestedCwd,
+        changes,
+        warnings,
+        error: applyPathCheck
+      };
+    }
+
     for (const directory of dirs) {
-      await mkdir(directory.absolutePath, { recursive: true });
+      await prepareContainedOutputDirectory(preparedProjectRoot, directory.relativePath);
     }
 
     for (const write of writes) {
-      await mkdir(path.dirname(write.absolutePath), { recursive: true });
-      await writeFile(write.absolutePath, write.contents, "utf8");
+      await writeContainedOutputFile(preparedProjectRoot, write.relativePath, write.contents, "utf8");
     }
   }
 
@@ -183,9 +219,58 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     schema: INIT_RESPONSE_SCHEMA,
     ok: true,
     mode,
-    cwd,
+    cwd: requestedCwd,
     changes,
     warnings
+  };
+}
+
+async function validateInitProjectPaths(cwd: string): Promise<InitResult["error"] | null> {
+  const targets = [
+    ...starterFiles.map((file) => ({ path: file.path, kind: "file" as const })),
+    ...runtimeDirectories.map((directory) => ({ path: directory.path, kind: "directory" as const })),
+    { path: ".gitignore", kind: "file" as const },
+    { path: "package.json", kind: "file" as const }
+  ];
+
+  for (const targetSpec of targets) {
+    const relativePath = targetSpec.path;
+    const target = path.resolve(cwd, relativePath);
+    if (!isPathInside(cwd, target)) {
+      return unsafeProjectPath(relativePath);
+    }
+
+    const parts = path.relative(cwd, target).split(path.sep).filter(Boolean);
+    let current = cwd;
+    for (const [index, part] of parts.entries()) {
+      current = path.join(current, part);
+      try {
+        const stats = await lstat(current);
+        const isLeaf = index === parts.length - 1;
+        if (
+          stats.isSymbolicLink()
+          || (!isLeaf && !stats.isDirectory())
+          || (isLeaf && targetSpec.kind === "file" && (!stats.isFile() || stats.nlink > 1))
+          || (isLeaf && targetSpec.kind === "directory" && !stats.isDirectory())
+        ) {
+          return unsafeProjectPath(relativePath);
+        }
+      } catch (error) {
+        if (isNodeError(error) && error.code === "ENOENT") {
+          break;
+        }
+        return unsafeProjectPath(relativePath);
+      }
+    }
+  }
+
+  return null;
+}
+
+function unsafeProjectPath(relativePath: string): NonNullable<InitResult["error"]> {
+  return {
+    code: "HUMANISH_UNSAFE_PROJECT_PATH",
+    message: `Init target must stay inside the project, use the expected regular-file or directory kind, and not traverse symbolic links or hardlinked files: ${relativePath}`
   };
 }
 
@@ -201,10 +286,13 @@ function getMode(options: InitOptions): InitMode {
   return "needs-confirmation";
 }
 
-async function planGitignore(cwd: string): Promise<{ write?: PlannedWrite; change: InitChange }> {
+async function planGitignore(
+  projectRoot: PreparedSelectedOutputDirectory,
+  cwd: string
+): Promise<{ write?: PlannedWrite; change: InitChange }> {
   const relativePath = ".gitignore";
   const absolutePath = path.join(cwd, relativePath);
-  const existing = await readTextIfExists(absolutePath);
+  const existing = await readTextIfExists(projectRoot, relativePath);
   const currentLines = existing?.split(/\r?\n/) ?? [];
   const envIndex = currentLines.lastIndexOf(".env*");
   const envExampleIndex = currentLines.lastIndexOf("!.env.example");
@@ -250,10 +338,10 @@ async function planGitignore(cwd: string): Promise<{ write?: PlannedWrite; chang
   };
 }
 
-async function planPackageJson(cwd: string): Promise<PackagePlan> {
+async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd: string): Promise<PackagePlan> {
   const relativePath = "package.json";
   const absolutePath = path.join(cwd, relativePath);
-  const existing = await readTextIfExists(absolutePath);
+  const existing = await readTextIfExists(projectRoot, relativePath);
 
   if (existing === null) {
     return {
@@ -371,21 +459,37 @@ async function planPackageJson(cwd: string): Promise<PackagePlan> {
   };
 }
 
-async function readTextIfExists(filePath: string): Promise<string | null> {
+async function readTextIfExists(
+  projectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string
+): Promise<string | null> {
+  const bytes = await readContainedRegularFile(projectRoot, relativePath);
+  if (bytes !== null) {
+    return bytes.toString("utf8");
+  }
+  const target = path.join(projectRoot.physicalPath, relativePath);
   try {
-    return await readFile(filePath, "utf8");
+    await lstat(target);
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return null;
     }
-
     throw error;
   }
+  throw new Error(unsafeProjectPath(relativePath).message);
 }
 
-async function pathExists(filePath: string): Promise<boolean> {
+async function pathExists(
+  projectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string
+): Promise<boolean> {
+  await assertPreparedSelectedOutputDirectory(projectRoot);
+  const filePath = path.join(projectRoot.physicalPath, relativePath);
   try {
-    await stat(filePath);
+    const stats = await lstat(filePath);
+    if (stats.isSymbolicLink() || !stats.isDirectory()) {
+      throw new Error(unsafeProjectPath(relativePath).message);
+    }
     return true;
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
@@ -426,6 +530,12 @@ function trimTrailingNewlines(text: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isPathInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === ""
+    || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

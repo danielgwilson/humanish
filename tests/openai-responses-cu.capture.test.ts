@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -181,6 +181,50 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const files = (await readdir(captureDir)).sort();
     expect(files).toEqual(["wire-001.json"]);
     expect(await readFile(path.join(captureDir, "wire-001.json"), "utf8")).toContain("resp_2");
+  });
+
+  it("rejects a generated capture leaf before making a provider call", async () => {
+    const captureDir = path.join(cwd, "wire-preflight");
+    const outside = path.join(cwd, "outside.json");
+    await mkdir(captureDir);
+    await writeFile(outside, "unchanged\n", "utf8");
+    await symlink(outside, path.join(captureDir, "wire-001.json"));
+    let fetchCalls = 0;
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn: async () => {
+        fetchCalls += 1;
+        return { ok: true, status: 200, text: async () => "", json: async () => RESPONSE_ONE };
+      },
+      env: { [WIRE_CAPTURE_ENV]: captureDir }
+    });
+
+    await expect(provider.nextTurn(request(), neverAbort)).rejects.toThrow(/regular files/i);
+    expect(fetchCalls).toBe(0);
+    expect(await readFile(outside, "utf8")).toBe("unchanged\n");
+  });
+
+  it("retains capture-root identity across the fetch window", async () => {
+    const first = path.join(cwd, "first");
+    const second = path.join(cwd, "second");
+    const alias = path.join(cwd, "wire-alias");
+    await mkdir(first);
+    await mkdir(second);
+    await writeFile(path.join(second, "sentinel.txt"), "unchanged\n", "utf8");
+    await symlink(first, alias, "dir");
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn: async () => {
+        await rm(alias);
+        await symlink(second, alias, "dir");
+        return { ok: true, status: 200, text: async () => "", json: async () => RESPONSE_ONE };
+      },
+      env: { [WIRE_CAPTURE_ENV]: alias }
+    });
+
+    await expect(provider.nextTurn(request(), neverAbort)).rejects.toThrow(/changed physical destination/i);
+    expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
+    await expect(access(path.join(second, "wire-001.json"))).rejects.toThrow();
   });
 
   it("never captures request material: no screenshots, no instructions", async () => {

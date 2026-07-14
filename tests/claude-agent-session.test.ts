@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -87,6 +87,57 @@ describe("runClaudeAgentSession (DI seam)", () => {
 
       const transcript = await readFile(path.join(runRoot, result.transcriptPath), "utf8");
       expect(transcript).toContain("Inspecting the project setup");
+    });
+  });
+
+  it("rejects generated-path aliases before query execution", async () => {
+    await withRunRoot(async (runRoot) => {
+      const outside = path.join(runRoot, "outside");
+      const selected = path.join(runRoot, "selected");
+      await mkdir(outside);
+      await mkdir(selected);
+      await writeFile(path.join(outside, "sentinel.txt"), "unchanged\n", "utf8");
+      await symlink(outside, path.join(selected, "claude-agent-sdk"), "dir");
+      let queryCalls = 0;
+      await expect(runClaudeAgentSession({
+        cwd: runRoot,
+        runRoot: selected,
+        prompt: "go",
+        persona,
+        timeoutMs: 5000,
+        queryFn: fakeQuery(buildClaudeSession().messages, () => { queryCalls += 1; })
+      })).rejects.toThrow(/symbolic links/i);
+      expect(queryCalls).toBe(0);
+      expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
+    });
+  });
+
+  it("retains the selected-root identity across the query window", async () => {
+    await withRunRoot(async (runRoot) => {
+      const first = path.join(runRoot, "first");
+      const second = path.join(runRoot, "second");
+      const alias = path.join(runRoot, "selected-alias");
+      await mkdir(first);
+      await mkdir(second);
+      await writeFile(path.join(second, "sentinel.txt"), "unchanged\n", "utf8");
+      await symlink(first, alias, "dir");
+      const queryFn: ClaudeQueryFn = () => (async function* () {
+        yield { type: "system", subtype: "init", session_id: "s", model: "m" };
+        await rm(alias);
+        await symlink(second, alias, "dir");
+        yield { type: "result", subtype: "success", duration_ms: 1, session_id: "s", result: "done" };
+      })();
+
+      await expect(runClaudeAgentSession({
+        cwd: runRoot,
+        runRoot: alias,
+        prompt: "go",
+        persona,
+        timeoutMs: 5000,
+        queryFn
+      })).rejects.toThrow(/changed physical destination/i);
+      expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
+      await expect(access(path.join(second, "claude-agent-sdk", "summary.json"))).rejects.toThrow();
     });
   });
 

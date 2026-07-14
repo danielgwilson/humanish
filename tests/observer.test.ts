@@ -1,4 +1,5 @@
-import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, link, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
+import { symlinkSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { runInNewContext } from "node:vm";
@@ -832,6 +833,145 @@ describe("observer rendering", () => {
           transport: "sse",
           url: "https://stream.example/live-desktop"
         });
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it("keeps a live Observer pinned to its original physical roots after a cwd alias retarget", async () => {
+    await withRunBundle(async (physicalCwd) => {
+      const tempRoot = path.dirname(physicalCwd);
+      const aliasCwd = path.join(tempRoot, "observer-cwd-alias");
+      const decoyCwd = path.join(tempRoot, "retargeted-app");
+      await cp(path.resolve("fixtures/minimal-app"), decoyCwd, { recursive: true });
+      await runDryRun({ cwd: decoyCwd, dryRun: true, runId: "observer-proof" });
+      await runDryRun({ cwd: decoyCwd, dryRun: true, runId: "retargeted-b-only" });
+
+      for (const [cwd, title] of [
+        [physicalCwd, "PINNED-A-MARKER"],
+        [decoyCwd, "RETARGETED-B-SECRET"]
+      ] as const) {
+        const bundlePath = path.join(cwd, ".humanish", "runs", "observer-proof", "run.json");
+        const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as { scenario: { title: string } };
+        bundle.scenario.title = title;
+        await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      }
+
+      await symlink(physicalCwd, aliasCwd, "dir");
+      const rendered = await renderObserver(aliasCwd, "latest");
+      const server = await serveObserver(rendered, { port: 0 });
+      try {
+        await unlink(aliasCwd);
+        await symlink(decoyCwd, aliasCwd, "dir");
+
+        for (const url of [
+          server.url,
+          new URL("/_humanish/runs/observer-proof/observer/index.html", server.url).href
+        ]) {
+          const response = await fetch(url);
+          expect(response.status).toBe(200);
+          const body = await response.text();
+          expect(body).toContain("PINNED-A-MARKER");
+          expect(body).not.toContain("RETARGETED-B-SECRET");
+        }
+
+        const history = await (await fetch(new URL("/_humanish/history.json", server.url))).json() as {
+          runs: Array<{ runId: string }>;
+        };
+        expect(history.runs.map((run) => run.runId)).toContain("observer-proof");
+        expect(history.runs.map((run) => run.runId)).not.toContain("retargeted-b-only");
+      } finally {
+        await server.close();
+        await unlink(aliasCwd).catch(() => undefined);
+      }
+    });
+  });
+
+  it("retains the original runs-root token when a latest-pointer read retargets the cwd alias", async () => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-latest-bind-"));
+    const physicalA = path.join(tempRoot, "physical-a");
+    const physicalB = path.join(tempRoot, "physical-b");
+    const aliasCwd = path.join(tempRoot, "cwd-alias");
+    const originalJsonParse = JSON.parse;
+    let retargeted = false;
+
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), physicalA, { recursive: true });
+      await cp(path.resolve("fixtures/minimal-app"), physicalB, { recursive: true });
+      await runDryRun({ cwd: physicalA, dryRun: true, runId: "latest-a" });
+      await runDryRun({ cwd: physicalB, dryRun: true, runId: "latest-b" });
+      await symlink(physicalA, aliasCwd, "dir");
+      JSON.parse = ((text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
+        const value = originalJsonParse(text, reviver);
+        if (
+          !retargeted
+          && typeof value === "object"
+          && value !== null
+          && (value as { runId?: unknown }).runId === "latest-a"
+          && (value as { path?: unknown }).path === ".humanish/runs/latest-a"
+        ) {
+          unlinkSync(aliasCwd);
+          symlinkSync(physicalB, aliasCwd, "dir");
+          retargeted = true;
+        }
+        return value;
+      }) as typeof JSON.parse;
+
+      const rendered = await renderObserver(aliasCwd, "latest");
+      expect(retargeted).toBe(true);
+      expect(rendered.ok).toBe(true);
+      expect(rendered.run).toBe("latest-a");
+      expect(await stat(path.join(physicalA, ".humanish", "runs", "latest-a", "observer", "index.html")))
+        .toMatchObject({});
+      await expect(stat(path.join(physicalB, ".humanish", "runs", "latest-a", "observer", "index.html")))
+        .rejects.toMatchObject({ code: "ENOENT" });
+
+      const server = await serveObserver(rendered, { open: false });
+      try {
+        const response = await fetch(server.url);
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain("latest-a");
+      } finally {
+        await server.close();
+      }
+    } finally {
+      JSON.parse = originalJsonParse;
+      await unlink(aliasCwd).catch(() => undefined);
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+
+  it("refuses to render over a hardlinked Observer output leaf", async () => {
+    await withRunBundle(async (cwd) => {
+      const observerDir = path.join(cwd, ".humanish", "runs", "observer-proof", "observer");
+      const externalSentinel = path.join(path.dirname(cwd), "observer-output-sentinel.html");
+      await mkdir(observerDir, { recursive: true });
+      await writeFile(externalSentinel, "OUTSIDE-SENTINEL", "utf8");
+      await link(externalSentinel, path.join(observerDir, "index.html"));
+
+      const rendered = await renderObserver(cwd, "latest");
+      expect(rendered).toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" }
+      });
+      expect(await readFile(externalSentinel, "utf8")).toBe("OUTSIDE-SENTINEL");
+    });
+  });
+
+  it("rejects hardlinked Observer artifact leaves created after server pinning", async () => {
+    await withRunBundle(async (cwd) => {
+      const rendered = await renderObserver(cwd, "latest");
+      const server = await serveObserver(rendered, { port: 0 });
+      const externalSecret = path.join(path.dirname(cwd), "hardlink-secret.txt");
+      const linkedArtifact = path.join(cwd, ".humanish", "runs", "observer-proof", "hardlink-secret.txt");
+      try {
+        await writeFile(externalSecret, "HARDLINK-SECRET", "utf8");
+        await link(externalSecret, linkedArtifact);
+
+        const response = await fetch(new URL("../hardlink-secret.txt", server.url));
+        expect(response.status).toBe(404);
+        expect(await response.text()).not.toContain("HARDLINK-SECRET");
       } finally {
         await server.close();
       }

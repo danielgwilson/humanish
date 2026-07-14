@@ -104,6 +104,8 @@ export const LOCAL_TREE_DENYLIST_BASENAME_PATTERNS = [
 /** Default upload size cap: 256 MiB. */
 export const DEFAULT_LOCAL_TREE_MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
 
+type SourceEntryStat = NonNullable<ReturnType<typeof lstatSync>>;
+
 /**
  * Enumerate the packable entries of a local working tree.
  *
@@ -288,6 +290,7 @@ function enumerateGitTree(root: string, extraExclude: readonly string[]): LocalT
       continue;
     }
     if (stat.isFile()) {
+      assertSingleLinkSourceFile(stat);
       entries.push({ relPath, kind: "file", size: stat.size });
     }
   }
@@ -319,6 +322,7 @@ function walkFallbackTree(
       continue;
     }
     if (stat.isFile()) {
+      assertSingleLinkSourceFile(stat);
       out.push({ relPath, kind: "file", size: stat.size });
     }
     // Sockets, fifos, and device files are silently skipped: neither a
@@ -400,6 +404,45 @@ function compareEntriesByRelPath(a: LocalTreeEntry, b: LocalTreeEntry): number {
   return Buffer.compare(Buffer.from(a.relPath, "utf8"), Buffer.from(b.relPath, "utf8"));
 }
 
+function assertSingleLinkSourceFile(stat: SourceEntryStat): void {
+  if (stat.nlink > 1) {
+    throw new Error(
+      "Local tree contains a hardlinked regular file; hardlinked source files are not packable.",
+    );
+  }
+}
+
+function validateEntryForRead(root: string, entry: LocalTreeEntry): SourceEntryStat {
+  let stat: SourceEntryStat;
+  try {
+    stat = lstatSync(path.join(root, entry.relPath));
+  } catch {
+    throw new Error("Local tree entry changed after enumeration; refusing to create an inconsistent archive.");
+  }
+  if (entry.kind === "symlink") {
+    if (!stat.isSymbolicLink()) {
+      throw new Error("Local tree entry changed kind after enumeration; refusing to create an inconsistent archive.");
+    }
+    return stat;
+  }
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== entry.size) {
+    throw new Error("Local tree entry changed after enumeration; refusing to create an inconsistent archive.");
+  }
+  assertSingleLinkSourceFile(stat);
+  return stat;
+}
+
+function validateEntryIdentity(
+  root: string,
+  entry: LocalTreeEntry,
+  expected: SourceEntryStat,
+): void {
+  const current = validateEntryForRead(root, entry);
+  if (current.dev !== expected.dev || current.ino !== expected.ino) {
+    throw new Error("Local tree entry changed physical identity while being read; refusing to create an inconsistent archive.");
+  }
+}
+
 /**
  * sha256 over the sorted sequence of records:
  *   files:    kind\0relPath\0size\0<file bytes>\0
@@ -415,13 +458,17 @@ function computeArchiveSha256(
   let totalBytes = 0;
   for (const entry of entries) {
     const absolutePath = path.join(root, entry.relPath);
+    const expected = validateEntryForRead(root, entry);
     if (entry.kind === "symlink") {
       const target = readlinkSync(absolutePath);
+      validateEntryIdentity(root, entry, expected);
       hash.update(`symlink\0${entry.relPath}\0${target}\0`);
       continue;
     }
+    const bytes = readFileSync(absolutePath);
+    validateEntryIdentity(root, entry, expected);
     hash.update(`file\0${entry.relPath}\0${entry.size}\0`);
-    hash.update(readFileSync(absolutePath));
+    hash.update(bytes);
     hash.update("\0");
     totalBytes += entry.size;
   }
@@ -429,6 +476,12 @@ function computeArchiveSha256(
 }
 
 function writeTarArchive(root: string, entries: readonly LocalTreeEntry[], archivePath: string): void {
+  // Recheck immediately before tar reads the source tree. Enumeration and
+  // hashing already reject hardlinks; this closes the ordinary mutation gap
+  // between hashing and packing without dereferencing symlinks.
+  for (const entry of entries) {
+    validateEntryForRead(root, entry);
+  }
   const listDir = mkdtempSync(path.join(tmpdir(), "humanish-local-tree-list-"));
   const listFile = path.join(listDir, "files.list");
   try {

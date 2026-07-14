@@ -215,8 +215,8 @@ function makeConformanceFakeBrowser(): ScriptedBrowserLike {
     waitForTimeout: async () => undefined,
     waitForFunction: async () => undefined,
     screenshot: async ({ path: screenshotPath }) => {
-      await writeFile(screenshotPath, PNG_1X1);
-      return undefined;
+      if (screenshotPath) await writeFile(screenshotPath, PNG_1X1);
+      return PNG_1X1;
     },
     url: () => state.url,
     evaluate: async <T,>() => state.body as unknown as T

@@ -156,7 +156,7 @@ describe("humanish CLI scaffold", () => {
       doctor: "Explain project readiness and missing setup.",
       run: "Run a persona/scenario simulation or dry-run bundle.",
       verify: "Validate a run bundle and public-safety gates.",
-      cleanup: "Clean run-owned provider resources by exact id.",
+      cleanup: "Write a resource cleanup inspection receipt.",
       review: "Build a review packet from verified run evidence.",
       runs: "List local Humanish runs and latest pointers.",
       watch: "Run sims, open the observer, keep the shell attached.",
@@ -179,7 +179,7 @@ describe("humanish CLI scaffold", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Set up humanish/ source and .humanish/ runtime state.");
-    expect(result.stdout).toContain("Clean run-owned provider resources by exact id.");
+    expect(result.stdout).toContain("Write a resource cleanup inspection receipt.");
     expect(result.stdout).toContain("Serve a finished run's Observer over loopback http.");
     expect(result.stdout).toContain("Create public-safe feedback drafts, no GitHub API.");
   });

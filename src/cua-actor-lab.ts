@@ -22,7 +22,7 @@
 //   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
@@ -83,6 +83,20 @@ import {
   type ObserverRuntimeStreamUrl
 } from "./observer.js";
 import { containsSensitive, digestText, redactedTail, redactText } from "./redaction.js";
+import {
+  assertPreparedSelectedOutputDirectory,
+  assertSafeOutputPathSegment,
+  prepareContainedOutputDirectory,
+  prepareSelectedOutputDirectory,
+  type PreparedOutputDirectory,
+  writeContainedOutputFile,
+  writePreparedRunLatestPointer
+} from "./selected-output-paths.js";
+import {
+  prepareRunArtifactPaths,
+  validatePreparedRunArtifactPaths,
+  type PreparedRunArtifactPaths
+} from "./run-paths.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "./source-archive.js";
 import type { StopWhen } from "./stop-conditions.js";
 import {
@@ -860,7 +874,7 @@ export interface CuaLaneDeps {
   perLaneSandboxMs: number;
   timeoutMs: number;
   laneCount: number;
-  artifactRoot: string;
+  artifactRoot: PreparedOutputDirectory;
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
   runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
@@ -898,17 +912,20 @@ export interface LaneRunOutcome {
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
  *  at N>1). */
 export function makeLaneWriteScreenshot(
-  artifactRoot: string,
+  artifactRoot: PreparedOutputDirectory,
   spec: { screenshotDir: string },
   screenshots: string[]
 ): (name: string, bytes: Buffer) => Promise<string> {
+  if (spec.screenshotDir) {
+    assertSafeOutputPathSegment(spec.screenshotDir, "Screenshot lane id");
+  }
   const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
   const relPrefix = spec.screenshotDir ? path.posix.join("screenshots", spec.screenshotDir) : "screenshots";
   return async (name: string, bytes: Buffer): Promise<string> => {
+    assertSafeOutputPathSegment(name, "Screenshot name");
     const rel = path.posix.join(relPrefix, name);
     assertScreenshotEvidence(rel, bytes);
-    await mkdir(path.join(artifactRoot, ...dirParts), { recursive: true });
-    await writeFile(path.join(artifactRoot, ...dirParts, name), bytes);
+    await writeContainedOutputFile(artifactRoot, path.join(...dirParts, name), bytes);
     screenshots.push(rel);
     return rel;
   };
@@ -1453,8 +1470,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   }
 
   if (session) {
-    await mkdir(path.dirname(path.join(deps.artifactRoot, spec.traceArtifactPath)), { recursive: true });
-    await writeFile(path.join(deps.artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    await writeContainedOutputFile(deps.artifactRoot, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
     if (session.trace.redaction.screenshots === "raw") {
       warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
     }
@@ -1526,8 +1542,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   }
 
   if (session) {
-    await mkdir(path.dirname(path.join(deps.artifactRoot, spec.traceArtifactPath)), { recursive: true });
-    await writeFile(path.join(deps.artifactRoot, spec.traceArtifactPath), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    await writeContainedOutputFile(deps.artifactRoot, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
     if (session.trace.redaction.screenshots === "raw") {
       warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
     }
@@ -1782,7 +1797,12 @@ function subjectProvenanceArg(
 
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
   const { config, dryRun } = options;
-  const cwd = path.resolve(options.cwd);
+  // Capture the physical project before reading or invoking any caller hook. A supported
+  // symlink cwd remains valid, but retargeting that alias from a hook cannot redirect source
+  // reads, local-tree packing, managed run storage, or Observer output into another project.
+  const physicalCwd = await realpath(path.resolve(options.cwd));
+  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
+  const cwd = projectRoot.physicalPath;
   const hooks = options.hooks ?? {};
   let liveObserver: (ObserverResult & { ok: true }) | undefined;
   const runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [];
@@ -1965,6 +1985,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     emitPreflightPlan(plan, config.id);
   }
   hooks.onPreflight?.(plan);
+  await assertPreparedSelectedOutputDirectory(projectRoot);
 
   // Read keys once into locals (names only; values never logged or persisted).
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
@@ -2007,13 +2028,15 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   }
 
   const runId = options.runId ?? makeCuaRunId();
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const artifactRoot = runPaths.absoluteRunRoot;
+  const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
 
-  await mkdir(path.join(artifactRoot, "screenshots"), { recursive: true });
+  await prepareContainedOutputDirectory(runPaths, "screenshots");
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd,
@@ -2071,7 +2094,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     perLaneSandboxMs: resolvePerLaneSandboxMs(config),
     timeoutMs,
     laneCount,
-    artifactRoot,
+    artifactRoot: runPaths,
     redactScreenshots,
     scrubKnownValues,
     runSession,
@@ -2132,7 +2155,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           subjectEnvNames,
           inProgress: true
         });
-    await writeCuaRunArtifacts(cwd, artifactRoot, inProgressBundle, createdAt);
+    await writeCuaRunArtifacts(inProgressBundle, createdAt, runPaths);
     liveObserver = observerResultForCuaArtifacts(cwd, runId, artifactRoot, [
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted."
     ]);
@@ -2244,7 +2267,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     bundle,
     context: {
       bundle,
-      runDir: artifactRoot,
+      runDir: physicalArtifactRoot,
       labId: config.id,
       runId,
       actor: descriptor.id,
@@ -2257,7 +2280,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     hookLabel: "cuaHooks"
   });
 
-  await writeCuaRunArtifacts(cwd, artifactRoot, bundle, createdAt);
+  await writeCuaRunArtifacts(bundle, createdAt, runPaths);
 
   const observer = await render(cwd, runId, { open: options.open === true });
   if (observer.ok && runtimeStreamUrls.length > 0) {
@@ -2385,31 +2408,31 @@ function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: num
 }
 
 async function writeCuaRunArtifacts(
-  cwd: string,
-  artifactRoot: string,
   bundle: RunBundle,
-  updatedAt: string
+  updatedAt: string,
+  preparedRunPaths: PreparedRunArtifactPaths
 ): Promise<void> {
+  const runPaths = await validatePreparedRunArtifactPaths(preparedRunPaths);
   const publicBundle: RunBundle = {
     ...bundle,
     cwd: PUBLIC_TARGET_CWD
   };
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderCuaReviewMarkdown(publicBundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await mkdir(path.join(artifactRoot, "observer"), { recursive: true });
-  await writeFile(
-    path.join(artifactRoot, "observer", "observer-data.json"),
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderCuaReviewMarkdown(publicBundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "observer/observer-data.json",
     `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
     "utf8"
   );
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", "latest.json"),
+  await writePreparedRunLatestPointer(
+    runPaths,
     `${JSON.stringify({
       schema: "humanish.latest-run.v1",
       runId: publicBundle.runId,
-      path: path.join(".humanish", "runs", publicBundle.runId),
+      path: runPaths.relativeRunRoot,
       updatedAt
     }, null, 2)}\n`,
     "utf8"

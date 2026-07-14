@@ -21,7 +21,7 @@
 // plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { parse as parseYaml } from "yaml";
@@ -45,6 +45,11 @@ import type { LabConfig } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { digestText, redactText } from "./redaction.js";
 import {
+  prepareRunArtifactPaths,
+  type PreparedRunArtifactPaths,
+  validatePreparedRunArtifactPaths
+} from "./run-paths.js";
+import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -62,6 +67,7 @@ import {
   normalizeLocalAppUrl,
   parseBrowserPersonaJourneyFromScenario,
   resolveBrowserCommand,
+  runScriptedBrowserSessionInPreparedRoot,
   type BrowserPersonaJourney,
   type BrowserSurface,
   type ScriptedBrowserEvidenceUrlPolicy,
@@ -70,6 +76,13 @@ import {
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult
 } from "./scripted-browser-actor.js";
+import {
+  prepareSelectedOutputDirectory,
+  readContainedRegularFile,
+  type PreparedSelectedOutputDirectory,
+  writeContainedOutputFile,
+  writePreparedRunLatestPointer
+} from "./selected-output-paths.js";
 
 export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 
@@ -84,6 +97,13 @@ const DEFAULT_SURFACE_COUNT = 1;
 // Same public-safe token shape the lab id uses; an id-style scenario.ref must match it before
 // it is interpolated into a repo path.
 const SCENARIO_REF_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+
+class UnsafeScriptedSessionResultError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsafeScriptedSessionResultError";
+  }
+}
 
 /**
  * Library-level hooks: DI seams so CI drives the full path (real engine, real projection)
@@ -168,6 +188,8 @@ export interface ScriptedBrowserLabResult {
 export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
+  const physicalCwd = await realpath(cwd);
+  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
   const hooks = options.hooks ?? {};
   const render = hooks.renderObserverFn ?? renderObserver;
   const warnings: string[] = [];
@@ -201,7 +223,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
       `actors[0].type "${actorType}" is not a registered scripted-browser actor.`
     );
   }
-  const runSession = hooks.runSession ?? descriptor.runSession;
+  const runSession = hooks.runSession;
   const provisionedRoute = config.subject.source === "clone";
   const evidenceAppUrl = provisionedRoute ? "[provisioned-subject]" : normalizeLocalAppUrl(config.subject.appUrl ?? "") ?? "";
   const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = provisionedRoute
@@ -242,7 +264,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
 
   // Consume scenario.ref (fail-closed: invariant 6 — the steps ARE the actor; there is no
   // built-in journey fallback on the lab route).
-  const scenario = await resolveScriptedScenario(cwd, config.scenario?.ref);
+  const scenario = await resolveScriptedScenario(projectRoot, config.scenario?.ref);
   if (!scenario.ok) {
     return failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
   }
@@ -291,12 +313,12 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   }
 
   const runId = options.runId ?? makeScriptedRunId();
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
+  const artifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
-  await mkdir(path.join(artifactRoot, "screenshots"), { recursive: true });
   const source = await buildRunSource({
     capturedAt: createdAt,
-    cwd,
+    cwd: physicalCwd,
     humanishSource: "present",
     packageName: "humanish"
   });
@@ -317,6 +339,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
         const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
         const timers: DetachedTimers = hooks.detachedTimers ?? {};
         subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+        await validatePreparedRunArtifactPaths(runPaths);
         subjectDesktop = await createDesktopSandbox(subjectModule, {
           apiKey: e2bApiKey,
           requestTimeoutMs,
@@ -340,6 +363,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
 
         if (hooks.prepareDesktop) {
           await hooks.prepareDesktop(subjectDesktop);
+          await validatePreparedRunArtifactPaths(runPaths);
         }
 
         subjectCommit = await provisionCloneSubject(subjectDesktop, {
@@ -372,20 +396,32 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
       }
 
       // One session per surface, in parallel — parity with `run --app-url`.
-      sessionResults = await Promise.all(surfaces.map((surface) => runSession({
-        appUrl,
-        evidenceAppUrl,
-        urlPolicy,
-        journey,
-        surface,
-        persona,
-        timeoutMs,
-        artifactRoot,
-        ...(browserCommand === undefined ? {} : { browserCommand }),
-        ...(hooks.launchBrowser === undefined ? {} : { launchBrowser: hooks.launchBrowser }),
-        ...(hooks.now === undefined ? {} : { now: hooks.now })
-      })));
+      sessionResults = await Promise.all(surfaces.map((surface) => {
+        const sessionOptions: ScriptedBrowserSessionOptions = {
+          appUrl,
+          evidenceAppUrl,
+          urlPolicy,
+          journey,
+          surface,
+          persona,
+          timeoutMs,
+          artifactRoot,
+          ...(browserCommand === undefined ? {} : { browserCommand }),
+          ...(hooks.launchBrowser === undefined ? {} : { launchBrowser: hooks.launchBrowser }),
+          ...(hooks.now === undefined ? {} : { now: hooks.now })
+        };
+        return runSession
+          ? runSession(sessionOptions).then(async (result) => {
+              await validatePreparedRunArtifactPaths(runPaths);
+              validateScriptedSessionResult(surface, result);
+              return result;
+            })
+          : runScriptedBrowserSessionInPreparedRoot(sessionOptions, runPaths);
+      }));
     } catch (error) {
+      if (error instanceof UnsafeScriptedSessionResultError) {
+        throw error;
+      }
       // The session itself maps launch failures to harness_error; reaching here means the
       // harness around it failed. Redacted at this boundary before persisting anywhere.
       sessionError = redactText(scrubKnownValues(toErrorMessage(error)));
@@ -407,8 +443,9 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     for (const result of sessionResults) {
       // The backend writes the provider-neutral projection next to the session's native
       // traces/<surface>.json (cua's actor.json convention, pluralized per surface).
-      await writeFile(
-        path.join(artifactRoot, `actor-${result.capture.surface.id}.json`),
+      await writeContainedOutputFile(
+        runPaths,
+        `actor-${result.capture.surface.id}.json`,
         `${JSON.stringify(result.trace, null, 2)}\n`,
         "utf8"
       );
@@ -419,7 +456,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   for (const result of sessionResults) {
     screenshotsBySurface.set(
       result.capture.surface.id,
-      await existingScreenshots(artifactRoot, result)
+      await existingScreenshots(runPaths, result)
     );
   }
   const subject: RunSubjectProvenance | undefined = provisionedRoute
@@ -454,17 +491,17 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     ...(hostDigest === undefined ? {} : { hostDigest })
   });
 
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderScriptedReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderScriptedReviewMarkdown(bundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", "latest.json"),
+  await writePreparedRunLatestPointer(
+    runPaths,
     `${JSON.stringify({
       schema: "humanish.latest-run.v1",
       runId,
-      path: path.join(".humanish", "runs", runId),
+      path: runPaths.relativeRunRoot,
       updatedAt: createdAt
     }, null, 2)}\n`,
     "utf8"
@@ -475,7 +512,8 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. policies.redactScreenshots is not yet supported on the scripted route.");
   }
 
-  const observer = await render(cwd, runId, { open: options.open === true });
+  const observer = await render(physicalCwd, runId, { open: options.open === true });
+  await validatePreparedRunArtifactPaths(runPaths);
 
   const harnessError = sessionResults.some((result) => result.completionReason === "harness_error");
   const ok = observer.ok
@@ -540,7 +578,7 @@ interface ResolvedScriptedScenario {
  * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed.
  */
 async function resolveScriptedScenario(
-  cwd: string,
+  projectRoot: PreparedSelectedOutputDirectory,
   ref: string | undefined
 ): Promise<ResolvedScriptedScenario | { ok: false; message: string }> {
   if (!ref || !ref.trim()) {
@@ -554,8 +592,8 @@ async function resolveScriptedScenario(
   let absolutePath: string;
   let source: string;
   if (scenarioRefLooksLikePath(trimmed)) {
-    absolutePath = path.resolve(cwd, trimmed);
-    const relative = path.relative(cwd, absolutePath);
+    absolutePath = path.resolve(projectRoot.physicalPath, trimmed);
+    const relative = path.relative(projectRoot.physicalPath, absolutePath);
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
       return {
         ok: false,
@@ -574,7 +612,7 @@ async function resolveScriptedScenario(
       path.posix.join("humanish", "scenarios", `${trimmed}.yaml`),
       path.posix.join("humanish", "scenarios", `${trimmed}.yml`)
     ];
-    const found = await firstExistingFile(cwd, candidates);
+    const found = await firstExistingFile(projectRoot, candidates);
     if (!found) {
       return {
         ok: false,
@@ -582,15 +620,15 @@ async function resolveScriptedScenario(
       };
     }
     source = found;
-    absolutePath = path.join(cwd, found);
+    absolutePath = path.join(projectRoot.physicalPath, found);
   }
 
-  let text: string;
-  try {
-    text = await readFile(absolutePath, "utf8");
-  } catch {
+  const relativeScenarioPath = path.relative(projectRoot.physicalPath, absolutePath);
+  const scenarioBytes = await readContainedRegularFile(projectRoot, relativeScenarioPath);
+  if (!scenarioBytes) {
     return { ok: false, message: `scenario.ref "${trimmed}" could not be read (${source}).` };
   }
+  const text = scenarioBytes.toString("utf8");
 
   let raw: unknown;
   try {
@@ -622,29 +660,61 @@ function scenarioRefLooksLikePath(ref: string): boolean {
     || ref.startsWith(".");
 }
 
-async function firstExistingFile(cwd: string, candidates: string[]): Promise<string | null> {
+async function firstExistingFile(projectRoot: PreparedSelectedOutputDirectory, candidates: string[]): Promise<string | null> {
   for (const candidate of candidates) {
-    const stats = await stat(path.join(cwd, candidate)).catch(() => null);
-    if (stats?.isFile()) {
+    if (await readContainedRegularFile(projectRoot, candidate) !== null) {
       return candidate;
     }
   }
   return null;
 }
 
-async function existingScreenshots(artifactRoot: string, result: ScriptedBrowserSessionResult): Promise<string[]> {
+async function existingScreenshots(runPaths: PreparedRunArtifactPaths, result: ScriptedBrowserSessionResult): Promise<string[]> {
   const existing: string[] = [];
   for (const step of result.capture.steps) {
     // Blocked steps whose evidence is the failure itself recorded no screenshot path.
     if (!step.screenshotPath) {
       continue;
     }
-    const stats = await stat(path.join(artifactRoot, step.screenshotPath)).catch(() => null);
-    if (stats?.isFile() && stats.size > 0) {
+    const screenshot = await readContainedRegularFile(runPaths, step.screenshotPath);
+    if (screenshot && screenshot.byteLength > 0) {
       existing.push(step.screenshotPath);
     }
   }
   return existing;
+}
+
+function validateScriptedSessionResult(
+  expectedSurface: BrowserSurface,
+  result: ScriptedBrowserSessionResult
+): void {
+  if (result.capture.surface.id !== expectedSurface.id || !isSafeOutputSegment(result.capture.surface.id)) {
+    throw new UnsafeScriptedSessionResultError("Scripted session returned an unexpected or unsafe surface id.");
+  }
+  const paths = [
+    result.capture.tracePath,
+    ...(result.capture.screenshotPath ? [result.capture.screenshotPath] : []),
+    ...result.capture.steps.flatMap((step) => step.screenshotPath ? [step.screenshotPath] : [])
+  ];
+  if (!paths.every(isSafeRelativeArtifactPath)) {
+    throw new UnsafeScriptedSessionResultError("Scripted session returned an unsafe artifact path.");
+  }
+}
+
+function isSafeOutputSegment(value: string): boolean {
+  return value.length > 0
+    && value !== "."
+    && value !== ".."
+    && !value.includes("/")
+    && !value.includes("\\")
+    && !value.includes("\0");
+}
+
+function isSafeRelativeArtifactPath(value: string): boolean {
+  if (!value || value.includes("\0") || path.isAbsolute(value) || path.posix.isAbsolute(value) || path.win32.isAbsolute(value)) {
+    return false;
+  }
+  return !value.replace(/\\/g, "/").split("/").some((part) => !part || part === "." || part === "..");
 }
 
 /**

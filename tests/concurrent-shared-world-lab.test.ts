@@ -858,6 +858,29 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(result.error?.message).toContain("subject.serve");
   });
 
+  it("engine re-enforcement rejects path-shaped role ids before loading a desktop", async () => {
+    const valid = concurrentConfig(3, 3);
+    const actor = valid.actors[0]!;
+    const lanes = actor.lanes!.map((lane, index) => index === 0 ? { ...lane, id: "..\\escape" } : lane);
+    const broken: LabConfig = { ...valid, actors: [{ ...actor, lanes }] };
+    let desktopLoads = 0;
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: broken,
+      dryRun: false,
+      hooks: {
+        loadDesktopModule: async () => {
+          desktopLoads += 1;
+          throw new Error("must not load");
+        }
+      }
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.runId).toBe("not-created");
+    expect(desktopLoads).toBe(0);
+  });
+
   it("engine re-enforcement: a local-tree config declaring subject.localTree.keep on the concurrent route fails closed (would orphan the N actor sandboxes)", async () => {
     const valid = localTreeConcurrentConfig();
     const broken: LabConfig = { ...valid, subject: { ...valid.subject, localTree: { keep: true } } };

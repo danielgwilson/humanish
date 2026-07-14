@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { link, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -280,6 +280,30 @@ describe("symlinks", () => {
     const afterRetarget = createLocalTreeArchive(root).archiveSha256;
     expect(afterRetarget).not.toBe(beforeContentChange);
   });
+
+  it.each(["git", "fallback"] as const)(
+    "rejects a hardlinked outside file in %s enumeration before creating an archive",
+    async (mode) => {
+      const root = await makeTempRoot(`hardlink-root-${mode}`);
+      const outsideDir = await makeTempRoot(`hardlink-outside-${mode}`);
+      const outputDir = await makeTempRoot(`hardlink-output-${mode}`);
+      const outsideSecret = path.join(outsideDir, "outside-secret.txt");
+      const outputPath = path.join(outputDir, "source.tar.gz");
+      const secretBytes = "OUTSIDE_HARDLINK_SECRET_7f4b2e";
+      await writeFile(outsideSecret, `${secretBytes}\n`, "utf8");
+      await writeFile(path.join(root, "regular.txt"), "regular\n", "utf8");
+      await link(outsideSecret, path.join(root, "linked-source.txt"));
+      if (mode === "git") {
+        runGit(root, ["init", "-q", "."]);
+      }
+
+      expect(() => createLocalTreeArchive(root, { outputPath })).toThrow(/hardlinked source files/i);
+      await expect(stat(outputPath)).rejects.toMatchObject({ code: "ENOENT" });
+      const archiveBytes = await readFile(outputPath).catch(() => Buffer.alloc(0));
+      expect(archiveBytes.includes(Buffer.from(secretBytes, "utf8"))).toBe(false);
+      expect(await readFile(outsideSecret, "utf8")).toBe(`${secretBytes}\n`);
+    },
+  );
 });
 
 describe("digest stability", () => {

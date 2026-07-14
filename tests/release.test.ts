@@ -19,7 +19,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.15.0");
+    expect(packageJson.version).toBe("0.15.1");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
@@ -128,6 +128,7 @@ describe("release readiness", () => {
     expect(publish).toContain("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main");
     expect(publish).toContain("[ \"v${PACKAGE_VERSION}\" != \"$GITHUB_REF_NAME\" ]");
     expect(publish).toContain("pnpm release:check");
+    expect(publish).toContain("HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}");
     expect(publish).toContain("npm publish --access public");
     expect(ci).toContain("pnpm/action-setup@v6");
     expect(ci).toContain("pnpm release:check");

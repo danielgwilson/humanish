@@ -473,8 +473,8 @@ function registerVerifyCommand(parent: Command, io: CliIo): void {
 function registerCleanupCommand(parent: Command, io: CliIo): void {
   parent
     .command("cleanup")
-    .description("Clean run-owned provider resources by exact recorded id and write a cleanup receipt.")
-    .summary("Clean run-owned provider resources by exact id.")
+    .description("Inspect recorded resource evidence and write cleanup.json; stored ids do not authorize provider mutation.")
+    .summary("Write a resource cleanup inspection receipt.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -526,7 +526,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--prompt <text>", "Prompt to submit to Codex app-server.")
     .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
-    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.", ".humanish/codex-app-server-ui")
+    .option("--run-root <path>", "Artifact directory for redacted app-server evidence.")
     .option("--state-file <path>", "State JSON file for external observers.")
     .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(240_000))
     .option("--port <port>", "Local browser UI port.", "0")
@@ -544,7 +544,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       port: string;
       prompt?: string;
       promptFile?: string;
-      runRoot: string;
+      runRoot?: string;
       sandbox: "read-only" | "workspace-write" | "danger-full-access";
       stateFile?: string;
       timeoutMs: string;
@@ -579,7 +579,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
         ...(options.model === undefined ? {} : { model: options.model }),
         port,
         prompt,
-        runRoot: options.runRoot,
+        ...(options.runRoot === undefined ? {} : { runRoot: options.runRoot }),
         sandbox: options.sandbox,
         ...(options.stateFile === undefined ? {} : { stateFile: options.stateFile }),
         timeoutMs
@@ -1221,7 +1221,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Run a Humanish lab manifest.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
-    .option("--dry-run", "Render contract evidence without live provider spend.")
+    .option("--dry-run", "Render contract evidence without live provider spend. The bundled OSS lab defaults to this mode.")
     .option("--codex-app-server", "Meta only: use Codex app-server client mode for headed desktop actor surfaces.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
@@ -1252,7 +1252,10 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "",
         "Human watch path:",
         "  humanish watch first-run",
-        "  humanish watch --lab .humanish/labs/local.yaml"
+        "  humanish watch --lab .humanish/labs/local.yaml",
+        "",
+        "OSS safety:",
+        "  Live OSS meta-lab manifests fail closed pending credential isolation."
       ].join("\n")
     )
     .action(async (labName: string, options: LabCommandOptions, command) => {
@@ -1276,15 +1279,15 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
   lab
     .command("oss", { hidden: true })
-    .description("Alias: run the bundled OSS meta-lab manifest.")
+    .description("Alias: run the bundled OSS meta-lab dry-run contract.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
     .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option("--count <count>", "Number of headed desktop sims to assign.", String(DEFAULT_OSS_REPOS.length))
+    .option("--count <count>", "Number of contract lanes to assign.", String(DEFAULT_OSS_REPOS.length))
     .option("--sims <count>", "Alias for --count.")
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
-    .option("--dry-run", "Render the Observer-of-Observers contract without provider spend or live E2B launch.")
+    .option("--dry-run", "Render the Observer-of-Observers contract without provider spend or live E2B launch (default).")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
@@ -1301,7 +1304,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "",
         "Preferred paths:",
         "  humanish watch oss",
-        "  humanish lab run oss",
+        "  humanish lab run oss --dry-run",
         "",
         "Repo selection:",
         "  humanish watch --lab .humanish/labs/local-oss.yaml",
@@ -1316,15 +1319,13 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "  humanish lab oss-smoke --limit 1 --keep",
         "",
         "Shape:",
-        "  The top-level Observer shows headed E2B desktop lanes. Each desktop clones",
-        "  its assigned authorized repo, sets up Humanish, starts the target app where",
-        "  feasible, opens desktop/mobile app windows plus the nested Observer, and",
-        "  starts a nonblocking Codex actor attempt.",
+        "  The top-level Observer shows contract-only lanes for the selected repo labels.",
+        "  No repo clone, provider sandbox, credential forwarding, or Codex actor runs.",
         "",
         "Safety:",
-        "  Only GitHub owner/repo slugs are accepted. Live stream auth URLs are",
-        "  runtime-only. Repo labels are redacted by default when a GitHub token",
-        "  is present; pass --no-redact-repos only for public-safe runs."
+        "  Only GitHub owner/repo slugs are accepted. Live OSS meta-lab execution",
+        "  fails closed pending credential isolation. Repo labels are redacted by",
+        "  default when overridden; use --no-redact-repos only for public-safe repos."
       ].join("\n")
     )
     .action(async (options: {
@@ -1362,6 +1363,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       const countInput = options.sims ?? options.count;
       const count = parsePositiveInteger(countInput);
+      const dryRun = options.dryRun ?? true;
       const port = parseObserverPort(options.port);
       if (port === null) {
         const result: OssMetaLabResult = {
@@ -1369,12 +1371,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
           ok: false,
           assignments: [],
           cwd: options.cwd,
-          dryRun: options.dryRun === true,
+          dryRun,
           error: {
             code: "HUMANISH_META_RUN_FAILED",
             message: "--port must be an integer between 0 and 65535."
           },
-          liveRequested: options.dryRun !== true,
+          liveRequested: !dryRun,
           repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
           sandboxes: [],
           warnings: []
@@ -1386,7 +1388,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
 
       const wantsMachine = wantsJson(command);
       const shouldOpen = options.open === false ? false : options.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
-      const wantsFollow = !wantsMachine && options.detach !== true && options.dryRun !== true;
+      const wantsFollow = !wantsMachine && options.detach !== true && !dryRun;
       const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
       const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
       let server: ObserverServer | null = null;
@@ -1410,7 +1412,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
           ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
           repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
           ...(count === null ? { count: Number.NaN } : { count }),
-          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+          dryRun,
           ...(options.runId === undefined ? {} : { runId: options.runId })
         });
       } catch (error) {

@@ -1,6 +1,7 @@
+import { constants as fsConstants } from "node:fs";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
 // Loopback-only host for the Observer static server. We never bind 0.0.0.0:
@@ -62,6 +63,17 @@ export interface ObserverStaticServer {
   close(): Promise<void>;
 }
 
+interface PinnedStaticRoot {
+  readonly dev: bigint;
+  readonly ino: bigint;
+  readonly physicalPath: string;
+}
+
+interface PinnedStaticFileIdentity {
+  readonly dev: bigint;
+  readonly ino: bigint;
+}
+
 export function observerStaticContentType(filePath: string): string {
   return CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
 }
@@ -77,10 +89,28 @@ export async function respondToObserverStaticRequest(
   request: Pick<IncomingMessage, "method" | "url">,
   response: ServerResponse
 ): Promise<void> {
-  const root = path.resolve(options.root);
+  try {
+    const root = await pinStaticRoot(options.root);
+    await respondToPinnedObserverStaticRequest(root, options, request, response);
+  } catch {
+    if (response.headersSent) {
+      response.end();
+      return;
+    }
+    writeText(response, 500, "Observer request failed");
+  }
+}
+
+async function respondToPinnedObserverStaticRequest(
+  root: PinnedStaticRoot,
+  options: ObserverStaticHandlerOptions,
+  request: Pick<IncomingMessage, "method" | "url">,
+  response: ServerResponse
+): Promise<void> {
   const indexRelative = options.indexPath ?? "index.html";
 
   try {
+    await assertPinnedStaticRoot(root);
     const method = request.method ?? "GET";
     if (method !== "GET" && method !== "HEAD") {
       writeText(response, 405, "Method Not Allowed");
@@ -125,33 +155,35 @@ export async function respondToObserverStaticRequest(
       relative = `${relative}${indexRelative}`;
     }
 
-    const target = path.resolve(root, relative);
-    if (!isPathInside(root, target)) {
+    const target = path.resolve(root.physicalPath, relative);
+    if (!isPathInside(root.physicalPath, target)) {
       writeText(response, 403, "Forbidden");
       return;
     }
 
     let info;
     try {
-      info = await stat(target);
+      info = await lstat(target);
     } catch {
       writeText(response, 404, "Not Found");
+      return;
+    }
+    if (info.isSymbolicLink()) {
+      writeText(response, 403, "Forbidden");
       return;
     }
 
     let filePath = target;
     if (info.isDirectory()) {
       filePath = path.resolve(target, indexRelative);
-      if (!isPathInside(root, filePath)) {
+      if (!isPathInside(root.physicalPath, filePath)) {
         writeText(response, 403, "Forbidden");
         return;
       }
     }
 
-    let body: Buffer;
-    try {
-      body = await readFile(filePath);
-    } catch {
+    const body = await readContainedRegularFile(root, filePath);
+    if (!body) {
       writeText(response, 404, "Not Found");
       return;
     }
@@ -166,30 +198,85 @@ export async function respondToObserverStaticRequest(
       return;
     }
     response.end(body);
-  } catch (error) {
+  } catch {
     if (response.headersSent) {
       response.end();
       return;
     }
-    writeText(response, 500, error instanceof Error ? error.message : String(error));
+    writeText(response, 500, "Observer request failed");
+  }
+}
+
+async function readContainedRegularFile(root: PinnedStaticRoot, filePathInput: string): Promise<Buffer | null> {
+  const filePath = path.resolve(filePathInput);
+  if (!isPathInside(root.physicalPath, filePath)) return null;
+  try {
+    await assertPinnedStaticRoot(root);
+    const expectedStats = await inspectContainedStaticFile(root, filePath);
+    if (!expectedStats) {
+      return null;
+    }
+
+    const handle = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    try {
+      const openedStats = await handle.stat({ bigint: true });
+      if (
+        !openedStats.isFile()
+        || openedStats.nlink !== 1n
+        || openedStats.dev !== expectedStats.dev
+        || openedStats.ino !== expectedStats.ino
+      ) {
+        return null;
+      }
+      const recheckedStats = await inspectContainedStaticFile(root, filePath);
+      if (
+        !recheckedStats
+        || recheckedStats.dev !== expectedStats.dev
+        || recheckedStats.ino !== expectedStats.ino
+      ) {
+        return null;
+      }
+      await assertPinnedStaticRoot(root);
+      const body = await handle.readFile();
+      await assertPinnedStaticRoot(root);
+      return body;
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return null;
   }
 }
 
 export function createObserverStaticHandler(
   options: ObserverStaticHandlerOptions
 ): (request: IncomingMessage, response: ServerResponse) => void {
+  let rootPromise: Promise<PinnedStaticRoot> | undefined;
   return (request, response) => {
-    void respondToObserverStaticRequest(options, request, response);
+    rootPromise ??= pinStaticRoot(options.root);
+    void rootPromise
+      .then((root) => respondToPinnedObserverStaticRequest(root, options, request, response))
+      .catch(() => {
+        if (response.headersSent) {
+          response.end();
+          return;
+        }
+        writeText(response, 500, "Observer request failed");
+      });
   };
 }
 
 export async function serveObserverStatic(options: ObserverStaticServeOptions): Promise<ObserverStaticServer> {
   const entryPath = options.entryPath?.replace(/^\/+/, "") ?? "";
-  const handler = createObserverStaticHandler({
+  const handlerOptions = {
     root: options.root,
     ...(options.indexPath === undefined ? {} : { indexPath: options.indexPath }),
     ...(entryPath ? { redirectRootTo: entryPath } : {})
-  });
+  };
+  const root = await pinStaticRoot(options.root);
+  const handler = (request: IncomingMessage, response: ServerResponse) => {
+    void respondToPinnedObserverStaticRequest(root, handlerOptions, request, response);
+  };
   const server = createServer(handler);
   const port = await listen(server, options.port ?? 0);
   return {
@@ -212,7 +299,58 @@ function writeText(response: ServerResponse, status: number, message: string): v
 
 function isPathInside(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return relative === ""
+    || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+async function inspectContainedStaticFile(
+  root: PinnedStaticRoot,
+  filePath: string
+): Promise<PinnedStaticFileIdentity | null> {
+  const relative = path.relative(root.physicalPath, filePath);
+  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return null;
+  }
+
+  const segments = relative.split(path.sep).filter(Boolean);
+  let current = root.physicalPath;
+  let fileIdentity: PinnedStaticFileIdentity | null = null;
+  for (const [index, segment] of segments.entries()) {
+    current = path.join(current, segment);
+    const stats = await lstat(current, { bigint: true });
+    if (stats.isSymbolicLink()) return null;
+    if (index < segments.length - 1) {
+      if (!stats.isDirectory()) return null;
+    } else {
+      if (!stats.isFile() || stats.nlink !== 1n) return null;
+      fileIdentity = { dev: stats.dev, ino: stats.ino };
+    }
+  }
+
+  if (await realpath(filePath) !== filePath) return null;
+  return fileIdentity;
+}
+
+async function pinStaticRoot(rootInput: string): Promise<PinnedStaticRoot> {
+  const physicalPath = await realpath(path.resolve(rootInput));
+  const stats = await lstat(physicalPath, { bigint: true });
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error("Observer static roots must be physical directories.");
+  }
+  return Object.freeze({ dev: stats.dev, ino: stats.ino, physicalPath });
+}
+
+async function assertPinnedStaticRoot(root: PinnedStaticRoot): Promise<void> {
+  const stats = await lstat(root.physicalPath, { bigint: true });
+  if (
+    stats.isSymbolicLink()
+    || !stats.isDirectory()
+    || stats.dev !== root.dev
+    || stats.ino !== root.ino
+    || await realpath(root.physicalPath) !== root.physicalPath
+  ) {
+    throw new Error("Observer static root identity changed.");
+  }
 }
 
 function listen(server: Server, port: number): Promise<number> {

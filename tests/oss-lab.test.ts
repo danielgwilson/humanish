@@ -1,6 +1,6 @@
 import { CommanderError } from "commander";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { link, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_OSS_REPOS,
   normalizeOssRepoSlugs,
+  runOssLab,
   validateOssRepoSlug
 } from "../src/oss-lab.js";
 import { buildObserverData } from "../src/observer-data.js";
@@ -18,14 +19,12 @@ import {
   buildOssRepoAssignments,
   cleanupOssMetaLabSandboxes,
   cleanupStaleOssMetaLabSandboxes,
-  collectOssMetaLabPrivateEnv,
   collectOssMetaLabRemoteEnv,
   normalizeHostActorRecommendedProof,
   preflightOssMetaActorApiKey,
   preflightOssMetaRepoAccess,
   publicSafeOssMetaBundle,
-  runOssMetaLab,
-  sandboxIdsForOssMetaLabCleanup
+  runOssMetaLab
 } from "../src/oss-meta-lab.js";
 import type { OssMetaLabCompletion, OssMetaLabResult } from "../src/oss-meta-lab.js";
 import {
@@ -251,27 +250,6 @@ describe("OSS lab command", () => {
     });
   });
 
-  it("isolates provider secrets under Humanish-private remote env names", () => {
-    expect(collectOssMetaLabPrivateEnv({
-      CODEX_ACCESS_TOKEN: "codex-access-token-test",
-      CODEX_APP_SERVER_CLIENT_URL: "https://codex-app-server.example/session/client-token-test",
-      E2B_API_KEY: "must-not-forward-to-remote-env",
-      GH_TOKEN: "github-token-test",
-      OPENAI_API_KEY: "openai-token-test"
-    })).toEqual({
-      HUMANISH_CODEX_ACCESS_TOKEN: "codex-access-token-test",
-      HUMANISH_CODEX_API_KEY: "openai-token-test",
-      HUMANISH_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/client-token-test",
-      HUMANISH_GITHUB_TOKEN: "github-token-test"
-    });
-
-    expect(collectOssMetaLabPrivateEnv({
-      GITHUB_PAT: "github-pat-test"
-    })).toEqual({
-      HUMANISH_GITHUB_TOKEN: "github-pat-test"
-    });
-  });
-
   it("preflights private GitHub repo clone access with askpass-scoped token auth after anonymous access fails", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-repo-preflight-"));
     const [assignment] = buildOssRepoAssignments(["example/private-fixture"], 1);
@@ -377,6 +355,45 @@ describe("OSS lab command", () => {
     }
   });
 
+  it("cleans only its captured physical repo-preflight temp root after a cwd alias retarget", async () => {
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "humanish-oss-repo-preflight-alias-"));
+    const physicalA = path.join(tempRoot, "physical-a");
+    const physicalB = path.join(tempRoot, "physical-b");
+    const cwdAlias = path.join(tempRoot, "cwd-alias");
+    await mkdir(physicalA);
+    await mkdir(physicalB);
+    await symlink(physicalA, cwdAlias, "dir");
+    const [assignment] = buildOssRepoAssignments(["example/public-fixture"], 1);
+    if (!assignment) throw new Error("Missing assignment.");
+
+    let capturedRoot = "";
+    let decoySentinel = "";
+    try {
+      const result = await preflightOssMetaRepoAccess({
+        assignments: [assignment],
+        cwd: cwdAlias,
+        env: {},
+        execFileImpl: async (_file, _args, options) => {
+          capturedRoot = options.cwd ?? "";
+          const rootId = path.basename(capturedRoot);
+          await unlink(cwdAlias);
+          await symlink(physicalB, cwdAlias, "dir");
+          decoySentinel = path.join(physicalB, ".humanish", "tmp", rootId, "must-survive.txt");
+          await mkdir(path.dirname(decoySentinel), { recursive: true });
+          await writeFile(decoySentinel, "B-SENTINEL", "utf8");
+          return { stderr: "", stdout: "" };
+        }
+      });
+
+      expect(result[0]?.ok).toBe(true);
+      expect(capturedRoot).toContain(`${path.sep}physical-a${path.sep}`);
+      await expect(stat(capturedRoot)).rejects.toMatchObject({ code: "ENOENT" });
+      expect(await readFile(decoySentinel, "utf8")).toBe("B-SENTINEL");
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("classifies missing GitHub clone auth without leaking private repo labels when redacted", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-repo-preflight-fail-"));
     const [assignment] = buildOssRepoAssignments(["example/private-fixture"], 1);
@@ -475,7 +492,7 @@ describe("OSS lab command", () => {
     })).toBe(false);
   });
 
-  it("cleans up unique OSS meta-lab sandboxes from attached watch stop", async () => {
+  it("never authorizes provider cleanup from mutable result sandbox IDs", async () => {
     const result = liveMetaResult({
       sandboxes: [
         { repo: "repo-01", sandboxId: "sandbox-a", streamId: "oss-01-desktop", urlPresent: true },
@@ -486,19 +503,17 @@ describe("OSS lab command", () => {
     });
     const killed: string[] = [];
 
-    expect(sandboxIdsForOssMetaLabCleanup(result)).toEqual(["sandbox-a", "sandbox-b"]);
-
     await expect(cleanupOssMetaLabSandboxes(result, {
       killSandbox: async (sandboxId) => {
         killed.push(sandboxId);
       },
       requestTimeoutMs: 123
     })).resolves.toEqual({
-      killed: 2,
-      skipped: 2,
-      errors: []
+      killed: 0,
+      skipped: 4,
+      errors: ["Stored OSS meta-lab sandbox IDs cannot authorize provider mutation; use the explicit metadata-verified orphan sweep."]
     });
-    expect(killed).toEqual(["sandbox-a", "sandbox-b"]);
+    expect(killed).toEqual([]);
   });
 
   it("cleans up stale OSS meta-lab sandboxes by provider metadata without exposing ids (explicit listSandboxes DI = opted in)", async () => {
@@ -568,18 +583,15 @@ describe("OSS lab command", () => {
     }
   });
 
-  it("redacts provider ids from cleanup errors when requested", async () => {
-    const result = liveMetaResult({
-      sandboxes: [
-        { repo: "repo-01", sandboxId: "sandbox-secret", streamId: "oss-01-desktop", urlPresent: true }
-      ]
-    });
-
-    const cleanup = await cleanupOssMetaLabSandboxes(result, {
+  it("redacts metadata-verified provider ids from orphan-sweep errors", async () => {
+    const cleanup = await cleanupStaleOssMetaLabSandboxes({
+      listSandboxes: async () => [{
+        sandboxId: "sandbox-secret",
+        metadata: { mode: "oss-meta-lab", tool: "humanish" }
+      }],
       killSandbox: async () => {
         throw new Error("failed to kill sandbox-secret");
-      },
-      redactIds: true
+      }
     });
 
     expect(cleanup.killed).toBe(0);
@@ -746,10 +758,12 @@ describe("OSS lab command", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Usage: humanish lab oss");
-    expect(result.stdout).toContain("Alias: run the bundled OSS meta-lab manifest");
+    expect(result.stdout).toContain("Alias: run the bundled OSS meta-lab dry-run contract");
     expect(result.stdout).toContain("--repos");
-    expect(result.stdout).toContain("humanish lab run oss");
+    expect(result.stdout).toContain("humanish lab run oss --dry-run");
     expect(result.stdout).toContain("humanish lab oss-smoke");
+    expect(result.stdout).toContain("No repo clone, provider sandbox, credential forwarding, or Codex actor runs");
+    expect(result.stdout).toContain("fails closed pending credential isolation");
   });
 
   it("keeps disposable-clone safety on lab oss-smoke", async () => {
@@ -762,12 +776,11 @@ describe("OSS lab command", () => {
     expect(result.stdout).toContain("removed by default");
   });
 
-  it("renders a no-network OSS meta-lab contract from --repos", async () => {
+  it("defaults the OSS alias to a no-network dry-run contract", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-"));
     const result = await runCli([
       "lab",
       "oss",
-      "--dry-run",
       "--json",
       "--no-open",
       "--cwd",
@@ -783,10 +796,14 @@ describe("OSS lab command", () => {
     expect(result.exitCode).toBe(0);
     const json = JSON.parse(result.stdout) as {
       assignments: Array<{ repo: string }>;
+      dryRun: boolean;
+      liveRequested: boolean;
       observer: { observerPath: string };
       schema: string;
     };
     expect(json.schema).toBe("humanish.oss-meta-lab-result.v1");
+    expect(json.dryRun).toBe(true);
+    expect(json.liveRequested).toBe(false);
     expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
       "repo-01",
       "repo-02",
@@ -814,23 +831,8 @@ describe("OSS lab command", () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-generic-"));
     await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish", "labs", "oss.yaml"), [
-      "schema: humanish.lab.v2",
-      "id: oss",
-      "subject:",
-      "  source: clone",
-      "  repos:",
-      "    - CorentinTh/it-tools",
-      "    - drawdb-io/drawdb",
-      "  clone:",
-      "    fanout: 2",
-      "execution:",
-      "  target: e2b-desktop",
-      "actors:",
-      "  - type: codex-app-server",
-      "scenario:",
-      "  mode: dry-run"
-    ].join("\n"), "utf8");
+    const bundledManifest = await readFile(path.join(process.cwd(), "humanish", "labs", "oss.yaml"), "utf8");
+    await writeFile(path.join(cwd, "humanish", "labs", "oss.yaml"), bundledManifest, "utf8");
 
     const result = await runCli([
       "lab",
@@ -854,8 +856,100 @@ describe("OSS lab command", () => {
     expect(json.dryRun).toBe(true);
     expect(json.assignments.map((assignment) => assignment.repo)).toEqual([
       "CorentinTh/it-tools",
-      "drawdb-io/drawdb"
+      "drawdb-io/drawdb",
+      "maciekt07/TodoApp",
+      "lissy93/dashy"
     ]);
+  });
+
+  it("stops the OSS smoke trial after init fails", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-smoke-init-failure-"));
+    const binDir = path.join(cwd, "bin");
+    const gitLogPath = path.join(cwd, "git-calls.log");
+    const previousPath = process.env.PATH;
+    const previousGitLog = process.env.HUMANISH_OSS_TEST_GIT_LOG;
+    await mkdir(binDir);
+    await writeFile(path.join(binDir, "git"), [
+      "#!/bin/sh",
+      "printf '%s\\n' \"$*\" >> \"$HUMANISH_OSS_TEST_GIT_LOG\"",
+      "if [ \"$1\" != clone ]; then exit 97; fi",
+      "for arg in \"$@\"; do clone_path=\"$arg\"; done",
+      "mkdir -p \"$clone_path\"",
+      "printf '{invalid-json' > \"$clone_path/package.json\"",
+      "exit 0",
+      ""
+    ].join("\n"), { encoding: "utf8", mode: 0o700 });
+    process.env.PATH = `${binDir}${path.delimiter}${previousPath ?? ""}`;
+    process.env.HUMANISH_OSS_TEST_GIT_LOG = gitLogPath;
+
+    try {
+      const result = await runOssLab({
+        cwd,
+        keep: true,
+        repos: ["example/broken-init"],
+        runId: "init-failure-stop"
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.repos).toHaveLength(1);
+      expect(result.repos[0]?.steps.map((step) => step.name)).toEqual([
+        "clone",
+        "humanish init"
+      ]);
+      expect(result.repos[0]?.steps[1]?.ok).toBe(false);
+      expect((await readFile(gitLogPath, "utf8")).trim().split("\n")).toHaveLength(1);
+      await expect(stat(path.join(
+        cwd,
+        ".humanish",
+        "tmp",
+        "oss-lab",
+        "init-failure-stop",
+        "example__broken-init",
+        ".humanish"
+      ))).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      if (previousGitLog === undefined) delete process.env.HUMANISH_OSS_TEST_GIT_LOG;
+      else process.env.HUMANISH_OSS_TEST_GIT_LOG = previousGitLog;
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a hardlinked OSS report target without mutating the external inode", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-report-hardlink-"));
+    const runId = "report-hardlink";
+    const reportRoot = path.join(cwd, ".humanish", "lab", "oss", runId);
+    const externalReport = path.join(cwd, "external-report.json");
+    const original = "{\"sentinel\":true}\n";
+    const binDir = path.join(cwd, "bin");
+    const previousPath = process.env.PATH;
+
+    await mkdir(reportRoot, { recursive: true });
+    await mkdir(binDir);
+    await writeFile(externalReport, original, "utf8");
+    await link(externalReport, path.join(reportRoot, "report.json"));
+    await writeFile(path.join(binDir, "git"), [
+      "#!/bin/sh",
+      "exit 1",
+      ""
+    ].join("\n"), { encoding: "utf8", mode: 0o700 });
+    process.env.PATH = `${binDir}${path.delimiter}${previousPath ?? ""}`;
+
+    try {
+      await expect(runOssLab({
+        cwd,
+        keep: true,
+        repos: ["example/unavailable"],
+        runId
+      })).rejects.toThrow(/single-link regular files|hardlinks/);
+      expect(await readFile(externalReport, "utf8")).toBe(original);
+      await expect(stat(path.join(reportRoot, "report.md"))).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("forces repo-label redaction when repos are overridden on the CLI (privacy invariant)", async () => {
@@ -889,246 +983,132 @@ describe("OSS lab command", () => {
     expect(result.stdout).not.toContain("example-private/secret-app");
   });
 
-  it("fails live launch closed into waiting lanes when E2B is absent", async () => {
-    const previousE2b = process.env.E2B_API_KEY;
-    const previousOpenai = process.env.OPENAI_API_KEY;
-    delete process.env.E2B_API_KEY;
-    delete process.env.OPENAI_API_KEY;
+  it("rejects live OSS meta-lab execution before callbacks, filesystem writes, or host commands", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-live-gate-"));
+    const binDir = path.join(cwd, "bin");
+    const markerPath = path.join(cwd, "host-command-invoked");
+    await mkdir(binDir);
+    await writeFile(path.join(binDir, "git"), [
+      "#!/bin/sh",
+      `printf invoked > ${JSON.stringify(markerPath)}`,
+      "exit 97",
+      ""
+    ].join("\n"), { encoding: "utf8", mode: 0o700 });
 
+    const envKeys = [
+      "CODEX_API_KEY",
+      "E2B_API_KEY",
+      "HUMANISH_OSS_META_HOST_CODEX_ACTOR",
+      "HUMANISH_OSS_META_REQUIRE_ACTOR",
+      "HUMANISH_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT",
+      "PATH"
+    ] as const;
+    const previous = Object.fromEntries(envKeys.map((key) => [key, process.env[key]])) as Record<(typeof envKeys)[number], string | undefined>;
+    process.env.CODEX_API_KEY = "test-codex-key";
+    process.env.E2B_API_KEY = "test-e2b-key";
+    process.env.HUMANISH_OSS_META_HOST_CODEX_ACTOR = "1";
+    process.env.HUMANISH_OSS_META_REQUIRE_ACTOR = "1";
+    process.env.HUMANISH_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT = "1";
+    process.env.PATH = `${binDir}${path.delimiter}${previous.PATH ?? ""}`;
+
+    let observerReady = false;
     try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-waiting-"));
-      const result = await runCli([
-        "lab",
-        "oss",
-        "--json",
-        "--no-open",
-        "--detach",
-        "--cwd",
-        cwd,
-        "--run-id",
-        "oss-meta-waiting-test",
-        "--repos",
-        "CorentinTh/it-tools",
-        "--count",
-        "1"
-      ]);
-
-      expect(result.exitCode).toBe(0);
-      const json = JSON.parse(result.stdout) as {
-        sandboxes: Array<{ bootstrapStatus?: string; urlPresent: boolean }>;
-        warnings: string[];
-      };
-      expect(json.sandboxes).toEqual([]);
-      expect(json.warnings.join("\n")).toContain("waiting on env vars");
-
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "oss-meta-waiting-test", "run.json"), "utf8")) as {
-        cwd: string;
-        mode: string;
-        review: { verdict: string };
-        simulations: Array<{ currentStep: string; status: string }>;
-        streams: Array<{ embed: { kind: string }; status: string }>;
-      };
-      expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
-      expect(bundle.mode).toBe("live");
-      expect(bundle.review.verdict).toBe("blocked");
-      expect(bundle.simulations[0]).toMatchObject({
-        status: "blocked",
-        currentStep: "Waiting for E2B_API_KEY before launching repo-01."
-      });
-      expect(bundle.streams[0]).toMatchObject({
-        status: "blocked",
-        embed: { kind: "placeholder" }
-      });
-    } finally {
-      if (previousE2b === undefined) {
-        delete process.env.E2B_API_KEY;
-      } else {
-        process.env.E2B_API_KEY = previousE2b;
-      }
-      if (previousOpenai === undefined) {
-        delete process.env.OPENAI_API_KEY;
-      } else {
-        process.env.OPENAI_API_KEY = previousOpenai;
-      }
-    }
-  });
-
-  it("renders an OSS meta-lab placeholder Observer before live substrate is available", async () => {
-    const previousE2b = process.env.E2B_API_KEY;
-    const previousOpenai = process.env.OPENAI_API_KEY;
-    delete process.env.E2B_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-
-    try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-immediate-observer-"));
-      let readyObserverPath = "";
-      let readyObserverDataPath = "";
       const result = await runOssMetaLab({
         count: 1,
         cwd,
-        onObserverReady: async (observer) => {
-          readyObserverPath = observer.observerPath ?? "";
-          readyObserverDataPath = observer.observerDataPath ?? "";
-          const observerData = JSON.parse(await readFile(path.join(cwd, readyObserverDataPath), "utf8")) as {
-            streams: Array<{ embed: { kind: string }; status: string }>;
-          };
-          expect(observerData.streams[0]).toMatchObject({
-            embed: { kind: "placeholder" },
-            status: "blocked"
-          });
+        onObserverReady: () => {
+          observerReady = true;
         },
-        redactRepoNames: true,
+        repos: ["private-owner/private-repo"],
+        runId: "live-isolation-gate"
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        dryRun: false,
+        liveRequested: true,
+        error: { code: "HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED" },
+        repos: ["repo-01"],
+        sandboxes: []
+      });
+      expect(result.error?.message).toContain("Use --dry-run");
+      expect(JSON.stringify(result)).not.toContain("private-owner/private-repo");
+      expect(observerReady).toBe(false);
+      await expect(stat(markerPath)).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(cwd, ".humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      for (const key of envKeys) {
+        const value = previous[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the OSS meta-lab dry-run contract available behind the live isolation gate", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-dry-run-gate-"));
+    let observerReady = false;
+    try {
+      const result = await runOssMetaLab({
+        count: 1,
+        cwd,
+        dryRun: true,
+        onObserverReady: () => {
+          observerReady = true;
+        },
         repos: ["CorentinTh/it-tools"],
-        runId: "oss-meta-immediate-observer-test"
+        runId: "dry-run-isolation-gate"
       });
 
       expect(result.ok).toBe(true);
-      expect(readyObserverPath).toBe(".humanish/runs/oss-meta-immediate-observer-test/observer/index.html");
-      expect(readyObserverDataPath).toBe(".humanish/runs/oss-meta-immediate-observer-test/observer/observer-data.json");
+      expect(result.dryRun).toBe(true);
+      expect(observerReady).toBe(true);
+      expect(await stat(path.join(cwd, ".humanish", "runs", "dry-run-isolation-gate", "run.json")))
+        .toMatchObject({});
     } finally {
-      if (previousE2b === undefined) {
-        delete process.env.E2B_API_KEY;
-      } else {
-        process.env.E2B_API_KEY = previousE2b;
-      }
-      if (previousOpenai === undefined) {
-        delete process.env.OPENAI_API_KEY;
-      } else {
-        process.env.OPENAI_API_KEY = previousOpenai;
-      }
-    }
-  });
-
-  it("fails actor-required live launch closed when Codex auth is absent", async () => {
-    const previousE2b = process.env.E2B_API_KEY;
-    const previousOpenai = process.env.OPENAI_API_KEY;
-    const previousCodexApiKey = process.env.CODEX_API_KEY;
-    const previousCodexAccessToken = process.env.CODEX_ACCESS_TOKEN;
-    const previousActorFirst = process.env.HUMANISH_OSS_META_ACTOR_FIRST;
-    const previousRequireActor = process.env.HUMANISH_OSS_META_REQUIRE_ACTOR;
-    process.env.E2B_API_KEY = "fake-e2b-key";
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.CODEX_API_KEY;
-    delete process.env.CODEX_ACCESS_TOKEN;
-    process.env.HUMANISH_OSS_META_ACTOR_FIRST = "1";
-    process.env.HUMANISH_OSS_META_REQUIRE_ACTOR = "1";
-
-    try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-actor-auth-waiting-"));
-      const result = await runCli([
-        "lab",
-        "oss",
-        "--json",
-        "--no-open",
-        "--detach",
-        "--cwd",
-        cwd,
-        "--run-id",
-        "oss-meta-actor-auth-waiting-test",
-        "--repos",
-        "CorentinTh/it-tools",
-        "--count",
-        "1"
-      ]);
-
-      expect(result.exitCode).toBe(0);
-      const json = JSON.parse(result.stdout) as { warnings: string[] };
-      expect(json.warnings.join("\n")).toContain("CODEX_API_KEY or CODEX_ACCESS_TOKEN");
-
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "oss-meta-actor-auth-waiting-test", "run.json"), "utf8")) as {
-        simulations: Array<{ currentStep: string; status: string }>;
-      };
-      expect(bundle.simulations[0]).toMatchObject({
-        status: "blocked",
-        currentStep: "Waiting for CODEX_API_KEY or CODEX_ACCESS_TOKEN before launching repo-01."
-      });
-    } finally {
-      if (previousE2b === undefined) delete process.env.E2B_API_KEY;
-      else process.env.E2B_API_KEY = previousE2b;
-      if (previousOpenai === undefined) delete process.env.OPENAI_API_KEY;
-      else process.env.OPENAI_API_KEY = previousOpenai;
-      if (previousCodexApiKey === undefined) delete process.env.CODEX_API_KEY;
-      else process.env.CODEX_API_KEY = previousCodexApiKey;
-      if (previousCodexAccessToken === undefined) delete process.env.CODEX_ACCESS_TOKEN;
-      else process.env.CODEX_ACCESS_TOKEN = previousCodexAccessToken;
-      if (previousActorFirst === undefined) delete process.env.HUMANISH_OSS_META_ACTOR_FIRST;
-      else process.env.HUMANISH_OSS_META_ACTOR_FIRST = previousActorFirst;
-      if (previousRequireActor === undefined) delete process.env.HUMANISH_OSS_META_REQUIRE_ACTOR;
-      else process.env.HUMANISH_OSS_META_REQUIRE_ACTOR = previousRequireActor;
-    }
-  });
-
-  it("fails actor-required live launch closed before E2B when actor API quota preflight fails", async () => {
-    const previousE2b = process.env.E2B_API_KEY;
-    const previousOpenai = process.env.OPENAI_API_KEY;
-    const previousCodexApiKey = process.env.CODEX_API_KEY;
-    const previousCodexAccessToken = process.env.CODEX_ACCESS_TOKEN;
-    const previousActorFirst = process.env.HUMANISH_OSS_META_ACTOR_FIRST;
-    const previousRequireActor = process.env.HUMANISH_OSS_META_REQUIRE_ACTOR;
-    const previousFetch = globalThis.fetch;
-    const fakeOpenAiKey = `sk-${"testsecretvalue1234567890abcd"}`;
-    process.env.E2B_API_KEY = "fake-e2b-key";
-    process.env.OPENAI_API_KEY = fakeOpenAiKey;
-    delete process.env.CODEX_API_KEY;
-    delete process.env.CODEX_ACCESS_TOKEN;
-    process.env.HUMANISH_OSS_META_ACTOR_FIRST = "1";
-    process.env.HUMANISH_OSS_META_REQUIRE_ACTOR = "1";
-    globalThis.fetch = (async () => new Response(JSON.stringify({
-      error: {
-        code: "insufficient_quota",
-        message: `Quota exceeded for ${fakeOpenAiKey}.`
-      }
-    }), { status: 429 })) as typeof fetch;
-
-    try {
-      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-actor-preflight-"));
-      const result = await runCli([
-        "lab",
-        "oss",
-        "--json",
-        "--no-open",
-        "--detach",
-        "--cwd",
-        cwd,
-        "--run-id",
-        "oss-meta-actor-preflight-test",
-        "--repos",
-        "CorentinTh/it-tools",
-        "--count",
-        "1"
-      ]);
-
-      expect(result.exitCode).toBe(0);
-      const json = JSON.parse(result.stdout) as { warnings: string[] };
-      expect(json.warnings.join("\n")).toContain("actor API-key preflight blocked");
-      expect(json.warnings.join("\n")).toContain("[redacted-openai-key]");
-      expect(json.warnings.join("\n")).not.toContain("Invalid API key format");
-      expect(json.warnings.join("\n")).not.toContain("sk-testsecretvalue");
-
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "oss-meta-actor-preflight-test", "run.json"), "utf8")) as {
-        review: { verdict: string };
-        simulations: Array<{ currentStep: string; status: string }>;
-      };
-      expect(bundle.review.verdict).toBe("blocked");
-      expect(bundle.simulations[0]).toMatchObject({
-        status: "blocked",
-        currentStep: "Waiting for Codex actor API quota/auth preflight before launching repo-01."
-      });
       await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps OSS meta-lab writes on the captured physical run after an Observer-ready cwd retarget", async () => {
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-callback-retarget-"));
+    const physicalA = path.join(tempRoot, "physical-a");
+    const physicalB = path.join(tempRoot, "physical-b");
+    const cwdAlias = path.join(tempRoot, "cwd-alias");
+    const runId = "callback-retarget";
+    await mkdir(physicalA);
+    await mkdir(physicalB);
+    await symlink(physicalA, cwdAlias, "dir");
+
+    try {
+      const result = await runOssMetaLab({
+        count: 1,
+        cwd: cwdAlias,
+        dryRun: true,
+        onObserverReady: async () => {
+          await unlink(cwdAlias);
+          await symlink(physicalB, cwdAlias, "dir");
+          const decoyRun = path.join(physicalB, ".humanish", "runs", runId);
+          await mkdir(decoyRun, { recursive: true });
+          await writeFile(path.join(decoyRun, "must-survive.txt"), "B-SENTINEL", "utf8");
+        },
+        repos: ["CorentinTh/it-tools"],
+        runId
+      });
+
+      expect(result.ok).toBe(true);
+      expect(await readFile(path.join(physicalB, ".humanish", "runs", runId, "must-survive.txt"), "utf8"))
+        .toBe("B-SENTINEL");
+      await expect(stat(path.join(physicalB, ".humanish", "runs", runId, "run.json")))
+        .rejects.toMatchObject({ code: "ENOENT" });
+      expect(await stat(path.join(physicalA, ".humanish", "runs", runId, "run.json")))
+        .toMatchObject({});
+      expect(await stat(path.join(physicalA, ".humanish", "runs", runId, "observer", "index.html")))
+        .toMatchObject({});
     } finally {
-      globalThis.fetch = previousFetch;
-      if (previousE2b === undefined) delete process.env.E2B_API_KEY;
-      else process.env.E2B_API_KEY = previousE2b;
-      if (previousOpenai === undefined) delete process.env.OPENAI_API_KEY;
-      else process.env.OPENAI_API_KEY = previousOpenai;
-      if (previousCodexApiKey === undefined) delete process.env.CODEX_API_KEY;
-      else process.env.CODEX_API_KEY = previousCodexApiKey;
-      if (previousCodexAccessToken === undefined) delete process.env.CODEX_ACCESS_TOKEN;
-      else process.env.CODEX_ACCESS_TOKEN = previousCodexAccessToken;
-      if (previousActorFirst === undefined) delete process.env.HUMANISH_OSS_META_ACTOR_FIRST;
-      else process.env.HUMANISH_OSS_META_ACTOR_FIRST = previousActorFirst;
-      if (previousRequireActor === undefined) delete process.env.HUMANISH_OSS_META_REQUIRE_ACTOR;
-      else process.env.HUMANISH_OSS_META_REQUIRE_ACTOR = previousRequireActor;
+      await unlink(cwdAlias).catch(() => undefined);
+      await rm(tempRoot, { recursive: true, force: true });
     }
   });
 

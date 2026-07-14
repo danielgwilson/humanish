@@ -1,8 +1,20 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { loadRunBundle, verifyRun } from "./run.js";
+import { loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
+import {
+  bindExistingRunArtifactPaths,
+  isSafeRunIdSegment,
+  resolveLatestRunDirectory,
+  type PreparedRunArtifactPaths,
+  validatePreparedRunArtifactPaths
+} from "./run-paths.js";
+import {
+  bindExistingManagedHumanishOutputDirectory,
+  readContainedRegularFile,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
 export const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";
@@ -56,12 +68,31 @@ export interface FeedbackResult {
   };
 }
 
-export async function draftFeedback(cwdInput: string, runInput: string): Promise<FeedbackResult> {
-  const cwd = path.resolve(cwdInput);
-  const loaded = await loadRunBundle(cwd, runInput);
+type LoadedRunBundle = NonNullable<Awaited<ReturnType<typeof loadRunBundlePrepared>>>;
 
-  if (!loaded) {
-    return {
+interface FeedbackRunContext {
+  cwd: string;
+  loaded: LoadedRunBundle;
+  physicalCwd: string;
+  preparedRunPaths: PreparedRunArtifactPaths;
+  storedRunId: string;
+}
+
+interface BoundFeedbackResult {
+  context?: FeedbackRunContext;
+  result: FeedbackResult;
+}
+
+export async function draftFeedback(cwdInput: string, runInput: string): Promise<FeedbackResult> {
+  return (await draftFeedbackBound(cwdInput, runInput)).result;
+}
+
+async function draftFeedbackBound(cwdInput: string, runInput: string): Promise<BoundFeedbackResult> {
+  const cwd = path.resolve(cwdInput);
+  const context = await resolveFeedbackRunContext(cwd, runInput);
+
+  if (!context) {
+    return { result: {
       schema: FEEDBACK_RESULT_SCHEMA,
       ok: false,
       cwd,
@@ -70,12 +101,17 @@ export async function draftFeedback(cwdInput: string, runInput: string): Promise
         code: "HUMANISH_RUN_NOT_FOUND",
         message: `Run not found: ${runInput}`
       }
-    };
+    } };
   }
 
-  const verified = await verifyRun(cwd, runInput);
+  const verified = await verifyRunPrepared(
+    context.physicalCwd,
+    context.storedRunId,
+    context.preparedRunPaths
+  );
+  await validatePreparedRunArtifactPaths(context.preparedRunPaths);
   if (!verified.ok) {
-    return {
+    return { context, result: {
       schema: FEEDBACK_RESULT_SCHEMA,
       ok: false,
       cwd,
@@ -84,11 +120,11 @@ export async function draftFeedback(cwdInput: string, runInput: string): Promise
         code: "HUMANISH_INVALID_RUN_BUNDLE",
         message: verified.error?.message ?? "Run bundle failed verification."
       }
-    };
+    } };
   }
 
   if (verified.shareSafety.status !== "share_ready") {
-    return {
+    return { context, result: {
       schema: FEEDBACK_RESULT_SCHEMA,
       ok: false,
       cwd,
@@ -98,51 +134,62 @@ export async function draftFeedback(cwdInput: string, runInput: string): Promise
         code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
         message: `Run is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((reason) => reason.code).join(", ")}`
       }
-    };
+    } };
   }
 
-  const draft = buildDraft(loaded.bundle, loaded.bundlePath);
-  const feedbackDir = path.join(loaded.runDir, "feedback");
-  const draftPath = path.join(feedbackDir, "draft.json");
-  await mkdir(feedbackDir, { recursive: true });
-  await writeJson(draftPath, draft);
+  const draft = buildDraft(context.loaded.bundle, context.loaded.bundlePath);
+  const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
+  await writeJson(context.preparedRunPaths, path.join("feedback", "draft.json"), draft);
 
-  return {
+  return { context, result: {
     schema: FEEDBACK_RESULT_SCHEMA,
     ok: true,
     cwd,
     run: runInput,
-    draftPath: path.relative(cwd, draftPath),
+    draftPath,
     draft
-  };
+  } };
 }
 
 export async function verifyFeedback(cwdInput: string, runInput: string): Promise<FeedbackResult> {
-  const drafted = await draftFeedback(cwdInput, runInput);
+  return (await verifyFeedbackBound(cwdInput, runInput)).result;
+}
 
-  if (!drafted.ok || !drafted.draft) {
+async function verifyFeedbackBound(cwdInput: string, runInput: string): Promise<BoundFeedbackResult> {
+  const drafted = await draftFeedbackBound(cwdInput, runInput);
+
+  if (!drafted.result.ok || !drafted.result.draft || !drafted.context) {
     return drafted;
   }
 
   const missingEvidence = [];
-  for (const evidence of drafted.draft.evidence) {
-    if (!await fileExists(path.join(drafted.cwd, evidence.path))) {
+  for (const evidence of drafted.result.draft.evidence) {
+    if (!await isSafeFeedbackEvidenceFile(drafted.context, evidence.path)) {
       missingEvidence.push(evidence.path);
     }
   }
 
   if (missingEvidence.length > 0) {
-    return {
-      ...drafted,
+    return { context: drafted.context, result: {
+      ...drafted.result,
       ok: false,
       error: {
         code: "HUMANISH_INVALID_FEEDBACK_DRAFT",
         message: `Feedback evidence missing: ${missingEvidence.join(", ")}`
       }
-    };
+    } };
   }
 
   return drafted;
+}
+
+async function isSafeFeedbackEvidenceFile(context: FeedbackRunContext, evidencePath: string): Promise<boolean> {
+  const absolute = path.resolve(context.physicalCwd, evidencePath);
+  const relative = path.relative(context.preparedRunPaths.physicalRunRoot, absolute);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return false;
+  }
+  return await readContainedRegularFile(context.preparedRunPaths, relative) !== null;
 }
 
 export async function renderIssueMarkdown(
@@ -150,24 +197,19 @@ export async function renderIssueMarkdown(
   runInput: string,
   repo: string
 ): Promise<FeedbackResult> {
-  const verified = await verifyFeedback(cwdInput, runInput);
+  const verified = await verifyFeedbackBound(cwdInput, runInput);
 
-  if (!verified.ok || !verified.draft || !verified.draftPath) {
-    return verified;
+  if (!verified.result.ok || !verified.result.draft || !verified.result.draftPath || !verified.context) {
+    return verified.result;
   }
 
-  const loaded = await loadRunBundle(verified.cwd, runInput);
-  if (!loaded) {
-    return verified;
-  }
-
-  const issueMarkdown = renderMarkdown(verified.draft, repo);
-  const issuePath = path.join(loaded.runDir, "feedback", "issue.md");
-  await writeFile(issuePath, issueMarkdown, "utf8");
+  const issueMarkdown = renderMarkdown(verified.result.draft, repo);
+  const issuePath = path.join(verified.context.preparedRunPaths.relativeRunRoot, "feedback", "issue.md");
+  await writeContainedOutputFile(verified.context.preparedRunPaths, path.join("feedback", "issue.md"), issueMarkdown, "utf8");
 
   return {
-    ...verified,
-    issuePath: path.relative(verified.cwd, issuePath),
+    ...verified.result,
+    issuePath,
     issueMarkdown
   };
 }
@@ -188,9 +230,9 @@ export async function renderIssueUrl(cwdInput: string, runInput: string, repo: s
 
 export async function listFeedback(cwdInput: string, runInput: string): Promise<FeedbackResult> {
   const cwd = path.resolve(cwdInput);
-  const loaded = await loadRunBundle(cwd, runInput);
+  const context = await resolveFeedbackRunContext(cwd, runInput);
 
-  if (!loaded) {
+  if (!context) {
     return {
       schema: FEEDBACK_RESULT_SCHEMA,
       ok: false,
@@ -203,17 +245,63 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
     };
   }
 
-  const draftPath = path.join(loaded.runDir, "feedback", "draft.json");
-  const draftText = await readTextIfExists(draftPath);
-  const draft = draftText === null ? undefined : JSON.parse(draftText) as FeedbackDraft;
+  const draftBytes = await readContainedRegularFile(context.preparedRunPaths, path.join("feedback", "draft.json"));
+  const draft = draftBytes === null ? undefined : JSON.parse(draftBytes.toString("utf8")) as FeedbackDraft;
+  const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
 
   return {
     schema: FEEDBACK_RESULT_SCHEMA,
     ok: true,
     cwd,
     run: runInput,
-    ...(draft ? { draftPath: path.relative(cwd, draftPath), draft } : {})
+    ...(draft ? { draftPath, draft } : {})
   };
+}
+
+async function resolveFeedbackRunContext(cwd: string, runInput: string): Promise<FeedbackRunContext | null> {
+  let physicalCwd: string;
+  try {
+    physicalCwd = await realpath(cwd);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+  let storedRunId = runInput;
+  let preparedRunPaths: PreparedRunArtifactPaths;
+  if (runInput === "latest") {
+    const runsRoot = await bindExistingManagedHumanishOutputDirectory(physicalCwd, "runs");
+    if (!runsRoot) return null;
+    const pointerBytes = await readContainedRegularFile(runsRoot, "latest.json");
+    if (!pointerBytes) return null;
+    const pointer = JSON.parse(pointerBytes.toString("utf8")) as { path?: unknown; runId?: unknown };
+    if (
+      typeof pointer.runId !== "string"
+      || typeof pointer.path !== "string"
+      || !resolveLatestRunDirectory(physicalCwd, { path: pointer.path, runId: pointer.runId })
+    ) {
+      return null;
+    }
+    storedRunId = pointer.runId;
+    preparedRunPaths = await bindExistingRunArtifactPaths(physicalCwd, storedRunId);
+    if (
+      preparedRunPaths.physicalRunsRoot !== runsRoot.physicalPath
+      || preparedRunPaths.runsRootIdentity.dev !== runsRoot.identity.dev
+      || preparedRunPaths.runsRootIdentity.ino !== runsRoot.identity.ino
+    ) {
+      throw new Error("Feedback runs root changed physical destination.");
+    }
+  } else {
+    if (!isSafeRunIdSegment(runInput)) return null;
+    const boundRunPaths = await bindExistingRunArtifactPaths(physicalCwd, storedRunId).catch(() => null);
+    if (!boundRunPaths) return null;
+    preparedRunPaths = boundRunPaths;
+  }
+  const loaded = await loadRunBundlePrepared(physicalCwd, preparedRunPaths);
+  if (!loaded) return null;
+  await validatePreparedRunArtifactPaths(preparedRunPaths);
+  return { cwd, loaded, physicalCwd, preparedRunPaths, storedRunId };
 }
 
 function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
@@ -375,30 +463,6 @@ function encodeGitHubRepoPath(repo: string): string {
   return repo.split("/").map((part) => encodeURIComponent(part)).join("/");
 }
 
-async function writeJson(filePath: string, value: unknown): Promise<void> {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-}
-
-async function readTextIfExists(filePath: string): Promise<string | null> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    return (await stat(filePath)).isFile();
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return false;
-    }
-
-    throw error;
-  }
+async function writeJson(root: PreparedRunArtifactPaths, relativePath: string, value: unknown): Promise<void> {
+  await writeContainedOutputFile(root, relativePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }

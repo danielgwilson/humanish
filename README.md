@@ -121,11 +121,11 @@ npx humanish watch --json --no-open
 | `humanish lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
 | `humanish lab run <lab>` | Run a lab manifest in human or JSON mode. |
 | `humanish verify` | Validate a run bundle and public-safety gates. |
-| `humanish cleanup` | Clean resources explicitly recorded as owned by a run and write `cleanup.json`. |
+| `humanish cleanup` | Inspect recorded resource evidence and write `cleanup.json`; stored IDs do not authorize provider mutation. |
 | `humanish review` | Read review evidence for a run. |
 | `humanish runs` | List local runs and latest pointers. |
 | `humanish feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
-| `humanish lab run oss` | Repo-maintainer dogfood example: Observer-of-Observers for headed authorized-repo app setup attempts. |
+| `humanish lab run oss` | Repo-maintainer contract example: dry-run Observer-of-Observers for authorized repo selections. |
 | `humanish lab run oss-smoke` | Repo-maintainer dogfood example: disposable clone smoke test against public OSS repos. |
 
 ## Exit Codes
@@ -283,16 +283,22 @@ selected lane ids, and previous lane statuses; the source run's verdict is left 
 This is intentionally not automatic retry; a passing rerun is evidence of a
 nondeterminism candidate, not permission to erase the original red lane.
 
-**Run-owned cleanup.** Live providers can record exact owned resources in `run.json`.
-After a run, reclaim only those resources and write a durable receipt:
+**Run-owned cleanup.** Live providers can record resource evidence in `run.json`.
+Stored bundle IDs are mutable evidence, not provider-mutation authority. The
+cleanup command writes a durable inspection receipt until Humanish has a
+verified resource-lease contract. Resources already recorded as killed become
+`already_clean`; recorded live or unknown resources become `failed`, which
+makes cleanup and verification fail closed:
 
 ```bash
 npx humanish cleanup --run latest
 npx humanish verify --run latest
 ```
 
-Cleanup is exact-id only; Humanish does not enumerate or bulk-delete provider
-accounts from this command.
+Humanish does not enumerate or bulk-delete provider accounts from this command.
+Same-process teardown uses trusted in-memory provider handles. The separate OSS
+orphan sweep is maintainer-only, opt-in, and verifies provider metadata before
+calling provider cleanup.
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
 subject env provisioned — the same trust class as a repo's package.json scripts.
@@ -358,43 +364,36 @@ and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
 
 ## Maintainer OSS Meta-Lab Example
 
-This repository includes an experimental authorized-repo dogfood lab:
+This repository includes a contract-only authorized-repo dogfood lab:
 
 ```bash
 pnpm humanish -- watch oss
-pnpm humanish -- lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+pnpm humanish -- lab run oss --dry-run --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
 ```
 
 Default lab targets are intentionally app/tool-like repos with visible,
 locally runnable user surfaces. Avoid libraries and frameworks for public
 dogfood unless the scenario is explicitly testing developer experience.
 
-With `E2B_API_KEY` and `OPENAI_API_KEY` present, Humanish launches headed E2B
-desktop lanes, uploads the local package tarball, clones each assigned
-repository inside the sandbox, initializes Humanish, runs nested proof commands,
-starts the target app when a runnable script is present, opens desktop/mobile
-app windows plus the nested Observer in the sandbox browser, and starts a
-nonblocking Codex actor attempt.
-Install the optional desktop substrate first:
-
-```bash
-npm i -D @e2b/desktop
-```
-
-The contract-safe path for agents and CI is:
+The bundled manifest defaults to dry-run and creates contract evidence without
+cloning repos, launching a provider sandbox, or forwarding credentials. Use:
 
 ```bash
 pnpm humanish -- lab run oss --dry-run --json --no-open
 ```
 
-The `oss` lab accepts GitHub `owner/repo` slugs. Private repositories are
-maintainer-only and should be supplied from ignored local lab manifests with an
-authorized `GH_TOKEN` or `GITHUB_TOKEN` loaded via `--env-file`. When a GitHub
-token is present, durable run artifacts redact repo labels by default; pass
-`--no-redact-repos` only for public-safe repo selections. Live E2B stream URLs
-are runtime-only for the attached Observer server and are not persisted to
-`run.json` or `observer-data.json`. Local bundles remain ignored under
-`.humanish/`; do not publish private screenshots, logs, or upstream details.
+Live OSS meta-lab execution is unavailable until repository-derived instructions
+have an isolated credential boundary. A live manifest fails closed with
+`HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED` before callbacks, filesystem writes,
+network access, or provider launch.
+
+The `oss` lab accepts GitHub `owner/repo` slugs. A CLI `--repos` override redacts
+repo labels in durable artifacts by default; pass `--no-redact-repos` only for a
+public-safe selection. Dry-run does not access or clone repositories and does
+not need or use private-repository credentials. Private-repository execution
+remains unavailable while the live lane is disabled. Local bundles remain
+ignored under `.humanish/`; do not publish private screenshots, logs, or
+upstream details.
 
 ## Development
 
@@ -416,13 +415,16 @@ pnpm humanish:lab:list
 
 ## Docs
 
+Start with the current safety and capability state. Dated design documents may
+preserve historical mechanisms and carry explicit amendments near the top.
+
+- [Current safety state and goals](docs/goals/current.md)
 - [Ramp for future contributors and agents](docs/ramp/README.md)
-- [Current goals](docs/goals/current.md)
 - [Project layout](docs/architecture/project-layout.md)
 - [Observer architecture](docs/architecture/observer.md)
 - [Actor contract (pluggable harnesses)](docs/architecture/actor-contract.md)
 - [State-driven executor (drive a local app, no E2B/vision)](docs/architecture/state-driven-executor.md)
-- [OSS lab POC](docs/architecture/oss-lab-poc.md)
+- [OSS lab design record (historical; see its current safety amendment)](docs/architecture/oss-lab-poc.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Open-source install experience](docs/product/open-source-install-experience.md)
 - [Self-driving harness principles](docs/principles/self-driving-harness.md)

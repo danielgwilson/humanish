@@ -1,9 +1,15 @@
 import { spawn } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
 
 import { digestText, publicPathForTrace, redactText, tailText } from "./redaction.js";
+import {
+  prepareContainedOutputDirectory,
+  prepareContainedOutputFile,
+  prepareSelectedOutputDirectory,
+  type PreparedOutputDirectory,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "humanish.codex-app-server-trace.v1";
 
@@ -164,15 +170,27 @@ const pathLikeKey = /^(cwd|path|writableRoots|workspaceRoot)$/i;
 export async function runCodexAppServerSession(
   options: CodexAppServerRunOptions
 ): Promise<CodexAppServerRunResult> {
+  const preparedRunRoot = await prepareSelectedOutputDirectory(process.cwd(), options.runRoot);
+  return runCodexAppServerSessionInPreparedRoot(options, preparedRunRoot);
+}
+
+/** Internal UI seam: the selected root was already prepared and must not be re-authorized. */
+export async function runCodexAppServerSessionInPreparedRoot(
+  options: CodexAppServerRunOptions,
+  runRoot: PreparedOutputDirectory
+): Promise<CodexAppServerRunResult> {
   const startedAt = new Date();
   const startedMs = Date.now();
   const relativeDir = "codex-app-server";
   const eventsPath = path.join(relativeDir, "events.ndjson");
   const tracePath = path.join(relativeDir, "summary.json");
   const transcriptPath = path.join(relativeDir, "transcript.txt");
-  const absoluteEventsPath = path.join(options.runRoot, eventsPath);
-  const absoluteTracePath = path.join(options.runRoot, tracePath);
-  const absoluteTranscriptPath = path.join(options.runRoot, transcriptPath);
+  await prepareContainedOutputDirectory(runRoot, relativeDir);
+  await Promise.all([
+    prepareContainedOutputFile(runRoot, eventsPath),
+    prepareContainedOutputFile(runRoot, tracePath),
+    prepareContainedOutputFile(runRoot, transcriptPath)
+  ]);
   const commandParts = resolveAppServerCommand(options.actorCommand);
   const childEnv = resolveCodexAppServerEnv(process.env);
   const apiKey = appServerApiKeyForLogin(childEnv);
@@ -205,8 +223,6 @@ export async function runCodexAppServerSession(
     reject: (error: Error) => void;
     resolve: (value: JsonObject) => void;
   }>();
-
-  await mkdir(path.dirname(absoluteEventsPath), { recursive: true });
 
   const appendEnvelope = (direction: "client" | "server", message: unknown): void => {
     const redacted = redactCodexEnvelope(message, options.cwd);
@@ -348,9 +364,14 @@ export async function runCodexAppServerSession(
       status
     });
     const transcriptText = recorder.renderTranscript();
-    await writeFile(absoluteEventsPath, `${envelopes.join("\n")}${envelopes.length > 0 ? "\n" : ""}`, "utf8");
-    await writeFile(absoluteTracePath, `${JSON.stringify(trace, null, 2)}\n`, "utf8");
-    await writeFile(absoluteTranscriptPath, transcriptText.length > 0 ? transcriptText : "No Codex app-server transcript output captured.\n", "utf8");
+    await writeContainedOutputFile(runRoot, eventsPath, `${envelopes.join("\n")}${envelopes.length > 0 ? "\n" : ""}`, "utf8");
+    await writeContainedOutputFile(runRoot, tracePath, `${JSON.stringify(trace, null, 2)}\n`, "utf8");
+    await writeContainedOutputFile(
+      runRoot,
+      transcriptPath,
+      transcriptText.length > 0 ? transcriptText : "No Codex app-server transcript output captured.\n",
+      "utf8"
+    );
     return {
       status,
       reason,

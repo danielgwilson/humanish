@@ -4,6 +4,14 @@ Date: 2026-06-01
 
 Status: product target for the first world-class `humanish` implementation.
 
+Safety amendment (2026-07-14): the `0.15.1` package binds managed run and
+output storage to validated physical paths, treats provider IDs persisted in a
+run bundle as evidence rather than cleanup authority, and disables live OSS
+meta-lab execution until repository-derived instructions have an isolated
+credential boundary. The historical product target below remains useful for
+intent and sequencing, but current behavior is defined by the README and
+[`docs/goals/current.md`](../goals/current.md).
+
 ## Product Promise
 
 Drop Humanish into an app and let a coding agent set up realistic persona
@@ -171,7 +179,7 @@ Suggested scripts:
 | `humanish lab inspect <lab>` | Read a lab manifest | Print the parsed lab config, origin, path, and warnings without executing |
 | `humanish lab preflight <lab>` | Check lab readiness before spend | Validate routing and optionally probe declared targets from a hosted desktop without launching actors |
 | `humanish lab run <lab>` | Run a lab manifest | Human or JSON execution path for synthetic, OSS meta, and smoke labs |
-| `humanish lab run oss` | Maintainer dogfood example | Open the Observer-of-Observers with headed desktop lanes assigned by `--repos`, target app windows, nested Observers, runtime-only stream URLs, and redacted durable evidence for token-backed runs |
+| `humanish lab run oss` | Maintainer contract example | Render a dry-run Observer-of-Observers contract for selected repo labels; live execution fails closed pending credential isolation |
 | `humanish lab run oss-smoke` | Maintainer smoke example | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones |
 | `humanish feedback issue` | Produce public-safe issue draft | Print Markdown or prefilled issue URL, no GitHub API mutation |
 

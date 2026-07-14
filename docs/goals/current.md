@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-07-08 (rev 13)
+Status date: 2026-07-14 (rev 14)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -15,6 +15,21 @@ Humanish should be the open-source CLI that lets a maintainer ask:
 
 The answer should be observable, verifiable, public-safe, and easy to turn into
 actionable feedback.
+
+## Current Safety State (`0.15.1`)
+
+- Managed run, Observer, feedback, lab, actor-output, and source-archive paths
+  bind to validated physical filesystem identities and fail closed on unsafe
+  traversal, link, special-file, or retargeting states.
+- Provider IDs stored in `run.json` are mutable evidence, not cleanup
+  authority. `humanish cleanup` writes an inspection receipt; same-process
+  teardown continues to use the provider handles that created the resources.
+- The bundled `oss` manifest defaults to dry-run. Live OSS meta-lab execution
+  fails with `HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED` before side effects
+  until repository-derived instructions have an isolated credential boundary.
+- Ordinary Git repositories and verified linked worktrees remain supported.
+  Git metadata that cannot pass containment validation is recorded as
+  unavailable rather than followed.
 
 ## Definition Of Awesome
 
@@ -340,6 +355,10 @@ Minimum acceptance:
 
 Make the maintainer `oss` lab report nested lane health back into the
 top-level Observer instead of relying on a human watching the desktops.
+
+The `0.15.1` safety state above governs this lane. The completed bullets below
+record prior capability and evidence shape; they do not mean the live
+entrypoint is currently enabled.
 
 Minimum acceptance:
 

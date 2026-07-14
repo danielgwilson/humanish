@@ -1,7 +1,7 @@
 schema: humanish.lab.v2
 id: oss
 title: OSS meta-lab dogfood
-description: Experimental Observer-of-Observers for authorized repos; useful for maintainer dogfood and disposable public app trials.
+description: Contract-only Observer-of-Observers for authorized repo selections; live execution is gated pending credential isolation.
 subject:
   source: clone
   repos:
@@ -16,6 +16,6 @@ actors:
 execution:
   target: e2b-desktop
 scenario:
-  mode: live
+  mode: dry-run
 defaults:
   open: true

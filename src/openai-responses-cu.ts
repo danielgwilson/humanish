@@ -1,9 +1,12 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
 import type { ActorCapabilities } from "./actor-contract.js";
 import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { redactText } from "./redaction.js";
+import {
+  prepareContainedOutputFile,
+  prepareSelectedOutputDirectory,
+  type PreparedSelectedOutputDirectory,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
 // behind the CuaProvider port from src/computer-use.ts. It mirrors the
@@ -500,16 +503,27 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   // zero behavior change. The counter is per-provider, so file order is call order.
   const captureDir = optionalString((options.env ?? process.env)[WIRE_CAPTURE_ENV]?.trim());
   let captureCount = 0;
+  let preparedCaptureRoot: Promise<PreparedSelectedOutputDirectory> | undefined;
+
+  const prepareNextCapture = async (): Promise<PreparedSelectedOutputDirectory | undefined> => {
+    if (captureDir === undefined) return undefined;
+    preparedCaptureRoot ??= prepareSelectedOutputDirectory(process.cwd(), captureDir);
+    const captureRoot = await preparedCaptureRoot;
+    await prepareContainedOutputFile(captureRoot, wireCaptureFileName(captureCount + 1));
+    return captureRoot;
+  };
 
   // Persist one successful RESPONSE body, redacted and pretty-printed. Fails loud:
   // a silent capture failure would mean missing turns in a fixture refresh — the
   // exact "fixtures drift from the wire" pathology capture exists to prevent.
   const captureResponse = async (raw: unknown): Promise<void> => {
     if (captureDir === undefined) return;
+    const captureRoot = await prepareNextCapture();
+    if (!captureRoot) return;
     captureCount += 1;
-    await mkdir(captureDir, { recursive: true });
-    await writeFile(
-      path.join(captureDir, wireCaptureFileName(captureCount)),
+    await writeContainedOutputFile(
+      captureRoot,
+      wireCaptureFileName(captureCount),
       `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
       "utf8"
     );
@@ -532,6 +546,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   // ZdrError; any other non-ok status throws with the STATUS ONLY (never the
   // body, which can echo the input/screenshot).
   const post = async (body: Record<string, unknown>, signal: AbortSignal | undefined): Promise<unknown> => {
+    // Preflight the deterministic next capture leaf before any network side
+    // effect. A hostile generated path must fail with zero provider calls.
+    await prepareNextCapture();
     const headers: Record<string, string> = {
       Authorization: `Bearer ${options.apiKey}`,
       "Content-Type": "application/json"
@@ -596,6 +613,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,
     async nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn> {
+      await prepareNextCapture();
       const ctx = buildContext(req.instructions);
       const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
 

@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -12,6 +11,13 @@ import {
   type ActorTraceItem
 } from "./actor-contract.js";
 import { redactText } from "./redaction.js";
+import {
+  prepareContainedOutputDirectory,
+  prepareContainedOutputFile,
+  prepareSelectedOutputDirectory,
+  type PreparedOutputDirectory,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 
 // This module holds both halves of the Claude adapter:
 //  - the PURE mapper (claudeSessionToActorTrace) over a locally-declared
@@ -349,7 +355,7 @@ const CLAUDE_ARTIFACT_DIR = "claude-agent-sdk";
 // Map the session through the pure mapper and write the three evidence artifacts.
 // Shared by the normal path and the load-failure path so both always leave a bundle.
 async function finishClaudeSession(
-  runRoot: string,
+  runRoot: PreparedOutputDirectory,
   persona: ActorPersonaRef,
   session: ClaudeSessionResult,
   envelopeLines: string[]
@@ -359,10 +365,11 @@ async function finishClaudeSession(
   const transcriptPath = path.join(CLAUDE_ARTIFACT_DIR, "transcript.txt");
   const trace = claudeSessionToActorTrace(session, persona);
   const transcript = renderClaudeTranscript(trace);
-  await writeFile(path.join(runRoot, eventsPath), envelopeLines.length > 0 ? `${envelopeLines.join("\n")}\n` : "", "utf8");
-  await writeFile(path.join(runRoot, tracePath), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
-  await writeFile(
-    path.join(runRoot, transcriptPath),
+  await writeContainedOutputFile(runRoot, eventsPath, envelopeLines.length > 0 ? `${envelopeLines.join("\n")}\n` : "", "utf8");
+  await writeContainedOutputFile(runRoot, tracePath, `${JSON.stringify(trace, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runRoot,
+    transcriptPath,
     transcript.length > 0 ? transcript : "No Claude Agent SDK transcript output captured.\n",
     "utf8"
   );
@@ -386,7 +393,14 @@ async function finishClaudeSession(
  * timeout still produces a (failed/timed_out) bundle rather than throwing.
  */
 export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions): Promise<ClaudeAgentSessionResult> {
-  await mkdir(path.join(options.runRoot, CLAUDE_ARTIFACT_DIR), { recursive: true });
+  const preparedRunRoot = await prepareSelectedOutputDirectory(process.cwd(), options.runRoot);
+  const runRoot = preparedRunRoot;
+  await prepareContainedOutputDirectory(runRoot, CLAUDE_ARTIFACT_DIR);
+  await Promise.all([
+    prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "events.ndjson")),
+    prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "summary.json")),
+    prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "transcript.txt"))
+  ]);
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
 
@@ -402,7 +416,7 @@ export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions):
       completedAt: new Date().toISOString(),
       messages: [{ type: "result", subtype: "error_during_execution", is_error: true, duration_ms: Date.now() - startedMs, result: reason }]
     };
-    return finishClaudeSession(options.runRoot, options.persona, session, [JSON.stringify({ at: startedAt, error: reason })]);
+    return finishClaudeSession(runRoot, options.persona, session, [JSON.stringify({ at: startedAt, error: reason })]);
   }
 
   const queryOptions: Record<string, unknown> = {
@@ -486,5 +500,5 @@ export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions):
     });
   }
 
-  return finishClaudeSession(options.runRoot, options.persona, { messages, startedAt, completedAt }, envelopeLines);
+  return finishClaudeSession(runRoot, options.persona, { messages, startedAt, completedAt }, envelopeLines);
 }

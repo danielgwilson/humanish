@@ -5,6 +5,14 @@ Date: 2026-06-01
 Status: implemented as an experimental repo-owned lab manifest plus
 compatibility aliases.
 
+Safety amendment (2026-07-14): beginning with `0.15.1`, the bundled `oss`
+manifest is a contract-only dry-run. A direct live OSS meta-lab request fails
+with `HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED` before callbacks, filesystem
+or network side effects, credential forwarding, or provider launch. The
+historical design and evidence description below is preserved as a record; it
+is not current execution guidance. The separate `oss-smoke` clone/discard lane
+remains available for public repositories.
+
 ## Decision
 
 `humanish/labs/oss.yaml` is this repo's authorized-repo meta-simulation

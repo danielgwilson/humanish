@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { lstat, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -8,6 +8,16 @@ import { runInit } from "./init.js";
 import type { InitResult } from "./init.js";
 import { renderObserver } from "./observer.js";
 import type { ObserverResult } from "./observer.js";
+import {
+  prepareExclusiveHumanishStorageDirectory,
+  prepareReusableHumanishStorageDirectory,
+  resolveHumanishStorageDirectory
+} from "./run-paths.js";
+import {
+  assertPreparedSelectedOutputDirectory,
+  type PreparedSelectedOutputDirectory,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 import {
   doctor,
   runDryRun,
@@ -115,8 +125,8 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
   const cwd = path.resolve(options.cwd);
   const startedAt = new Date().toISOString();
   const runId = options.runId ?? makeRunId();
-  const reportRoot = path.join(cwd, ".humanish", "lab", "oss", runId);
-  const sandboxPath = path.join(cwd, ".humanish", "tmp", "oss-lab", runId);
+  const plannedSandboxPath = resolveHumanishStorageDirectory(cwd, "tmp", "oss-lab", runId);
+  let sandboxPath: string;
   const warnings: string[] = [];
   const repos = normalizeOssRepoSlugs(options.repos);
   const limit = options.limit ?? repos.length;
@@ -134,7 +144,7 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       },
       repos: [],
       runId,
-      sandboxPath: relativeToCwd(cwd, sandboxPath),
+      sandboxPath: relativeToCwd(cwd, plannedSandboxPath),
       startedAt,
       warnings
     };
@@ -155,14 +165,19 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       },
       repos: [],
       runId,
-      sandboxPath: relativeToCwd(cwd, sandboxPath),
+      sandboxPath: relativeToCwd(cwd, plannedSandboxPath),
       startedAt,
       warnings
     };
   }
 
-  await mkdir(reportRoot, { recursive: true });
-  await mkdir(sandboxPath, { recursive: true });
+  const preparedReportRoot = await prepareReusableHumanishStorageDirectory(cwd, "lab", "oss", runId);
+  const reportRootToken = await pinOssLabDirectory(preparedReportRoot);
+  const preparedSandboxPath = await prepareExclusiveHumanishStorageDirectory(cwd, "tmp", "oss-lab", runId);
+  const sandboxToken = await pinOssLabDirectory(preparedSandboxPath);
+  sandboxPath = sandboxToken.physicalPath;
+  const publicReportRoot = relativeToCwd(cwd, preparedReportRoot);
+  const publicSandboxPath = relativeToCwd(cwd, preparedSandboxPath);
 
   const repoResults: OssLabRepoResult[] = [];
   for (const repo of selectedRepos) {
@@ -171,8 +186,15 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
 
   let sandboxRemoved = false;
   if (!options.keep) {
-    await rm(sandboxPath, { force: true, recursive: true });
+    if (!await validatePinnedOssLabDirectory(sandboxToken)) {
+      throw new Error("OSS lab cleanup must stay inside its prepared storage root.");
+    }
+    await rm(sandboxToken.physicalPath, { force: true, recursive: true });
     sandboxRemoved = true;
+  }
+
+  if (!await validatePinnedOssLabDirectory(reportRootToken)) {
+    throw new Error("OSS lab report root changed physical identity.");
   }
 
   const completedAt = new Date().toISOString();
@@ -182,22 +204,44 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
     cleanup: { kept: Boolean(options.keep), sandboxRemoved },
     completedAt,
     cwd,
-    reportJsonPath: relativeToCwd(cwd, path.join(reportRoot, "report.json")),
-    reportMarkdownPath: relativeToCwd(cwd, path.join(reportRoot, "report.md")),
+    reportJsonPath: path.join(publicReportRoot, "report.json"),
+    reportMarkdownPath: path.join(publicReportRoot, "report.md"),
     repos: repoResults.map((repo) => ({
       ...repo,
-      clonePath: relativeToCwd(cwd, repo.clonePath)
+      clonePath: path.join(publicSandboxPath, path.relative(sandboxPath, repo.clonePath))
     })),
     runId,
-    sandboxPath: relativeToCwd(cwd, sandboxPath),
+    sandboxPath: publicSandboxPath,
     startedAt,
     warnings
   };
 
-  await writeFile(path.join(reportRoot, "report.json"), `${JSON.stringify(result, null, 2)}\n`, "utf8");
-  await writeFile(path.join(reportRoot, "report.md"), renderOssLabMarkdown(result), "utf8");
+  await writeContainedOutputFile(reportRootToken, "report.json", `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(reportRootToken, "report.md", renderOssLabMarkdown(result), "utf8");
 
   return result;
+}
+
+async function pinOssLabDirectory(directoryInput: string): Promise<PreparedSelectedOutputDirectory> {
+  const physicalPath = await realpath(path.resolve(directoryInput));
+  const stats = await lstat(physicalPath, { bigint: true });
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error("OSS lab managed roots must be physical directories.");
+  }
+  return Object.freeze({
+    identity: Object.freeze({ dev: stats.dev, ino: stats.ino }),
+    physicalPath,
+    requestedPath: physicalPath
+  });
+}
+
+async function validatePinnedOssLabDirectory(directory: PreparedSelectedOutputDirectory): Promise<boolean> {
+  try {
+    await assertPreparedSelectedOutputDirectory(directory);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function makeRunId(): string {
@@ -255,6 +299,18 @@ async function runRepoTrial(args: {
     };
   });
   steps.push(init);
+
+  if (!init.ok) {
+    return {
+      changedFiles: [],
+      clonePath,
+      ok: false,
+      repo: args.repo,
+      steps,
+      url,
+      warnings
+    };
+  }
 
   const readiness = await measureStep("humanish doctor", async () => {
     const result: DoctorResult = await doctor(clonePath);

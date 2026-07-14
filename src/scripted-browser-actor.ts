@@ -19,7 +19,7 @@
 // affirmative $0 declaration that is TRUE by mechanism.
 
 import { execFile, spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -36,7 +36,18 @@ import {
   type ActorTraceItem
 } from "./actor-contract.js";
 import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "./browser-evidence-hygiene.js";
+import { assertScreenshotEvidence } from "./image-evidence.js";
 import { digestText, redactText, redactToSecretLabel } from "./redaction.js";
+import {
+  assertPreparedSelectedOutputDirectory,
+  assertSafeOutputPathSegment,
+  prepareContainedOutputDirectory,
+  prepareContainedOutputFile,
+  prepareSelectedOutputDirectory,
+  readContainedRegularFile,
+  type PreparedOutputDirectory,
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -220,7 +231,7 @@ export const browserSurfaces: BrowserSurface[] = [
 // ---------------------------------------------------------------------------
 
 export async function captureBrowserSurface(args: {
-  absoluteArtifactRoot: string;
+  absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserCommand: string;
   browserJourney: BrowserPersonaJourney;
@@ -235,7 +246,7 @@ export async function captureBrowserSurface(args: {
 }
 
 export async function captureBrowserSurfaceFixture(args: {
-  absoluteArtifactRoot: string;
+  absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserCommand: string;
   browserJourney: BrowserPersonaJourney;
@@ -244,7 +255,7 @@ export async function captureBrowserSurfaceFixture(args: {
 }): Promise<BrowserSurfaceCapture> {
   const started = Date.now();
   const tracePath = path.join("traces", `${args.surface.id}.json`);
-  const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
+  await assertScriptedOutputRoot(args.absoluteArtifactRoot);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   const capturedAt = new Date().toISOString();
   const profileDir = await mkdtemp(path.join(os.tmpdir(), "humanish-browser-profile-"));
@@ -258,18 +269,16 @@ export async function captureBrowserSurfaceFixture(args: {
       }
       const stepStarted = Date.now();
       const screenshotPath = screenshotPathForBrowserStep(args.surface, step);
-      const absoluteScreenshotPath = path.join(args.absoluteArtifactRoot, screenshotPath);
-      await captureScreenshotWithBrowser({
-        args: browserScreenshotArgs({
-          appUrl: currentUrl,
-          profileDir,
-          screenshotPath: absoluteScreenshotPath,
-          surface: args.surface
-        }),
+      await prepareContainedOutputFile(args.absoluteArtifactRoot, screenshotPath);
+      const screenshotBytes = await captureBrowserCommandScreenshot({
+        appUrl: currentUrl,
         browserCommand: args.browserCommand,
-        screenshotPath: absoluteScreenshotPath,
+        profileDir,
+        surface: args.surface,
         timeoutMs: args.timeoutMs
       });
+      assertScreenshotEvidence(screenshotPath, screenshotBytes);
+      await writeContainedOutputFile(args.absoluteArtifactRoot, screenshotPath, screenshotBytes);
       const assertions = fixtureAssertionsForBrowserStep(step, httpProbe.ok);
       steps.push({
         action: step.action,
@@ -296,7 +305,7 @@ export async function captureBrowserSurfaceFixture(args: {
       timestamp: capturedAt
     });
     const blockedScreenshotPath = surfaceScreenshotPath(blockedSteps);
-    await writeJson(absoluteTracePath, buildBrowserTrace({
+    await writeContainedOutputFile(args.absoluteArtifactRoot, tracePath, `${JSON.stringify(buildBrowserTrace({
       appUrl: args.appUrl,
       browserCommand: path.basename(args.browserCommand),
       browserJourney: args.browserJourney,
@@ -308,7 +317,7 @@ export async function captureBrowserSurfaceFixture(args: {
       ...(blockedScreenshotPath === undefined ? {} : { screenshotPath: blockedScreenshotPath }),
       steps: blockedSteps,
       surface: args.surface
-    }));
+    }), null, 2)}\n`, "utf8");
     return {
       capturedAt,
       durationMs: Date.now() - started,
@@ -328,7 +337,11 @@ export async function captureBrowserSurfaceFixture(args: {
   // screenshotPath. A step claiming success whose screenshot is missing or empty
   // must still drag the capture out of `ok` — the strict verifier then catches it.
   const screenshotStats = await Promise.all(
-    steps.map((step) => (step.screenshotPath ? stat(path.join(args.absoluteArtifactRoot, step.screenshotPath)) : Promise.resolve(null)).catch(() => null))
+    steps.map(async (step) => {
+      if (!step.screenshotPath) return null;
+      const screenshotFile = await prepareContainedOutputFile(args.absoluteArtifactRoot, step.screenshotPath);
+      return stat(screenshotFile);
+    }).map((result) => result.catch(() => null))
   );
   const screenshotsOk = screenshotStats.every((stats) => stats?.isFile() && stats.size > 0);
   const ok = Boolean(screenshotsOk && httpProbe.ok && steps.every((step) => step.status === "passed"));
@@ -341,7 +354,7 @@ export async function captureBrowserSurfaceFixture(args: {
   const durationMs = Date.now() - started;
   const fixtureScreenshotPath = surfaceScreenshotPath(steps);
 
-  await writeJson(absoluteTracePath, buildBrowserTrace({
+  await writeContainedOutputFile(args.absoluteArtifactRoot, tracePath, `${JSON.stringify(buildBrowserTrace({
     appUrl: args.appUrl,
     browserCommand: path.basename(args.browserCommand),
     browserJourney: args.browserJourney,
@@ -353,7 +366,7 @@ export async function captureBrowserSurfaceFixture(args: {
     ...(fixtureScreenshotPath === undefined ? {} : { screenshotPath: fixtureScreenshotPath }),
     steps,
     surface: args.surface
-  }));
+  }), null, 2)}\n`, "utf8");
 
   return {
     capturedAt: completedAt,
@@ -369,7 +382,7 @@ export async function captureBrowserSurfaceFixture(args: {
 }
 
 export async function captureBrowserSurfaceWithPlaywright(args: {
-  absoluteArtifactRoot: string;
+  absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserCommand: string;
   browserJourney: BrowserPersonaJourney;
@@ -378,7 +391,7 @@ export async function captureBrowserSurfaceWithPlaywright(args: {
 }): Promise<BrowserSurfaceCapture> {
   const started = Date.now();
   const tracePath = path.join("traces", `${args.surface.id}.json`);
-  const absoluteTracePath = path.join(args.absoluteArtifactRoot, tracePath);
+  await assertScriptedOutputRoot(args.absoluteArtifactRoot);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   let browser: ScriptedBrowserLike | null = null;
   let page: ScriptedPageLike | null = null;
@@ -451,7 +464,7 @@ export async function captureBrowserSurfaceWithPlaywright(args: {
     : `${args.surface.label} browser persona journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
   const playwrightScreenshotPath = surfaceScreenshotPath(steps);
 
-  await writeJson(absoluteTracePath, buildBrowserTrace({
+  await writeContainedOutputFile(args.absoluteArtifactRoot, tracePath, `${JSON.stringify(buildBrowserTrace({
     appUrl: args.appUrl,
     browserCommand: path.basename(args.browserCommand),
     browserJourney: args.browserJourney,
@@ -463,7 +476,7 @@ export async function captureBrowserSurfaceWithPlaywright(args: {
     ...(playwrightScreenshotPath === undefined ? {} : { screenshotPath: playwrightScreenshotPath }),
     steps,
     surface: args.surface
-  }));
+  }), null, 2)}\n`, "utf8");
 
   return {
     capturedAt: completedAt,
@@ -479,7 +492,7 @@ export async function captureBrowserSurfaceWithPlaywright(args: {
 }
 
 export async function executeBrowserPersonaStep(args: {
-  absoluteArtifactRoot: string;
+  absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserJourney: BrowserPersonaJourney;
   page: ScriptedPageLike;
@@ -537,10 +550,10 @@ export async function executeBrowserPersonaStep(args: {
 
   const afterState = await browserPersonaPageState(args.page, urlPolicy);
   const screenshotPath = screenshotPathForBrowserStep(args.surface, args.step);
-  await args.page.screenshot({
-    path: path.join(args.absoluteArtifactRoot, screenshotPath),
-    fullPage: true
-  });
+  await prepareContainedOutputFile(args.absoluteArtifactRoot, screenshotPath);
+  const screenshotBytes = await captureScriptedPageScreenshot(args.page);
+  assertScreenshotEvidence(screenshotPath, screenshotBytes);
+  await writeContainedOutputFile(args.absoluteArtifactRoot, screenshotPath, screenshotBytes);
   const assertions = await evaluateBrowserStepExpectations({
     afterState,
     beforeState,
@@ -690,7 +703,23 @@ function fixtureAssertionsForBrowserStep(step: BrowserPersonaStepManifest, httpO
 }
 
 export function screenshotPathForBrowserStep(surface: BrowserSurface, step: BrowserPersonaStepManifest | undefined): string {
+  assertSafeOutputPathSegment(surface.id, "Browser surface id");
+  if (step) {
+    assertSafeOutputPathSegment(step.id, "Browser journey step id");
+  }
   return path.join("screenshots", `${surface.id}-${step?.id ?? "step"}.png`);
+}
+
+function tracePathForBrowserSurface(surface: BrowserSurface): string {
+  assertSafeOutputPathSegment(surface.id, "Browser surface id");
+  return path.join("traces", `${surface.id}.json`);
+}
+
+function assertScriptedSessionPathIds(options: ScriptedBrowserSessionOptions): void {
+  assertSafeOutputPathSegment(options.surface.id, "Browser surface id");
+  for (const step of options.journey.steps) {
+    assertSafeOutputPathSegment(step.id, "Browser journey step id");
+  }
 }
 
 /**
@@ -702,14 +731,23 @@ export function screenshotPathForBrowserStep(surface: BrowserSurface, step: Brow
  */
 async function captureBlockedStepScreenshot(
   page: ScriptedPageLike | null,
-  artifactRoot: string,
+  artifactRoot: PreparedOutputDirectory,
   surface: BrowserSurface,
   step: BrowserPersonaStepManifest
 ): Promise<{ screenshotPath: string; written: boolean }> {
   const screenshotPath = screenshotPathForBrowserStep(surface, step);
-  await page?.screenshot({ path: path.join(artifactRoot, screenshotPath), fullPage: true }).catch(() => undefined);
-  const stats = await stat(path.join(artifactRoot, screenshotPath)).catch(() => null);
-  return { screenshotPath, written: Boolean(stats?.isFile() && stats.size > 0) };
+  await prepareContainedOutputFile(artifactRoot, screenshotPath);
+  if (!page) {
+    return { screenshotPath, written: false };
+  }
+  try {
+    const screenshotBytes = await captureScriptedPageScreenshot(page);
+    assertScreenshotEvidence(screenshotPath, screenshotBytes);
+    await writeContainedOutputFile(artifactRoot, screenshotPath, screenshotBytes);
+    return { screenshotPath, written: true };
+  } catch {
+    return { screenshotPath, written: false };
+  }
 }
 
 /**
@@ -875,6 +913,40 @@ export async function captureScreenshotWithBrowser(args: {
       ? `browser exited before screenshot was written (exit=${exitCode ?? "null"} signal=${signal ?? "null"})`
       : `timed out after ${args.timeoutMs}ms waiting for screenshot`
   );
+}
+
+async function captureBrowserCommandScreenshot(args: {
+  appUrl: string;
+  browserCommand: string;
+  profileDir: string;
+  surface: BrowserSurface;
+  timeoutMs: number;
+}): Promise<Buffer> {
+  const stagingPath = await mkdtemp(path.join(os.tmpdir(), "humanish-browser-command-shot-"));
+  const stagingRoot = await prepareSelectedOutputDirectory(path.dirname(stagingPath), stagingPath);
+  try {
+    const screenshotPath = path.join(stagingRoot.physicalPath, "capture.png");
+    await captureScreenshotWithBrowser({
+      args: browserScreenshotArgs({
+        appUrl: args.appUrl,
+        profileDir: args.profileDir,
+        screenshotPath,
+        surface: args.surface
+      }),
+      browserCommand: args.browserCommand,
+      screenshotPath,
+      timeoutMs: args.timeoutMs
+    });
+    const bytes = await readContainedRegularFile(stagingRoot, "capture.png");
+    if (!bytes) {
+      throw new Error("Browser screenshot command did not write a single-link staging file.");
+    }
+    return bytes;
+  } finally {
+    await assertPreparedSelectedOutputDirectory(stagingRoot)
+      .then(() => rm(stagingRoot.physicalPath, { force: true, recursive: true }))
+      .catch(() => undefined);
+  }
 }
 
 function terminateProcessGroup(pid: number | undefined, force = false): void {
@@ -1240,6 +1312,26 @@ class ScriptedJourneyTimeoutError extends Error {
  *   approvals exist on a deterministic replay) — asserted in tests.
  */
 export async function runScriptedBrowserSession(options: ScriptedBrowserSessionOptions): Promise<ScriptedBrowserSessionResult> {
+  assertScriptedSessionPathIds(options);
+  const preparedArtifactRoot = await prepareSelectedOutputDirectory(process.cwd(), options.artifactRoot);
+  return runScriptedBrowserSessionInPreparedRoot(options, preparedArtifactRoot);
+}
+
+/** Internal lab seam: the run root is already prepared and must stay bound to that identity. */
+export async function runScriptedBrowserSessionInPreparedRoot(
+  options: ScriptedBrowserSessionOptions,
+  preparedArtifactRoot: PreparedOutputDirectory
+): Promise<ScriptedBrowserSessionResult> {
+  assertScriptedSessionPathIds(options);
+  await prepareContainedOutputDirectory(preparedArtifactRoot, "screenshots");
+  await prepareContainedOutputDirectory(preparedArtifactRoot, "traces");
+  await prepareContainedOutputFile(preparedArtifactRoot, tracePathForBrowserSurface(options.surface));
+  await Promise.all(
+    options.journey.steps.map((step) =>
+      prepareContainedOutputFile(preparedArtifactRoot, screenshotPathForBrowserStep(options.surface, step))
+    )
+  );
+  await assertScriptedOutputRoot(preparedArtifactRoot);
   const now = options.now ?? (() => Date.now());
   const startedAtMs = now();
   const startedAt = new Date(startedAtMs).toISOString();
@@ -1247,9 +1339,6 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
   const browserCommand = options.browserCommand ?? (options.launchBrowser ? "injected-browser" : "");
   const evidenceAppUrl = options.evidenceAppUrl ?? options.appUrl;
   const urlPolicy = options.urlPolicy ?? LOOPBACK_EVIDENCE_URL_POLICY;
-
-  await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
-  await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
 
   const finish = async (args: {
     capture: BrowserSurfaceCapture;
@@ -1260,7 +1349,7 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
   }): Promise<ScriptedBrowserSessionResult> => {
     const completedAtMs = now();
     const trace = await projectScriptedActorTrace({
-      artifactRoot: options.artifactRoot,
+      artifactRoot: preparedArtifactRoot,
       capture: args.capture,
       completedAt: new Date(completedAtMs).toISOString(),
       completionReason: args.completionReason,
@@ -1289,7 +1378,7 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
     const reason = `Scripted browser launch failed: ${compactBrowserError(error)}`;
     const capture = await persistScriptedFailureCapture({
       appUrl: options.appUrl,
-      artifactRoot: options.artifactRoot,
+      artifactRoot: preparedArtifactRoot,
       browserCommand,
       evidenceAppUrl,
       journey: options.journey,
@@ -1299,10 +1388,16 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
     });
     return finish({ capture, executedSteps: 0, status: "failed", completionReason: "harness_error", reason });
   }
+  try {
+    await assertScriptedOutputRoot(preparedArtifactRoot);
+  } catch (error) {
+    await browser.close().catch(() => undefined);
+    throw error;
+  }
 
   const journeyRun = await runScriptedJourney({
     appUrl: options.appUrl,
-    artifactRoot: options.artifactRoot,
+    artifactRoot: preparedArtifactRoot,
     browser,
     browserCommand,
     evidenceAppUrl,
@@ -1346,7 +1441,7 @@ export async function runScriptedBrowserSession(options: ScriptedBrowserSessionO
  *  semantics (partial blocked steps on error, trace written exactly once, browser closed). */
 async function runScriptedJourney(args: {
   appUrl: string;
-  artifactRoot: string;
+  artifactRoot: PreparedOutputDirectory;
   browser: ScriptedBrowserLike;
   browserCommand: string;
   evidenceAppUrl: string;
@@ -1357,8 +1452,7 @@ async function runScriptedJourney(args: {
 }): Promise<{ capture: BrowserSurfaceCapture; executedSteps: number; timedOut: boolean }> {
   const started = Date.now();
   const deadline = started + args.timeoutMs;
-  const tracePath = path.join("traces", `${args.surface.id}.json`);
-  const absoluteTracePath = path.join(args.artifactRoot, tracePath);
+  const tracePath = tracePathForBrowserSurface(args.surface);
   const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
   let page: ScriptedPageLike | null = null;
   const steps: BrowserPersonaStepCapture[] = [];
@@ -1377,6 +1471,7 @@ async function runScriptedJourney(args: {
     page = await context.newPage();
 
     for (const step of args.journey.steps) {
+      await assertScriptedOutputRoot(args.artifactRoot);
       executedSteps += 1;
       steps.push(await withJourneyDeadline(
         executeBrowserPersonaStep({
@@ -1394,6 +1489,7 @@ async function runScriptedJourney(args: {
       ));
     }
   } catch (error) {
+    await assertScriptedOutputRoot(args.artifactRoot);
     timedOut = error instanceof ScriptedJourneyTimeoutError;
     const now = new Date().toISOString();
     const reason = compactBrowserError(error);
@@ -1436,7 +1532,7 @@ async function runScriptedJourney(args: {
     : `${args.surface.label} scripted browser journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
   const scriptedScreenshotPath = surfaceScreenshotPath(steps);
 
-  await writeJson(absoluteTracePath, buildBrowserTrace({
+  await writeContainedOutputFile(args.artifactRoot, tracePath, `${JSON.stringify(buildBrowserTrace({
     appUrl: args.evidenceAppUrl,
     browserCommand: path.basename(args.browserCommand || "injected-browser"),
     browserJourney: args.journey,
@@ -1448,7 +1544,7 @@ async function runScriptedJourney(args: {
     ...(scriptedScreenshotPath === undefined ? {} : { screenshotPath: scriptedScreenshotPath }),
     steps,
     surface: args.surface
-  }));
+  }), null, 2)}\n`, "utf8");
 
   return {
     capture: {
@@ -1496,7 +1592,7 @@ async function withJourneyDeadline<T>(promise: Promise<T>, deadline: number, tim
  *  journey actuation (browser launch crash). Mirrors the driver's failure shape. */
 async function persistScriptedFailureCapture(args: {
   appUrl: string;
-  artifactRoot: string;
+  artifactRoot: PreparedOutputDirectory;
   browserCommand: string;
   evidenceAppUrl: string;
   journey: BrowserPersonaJourney;
@@ -1505,7 +1601,7 @@ async function persistScriptedFailureCapture(args: {
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
 }): Promise<BrowserSurfaceCapture> {
   const capturedAt = new Date().toISOString();
-  const tracePath = path.join("traces", `${args.surface.id}.json`);
+  const tracePath = tracePathForBrowserSurface(args.surface);
   const blockedSteps = buildBlockedBrowserPersonaSteps({
     browserJourney: args.journey,
     currentUrl: args.appUrl,
@@ -1517,7 +1613,7 @@ async function persistScriptedFailureCapture(args: {
   // Pre-actuation failure: no screenshots were written, so the surface omits the
   // screenshot reference and the failure itself stands as the evidence.
   const screenshotPath = surfaceScreenshotPath(blockedSteps);
-  await writeJson(path.join(args.artifactRoot, tracePath), buildBrowserTrace({
+  await writeContainedOutputFile(args.artifactRoot, tracePath, `${JSON.stringify(buildBrowserTrace({
     appUrl: args.evidenceAppUrl,
     browserCommand: path.basename(args.browserCommand || "injected-browser"),
     browserJourney: args.journey,
@@ -1528,7 +1624,7 @@ async function persistScriptedFailureCapture(args: {
     ...(screenshotPath === undefined ? {} : { screenshotPath }),
     steps: blockedSteps,
     surface: args.surface
-  }));
+  }), null, 2)}\n`, "utf8");
   return {
     capturedAt,
     durationMs: 0,
@@ -1545,7 +1641,7 @@ async function persistScriptedFailureCapture(args: {
  *  for frames that actually exist on disk (honest counts; blocked-not-executed steps name a
  *  path that was never written). */
 async function projectScriptedActorTrace(args: {
-  artifactRoot: string;
+  artifactRoot: PreparedOutputDirectory;
   capture: BrowserSurfaceCapture;
   completedAt: string;
   completionReason: ActorCompletionReason;
@@ -1562,7 +1658,8 @@ async function projectScriptedActorTrace(args: {
     if (!step.screenshotPath) {
       continue;
     }
-    const stats = await stat(path.join(args.artifactRoot, step.screenshotPath)).catch(() => null);
+    const screenshotFile = await prepareContainedOutputFile(args.artifactRoot, step.screenshotPath).catch(() => null);
+    const stats = screenshotFile ? await stat(screenshotFile).catch(() => null) : null;
     if (stats?.isFile() && stats.size > 0) {
       writtenScreenshots.add(step.screenshotPath);
     }
@@ -1626,8 +1723,46 @@ async function projectScriptedActorTrace(args: {
 // the code that stayed behind — this module must remain a leaf).
 // ---------------------------------------------------------------------------
 
-async function writeJson(filePath: string, value: unknown): Promise<void> {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+async function assertScriptedOutputRoot(root: PreparedOutputDirectory): Promise<string> {
+  if ("physicalRunRoot" in root) {
+    await prepareContainedOutputDirectory(root, "");
+    return root.physicalRunRoot;
+  }
+  await assertPreparedSelectedOutputDirectory(root);
+  return root.physicalPath;
+}
+
+function browserScreenshotBytes(value: unknown): Buffer {
+  if (Buffer.isBuffer(value)) {
+    return value;
+  }
+  if (value instanceof Uint8Array) {
+    return Buffer.from(value);
+  }
+  throw new Error("Browser screenshot did not return image bytes.");
+}
+
+async function captureScriptedPageScreenshot(page: ScriptedPageLike): Promise<Buffer> {
+  const stagingPath = await mkdtemp(path.join(os.tmpdir(), "humanish-browser-shot-"));
+  const stagingRoot = await prepareSelectedOutputDirectory(path.dirname(stagingPath), stagingPath);
+  try {
+    const returned = await page.screenshot({
+      path: path.join(stagingRoot.physicalPath, "capture.png"),
+      fullPage: true
+    });
+    if (Buffer.isBuffer(returned) || returned instanceof Uint8Array) {
+      return browserScreenshotBytes(returned);
+    }
+    const stagedBytes = await readContainedRegularFile(stagingRoot, "capture.png");
+    if (!stagedBytes) {
+      throw new Error("Browser screenshot did not return bytes or write a single-link staging file.");
+    }
+    return stagedBytes;
+  } finally {
+    await assertPreparedSelectedOutputDirectory(stagingRoot)
+      .then(() => rm(stagingRoot.physicalPath, { force: true, recursive: true }))
+      .catch(() => undefined);
+  }
 }
 
 function shellQuote(value: string): string {

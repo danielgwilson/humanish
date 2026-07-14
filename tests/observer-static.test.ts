@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { link, mkdtemp, mkdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   OBSERVER_STATIC_HOST,
+  createObserverStaticHandler,
   observerStaticContentType,
   respondToObserverStaticRequest,
   serveObserverStatic
@@ -82,6 +83,37 @@ async function callHandler(runDir: string, url: string, method = "GET"): Promise
   return captured;
 }
 
+async function callCreatedHandler(
+  handler: (request: IncomingMessage, response: ServerResponse) => void,
+  url: string
+): Promise<CapturedResponse> {
+  return new Promise((resolve) => {
+    const captured: CapturedResponse = { statusCode: 0, headers: {}, body: "" };
+    const response = {
+      headersSent: false,
+      writeHead(status: number, headers: Record<string, string>) {
+        captured.statusCode = status;
+        captured.headers = Object.fromEntries(
+          Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
+        );
+        this.headersSent = true;
+        return this;
+      },
+      end(chunk?: Buffer | string) {
+        if (chunk !== undefined) {
+          captured.body = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : chunk;
+        }
+        resolve(captured);
+        return this;
+      }
+    };
+    handler(
+      { method: "GET", url } as IncomingMessage,
+      response as unknown as ServerResponse
+    );
+  });
+}
+
 describe("observer static content type", () => {
   it("maps the asset kinds the Observer ships", () => {
     expect(observerStaticContentType("a/index.html")).toBe("text/html; charset=utf-8");
@@ -96,6 +128,22 @@ describe("observer static content type", () => {
 });
 
 describe("observer static request handler", () => {
+  it("can be created before its root exists and pins that root on the first request", async () => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-static-lazy-"));
+    const runDir = path.join(tempRoot, "late-run");
+    const handler = createObserverStaticHandler({ root: runDir });
+    try {
+      await mkdir(runDir);
+      await writeFile(path.join(runDir, "index.html"), "<!doctype html><title>Late Observer</title>", "utf8");
+
+      const response = await callCreatedHandler(handler, "/");
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain("Late Observer");
+    } finally {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+
   it("redirects / to the observer entry page", async () => {
     await withRunDir(async ({ runDir }) => {
       const response = await callHandler(runDir, "/");
@@ -182,6 +230,37 @@ describe("observer static request handler", () => {
     });
   });
 
+  it("refuses symlinked files even when their names are inside the run dir", async () => {
+    await withRunDir(async ({ runDir, runsDir }) => {
+      await symlink(path.join(runsDir, "secret.txt"), path.join(runDir, "leak.txt"));
+      const response = await callHandler(runDir, "/leak.txt");
+      expect([403, 404]).toContain(response.statusCode);
+      expect(response.body).not.toContain("TOP-SECRET");
+    });
+  });
+
+  it("refuses an intermediate symlink that resolves outside the run dir", async () => {
+    await withRunDir(async ({ runDir, runsDir }) => {
+      const outsideDir = path.join(runsDir, "outside-assets");
+      await mkdir(outsideDir);
+      await writeFile(path.join(outsideDir, "secret.txt"), SECRET_BODY, "utf8");
+      await symlink(outsideDir, path.join(runDir, "linked-assets"));
+      const response = await callHandler(runDir, "/linked-assets/secret.txt");
+      expect([403, 404]).toContain(response.statusCode);
+      expect(response.body).not.toContain("TOP-SECRET");
+    });
+  });
+
+  it("supports a caller-supplied symlink root while enforcing physical containment", async () => {
+    await withRunDir(async ({ runDir, runsDir }) => {
+      const linkedRoot = path.join(runsDir, "linked-root");
+      await symlink(runDir, linkedRoot);
+      const response = await callHandler(linkedRoot, `/${ENTRY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain("Humanish Observer");
+    });
+  });
+
   it("rejects non-GET/HEAD methods", async () => {
     await withRunDir(async ({ runDir }) => {
       const response = await callHandler(runDir, `/${ENTRY}`, "DELETE");
@@ -220,6 +299,49 @@ describe("observer static server", () => {
 
         const missing = await fetch(new URL("observer/nope.json", base));
         expect(missing.status).toBe(404);
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it("stays pinned to the original physical root after its caller alias retargets", async () => {
+    await withRunDir(async ({ runDir, runsDir }) => {
+      const aliasRoot = path.join(runsDir, "served-root-alias");
+      const decoyRoot = path.join(runsDir, "retargeted-root");
+      await mkdir(path.join(decoyRoot, "observer"), { recursive: true });
+      await writeFile(
+        path.join(decoyRoot, ENTRY),
+        "<!doctype html><title>RETARGETED-B-SECRET</title>",
+        "utf8"
+      );
+      await symlink(runDir, aliasRoot, "dir");
+
+      const server = await serveObserverStatic({ root: aliasRoot, port: 0, entryPath: ENTRY });
+      try {
+        await unlink(aliasRoot);
+        await symlink(decoyRoot, aliasRoot, "dir");
+
+        const response = await fetch(server.url);
+        expect(response.status).toBe(200);
+        const body = await response.text();
+        expect(body).toContain("Humanish Observer");
+        expect(body).not.toContain("RETARGETED-B-SECRET");
+      } finally {
+        await server.close();
+        await unlink(aliasRoot).catch(() => undefined);
+      }
+    });
+  });
+
+  it("rejects hardlinked files created after the static root is pinned", async () => {
+    await withRunDir(async ({ runDir, runsDir }) => {
+      const server = await serveObserverStatic({ root: runDir, port: 0, entryPath: ENTRY });
+      try {
+        await link(path.join(runsDir, "secret.txt"), path.join(runDir, "hardlink-secret.txt"));
+        const response = await fetch(`http://${server.host}:${server.port}/hardlink-secret.txt`);
+        expect(response.status).toBe(404);
+        expect(await response.text()).not.toContain("TOP-SECRET");
       } finally {
         await server.close();
       }

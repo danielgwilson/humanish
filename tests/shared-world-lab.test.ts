@@ -789,6 +789,29 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     expect(result.error?.message).toContain("subject.serve");
   });
 
+  it("engine re-enforcement rejects path-shaped role ids before loading a desktop", async () => {
+    const valid = sharedWorldConfig();
+    const actor = valid.actors[0]!;
+    const lanes = actor.lanes!.map((lane, index) => index === 0 ? { ...lane, id: "../escape" } : lane);
+    const broken: LabConfig = { ...valid, actors: [{ ...actor, lanes }] };
+    let desktopLoads = 0;
+    const result = await runSharedWorldLab({
+      cwd,
+      config: broken,
+      dryRun: false,
+      hooks: {
+        loadDesktopModule: async () => {
+          desktopLoads += 1;
+          throw new Error("must not load");
+        }
+      }
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_LAB_INVALID");
+    expect(result.runId).toBe("not-created");
+    expect(desktopLoads).toBe(0);
+  });
+
   it("engine re-enforcement: a local-tree config with the wrong execution.target fails closed", async () => {
     const valid = localTreeSharedWorldConfig();
     const executionWithoutTarget: Record<string, unknown> = { ...valid.execution };

@@ -1,13 +1,24 @@
 import { createServer, type Server, type ServerResponse } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  runCodexAppServerSession,
+  runCodexAppServerSessionInPreparedRoot,
   type CodexAppServerRunOptions,
   type CodexAppServerRunResult,
   type CodexAppServerStatus
 } from "./codex-app-server.js";
+import {
+  prepareContainedOutputDirectory,
+  prepareContainedOutputFile,
+  prepareManagedHumanishOutputDirectory,
+  prepareSelectedOutputDirectory,
+  prepareSelectedOutputFile,
+  readContainedRegularFile,
+  type PreparedOutputDirectory,
+  type PreparedSelectedOutputFile,
+  writeContainedOutputFile,
+  writePreparedSelectedOutputFile
+} from "./selected-output-paths.js";
 
 export const CODEX_APP_SERVER_UI_SCHEMA = "humanish.codex-app-server-ui.v1";
 
@@ -20,7 +31,7 @@ export interface CodexAppServerUiOptions {
   model?: string;
   port?: number;
   prompt: string;
-  runRoot: string;
+  runRoot?: string;
   sandbox?: CodexAppServerRunOptions["sandbox"];
   serviceName?: string;
   stateFile?: string;
@@ -52,12 +63,24 @@ export interface CodexAppServerUiController {
 
 export async function startCodexAppServerUi(options: CodexAppServerUiOptions): Promise<CodexAppServerUiController> {
   const cwd = path.resolve(options.cwd);
-  const runRoot = path.resolve(cwd, options.runRoot);
-  const stateFile = path.resolve(cwd, options.stateFile ?? path.join(options.runRoot, "state.json"));
-  const publicRunRoot = path.relative(cwd, runRoot) || ".";
+  const preparedRunRoot = options.runRoot === undefined
+    ? await prepareManagedHumanishOutputDirectory(cwd, "codex-app-server-ui")
+    : await prepareSelectedOutputDirectory(cwd, options.runRoot);
+  const preparedStateFile: PreparedSelectedOutputFile | undefined = options.stateFile === undefined
+    ? undefined
+    : await prepareSelectedOutputFile(cwd, options.stateFile);
+  const stateFile = preparedStateFile?.requestedPath ?? path.join(preparedRunRoot.requestedPath, "state.json");
+  if (!preparedStateFile) {
+    await prepareContainedOutputFile(preparedRunRoot, "state.json");
+  }
+  await prepareContainedOutputDirectory(preparedRunRoot, "codex-app-server");
+  await Promise.all([
+    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "events.ndjson")),
+    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "summary.json")),
+    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "transcript.txt"))
+  ]);
+  const publicRunRoot = path.relative(cwd, preparedRunRoot.requestedPath) || ".";
   const publicStateFile = path.relative(cwd, stateFile) || path.basename(stateFile);
-  await mkdir(runRoot, { recursive: true });
-  await mkdir(path.dirname(stateFile), { recursive: true });
 
   let state: CodexAppServerUiState = {
     schema: CODEX_APP_SERVER_UI_SCHEMA,
@@ -73,7 +96,12 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
   };
 
   const persistState = async (): Promise<void> => {
-    await writeFile(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    const contents = `${JSON.stringify(state, null, 2)}\n`;
+    if (preparedStateFile) {
+      await writePreparedSelectedOutputFile(preparedStateFile, contents, "utf8");
+    } else {
+      await writeContainedOutputFile(preparedRunRoot, "state.json", contents, "utf8");
+    }
   };
 
   const server = createServer(async (request, response) => {
@@ -87,11 +115,18 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     }
 
     if (request.url?.startsWith("/artifact/")) {
+      let requestPath: string;
+      try {
+        requestPath = decodeURIComponent(request.url.slice("/artifact/".length));
+      } catch {
+        response.writeHead(404);
+        response.end("not found");
+        return;
+      }
       await serveArtifact({
-        cwd,
-        requestPath: decodeURIComponent(request.url.slice("/artifact/".length)),
+        requestPath,
         response,
-        runRoot
+        runRoot: preparedRunRoot
       });
       return;
     }
@@ -111,12 +146,17 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     updatedAt: new Date().toISOString(),
     url
   };
-  await persistState();
+  try {
+    await persistState();
+  } catch (error) {
+    await closeServer(server);
+    throw error;
+  }
 
-  const completion = runCodexAppServerSession({
+  const sessionOptions: CodexAppServerRunOptions = {
     cwd,
     prompt: options.prompt,
-    runRoot,
+    runRoot: preparedRunRoot.physicalPath,
     timeoutMs: options.timeoutMs,
     ...(options.actorCommand ? { actorCommand: ["bash", "-lc", options.actorCommand] } : {}),
     approvalPolicy: "never",
@@ -124,32 +164,44 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     ...(options.model === undefined ? {} : { model: options.model }),
     sandbox: options.sandbox ?? "read-only",
     serviceName: options.serviceName ?? "humanish"
-  }).then(async (result): Promise<CodexAppServerUiState> => {
-    state = {
-      ...state,
-      reason: result.reason,
-      result,
-      status: result.status,
-      updatedAt: new Date().toISOString()
-    };
-    await persistState();
-    if (options.keepOpen !== true) {
+  };
+  const completion = runCodexAppServerSessionInPreparedRoot(sessionOptions, preparedRunRoot).then(
+    async (result): Promise<CodexAppServerUiState> => {
+      state = {
+        ...state,
+        reason: result.reason,
+        result,
+        status: result.status,
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        await persistState();
+      } catch (error) {
+        await closeServer(server);
+        throw error;
+      }
+      if (options.keepOpen !== true) {
+        await closeServer(server);
+      }
+      return state;
+    },
+    async (error: unknown): Promise<CodexAppServerUiState> => {
+      state = {
+        ...state,
+        reason: error instanceof Error ? error.message : String(error),
+        status: "blocked",
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        await persistState();
+      } catch (persistError) {
+        await closeServer(server);
+        throw persistError;
+      }
       await closeServer(server);
+      return state;
     }
-    return state;
-  }).catch(async (error: unknown): Promise<CodexAppServerUiState> => {
-    state = {
-      ...state,
-      reason: error instanceof Error ? error.message : String(error),
-      status: "blocked",
-      updatedAt: new Date().toISOString()
-    };
-    await persistState();
-    if (options.keepOpen !== true) {
-      await closeServer(server);
-    }
-    return state;
-  });
+  );
 
   return {
     close: async () => closeServer(server),
@@ -161,36 +213,21 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
 }
 
 async function serveArtifact(args: {
-  cwd: string;
   requestPath: string;
   response: ServerResponse;
-  runRoot: string;
+  runRoot: PreparedOutputDirectory;
 }): Promise<void> {
-  const safePath = args.requestPath.replace(/^\/+/, "");
-  if (!safePath || safePath.includes("..") || safePath.includes("://")) {
-    args.response.writeHead(404);
-    args.response.end("not found");
-    return;
-  }
-
-  const absolute = path.resolve(args.runRoot, safePath);
-  if (!absolute.startsWith(args.runRoot)) {
-    args.response.writeHead(404);
-    args.response.end("not found");
-    return;
-  }
-
-  try {
-    const text = await readFile(absolute, "utf8");
+  const body = await readContainedRegularFile(args.runRoot, args.requestPath);
+  if (body) {
     args.response.writeHead(200, {
       "cache-control": "no-store",
-      "content-type": contentTypeFor(absolute)
+      "content-type": contentTypeFor(args.requestPath)
     });
-    args.response.end(text);
-  } catch {
-    args.response.writeHead(404);
-    args.response.end("not found");
+    args.response.end(body);
+    return;
   }
+  args.response.writeHead(404);
+  args.response.end("not found");
 }
 
 function contentTypeFor(filePath: string): string {

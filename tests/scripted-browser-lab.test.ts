@@ -1,6 +1,6 @@
 import { CommanderError } from "commander";
 import { createServer, type Server } from "node:http";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
@@ -19,7 +19,7 @@ import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks
 } from "../src/scripted-browser-lab.js";
-import type { ScriptedBrowserLike, ScriptedLocatorLike, ScriptedPageLike } from "../src/scripted-browser-actor.js";
+import type { ScriptedBrowserLike, ScriptedBrowserSessionResult, ScriptedLocatorLike, ScriptedPageLike } from "../src/scripted-browser-actor.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = Buffer.from(
@@ -65,8 +65,8 @@ function makeFakeBrowser(options: {
       throw new Error(`Timeout waiting for text ${String(needle)}`);
     },
     screenshot: async ({ path: screenshotPath }) => {
-      await writeFile(screenshotPath, PNG_1X1);
-      return undefined;
+      if (screenshotPath) await writeFile(screenshotPath, PNG_1X1);
+      return PNG_1X1;
     },
     url: () => state.url,
     evaluate: async <T,>() => state.body as unknown as T
@@ -629,6 +629,59 @@ describe("runScriptedBrowserLab", () => {
     expect(bundle.review.verdict).toBe("fail");
   });
 
+  it("rejects callback-returned traversal artifacts before parent bundle finalization", async () => {
+    await writeCommittedScenario(cwd);
+    const outside = path.join(path.dirname(cwd), "scripted-outside-sentinel.txt");
+    await writeFile(outside, "UNCHANGED", "utf8");
+    const runId = "unsafe-hook-result";
+    const hooks: ScriptedBrowserLabHooks = {
+      browserCommand: "/synthetic/browser",
+      runSession: async (options) => ({
+        status: "passed",
+        completionReason: "goal_satisfied",
+        reason: "synthetic malicious callback result",
+        capture: {
+          capturedAt: "2026-07-13T00:00:00.000Z",
+          durationMs: 1,
+          ok: true,
+          reason: "synthetic malicious callback result",
+          steps: [],
+          surface: options.surface,
+          tracePath: "../../scripted-outside-sentinel.txt"
+        },
+        trace: {
+          schema: ACTOR_TRACE_SCHEMA,
+          provider: "browser-persona",
+          protocol: "scripted-steps",
+          lane: "scripted-browser",
+          persona: options.persona,
+          redaction: { status: "passed", screenshots: "none", notes: "synthetic" },
+          startedAt: "2026-07-13T00:00:00.000Z",
+          completedAt: "2026-07-13T00:00:00.000Z",
+          status: "passed",
+          completionReason: "goal_satisfied",
+          summary: "synthetic",
+          capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+          actions: [],
+          tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 }
+        }
+      } as unknown as ScriptedBrowserSessionResult)
+    };
+
+    await expect(runScriptedBrowserLab({
+      cwd,
+      config: scriptedConfig({ count: 1, mode: "live" }),
+      dryRun: false,
+      hooks,
+      runId
+    })).rejects.toThrow(/unsafe artifact path/i);
+    expect(await readFile(outside, "utf8")).toBe("UNCHANGED");
+    await expect(stat(path.join(cwd, ".humanish", "runs", runId, "run.json")))
+      .rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(cwd, ".humanish", "runs", "latest.json")))
+      .rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   describe("scenario.ref consumption (fail-closed)", () => {
     it.each([
       ["missing scenario file", "does-not-exist", undefined],
@@ -678,6 +731,35 @@ describe("runScriptedBrowserLab", () => {
       expect(result.ok).toBe(true);
       expect(result.scenario?.source).toBe("custom/journey.yaml");
       expect(result.scenario?.sourceDigest).toBe(digestText(text));
+    });
+
+    it("rejects a symlinked scenario before any browser hook runs or outside bytes enter output", async () => {
+      const outsideScenario = path.join(path.dirname(cwd), "outside-scenario.yaml");
+      const secretMarker = "OUTSIDE-SCENARIO-SECRET";
+      const scenarioText = await readFile(path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
+      await writeFile(outsideScenario, `${scenarioText}\n# ${secretMarker}\n`, "utf8");
+      await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+      await symlink(outsideScenario, path.join(cwd, "humanish", "scenarios", "linked.yaml"));
+      let hookCalled = false;
+
+      const result = await runScriptedBrowserLab({
+        cwd,
+        config: scriptedConfig({ ref: "linked", mode: "live" }),
+        dryRun: false,
+        hooks: {
+          browserCommand: "/synthetic/browser",
+          runSession: async () => {
+            hookCalled = true;
+            throw new Error("must not run");
+          }
+        }
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+      expect(result.error?.message).not.toContain(secretMarker);
+      expect(hookCalled).toBe(false);
+      await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
     });
   });
 

@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -39,6 +39,7 @@ interface FakeAppOptions {
   gotoError?: string;
   /** Make goto hang forever (wall-clock timeout). */
   gotoHangs?: boolean;
+  screenshotHook?: () => Promise<void>;
 }
 
 function makeFakeBrowser(options: FakeAppOptions = {}): { browser: ScriptedBrowserLike; state: { url: string; body: string } } {
@@ -81,8 +82,9 @@ function makeFakeBrowser(options: FakeAppOptions = {}): { browser: ScriptedBrows
       throw new Error(`Timeout waiting for text ${String(needle)}`);
     },
     screenshot: async ({ path: screenshotPath }) => {
-      await writeFile(screenshotPath, PNG_1X1);
-      return undefined;
+      await options.screenshotHook?.();
+      if (screenshotPath) await writeFile(screenshotPath, PNG_1X1);
+      return PNG_1X1;
     },
     url: () => state.url,
     evaluate: async <T,>() => state.body as unknown as T
@@ -298,6 +300,127 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
     // No screenshots exist, so the projection declares none rather than claiming raw frames.
     expect(result.trace.redaction.screenshots).toBe("n/a");
     expect(result.trace.counts.screenshots).toBe(0);
+  });
+
+  it("rejects path-shaped surface and step ids before browser launch", async () => {
+    let launches = 0;
+    const launchBrowser = async (): Promise<ScriptedBrowserLike> => {
+      launches += 1;
+      return makeFakeBrowser().browser;
+    };
+    await expect(runScriptedBrowserSession({
+      appUrl: "http://127.0.0.1:9/",
+      journey: demoJourney(),
+      surface: { ...surface, id: "../escape" } as unknown as typeof surface,
+      persona,
+      timeoutMs: 5_000,
+      artifactRoot,
+      launchBrowser
+    })).rejects.toThrow(/path segment/i);
+    const maliciousJourney = demoJourney();
+    maliciousJourney.steps[0] = { ...maliciousJourney.steps[0]!, id: "nested\\escape" };
+    await expect(runScriptedBrowserSession({
+      appUrl: "http://127.0.0.1:9/",
+      journey: maliciousJourney,
+      surface,
+      persona,
+      timeoutMs: 5_000,
+      artifactRoot,
+      launchBrowser
+    })).rejects.toThrow(/path segment/i);
+    expect(launches).toBe(0);
+  });
+
+  it("rejects generated root aliases before browser launch", async () => {
+    const selected = path.join(artifactRoot, "selected");
+    const outside = path.join(artifactRoot, "outside");
+    await mkdir(selected);
+    await mkdir(outside);
+    await writeFile(path.join(outside, "sentinel.txt"), "unchanged\n", "utf8");
+    await symlink(outside, path.join(selected, "screenshots"), "dir");
+    let launches = 0;
+    await expect(runScriptedBrowserSession({
+      appUrl: "http://127.0.0.1:9/",
+      journey: demoJourney(),
+      surface,
+      persona,
+      timeoutMs: 5_000,
+      artifactRoot: selected,
+      launchBrowser: async () => {
+        launches += 1;
+        return makeFakeBrowser().browser;
+      }
+    })).rejects.toThrow(/symbolic links/i);
+    expect(launches).toBe(0);
+    expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
+  });
+
+  it("retains selected-root identity across browser launch", async () => {
+    const first = path.join(artifactRoot, "first");
+    const second = path.join(artifactRoot, "second");
+    const alias = path.join(artifactRoot, "selected-alias");
+    await mkdir(first);
+    await mkdir(second);
+    await writeFile(path.join(second, "sentinel.txt"), "unchanged\n", "utf8");
+    await symlink(first, alias, "dir");
+    const fake = makeFakeBrowser();
+    let closes = 0;
+    const browser: ScriptedBrowserLike = {
+      ...fake.browser,
+      close: async () => { closes += 1; }
+    };
+
+    await expect(runScriptedBrowserSession({
+      appUrl: "http://127.0.0.1:9/",
+      journey: demoJourney(),
+      surface,
+      persona,
+      timeoutMs: 5_000,
+      artifactRoot: alias,
+      launchBrowser: async () => {
+        await rm(alias);
+        await symlink(second, alias, "dir");
+        return browser;
+      }
+    })).rejects.toThrow(/changed physical destination/i);
+    expect(closes).toBe(1);
+    expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
+    await expect(access(path.join(second, "traces", "desktop.json"))).rejects.toThrow();
+  });
+
+  it("does not let an awaitable screenshot hook redirect bytes through a hardlink", async () => {
+    await withHttpServer(async (appUrl) => {
+      const outside = path.join(artifactRoot, "outside-screenshot.png");
+      const target = path.join(artifactRoot, "screenshots", "desktop-step-01-load.png");
+      await writeFile(outside, "unchanged\n", "utf8");
+      let planted = false;
+      const { browser } = makeFakeBrowser({
+        bodyAfterClick: "Welcome aboard",
+        screenshotHook: async () => {
+          if (planted) return;
+          planted = true;
+          try {
+            await link(outside, target);
+          } catch (error) {
+            const code = error instanceof Error && "code" in error ? String(error.code) : "";
+            if (["EPERM", "ENOTSUP", "EOPNOTSUPP"].includes(code)) return;
+            throw error;
+          }
+        }
+      });
+      const result = await runScriptedBrowserSession({
+        appUrl,
+        journey: demoJourney(),
+        surface,
+        persona,
+        timeoutMs: 10_000,
+        artifactRoot,
+        launchBrowser: async () => browser
+      });
+      expect(result.status).toBe("failed");
+      expect(await readFile(outside, "utf8")).toBe("unchanged\n");
+      expect(await readFile(target, "utf8")).toBe("unchanged\n");
+    });
   });
 
   it("redacts provisioned subject URLs from persisted evidence while driving the raw app URL", async () => {

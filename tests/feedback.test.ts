@@ -1,4 +1,5 @@
-import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, link, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
+import { symlinkSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -73,6 +74,66 @@ describe("feedback issue drafts", () => {
       const verified = await verifyFeedback(cwd, "latest");
       expect(verified.ok).toBe(true);
     });
+  });
+
+  it("refuses a hardlinked feedback output without mutating its external inode", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "feedback-hardlink" });
+      const feedbackDir = path.join(cwd, ".humanish", "runs", "feedback-hardlink", "feedback");
+      const external = path.join(path.dirname(cwd), "feedback-external-sentinel.json");
+      const original = "{\"external\":true}\n";
+      await mkdir(feedbackDir);
+      await writeFile(external, original, "utf8");
+      await link(external, path.join(feedbackDir, "draft.json"));
+
+      const drafted = await draftFeedback(cwd, "feedback-hardlink");
+      expect(drafted.ok).toBe(false);
+      expect(await readFile(external, "utf8")).toBe(original);
+    });
+  });
+
+  it("keeps latest selection, verification, evidence reads, and writes on one physical run token", async () => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-feedback-continuity-"));
+    const physicalA = path.join(tempRoot, "physical-a");
+    const physicalB = path.join(tempRoot, "physical-b");
+    const cwdAlias = path.join(tempRoot, "cwd-alias");
+    const originalJsonParse = JSON.parse;
+    let retargeted = false;
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), physicalA, { recursive: true });
+      await cp(path.resolve("fixtures/minimal-app"), physicalB, { recursive: true });
+      await runDryRun({ cwd: physicalA, dryRun: true, runId: "feedback-a" });
+      await runDryRun({ cwd: physicalB, dryRun: true, runId: "feedback-b" });
+      await symlink(physicalA, cwdAlias, "dir");
+      JSON.parse = ((text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
+        const value = originalJsonParse(text, reviver);
+        if (
+          !retargeted
+          && typeof value === "object"
+          && value !== null
+          && (value as { runId?: unknown }).runId === "feedback-a"
+          && (value as { path?: unknown }).path === ".humanish/runs/feedback-a"
+        ) {
+          unlinkSync(cwdAlias);
+          symlinkSync(physicalB, cwdAlias, "dir");
+          retargeted = true;
+        }
+        return value;
+      }) as typeof JSON.parse;
+
+      const drafted = await draftFeedback(cwdAlias, "latest");
+      expect(retargeted).toBe(true);
+      expect(drafted.ok).toBe(true);
+      expect(drafted.draft?.run_id).toBe("feedback-a");
+      expect(await stat(path.join(physicalA, ".humanish", "runs", "feedback-a", "feedback", "draft.json")))
+        .toMatchObject({});
+      await expect(stat(path.join(physicalB, ".humanish", "runs", "feedback-a", "feedback", "draft.json")))
+        .rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      JSON.parse = originalJsonParse;
+      await unlink(cwdAlias).catch(() => undefined);
+      await rm(tempRoot, { force: true, recursive: true });
+    }
   });
 
   it("refuses public feedback drafts for valid local-only evidence", async () => {

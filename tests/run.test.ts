@@ -1,16 +1,18 @@
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, chmod, cp, link, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
+import { captureGitState } from "../src/core/git-state.js";
 import { buildCuaBundle } from "../src/cua-actor-lab.js";
 import { renderObserver } from "../src/observer.js";
 import { createProgram } from "../src/program.js";
 import { startCodexAppServerUi } from "../src/codex-app-server-ui.js";
-import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
 import {
   CLEANUP_SCHEMA,
   PUBLIC_TARGET_CWD,
@@ -24,6 +26,15 @@ import {
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "../src/run.js";
+
+const execFileAsync = promisify(execFile);
+
+function isNodeErrorCode(error: unknown, ...codes: string[]): boolean {
+  return error instanceof Error
+    && "code" in error
+    && typeof error.code === "string"
+    && codes.includes(error.code);
+}
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-run-fixture-"));
@@ -236,7 +247,50 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("cleans run-owned provider resources by exact recorded id", async () => {
+  it("does not hang a generic dry-run on special .git metadata", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await execFileAsync("mkfifo", [path.join(cwd, ".git")]);
+
+      const run = await Promise.race([
+        runDryRun({
+          cwd,
+          dryRun: true,
+          runId: "dryrun-special-git"
+        }),
+        new Promise<never>((_resolve, reject) => {
+          setTimeout(() => reject(new Error("generic dry-run hung on special .git metadata")), 1_000);
+        })
+      ]);
+
+      expect(run.ok).toBe(true);
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish/runs/dryrun-special-git/run.json"), "utf8")
+      ) as { source: { git: { note: string; status: string } } };
+      expect(bundle.source.git.status).toBe("unavailable");
+      expect(bundle.source.git.note).toBe("Git metadata failed containment validation.");
+    });
+  });
+
+  it("verifies a built run whose bounded Git capture timed out", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({ cwd, dryRun: true, runId: "dryrun-git-timeout" });
+      expect(run.ok).toBe(true);
+      const bundlePath = path.join(cwd, ".humanish/runs/dryrun-git-timeout/run.json");
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
+        source: { git: unknown };
+      };
+      bundle.source.git = await captureGitState(cwd, {
+        commandTimeoutMs: 10,
+        runner: async () => await new Promise(() => {})
+      });
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const verify = await verifyRun(cwd, "dryrun-git-timeout");
+      expect(verify.ok).toBe(true);
+    });
+  });
+
+  it("refuses to trust a stored provider id without a verified resource lease", async () => {
     await withFixtureCopy(async (cwd) => {
       await runDryRun({
         cwd,
@@ -258,33 +312,122 @@ describe("dry-run bundles", () => {
           streamId: "stream-001",
           laneId: "lane-01",
           createdAt: "2026-01-01T00:00:00.000Z"
+        },
+        {
+          schema: "humanish.provider-resource.v1",
+          provider: "e2b-desktop",
+          kind: "sandbox",
+          id: "sbx-forged-unknown",
+          owner: "humanish",
+          status: "unknown",
+          createdAt: "2026-01-01T00:00:00.000Z"
         }
       ];
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
-      const killed: string[] = [];
+      let providerLoads = 0;
       const cleanup = await cleanupRun(cwd, "cleanup-owned", {
         now: () => new Date("2026-01-01T00:01:00.000Z"),
-        loadDesktopModule: async () => ({
-          Sandbox: {
-            kill: async (sandboxId: string) => {
-              killed.push(sandboxId);
-            }
-          }
-        } as unknown as E2BDesktopModule)
+        loadDesktopModule: async () => {
+          providerLoads += 1;
+          throw new Error("provider module must not be loaded from stored resource metadata");
+        }
       });
 
       expect(cleanup.schema).toBe(CLEANUP_SCHEMA);
-      expect(cleanup.ok).toBe(true);
-      expect(killed).toEqual(["sbx-owned-1"]);
-      expect(cleanup.summary).toMatchObject({ resources: 1, killed: 1, alreadyClean: 0, failed: 0, skipped: 0 });
+      expect(cleanup.ok).toBe(false);
+      expect(providerLoads).toBe(0);
+      expect(cleanup.resources).toEqual([
+        expect.objectContaining({
+          id: "sbx-owned-1",
+          status: "failed",
+          message: "automatic provider cleanup requires a verified resource lease"
+        }),
+        expect.objectContaining({
+          id: "sbx-forged-unknown",
+          status: "failed",
+          message: "automatic provider cleanup requires a verified resource lease"
+        })
+      ]);
+      expect(cleanup.summary).toMatchObject({ resources: 2, killed: 0, alreadyClean: 0, failed: 2, skipped: 0 });
 
       const cleanupText = await readFile(path.join(cwd, ".humanish/runs/cleanup-owned/cleanup.json"), "utf8");
       expect(cleanupText).toContain("humanish.cleanup-result.v1");
 
       const verify = await verifyRun(cwd, "cleanup-owned");
-      expect(verify.ok).toBe(true);
-      expect(verify.checks.find((check) => check.name === "cleanup receipt")?.ok).toBe(true);
+      expect(verify.ok).toBe(false);
+      expect(verify.checks.find((check) => check.name === "cleanup receipt")?.ok).toBe(false);
+    });
+  });
+
+  it("keeps cleanup bound to the original physical run across a cwd alias retarget", async () => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-cleanup-alias-"));
+    const physicalA = path.join(tempRoot, "physical-a");
+    const physicalB = path.join(tempRoot, "physical-b");
+    const cwdAlias = path.join(tempRoot, "selected-cwd");
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), physicalA, { recursive: true });
+      await cp(path.resolve("fixtures/minimal-app"), physicalB, { recursive: true });
+      await symlink(physicalA, cwdAlias, "dir");
+      await runDryRun({ cwd: cwdAlias, dryRun: true, runId: "cleanup-retarget" });
+      await cp(path.join(physicalA, ".humanish"), path.join(physicalB, ".humanish"), { recursive: true });
+      const bCleanup = path.join(physicalB, ".humanish/runs/cleanup-retarget/cleanup.json");
+      await writeFile(bCleanup, "physical-b-sentinel\n", "utf8");
+
+      await expect(cleanupRun(cwdAlias, "cleanup-retarget", {
+        cleanupAdapterResources: async ({ runDir }) => {
+          expect(runDir).toBe(path.join(await realpath(physicalA), ".humanish/runs/cleanup-retarget"));
+          await rm(cwdAlias);
+          await symlink(physicalB, cwdAlias, "dir");
+          return [];
+        }
+      })).rejects.toThrow(/changed physical destination|identity/i);
+
+      await expect(readFile(bCleanup, "utf8")).resolves.toBe("physical-b-sentinel\n");
+      await expect(stat(path.join(physicalA, ".humanish/runs/cleanup-retarget/cleanup.json"))).rejects.toMatchObject({
+        code: "ENOENT"
+      });
+    } finally {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects a symlinked cleanup receipt without mutating its target", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-symlink" });
+      const sentinel = path.join(path.dirname(cwd), "cleanup-symlink-sentinel.txt");
+      const cleanupPath = path.join(cwd, ".humanish/runs/cleanup-symlink/cleanup.json");
+      await writeFile(sentinel, "outside-sentinel\n", "utf8");
+      await symlink(sentinel, cleanupPath);
+
+      await expect(cleanupRun(cwd, "cleanup-symlink")).resolves.toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" }
+      });
+      await expect(readFile(sentinel, "utf8")).resolves.toBe("outside-sentinel\n");
+    });
+  });
+
+  it("rejects a hardlinked cleanup receipt without mutating its target", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-hardlink" });
+      const sentinel = path.join(path.dirname(cwd), "cleanup-hardlink-sentinel.txt");
+      const cleanupPath = path.join(cwd, ".humanish/runs/cleanup-hardlink/cleanup.json");
+      await writeFile(sentinel, "outside-sentinel\n", "utf8");
+      try {
+        await link(sentinel, cleanupPath);
+      } catch (error) {
+        if (isNodeErrorCode(error, "EPERM", "ENOTSUP", "EOPNOTSUPP")) {
+          return;
+        }
+        throw error;
+      }
+
+      await expect(cleanupRun(cwd, "cleanup-hardlink")).resolves.toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" }
+      });
+      await expect(readFile(sentinel, "utf8")).resolves.toBe("outside-sentinel\n");
     });
   });
 
@@ -1663,6 +1806,43 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("rejects a latest-pointer hardlink planted by a workspace-write actor", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const sentinel = path.join(path.dirname(cwd), "actor-latest-sentinel.json");
+      const probe = path.join(cwd, "hardlink-support-probe");
+      await writeFile(sentinel, "outside-sentinel\n", "utf8");
+      try {
+        await link(sentinel, probe);
+        await rm(probe);
+      } catch (error) {
+        if (isNodeErrorCode(error, "EPERM", "ENOTSUP", "EOPNOTSUPP")) {
+          return;
+        }
+        throw error;
+      }
+      const fakeActor = path.join(cwd, "fake-codex-exec-latest-hardlink.mjs");
+      await writeFile(fakeActor, [
+        "import fs from 'node:fs';",
+        "const latest = '.humanish/runs/latest.json';",
+        "fs.rmSync(latest);",
+        `fs.linkSync(${JSON.stringify(sentinel)}, latest);`,
+        "process.stdout.write('actor completed after planting hostile latest pointer\\n');"
+      ].join("\n"), "utf8");
+
+      await expect(runDryRun({
+        cwd,
+        actor: "codex-exec",
+        actorCommand: [process.execPath, fakeActor],
+        runId: "codex-exec-hostile-latest",
+        simCount: 1,
+        timeoutMs: 5_000
+      })).rejects.toThrow(/hardlink|single-link/i);
+
+      expect(await readFile(sentinel, "utf8")).toBe("outside-sentinel\n");
+      await expect(access(path.join(cwd, ".humanish/runs/codex-exec-hostile-latest/transcripts"))).rejects.toThrow();
+    });
+  });
+
   it("ignores a bare local Codex exec verdict marker that lacks the per-run nonce", async () => {
     await withFixtureCopy(async (cwd) => {
       const fakeActor = path.join(cwd, "fake-codex-exec-forged-verdict-actor.mjs");
@@ -2345,6 +2525,297 @@ describe("dry-run bundles", () => {
         }
       }
     });
+  });
+
+  it("does not derive Codex trust from a repo-controlled git commondir", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const root = path.dirname(cwd);
+      const trustedProject = path.join(root, "already-trusted");
+      const fakeGitDir = path.join(cwd, ".fakegit");
+      const codexHome = path.join(root, "codex-home");
+      const fakeBin = path.join(root, "fake-bin");
+      const fakeCodex = path.join(fakeBin, "codex");
+      const spawnedSentinel = path.join(root, "forged-trust-actor-started");
+      const previousCodexHome = process.env.CODEX_HOME;
+      const previousActorCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+      const previousPath = process.env.PATH;
+      await mkdir(path.join(trustedProject, ".git"), { recursive: true });
+      await mkdir(fakeGitDir, { recursive: true });
+      await writeFile(path.join(cwd, ".git"), "gitdir: .fakegit\n", "utf8");
+      await writeFile(
+        path.join(fakeGitDir, "commondir"),
+        `${path.relative(fakeGitDir, path.join(trustedProject, ".git"))}\n`,
+        "utf8"
+      );
+      await writeFile(path.join(fakeGitDir, "gitdir"), `${path.join(cwd, ".git")}\n`, "utf8");
+      await mkdir(codexHome, { recursive: true });
+      await writeFile(
+        path.join(codexHome, "config.toml"),
+        [
+          `[projects."${trustedProject.replace(/["\\]/g, "\\$&")}"]`,
+          'trust_level = "trusted"',
+          `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]`,
+          'trust_level = "trusted"',
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+      await mkdir(fakeBin, { recursive: true });
+      await writeFile(
+        fakeCodex,
+        `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'forged trust actor started\\n'\n`,
+        "utf8"
+      );
+      await chmod(fakeCodex, 0o755);
+      delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+      process.env.CODEX_HOME = codexHome;
+      process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
+
+      try {
+        const result = await runDryRun({
+          cwd,
+          actor: "codex-tui",
+          runId: "codex-forged-commondir",
+          simCount: 1,
+          timeoutMs: 5_000
+        });
+        expect(result.ok).toBe(false);
+        expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
+        await expect(access(spawnedSentinel)).rejects.toThrow();
+        const bundle = JSON.parse(
+          await readFile(path.join(cwd, ".humanish/runs/codex-forged-commondir/run.json"), "utf8")
+        ) as { events: Array<{ type: string }>; streams: Array<{ status: string }> };
+        expect(bundle.streams[0]?.status).toBe("blocked");
+        expect(bundle.events.map((event) => event.type)).not.toContain("actor.spawned");
+      } finally {
+        if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+        else process.env.CODEX_HOME = previousCodexHome;
+        if (previousActorCommand === undefined) delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+        else process.env.HUMANISH_CODEX_ACTOR_COMMAND = previousActorCommand;
+        if (previousPath === undefined) delete process.env.PATH;
+        else process.env.PATH = previousPath;
+      }
+    });
+  });
+
+  it.each(["symlink", "hardlink", "fifo"] as const)(
+    "blocks unsafe %s .git metadata even when the exact project is trusted",
+    async (kind) => {
+      await withFixtureCopy(async (cwd) => {
+        const root = path.dirname(cwd);
+        const codexHome = path.join(root, `codex-home-${kind}`);
+        const fakeBin = path.join(root, `fake-bin-${kind}`);
+        const fakeCodex = path.join(fakeBin, "codex");
+        const spawnedSentinel = path.join(root, `unsafe-${kind}-actor-started`);
+        const previousCodexHome = process.env.CODEX_HOME;
+        const previousActorCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+        const previousPath = process.env.PATH;
+        if (kind === "symlink") {
+          const outsideGit = path.join(root, "outside-git");
+          await mkdir(outsideGit);
+          await symlink(outsideGit, path.join(cwd, ".git"), "dir");
+        } else if (kind === "hardlink") {
+          const outsideGitFile = path.join(root, "outside-git-file");
+          await writeFile(outsideGitFile, "gitdir: .fakegit\n", "utf8");
+          try {
+            await link(outsideGitFile, path.join(cwd, ".git"));
+          } catch (error) {
+            if (isNodeErrorCode(error, "EPERM", "ENOTSUP", "EOPNOTSUPP")) return;
+            throw error;
+          }
+        } else {
+          await execFileAsync("mkfifo", [path.join(cwd, ".git")]);
+        }
+        await mkdir(codexHome);
+        await writeFile(
+          path.join(codexHome, "config.toml"),
+          `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
+          "utf8"
+        );
+        await mkdir(fakeBin);
+        await writeFile(
+          fakeCodex,
+          `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'unsafe metadata actor started\\n'\n`,
+          "utf8"
+        );
+        await chmod(fakeCodex, 0o755);
+        delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+        process.env.CODEX_HOME = codexHome;
+        process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
+
+        try {
+          const result = await runDryRun({
+            cwd,
+            actor: "codex-tui",
+            runId: `codex-unsafe-git-${kind}`,
+            simCount: 1,
+            timeoutMs: 5_000
+          });
+          expect(result.ok).toBe(false);
+          expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
+          await expect(access(spawnedSentinel)).rejects.toThrow();
+        } finally {
+          if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+          else process.env.CODEX_HOME = previousCodexHome;
+          if (previousActorCommand === undefined) delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+          else process.env.HUMANISH_CODEX_ACTOR_COMMAND = previousActorCommand;
+          if (previousPath === undefined) delete process.env.PATH;
+          else process.env.PATH = previousPath;
+        }
+      });
+    }
+  );
+
+  it.each(["commondir-symlink", "gitdir-hardlink", "gitdir-fifo", "gitdir-mismatch"] as const)(
+    "blocks forged linked-worktree admin metadata with unsafe %s even when both roots are trusted",
+    async (kind) => {
+      await withFixtureCopy(async (cwd) => {
+        const root = path.dirname(cwd);
+        const canonical = path.join(root, `canonical-${kind}`);
+        const commonGit = path.join(canonical, ".git");
+        const adminGit = path.join(commonGit, "worktrees", "forged");
+        const codexHome = path.join(root, `codex-home-admin-${kind}`);
+        const fakeBin = path.join(root, `fake-bin-admin-${kind}`);
+        const fakeCodex = path.join(fakeBin, "codex");
+        const spawnedSentinel = path.join(root, `unsafe-admin-${kind}-actor-started`);
+        const previousCodexHome = process.env.CODEX_HOME;
+        const previousActorCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+        const previousPath = process.env.PATH;
+
+        await mkdir(adminGit, { recursive: true });
+        await writeFile(path.join(cwd, ".git"), `gitdir: ${adminGit}\n`, "utf8");
+
+        if (kind === "commondir-symlink") {
+          const outsideCommonDir = path.join(root, "outside-commondir");
+          await writeFile(outsideCommonDir, "../..\n", "utf8");
+          await symlink(outsideCommonDir, path.join(adminGit, "commondir"));
+          await writeFile(path.join(adminGit, "gitdir"), `${path.join(cwd, ".git")}\n`, "utf8");
+        } else {
+          await writeFile(path.join(adminGit, "commondir"), "../..\n", "utf8");
+          if (kind === "gitdir-hardlink") {
+            const outsideBackPointer = path.join(root, "outside-gitdir-backpointer");
+            await writeFile(outsideBackPointer, `${path.join(cwd, ".git")}\n`, "utf8");
+            try {
+              await link(outsideBackPointer, path.join(adminGit, "gitdir"));
+            } catch (error) {
+              if (isNodeErrorCode(error, "EPERM", "ENOTSUP", "EOPNOTSUPP")) return;
+              throw error;
+            }
+          } else if (kind === "gitdir-fifo") {
+            await execFileAsync("mkfifo", [path.join(adminGit, "gitdir")]);
+          } else {
+            await writeFile(path.join(adminGit, "gitdir"), `${path.join(root, "different", ".git")}\n`, "utf8");
+          }
+        }
+
+        await mkdir(codexHome);
+        await writeFile(
+          path.join(codexHome, "config.toml"),
+          [
+            `[projects."${canonical.replace(/["\\]/g, "\\$&")}"]`,
+            'trust_level = "trusted"',
+            `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]`,
+            'trust_level = "trusted"',
+            ""
+          ].join("\n"),
+          "utf8"
+        );
+        await mkdir(fakeBin);
+        await writeFile(
+          fakeCodex,
+          `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'unsafe admin metadata actor started\\n'\n`,
+          "utf8"
+        );
+        await chmod(fakeCodex, 0o755);
+        delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+        process.env.CODEX_HOME = codexHome;
+        process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
+
+        try {
+          const result = await Promise.race([
+            runDryRun({
+              cwd,
+              actor: "codex-tui",
+              runId: `codex-unsafe-admin-${kind}`,
+              simCount: 1,
+              timeoutMs: 5_000
+            }),
+            new Promise<never>((_resolve, reject) => {
+              setTimeout(() => reject(new Error(`trust preflight hung on ${kind}`)), 1_000);
+            })
+          ]);
+          expect(result.ok).toBe(false);
+          expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
+          await expect(access(spawnedSentinel)).rejects.toThrow();
+        } finally {
+          if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+          else process.env.CODEX_HOME = previousCodexHome;
+          if (previousActorCommand === undefined) delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+          else process.env.HUMANISH_CODEX_ACTOR_COMMAND = previousActorCommand;
+          if (previousPath === undefined) delete process.env.PATH;
+          else process.env.PATH = previousPath;
+        }
+      });
+    }
+  );
+
+  it("inherits Codex trust only through verified Git linked-worktree metadata", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "humanish-codex-linked-worktree-"));
+    const canonical = path.join(root, "canonical");
+    const linked = path.join(root, "linked");
+    const codexHome = path.join(root, "codex-home");
+    const fakeBin = path.join(root, "fake-bin");
+    const fakeCodex = path.join(fakeBin, "codex");
+    const spawnedSentinel = path.join(root, "linked-worktree-actor-started");
+    const previousCodexHome = process.env.CODEX_HOME;
+    const previousActorCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+    const previousPath = process.env.PATH;
+    try {
+      await mkdir(canonical);
+      await execFileAsync("git", ["init", "--initial-branch=main"], { cwd: canonical });
+      await execFileAsync("git", ["config", "user.email", "humanish@example.test"], { cwd: canonical });
+      await execFileAsync("git", ["config", "user.name", "Humanish Test"], { cwd: canonical });
+      await writeFile(path.join(canonical, "package.json"), '{"name":"linked-worktree-fixture"}\n', "utf8");
+      await writeFile(path.join(canonical, ".gitignore"), ".humanish/\n", "utf8");
+      await execFileAsync("git", ["add", "package.json", ".gitignore"], { cwd: canonical });
+      await execFileAsync("git", ["commit", "-m", "fixture"], { cwd: canonical });
+      await execFileAsync("git", ["worktree", "add", "-b", "linked-proof", linked], { cwd: canonical });
+
+      await mkdir(codexHome);
+      await writeFile(
+        path.join(codexHome, "config.toml"),
+        `[projects."${canonical.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
+        "utf8"
+      );
+      await mkdir(fakeBin);
+      await writeFile(
+        fakeCodex,
+        `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'verified linked worktree actor started\\n'\nprintf 'HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=%s\\n' "$HUMANISH_ACTOR_VERDICT_NONCE"\n`,
+        "utf8"
+      );
+      await chmod(fakeCodex, 0o755);
+      delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+      process.env.CODEX_HOME = codexHome;
+      process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
+
+      const result = await runDryRun({
+        cwd: linked,
+        actor: "codex-tui",
+        runId: "codex-linked-worktree",
+        simCount: 1,
+        timeoutMs: 5_000
+      });
+      expect(result.ok).toBe(true);
+      await expect(access(spawnedSentinel)).resolves.toBeUndefined();
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = previousCodexHome;
+      if (previousActorCommand === undefined) delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
+      else process.env.HUMANISH_CODEX_ACTOR_COMMAND = previousActorCommand;
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      await rm(root, { force: true, recursive: true });
+    }
   });
 
   it("allows the default Codex TUI actor when the exact project root is trusted", async () => {

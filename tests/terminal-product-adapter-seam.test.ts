@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -244,6 +244,68 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true); // the bundle still verifies — the seam stayed fail-closed
+  });
+
+  it("drops an adapter candidate with an escaping evidence path and leaves outside files unchanged", async () => {
+    const outsideSentinel = path.join(cwd, "outside-sentinel.txt");
+    const original = "outside must stay unchanged\n";
+    await writeFile(outsideSentinel, original, "utf8");
+    const hooks = passingHooks({
+      deriveFeedback: (ctx) => {
+        const [candidate] = exampleAdapterFeedback(ctx);
+        if (!candidate) return [];
+        return [{
+          ...candidate,
+          evidence: [{ path: "../../outside-sentinel.txt", kind: "log", note: "must be rejected" }]
+        }];
+      }
+    });
+
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+
+    expect(bundle.feedbackCandidates).toHaveLength(0);
+    expect(result.warnings.some((warning) => warning.includes("feedback-candidate.v1"))).toBe(true);
+    expect(await readFile(outsideSentinel, "utf8")).toBe(original);
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+    expect(verified.checks.find((check) => check.name === "local evidence artifacts exist")?.ok).toBe(true);
+  });
+
+  it("fails before finalization when an adapter hook retargets the prepared run root", async () => {
+    const runId = "terminal-hook-root-retarget";
+    const runRoot = path.join(cwd, ".humanish", "runs", runId);
+    const capturedRunRoot = path.join(cwd, ".humanish", "runs", `${runId}-captured`);
+    const outsideRoot = path.join(cwd, "outside-retarget");
+    const outsideSentinel = path.join(outsideRoot, "sentinel.txt");
+    const original = "outside target must stay unchanged\n";
+    await mkdir(outsideRoot);
+    await writeFile(outsideSentinel, original, "utf8");
+    let hookRan = false;
+    const hooks = passingHooks({
+      score: async (ctx) => {
+        hookRan = true;
+        await rename(runRoot, capturedRunRoot);
+        await symlink(outsideRoot, runRoot, "dir");
+        return exampleAdapterScore(ctx);
+      }
+    });
+
+    await expect(runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      hooks,
+      open: false,
+      runId
+    })).rejects.toThrow(/changed physical destination|identity changed/i);
+
+    expect(hookRan).toBe(true);
+    expect(await readFile(outsideSentinel, "utf8")).toBe(original);
+    await expect(stat(path.join(outsideRoot, "run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(cwd, ".humanish", "runs", "latest.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(capturedRunRoot, "run.json"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   // The contract types the adapter needs ARE exported (ActorTrace / TerminalLedgers used via the

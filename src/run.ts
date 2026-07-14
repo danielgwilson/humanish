@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import type { Dirent } from "node:fs";
+import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -22,6 +21,7 @@ import {
 } from "./scripted-browser-actor.js";
 import {
   CODEX_APP_SERVER_TRACE_SCHEMA,
+  runCodexAppServerSessionInPreparedRoot,
   type CodexAppServerRunResult,
   type CodexAppServerTrace
 } from "./codex-app-server.js";
@@ -29,12 +29,37 @@ import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
+import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { containsSensitive, digestText, redactText, redactToSecretLabel, tailText } from "./redaction.js";
-import { loadE2BDesktopModule, type E2BDesktopModule } from "./e2b-desktop-launch.js";
+import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
+import {
+  bindExistingRunArtifactPaths,
+  RUNS_RELATIVE_ROOT,
+  isSafeRunIdSegment,
+  prepareRunArtifactPaths,
+  resolveExistingRunDirectory,
+  resolveLatestRunDirectory,
+  resolveRunsRoot,
+  validatePreparedRunArtifactPaths,
+  type PreparedRunArtifactPaths
+} from "./run-paths.js";
+import {
+  assertPreparedSelectedOutputDirectory,
+  assertSafeOutputPathSegment,
+  bindExistingManagedHumanishOutputDirectory,
+  prepareContainedOutputDirectory,
+  prepareContainedOutputDirectoryRoot,
+  prepareContainedOutputFile,
+  prepareSelectedOutputDirectory,
+  readContainedRegularFile,
+  type PreparedSelectedOutputDirectory,
+  writeContainedOutputFile,
+  writePreparedRunLatestPointer
+} from "./selected-output-paths.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
 export const SHARED_WORLD_SCHEMA = "humanish.shared-world.v1";
@@ -46,8 +71,17 @@ export const CLEANUP_SCHEMA = "humanish.cleanup-result.v1";
 export const PUBLIC_TARGET_CWD = "[target-cwd]";
 const SAFE_GIT_NOTES = new Set([
   "Git command could not be started.",
+  "Git HEAD capture timed out.",
+  "Git HEAD command could not be started.",
+  "Git metadata could not be inspected safely.",
   "Git status command could not be captured.",
   "Git status command could not be started.",
+  "Git status could not be captured.",
+  "Git status capture timed out.",
+  "Git metadata failed containment validation.",
+  "Git ref-state capture timed out.",
+  "Git ref-state command could not be started.",
+  "Git work-tree detection timed out.",
   "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names.",
   "Git work tree was clean; branch names, remotes, paths, and file names were not captured.",
   "No git work tree was detected.",
@@ -682,9 +716,9 @@ export interface RunBundle {
    */
   adapterArtifacts?: RunAdapterArtifact[];
   /**
-   * Provider resources this run owns and may clean up later by exact recorded id.
-   * Optional + additive: absent means the producer did not record any run-owned
-   * remote resources. Core cleanup never enumerates provider accounts.
+   * Evidence about mutable provider resources observed during this run. Stored ids
+   * are not cleanup authority: automatic provider mutation requires a verified
+   * resource lease. Optional + additive; core never enumerates provider accounts.
    */
   providerResources?: RunProviderResource[];
 }
@@ -844,6 +878,7 @@ export interface CleanupResult {
 }
 
 export interface RunCleanupHooks {
+  /** @deprecated Ignored. Stored provider ids are not authority to load or mutate a provider. */
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   cleanupAdapterResources?: (ctx: {
     cwd: string;
@@ -955,6 +990,8 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     };
   }
 
+  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
+
   if (options.appUrl !== undefined) {
     if (options.dryRun) {
       return {
@@ -982,19 +1019,19 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
       };
     }
 
-    return runBrowserAppProof({ ...options, appUrl: options.appUrl, cwd, simCount });
+    return runBrowserAppProof({ ...options, appUrl: options.appUrl, cwd, projectRoot, simCount });
   }
 
   if (!options.dryRun) {
     const actor = resolveRequestedLocalCodexActor(options.actor);
     if (actor === "codex-tui") {
-      return runLocalCodexTui({ ...options, actor, cwd, simCount });
+      return runLocalCodexTui({ ...options, actor, cwd, projectRoot, simCount });
     }
     if (actor === "codex-exec") {
-      return runLocalCodexExec({ ...options, actor, cwd, simCount });
+      return runLocalCodexExec({ ...options, actor, cwd, projectRoot, simCount });
     }
     if (actor === "codex-app-server") {
-      return runLocalCodexAppServer({ ...options, actor, cwd, simCount });
+      return runLocalCodexAppServer({ ...options, actor, cwd, projectRoot, simCount });
     }
 
     return {
@@ -1012,12 +1049,13 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".humanish", "runs", runId);
-  const absoluteArtifactRoot = path.join(cwd, artifactRoot);
-  const packageName = await readPackageName(cwd);
-  const humanishSource = await directoryExists(path.join(cwd, "humanish")) ? "present" : "missing";
+  const packageName = await readPackageName(projectRoot);
+  const humanishSource = await implicitProjectDirectoryExists(projectRoot, "humanish") ? "present" : "missing";
   const source = await buildRunSource({ cwd, capturedAt: createdAt, humanishSource, packageName });
-  const selection = await loadDryRunSelection(cwd, humanishSource);
+  const selection = await loadDryRunSelection(projectRoot, humanishSource);
+  await assertPreparedSelectedOutputDirectory(projectRoot);
+  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const artifactRoot = runPaths.relativeRunRoot;
 
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic dry-run defaults.");
@@ -1082,14 +1120,17 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     feedbackCandidates: []
   };
 
-  await mkdir(absoluteArtifactRoot, { recursive: true });
-  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
-  await writeJson(path.join(cwd, ".humanish", "runs", "latest.json"), {
-    schema: "humanish.latest-run.v1",
-    runId,
-    path: artifactRoot,
-    updatedAt: createdAt
-  } satisfies RunPointer);
+  await writeRunBundleArtifacts(runPaths, bundle);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: createdAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   return {
     schema: "humanish.run-result.v1",
@@ -1101,7 +1142,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".humanish", "runs", "latest.json"),
+    latestPath: runPaths.relativeLatestPointer,
     warnings
   };
 }
@@ -1109,6 +1150,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
 async function runBrowserAppProof(options: RunOptions & {
   appUrl: string;
   cwd: string;
+  projectRoot: PreparedSelectedOutputDirectory;
   simCount: number;
 }): Promise<RunResult> {
   const warnings: string[] = [];
@@ -1143,12 +1185,13 @@ async function runBrowserAppProof(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `browser-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".humanish", "runs", runId);
-  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
-  const packageName = await readPackageName(options.cwd);
-  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const packageName = await readPackageName(options.projectRoot);
+  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
   const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
+  await assertPreparedSelectedOutputDirectory(options.projectRoot);
+  const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  const artifactRoot = runPaths.relativeRunRoot;
   if (selection.browserJourneyFailure) {
     return {
       schema: "humanish.run-result.v1",
@@ -1171,18 +1214,19 @@ async function runBrowserAppProof(options: RunOptions & {
   }
   warnings.push(...selection.warnings);
 
-  await mkdir(path.join(absoluteArtifactRoot, "screenshots"), { recursive: true });
-  await mkdir(path.join(absoluteArtifactRoot, "traces"), { recursive: true });
+  await prepareContainedOutputDirectory(runPaths, "screenshots");
+  await prepareContainedOutputDirectory(runPaths, "traces");
 
   const surfaces = browserSurfaces.slice(0, options.simCount);
   const captures = await Promise.all(surfaces.map((surface) => captureBrowserSurface({
-    absoluteArtifactRoot,
+    absoluteArtifactRoot: runPaths,
     appUrl,
     browserCommand,
     browserJourney,
     surface,
     timeoutMs: options.timeoutMs ?? BROWSER_APP_DEFAULT_TIMEOUT_MS
   })));
+  await validatePreparedRunArtifactPaths(runPaths);
   const completedAt = new Date().toISOString();
   const events = buildBrowserAppEvents({ appUrl, captures, createdAt });
   const allPassed = captures.every((capture) => capture.ok);
@@ -1319,13 +1363,17 @@ async function runBrowserAppProof(options: RunOptions & {
     feedbackCandidates: []
   };
 
-  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
-  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
-    schema: "humanish.latest-run.v1",
-    runId,
-    path: artifactRoot,
-    updatedAt: completedAt
-  } satisfies RunPointer);
+  await writeRunBundleArtifacts(runPaths, bundle);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: completedAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   return {
     schema: "humanish.run-result.v1",
@@ -1337,7 +1385,7 @@ async function runBrowserAppProof(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".humanish", "runs", "latest.json"),
+    latestPath: runPaths.relativeLatestPointer,
     warnings,
     ...(allPassed
       ? {}
@@ -1444,6 +1492,7 @@ function resolveRequestedLocalCodexActor(actor: string | undefined): LocalCodexA
 async function runLocalCodexTui(options: RunOptions & {
   actor: "codex-tui";
   cwd: string;
+  projectRoot: PreparedSelectedOutputDirectory;
   simCount: number;
 }): Promise<RunResult> {
   const warnings: string[] = [];
@@ -1478,15 +1527,28 @@ async function runLocalCodexTui(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `codex-tui-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".humanish", "runs", runId);
-  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
-  const transcriptPath = path.join(absoluteArtifactRoot, "transcripts", "codex-tui-sanitized.txt");
-  const actorTracePath = path.join(absoluteArtifactRoot, "actor.json");
-  const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
-  const packageName = await readPackageName(options.cwd);
-  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.HUMANISH_CODEX_ACTOR_COMMAND === undefined;
+  const trustPreflight = usesDefaultCodexCommand ? await checkCodexWorkspaceTrust(options.cwd) : { ok: true as const };
+  const packageName = await readPackageName(options.projectRoot);
+  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
+  const source: RunBundle["source"] = !trustPreflight.ok && trustPreflight.unsafeMetadata
+    ? {
+        packageName,
+        humanishSource,
+        git: {
+          schema: GIT_STATE_SCHEMA,
+          status: "unavailable",
+          capturedAt: createdAt,
+          head: { shortSha: null, refState: "unknown" },
+          changes: { staged: 0, unstaged: 0, untracked: 0, total: 0 },
+          note: "Git metadata failed containment validation."
+        }
+      }
+    : await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
+  await assertPreparedSelectedOutputDirectory(options.projectRoot);
+  const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
   }
@@ -1495,7 +1557,6 @@ async function runLocalCodexTui(options: RunOptions & {
   const prompt = buildLocalCodexTuiPrompt(selection, verdictNonce);
   const promptDigest = digestText(prompt);
   const command = resolveLocalCodexTuiCommand(options.cwd, prompt, options.actorCommand);
-  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.HUMANISH_CODEX_ACTOR_COMMAND === undefined;
   const simId = "sim-01";
   const streamId = "sim-01-codex-tui";
   const events: RunEvent[] = [];
@@ -1513,13 +1574,10 @@ async function runLocalCodexTui(options: RunOptions & {
       simId,
       streamId
     });
-    await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+    await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   };
 
-  await mkdir(path.dirname(transcriptPath), { recursive: true });
-
   let actor: LocalActorCommandResult;
-  const trustPreflight = usesDefaultCodexCommand ? await checkCodexWorkspaceTrust(options.cwd) : { ok: true as const };
   if (!trustPreflight.ok) {
     actor = {
       durationMs: 0,
@@ -1635,13 +1693,17 @@ async function runLocalCodexTui(options: RunOptions & {
       review: createLocalActorRunningReviewSummary("Codex TUI"),
       feedbackCandidates: []
     };
-    await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
-    await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: runningAt
-    } satisfies RunPointer);
+    await writeRunBundleArtifacts(runPaths, runningBundle);
+    await writePreparedRunLatestPointer(
+      runPaths,
+      `${JSON.stringify({
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: runningAt
+      } satisfies RunPointer, null, 2)}\n`,
+      "utf8"
+    );
 
     actor = await executeLocalActorCommand(command, {
       cwd: options.cwd,
@@ -1649,6 +1711,7 @@ async function runLocalCodexTui(options: RunOptions & {
       verdictNonce
     });
   }
+  await validatePreparedRunArtifactPaths(runPaths);
   const completedAt = new Date().toISOString();
   const redactedTranscript = redactSensitiveText(actor.transcript);
   const tail = tailText(redactedTranscript, 6_000);
@@ -1659,8 +1722,13 @@ async function runLocalCodexTui(options: RunOptions & {
   // still show the real path, but the public-safe bundle must not.
   const verdictReason = redactSensitiveText(actor.reason);
 
-  await writeFile(transcriptPath, redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n", "utf8");
-  await writeJson(actorTracePath, {
+  await writeContainedOutputFile(
+    runPaths,
+    "transcripts/codex-tui-sanitized.txt",
+    redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n",
+    "utf8"
+  );
+  await writeContainedOutputFile(runPaths, "actor.json", `${JSON.stringify({
     schema: "humanish.local-codex-tui-actor.v1",
     actor: "codex-tui",
     commandName: command.name,
@@ -1676,7 +1744,7 @@ async function runLocalCodexTui(options: RunOptions & {
     transcriptBytes: actor.transcriptBytes,
     transcriptPath: "transcripts/codex-tui-sanitized.txt",
     redaction: "passed"
-  });
+  }, null, 2)}\n`, "utf8");
 
   await appendEvent(
     "actor.observation",
@@ -1797,13 +1865,17 @@ async function runLocalCodexTui(options: RunOptions & {
     feedbackCandidates: []
   };
 
-  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
-  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
-    schema: "humanish.latest-run.v1",
-    runId,
-    path: artifactRoot,
-    updatedAt: completedAt
-  } satisfies RunPointer);
+  await writeRunBundleArtifacts(runPaths, bundle);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: completedAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   return {
     schema: "humanish.run-result.v1",
@@ -1815,7 +1887,7 @@ async function runLocalCodexTui(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".humanish", "runs", "latest.json"),
+    latestPath: runPaths.relativeLatestPointer,
     warnings,
     ...(status === "passed"
       ? {}
@@ -1937,6 +2009,7 @@ function buildLocalCodexExecBundle(args: {
 async function runLocalCodexExec(options: RunOptions & {
   actor: "codex-exec";
   cwd: string;
+  projectRoot: PreparedSelectedOutputDirectory;
   simCount: number;
 }): Promise<RunResult> {
   const warnings: string[] = [];
@@ -1973,13 +2046,13 @@ async function runLocalCodexExec(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `codex-exec-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".humanish", "runs", runId);
-  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
-  const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
-  const packageName = await readPackageName(options.cwd);
-  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const packageName = await readPackageName(options.projectRoot);
+  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
   const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
+  await assertPreparedSelectedOutputDirectory(options.projectRoot);
+  const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
   }
@@ -2004,21 +2077,23 @@ async function runLocalCodexExec(options: RunOptions & {
     });
   };
 
-  await mkdir(path.join(absoluteArtifactRoot, "transcripts"), { recursive: true });
-  await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
-  await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
-  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
-    schema: "humanish.latest-run.v1",
-    runId,
-    path: artifactRoot,
-    updatedAt: createdAt
-  } satisfies RunPointer);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: createdAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   interface ExecLaneResult {
     actor: LocalActorCommandResult;
     command: LocalActorCommand;
     focus: LocalCodexExecFocus;
     promptDigest: string;
+    redactedTranscript: string;
     simId: string;
     streamId: string;
     tail: string;
@@ -2064,7 +2139,7 @@ async function runLocalCodexExec(options: RunOptions & {
       lane.streamId
     );
   }
-  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const baseLifecycle: RunBundle["lifecycle"] = [
     {
@@ -2117,7 +2192,7 @@ async function runLocalCodexExec(options: RunOptions & {
     events,
     review: createLocalActorRunningReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout")
   });
-  await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
+  await writeRunBundleArtifacts(runPaths, runningBundle);
 
   const laneResults = await mapWithConcurrency(lanes, maxConcurrency, async (lane): Promise<ExecLaneResult> => {
     const actor = await executeLocalActorCommand(lane.command, {
@@ -2131,34 +2206,12 @@ async function runLocalCodexExec(options: RunOptions & {
       ? "transcripts/codex-exec-sanitized.jsonl"
       : `transcripts/${lane.streamId}-sanitized.jsonl`;
     const tracePath = options.simCount === 1 ? "actor.json" : `actors/${lane.streamId}.json`;
-    await writeFile(
-      path.join(absoluteArtifactRoot, transcriptPath),
-      redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n",
-      "utf8"
-    );
-    await writeJson(path.join(absoluteArtifactRoot, tracePath), {
-      schema: "humanish.local-codex-exec-actor.v1",
-      actor: "codex-exec",
-      commandName: lane.command.name,
-      focusId: lane.focus.id,
-      promptDigest: lane.promptDigest,
-      verdictNonce,
-      startedAt: createdAt,
-      completedAt: new Date().toISOString(),
-      durationMs: actor.durationMs,
-      exitCode: actor.exitCode,
-      signal: actor.signal,
-      status: actor.status,
-      timeoutMs,
-      transcriptBytes: actor.transcriptBytes,
-      transcriptPath,
-      redaction: "passed"
-    });
     return {
       actor,
       command: lane.command,
       focus: lane.focus,
       promptDigest: lane.promptDigest,
+      redactedTranscript,
       simId: lane.simId,
       streamId: lane.streamId,
       tail,
@@ -2168,6 +2221,33 @@ async function runLocalCodexExec(options: RunOptions & {
   });
 
   const completedAt = new Date().toISOString();
+  await validatePreparedRunArtifactPaths(runPaths);
+  for (const result of laneResults) {
+    await writeContainedOutputFile(
+      runPaths,
+      result.transcriptPath,
+      result.redactedTranscript.length > 0 ? result.redactedTranscript : "No transcript output captured.\n",
+      "utf8"
+    );
+    await writeContainedOutputFile(runPaths, result.tracePath, `${JSON.stringify({
+      schema: "humanish.local-codex-exec-actor.v1",
+      actor: "codex-exec",
+      commandName: result.command.name,
+      focusId: result.focus.id,
+      promptDigest: result.promptDigest,
+      verdictNonce,
+      startedAt: createdAt,
+      completedAt,
+      durationMs: result.actor.durationMs,
+      exitCode: result.actor.exitCode,
+      signal: result.actor.signal,
+      status: result.actor.status,
+      timeoutMs,
+      transcriptBytes: result.actor.transcriptBytes,
+      transcriptPath: result.transcriptPath,
+      redaction: "passed"
+    }, null, 2)}\n`, "utf8");
+  }
   const laneStatuses = laneResults.map((result) => result.actor.status);
   const status = aggregateActorStatus(laneStatuses);
   const verdictReason = options.simCount === 1
@@ -2205,7 +2285,7 @@ async function runLocalCodexExec(options: RunOptions & {
       result.streamId
     );
   }
-  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const bundle = buildLocalCodexExecBundle({
     runId,
@@ -2250,7 +2330,17 @@ async function runLocalCodexExec(options: RunOptions & {
     review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout", status, verdictReason)
   });
 
-  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: completedAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   return {
     schema: "humanish.run-result.v1",
@@ -2262,7 +2352,7 @@ async function runLocalCodexExec(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".humanish", "runs", "latest.json"),
+    latestPath: runPaths.relativeLatestPointer,
     warnings,
     ...(status === "passed"
       ? {}
@@ -2420,6 +2510,7 @@ function buildLocalCodexAppServerBundle(args: {
 async function runLocalCodexAppServer(options: RunOptions & {
   actor: "codex-app-server";
   cwd: string;
+  projectRoot: PreparedSelectedOutputDirectory;
   simCount: number;
 }): Promise<RunResult> {
   const warnings: string[] = [];
@@ -2440,13 +2531,13 @@ async function runLocalCodexAppServer(options: RunOptions & {
   const now = new Date();
   const createdAt = now.toISOString();
   const runId = options.runId ?? `codex-app-server-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const artifactRoot = path.join(".humanish", "runs", runId);
-  const absoluteArtifactRoot = path.join(options.cwd, artifactRoot);
-  const eventsPath = path.join(absoluteArtifactRoot, "events.ndjson");
-  const packageName = await readPackageName(options.cwd);
-  const humanishSource = await directoryExists(path.join(options.cwd, "humanish")) ? "present" : "missing";
+  const packageName = await readPackageName(options.projectRoot);
+  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
   const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
-  const selection = await loadDryRunSelection(options.cwd, humanishSource);
+  const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
+  await assertPreparedSelectedOutputDirectory(options.projectRoot);
+  const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic Codex app-server actor defaults.");
   }
@@ -2471,14 +2562,16 @@ async function runLocalCodexAppServer(options: RunOptions & {
     });
   };
 
-  await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
-  await mkdir(path.join(absoluteArtifactRoot, "actors"), { recursive: true });
-  await writeJson(path.join(options.cwd, ".humanish", "runs", "latest.json"), {
-    schema: "humanish.latest-run.v1",
-    runId,
-    path: artifactRoot,
-    updatedAt: createdAt
-  } satisfies RunPointer);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: createdAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   const lanes: LocalCodexAppServerLane[] = Array.from({ length: options.simCount }, (_, index) => {
     const focus = localCodexExecFocus(index);
@@ -2523,7 +2616,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
       lane.streamId
     );
   }
-  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const baseLifecycle: RunBundle["lifecycle"] = [
     {
@@ -2577,14 +2670,16 @@ async function runLocalCodexAppServer(options: RunOptions & {
     events,
     review: createLocalActorRunningReviewSummary("Codex app-server")
   });
-  await writeRunBundleArtifacts(absoluteArtifactRoot, runningBundle);
+  await writeRunBundleArtifacts(runPaths, runningBundle);
 
   const laneResults = await mapWithConcurrency(lanes, options.simCount, async (lane) => {
-    const laneRunRoot = lane.prefix ? path.join(absoluteArtifactRoot, lane.prefix) : absoluteArtifactRoot;
-    const result = await getActor("codex-app-server").runSession({
+    const laneRunRoot = lane.prefix
+      ? await prepareContainedOutputDirectoryRoot(runPaths, lane.prefix)
+      : runPaths;
+    const sessionOptions: import("./codex-app-server.js").CodexAppServerRunOptions = {
       cwd: options.cwd,
       prompt: lane.prompt,
-      runRoot: laneRunRoot,
+      runRoot: "physicalRunRoot" in laneRunRoot ? laneRunRoot.physicalRunRoot : laneRunRoot.physicalPath,
       timeoutMs,
       ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
       approvalPolicy: "never",
@@ -2592,13 +2687,15 @@ async function runLocalCodexAppServer(options: RunOptions & {
       ...(process.env.HUMANISH_CODEX_APP_SERVER_MODEL ? { model: process.env.HUMANISH_CODEX_APP_SERVER_MODEL } : {}),
       sandbox: readCodexAppServerSandboxFromEnv(),
       serviceName: "humanish"
-    });
+    };
+    const result = await runCodexAppServerSessionInPreparedRoot(sessionOptions, laneRunRoot);
     return {
       lane,
       result: prefixCodexAppServerResultPaths(result, lane.prefix)
     };
   });
 
+  await validatePreparedRunArtifactPaths(runPaths);
   const completedAt = new Date().toISOString();
   const statuses = laneResults.map((entry) => entry.result.status);
   const status = aggregateActorStatus(statuses);
@@ -2621,7 +2718,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
       entry.lane.streamId
     );
   }
-  await writeFile(eventsPath, `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 
   const bundle = buildLocalCodexAppServerBundle({
     runId,
@@ -2666,7 +2763,17 @@ async function runLocalCodexAppServer(options: RunOptions & {
     review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex app-server" : "Codex app-server fanout", status, verdictReason)
   });
 
-  await writeRunBundleArtifacts(absoluteArtifactRoot, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle);
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: artifactRoot,
+      updatedAt: completedAt
+    } satisfies RunPointer, null, 2)}\n`,
+    "utf8"
+  );
 
   return {
     schema: "humanish.run-result.v1",
@@ -2678,7 +2785,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     artifactRoot,
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
-    latestPath: path.join(".humanish", "runs", "latest.json"),
+    latestPath: runPaths.relativeLatestPointer,
     warnings,
     ...(status === "passed"
       ? {}
@@ -2885,6 +2992,7 @@ type CodexTrustPreflight =
       message: string;
       recoveryCommand: string;
       trustRoot: string;
+      unsafeMetadata?: true;
     };
 
 function resolveLocalCodexTuiCommand(
@@ -3188,15 +3296,25 @@ async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPrefligh
     return { ok: true };
   }
 
-  const trustRoot = await detectCodexTrustRoot(cwd);
-  if (!trustRoot) {
+  const detected = await detectCodexTrustRoot(cwd);
+  if (!detected) {
     return { ok: true };
   }
+  if (detected.unsafe) {
+    return {
+      ok: false,
+      trustRoot: detected.worktreeRoot,
+      unsafeMetadata: true,
+      message: `Codex workspace trust preflight blocked local TUI launch; Git worktree metadata failed containment validation: ${detected.worktreeRoot}`,
+      recoveryCommand: `codex --no-alt-screen -C ${shellQuote(detected.worktreeRoot)}`
+    };
+  }
+  const trustRoot = detected.trustRoot;
 
   const configPath = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), "config.toml");
   const configText = await readTextIfExists(configPath);
 
-  if (configText && codexConfigTrustsProject(configText, trustRoot)) {
+  if (configText && await codexConfigTrustsProject(configText, trustRoot)) {
     return { ok: true };
   }
 
@@ -3208,51 +3326,22 @@ async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPrefligh
   };
 }
 
-async function detectCodexTrustRoot(cwd: string): Promise<string | null> {
-  const worktreeRoot = await findGitWorktreeRoot(cwd);
-  if (!worktreeRoot) {
+async function detectCodexTrustRoot(cwd: string): Promise<
+  | { unsafe: false; trustRoot: string }
+  | { unsafe: true; worktreeRoot: string }
+  | null
+> {
+  const inspection = await inspectVerifiedGitWorkspace(cwd);
+  if (inspection.status === "missing") {
     return null;
   }
-
-  const dotGitPath = path.join(worktreeRoot, ".git");
-  if (await directoryExists(dotGitPath)) {
-    return worktreeRoot;
+  if (inspection.status === "unsafe") {
+    return { unsafe: true, worktreeRoot: inspection.worktreeRoot };
   }
-
-  const gitFile = await readTextIfExists(dotGitPath);
-  if (!gitFile?.startsWith("gitdir:")) {
-    return worktreeRoot;
-  }
-
-  const gitDir = gitFile.slice("gitdir:".length).trim();
-  const absoluteGitDir = path.isAbsolute(gitDir) ? gitDir : path.resolve(worktreeRoot, gitDir);
-  const commonDirText = await readTextIfExists(path.join(absoluteGitDir, "commondir"));
-  if (!commonDirText) {
-    return worktreeRoot;
-  }
-
-  const commonDir = commonDirText.trim();
-  const absoluteCommonDir = path.resolve(absoluteGitDir, commonDir);
-  return path.basename(absoluteCommonDir) === ".git" ? path.dirname(absoluteCommonDir) : worktreeRoot;
+  return { unsafe: false, trustRoot: inspection.workspace.trustRoot };
 }
 
-async function findGitWorktreeRoot(cwd: string): Promise<string | null> {
-  let current = path.resolve(cwd);
-
-  while (true) {
-    if (await fileExists(path.join(current, ".git")) || await directoryExists(path.join(current, ".git"))) {
-      return current;
-    }
-
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return null;
-    }
-    current = parent;
-  }
-}
-
-function codexConfigTrustsProject(configText: string, trustRoot: string): boolean {
+async function codexConfigTrustsProject(configText: string, trustRoot: string): Promise<boolean> {
   const sectionPattern = /^\[projects\."((?:\\.|[^"\\])*)"\]\s*$/gm;
   let sectionMatch: RegExpExecArray | null;
 
@@ -3262,7 +3351,7 @@ function codexConfigTrustsProject(configText: string, trustRoot: string): boolea
     const nextSectionIndex = afterSection.search(/^\[/m);
     const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
 
-    if (/^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) && isSamePath(projectPath, trustRoot)) {
+    if (/^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) && await isSamePhysicalPath(projectPath, trustRoot)) {
       return true;
     }
   }
@@ -3274,10 +3363,16 @@ function unescapeTomlString(value: string): string {
   return value.replace(/\\(["\\])/g, "$1");
 }
 
-function isSamePath(candidatePath: string, targetPath: string): boolean {
-  const candidate = path.resolve(candidatePath);
-  const target = path.resolve(targetPath);
-  return candidate === target;
+async function isSamePhysicalPath(candidatePath: string, targetPath: string): Promise<boolean> {
+  try {
+    const [candidate, target] = await Promise.all([
+      realpath(path.resolve(candidatePath)),
+      realpath(path.resolve(targetPath))
+    ]);
+    return candidate === target;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeActorTimeout(value: number | undefined): number | null {
@@ -3580,10 +3675,46 @@ function normalizeSimCount(value: number | undefined): number | null {
 
 export async function verifyRun(cwdInput: string, runInput: string): Promise<VerifyResult> {
   const cwd = path.resolve(cwdInput);
-  const checks: VerifyResult["checks"] = [];
-  const resolved = await resolveRunPath(cwd, runInput);
+  let runPaths: PreparedRunArtifactPaths | null;
+  try {
+    runPaths = await resolveRunPath(cwd, runInput);
+  } catch {
+    return invalidRunStorageVerifyResult(cwd, runInput);
+  }
+  return verifyPreparedRun(cwd, runInput, runPaths);
+}
 
-  if (!resolved) {
+function invalidRunStorageVerifyResult(cwd: string, runInput: string): VerifyResult {
+  return {
+    schema: VERIFY_SCHEMA,
+    ok: false,
+    cwd,
+    run: runInput,
+    checks: [{
+      name: "run storage containment",
+      ok: false,
+      message: "run storage must contain only identity-bound directories and single-link regular files"
+    }],
+    shareSafety: {
+      status: "blocked",
+      reasons: [{ code: "VERIFY_FAILED", message: "Run storage failed containment validation." }]
+    },
+    warnings: [],
+    error: {
+      code: "HUMANISH_INVALID_RUN_BUNDLE",
+      message: "Run storage failed containment validation."
+    }
+  };
+}
+
+async function verifyPreparedRun(
+  cwd: string,
+  runInput: string,
+  runPaths: PreparedRunArtifactPaths | null
+): Promise<VerifyResult> {
+  const checks: VerifyResult["checks"] = [];
+
+  if (!runPaths) {
     return {
       schema: VERIFY_SCHEMA,
       ok: false,
@@ -3607,11 +3738,11 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     };
   }
 
-  const bundlePath = path.join(resolved, "run.json");
-  const bundle = await readJsonIfExists(bundlePath);
-  const cleanupJson = await readJsonIfExists(path.join(resolved, "cleanup.json"));
-  const reviewJson = await readJsonIfExists(path.join(resolved, "review.json"));
-  const reviewMarkdown = await readTextIfExists(path.join(resolved, "review.md"));
+  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
+  const bundle = await readRunJsonIfExists(runPaths, "run.json");
+  const cleanupJson = await readRunJsonIfExists(runPaths, "cleanup.json");
+  const reviewJson = await readRunJsonIfExists(runPaths, "review.json");
+  const reviewMarkdown = await readRunTextIfExists(runPaths, "review.md");
 
   checks.push({
     name: "run.json exists",
@@ -3638,7 +3769,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
     ok: reviewJson !== null && reviewMarkdown !== null,
     message: "review.json and review.md must exist"
   });
-  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(resolved);
+  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths);
   checks.push({
     name: "public-safety scan",
     ok: publicSafetyFindings.length === 0,
@@ -3647,7 +3778,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`
   });
   const missingEvidenceArtifacts = isRunBundle(bundle)
-    ? await missingLocalEvidenceArtifacts(resolved, bundle)
+    ? await missingLocalEvidenceArtifacts(runPaths, bundle)
     : [];
   const invalidEvidenceReferences = isRunBundle(bundle)
     ? invalidRunEvidenceReferences(bundle)
@@ -3662,7 +3793,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
   });
   const terminalProductFindings = isRunBundle(bundle)
-    ? await validateTerminalProductEvidence(resolved, bundle)
+    ? await validateTerminalProductEvidence(runPaths, bundle)
     : [];
   checks.push({
     name: "terminal-product evidence",
@@ -3672,7 +3803,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
       : `terminal-product findings: ${terminalProductFindings.join(", ")}`
   });
   const codexAppServerFindings = isRunBundle(bundle)
-    ? await validateCodexAppServerEvidence(resolved, bundle)
+    ? await validateCodexAppServerEvidence(runPaths, bundle)
     : [];
   checks.push({
     name: "codex app-server evidence",
@@ -3770,7 +3901,26 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
 export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunCleanupHooks = {}): Promise<CleanupResult> {
   const cwd = path.resolve(cwdInput);
   const checkedAt = (hooks.now ?? (() => new Date()))().toISOString();
-  const resolved = await resolveRunPath(cwd, runInput);
+  let resolved: PreparedRunArtifactPaths | null;
+  try {
+    resolved = await resolveRunPath(cwd, runInput);
+  } catch {
+    return {
+      schema: CLEANUP_SCHEMA,
+      ok: false,
+      cwd,
+      run: runInput,
+      checkedAt,
+      summary: { resources: 0, killed: 0, alreadyClean: 0, failed: 0, skipped: 0 },
+      resources: [],
+      adapterResults: [],
+      warnings: [],
+      error: {
+        code: "HUMANISH_INVALID_RUN_BUNDLE",
+        message: "Run storage failed containment validation."
+      }
+    };
+  }
 
   if (!resolved) {
     return {
@@ -3790,9 +3940,19 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
     };
   }
 
-  const bundlePath = path.join(resolved, "run.json");
-  const cleanupPath = path.join(resolved, "cleanup.json");
-  const bundle = await readJsonIfExists(bundlePath);
+  const runPaths = resolved;
+  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
+  const cleanupPath = path.join(runPaths.absoluteRunRoot, "cleanup.json");
+  await prepareContainedOutputFile(runPaths, "cleanup.json");
+  const bundleBytes = await readContainedRegularFile(runPaths, "run.json");
+  let bundle: unknown = null;
+  if (bundleBytes) {
+    try {
+      bundle = JSON.parse(bundleBytes.toString("utf8")) as unknown;
+    } catch {
+      bundle = null;
+    }
+  }
 
   if (!isRunBundle(bundle)) {
     return {
@@ -3815,7 +3975,6 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
 
   const resources: CleanupResourceResult[] = [];
   const warnings: string[] = [];
-  let desktopModule: E2BDesktopModule | null = null;
   const providerResources = bundle.providerResources ?? [];
 
   for (const resource of providerResources) {
@@ -3841,42 +4000,23 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       continue;
     }
 
-    try {
-      desktopModule ??= await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-      if (typeof desktopModule.Sandbox.kill !== "function") {
-        resources.push({
-          provider: resource.provider,
-          kind: resource.kind,
-          id: resource.id,
-          status: "failed",
-          message: "installed @e2b/desktop SDK does not expose Sandbox.kill"
-        });
-        continue;
-      }
-
-      await desktopModule.Sandbox.kill(resource.id, { requestTimeoutMs: 60_000 });
-      resources.push({
-        provider: resource.provider,
-        kind: resource.kind,
-        id: resource.id,
-        status: "killed",
-        message: "resource killed by exact recorded id"
-      });
-    } catch (error) {
-      resources.push({
-        provider: resource.provider,
-        kind: resource.kind,
-        id: resource.id,
-        status: "failed",
-        message: error instanceof Error ? error.message : String(error)
-      });
-    }
+    resources.push({
+      provider: resource.provider,
+      kind: resource.kind,
+      id: resource.id,
+      status: "failed",
+      message: "automatic provider cleanup requires a verified resource lease"
+    });
   }
 
   let adapterResults: CleanupAdapterResult[] = [];
   if (hooks.cleanupAdapterResources) {
     try {
-      adapterResults = await hooks.cleanupAdapterResources({ cwd, runDir: resolved, bundle });
+      adapterResults = await hooks.cleanupAdapterResources({
+        cwd,
+        runDir: runPaths.physicalRunRoot,
+        bundle
+      });
     } catch (error) {
       adapterResults = [{
         id: "adapter-cleanup",
@@ -3884,10 +4024,11 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
         message: error instanceof Error ? error.message : String(error)
       }];
     }
+    await validatePreparedRunArtifactPaths(runPaths);
   }
 
   if (providerResources.length === 0 && adapterResults.length === 0) {
-    warnings.push("Run bundle recorded no run-owned provider resources; nothing to clean.");
+    warnings.push("Run bundle recorded no provider resource evidence; nothing to inspect.");
   }
 
   const summary = {
@@ -3912,7 +4053,8 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
     adapterResults,
     warnings
   };
-  await writeJson(cleanupPath, result);
+  await validatePreparedRunArtifactPaths(runPaths);
+  await writeContainedOutputFile(runPaths, "cleanup.json", `${JSON.stringify(result, null, 2)}\n`, "utf8");
   return result;
 }
 
@@ -3921,14 +4063,24 @@ export async function loadRunBundle(
   runInput: string
 ): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
   const cwd = path.resolve(cwdInput);
-  const resolved = await resolveRunPath(cwd, runInput);
+  const runPaths = await resolveRunPath(cwd, runInput).catch(() => null);
 
-  if (!resolved) {
+  if (!runPaths) {
     return null;
   }
 
-  const bundlePath = path.join(resolved, "run.json");
-  const bundle = await readJsonIfExists(bundlePath);
+  return loadRunBundlePrepared(cwd, runPaths);
+}
+
+/** Internal continuity seam for callers that already bound one run identity. */
+export async function loadRunBundlePrepared(
+  cwdInput: string,
+  runPaths: PreparedRunArtifactPaths
+): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
+  const cwd = path.resolve(cwdInput);
+  await validatePreparedRunArtifactPaths(runPaths);
+  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
+  const bundle = await readRunJsonIfExists(runPaths, "run.json");
 
   if (!isRunBundle(bundle)) {
     return null;
@@ -3937,20 +4089,40 @@ export async function loadRunBundle(
   return {
     bundle,
     bundlePath: path.relative(cwd, bundlePath),
-    runDir: resolved
+    runDir: runPaths.absoluteRunRoot
   };
+}
+
+/** Internal continuity seam for callers that already bound one run identity. */
+export async function verifyRunPrepared(
+  cwdInput: string,
+  runInput: string,
+  runPaths: PreparedRunArtifactPaths
+): Promise<VerifyResult> {
+  const cwd = path.resolve(cwdInput);
+  try {
+    await validatePreparedRunArtifactPaths(runPaths);
+  } catch {
+    return invalidRunStorageVerifyResult(cwd, runInput);
+  }
+  return verifyPreparedRun(cwd, runInput, runPaths);
 }
 
 export async function listRuns(cwdInput: string): Promise<RunsResult> {
   const cwd = path.resolve(cwdInput);
-  const runsRoot = path.join(cwd, ".humanish", "runs");
+  const runsRootPath = resolveRunsRoot(cwd);
 
   // ENOENT (no .humanish/runs yet) is a normal empty state: ok:true, no runs. Any
   // other readdir failure (e.g. permission denied) is a real I/O failure and must
   // not be swallowed into a false "no runs" report.
-  let entries: Dirent[];
+  let entries: string[];
+  let runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory | null = null;
   try {
-    entries = await readdir(runsRoot, { withFileTypes: true });
+    runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
+    entries = runsRoot ? await readdir(runsRoot.physicalPath) : [];
+    if (runsRoot) {
+      await assertPreparedSelectedOutputDirectory(runsRoot);
+    }
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       entries = [];
@@ -3961,24 +4133,51 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
 
   let latest: RunPointer | null;
   try {
-    latest = await readLatest(cwd);
+    latest = runsRoot ? await readLatest(runsRoot) : null;
   } catch (error) {
     return runsUnavailableResult(cwd, error);
   }
 
   const runs = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
+  for (const entryName of entries) {
+    if (entryName === "latest.json" || !isSafeRunIdSegment(entryName)) {
       continue;
     }
-
-    const bundle = await readJsonIfExists(path.join(runsRoot, entry.name, "run.json"));
+    const entryPath = path.join(runsRootPath, entryName);
+    const entryStats = await lstat(entryPath, { bigint: true }).catch(() => null);
+    if (!entryStats) {
+      continue;
+    }
+    if (entryStats.isSymbolicLink() || (!entryStats.isDirectory() && !entryStats.isFile()) || (entryStats.isFile() && entryStats.nlink > 1n)) {
+      return runsUnavailableResult(cwd, new Error(`Unsafe Humanish runs entry: ${entryName}`));
+    }
+    if (!entryStats.isDirectory()) {
+      continue;
+    }
+    let entryRunPaths: PreparedRunArtifactPaths;
+    try {
+      entryRunPaths = await bindExistingRunArtifactPaths(cwd, entryName);
+    } catch (error) {
+      return runsUnavailableResult(cwd, error);
+    }
+    if (runsRoot && entryRunPaths.physicalRunsRoot !== runsRoot.physicalPath) {
+      return runsUnavailableResult(cwd, new Error("Humanish runs root changed physical destination."));
+    }
+    const bundle = await readRunJsonIfExists(entryRunPaths, "run.json");
     runs.push({
-      runId: entry.name,
+      runId: entryName,
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
       mode: isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : null,
-      path: path.join(".humanish", "runs", entry.name)
+      path: path.join(RUNS_RELATIVE_ROOT, entryName)
     });
+  }
+
+  if (runsRoot) {
+    try {
+      await assertPreparedSelectedOutputDirectory(runsRoot);
+    } catch (error) {
+      return runsUnavailableResult(cwd, error);
+    }
   }
 
   return {
@@ -4005,15 +4204,20 @@ function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
 }
 
 export async function readReview(cwdInput: string, runInput: string): Promise<VerifyResult | (ReviewSummary & { path: string; runId: string })> {
-  const verified = await verifyRun(cwdInput, runInput);
+  const cwd = path.resolve(cwdInput);
+  let runPaths: PreparedRunArtifactPaths | null;
+  try {
+    runPaths = await resolveRunPath(cwd, runInput);
+  } catch {
+    return invalidRunStorageVerifyResult(cwd, runInput);
+  }
+  const verified = await verifyPreparedRun(cwd, runInput, runPaths);
 
   if (!verified.ok || !verified.bundlePath) {
     return verified;
   }
 
-  const cwd = path.resolve(cwdInput);
-  const runDir = path.dirname(path.join(cwd, verified.bundlePath));
-  const review = await readJsonIfExists(path.join(runDir, "review.json"));
+  const review = runPaths ? await readRunJsonIfExists(runPaths, "review.json") : null;
 
   if (!isReviewSummary(review)) {
     return {
@@ -4028,33 +4232,64 @@ export async function readReview(cwdInput: string, runInput: string): Promise<Ve
 
   return {
     ...review,
-    path: path.relative(cwd, path.join(runDir, "review.json")),
-    runId: path.basename(runDir)
+    path: path.relative(cwd, path.join(runPaths!.absoluteRunRoot, "review.json")),
+    runId: path.basename(runPaths!.absoluteRunRoot)
   };
 }
 
 export async function doctor(cwdInput: string): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
+  const cwdOk = await validateCwd(cwd).then((error) => error === null).catch(() => false);
+  if (!cwdOk) {
+    const checks = [
+      { name: "target cwd", ok: false, message: "target directory exists" },
+      { name: "package.json", ok: false, message: "package.json is present and safe to read" },
+      { name: "humanish source", ok: false, message: "committed humanish/ source directory is present and safe to read" },
+      { name: "runtime ignore", ok: false, message: ".gitignore safely contains .humanish/" }
+    ];
+    return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
+  }
+
+  let projectRoot: PreparedSelectedOutputDirectory;
+  try {
+    projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
+  } catch {
+    const checks = [
+      { name: "target cwd", ok: false, message: "target directory failed containment validation" },
+      { name: "package.json", ok: false, message: "package.json is present and safe to read" },
+      { name: "humanish source", ok: false, message: "committed humanish/ source directory is present and safe to read" },
+      { name: "runtime ignore", ok: false, message: ".gitignore safely contains .humanish/" }
+    ];
+    return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
+  }
+
+  const safeCheck = async (check: () => Promise<boolean>): Promise<boolean> => {
+    try {
+      return await check();
+    } catch {
+      return false;
+    }
+  };
   const checks = [
     {
       name: "target cwd",
-      ok: await directoryExists(cwd),
+      ok: true,
       message: "target directory exists"
     },
     {
       name: "package.json",
-      ok: await fileExists(path.join(cwd, "package.json")),
-      message: "package.json is present"
+      ok: await safeCheck(async () => await readImplicitProjectFile(projectRoot, "package.json") !== null),
+      message: "package.json is present and safe to read"
     },
     {
       name: "humanish source",
-      ok: await directoryExists(path.join(cwd, "humanish")),
-      message: "committed humanish/ source directory is present"
+      ok: await safeCheck(() => implicitProjectDirectoryExists(projectRoot, "humanish")),
+      message: "committed humanish/ source directory is present and safe to read"
     },
     {
       name: "runtime ignore",
-      ok: (await readTextIfExists(path.join(cwd, ".gitignore")))?.includes(".humanish/") ?? false,
-      message: ".gitignore contains .humanish/"
+      ok: await safeCheck(async () => (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ?? false),
+      message: ".gitignore safely contains .humanish/"
     }
   ];
 
@@ -4117,8 +4352,99 @@ function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTer
   };
 }
 
+async function inspectImplicitProjectPath(
+  projectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string
+) {
+  const segments = relativePath.replace(/\\/g, "/").split("/");
+  if (segments.length === 0 || segments.some((segment) => segment.length === 0)) {
+    throw new Error("Implicit project path must be a non-empty relative path.");
+  }
+  await assertPreparedSelectedOutputDirectory(projectRoot);
+  let current = projectRoot.physicalPath;
+  for (const [index, segment] of segments.entries()) {
+    assertSafeOutputPathSegment(segment, "Implicit project path segment");
+    current = path.join(current, segment);
+    let stats;
+    try {
+      stats = await lstat(current, { bigint: true });
+    } catch (error) {
+      if (isNodeError(error) && error.code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
+    if (stats.isSymbolicLink()) {
+      throw new Error(`Implicit project path must not contain symbolic links: ${relativePath}`);
+    }
+    if (!stats.isDirectory() && !stats.isFile()) {
+      throw new Error(`Implicit project path must contain only regular files and directories: ${relativePath}`);
+    }
+    if (stats.isFile() && stats.nlink > 1n) {
+      throw new Error(`Implicit project files must be single-link regular files: ${relativePath}`);
+    }
+    if (index < segments.length - 1 && !stats.isDirectory()) {
+      throw new Error(`Implicit project path parent must be a directory: ${relativePath}`);
+    }
+    if (index === segments.length - 1) {
+      await assertPreparedSelectedOutputDirectory(projectRoot);
+      return stats;
+    }
+  }
+  return null;
+}
+
+async function implicitProjectDirectoryExists(
+  projectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string
+): Promise<boolean> {
+  const stats = await inspectImplicitProjectPath(projectRoot, relativePath);
+  if (!stats) {
+    return false;
+  }
+  if (!stats.isDirectory()) {
+    throw new Error(`Implicit project directory has the wrong type: ${relativePath}`);
+  }
+  return true;
+}
+
+async function readImplicitProjectFile(
+  projectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string
+): Promise<string | null> {
+  const stats = await inspectImplicitProjectPath(projectRoot, relativePath);
+  if (!stats) {
+    return null;
+  }
+  if (!stats.isFile() || stats.nlink !== 1n) {
+    throw new Error(`Implicit project file must be a single-link regular file: ${relativePath}`);
+  }
+  const bytes = await readContainedRegularFile(projectRoot, relativePath.replace(/\\/g, "/"));
+  if (!bytes) {
+    throw new Error(`Implicit project file changed while it was being read: ${relativePath}`);
+  }
+  return bytes.toString("utf8");
+}
+
+async function listImplicitProjectDirectory(
+  projectRoot: PreparedSelectedOutputDirectory,
+  relativePath: string
+): Promise<string[]> {
+  if (!await implicitProjectDirectoryExists(projectRoot, relativePath)) {
+    return [];
+  }
+  const directory = path.join(projectRoot.physicalPath, ...relativePath.replace(/\\/g, "/").split("/"));
+  const names = await readdir(directory);
+  await assertPreparedSelectedOutputDirectory(projectRoot);
+  for (const name of names) {
+    assertSafeOutputPathSegment(name, "Implicit project directory entry");
+    await inspectImplicitProjectPath(projectRoot, `${relativePath.replace(/\\/g, "/")}/${name}`);
+  }
+  return names;
+}
+
 async function loadDryRunSelection(
-  cwd: string,
+  projectRoot: PreparedSelectedOutputDirectory,
   humanishSource: "present" | "missing"
 ): Promise<{
   browserJourney?: BrowserPersonaJourney;
@@ -4141,9 +4467,9 @@ async function loadDryRunSelection(
 
   const personaPath = "humanish/personas/synthetic-new-user.yaml";
   const scenarioPath = "humanish/scenarios/first-run-smoke.yaml";
-  const personaText = await readTextIfExists(path.join(cwd, personaPath));
-  const scenarioText = await readTextIfExists(path.join(cwd, scenarioPath));
-  const browserJourneySelection = await loadBrowserPersonaJourneySelection(cwd);
+  const personaText = await readImplicitProjectFile(projectRoot, personaPath);
+  const scenarioText = await readImplicitProjectFile(projectRoot, scenarioPath);
+  const browserJourneySelection = await loadBrowserPersonaJourneySelection(projectRoot);
 
   if (personaText === null) {
     warnings.push(`${personaPath} was not found; using built-in persona defaults.`);
@@ -4192,19 +4518,13 @@ async function loadDryRunSelection(
   };
 }
 
-async function loadBrowserPersonaJourneySelection(cwd: string): Promise<{
+async function loadBrowserPersonaJourneySelection(projectRoot: PreparedSelectedOutputDirectory): Promise<{
   failure?: string;
   journey?: BrowserPersonaJourney;
   warnings: string[];
 }> {
   const warnings: string[] = [];
-  const scenarioDir = path.join(cwd, "humanish", "scenarios");
-  const names = await readdir(scenarioDir).catch((error: unknown) => {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return [] as string[];
-    }
-    throw error;
-  });
+  const names = await listImplicitProjectDirectory(projectRoot, "humanish/scenarios");
   const files = names
     .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
     .sort((left, right) => {
@@ -4215,8 +4535,7 @@ async function loadBrowserPersonaJourneySelection(cwd: string): Promise<{
 
   for (const name of files) {
     const relativePath = path.join("humanish", "scenarios", name);
-    const absolutePath = path.join(cwd, relativePath);
-    const text = await readTextIfExists(absolutePath);
+    const text = await readImplicitProjectFile(projectRoot, relativePath);
     if (text === null) {
       continue;
     }
@@ -4295,40 +4614,119 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function resolveRunPath(cwd: string, runInput: string): Promise<string | null> {
+async function resolveRunPath(cwd: string, runInput: string): Promise<PreparedRunArtifactPaths | null> {
   if (runInput === "latest") {
-    const latest = await readLatest(cwd);
-    return latest ? path.join(cwd, latest.path) : null;
+    const runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
+    if (!runsRoot) {
+      return null;
+    }
+    const latest = await readLatest(runsRoot);
+    const expected = latest ? resolveLatestRunDirectory(cwd, latest) : null;
+    if (!latest || !expected) {
+      return null;
+    }
+    const runPaths = await bindExistingRunArtifactPaths(cwd, latest.runId);
+    if (
+      runPaths.absoluteRunRoot !== expected
+      || runPaths.physicalRunsRoot !== runsRoot.physicalPath
+    ) {
+      throw new Error("Latest run pointer changed physical runs root.");
+    }
+    await assertPreparedSelectedOutputDirectory(runsRoot);
+    return runPaths;
   }
 
-  const direct = path.join(cwd, ".humanish", "runs", runInput);
-  return await directoryExists(direct) ? direct : null;
-}
-
-async function readLatest(cwd: string): Promise<RunPointer | null> {
-  const latest = await readJsonIfExists(path.join(cwd, ".humanish", "runs", "latest.json"));
-
-  if (isRunPointer(latest)) {
-    return latest;
+  if (!isSafeRunIdSegment(runInput) || !await resolveExistingRunDirectory(cwd, runInput)) {
+    return null;
   }
-
-  return null;
+  return bindExistingRunArtifactPaths(cwd, runInput);
 }
 
-async function readPackageName(cwd: string): Promise<string | null> {
-  const packageJson = await readJsonIfExists(path.join(cwd, "package.json"));
-  return isRecord(packageJson) && typeof packageJson.name === "string" ? packageJson.name : null;
-}
-
-async function readJsonIfExists(filePath: string): Promise<unknown | null> {
-  const text = await readTextIfExists(filePath);
-
-  if (text === null) {
+async function readLatest(runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory): Promise<RunPointer | null> {
+  const latestPath = path.join(runsRoot.physicalPath, "latest.json");
+  let latestStats;
+  try {
+    latestStats = await lstat(latestPath, { bigint: true });
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+  if (latestStats.isSymbolicLink() || !latestStats.isFile() || latestStats.nlink !== 1n) {
+    throw new Error("Latest run pointer must be a single-link regular file.");
+  }
+  const bytes = await readContainedRegularFile(runsRoot, "latest.json");
+  if (!bytes) {
+    throw new Error("Latest run pointer changed while it was being read.");
+  }
+  let latest: unknown;
+  try {
+    latest = JSON.parse(bytes.toString("utf8")) as unknown;
+  } catch {
     return null;
   }
 
+  return isRunPointer(latest) ? latest : null;
+}
+
+async function readPackageName(projectRoot: PreparedSelectedOutputDirectory): Promise<string | null> {
+  const text = await readImplicitProjectFile(projectRoot, "package.json");
+  if (text === null) {
+    return null;
+  }
+  try {
+    const packageJson = JSON.parse(text) as unknown;
+    return isRecord(packageJson) && typeof packageJson.name === "string" ? packageJson.name : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readRunJsonIfExists(runPaths: PreparedRunArtifactPaths, ...segments: string[]): Promise<unknown | null> {
+  const text = await readRunTextIfExists(runPaths, ...segments);
+  if (text === null) {
+    return null;
+  }
   try {
     return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+async function readRunTextIfExists(runPaths: PreparedRunArtifactPaths, ...segments: string[]): Promise<string | null> {
+  const bytes = await readContainedRegularFile(runPaths, segments.join("/"));
+  return bytes?.toString("utf8") ?? null;
+}
+
+async function readSafeRunArtifactBytes(
+  runPaths: PreparedRunArtifactPaths,
+  relativePath: string
+): Promise<Buffer | null> {
+  const normalized = relativePath.replace(/\\/g, "/");
+  const segments = normalized.split("/");
+  if (
+    path.isAbsolute(relativePath)
+    || path.win32.isAbsolute(relativePath)
+    || segments.length === 0
+    || segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
+  ) {
+    return null;
+  }
+  return readContainedRegularFile(runPaths, normalized);
+}
+
+async function readSafeRunArtifactJson(
+  runPaths: PreparedRunArtifactPaths,
+  relativePath: string
+): Promise<unknown | null> {
+  const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
+  if (!bytes) {
+    return null;
+  }
+  try {
+    return JSON.parse(bytes.toString("utf8")) as unknown;
   } catch {
     return null;
   }
@@ -4346,24 +4744,19 @@ async function readTextIfExists(filePath: string): Promise<string | null> {
   }
 }
 
-async function writeJson(filePath: string, value: unknown): Promise<void> {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-}
-
-async function writeRunBundleArtifacts(absoluteArtifactRoot: string, bundle: RunBundle): Promise<void> {
+async function writeRunBundleArtifacts(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<void> {
   const publicBundle: RunBundle = {
     ...bundle,
     cwd: PUBLIC_TARGET_CWD
   };
-  await writeJson(path.join(absoluteArtifactRoot, "run.json"), publicBundle);
-  await writeJson(path.join(absoluteArtifactRoot, "review.json"), publicBundle.review);
-  await writeFile(path.join(absoluteArtifactRoot, "review.md"), renderReviewMarkdown(publicBundle), "utf8");
-  await writeFile(path.join(absoluteArtifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await mkdir(path.join(absoluteArtifactRoot, "observer"), { recursive: true });
-  await writeJson(path.join(absoluteArtifactRoot, "observer", "observer-data.json"), buildObserverData(publicBundle));
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderReviewMarkdown(publicBundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "observer/observer-data.json", `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`, "utf8");
 }
 
-async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle): Promise<string[]> {
+async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
   const requiredPaths = new Map<string, { screenshot: boolean }>();
   const addRequiredPath = (artifactPath: string, options: { screenshot?: boolean } = {}): void => {
     const existing = requiredPaths.get(artifactPath);
@@ -4400,16 +4793,14 @@ async function missingLocalEvidenceArtifacts(runRoot: string, bundle: RunBundle)
 
   const missing: string[] = [];
   for (const [artifactPath, requirements] of requiredPaths) {
-    const absolutePath = path.join(runRoot, artifactPath);
-    const stats = await stat(absolutePath).catch(() => null);
-    if (!stats?.isFile() || stats.size <= 0) {
+    const bytes = await readSafeRunArtifactBytes(runPaths, artifactPath);
+    if (!bytes || bytes.length === 0) {
       missing.push(artifactPath);
       continue;
     }
 
     if (requirements.screenshot) {
-      const bytes = await readFile(absolutePath).catch(() => null);
-      const imageError = bytes ? screenshotEvidenceError(artifactPath, bytes) : "could not read screenshot bytes";
+      const imageError = screenshotEvidenceError(artifactPath, bytes);
       if (imageError) {
         missing.push(`${artifactPath} (${imageError})`);
       }
@@ -4476,7 +4867,7 @@ const TERMINAL_TRANSCRIPT_FILE = "terminal-transcript.txt";
  * file is already caught by scanRunPublicSafetyArtifacts; this check enforces the STRUCTURAL
  * evidence + the proven-teardown invariant. Dry-run/contract bundles are exempt (mode !== live).
  */
-async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundle): Promise<string[]> {
+async function validateTerminalProductEvidence(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
   if (bundle.mode !== "live") {
     return [];
   }
@@ -4492,7 +4883,7 @@ async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundl
   }
 
   // The lane writes exactly one terminal run's ledgers/evidence at fixed paths in the run root.
-  const ledgers = await readJsonIfExists(path.join(runRoot, TERMINAL_LEDGERS_FILE));
+  const ledgers = await readSafeRunArtifactJson(runPaths, TERMINAL_LEDGERS_FILE);
   if (!isRecord(ledgers) || ledgers.schema !== "humanish.terminal-ledgers.v1") {
     findings.push(`missing or malformed ${TERMINAL_LEDGERS_FILE} (humanish.terminal-ledgers.v1)`);
     return findings;
@@ -4533,10 +4924,10 @@ async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundl
   // The redacted exec-stream + normalized transcript artifacts must be WRITTEN (the producer
   // always writes them on the live path, even empty for a no-output blocked run — so absence is a
   // real evidence gap, while emptiness is legitimate and keeps blocked runs verifiable).
-  if (!(await fileExists(path.join(runRoot, TERMINAL_EVENTS_FILE)))) {
+  if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_EVENTS_FILE))) {
     findings.push(`missing terminal event stream artifact (${TERMINAL_EVENTS_FILE})`);
   }
-  if (!(await fileExists(path.join(runRoot, TERMINAL_TRANSCRIPT_FILE)))) {
+  if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_TRANSCRIPT_FILE))) {
     findings.push(`missing normalized terminal transcript artifact (${TERMINAL_TRANSCRIPT_FILE})`);
   }
 
@@ -4544,7 +4935,7 @@ async function validateTerminalProductEvidence(runRoot: string, bundle: RunBundl
   for (const stream of terminalStreams) {
     const traceArtifact = stream.artifacts.find((artifact) => artifact.kind === "trace");
     const tracePath = traceArtifact?.path ?? "actor.json";
-    const trace = await readJsonIfExists(path.join(runRoot, tracePath));
+    const trace = await readSafeRunArtifactJson(runPaths, tracePath);
     if (!isRecord(trace) || trace.lane !== "terminal") {
       findings.push(`${stream.id} missing terminal-lane actor trace`);
       continue;
@@ -4639,7 +5030,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   return findings;
 }
 
-async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle): Promise<string[]> {
+async function validateCodexAppServerEvidence(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
   if (bundle.mode !== "live") {
     return [];
   }
@@ -4678,7 +5069,7 @@ async function validateCodexAppServerEvidence(runRoot: string, bundle: RunBundle
       continue;
     }
 
-    const trace = await readJsonIfExists(path.join(runRoot, traceArtifact.path));
+    const trace = await readSafeRunArtifactJson(runPaths, traceArtifact.path);
     if (!isRecord(trace) || ![CODEX_APP_SERVER_TRACE_SCHEMA, CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA].includes(String(trace.schema))) {
       findings.push(`${stream.id} trace artifact must use ${CODEX_APP_SERVER_TRACE_SCHEMA} or ${CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA}`);
     }
@@ -5390,37 +5781,53 @@ const riskyPublicArtifactPathSegments = new Set([
   "profiles"
 ]);
 
-async function scanRunPublicSafetyArtifacts(runRoot: string): Promise<string[]> {
+async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths): Promise<string[]> {
   const findings: string[] = [];
-  await scanRunPublicSafetyDirectory(runRoot, runRoot, findings);
+  await validatePreparedRunArtifactPaths(runPaths);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings);
+  await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }
 
-async function scanRunPublicSafetyDirectory(root: string, current: string, findings: string[]): Promise<void> {
+async function scanRunPublicSafetyDirectory(
+  runPaths: PreparedRunArtifactPaths,
+  relativeDirectory: string,
+  findings: string[]
+): Promise<void> {
   if (findings.length >= 50) {
     return;
   }
 
-  const entries = await readdir(current, { withFileTypes: true }).catch(() => []);
-  for (const entry of entries) {
-    const absolutePath = path.join(current, entry.name);
-    const relativePath = path.relative(root, absolutePath).replace(/\\/g, "/");
+  const current = relativeDirectory
+    ? path.join(runPaths.physicalRunRoot, ...relativeDirectory.split("/"))
+    : runPaths.physicalRunRoot;
+  const entries = await readdir(current).catch(() => []);
+  for (const entryName of entries) {
+    const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
     if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
       findings.push(`risky artifact path ${relativePath}`);
       if (findings.length >= 50) return;
     }
 
-    if (entry.isDirectory()) {
-      await scanRunPublicSafetyDirectory(root, absolutePath, findings);
+    const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
+    if (!stats || stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile()) || (stats.isFile() && stats.nlink > 1n)) {
+      findings.push(`unsafe artifact leaf ${relativePath}`);
       if (findings.length >= 50) return;
       continue;
     }
 
-    if (!entry.isFile() || !shouldScanTextArtifact(relativePath)) {
+    if (stats.isDirectory()) {
+      await scanRunPublicSafetyDirectory(runPaths, relativePath, findings);
+      if (findings.length >= 50) return;
       continue;
     }
 
-    const text = await readFile(absolutePath, "utf8").catch(() => null);
+    if (!shouldScanTextArtifact(relativePath)) {
+      continue;
+    }
+
+    const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
+    const text = bytes?.toString("utf8") ?? null;
     if (text !== null && containsSensitivePattern(text)) {
       findings.push(`sensitive text ${relativePath}`);
       if (findings.length >= 50) return;
@@ -5479,30 +5886,6 @@ async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
         code: "HUMANISH_INVALID_CWD",
         message: `Target cwd does not exist: ${cwd}`
       };
-    }
-
-    throw error;
-  }
-}
-
-async function directoryExists(directoryPath: string): Promise<boolean> {
-  try {
-    return (await stat(directoryPath)).isDirectory();
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return false;
-    }
-
-    throw error;
-  }
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    return (await stat(filePath)).isFile();
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return false;
     }
 
     throw error;

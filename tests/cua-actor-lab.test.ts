@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { symlinkSync, unlinkSync } from "node:fs";
+import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -19,6 +20,7 @@ import type {
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   buildCuaBundle,
+  makeLaneWriteScreenshot,
   runCuaActorLab,
   type CuaActorLabHooks
 } from "../src/cua-actor-lab.js";
@@ -38,6 +40,7 @@ import type {
 } from "../src/index.js";
 import { containsSensitive } from "../src/redaction.js";
 import { verifyRun } from "../src/run.js";
+import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import type { LocalTreeArchive } from "../src/source-archive.js";
 
 // ---------------------------------------------------------------------------
@@ -384,6 +387,76 @@ describe("runCuaActorLab", () => {
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");
     expect(bundle.cwd).toBe("[target-cwd]");
+  });
+
+  it("pins a symlink cwd before onPreflight can retarget the alias", async () => {
+    const physicalA = path.join(cwd, "project-a");
+    const physicalB = path.join(cwd, "project-b");
+    const cwdAlias = path.join(cwd, "project-alias");
+    const runId = "preflight-cwd-retarget";
+    const decoyRuns = path.join(physicalB, ".humanish", "runs");
+    const decoyLatest = path.join(decoyRuns, "latest.json");
+    const sentinel = "outside sentinel must stay unchanged\n";
+
+    await mkdir(physicalA);
+    await mkdir(decoyRuns, { recursive: true });
+    await writeFile(decoyLatest, sentinel, "utf8");
+    symlinkSync(physicalA, cwdAlias, "dir");
+    const pinnedA = await realpath(physicalA);
+
+    let preflightCalls = 0;
+    const result = await runCuaActorLab({
+      cwd: cwdAlias,
+      config: cuaConfig(),
+      dryRun: true,
+      runId,
+      hooks: {
+        onPreflight: () => {
+          preflightCalls += 1;
+          unlinkSync(cwdAlias);
+          symlinkSync(physicalB, cwdAlias, "dir");
+        }
+      }
+    });
+
+    expect(preflightCalls).toBe(1);
+    expect(result.ok).toBe(true);
+    expect(result.cwd).toBe(pinnedA);
+    await expect(readFile(path.join(physicalA, ".humanish", "runs", runId, "run.json"), "utf8"))
+      .resolves.toContain(`"runId": "${runId}"`);
+    expect(JSON.parse(await readFile(path.join(physicalA, ".humanish", "runs", "latest.json"), "utf8")).runId)
+      .toBe(runId);
+    expect(await readFile(decoyLatest, "utf8")).toBe(sentinel);
+    expect(await readdir(decoyRuns)).toEqual(["latest.json"]);
+
+    const verified = await verifyRun(physicalA, runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("rejects path-shaped screenshot names and hardlinked leaves", async () => {
+    const artifactRoot = path.join(cwd, "screenshot-root");
+    await mkdir(artifactRoot);
+    const preparedRoot = await prepareSelectedOutputDirectory(cwd, artifactRoot);
+    const screenshots: string[] = [];
+    const writer = makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "lane-01" }, screenshots);
+    await expect(writer("../sentinel.png", makePng(1))).rejects.toThrow(/path segment/i);
+    await expect(writer("nested/frame.png", makePng(1))).rejects.toThrow(/path segment/i);
+    expect(() => makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "../lane" }, screenshots))
+      .toThrow(/path segment/i);
+
+    const outside = path.join(cwd, "outside-frame.png");
+    await writeFile(outside, "unchanged\n", "utf8");
+    await mkdir(path.join(artifactRoot, "screenshots", "lane-01"), { recursive: true });
+    try {
+      await link(outside, path.join(artifactRoot, "screenshots", "lane-01", "frame.png"));
+    } catch (error) {
+      const code = error instanceof Error && "code" in error ? String(error.code) : "";
+      if (["EPERM", "ENOTSUP", "EOPNOTSUPP"].includes(code)) return;
+      throw error;
+    }
+    await expect(writer("frame.png", makePng(2))).rejects.toThrow(/hardlink|single-link/i);
+    expect(await readFile(outside, "utf8")).toBe("unchanged\n");
+    expect(screenshots).toEqual([]);
   });
 
   it("live (with fakes): registry actor drives the REAL loop/provider/executor through the lab, fills stream.actor, and tears down", async () => {
@@ -967,6 +1040,32 @@ describe("runCuaActorLab", () => {
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+  });
+
+  it("rejects path-shaped runtime lane ids before provider or desktop hooks", async () => {
+    const config = cuaConfig();
+    const actor = config.actors[0]!;
+    const { laneFocus: _laneFocus, ...actorWithoutLaneFocus } = actor;
+    const tampered: LabConfig = {
+      ...config,
+      actors: [{ ...actorWithoutLaneFocus, lanes: [{ id: "../escape" }] }]
+    };
+    let desktopLoads = 0;
+    const result = await runCuaActorLab({
+      cwd,
+      config: tampered,
+      dryRun: false,
+      hooks: {
+        loadDesktopModule: async () => {
+          desktopLoads += 1;
+          throw new Error("must not load");
+        }
+      }
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.runId).toBe("not-created");
+    expect(desktopLoads).toBe(0);
   });
 
   it("re-enforces the loopback entry boundary at the engine even if a config bypasses the parser", async () => {
@@ -2057,7 +2156,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
 
     // Packed exactly ONCE for the whole 2-lane fan-out, rooted at the lab resolution cwd.
     expect(packCalls).toHaveLength(1);
-    expect(packCalls[0]?.root).toBe(cwd);
+    expect(packCalls[0]?.root).toBe(await realpath(cwd));
 
     // Every lane uploaded the SAME archive bytes to the SAME remote path, octet-stream.
     const uploads = sandbox.calls.filter(

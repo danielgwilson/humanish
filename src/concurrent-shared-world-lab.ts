@@ -33,7 +33,6 @@
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
 // gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
 
-import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -80,6 +79,12 @@ import {
   type ObserverRuntimeStreamUrl
 } from "./observer.js";
 import { redactText } from "./redaction.js";
+import {
+  prepareRunArtifactPaths,
+  validatePreparedRunArtifactPaths,
+  type PreparedRunArtifactPaths
+} from "./run-paths.js";
+import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./selected-output-paths.js";
 import {
   combineCheckpointDigest,
   runCheckpointSnapshot,
@@ -335,30 +340,30 @@ function buildActorSpec(config: LabConfig, role: LabActorLane, index: number): C
 }
 
 async function writeConcurrentRunArtifacts(
-  cwd: string,
-  artifactRoot: string,
-  bundle: RunBundle
+  bundle: RunBundle,
+  preparedRunPaths: PreparedRunArtifactPaths
 ): Promise<void> {
+  const runPaths = await validatePreparedRunArtifactPaths(preparedRunPaths);
   const publicBundle: RunBundle = {
     ...bundle,
     cwd: PUBLIC_TARGET_CWD
   };
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderConcurrentReviewMarkdown(publicBundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await mkdir(path.join(artifactRoot, "observer"), { recursive: true });
-  await writeFile(
-    path.join(artifactRoot, "observer", "observer-data.json"),
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderConcurrentReviewMarkdown(publicBundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "observer/observer-data.json",
     `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
     "utf8"
   );
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", "latest.json"),
+  await writePreparedRunLatestPointer(
+    runPaths,
     `${JSON.stringify({
       schema: "humanish.latest-run.v1",
       runId: publicBundle.runId,
-      path: path.join(".humanish", "runs", publicBundle.runId),
+      path: runPaths.relativeRunRoot,
       updatedAt: new Date().toISOString()
     }, null, 2)}\n`,
     "utf8"
@@ -464,7 +469,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   }
 
   const runId = options.runId ?? makeRunId();
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const artifactRoot = runPaths.absoluteRunRoot;
+  const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
@@ -474,7 +481,6 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const proberCadenceMs = hooks.proberCadenceMs ?? DEFAULT_PROBER_CADENCE_MS;
   const seedDigest = seedRecipeDigest(config);
 
-  await mkdir(artifactRoot, { recursive: true });
   const source = await buildRunSource({ capturedAt: createdAt, cwd, humanishSource: "present", packageName: "humanish" });
 
   const warnings: string[] = [];
@@ -655,7 +661,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
           ...(inProgressPlaneCommit === undefined ? {} : { subjectCommit: inProgressPlaneCommit }),
           hostDigest: hostOriginDigest(getHostUrl!)
         });
-        await writeConcurrentRunArtifacts(cwd, artifactRoot, inProgressBundle);
+        await writeConcurrentRunArtifacts(inProgressBundle, runPaths);
         liveObserver = observerResultForConcurrentArtifacts(cwd, runId, artifactRoot, [
           "Live concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted."
         ]);
@@ -703,7 +709,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         perLaneSandboxMs: timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
         timeoutMs,
         laneCount: roles.length,
-        artifactRoot,
+        artifactRoot: runPaths,
         redactScreenshots,
         scrubKnownValues,
         runSession,
@@ -786,7 +792,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     bundle,
     context: {
       bundle,
-      runDir: artifactRoot,
+      runDir: physicalArtifactRoot,
       labId: config.id,
       runId,
       actor: descriptor.id,
@@ -799,7 +805,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     hookLabel: "sharedWorldHooks"
   });
 
-  await writeConcurrentRunArtifacts(cwd, artifactRoot, bundle);
+  await writeConcurrentRunArtifacts(bundle, runPaths);
 
   const observer = await render(cwd, runId, { open: options.open === true });
   if (observer.ok && liveObserver) {

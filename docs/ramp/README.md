@@ -2,6 +2,11 @@
 
 Status: public-safe contributor and agent ramp.
 
+Current safety state: `0.15.1` (2026-07-14). Managed run and output paths bind
+to validated physical filesystem identities. Stored provider IDs are evidence,
+not cleanup authority. The bundled OSS meta-lab is dry-run only until
+repository-derived instructions have an isolated credential boundary.
+
 Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
 context.
@@ -71,9 +76,12 @@ Implemented:
   drives a lab-owner loopback app in a hosted desktop, and `subject.source:
   clone` + `serve` clones, installs, and serves a real app in-sandbox from
   config before the actor drives it (`src/cua-actor-lab.ts`);
-- experimental maintainer OSS meta-lab and disposable OSS smoke harness;
-- OSS dogfood setup-quality filesystem artifacts rendered from the Observer Files
-  tab with private-run previews suppressed by default.
+- containment checks for managed run storage, Observer and feedback reads,
+  actor artifacts, lab discovery, Git metadata, and source archives;
+- an OSS meta-lab dry-run contract and a separate disposable public-repo OSS
+  smoke harness;
+- cleanup inspection receipts that do not treat mutable run-bundle IDs as
+  provider-mutation authority.
 
 Still not good enough:
 
@@ -81,10 +89,9 @@ Still not good enough:
   `browser.steps` in `humanish/scenarios/*.yaml`, with headed provider-backed
   public proof against two app/tool targets;
 - live PTY and Codex UI lanes need stronger completion health;
-- OSS lab lanes can report nested Observer health, target app readiness, actor
-  evidence, setup-quality filesystem checks, and nested browser step summaries
-  when a target app starts, but need repeated fresh-agent trials across more
-  disposable public apps;
+- live OSS meta-lab execution remains disabled until repository-derived
+  instructions have an isolated credential boundary; historical headed-lane
+  evidence does not make the current entrypoint available;
 - Observer evidence has real screenshots/traces for browser app proof; richer
   multi-step product journeys and broader multi-persona matrices remain the next
   gap.

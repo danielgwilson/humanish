@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { runDesktopCommandOrThrow } from "./command-failure.js";
@@ -23,6 +23,16 @@ import {
   validateOssRepoSlug
 } from "./oss-lab.js";
 import { redactOssRemoteTelemetryText } from "./oss-remote-telemetry.js";
+import {
+  bindExistingRunArtifactPaths,
+  prepareExclusiveHumanishStorageDirectory,
+  prepareReusableHumanishStorageDirectory,
+  type PreparedRunArtifactPaths,
+  validatePreparedRunArtifactPaths
+} from "./run-paths.js";
+import {
+  writeContainedOutputFile
+} from "./selected-output-paths.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -266,6 +276,7 @@ export interface OssMetaLabResult {
     code:
       | "HUMANISH_INVALID_OSS_COUNT"
       | "HUMANISH_INVALID_OSS_REPO"
+      | "HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED"
       | "HUMANISH_META_RUN_FAILED";
     message: string;
   };
@@ -291,7 +302,7 @@ export interface OssMetaLabResult {
 }
 
 interface OssMetaLabRuntime {
-  artifactRoot: string;
+  artifactRoot: PreparedRunArtifactPaths;
   assignments: OssMetaLabAssignment[];
   createdAt: string;
   cwd: string;
@@ -300,6 +311,7 @@ interface OssMetaLabRuntime {
   liveRequested: boolean;
   missingKeys: string[];
   persistScreenshots: boolean;
+  physicalCwd: string;
   redactRepoNames: boolean;
   runId: string;
   source: RunBundle["source"];
@@ -344,6 +356,12 @@ interface OssMetaLabOutcome {
   verdict: ReviewSummary["verdict"];
 }
 
+interface PinnedCleanupDirectory {
+  readonly dev: bigint;
+  readonly ino: bigint;
+  readonly physicalPath: string;
+}
+
 export function buildOssRepoAssignments(repos: string[], count: number): OssMetaLabAssignment[] {
   return Array.from({ length: count }, (_, index) => {
     const repo = repos[index % repos.length];
@@ -372,42 +390,8 @@ export function collectOssMetaLabRemoteEnv(env: NodeJS.ProcessEnv): Record<strin
   return result;
 }
 
-export function collectOssMetaLabPrivateEnv(env: NodeJS.ProcessEnv): Record<string, string> {
-  const result: Record<string, string> = {};
-  const codexApiKey = env.CODEX_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
-  const codexAccessToken = env.CODEX_ACCESS_TOKEN?.trim();
-  const codexAppServerUrl = env.HUMANISH_OSS_META_CODEX_APP_SERVER_URL?.trim()
-    || env.CODEX_APP_SERVER_CLIENT_URL?.trim()
-    || env.CODEX_APP_SERVER_URL?.trim();
-  const githubToken = githubTokenFromEnv(env);
-
-  if (codexApiKey) {
-    result.HUMANISH_CODEX_API_KEY = codexApiKey;
-  }
-  if (codexAccessToken) {
-    result.HUMANISH_CODEX_ACCESS_TOKEN = codexAccessToken;
-  }
-  if (codexAppServerUrl) {
-    result.HUMANISH_CODEX_APP_SERVER_URL = codexAppServerUrl;
-  }
-  if (githubToken) {
-    result.HUMANISH_GITHUB_TOKEN = githubToken;
-  }
-
-  return result;
-}
-
 function githubTokenFromEnv(env: NodeJS.ProcessEnv): string {
   return env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim() || env.GITHUB_PAT?.trim() || "";
-}
-
-async function withGitHubAskPassEnv<T>(
-  root: string,
-  env: NodeJS.ProcessEnv,
-  callback: (gitEnv: NodeJS.ProcessEnv) => Promise<T>
-): Promise<T> {
-  const gitEnv = await createGitHubAskPassEnv(root, env);
-  return callback(gitEnv);
 }
 
 async function createGitHubAskPassEnv(root: string, env: NodeJS.ProcessEnv): Promise<NodeJS.ProcessEnv> {
@@ -486,11 +470,13 @@ export async function preflightOssMetaRepoAccess(args: {
 }): Promise<OssMetaLabRepoAccessPreflight[]> {
   const execImpl = args.execFileImpl ?? execFileAsync;
   const tokenPresent = Boolean(githubTokenFromEnv(args.env));
-  const root = path.join(args.cwd, ".humanish", "tmp", `repo-access-${randomBytes(4).toString("hex")}`);
+  const rootId = `repo-access-${randomBytes(4).toString("hex")}`;
+  const preparedRoot = await prepareExclusiveHumanishStorageDirectory(args.cwd, "tmp", rootId);
+  const root = await pinCleanupDirectory(preparedRoot);
 
   try {
-    await mkdir(root, { recursive: true });
-    const tokenGitEnv = tokenPresent ? await createGitHubAskPassEnv(root, args.env) : undefined;
+    await mkdir(root.physicalPath, { recursive: true });
+    const tokenGitEnv = tokenPresent ? await createGitHubAskPassEnv(root.physicalPath, args.env) : undefined;
     const anonymousGitEnv = gitEnvWithoutGitHubToken(args.env);
     const results: OssMetaLabRepoAccessPreflight[] = [];
 
@@ -499,7 +485,7 @@ export async function preflightOssMetaRepoAccess(args: {
 
       let anonymousError: unknown;
       try {
-        await runGitRepoAccessProbe(execImpl, root, repoUrl, anonymousGitEnv, args.env);
+        await runGitRepoAccessProbe(execImpl, root.physicalPath, repoUrl, anonymousGitEnv, args.env);
         results.push({
           ok: true,
           reason: tokenPresent
@@ -517,7 +503,7 @@ export async function preflightOssMetaRepoAccess(args: {
       let tokenError: unknown;
       if (tokenGitEnv) {
         try {
-          await runGitRepoAccessProbe(execImpl, root, repoUrl, tokenGitEnv, args.env);
+          await runGitRepoAccessProbe(execImpl, root.physicalPath, repoUrl, tokenGitEnv, args.env);
           results.push({
             ok: true,
             reason: "GitHub repo clone access preflight passed with token auth after anonymous clone access failed.",
@@ -548,8 +534,28 @@ export async function preflightOssMetaRepoAccess(args: {
 
     return results;
   } finally {
-    await rm(root, { recursive: true, force: true }).catch(() => undefined);
+    if (await validatePinnedCleanupDirectory(root).catch(() => false)) {
+      await rm(root.physicalPath, { recursive: true, force: true }).catch(() => undefined);
+    }
   }
+}
+
+async function pinCleanupDirectory(directoryInput: string): Promise<PinnedCleanupDirectory> {
+  const physicalPath = await realpath(path.resolve(directoryInput));
+  const stats = await lstat(physicalPath, { bigint: true });
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error("OSS meta-lab cleanup roots must be physical directories.");
+  }
+  return Object.freeze({ dev: stats.dev, ino: stats.ino, physicalPath });
+}
+
+async function validatePinnedCleanupDirectory(directory: PinnedCleanupDirectory): Promise<boolean> {
+  const stats = await lstat(directory.physicalPath, { bigint: true });
+  return !stats.isSymbolicLink()
+    && stats.isDirectory()
+    && stats.dev === directory.dev
+    && stats.ino === directory.ino
+    && await realpath(directory.physicalPath) === directory.physicalPath;
 }
 
 export async function preflightOssMetaActorApiKey(args: {
@@ -622,186 +628,15 @@ function actorRequired(env: NodeJS.ProcessEnv): boolean {
   return env.HUMANISH_OSS_META_REQUIRE_ACTOR === "1";
 }
 
-async function createHostActorPlans(args: {
+async function createHostActorPlans(_args: {
   assignments: OssMetaLabAssignment[];
   cwd: string;
   redactRepoNames: boolean;
   runId: string;
 }): Promise<OssMetaLabHostActorPlanResult[]> {
-  return Promise.all(args.assignments.map((assignment) =>
-    createHostActorPlan({
-      assignment,
-      cwd: args.cwd,
-      redactRepoNames: args.redactRepoNames,
-      runId: args.runId
-    })
-  ));
-}
-
-async function createHostActorPlan(args: {
-  assignment: OssMetaLabAssignment;
-  cwd: string;
-  redactRepoNames: boolean;
-  runId: string;
-}): Promise<OssMetaLabHostActorPlanResult> {
-  const token = repoSlug(args.assignment.repo);
-  const actorRoot = path.join(args.cwd, ".humanish", "runs", args.runId, "host-actors", token);
-  const artifactPath = path.join("host-actors", token, "actor-plan.json");
-  const tmpRoot = path.join(args.cwd, ".humanish", "tmp", "host-actors", args.runId, token);
-  const repoDir = path.join(tmpRoot, "repo");
-  const planPath = path.join(actorRoot, "actor-plan.json");
-  const schemaPath = path.join(tmpRoot, "actor-plan.schema.json");
-  await mkdir(actorRoot, { recursive: true });
-
-  if (args.redactRepoNames) {
-    const plan = failedHostActorPlan({
-      repo: "[redacted-authorized-repo]",
-      status: "blocked",
-      summary: "Host Codex actor plans are public-safe artifacts and require non-redacted public repo labels."
-    });
-    await writeJson(planPath, plan);
-    return {
-      artifactPath,
-      error: plan.summary,
-      plan,
-      planPath,
-      repo: args.assignment.repo,
-      streamId: args.assignment.streamId,
-      worktreePath: repoDir
-    };
-  }
-
-  try {
-    await mkdir(tmpRoot, { recursive: true });
-    await withGitHubAskPassEnv(tmpRoot, process.env, async (gitEnv) => {
-      await execFileAsync("git", ["clone", "--depth=1", `https://github.com/${args.assignment.repo}.git`, repoDir], {
-        cwd: tmpRoot,
-        env: gitEnv,
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: readPositiveInt(process.env.HUMANISH_OSS_META_HOST_CLONE_TIMEOUT_MS, 90_000)
-      });
-    });
-    await writeJson(schemaPath, hostActorPlanJsonSchema());
-
-    const repoContext = await readHostActorRepoContext(repoDir);
-    const outputPath = path.join(tmpRoot, "codex-last-message.json");
-    const codexEnv = hostCodexEnv(process.env);
-    const codexCommand = [
-      "codex exec",
-      "--ephemeral",
-      "--ignore-user-config",
-      "--skip-git-repo-check",
-      "--dangerously-bypass-approvals-and-sandbox",
-      "-C",
-      shellQuote(repoDir),
-      "--output-schema",
-      shellQuote(schemaPath),
-      "--output-last-message",
-      shellQuote(outputPath),
-      shellQuote(buildHostActorPrompt(args.assignment.repo, repoContext)),
-      "< /dev/null"
-    ].join(" ");
-    const codexResult = await execFileAsync("bash", ["-lc", codexCommand], {
-      cwd: repoDir,
-      env: codexEnv,
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: readPositiveInt(process.env.HUMANISH_OSS_META_HOST_ACTOR_TIMEOUT_MS, 240_000)
-    });
-
-    const rawPlan = await readFile(outputPath, "utf8").catch(() => {
-      const stdout = typeof codexResult.stdout === "string" ? codexResult.stdout : "";
-      const stderr = typeof codexResult.stderr === "string" ? codexResult.stderr : "";
-      return [stdout, stderr].filter((value) => value.trim()).join("\n");
-    });
-    await writeFile(path.join(actorRoot, "codex-output.txt"), `${sanitizeRemoteLog(rawPlan)}\n`, "utf8");
-    const plan = normalizeHostActorPlan(rawPlan, args.assignment.repo);
-    await writeJson(planPath, plan);
-    return {
-      artifactPath,
-      ...(plan.status === "passed" ? {} : { error: plan.summary }),
-      plan,
-      planPath,
-      repo: args.assignment.repo,
-      streamId: args.assignment.streamId,
-      worktreePath: repoDir
-    };
-  } catch (error) {
-    const plan = failedHostActorPlan({
-      repo: args.assignment.repo,
-      status: "failed",
-      summary: compactError(error)
-    });
-    await writeJson(planPath, plan);
-    return {
-      artifactPath,
-      error: plan.summary,
-      plan,
-      planPath,
-      repo: args.assignment.repo,
-      streamId: args.assignment.streamId,
-      worktreePath: repoDir
-    };
-  } finally {
-    await rm(tmpRoot, { recursive: true, force: true }).catch(() => undefined);
-  }
-}
-
-function hostCodexEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const allowed = [
-    "CODEX_HOME",
-    "HOME",
-    "LANG",
-    "LC_ALL",
-    "LC_CTYPE",
-    "LOGNAME",
-    "PATH",
-    "SHELL",
-    "TERM",
-    "TMP",
-    "TMPDIR",
-    "TEMP",
-    "USER",
-    "XDG_CACHE_HOME",
-    "XDG_CONFIG_HOME"
-  ];
-  return Object.fromEntries(allowed.flatMap((name) => {
-    const value = env[name];
-    return value === undefined ? [] : [[name, value]];
-  }));
-}
-
-async function readHostActorRepoContext(repoDir: string): Promise<string> {
-  const packageText = await readFile(path.join(repoDir, "package.json"), "utf8").catch(() => "");
-  const readmeText = await readFile(path.join(repoDir, "README.md"), "utf8").catch(() => "");
-  const indexText = await readFile(path.join(repoDir, "index.html"), "utf8").catch(() => "");
-  let packageSummary = "package.json missing";
-  try {
-    const pkg = JSON.parse(packageText) as {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-      name?: string;
-      packageManager?: string;
-      scripts?: Record<string, string>;
-    };
-    packageSummary = JSON.stringify({
-      name: pkg.name,
-      packageManager: pkg.packageManager,
-      scripts: pkg.scripts ?? {},
-      dependencies: Object.keys(pkg.dependencies ?? {}).slice(0, 20),
-      devDependencies: Object.keys(pkg.devDependencies ?? {}).slice(0, 20)
-    }, null, 2);
-  } catch {}
-
-  return [
-    "package_summary:",
-    packageSummary.slice(0, 2_500),
-    "",
-    "readme_excerpt:",
-    readmeText.replace(/\s+/g, " ").trim().slice(0, 2_000) || "(missing)",
-    "",
-    "index_excerpt:",
-    indexText.replace(/\s+/g, " ").trim().slice(0, 800) || "(missing)"
-  ].join("\n");
+  throw new Error(
+    "Host actor planning is disabled until live OSS meta-lab execution has an isolated credential boundary."
+  );
 }
 
 function repoAccessFailureReason(args: {
@@ -872,152 +707,6 @@ function blockedLiveDesktopsForRepoAccess(args: {
   });
 }
 
-function buildHostActorPrompt(repo: string, repoContext: string): string {
-  return [
-    "You are a public-safe Humanish host actor.",
-    "Use the bounded public repository context below to author a compact Humanish setup plan.",
-    "Do not print secrets, environment values, private data, or long source snippets.",
-    "Do not commit, push, file issues, or mutate remotes.",
-    "Return only JSON matching the supplied schema.",
-    "",
-    `Repository: ${repo}`,
-    "",
-    "Plan requirements:",
-    "- status must be passed if you can infer useful public-safe personas/scenarios.",
-    "- Include exactly 1 or 2 synthetic personas.",
-    "- Include exactly 1 or 2 desktop/mobile browser scenarios.",
-    "- Scenario steps must be concise and public-safe.",
-    "- recommendedProof should name the strongest Humanish command shape for this repo.",
-    "- Current Humanish supports `humanish run --app-url <loopback-url> --sims 2`; do not invent --browser, --viewport, --persona, or --scenario flags.",
-    "",
-    "Bounded public repo context:",
-    repoContext
-  ].join("\n");
-}
-
-function hostActorPlanJsonSchema(): Record<string, unknown> {
-  return {
-    type: "object",
-    additionalProperties: false,
-    required: ["status", "summary", "personas", "scenarios", "recommendedProof"],
-    properties: {
-      status: { type: "string", enum: ["passed", "blocked", "failed"] },
-      summary: { type: "string" },
-      personas: {
-        type: "array",
-        minItems: 1,
-        maxItems: 2,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["id", "name", "intent", "traits"],
-          properties: {
-            id: { type: "string" },
-            name: { type: "string" },
-            intent: { type: "string" },
-            traits: {
-              type: "array",
-              minItems: 1,
-              maxItems: 5,
-              items: { type: "string" }
-            }
-          }
-        }
-      },
-      recommendedProof: { type: "string" },
-      scenarios: {
-        type: "array",
-        minItems: 1,
-        maxItems: 2,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["id", "title", "goal", "steps"],
-          properties: {
-            id: { type: "string" },
-            title: { type: "string" },
-            goal: { type: "string" },
-            steps: {
-              type: "array",
-              minItems: 2,
-              maxItems: 8,
-              items: { type: "string" }
-            }
-          }
-        }
-      }
-    }
-  };
-}
-
-function normalizeHostActorPlan(raw: string, repo: string): OssMetaLabHostActorPlan {
-  const parsed = parseJsonObject(raw);
-  if (!parsed) {
-    return failedHostActorPlan({
-      repo,
-      status: "failed",
-      summary: "Host Codex actor did not return parseable JSON."
-    });
-  }
-
-  const personas = Array.isArray(parsed.personas)
-    ? parsed.personas.map(normalizeHostActorPersona).filter((persona): persona is OssMetaLabHostActorPlan["personas"][number] => persona !== null).slice(0, 2)
-    : [];
-  const scenarios = Array.isArray(parsed.scenarios)
-    ? parsed.scenarios.map(normalizeHostActorScenario).filter((scenario): scenario is OssMetaLabHostActorPlan["scenarios"][number] => scenario !== null).slice(0, 2)
-    : [];
-  const status = parsed.status === "blocked" || parsed.status === "failed" ? parsed.status : "passed";
-  if (status === "passed" && (personas.length === 0 || scenarios.length === 0)) {
-    return failedHostActorPlan({
-      repo,
-      status: "failed",
-      summary: "Host Codex actor plan lacked usable personas or scenarios."
-    });
-  }
-
-  return {
-    schema: "humanish.oss-host-actor-plan.v1",
-    generatedAt: new Date().toISOString(),
-    personas,
-    recommendedProof: normalizeHostActorRecommendedProof(parsed.recommendedProof),
-    repo,
-    scenarios,
-    source: "local-codex-exec",
-    status,
-    summary: cleanHostActorText(parsed.summary, status === "passed" ? "Host Codex actor authored a public-safe Humanish plan." : "Host Codex actor could not author a complete plan.")
-  };
-}
-
-function normalizeHostActorPersona(value: unknown): OssMetaLabHostActorPlan["personas"][number] | null {
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as Record<string, unknown>;
-  const id = safeArtifactToken(cleanHostActorText(candidate.id, "host-actor-persona")).slice(0, 80) || "host-actor-persona";
-  const traits = Array.isArray(candidate.traits)
-    ? candidate.traits.map((trait) => cleanHostActorText(trait, "")).filter(Boolean).slice(0, 5)
-    : [];
-  return {
-    id,
-    name: cleanHostActorText(candidate.name, "Host Actor Persona"),
-    intent: cleanHostActorText(candidate.intent, "Evaluate the app with a public-safe synthetic goal."),
-    traits: traits.length > 0 ? traits : ["public_safe", "synthetic_user"]
-  };
-}
-
-function normalizeHostActorScenario(value: unknown): OssMetaLabHostActorPlan["scenarios"][number] | null {
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as Record<string, unknown>;
-  const steps = Array.isArray(candidate.steps)
-    ? candidate.steps.map((step) => cleanHostActorText(step, "")).filter(Boolean).slice(0, 8)
-    : [];
-  if (steps.length === 0) return null;
-  return {
-    id: safeArtifactToken(cleanHostActorText(candidate.id, "host-actor-scenario")).slice(0, 80) || "host-actor-scenario",
-    title: cleanHostActorText(candidate.title, "Host Actor Scenario"),
-    goal: cleanHostActorText(candidate.goal, "Exercise the primary public-safe app workflow."),
-    steps
-  };
-}
-
 export function normalizeHostActorRecommendedProof(value: unknown): string {
   const proof = cleanHostActorText(value, "");
   if (!/\bhumanish\s+run\b/.test(proof)) {
@@ -1029,58 +718,6 @@ export function normalizeHostActorRecommendedProof(value: unknown): string {
   }
 
   return proof;
-}
-
-function failedHostActorPlan(args: {
-  repo: string;
-  status: "failed" | "blocked";
-  summary: string;
-}): OssMetaLabHostActorPlan {
-  return {
-    schema: "humanish.oss-host-actor-plan.v1",
-    generatedAt: new Date().toISOString(),
-    personas: [],
-    recommendedProof: "Host actor plan was not available.",
-    repo: args.repo,
-    scenarios: [],
-    source: "local-codex-exec",
-    status: args.status,
-    summary: cleanHostActorText(args.summary, "Host Codex actor plan failed.")
-  };
-}
-
-function parseJsonObject(raw: string): Record<string, unknown> | null {
-  for (const line of raw.split(/\r?\n/).map((value) => value.trim()).filter(Boolean).reverse()) {
-    if (line.startsWith("{") && line.endsWith("}")) {
-      try {
-        const parsed = JSON.parse(line) as unknown;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
-      } catch {}
-    }
-  }
-
-  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
-  if (fence?.[1]) {
-    try {
-      const parsed = JSON.parse(fence[1].trim()) as unknown;
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
-    } catch {}
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
-  } catch {
-    const lastClose = raw.lastIndexOf("}");
-    if (lastClose === -1) return null;
-    for (let start = raw.lastIndexOf("{", lastClose); start >= 0; start = raw.lastIndexOf("{", start - 1)) {
-      try {
-        const parsed = JSON.parse(raw.slice(start, lastClose + 1)) as unknown;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
-      } catch {}
-    }
-    return null;
-  }
 }
 
 function cleanHostActorText(value: unknown, fallback: string): string {
@@ -1099,7 +736,6 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const cwd = path.resolve(options.cwd);
   const dryRun = options.dryRun === true;
   const liveRequested = !dryRun;
-  const codexAppServerMode = codexAppServerModeRequested(process.env, options.codexAppServer === true);
   const warnings: string[] = [];
   const repos = normalizeOssRepoSlugs(options.repos);
   const count = options.count ?? DEFAULT_OSS_REPOS.length;
@@ -1143,22 +779,36 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   }
 
   const redactRepoNames = options.redactRepoNames ?? (liveRequested && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length)));
-  const hostActorMode = liveRequested && hostCodexActorRequested(process.env);
-  const missingKeys = missingLiveKeys(process.env);
-  if (liveRequested && missingKeys.length > 0) {
-    warnings.push(`Live E2B/Codex launch is waiting on env vars: ${missingKeys.join(", ")}.`);
-    warnings.push("Observer lanes stay in the live waiting state until keys are present.");
-  }
-  if (liveRequested && !githubTokenFromEnv(process.env)) {
-    warnings.push("No GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT is present; public repos can clone, but private GitHub repos will fail access preflight.");
-  }
-
   const assignments = buildOssRepoAssignments(repos, count);
   const publicAssignments = redactAssignments(assignments, redactRepoNames);
   const publicRepos = redactRepoNames ? publicAssignments.map((assignment) => assignment.repo) : repos;
+
+  if (liveRequested) {
+    return {
+      schema: OSS_META_LAB_SCHEMA,
+      ok: false,
+      assignments: publicAssignments,
+      count,
+      cwd,
+      dryRun,
+      error: {
+        code: "HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED",
+        message: "Live OSS meta-lab execution is unavailable because repository-derived instructions require an isolated credential boundary. Use --dry-run."
+      },
+      liveRequested,
+      repos: publicRepos,
+      sandboxes: [],
+      warnings
+    };
+  }
+
+  const codexAppServerMode = codexAppServerModeRequested(process.env, options.codexAppServer === true);
+  const hostActorMode = liveRequested && hostCodexActorRequested(process.env);
+  const missingKeys = missingLiveKeys(process.env);
   const runId = options.runId ?? makeMetaRunId();
+  const physicalCwd = await realpath(cwd);
   const runResult: RunResult = await runDryRun({
-    cwd,
+    cwd: physicalCwd,
     dryRun: true,
     runId,
     simCount: count
@@ -1183,19 +833,18 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
     };
   }
 
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const preparedRunPaths = await bindExistingRunArtifactPaths(physicalCwd, runId);
+  const artifactRoot = preparedRunPaths;
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
     capturedAt: createdAt,
-    cwd,
+    cwd: physicalCwd,
     humanishSource: "present",
     packageName: "humanish"
   });
   const persistScreenshots = liveRequested;
   let liveDesktops: OssMetaLabLiveDesktop[] = [];
   let substrateMissingKeys = [...missingKeys];
-  await mkdir(artifactRoot, { recursive: true });
-
   const initialBundle = buildMetaBundle({
     assignments,
     createdAt,
@@ -1210,9 +859,10 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   });
   await writeMetaBundleArtifacts(artifactRoot, initialBundle);
 
-  let observer = await renderObserver(cwd, runId, { open: false });
+  let observer = await renderObserver(physicalCwd, runId, { open: false });
   if (observer.ok && options.onObserverReady) {
     await options.onObserverReady(observer as ObserverResult & { ok: true });
+    await validatePreparedRunArtifactPaths(preparedRunPaths);
   }
 
   const shouldPreflightRepoAccess = liveRequested
@@ -1380,7 +1030,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
 
   await writeMetaBundleArtifacts(artifactRoot, bundle);
 
-  const finalObserver = await renderObserver(cwd, runId, { open: options.open === true });
+  const finalObserver = await renderObserver(physicalCwd, runId, { open: options.open === true });
   Object.assign(observer, finalObserver);
   if (observer.ok) {
     attachObserverRuntimeStreamUrls(
@@ -1434,6 +1084,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
       liveRequested,
       missingKeys: substrateMissingKeys,
       persistScreenshots,
+      physicalCwd,
       redactRepoNames,
       runId,
       source,
@@ -1444,12 +1095,12 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   return result;
 }
 
-async function writeMetaBundleArtifacts(artifactRoot: string, bundle: RunBundle): Promise<void> {
+async function writeMetaBundleArtifacts(artifactRoot: PreparedRunArtifactPaths, bundle: RunBundle): Promise<void> {
   const publicBundle = publicSafeOssMetaBundle(bundle);
-  await writeJson(path.join(artifactRoot, "run.json"), publicBundle);
-  await writeJson(path.join(artifactRoot, "review.json"), publicBundle.review);
-  await writeFile(path.join(artifactRoot, "review.md"), renderMetaReviewMarkdown(publicBundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeJson(artifactRoot, "run.json", publicBundle);
+  await writeJson(artifactRoot, "review.json", publicBundle.review);
+  await writeContainedOutputFile(artifactRoot, "review.md", renderMetaReviewMarkdown(publicBundle), "utf8");
+  await writeContainedOutputFile(artifactRoot, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
 }
 
 export function publicSafeOssMetaBundle(bundle: RunBundle): RunBundle {
@@ -1587,35 +1238,16 @@ export function startOssMetaLabLiveRefresh(
 function cleanupOssMetaLabLiveDesktops(
   liveDesktops: OssMetaLabLiveDesktop[],
   options: {
-    includeProviderReadback?: boolean;
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
-    listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
     requestTimeoutMs?: number;
   } = {}
 ): Promise<OssMetaLabCleanupResult> {
-  const result = {
-    sandboxes: liveDesktops.map((desktop) => ({
-      repo: desktop.repo,
-      ...(desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
-      streamId: desktop.streamId,
-      urlPresent: Boolean(desktop.url)
-    }))
-  };
-
-  // BY-ID ONLY by default -- never Sandbox.list. This run's own sandboxIds (including ones whose
-  // bootstrap failed after Sandbox.create succeeded; see launchLiveDesktops above) are already
-  // tracked in `liveDesktops`, so no account-wide discovery is needed to reclaim what THIS run
-  // created. Explicit `includeProviderReadback: true` additionally sweeps stale provider-tagged
-  // sandboxes left by a crashed prior process; only the maintainer-only `humanish lab cleanup oss`
-  // command (cleanupStaleOssMetaLabSandboxes) needs that, and its own Sandbox.list call is
-  // further gated behind HUMANISH_OSS_META_ALLOW_PROVIDER_LIST (see listOssMetaLabProviderSandboxIds).
-  return options.includeProviderReadback === true
-    ? cleanupOssMetaLabSandboxesAndProviderMatches(result, options)
-    : cleanupOssMetaLabSandboxes(result, options);
-}
-
-export function sandboxIdsForOssMetaLabCleanup(result: Pick<OssMetaLabResult, "sandboxes">): string[] {
-  return [...new Set(result.sandboxes.flatMap((sandbox) => sandbox.sandboxId ? [sandbox.sandboxId] : []))];
+  const ids = [...new Set(liveDesktops.flatMap((entry) => entry.desktop?.sandboxId ? [entry.desktop.sandboxId] : []))];
+  return killOssMetaLabProviderSandboxIds(ids, {
+    ...(options.killSandbox === undefined ? {} : { killSandbox: options.killSandbox }),
+    ...(options.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: options.requestTimeoutMs }),
+    skipped: liveDesktops.length - ids.length
+  });
 }
 
 export interface OssMetaLabProviderListRequest {
@@ -1644,18 +1276,11 @@ export async function cleanupOssMetaLabSandboxesAndProviderMatches(
     ...(options.listSandboxes === undefined ? {} : { listSandboxes: options.listSandboxes }),
     requestTimeoutMs
   });
-  const ids = [...new Set([...sandboxIdsForOssMetaLabCleanup(result), ...listed.ids])];
-  const cleanup = await cleanupOssMetaLabSandboxes({
-    sandboxes: ids.map((sandboxId, index) => ({
-      repo: "oss-meta-lab",
-      sandboxId,
-      streamId: `provider-${String(index + 1).padStart(2, "0")}`,
-      urlPresent: false
-    }))
-  }, {
+  const cleanup = await killOssMetaLabProviderSandboxIds(listed.ids, {
     ...(options.killSandbox === undefined ? {} : { killSandbox: options.killSandbox }),
     redactIds: true,
-    requestTimeoutMs
+    requestTimeoutMs,
+    skipped: listed.skipped
   });
   const remaining = listed.errors.length > 0 || cleanup.errors.length > 0
     ? undefined
@@ -1666,10 +1291,16 @@ export async function cleanupOssMetaLabSandboxesAndProviderMatches(
 
   return {
     killed: cleanup.killed,
-    matched: ids.length,
+    matched: listed.ids.length,
     ...(remaining === undefined ? {} : { remaining }),
-    skipped: result.sandboxes.length - sandboxIdsForOssMetaLabCleanup(result).length + listed.skipped + cleanup.skipped,
-    errors: [...listed.errors, ...cleanup.errors]
+    skipped: result.sandboxes.length + cleanup.skipped,
+    errors: [
+      ...(result.sandboxes.length > 0
+        ? ["Stored OSS meta-lab sandbox IDs were not used; cleanup requires verified provider metadata."]
+        : []),
+      ...listed.errors,
+      ...cleanup.errors
+    ]
   };
 }
 
@@ -1680,9 +1311,8 @@ async function listOssMetaLabProviderSandboxIds(options: {
   let listSandboxes = options.listSandboxes;
   if (!listSandboxes) {
     // humanish never enumerates an operator's E2B account by default (see
-    // docs/principles/invariants-and-defaults.md): reclaiming THIS run's own sandboxes stays
-    // by-id-only (sandboxIdsForOssMetaLabCleanup / cleanupOssMetaLabSandboxes). Real, account-wide
-    // Sandbox.list discovery exists ONLY for a maintainer's explicit orphan sweep of a crashed
+    // docs/principles/invariants-and-defaults.md). Account-wide Sandbox.list discovery exists
+    // ONLY for a maintainer's explicit orphan sweep of a crashed
     // prior process (`humanish lab cleanup oss`) and requires this opt-in, set deliberately by the
     // maintainer running it against their own account -- never a default, never for a shared key.
     if (process.env.HUMANISH_OSS_META_ALLOW_PROVIDER_LIST !== "1") {
@@ -1777,14 +1407,32 @@ function isCleanupEligibleOssMetaLabSandbox(sandbox: E2BSandboxInfo): boolean {
 
 export async function cleanupOssMetaLabSandboxes(
   result: Pick<OssMetaLabResult, "sandboxes">,
-  options: {
+  _options: {
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
     redactIds?: boolean;
     requestTimeoutMs?: number;
   } = {}
 ): Promise<OssMetaLabCleanupResult> {
-  const ids = sandboxIdsForOssMetaLabCleanup(result);
-  const skipped = result.sandboxes.length - ids.length;
+  return {
+    killed: 0,
+    skipped: result.sandboxes.length,
+    errors: result.sandboxes.some((sandbox) => sandbox.sandboxId)
+      ? ["Stored OSS meta-lab sandbox IDs cannot authorize provider mutation; use the explicit metadata-verified orphan sweep."]
+      : []
+  };
+}
+
+async function killOssMetaLabProviderSandboxIds(
+  idsInput: string[],
+  options: {
+    killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    redactIds?: boolean;
+    requestTimeoutMs?: number;
+    skipped?: number;
+  } = {}
+): Promise<OssMetaLabCleanupResult> {
+  const ids = [...new Set(idsInput.filter((id) => id.trim()))];
+  const skipped = options.skipped ?? 0;
   if (ids.length === 0) {
     return { killed: 0, skipped, errors: [] };
   }
@@ -2862,11 +2510,8 @@ async function launchLiveDesktops(
   return Promise.all(assignments.map(async (assignment) => {
     const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
     const hostActorPlanResult = options.hostActorPlansByStream?.get(assignment.streamId);
-    // Hoisted OUTSIDE the try so a failure after Sandbox.create succeeds (bootstrap/stream) still
-    // lets the catch branch report the sandboxId it already created. Without this, a live sandbox
-    // that failed to bootstrap had no id anywhere in this run's own result, and the ONLY way to
-    // reclaim it was Sandbox.list account-wide discovery. Capturing it here is what lets cleanup
-    // stay by-id-only for this run (see cleanupOssMetaLabLiveDesktops below).
+    // Retain the provider object in process memory so attached cleanup can use a trusted handle.
+    // Durable result IDs are evidence only and never authorize provider mutation.
     let desktop: E2BDesktopSandbox | undefined;
     try {
       desktop = await desktopModule.Sandbox.create({
@@ -2880,8 +2525,7 @@ async function launchLiveDesktops(
         },
         envs: {
           ...collectOssMetaLabRemoteEnv(process.env),
-          ...(options.codexAppServerMode ? { HUMANISH_OSS_META_CODEX_APP_SERVER: "1" } : {}),
-          ...collectOssMetaLabPrivateEnv(process.env)
+          ...(options.codexAppServerMode ? { HUMANISH_OSS_META_CODEX_APP_SERVER: "1" } : {})
         },
         resolution: [1440, 960],
         dpi: 96,
@@ -2919,12 +2563,12 @@ async function launchLiveDesktops(
     } catch (error) {
       return {
         error: compactError(error),
+        ...(desktop ? { desktop } : {}),
         ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
         ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
         repo: repoLabel,
-        // The sandbox may have been created before the failure (e.g. bootstrap threw): if so,
-        // its id rides the result too, so THIS run's own cleanup can reclaim it by id without
-        // ever listing the account.
+        // Keep the id as public-safe lifecycle evidence only. Cleanup authority comes from the
+        // in-memory provider object above or a separately verified provider-metadata sweep.
         ...(desktop?.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
         simId: assignment.simId,
         streamId: assignment.streamId
@@ -3027,7 +2671,7 @@ async function refreshOssMetaLabLiveRuntime(
     source: runtime.source
   });
   await writeMetaBundleArtifacts(runtime.artifactRoot, bundle);
-  await renderObserver(runtime.cwd, runtime.runId, { open: false });
+  await renderObserver(runtime.physicalCwd, runtime.runId, { open: false });
 }
 
 async function refreshLiveDesktopProgress(
@@ -3104,7 +2748,7 @@ async function readRemoteLogTail(
 }
 
 async function captureLiveDesktopScreenshots(
-  artifactRoot: string,
+  artifactRoot: PreparedRunArtifactPaths,
   liveDesktops: OssMetaLabLiveDesktop[],
   options: { redactRepoNames: boolean } = { redactRepoNames: false }
 ): Promise<{ warnings: string[] }> {
@@ -3113,8 +2757,6 @@ async function captureLiveDesktopScreenshots(
     return { warnings: [] };
   }
 
-  const screenshotRoot = path.join(artifactRoot, "screenshots");
-  await mkdir(screenshotRoot, { recursive: true });
   const warnings: string[] = [];
 
   await Promise.all(candidates.map(async (desktop) => {
@@ -3131,8 +2773,7 @@ async function captureLiveDesktopScreenshots(
       await desktop.desktop.wait(readPositiveInt(process.env.HUMANISH_OSS_META_SCREENSHOT_SETTLE_MS, 2_500)).catch(() => undefined);
       const bytes = await desktop.desktop.screenshot("bytes");
       const fileName = `${safeArtifactToken(desktop.streamId)}.png`;
-      const screenshotPath = path.join(screenshotRoot, fileName);
-      await writeFile(screenshotPath, Buffer.from(bytes));
+      await writeContainedOutputFile(artifactRoot, path.join("screenshots", fileName), Buffer.from(bytes));
       desktop.screenshot = {
         capturedAt: new Date().toISOString(),
         observerUrl: `../screenshots/${fileName}`,
@@ -3155,7 +2796,7 @@ async function captureLiveDesktopScreenshots(
 }
 
 async function writeActorEvidenceArtifacts(
-  artifactRoot: string,
+  artifactRoot: PreparedRunArtifactPaths,
   liveDesktops: OssMetaLabLiveDesktop[],
   options: {
     assignments: OssMetaLabAssignment[];
@@ -3175,12 +2816,6 @@ async function writeActorEvidenceArtifacts(
     return { warnings: [] };
   }
 
-  const actorEvidenceRoot = path.join(artifactRoot, "actor-evidence");
-  const nestedEvidenceRoot = path.join(artifactRoot, "nested-evidence");
-  const setupQualityRoot = path.join(artifactRoot, "setup-quality");
-  await mkdir(actorEvidenceRoot, { recursive: true });
-  await mkdir(nestedEvidenceRoot, { recursive: true });
-  await mkdir(setupQualityRoot, { recursive: true });
   let written = 0;
 
   for (const desktop of candidates) {
@@ -3191,8 +2826,9 @@ async function writeActorEvidenceArtifacts(
 
     if (desktop.completion?.actorLastMessageTail) {
       const relativePath = path.join("actor-evidence", `${baseName}-actor-last-message-tail.txt`);
-      await writeFile(
-        path.join(artifactRoot, relativePath),
+      await writeContainedOutputFile(
+        artifactRoot,
+        relativePath,
         renderPublicSafeActorEvidenceText("actor-last-message", desktop.streamId, desktop.completion.actorLastMessageTail, {
           providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
           repo: repoForRedaction
@@ -3205,8 +2841,9 @@ async function writeActorEvidenceArtifacts(
 
     if (desktop.completion?.actorLogTail) {
       const relativePath = path.join("actor-evidence", `${baseName}-actor-log-tail.txt`);
-      await writeFile(
-        path.join(artifactRoot, relativePath),
+      await writeContainedOutputFile(
+        artifactRoot,
+        relativePath,
         renderPublicSafeActorEvidenceText("actor-log", desktop.streamId, desktop.completion.actorLogTail, {
           providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
           repo: repoForRedaction
@@ -3222,7 +2859,7 @@ async function writeActorEvidenceArtifacts(
       const snapshot = options.redactRepoNames
         ? redactSetupQualityRepoMentions(suppressSetupQualityPreviews(desktop.completion.setupQuality), repoForRedaction)
         : desktop.completion.setupQuality;
-      await writeJson(path.join(artifactRoot, relativePath), snapshot);
+      await writeJson(artifactRoot, relativePath, snapshot);
       actorEvidence.setupQualityPath = relativePath;
       written += 1;
     }
@@ -3233,7 +2870,7 @@ async function writeActorEvidenceArtifacts(
       || desktop.completion.nestedVerifyPassed !== undefined
     )) {
       const relativePath = path.join("nested-evidence", `${baseName}-nested-proof.json`);
-      await writeJson(path.join(artifactRoot, relativePath), {
+      await writeJson(artifactRoot, relativePath, {
         schema: "humanish.oss-meta-nested-proof.v1",
         streamId: desktop.streamId,
         redaction: {
@@ -3258,9 +2895,9 @@ async function writeActorEvidenceArtifacts(
       const tracePath = path.join("codex-app-server", `${baseName}-summary.json`);
       const eventsPath = path.join("codex-app-server", `${baseName}-events.ndjson`);
       const transcriptPath = path.join("codex-app-server", `${baseName}-transcript.txt`);
-      await mkdir(path.join(artifactRoot, "codex-app-server"), { recursive: true });
       await writeJson(
-        path.join(artifactRoot, tracePath),
+        artifactRoot,
+        tracePath,
         isRecord(evidence.traceJson)
           ? evidence.traceJson
           : {
@@ -3271,8 +2908,8 @@ async function writeActorEvidenceArtifacts(
               traceText: evidence.traceText ?? ""
             }
       );
-      await writeFile(path.join(artifactRoot, eventsPath), evidence.eventsText ?? "No app-server event envelope tail captured.\n", "utf8");
-      await writeFile(path.join(artifactRoot, transcriptPath), evidence.transcriptText ?? "No app-server transcript tail captured.\n", "utf8");
+      await writeContainedOutputFile(artifactRoot, eventsPath, evidence.eventsText ?? "No app-server event envelope tail captured.\n", "utf8");
+      await writeContainedOutputFile(artifactRoot, transcriptPath, evidence.transcriptText ?? "No app-server transcript tail captured.\n", "utf8");
       evidence.tracePath = tracePath;
       evidence.eventsPath = eventsPath;
       evidence.transcriptPath = transcriptPath;
@@ -5585,8 +5222,8 @@ async function runDesktopCommand(
 
 async function packLocalHumanishPackage(cwd: string, runId: string): Promise<OssMetaLabLocalPackage> {
   const packageRoot = moduleRoot;
-  const packDir = path.join(cwd, ".humanish", "tmp", "oss-meta", runId, "package");
-  await mkdir(packDir, { recursive: true });
+  await prepareReusableHumanishStorageDirectory(cwd, "tmp", "oss-meta", runId);
+  const packDir = await prepareReusableHumanishStorageDirectory(cwd, "tmp", "oss-meta", runId, "package");
   await execFileAsync("pnpm", ["build"], {
     cwd: packageRoot,
     env: process.env,
@@ -5714,8 +5351,8 @@ function safeArtifactToken(value: string): string {
   return token || "artifact";
 }
 
-async function writeJson(filePath: string, value: unknown): Promise<void> {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+async function writeJson(artifactRoot: PreparedRunArtifactPaths, relativePath: string, value: unknown): Promise<void> {
+  await writeContainedOutputFile(artifactRoot, relativePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 // E2B desktop interfaces + the optional-peer loader now live in ./e2b-desktop-launch.js

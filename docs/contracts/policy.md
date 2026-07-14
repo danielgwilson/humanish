@@ -5,6 +5,12 @@ Date: 2026-06-02
 Status: v0 draft contract for credential, network, spend, redaction, and
 assisted-run boundaries.
 
+Safety amendment (2026-07-14): beginning with `0.15.1`, stored provider IDs are
+evidence and never authorize core provider mutation. The bundled OSS meta-lab
+is dry-run only; a live request fails before side effects until
+repository-derived instructions have an isolated credential boundary. Any
+historical live-OSS examples below do not override that fail-closed behavior.
+
 ## Purpose
 
 Policy defines what a run may access, what it may persist, and what it may
@@ -74,7 +80,7 @@ for credentials.
 | `local_only` | Localhost and loopback only. | Observer, local fixtures |
 | `public_oss` | Public GitHub clone/fetch of owner/repo slugs only. | disposable OSS smoke |
 | `authorized_private` | Token-backed clone/fetch of repos the maintainer is already authorized to access, with repo labels redacted by default. | local maintainer dogfood only |
-| `provider_substrate` | Explicit provider substrate such as hosted desktop streams. | live OSS lab with keys |
+| `provider_substrate` | Explicit provider substrate such as hosted desktop streams. | live routes with an isolated credential boundary and in-process resource handles |
 | `custom_allowlist` | Adapter-declared public hosts. | target-specific adapters |
 
 Synthetic fixture:

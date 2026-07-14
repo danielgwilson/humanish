@@ -38,7 +38,7 @@
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
@@ -54,6 +54,8 @@ import {
 } from "./e2b-desktop-launch.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { digestText, redactedTail, redactText } from "./redaction.js";
+import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
+import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./selected-output-paths.js";
 import {
   buildRunSource,
   extractLocalActorVerdict,
@@ -326,12 +328,12 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   const persona: ActorPersonaRef = { id: personaId, traitsApplied: [], promptDigest };
 
   const runId = options.runId ?? makeTerminalRunId();
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const physicalCwd = await realpath(cwd);
+  const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
   const createdAt = new Date().toISOString();
-  await mkdir(artifactRoot, { recursive: true });
   const source = await buildRunSource({
     capturedAt: createdAt,
-    cwd,
+    cwd: physicalCwd,
     humanishSource: "present",
     packageName: "humanish"
   });
@@ -359,23 +361,24 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
     source
   });
 
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderTerminalReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderTerminalReviewMarkdown(bundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
   // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", "latest.json"),
+  await writePreparedRunLatestPointer(
+    runPaths,
     `${JSON.stringify({
       schema: "humanish.latest-run.v1",
       runId,
-      path: path.join(".humanish", "runs", runId),
+      path: runPaths.relativeRunRoot,
       updatedAt: createdAt
     }, null, 2)}\n`,
     "utf8"
   );
 
-  const observer = await render(cwd, runId, { open: options.open === true });
+  const observer = await render(physicalCwd, runId, { open: options.open === true });
+  await validatePreparedRunArtifactPaths(runPaths);
   const ok = observer.ok;
 
   return {
@@ -897,10 +900,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
 
   const runId = options.runId ?? makeTerminalRunId();
-  const artifactRoot = path.join(cwd, ".humanish", "runs", runId);
+  const physicalCwd = await realpath(cwd);
+  const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
   const createdAt = nowIso();
-  await mkdir(artifactRoot, { recursive: true });
-  const source = await buildRunSource({ capturedAt: createdAt, cwd, humanishSource: "present", packageName: "humanish" });
+  const source = await buildRunSource({ capturedAt: createdAt, cwd: physicalCwd, humanishSource: "present", packageName: "humanish" });
 
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
@@ -940,6 +943,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
 
   try {
     sandboxModule = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    await validatePreparedRunArtifactPaths(runPaths);
     // SAFETY CONTRACT ITEM 1 (enforced HERE): Sandbox.create carries metadata (positive allowlist)
     // + lifecycle kill-on-timeout, and DELIBERATELY NO `envs` — the runtime key is NEVER passed
     // sandbox-global. It is injected ONLY into the per-command codex `envs` below.
@@ -952,6 +956,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       // NOTE: no `envs` key — see the credential boundary above. (A sandbox-global key would leak
       // into every process in the sandbox; command-scoped bounds it to the codex invocation.)
     });
+    await validatePreparedRunArtifactPaths(runPaths);
     sandboxId = sandbox.sandboxId;
     recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env (runtime key is command-scoped).`);
 
@@ -1116,6 +1121,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // slice (no signal yet — SLICE 4). The costProbe hook lets the deterministic test inject KNOWN
   // spend to exercise the fail-closed cap without a real billable run.
   const injectedLines = hooks.costProbe?.({ ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }) });
+  if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
   const cost = buildCostLedger({
     ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
     ...(injectedLines ? { injectedLines } : {})
@@ -1158,14 +1164,15 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     noSpendProof
   };
 
-  await writeFile(
-    path.join(artifactRoot, TERMINAL_EVENTS_ARTIFACT),
+  await writeContainedOutputFile(
+    runPaths,
+    TERMINAL_EVENTS_ARTIFACT,
     `${terminalEvents.map((e) => JSON.stringify(e)).join("\n")}${terminalEvents.length > 0 ? "\n" : ""}`,
     "utf8"
   );
-  await writeFile(path.join(artifactRoot, TERMINAL_TRANSCRIPT_ARTIFACT), `${normalizedTranscript}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, TERMINAL_LEDGERS_ARTIFACT), `${JSON.stringify(ledgers, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, TERMINAL_TRANSCRIPT_ARTIFACT, `${normalizedTranscript}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, TERMINAL_LEDGERS_ARTIFACT, `${JSON.stringify(ledgers, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "actor.json", `${JSON.stringify(trace, null, 2)}\n`, "utf8");
 
   const bundle = buildLiveTerminalProductBundle({
     actorId: descriptorId,
@@ -1203,18 +1210,20 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
   // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
   await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, product: product.name, labId: config.id, runId, sanitize, warnings });
+  await validatePreparedRunArtifactPaths(runPaths);
 
-  await writeFile(path.join(artifactRoot, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(artifactRoot, "review.md"), renderTerminalReviewMarkdown(bundle), "utf8");
-  await writeFile(path.join(artifactRoot, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", "latest.json"),
-    `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: path.join(".humanish", "runs", runId), updatedAt: createdAt }, null, 2)}\n`,
+  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(runPaths, "review.md", renderTerminalReviewMarkdown(bundle), "utf8");
+  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writePreparedRunLatestPointer(
+    runPaths,
+    `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: runPaths.relativeRunRoot, updatedAt: createdAt }, null, 2)}\n`,
     "utf8"
   );
 
-  const observer = await render(cwd, runId, { open: options.open === true });
+  const observer = await render(physicalCwd, runId, { open: options.open === true });
+  await validatePreparedRunArtifactPaths(runPaths);
 
   // The lab's exit code: verified evidence AND no harness error AND proven cleanup. A blocked/
   // timed-out agent run is STILL ok-as-evidence at the bundle level (the failure is the evidence),
@@ -1351,27 +1360,95 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
     && typeof (value as RunAdapterScore).summary === "string";
 }
 
-/** Structural guard for an adapter-returned feedback candidate. Requires the core shape AND (when an
- *  adapter block is present) a non-empty namespace + data record — so a malformed product-noun block
- *  fails closed at the seam. */
+/** Structural guard for an adapter-returned feedback candidate. This mirrors run.ts's full
+ * isRunFeedbackCandidate predicate, including its local evidence-path contract, so a malformed
+ * candidate is dropped at the extension seam instead of poisoning the persisted bundle. */
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-  const candidate = value as Partial<RunFeedbackCandidate>;
-  const baseOk = candidate.schema === "humanish.feedback-candidate.v1"
-    && typeof candidate.id === "string"
-    && typeof candidate.summary === "string" && candidate.summary.trim().length > 0
-    && Array.isArray(candidate.evidence)
-    && typeof candidate.redaction === "object" && candidate.redaction !== null && candidate.redaction.status === "passed";
-  if (!baseOk) return false;
-  if (candidate.adapter !== undefined) {
-    const adapter = candidate.adapter;
-    if (typeof adapter !== "object" || adapter === null
-      || typeof adapter.namespace !== "string" || adapter.namespace.trim().length === 0
-      || typeof adapter.data !== "object" || adapter.data === null || Array.isArray(adapter.data)) {
-      return false;
-    }
-  }
-  return true;
+  return isAdapterRecord(value)
+    && value.schema === "humanish.feedback-candidate.v1"
+    && typeof value.id === "string"
+    && typeof value.run_id === "string"
+    && (typeof value.stream_id === "string" || value.stream_id === undefined)
+    && typeof value.adapter_id === "string"
+    && typeof value.scenario_id === "string"
+    && typeof value.persona_id === "string"
+    && isAdapterFeedbackActor(value.actor)
+    && isAdapterFeedbackSubstrate(value.substrate)
+    && isAdapterFeedbackFailureOwner(value.failure_owner)
+    && typeof value.summary === "string"
+    && value.summary.trim().length > 0
+    && typeof value.expected === "string"
+    && typeof value.actual === "string"
+    && Array.isArray(value.evidence)
+    && value.evidence.every(isAdapterFeedbackEvidence)
+    && isAdapterRecord(value.redaction)
+    && value.redaction.status === "passed"
+    && typeof value.redaction.notes === "string"
+    && typeof value.idempotency_key === "string"
+    && isAdapterFeedbackNextState(value.proposed_next_state)
+    && Array.isArray(value.acceptance_proof)
+    && value.acceptance_proof.every((item) => typeof item === "string")
+    && (value.adapter === undefined || (
+      isAdapterRecord(value.adapter)
+      && typeof value.adapter.namespace === "string"
+      && value.adapter.namespace.trim().length > 0
+      && isAdapterRecord(value.adapter.data)
+    ));
+}
+
+function isAdapterFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
+  return isAdapterRecord(value)
+    && typeof value.path === "string"
+    && value.path.length > 0
+    && !path.isAbsolute(value.path)
+    && !value.path.includes("://")
+    && !value.path.includes("..")
+    && (
+      value.kind === "review"
+      || value.kind === "state"
+      || value.kind === "log"
+      || value.kind === "trace"
+      || value.kind === "screenshot"
+      || value.kind === "filesystem"
+    )
+    && typeof value.note === "string";
+}
+
+function isAdapterFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {
+  return value === "codex-tui"
+    || value === "codex-exec"
+    || value === "codex-app-server"
+    || value === "synthetic-dry-run"
+    || value === "unknown";
+}
+
+function isAdapterFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
+  return value === "e2b-desktop"
+    || value === "e2b-terminal"
+    || value === "local-filesystem"
+    || value === "codex-app-server"
+    || value === "unknown";
+}
+
+function isAdapterFeedbackFailureOwner(value: unknown): value is RunFeedbackCandidate["failure_owner"] {
+  return value === "harness"
+    || value === "target-app"
+    || value === "actor"
+    || value === "environment"
+    || value === "unknown";
+}
+
+function isAdapterFeedbackNextState(value: unknown): value is RunFeedbackCandidate["proposed_next_state"] {
+  return value === "watch"
+    || value === "adapter-hardening"
+    || value === "target-app-setup"
+    || value === "actor-auth"
+    || value === "setup-quality-review"
+    || value === "study-quality-review";
+}
+
+function isAdapterRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

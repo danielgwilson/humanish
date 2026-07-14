@@ -919,6 +919,10 @@ export function cuaLaneCount(config: LabConfig): number {
 export function cuaLaneValidationReason(config: LabConfig): string | null {
   const actor = config.actors[0];
   const lanes = actor?.lanes;
+  const structuralReason = laneRosterStructuralValidationReason(config);
+  if (structuralReason) {
+    return structuralReason;
+  }
   // clone.fanout is a DECLARED behavior change: rejected on the cua route (was inert-warned).
   // Fan-out is declared via actors[0].count/lanes; subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
@@ -960,6 +964,37 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   return null;
 }
 
+/**
+ * Engine-level path-token validation for configs supplied directly through the
+ * public TypeScript/JavaScript API instead of parseLabConfig.
+ */
+export function laneRosterStructuralValidationReason(config: LabConfig): string | null {
+  const lanes = config.actors[0]?.lanes;
+  const seenIds = new Set<string>();
+  if (lanes !== undefined) {
+    if (!Array.isArray(lanes) || lanes.length === 0) {
+      return "actors[0].lanes must be a non-empty array when set.";
+    }
+    for (const [index, lane] of lanes.entries()) {
+      if (!lane || typeof lane !== "object" || Array.isArray(lane)) {
+        return `actors[0].lanes[${index}] must be an object.`;
+      }
+      const id = lane.id;
+      if (id === undefined) {
+        continue;
+      }
+      if (typeof id !== "string" || !LANE_ID_PATTERN.test(id) || id.length > LANE_ID_MAX_CHARS) {
+        return `actors[0].lanes[${index}].id must be a public-safe path token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS} chars.`;
+      }
+      if (seenIds.has(id)) {
+        return `actors[0].lanes ids must be unique (duplicate "${id}").`;
+      }
+      seenIds.add(id);
+    }
+  }
+  return null;
+}
+
 function declaredLaneTargets(config: LabConfig): string[] {
   return (config.actors[0]?.lanes ?? [])
     .map((lane) => lane.target)
@@ -976,6 +1011,10 @@ function declaredLaneTargets(config: LabConfig): string[] {
  * never silently downgraded.
  */
 export function sharedWorldValidationReason(config: LabConfig): string | null {
+  const structuralReason = laneRosterStructuralValidationReason(config);
+  if (structuralReason) {
+    return structuralReason;
+  }
   if (config.subject.source !== "clone" && config.subject.source !== "local-tree") {
     return "`subject.topology: shared-world` requires `subject.source: clone` or `subject.source: local-tree` - the shared world is ONE provisioned, served, seeded plane (#164).";
   }
