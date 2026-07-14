@@ -9,6 +9,8 @@ It creates committed simulation source under `humanish/`, ignored run evidence
 under `.humanish/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
+![Humanish Observer showing four completed synthetic lanes for UI, CLI, TUI, and Codex UI](https://unpkg.com/humanish@0.15.2/docs/assets/humanish-observer-hero.png)
+
 ## Install
 
 ```bash

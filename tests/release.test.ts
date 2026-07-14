@@ -114,8 +114,12 @@ describe("release readiness", () => {
     }
   });
 
-  it("ships the Observer hero asset in the npm payload", async () => {
+  it("links the version-pinned Observer hero and ships it in the npm payload", async () => {
+    const readme = await readFile("README.md", "utf8");
     const screenshotPath = "docs/assets/humanish-observer-hero.png";
+    const screenshotMarkdown =
+      `![Humanish Observer showing four completed synthetic lanes for UI, CLI, TUI, and Codex UI]` +
+      `(https://unpkg.com/humanish@0.15.2/${screenshotPath})`;
     const screenshot = await stat(screenshotPath);
     const inventory = JSON.parse(execFileSync(
       "npm",
@@ -134,6 +138,8 @@ describe("release readiness", () => {
       throw new Error(`npm pack inventory omitted ${screenshotPath}`);
     }
 
+    expect(readme).toContain(screenshotMarkdown);
+    expect(readme).not.toContain(`https://unpkg.com/humanish@latest/${screenshotPath}`);
     expect(packedScreenshot.size).toBe(screenshot.size);
     expect(packedScreenshot.size).toBeGreaterThan(50_000);
   }, 45_000);
