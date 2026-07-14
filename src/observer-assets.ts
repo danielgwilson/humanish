@@ -1325,7 +1325,8 @@ export function observerClientJs(): string {
     return artifactPath ? ("../" + raw) : raw;
   }
   function runArtifactHref(v) {
-    var raw = String(v == null ? "" : v).trim();
+    if (typeof v !== "string") return "";
+    var raw = v.trim();
     var low = raw.toLowerCase();
     if (!raw) return "";
     if (low.indexOf("http://") === 0 || low.indexOf("https://") === 0 || low.indexOf("file:") === 0) return raw;
@@ -1783,7 +1784,7 @@ export function observerClientJs(): string {
     var title = (run.scenario && run.scenario.title) || "Humanish run";
     var persona = (run.persona && run.persona.name) || "";
     return '<header class="hdr">'
-      + '<div class="hdr-brand"><span class="brand-mark">' + icon("live", 15) + '</span><span class="brand-word">Humanish <b>Observer</b></span></div>'
+      + '<div class="hdr-brand"><span class="brand-mark">' + icon("live", 15) + '</span><span class="brand-word">Humanish</span></div>'
       + '<div class="hdr-run">'
       + '<div class="hdr-run-title" title="' + esc(title) + '">' + esc(title) + '</div>'
       + '<div class="hdr-run-sub"><span class="hdr-persona">' + esc(persona) + '</span><span class="dot-sep"></span>'

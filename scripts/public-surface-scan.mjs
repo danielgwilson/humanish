@@ -80,9 +80,11 @@ const allowedEmailDomains = new Set([
 ]);
 
 // Binary public assets must be explicitly allowlisted here with a sha256 pin.
-// Currently empty: the Observer hero screenshot was retired at the humanish
-// rename and a rebranded capture will be re-allowlisted when it lands.
-const approvedBinaryAssets = new Map([]);
+// The rebranded Observer hero was captured from a synthetic four-lane run and
+// manually reviewed before its exact bytes were approved for publication.
+const approvedBinaryAssets = new Map([
+  ["docs/assets/humanish-observer-hero.png", "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1"]
+]);
 const approvedPublicCommitEmails = new Set([
   "daniel@danielgwilson.com",
   ...(process.env.HUMANISH_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")

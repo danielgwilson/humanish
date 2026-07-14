@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { readFile, stat } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("release readiness", () => {
@@ -19,7 +20,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.15.1");
+    expect(packageJson.version).toBe("0.15.2");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
@@ -112,6 +113,30 @@ describe("release readiness", () => {
       expect(`${ramp}\n${goals}`).not.toContain(term);
     }
   });
+
+  it("ships the Observer hero asset in the npm payload", async () => {
+    const screenshotPath = "docs/assets/humanish-observer-hero.png";
+    const screenshot = await stat(screenshotPath);
+    const inventory = JSON.parse(execFileSync(
+      "npm",
+      ["pack", "--dry-run", "--json", "--ignore-scripts"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        maxBuffer: 5 * 1024 * 1024,
+        timeout: 30_000
+      }
+    )) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
+
+    expect(inventory).toHaveLength(1);
+    const packedScreenshot = inventory[0]?.files?.find((file) => file.path === screenshotPath);
+    if (!packedScreenshot) {
+      throw new Error(`npm pack inventory omitted ${screenshotPath}`);
+    }
+
+    expect(packedScreenshot.size).toBe(screenshot.size);
+    expect(packedScreenshot.size).toBeGreaterThan(50_000);
+  }, 45_000);
 
   it("defines tag-gated npm trusted publishing", async () => {
     const publish = await readFile(".github/workflows/publish.yml", "utf8");
