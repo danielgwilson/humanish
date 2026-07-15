@@ -2,9 +2,10 @@
 
 Status: public-safe contributor and agent ramp.
 
-Current safety state: `0.15.1` (2026-07-14). Managed run and output paths bind
-to validated physical filesystem identities. Stored provider IDs are evidence,
-not cleanup authority. The bundled OSS meta-lab is dry-run only until
+Package/source version in this tree: `0.15.3` (2026-07-14). The containment boundary introduced in
+`0.15.1` remains in force: managed run and output paths bind to validated
+physical filesystem identities, and stored provider IDs are evidence, not
+cleanup authority. The bundled OSS meta-lab is dry-run only until
 repository-derived instructions have an isolated credential boundary.
 
 Use this page when you are starting cold on `humanish`. It is meant to be
@@ -69,13 +70,22 @@ Implemented:
 - first-class lab manifest resolution through `humanish/labs/*.yaml` and
   ignored `.humanish/labs/*.yaml` overlays — `humanish.lab.v2` compositions
   (`src/lab-config.ts`), one engine, no hardcoded lab kinds;
-- a pluggable actor registry with four registered actors
-  (`src/actor-registry.ts`); on the computer-use routes `actors[0].type` is a
-  real dispatch key;
+- a first-party actor registry with six registered descriptors
+  (`src/actor-registry.ts`); `actors[0].type` is a real dispatch key on the
+  computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
   drives a lab-owner loopback app in a hosted desktop, and `subject.source:
   clone` + `serve` clones, installs, and serves a real app in-sandbox from
   config before the actor drives it (`src/cua-actor-lab.ts`);
+- six declared subject sources: `this-repo` (dry-run-only), `clone`, `app-url`,
+  `local-app` (library-assisted, in-process, no desktop), `terminal-product`,
+  and `local-tree`; each route fails closed on unsupported combinations;
+- bounded per-lane-world fan-out (`actors[0].count`, `lanes[]`, or `roster[]`),
+  backed by deterministic and kept live proof;
+- sequential/concurrent single-origin shared-world execution: sequential has
+  deterministic proof, while concurrent has deterministic and kept live proof;
+- `subject.source: local-tree`, which packages one selected working tree with a
+  content pin before using the same provision-and-serve path as clone subjects;
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - an OSS meta-lab dry-run contract and a separate disposable public-repo OSS
@@ -85,16 +95,25 @@ Implemented:
 
 Still not good enough:
 
-- live `--app-url` browser proof now supports app-specific executable
-  `browser.steps` in `humanish/scenarios/*.yaml`, with headed provider-backed
-  public proof against two app/tool targets;
-- live PTY and Codex UI lanes need stronger completion health;
+The [current proof-roadmap checkpoint](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md)
+supersedes implementation-status phrases in the immutable 2026-06-10 roadmap
+packet without changing its success standard.
+
+- capability receipts are not adopter replacement: no first-party deletion
+  branch has yet removed a bespoke generic harness while preserving
+  decision-equivalent proof;
+- the six actor descriptors are a closed first-party union, not a supported
+  out-of-tree actor-registration API;
+- run storage and provider-resource lifecycle logic still spans several routes
+  instead of one `RunStore` and `ResourceLease` boundary;
+- multi-origin shared-world is a ratified design direction, but remains
+  unimplemented and gated on a real adopter proving the need;
 - live OSS meta-lab execution remains disabled until repository-derived
   instructions have an isolated credential boundary; historical headed-lane
   evidence does not make the current entrypoint available;
-- Observer evidence has real screenshots/traces for browser app proof; richer
-  multi-step product journeys and broader multi-persona matrices remain the next
-  gap.
+- the README hero is a shipped, synthetic four-lane technical sample. It is not
+  proof of a real application study; a legible real-application capture remains open
+  product proof.
 
 ## First Commands
 

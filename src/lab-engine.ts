@@ -1,13 +1,11 @@
 // The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
-// The four backends (synthetic dry/browser, clone smoke, clone+E2B-desktop meta, app-url
-// computer-use) are genuinely distinct execution substrates and stay as proven primitives;
-// runLab is the one entry that maps config -> backend options. Adding a new actor/execution
-// extends routing via the registries + these selectors, never via a new `kind` in a closed
-// enum. On the cua route the two axes are visibly orthogonal: subject x execution selects the
-// substrate here, while actors[0].type selects WHICH registered actor runs the session inside
-// it (resolved through the actor registry in cua-actor-lab.ts).
+// Eight backends currently ship: synthetic, smoke, meta, computer-use, scripted-browser,
+// terminal-product, sequential shared-world, and concurrent shared-world. runLab is the one entry
+// that maps config -> backend options. Core contributors extend the closed first-party actor union
+// and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
+// selects the substrate while actors[0].type selects a registered first-party actor.
 
 import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "./cua-actor-lab.js";
 import {
@@ -61,7 +59,7 @@ export interface RunLabOptions {
   cuaHooks?: CuaActorLabHooks;
   /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
   scriptedHooks?: ScriptedBrowserLabHooks;
-  /** Terminal-product route hooks: SLICE 2 sandbox/runtime-auth DI seams (mirror of cuaHooks). */
+  /** Terminal-product route hooks: sandbox/runtime-auth DI seams (mirror of cuaHooks). */
   terminalHooks?: TerminalProductLabHooks;
   /** Shared-world route hooks: ONE-sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
   sharedWorldHooks?: SharedWorldLabHooks;
@@ -230,9 +228,9 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       return { backend, result };
     }
     case "terminal": {
-      // Spend-safe default: a terminal-product lab places a live key inside the sandbox on the
-      // live path (SLICE 2), so it only goes live when the config (or CLI) affirmatively says so.
-      // SLICE 1 implements the dry-run contract bundle only; a live call fails closed.
+      // Spend-safe default: the shipped live route passes a runtime key only to the in-sandbox
+      // agent command, so it goes live only when the config or CLI affirmatively says so. Dry-run
+      // emits contract evidence without creating a sandbox, reading a key, or spending.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runTerminalProductLab({
         cwd: options.cwd,

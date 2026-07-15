@@ -1,8 +1,10 @@
 # Feedback Contract
 
-Date: 2026-06-01
+Date: 2026-06-01 (current-state note updated 2026-07-14)
 
-Status: v0 local issue draft generation with run-candidate support.
+Status: local feedback candidate, draft, verification, Markdown, and issue-URL
+generation are shipped. These commands do not mutate GitHub, and public output
+fails closed unless the run verifies as `share_ready`.
 
 ## Purpose
 

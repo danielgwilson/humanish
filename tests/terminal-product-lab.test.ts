@@ -19,6 +19,7 @@ import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { createProgram } from "../src/program.js";
 import { verifyRun } from "../src/run.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
+import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../src/terminal-agent-actor.js";
 
 const ROOT = process.cwd();
 
@@ -69,7 +70,7 @@ function parsedTerminalConfig(overrides?: Parameters<typeof terminalConfig>[0]):
 }
 
 // ---------------------------------------------------------------------------
-// Registry + capability declaration (SLICE 1 honest metadata)
+// Registry + capability declaration
 // ---------------------------------------------------------------------------
 
 describe("terminal actor registration + keyPlacement metadata", () => {
@@ -78,10 +79,24 @@ describe("terminal actor registration + keyPlacement metadata", () => {
     expect(descriptor).toBeDefined();
     expect(isTerminalActorDescriptor(descriptor)).toBe(true);
     expect(descriptor.capabilities.lanes).toContain("terminal");
-    // DECLARED metadata this slice (the engine enforcement is SLICE 2).
     expect(TERMINAL_AGENT_CAPABILITIES.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(descriptor.capabilities.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(TERMINAL_AGENT_CAPABILITIES.byoModel).toBe(false);
+  });
+
+  it("keeps the descriptor's direct runner fail-closed instead of overclaiming live execution", async () => {
+    const descriptor = actorRegistry["codex-exec"];
+    if (!isTerminalActorDescriptor(descriptor)) throw new Error("codex-exec must remain a terminal descriptor");
+    await expect(descriptor.runSession({
+      artifactRoot: ".humanish/runs/direct-terminal-descriptor",
+      prompt: "Study a synthetic public product.",
+      persona: { id: "synthetic-terminal-persona", traitsApplied: [], promptDigest: "123456789abc" },
+      publicSurfaces: ["https://example.com/product"],
+      timeoutMs: 1_000,
+      verdictNonce: "synthetic-nonce"
+    })).rejects.toThrow(
+      `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported`
+    );
   });
 });
 
@@ -342,6 +357,16 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(stream.terminal.tail).toBe("");
     expect(stream.actor).toBeUndefined(); // no session ran (mirrors cua/scripted dry-run honesty)
     expect(bundle.review.verdict).toBe("contract_proof_only");
+    const publicTruth = JSON.stringify({
+      currentStep: bundle.simulations[0].currentStep,
+      events: bundle.events,
+      review: bundle.review,
+      redaction: bundle.redaction
+    });
+    expect(publicTruth).toContain("did not execute an agent or prove live behavior");
+    expect(publicTruth).toContain("proves contract shape only, not live behavior, scale, or adoption");
+    expect(publicTruth).not.toContain("receipt");
+    expect(publicTruth).not.toContain("SLICE 2");
 
     // Invariant 5: UNPINNED subject provenance, declared explicitly; public surfaces recorded.
     const subjectEvent = bundle.events.find((e: { type: string }) => e.type === "terminal-lab.subject.declared");
@@ -357,7 +382,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(bundle.scenario.goal).toContain("widgetsmith-cli");
     expect(bundle.persona.sourceDigest).toMatch(/^[0-9a-f]{12}$/);
 
-    // The dry-run bundle passes the EXISTING verifyRun (no terminal-specific checks yet — SLICE 2).
+    // The dry-run bundle passes verifyRun without pretending that live artifacts exist.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
@@ -373,9 +398,9 @@ describe("runTerminalProductLab (dry-run)", () => {
     }
   });
 
-  it("a LIVE (non-dry-run) call with no runtime key fails closed BEFORE any sandbox (live backend wired in SLICE 2)", async () => {
-    // SLICE 2 implemented the live backend; without a runtime key in the (empty) env it fails
-    // closed at the credential-resolution step — no sandbox, no spend, no artifacts. (The full
+  it("a LIVE (non-dry-run) call with no runtime key fails closed BEFORE any sandbox", async () => {
+    // Without a runtime key in the (empty) env, the shipped live backend fails closed at the
+    // credential-resolution step — no sandbox, no spend, no artifacts. (The full
     // live path + credential boundary is covered deterministically in e2b-terminal-lab.test.ts.)
     const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), { cwd, terminalHooks: { env: {} } });
     expect(outcome.backend).toBe("terminal");
@@ -437,6 +462,13 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("keeps the committed demo honest about the shipped live route and its dry-run fixture scope", async () => {
+    const lab = await readFile(path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"), "utf8");
+    expect(lab).toMatch(/shipped live terminal-product route and command-scoped credential boundary are\s+not exercised by this fixture/);
+    expect(lab).toMatch(/this FICTIONAL mock CLI does not claim live or\s+adopter proof/);
+    expect(lab).not.toMatch(/SLICE\s+[12]/);
   });
 
   it("dry-run --json emits the structured terminal lab result and verifies", async () => {

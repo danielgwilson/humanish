@@ -20,7 +20,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.15.2");
+    expect(packageJson.version).toBe("0.15.3");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
@@ -74,6 +74,8 @@ describe("release readiness", () => {
     expect(readiness).toContain("npm version patch --no-git-tag-version");
     expect(readiness).toContain("The release tag must point at a commit already reachable from `origin/main`.");
     expect(readiness).toContain("Trusted Publishing Setup");
+    expect(readiness).toContain("Trusted Publishing is configured for GitHub Actions");
+    expect(readiness).toContain("re-point them after any repository rename");
     expect(readiness).toContain("workflow filename: `publish.yml`");
     expect(readiness).toContain("npm pack --dry-run");
     expect(readiness).toContain("No agent should run `npm publish` locally without explicit human approval");
@@ -87,6 +89,9 @@ describe("release readiness", () => {
     expect(readiness).toContain("`docs/goals/`");
     expect(readiness).toContain("repo-local `AGENTS.md`");
     expect(standard).toContain("A maintainer-approved public commit email");
+    expect(standard).toContain("`ID+USERNAME@users.noreply.github.com`");
+    expect(standard).toContain("`USERNAME@users.noreply.github.com`");
+    expect(standard).toContain("accounts using GitHub's pre-July 18, 2017 privacy form");
     expect(standard).toContain("Do not force-rewrite `main` solely because a known maintainer-approved public");
     expect(standard).toContain("Secret/PHI/private source? Rotate/revoke first");
   });
@@ -96,13 +101,43 @@ describe("release readiness", () => {
     const agents = await readFile("AGENTS.md", "utf8");
     const ramp = await readFile("docs/ramp/README.md", "utf8");
     const goals = await readFile("docs/goals/current.md", "utf8");
+    const schemas = await readFile("docs/contracts/schemas.md", "utf8");
+    const multiOriginDesign = await readFile("docs/goals/multi-origin-shared-world/design.md", "utf8");
+    const multiOriginStatus = await readFile("docs/goals/multi-origin-shared-world/README.md", "utf8");
+    const proofRoadmap = await readFile("docs/goals/proof-roadmap/goal.md", "utf8");
+    const proofRoadmapStatus = await readFile("docs/goals/proof-roadmap/README.md", "utf8");
+    const sequentialSharedWorldFixture = await readFile("humanish/labs/shared-world-demo.yaml", "utf8");
+    const concurrentSharedWorldFixture = await readFile("humanish/labs/shared-world-concurrent-demo.yaml", "utf8");
+    const program = await readFile("src/program.ts", "utf8");
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
 
     expect(readme).toContain("docs/ramp/README.md");
     expect(readme).toContain("docs/goals/current.md");
+    expect(readme).toContain("it is not a completed real-application study");
     expect(agents).toContain("Assume this repository is public.");
     expect(ramp).toContain("Future agents should be able to continue from the repo");
     expect(ramp).toContain("[`AGENTS.md`](../../AGENTS.md)");
+    expect(ramp).toContain(`Package/source version in this tree: \`${packageJson.version}\``);
+    expect(ramp).toContain("no first-party deletion");
     expect(goals).toContain("Best Next Work");
+    expect(goals).toContain(`Current Program Truth (source \`${packageJson.version}\`)`);
+    expect(goals).toContain("No first-party deletion branch");
+    expect(goals).toContain("ratified core-design direction");
+    expect(goals).toContain("implementation gate is still closed");
+    expect(schemas).toContain(`shipped through source version\n\`${packageJson.version}\``);
+    expect(multiOriginDesign).toContain("DESIGN-ONLY, HELD");
+    expect(multiOriginStatus).toContain("design direction is ratified");
+    expect(multiOriginStatus).toMatch(/implementation is not\s+authorized/);
+    expect(proofRoadmap).toContain("Genuinely unbuilt");
+    expect(proofRoadmapStatus).toContain("ratification-time implementation labels are historical");
+    expect(proofRoadmapStatus).toContain("fan-out shipped in `0.9.0`");
+    for (const fixture of [sequentialSharedWorldFixture, concurrentSharedWorldFixture]) {
+      expect(fixture).toContain("real public-application study");
+      expect(fixture).toMatch(/do not imply\s+adoption/);
+      expect(fixture).not.toContain("real adopter subjects");
+    }
+    expect(program).toContain("this run only; no scale or adoption claim");
+    expect(program).not.toContain("capability at scale is live-backed only");
     const forbidden = [
       ["", "Users", ""].join("/"),
       ["local", "git"].join("_"),
@@ -118,7 +153,7 @@ describe("release readiness", () => {
     const readme = await readFile("README.md", "utf8");
     const screenshotPath = "docs/assets/humanish-observer-hero.png";
     const screenshotMarkdown =
-      `![Humanish Observer showing four completed synthetic lanes for UI, CLI, TUI, and Codex UI]` +
+      `![Humanish Observer synthetic technical sample with four lanes for UI, CLI, TUI, and Codex UI]` +
       `(https://unpkg.com/humanish@0.15.2/${screenshotPath})`;
     const screenshot = await stat(screenshotPath);
     const inventory = JSON.parse(execFileSync(
@@ -139,6 +174,7 @@ describe("release readiness", () => {
     }
 
     expect(readme).toContain(screenshotMarkdown);
+    expect(readme).toContain("it is not a completed real-application study");
     expect(readme).not.toContain(`https://unpkg.com/humanish@latest/${screenshotPath}`);
     expect(packedScreenshot.size).toBe(screenshot.size);
     expect(packedScreenshot.size).toBeGreaterThan(50_000);

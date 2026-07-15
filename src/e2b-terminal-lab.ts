@@ -4,8 +4,8 @@
 // transcript, capped at no-spend, emitting durable terminal/substrate/cost/no-spend/cleanup/
 // intervention proof. Mirrors cua-actor-lab.ts / scripted-browser-lab.ts.
 //
-// SLICE 2 SCOPE: BOTH paths are now implemented.
-//   - DRY-RUN: a contract-only `humanish.run-bundle.v1`, honestly labeled (unchanged from SLICE 1).
+// BOTH ROUTES ARE IMPLEMENTED.
+//   - DRY-RUN: a contract-only `humanish.run-bundle.v1`, honestly labeled.
 //   - LIVE: the real create -> inject (command-scoped) -> run `codex exec --json` -> capture
 //     (scrub+redact at the source) -> score (verdict-nonce marker) -> teardown (proven cleanup)
 //     orchestrator on the @e2b/desktop commands.run surface.
@@ -162,11 +162,9 @@ export interface TerminalProductLabHooks {
   /** Injected clock for deterministic timestamps + wall-clock arithmetic (tests only). */
   now?: () => number;
   /**
-   * SLICE-3 DI seam for the cost ledger. The lane has NO real product-spend signal yet (that is the
-   * adapter's job in SLICE 4), so this slice populates only the provider line (from the trace's
-   * tokenUsage when present). This seam lets the deterministic test (and, later, a SLICE-4 adapter)
-   * inject KNOWN spend lines so the fail-closed cap enforcement can be exercised at $0 without a
-   * real billable run. Production callers never pass this — they get the null-discipline default.
+   * Optional cost-ledger seam. Core has no product/media/payment spend signal, so it populates only
+   * the provider line from trace tokenUsage when present. Tests and adapters can inject KNOWN spend
+   * lines; absent signals retain the null-discipline default.
    */
   costProbe?: (context: { tokenCostUsd?: number }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
   /**
@@ -229,7 +227,7 @@ export interface TerminalProductLabResult {
      *  -1 = kill(id) itself failed or was unavailable. See TerminalLedgers["cleanup"]. */
     remaining: number;
   };
-  /** Live-only: the spend ledger surfaced on the result (SLICE 3) — unknowns are null, never guessed.
+  /** Live-only: the spend ledger surfaced on the result — unknowns are null, never guessed.
    *  Lets a programmatic caller read spend without parsing the bundle. */
   cost?: {
     knownTotalUsd: number;
@@ -237,7 +235,7 @@ export interface TerminalProductLabResult {
     /** Per-category USD: a known number, or null = NOT MEASURED (never coerced to 0). */
     lines: Record<"product" | "media" | "payment" | "provider", number | null>;
   };
-  /** Live-only: the no-spend proof DERIVED from the ledger (SLICE 3). */
+  /** Live-only: the no-spend proof DERIVED from the ledger. */
   noSpend?: {
     satisfied: boolean;
     maxUsd: number | null;
@@ -438,9 +436,9 @@ interface TerminalEventRecord {
 }
 
 /**
- * One operator intervention (assisted-input event). SLICE 2 ships NO assisted-input path, so this
- * ledger is ALWAYS empty — but always PRESENT (the safety contract: empty-present is the contract,
- * an absent ledger fails verify). The shape is fixed now so an assisted path (deferred) can fill it.
+ * One operator intervention (assisted-input event). The current route ships NO assisted-input
+ * path, so this ledger is ALWAYS empty — but always PRESENT (the safety contract: empty-present is
+ * the contract, an absent ledger fails verify). A future assisted path can fill this shape.
  */
 export interface InterventionRecord {
   at: string;
@@ -454,11 +452,11 @@ export interface InterventionRecord {
  * three distinct states are crisply modeled and NEVER conflated —
  *   - `usd: 0`     => KNOWN to be zero. A measured-and-zero spend (we metered this category and it
  *                     billed nothing). The no-spend proof may legitimately assert this is zero.
- *   - `usd: null`  => NOT MEASURED. We carry NO spend signal for this category this slice. `null` is
+ *   - `usd: null`  => NOT MEASURED. This run carries no spend signal for the category. `null` is
  *                     written explicitly (never undefined-omitted, never guessed to 0). The no-spend
  *                     proof must list this line as UNMEASURED and must NOT claim it is zero.
  *   - line ABSENT  => NOT APPLICABLE to this lane/run (n/a). The line simply does not appear in
- *                     `lines`. (This slice always emits all four lines, so absence is reserved for
+ *                     `lines`. (The current route emits all four lines, so absence is reserved for
  *                     future lanes that genuinely have no such category.)
  * `null` vs missing-key is the load-bearing distinction: a missing key means "this category does not
  * exist for this run"; a present key with `null` means "this category exists but we did not measure
@@ -475,8 +473,8 @@ export interface CostLine {
   note: string;
 }
 
-/** The cost categories the lane meters. product/media/payment are adapter signals (SLICE 4); the
- *  provider line can be populated this slice from the actor trace's tokenUsage.costUsd when present. */
+/** The cost categories the lane meters. product/media/payment are adapter signals; core can
+ *  populate the provider line from the actor trace's tokenUsage.costUsd when present. */
 export type CostCategory = "product" | "media" | "payment" | "provider";
 
 /**
@@ -513,7 +511,7 @@ export interface NoSpendProof {
   /** Categories the ledger measured with a known NON-zero spend (these break `satisfied`). */
   knownNonZeroLines: CostCategory[];
   /** Categories the ledger marks `null` (NOT MEASURED). The proof explicitly lists these and does
-   *  NOT claim they are zero — it claims only that it could not measure them this slice. */
+   *  NOT claim they are zero — it claims only that this run could not measure them. */
   unmeasuredLines: CostCategory[];
   /** Sum of the known lines (== 0 for a satisfied no-spend run). */
   knownTotalUsd: number;
@@ -526,7 +524,7 @@ export interface TerminalLedgers {
   schema: "humanish.terminal-ledgers.v1";
   lifecycle: LifecycleRecord[];
   commandLog: CommandLogRecord[];
-  /** ALWAYS present; ALWAYS empty this slice (no assisted-input path) — the safety contract. */
+  /** ALWAYS present; ALWAYS empty while no assisted-input path ships — the safety contract. */
   interventions: InterventionRecord[];
   cleanup: {
     /** True when Sandbox.kill(id) resolved without throwing (either found-and-killed, or a 404
@@ -541,10 +539,10 @@ export interface TerminalLedgers {
     /** Honest, human-readable statement of which by-id signal produced `remaining`. */
     reason: string;
   };
-  /** The spend ledger (SLICE 3, additive). Unknowns are `null`, never guessed; the no-spend proof
+  /** The spend ledger. Unknowns are `null`, never guessed; the no-spend proof
    *  below is DERIVED from it. */
   cost: TerminalCostLedger;
-  /** The no-spend proof DERIVED from `cost` (SLICE 3). Never an independent assertion. */
+  /** The no-spend proof DERIVED from `cost`. Never an independent assertion. */
   noSpendProof: NoSpendProof;
 }
 
@@ -556,9 +554,9 @@ const COST_CATEGORIES: readonly CostCategory[] = ["product", "media", "payment",
  *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
  *     CARRIES it (a measured value, incl. a measured 0). When the trace carries NO costUsd, the
  *     provider line is `null` = NOT MEASURED (never guessed to 0 just because no-spend was intended).
- *   - product/media/payment are `null` this slice: the lane has NO product-spend signal yet (that is
- *     the adapter's job in SLICE 4). The LEDGER SHAPE + the null discipline ship now; the signal does not.
- * `injectedLines` lets a test (and, later, the SLICE-4 adapter) supply known spend for a category,
+ *   - product/media/payment are `null` by default: core has no signal for those categories; an
+ *     adapter may provide one through the shipped costProbe seam.
+ * `injectedLines` lets a test or adapter supply known spend for a category,
  * exercising the fail-closed cap enforcement deterministically without a real billable run.
  */
 function buildCostLedger(args: {
@@ -582,7 +580,7 @@ function buildCostLedger(args: {
     usd: null,
     count: null,
     source: "unmeasured",
-    note: `${category} spend NOT MEASURED this slice: the terminal-product lane has no ${category}-spend signal yet (the adapter supplies it in SLICE 4). Recorded null (never guessed to 0).`
+    note: `${category} spend NOT MEASURED: core has no ${category}-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0).`
   });
 
   const lines: Record<CostCategory, CostLine> = {
@@ -635,7 +633,7 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
       ? `No-spend proof SATISFIED for maxUsd=${cap}: every MEASURED spend line is zero (known total ${ledger.knownTotalUsd} USD).`
       : `No-spend proof NOT satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`,
     unmeasuredLines.length > 0
-      ? `UNMEASURED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these — they carry no spend signal this slice.`
+      ? `UNMEASURED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these — they carry no spend signal for this run.`
       : "All applicable spend lines were measured."
   ].join(" ");
   return {
@@ -852,19 +850,19 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0) {
     return failed(
       "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
-      "A live terminal-product run places a real key inside the sandbox and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
+      "A live terminal-product run passes a real key to the in-sandbox agent command and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
       { actor: descriptorId }
     );
   }
-  // SLICE 3: maxUsd is now ENFORCED fail-closed against the cost ledger (evaluateCapsAgainstLedger,
-  // after the session) — not advisory. A positive maxUsd is permitted, but the lane still has no
+  // maxUsd is ENFORCED fail-closed against the cost ledger (evaluateCapsAgainstLedger after the
+  // session), not advisory. A positive maxUsd is permitted, but core still has no
   // PRODUCT-spend signal (product/media/payment lines are null = unmeasured; only the provider line
   // is measurable, from tokenUsage). So a positive budget is honestly bounded by what is MEASURED:
   // the known total (provider, when present) must stay <= maxUsd, and the no-spend proof reports the
   // unmeasured lines rather than guessing them zero. Warn so the operator knows a positive budget is
   // only as strong as the (currently provider-only) spend signal.
   if (maxUsd > 0) {
-    warnings.push(`scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget. SLICE 3 enforces maxUsd fail-closed against the cost ledger, but the only spend signal this slice meters is the provider line (from tokenUsage); product/media/payment are recorded null (UNMEASURED, never guessed zero) until the SLICE-4 adapter supplies them. The no-spend proof reports the unmeasured lines honestly.`);
+    warnings.push(`scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget. maxUsd is enforced fail-closed against the cost ledger, but core meters only the provider line from tokenUsage; product/media/payment stay null (UNMEASURED, never guessed zero) unless an adapter supplies those signals through costProbe. The no-spend proof reports unmeasured lines honestly.`);
   }
 
   // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
@@ -911,7 +909,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const lifecycle: LifecycleRecord[] = [];
   const commandLog: CommandLogRecord[] = [];
   const terminalEvents: TerminalEventRecord[] = [];
-  const interventions: InterventionRecord[] = []; // ALWAYS empty this slice (no assisted-input path).
+  const interventions: InterventionRecord[] = []; // ALWAYS empty while no assisted-input path ships.
   let transcriptBytes = 0;
   let cleanup: TerminalLedgers["cleanup"] = { killed: false, remaining: -1, reason: "teardown not reached" };
 
@@ -1115,10 +1113,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     transcriptTail: tailOf(normalizedTranscript)
   });
 
-  // --- SLICE 3: the spend ledger + no-spend proof + FULL caps enforcement (fail-closed). ---
+  // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
   // The cost ledger is DERIVED, with the null discipline: provider spend from the trace's
-  // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null this
-  // slice (no signal yet — SLICE 4). The costProbe hook lets the deterministic test inject KNOWN
+  // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null by
+  // default (core has no signal). The costProbe hook lets tests or adapters inject KNOWN
   // spend to exercise the fail-closed cap without a real billable run.
   const injectedLines = hooks.costProbe?.({ ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }) });
   if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
@@ -1158,7 +1156,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     schema: "humanish.terminal-ledgers.v1",
     lifecycle,
     commandLog,
-    interventions, // ALWAYS present, ALWAYS empty (no assisted-input path this slice).
+    interventions, // ALWAYS present, ALWAYS empty while no assisted-input path ships.
     cleanup,
     cost,
     noSpendProof
@@ -1661,8 +1659,8 @@ function buildTerminalActorTrace(args: {
  * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change — a new
  * producer only). DRY-RUN: a contract bundle. The terminal stream is a contract placeholder
  * (stdin disabled, no captured tail — honest: nothing ran), the subject is declared UNPINNED, and
- * the caps/policies/runtime-auth declarations + empty ledgers are recorded so SLICE 2 has a stable
- * shape to fill. Exported for the bundle-builder tests.
+ * the caps/policies/runtime-auth declarations are recorded without pretending that live ledgers
+ * exist. The shipped live builder fills the same evidence contract. Exported for tests.
  */
 export function buildTerminalProductBundle(args: {
   actorId: string;
@@ -1686,7 +1684,7 @@ export function buildTerminalProductBundle(args: {
   runId: string;
   source: RunBundle["source"];
 }): RunBundle {
-  const reason = "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. The live in-sandbox agent session is SLICE 2.";
+  const reason = "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
 
   const simulation: RunSimulation = {
     id: "sim-001",
@@ -1707,7 +1705,7 @@ export function buildTerminalProductBundle(args: {
   // The terminal stream is a CONTRACT PLACEHOLDER on the dry-run path: stdin is disabled and no
   // exec output was captured, so the tail is empty and transport stays "snapshot" — NOT "pty"
   // (captured non-interactive exec output is never an interactive PTY; invariant 6 + the PTY
-  // ruling). SLICE 2 fills terminal.tail from the redacted exec-stream capture.
+  // ruling). The shipped live builder fills terminal.tail from redacted exec-stream capture.
   const stream: RunStream = {
     id: "stream-001",
     simId: "sim-001",
@@ -1762,7 +1760,7 @@ export function buildTerminalProductBundle(args: {
       type: "terminal-lab.credentials.declared",
       // Names-only evidence (invariant 1): the runtime-auth CHANNEL is declared; no value is ever
       // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
-      message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; command-scoped injection is SLICE 2). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
+      message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; command-scoped injection is enforced by the shipped live engine, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
       simId: "sim-001",
       streamId: "stream-001"
     },
@@ -1771,7 +1769,7 @@ export function buildTerminalProductBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.caps.declared",
-      message: `Spend/job/time caps: ${capsText}. The live key is never exercised without a fail-closed cap in force (SLICE 2); the no-spend proof is derived from a real ledger (SLICE 3).`,
+      message: `Spend/job/time caps: ${capsText}. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.`,
       simId: "sim-001",
       streamId: "stream-001"
     },
@@ -1780,7 +1778,7 @@ export function buildTerminalProductBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.contract.ready",
-      message: "Dry-run contract bundle ready; the live in-sandbox agent session, the captured exec stream, and the credential boundary are SLICE 2. Switch scenario.mode to live once SLICE 2 lands.",
+      message: "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and command-scoped credential boundary.",
       simId: "sim-001",
       streamId: "stream-001"
     }
@@ -1791,8 +1789,8 @@ export function buildTerminalProductBundle(args: {
     verdict: "contract_proof_only",
     summary: reason,
     gaps: [
-      "Live in-sandbox agent session not yet run (dry-run contract only; SLICE 2).",
-      "Captured exec-stream / transcript / substrate / cost / cleanup ledgers are placeholders this slice (SLICE 2/3 fill them)."
+      "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
+      "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts."
     ]
   };
 
@@ -1833,7 +1831,7 @@ export function buildTerminalProductBundle(args: {
     events,
     redaction: {
       status: "passed",
-      notes: "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. Live capture (scrubKnownValues then redactText, at the source) is SLICE 2."
+      notes: "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
     },
     artifacts: {
       run: "run.json",
@@ -1979,7 +1977,7 @@ export function buildLiveTerminalProductBundle(args: {
       // Honesty gap: the no-spend proof always declares which spend lines it could NOT measure, so a
       // green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0
-        ? [`No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED this slice (recorded null, not claimed zero; the SLICE-4 adapter supplies these signals).`]
+        ? [`No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe).`]
         : [])
     ]
   };
@@ -2027,7 +2025,7 @@ export function buildLiveTerminalProductBundle(args: {
 }
 
 function describeCaps(caps: LabScenarioCaps | undefined): string {
-  if (!caps) return "none declared (a live run REQUIRES caps in SLICE 2)";
+  if (!caps) return "none declared (a live run requires caps)";
   const parts: string[] = [];
   if (caps.maxUsd !== undefined) parts.push(`maxUsd=${caps.maxUsd}`);
   if (caps.maxJobs !== undefined) parts.push(`maxJobs=${caps.maxJobs}`);

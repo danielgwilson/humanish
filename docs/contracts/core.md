@@ -1,8 +1,11 @@
 # Core Contract
 
-Date: 2026-06-02
+Date: 2026-06-02 (current-state note updated 2026-07-14)
 
-Status: v0 draft contract with tested primitive helpers in `src/core`.
+Status: the listed primitives are shipped and tested. This document does not
+claim that every producer already uses one centralized store: run identity,
+history, and provider-resource lifecycle still span route-specific code and
+remain consolidation work.
 
 ## Purpose
 
@@ -19,7 +22,9 @@ setup, or repository-specific proof language.
 Core records must be safe to include in public run bundles by default:
 
 - artifact paths are relative;
-- run ids contain only lowercase letters, numbers, and dashes;
+- ids produced by the core run-id builder contain only lowercase letters,
+  numbers, and dashes; runtime readers separately accept existing IDs that are
+  any safe single path segment;
 - git state summarizes status without branch names, remotes, file names, file
   paths, or absolute working directories;
 - lifecycle and timing records are explicit inputs, not inferred prose;
@@ -29,7 +34,7 @@ Core records must be safe to include in public run bundles by default:
 
 | Primitive | Contract |
 | --- | --- |
-| Run id | Deterministic from explicit prefix, timestamp, and entropy; valid ids match `^[a-z0-9][a-z0-9-]{0,127}$`. |
+| Run id | The core builder is deterministic from explicit prefix, timestamp, and entropy, and emits ids matching `^[a-z0-9][a-z0-9-]{0,127}$`. Runtime artifact binding uses the broader compatibility rule in `src/run-paths.ts`: one non-empty segment, excluding `.`, `..`, separators, and NUL. |
 | Artifact layout | Builds stable relative pointers under `.humanish/runs/<run-id>/` plus `.humanish/runs/latest.json`. |
 | Latest pointer | `{ schema, runId, path, updatedAt }` using `humanish.latest-run.v1`. |
 | History entry | `{ schema, runId, createdAt, mode, path }` using `humanish.run-history-entry.v1`. |

@@ -1,5 +1,5 @@
 objective: "Shared-world (shared-service) topology (#164): let N personas drive ONE provisioned, mutable service plane with honest, verify-enforced attribution. PR1 (sequential PoC) MERGED (#171). PHASE 2 = CONCURRENT (the north-star capability): N personas hit ONE getHost-exposed plane AT ONCE, producing per-persona outcomes + proven concurrency + system-state evolution under load, declaring (verify-enforced) exactly what it cannot attribute. Proven deterministically at $0."
-active_task: "PHASE 2 (concurrent shared-world) implemented + deterministic proof green; PR open, awaiting maintainer review/merge"
+active_task: "Sequential and concurrent single-origin shared-world shipped in 0.10.0/0.10.1; concurrent mode has a kept live receipt, while adopter deletion proof remains open."
 tasks:
   - "DONE (PR1, merged #171): sequential shared-world PoC — subject.topology, LabActorLane.entry, LabSubjectState.checkpoint[], runSharedWorldLab (one sandbox, sequential turns, after-A-delta-before-B), attributionClass + sequential humanish.shared-world.v1, verify, fixture, docs."
   - "DONE phase-2 substrate: getHost(port) on E2BDesktopSandbox (src/e2b-desktop-launch.ts; FIX-2 first-class provisioned-subject target). Exported runCuaLane + CuaLaneSpec/CuaLaneDeps/LaneRunOutcome from cua-actor-lab.ts; exported runCheckpointSnapshot/seedRecipeDigest/etc from shared-world-lab.ts."
@@ -8,11 +8,12 @@ tasks:
   - "DONE evidence (src/run.ts): concurrent humanish.shared-world.v1 (topologyMode FIX-8; laneWindows + stateSeries + outcomes; plane.hostDigest + exposure). validateSharedWorldEvidence dispatches on topologyMode FIRST (fail-closed on missing/mismatched); concurrent branch — required+forbidden limit sets (FIX-5), getHost host-digest match (FIX-2), synthetic+seeded gate (FIX-3), stateSeries allowed-keys tripwire (FIX-7), single-plane, concurrency-on-pass gate (overlap AND a delta at/after an overlap start FIX-6), per-lane no-engagement. Tolerant isSharedWorldEvidence guard for both shapes."
   - "DONE public-safety reconciliation: the raw getHost URL embeds the live sandbox id + trips the e2b-URL redaction, so the bundle records sha256-16(getHost origin) (plane.hostDigest + per-window routeHostDigest); the raw tokenless URL is surfaced only on the ephemeral result; stream.ui.route uses a [provisioned-subject] placeholder."
   - "DONE deterministic proof: tests/concurrent-shared-world-lab.test.ts (14 tests — real runConcurrentSharedWorld vs fake N+1 substrate (NO list) + a RENDEZVOUS LATCH producing REAL overlap measured by the real clock (FIX-1): ONE subject + N actors all by-id (killed==created, N+1), same getHost host, real overlap, stateSeries delta, per-persona outcomes, FIX-11 independence, scrub, dry-run verify ok, and the overclaim-fails-closed matrix a–h) + concurrent parser matrix in tests/lab-config.test.ts."
-  - "DONE docs + fixture (humanish/labs/shared-world-concurrent-demo.yaml, dry-run default, neutral collab app) + schemas.md (concurrent shape) + invariants-and-defaults override column + this state.yaml + receipt."
-  - "WRITTEN-NOT-RUN: tests/concurrent-shared-world-lab.live.test.ts (HUMANISH_LIVE_SHARED_WORLD=1 + keys) — deferred to a separately-authorized receipt (needs a real synthetic seeded app on 0.0.0.0); it is the ONLY backing for the concurrency CAPABILITY at scale."
+  - "DONE docs + fixture (humanish/labs/shared-world-concurrent-demo.yaml, dry-run default, neutral collab app) + schemas.md (concurrent shape) + invariants-and-defaults override column + this state.yaml + deterministic receipt."
+  - "DONE live proof: tests/concurrent-shared-world-lab.live.test.ts ran against one synthetic seeded service plane with three concurrent personas; the verified bundle recorded real overlap and state change, and all four sandboxes were reclaimed by exact id."
 receipts:
   - "docs/goals/shared-world-topology/receipts/deterministic-shared-world-proof-2026-06-17.md"
   - "docs/goals/shared-world-topology/receipts/deterministic-concurrent-proof-2026-06-17.md"
+  - "docs/goals/shared-world-topology/receipts/concurrent-live-rung-2026-06-17.md"
 verification:
   status: passed
   last_command: "pnpm check && node scripts/public-surface-scan.mjs"
@@ -27,9 +28,11 @@ evidence:
     - "pnpm check exit 0; node scripts/public-surface-scan.mjs exit 0 (own exit code checked directly)."
   screenshots_or_traces:
     - "Per-actor actors/<streamId>.json written; bundle.sharedWorld.laneWindows (overlapping) + stateSeries (delta) + outcomes recorded; the raw getHost URL never appears in run.json (digest-only)."
-  usage_receipts: []
+  usage_receipts:
+    - "docs/goals/shared-world-topology/receipts/concurrent-live-rung-2026-06-17.md"
   missing:
-    - "live concurrent rung run (separately authorized; WRITTEN + gated, deferred per Provider Spend Policy — needs a real synthetic seeded app on 0.0.0.0). It is the ONLY backing for the concurrency capability at scale; the $0 gate proves the plumbing + the honesty contract."
+    - "a first-party adopter deletion branch proving decision-equivalent replacement of a bespoke shared-state harness"
+    - "multi-origin shared-world runtime/schema support; separately ratified but implementation-gated"
 completion_audit:
-  status: deterministic-merge-gate-met
-  note: "Every phase-2 invariant + all 11 binding doctrine-audit fixes map to deterministic evidence (dry-run concurrent bundle + verifyRun; the fake-substrate heart test with the rendezvous latch — N+1 by-id, one getHost plane, REAL overlap, stateSeries delta, per-persona outcomes, FIX-11 independence, the overclaim-fails-closed matrix incl. the concurrency-on-pass gate; byte-stable existing routes). The live rung is a separately-authorized receipt and is NOT required for this PR's completion; the concurrency capability at scale is explicitly live-backed only."
+  status: shipped-live-proven
+  note: "The deterministic merge gate and separately authorized concurrent live rung are complete. Sequential mode has deterministic proof; concurrent mode has deterministic and kept live proof. Neither proves adopter replacement or multi-origin support."

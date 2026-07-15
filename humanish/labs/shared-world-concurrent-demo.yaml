@@ -11,9 +11,11 @@ description: >
   (attributionClass: shared-world; topologyMode: concurrent; laneWindows + stateSeries + outcomes;
   the concurrent attributionLimits) at $0 — no sandboxes, no provider tokens. A live run needs
   OPENAI_API_KEY + E2B_API_KEY, scenario.mode: live, and a real STATEFUL SEEDED app.
-  HONESTY: the deterministic gate proves the plumbing + the attribution contract; the concurrency
-  CAPABILITY at scale is backed only by a separately-authorized live receipt. The repo here is a
-  FICTIONAL neutral collaboration app for CI; real adopter subjects live in operator docs only.
+  HONESTY: the deterministic gate proves the plumbing + the attribution contract. A kept,
+  separately-authorized live receipt proves one observed concurrent run. Neither proves scale,
+  repeatability, or adopter-harness replacement. The repo here is a FICTIONAL neutral collaboration
+  app for CI; real public-application study subjects live in operator docs only and do not imply
+  adoption.
 subject:
   source: clone
   topology: shared-world # the declared override of the per-lane-worlds default (#164)

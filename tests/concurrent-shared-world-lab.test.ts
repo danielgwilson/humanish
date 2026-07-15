@@ -304,6 +304,12 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       expect.arrayContaining(["concurrent", "best-effort-causal-attribution", "non-deterministic-shared-state", "window-and-snapshot-granularity", "contention-observed-not-proven-safe", "state-change-not-isolated-to-actors"])
     );
     expect(bundle.sharedWorld.attributionLimits).not.toContain("sequential-only");
+    const publicTruth = JSON.stringify({ events: bundle.events, review: bundle.review }).toLowerCase();
+    expect(publicTruth).toContain("this contract-only run proves no live concurrency, scale, or adoption");
+    expect(publicTruth).toContain("proves contract shape only, not live behavior, scale, or adopter-harness replacement");
+    expect(publicTruth).not.toContain("receipt");
+    expect(publicTruth).not.toContain("deferred live receipt");
+    expect(publicTruth).not.toContain("capability at scale");
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -377,6 +383,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(runText).not.toContain("e2b.app");
 
     const bundle = JSON.parse(runText);
+    const livePublicTruth = JSON.stringify({ events: bundle.events, review: bundle.review }).toLowerCase();
+    expect(livePublicTruth).toContain("this run reports only its own observed overlap and state changes");
+    expect(livePublicTruth).toContain("does not prove scale, repeatability, or adopter-harness replacement");
+    expect(livePublicTruth).not.toContain("receipt");
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100, 100]);
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.plane.hostDigest).toMatch(/^[0-9a-f]{16}$/);

@@ -2015,7 +2015,7 @@ function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabRes
     `topology: ${result.topology}/${result.topologyMode} (${result.roleCount} persona${result.roleCount === 1 ? "" : "s"}, concurrency ${result.concurrency})`,
     ...(result.host ? [`host: ${result.host}`] : []),
     ...(result.subject?.commit ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`] : []),
-    ...(result.overlapProven === undefined ? [] : [`overlap: ${result.overlapProven ? "proven" : "not observed"} (capability at scale is live-backed only)`]),
+    ...(result.overlapProven === undefined ? [] : [`overlap: ${result.overlapProven ? "proven" : "not observed"} (this run only; no scale or adoption claim)`]),
     ...result.roles.map((role) =>
       `persona ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""} ${role.ok ? "ok" : "not-ok"}`),
     ...(result.subjectSandbox ? [`subject sandbox: ${result.subjectSandbox.sandboxId} killed=${result.subjectSandbox.killed ? "yes" : "no"}`] : []),

@@ -10,6 +10,7 @@ durable context future contributors and agents need.
 
 - [GitHub Docs: Removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
 - [GitHub Docs: Setting your commit email address](https://docs.github.com/en/account-and-profile/how-tos/email-preferences/setting-your-commit-email-address)
+- [GitHub Docs: Email addresses reference](https://docs.github.com/en/account-and-profile/reference/email-addresses-reference)
 - [GitHub Docs: About secret scanning](https://docs.github.com/code-security/secret-scanning/about-secret-scanning)
 - [GitHub Docs: About push protection](https://docs.github.com/en/code-security/concepts/secret-security/about-push-protection)
 - [npm Docs: package.json files field](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#files)
@@ -103,7 +104,11 @@ Noreply commit emails are preferred for privacy and consistency.
 
 Allowed commit metadata:
 
-- GitHub noreply addresses.
+- GitHub's two documented personal-account noreply forms:
+  `ID+USERNAME@users.noreply.github.com` and
+  `USERNAME@users.noreply.github.com`. The username-only form remains valid for
+  accounts using GitHub's pre-July 18, 2017 privacy form.
+- `github-actions[bot]@users.noreply.github.com` for GitHub Actions commits.
 - `noreply@github.com` for GitHub-generated commits.
 - Explicitly approved public maintainer emails.
 

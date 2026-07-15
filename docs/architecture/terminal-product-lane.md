@@ -1,11 +1,14 @@
 # Terminal-product real-agent lane (issue #154)
 
-Date: 2026-06-16
+Date: 2026-06-16 (current-state note updated 2026-07-14)
 
-Status: SLICE 1 shipped — the config + routing skeleton, DRY-RUN only. The live
-in-sandbox backend, the command-scoped credential boundary, cleanup,
-interventions, the cost/no-spend ledger, and the product-adapter extension seam
-are later slices. See the ratified goal packet
+Status: live terminal-product route shipped in `0.8.0`. The in-sandbox backend,
+command-scoped credential placement, exact-id cleanup proof, an interventions ledger,
+cost/no-spend ledger, caps, and product scoring/feedback hooks are implemented;
+the kept 2026-07-09 live receipt verifies 15/15 checks and `share_ready` at a
+`$0` cap. That capability receipt is not adopter replacement: no deletion
+branch has yet removed the reference adopter's bespoke generic study harness.
+See the ratified goal packet
 ([`docs/goals/terminal-product-lane/goal.md`](../goals/terminal-product-lane/goal.md))
 for the full slice plan and the safety contract.
 
@@ -33,7 +36,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `subject.product` | `{ name, publicSurfaces[] }` — the only world the agent sees |
 | `execution.target` | `e2b-terminal` (or absent → implied) |
 | `execution.terminal` | `{ transport: exec-stream, stdin: disabled }` |
-| `execution.runtimeAuth` | `openai-env` (names-only evidence this slice) |
+| `execution.runtimeAuth` | `openai-env` (names-only durable evidence) |
 | `scenario.caps` | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget |
 | `policies` | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
 | `actors[0].type` | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`) |
@@ -54,16 +57,16 @@ blast radius is bounded by key scoping and budgets, not by hoping.*
 
 The inversion is declared as registry metadata, not a code convention: the
 terminal actor's capabilities carry `keyPlacement: "in-sandbox-command-scoped"`.
-SLICE 1 ships the DECLARED field + value (the contract is honest about where the
-key would go); SLICE 2's engine enforces command-scoped injection (only into the
+SLICE 1 shipped the DECLARED field + value (the contract was honest about where
+the key would go); SLICE 2's engine added command-scoped injection (only into the
 per-command `envs` of the `codex` invocation, never `Sandbox.create({envs})`)
 keyed off that capability, plus the deny-by-default credential allowlist, the
 positive-allowlist sandbox metadata, the cleanup proof, the interventions ledger,
 and a minimal fail-closed cap.
 
-## SLICE 1 scope (DRY-RUN only — what is honest now)
+## Historical SLICE 1 scope (DRY-RUN only when shipped)
 
-`runTerminalProductLab` implements ONLY the dry-run path: it builds a valid
+At SLICE 1, `runTerminalProductLab` implemented only the dry-run path: it built a valid
 `humanish.run-bundle.v1` contract bundle, honestly labeled contract-only, with:
 
 - the subject declared as a terminal-product with its public surfaces, provenance
@@ -76,22 +79,22 @@ and a minimal fail-closed cap.
 - a terminal-kind stream that is an honest **contract placeholder**: stdin
   disabled, empty tail, `transport: snapshot` — **not** `pty` (captured
   non-interactive exec output is never an interactive PTY; invariant 6 + the
-  goal packet's PTY ruling). SLICE 2 fills the redacted exec-stream capture;
+  goal packet's PTY ruling). SLICE 2 later added redacted exec-stream capture;
 - empty/placeholder ledgers (substrate lifecycle, command log, terminal event
-  stream, interventions, cost) that SLICE 2/3 fill.
+  stream, interventions, cost) that SLICE 2/3 later filled.
 
-The dry-run bundle passes the EXISTING `verifyRun`. Terminal-specific verifier
+The dry-run bundle passed the existing `verifyRun`. Terminal-specific verifier
 checks (terminal/transcript presence, lifecycle, cleanup, interventions,
-metadata allowlist, no-credential-in-artifacts, no-spend) are SLICE 2/3.
+metadata allowlist, no-credential-in-artifacts, no-spend) landed in SLICE 2/3.
 
-A non-dry-run (live) call returns a structured `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED`
-failure (fail-closed, clear code) — it never creates a sandbox, never injects a
-key, never spends. SLICE 2 implements the real session.
+At SLICE 1, a non-dry-run call returned a structured
+`HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` failure before launch or spend.
+SLICE 2 implemented the real session.
 
 The DI seams SLICE 2 needs (`loadModule`, `buildSandbox`, `runtimeAuthEnv`,
 `detachedTimers`) are declared on `TerminalProductLabHooks` and threaded through
-`RunLabOptions.terminalHooks`, mirroring `cuaHooks` / `scriptedHooks` — but only
-the dry-run path is implemented this slice.
+`RunLabOptions.terminalHooks`, mirroring `cuaHooks` / `scriptedHooks`; only the
+dry-run path was implemented in that slice.
 
 ## SLICE 4 — the product-adapter extension seam (layer 6)
 
@@ -130,12 +133,13 @@ any malformed score/candidate with a warning, and `verifyRun` re-checks the
 surviving shapes — a bad extension never poisons a verifiable bundle. Proven by
 `tests/terminal-product-adapter-seam.test.ts` (a thin in-repo example adapter
 typing against the barrel only, registering a scorer, attaching namespaced nouns,
-emitting a candidate; the bundle verifies). No live rung — the seam is contract,
-not spend.
+emitting a candidate; the bundle verifies). At SLICE 4 this was contract proof,
+not a live rung; the later end-to-end lane receipt is linked from the status
+note.
 
-The adopter's real scorecard is its OWN thin extension; the live receipt for the
-end-to-end lane is tracked under #159, and true duplex PTY replay is deferred to
-SLICE 5.
+The adopter's real scorecard is its OWN thin extension. The end-to-end lane's
+live receipt is kept under the terminal-product goal, and true duplex PTY replay
+is deferred to SLICE 5.
 
 ## The reference adopter (codename-neutral)
 

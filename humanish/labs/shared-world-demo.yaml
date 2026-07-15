@@ -11,8 +11,8 @@ description: >
   (the default) emits ONE run bundle with the shared-world evidence block (attributionClass:
   shared-world + the mandatory attributionLimits) at $0 — no sandbox, no provider tokens. A live
   run needs OPENAI_API_KEY + E2B_API_KEY, scenario.mode: live, and a real stateful seeded app.
-  The repo here is a FICTIONAL neutral collaboration app for CI; real adopter subjects live in
-  operator docs only.
+  The repo here is a FICTIONAL neutral collaboration app for CI; real public-application study
+  subjects live in operator docs only and do not imply adoption.
 subject:
   source: clone
   topology: shared-world # the declared override of the per-lane-worlds default (#164)

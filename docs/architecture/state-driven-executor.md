@@ -134,9 +134,9 @@ import { runLab, parseLabConfig, type CuaExecutor, type CuaProvider } from "huma
 
 // local-app YAML (shareable; fails closed without hooks):
 //   schema: humanish.lab.v2
-//   id: pixel-bae-state
+//   id: downstream-local-app-state
 //   subject: { source: local-app, appUrl: http://localhost:5173 }
-//   actors: [{ type: openai-computer-use, persona: pixel-pat, mission: "…" }]
+//   actors: [{ type: openai-computer-use, persona: curious-tester, mission: "…" }]
 //   scenario: { mode: live }
 const parsed = parseLabConfig(yaml);
 if (!parsed.ok) throw new Error(parsed.error.message);
@@ -199,5 +199,5 @@ Read every optional field defensively, and spread-omit optional fields
   surface with no precedent in this repo (the scripted lane loads only declarative
   YAML; serve commands run isolated inside the disposable E2B sandbox). It earns
   its place only behind its own clamping / trust / digest-pinning design.
-  pixel-bae does not need it: a library caller builds the bridge in their own
+  the validated library consumer does not need it: a caller builds the bridge in its own
   trusted code (entry point 2 above).

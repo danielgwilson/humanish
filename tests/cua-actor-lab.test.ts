@@ -2604,7 +2604,7 @@ function makeStateProvider(): CuaProvider {
 function localAppConfig(appUrl = "http://localhost:5173/"): LabConfig {
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
-    id: "pixel-bae-state",
+    id: "downstream-local-app-state",
     title: "State-driven local app",
     subject: { source: "local-app", appUrl },
     actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Drive the app via its state contract." }],

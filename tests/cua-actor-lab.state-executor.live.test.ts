@@ -14,7 +14,7 @@ import { runLab } from "../src/lab-engine.js";
 import { verifyRun } from "../src/run.js";
 
 // The single LIVE rung for the STATE-DRIVEN (in-process, no-E2B, no-vision) lab route — the
-// pixel-bae library snippet shape from issue #148. It is $0 BY MECHANISM (no provider spend, no
+// downstream local-app consumer shape from issue #148. It is $0 BY MECHANISM (no provider spend, no
 // E2B sandbox), but it is gated EXACTLY like the other live rungs so CI never runs it by
 // accident and the orchestrator can run it post-merge for a kept receipt:
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the live opt-in convention).
@@ -83,7 +83,7 @@ const STATE_CAPS: ActorCapabilities = {
 // screenshot), greets once, then declares the goal satisfied once the app reports greeted.
 function createStateBrain(): CuaProvider {
   return {
-    id: "pixel-bae-state-brain",
+    id: "downstream-local-app-state-brain",
     version: "0.1.0",
     requiresFrame: false,
     capabilities: STATE_CAPS,
@@ -123,7 +123,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (LIVE rung, no E2B, 
     const app = makeLocalApp();
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
-      id: "pixel-bae-state",
+      id: "downstream-local-app-state",
       title: "State-driven local app (live rung)",
       subject: { source: "local-app", appUrl },
       actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app, then stop when getState() reports greeted." }],
@@ -152,7 +152,7 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (LIVE rung, no E2B, 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
-    expect(bundle.streams[0].actor.provider).toBe("pixel-bae-state-brain");
+    expect(bundle.streams[0].actor.provider).toBe("downstream-local-app-state-brain");
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("n/a");
     expect(bundle.streams[0].actor.redaction.notes).toContain("App state was observed");
     // appState never persists.

@@ -1,16 +1,22 @@
 # Observer Architecture
 
-Date: 2026-06-01
+Date: 2026-06-01 (current-state note updated 2026-07-14)
 
-Status: implemented for synthetic stream contracts and local `codex-exec`
-active-run Observer snapshots; broader live actor adapters next.
+Status: implemented for synthetic streams and persisted live browser,
+terminal-product, fan-out, and sequential/concurrent shared-world evidence.
+Plain computer-use and shared-world runs can publish an in-progress bundle to
+an attached loopback Observer without persisting runtime stream-auth URLs. The
+version-pinned README image is a synthetic technical sample, not real-application
+proof.
 
 ## Decision
 
 The Observer is a mission-control surface over durable run artifacts, not a
 static report page.
 
-Every run writes immutable local evidence under `.humanish/runs/<run-id>/`:
+Every run writes durable local evidence under `.humanish/runs/<run-id>/`. Active
+runs refresh their bundle and Observer projection; later review, feedback, or
+Observer commands may add derived artifacts:
 
 ```text
 .humanish/runs/<run-id>/
@@ -25,7 +31,7 @@ Every run writes immutable local evidence under `.humanish/runs/<run-id>/`:
 
 `run.json` remains the source bundle. `observer/observer-data.json` is the
 normalized view model consumed by the Observer. `events.ndjson` is the appendable
-event stream contract that live adapters will update while a run is active.
+event stream contract that live adapters update while a run is active.
 
 ## Stream Model
 
@@ -95,12 +101,12 @@ A host adapter may provide:
 If no embed URL exists, the Observer still renders the Codex-style timeline and
 session contract instead of failing the lane.
 
-## Current Gaps
+## Historical slice and remaining gaps
 
-This slice implemented the Observer substrate, synthetic stream contracts, and
-active-run Observer snapshots for local `codex-exec`.
+The original 2026-06-01 slice implemented the Observer substrate and synthetic
+stream contracts; local `codex-exec` active-run snapshots followed.
 
-Since shipped (updated 2026-06-11):
+Subsequent additions through 2026-06-11 included:
 
 - Playwright-backed browser proof with scripted, app-specific
   `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/run.ts`);

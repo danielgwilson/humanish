@@ -1,10 +1,12 @@
 # Contract Schema Index
 
-Date: 2026-06-02 (updated 2026-06-24)
+Date: 2026-06-02 (current-state note updated 2026-07-14)
 
-Status: schema map aligned to the shipped v0.6.x surface. Rows marked
-"reserved" name layering intent only — no code emits or validates them yet.
-Do not emit a reserved schema.
+Status: reference map for the major contracts shipped through source version
+`0.15.3`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+schema constants, parsers, and validators in `src/` are authoritative. Rows
+marked "reserved" name layering intent only — no code emits or validates them
+yet. Do not emit a reserved schema.
 
 ## Purpose
 
@@ -110,9 +112,13 @@ A lab is a composition over code primitives, not a hardcoded kind:
   appear in `subject.env`) pointing at state the lab does not control,
   recorded as UNPINNED in provenance. Commands persist in evidence as
   sha256-16 digests only, never as text;
-- `actors`: who drives it. On the computer-use and scripted-browser routes
-  `actors[0].type` is a real dispatch key resolved against the actor registry;
-  elsewhere it is a descriptive label (e.g. `synthetic-persona`).
+- `actors`: who drives it. On computer-use (including shared-world),
+  scripted-browser, and terminal-product routes, `actors[0].type` is a real
+  dispatch key resolved against the actor registry. On synthetic and meta-lab
+  routes it remains a descriptive label (e.g. `synthetic-persona`). The
+  `codex-exec` descriptor's direct `runSession` member is a fail-closed
+  compatibility entry, not the live runner; the terminal-product lab route
+  owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
   `actors[0].count` carries route-specific meanings: synthetic route lane
   count (simCount); scripted-browser route surface roster (1 = desktop,
   2 = desktop + mobile, default 1); computer-use **E2B** route the HOMOGENEOUS
@@ -188,12 +194,14 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `terminal.transport` is `exec-stream` — captured NON-interactive exec output
   (stdin disabled); `pty` is rejected because labeling captured exec output as
   an interactive PTY would overstate the mechanism (invariant 6; a true duplex
-  PTY transport is a deferred slice). `terminal.stdin` defaults to `disabled`
+  PTY transport does not ship). `terminal.stdin` defaults to `disabled`
   (`sent`/assisted input is rejected until the interventions ledger + a
   non-comparable marker exist). `runtimeAuth: openai-env` declares the agent's
-  runtime-auth channel — recorded as NAMES ONLY; the command-scoped injection
-  (`keyPlacement: in-sandbox-command-scoped`) is enforced by the engine in a
-  later slice;
+  runtime-auth channel — recorded as NAMES ONLY. On a live run, the engine
+  resolves the registered terminal descriptor and requires
+  `keyPlacement: in-sandbox-command-scoped` before creating a sandbox. The key
+  is passed only to the agent command, never to `Sandbox.create` or metadata;
+  a dry-run neither reads nor injects it;
 - `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
   `scenario.ref` is CONSUMED (and REQUIRED) on the scripted-browser route: it
   resolves a committed scenario (`humanish/scenarios/<ref>.yaml` or a repo
@@ -483,9 +491,10 @@ world ("M of N"); PROVEN CONCURRENCY (overlapping windows); and system-state evo
 under load (the stateSeries) with best-effort temporal correlation. It CANNOT claim
 strict causal attribution of a delta to an actor (concurrent ⇒ ambiguous), determinism
 of exact state, per-action granularity, or concurrency-SAFETY (races are OBSERVED, never
-PROVEN absent). HONESTY: the deterministic $0 gate proves the plumbing + the attribution
-contract; the concurrency CAPABILITY at scale is backed only by a separately-authorized
-live receipt.
+PROVEN absent). HONESTY: the deterministic $0 gate proves the plumbing + the
+attribution contract. A kept 2026-06-17 live receipt separately proves one
+bounded three-persona trial against a synthetic plane. Neither the deterministic
+gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
 
 ## Adapter
 
@@ -639,27 +648,29 @@ inside run bundles (per-stream transport and status) and lab execution config
 
 ## Terminal Cost Ledger And No-Spend Proof
 
-The terminal-product lane (`src/e2b-terminal-lab.ts`) places a real provider key
-INSIDE the sandbox, so the no-spend claim must be REAL — derived from a ledger,
-never asserted. The live run writes both to `terminal-ledgers.json` (a `cost`
-block + a `noSpendProof` block, additive to `humanish.terminal-ledgers.v1`).
+The terminal-product lane (`src/e2b-terminal-lab.ts`) passes a real provider key
+only to the in-sandbox agent command, never to sandbox-global env or metadata,
+so the no-spend claim must be REAL — derived from a ledger, never asserted. The
+live run writes both to `terminal-ledgers.json` (a `cost` block + a
+`noSpendProof` block, additive to `humanish.terminal-ledgers.v1`).
 
 The cost ledger (`humanish.terminal-cost-ledger.v1`) has one line per category —
 `product`, `media`, `payment`, `provider` — and follows a strict **null
 discipline** that distinguishes three states and never conflates them:
 
 - `usd: 0` — **known zero**: the category was metered and billed nothing.
-- `usd: null` — **not measured**: no spend signal exists for the category this
-  slice. `null` is written explicitly (never `undefined`-omitted, never guessed
+- `usd: null` — **not measured**: no spend signal exists for the category on
+  this run. `null` is written explicitly (never `undefined`-omitted, never guessed
   to `0`). A line with `null` says "this category exists but we did not measure
   it"; the no-spend proof reports it as unmeasured and does NOT claim it is zero.
 - line **absent** — **not applicable** (n/a) to the lane/run.
 
 `knownTotalUsd` sums ONLY the non-null lines (a `null` line contributes nothing
 and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
-This slice meters only the `provider` line, populated from the actor trace's
-`tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment` are
-`null` until the SLICE-4 adapter supplies them.
+Core meters only the `provider` line, populated from the actor trace's
+`tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment`
+remain `null` unless an adapter supplies those signals through the shipped
+cost-probe seam.
 
 ```yaml
 schema: humanish.terminal-cost-ledger.v1

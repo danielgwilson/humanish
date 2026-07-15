@@ -5,11 +5,10 @@ import { redactText } from "./redaction.js";
 // ToolUse/ToolResult blocks, pi tool_execution_* events, and computer-use
 // cycles all map onto this one ActorTrace. See docs/architecture/actor-contract.md.
 //
-// This PR ships the evidence schema + the first provider mapping (Codex) + the
-// registry. The full Actor.run(input: ActorRunInput) interface, RedactionHooks
-// injection, ApprovalPolicy, and ResolvedPersona are specified in the design doc
-// and land with the load-bearing-personas and adapter PRs; they are intentionally
-// not declared here yet to avoid unimplemented placeholder types.
+// The schema maps the providers and routes implemented by the closed first-party
+// registry. The broader Actor.run(input), RedactionHooks, ApprovalPolicy, and
+// ResolvedPersona contract remains design-only and is intentionally absent from
+// these runtime types.
 
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 
@@ -84,9 +83,8 @@ export interface ActorCapabilities {
    *     INSIDE the sandbox; its runtime key is injected ONLY into the per-command `envs` of that
    *     invocation (never `Sandbox.create({envs})`, which is sandbox-global), the key is presumed
    *     exfiltratable, and the blast radius is bounded by key scoping + a spend budget.
-   * Absent === "external". This field is DECLARED metadata in SLICE 1 (the contract is honest
-   * about where the key would go); the ENGINE enforcement of command-scoped injection lands with
-   * the live backend in SLICE 2.
+   * Absent === "external". On the shipped terminal-product live route, the engine enforces this
+   * declaration before sandbox creation and passes the key only to the agent command.
    */
   keyPlacement?: "external" | "in-sandbox-command-scoped";
 }
@@ -187,8 +185,8 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
 // study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the
 // agent runs its own model via the command-scoped runtime auth, not a humanish-supplied provider.
 // keyPlacement is "in-sandbox-command-scoped" — the load-bearing inversion of every existing
-// E2B route's external-key default (the agent is the keyed process and it runs INSIDE). DECLARED
-// here this slice; the engine enforcement of the command-scoped boundary lands in SLICE 2.
+// E2B route's external-key default (the agent is the keyed process and it runs INSIDE). The
+// terminal-product live route enforces the boundary before sandbox creation.
 export const TERMINAL_AGENT_CAPABILITIES: ActorCapabilities = {
   headless: true,
   structuredTrace: true,

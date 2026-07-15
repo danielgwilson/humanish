@@ -81,7 +81,8 @@ from a fresh clone:
 - history scans have no private upstream system names, absolute maintainer paths,
   secret patterns, or generated runtime bundles;
 - reachable commit author and committer emails are GitHub noreply-style
-  addresses or explicitly approved public maintainer emails;
+  addresses (including GitHub's documented `ID+USERNAME` and username-only
+  forms) or explicitly approved public maintainer emails;
 - GitHub issues, PRs, labels, and project fields have been scanned or rewritten
   for public-safe language.
 
@@ -172,8 +173,8 @@ order is load-bearing (the OIDC binding is exact owner/repo + workflow path):
 A tag pushed before steps 1-2 fails auth (OIDC repository claim mismatch) or
 provenance validation (package.json repository.url vs actual workflow repo).
 
-Trusted Publishing should be configured for GitHub Actions before cutting the
-next tag:
+Trusted Publishing is configured for GitHub Actions. Verify these exact binding
+fields before each tag and re-point them after any repository rename:
 
 - provider: GitHub Actions
 - repository owner: `danielgwilson`
@@ -191,7 +192,7 @@ The workflow uses:
 - `npm publish --access public`;
 - no long-lived npm token secret.
 
-Future automated release flow after trusted publishing is configured:
+Automated release flow:
 
 ```bash
 pnpm release:check

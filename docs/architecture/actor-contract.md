@@ -1,27 +1,34 @@
 # Actor Contract
 
-Date: 2026-06-06 (updated 2026-06-11)
+Date: 2026-06-06 (current-state note updated 2026-07-14)
 
-Status: accepted design, partially implemented. Shipped: the evidence schema
-`humanish.actor-trace.v1` (`src/actor-contract.ts`) and a registry of five
-actors (`src/actor-registry.ts`: `codex-app-server`, `pi-agent-core`,
-`claude-agent-sdk`, `openai-computer-use`, `scripted-browser`), with
-`actors[0].type` a real dispatch key on the computer-use and scripted-browser
-lab routes. Not yet shipped (roadmap, not near-term claims): the full
-`Actor.run(input)` interface, `RedactionHooks` injection, `ApprovalPolicy`,
-`StagehandCuaActor`, and the `persona-fidelity` verify check. Decision 6's
-capture-time screenshot stance was recanted in 0.6.0; see the inline notes and
-the capture-vs-publish rule in
+Status: accepted contract with a partially open extension surface. Shipped:
+the evidence schema `humanish.actor-trace.v1` (`src/actor-contract.ts`) and a
+closed first-party registry of six descriptors (`src/actor-registry.ts`:
+`codex-app-server`, `pi-agent-core`, `claude-agent-sdk`,
+`openai-computer-use`, `scripted-browser`, `codex-exec`). `actors[0].type` is a
+real dispatch key on the computer-use, scripted-browser, and terminal-product
+routes. Product scoring, feedback, and artifact hooks are extension seams, but
+public out-of-tree actor registration and its conformance certification are not
+shipped. Also not shipped: the full `Actor.run(input)` interface,
+`RedactionHooks` injection, `ApprovalPolicy`, `StagehandCuaActor`, and the
+`persona-fidelity` verify check. Decision 6's capture-time screenshot stance
+was recanted in 0.6.0; see the inline notes and the capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
+
+`codex-exec` is a real dispatch key for terminal-product labs, but the exported
+descriptor `runSession` is a fail-closed compatibility entry. Live execution is
+owned by `runTerminalProductLab`, which coordinates sandbox creation,
+command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
 ## Context
 
-> 2026-06-11: this section describes the world as it stood when the design was
-> accepted (one real actor, hardcoded dispatch). That ceiling has since been
-> removed — the registry now holds the four actors listed in the status note.
+> Historical context: this section describes the world as it stood when the
+> design was accepted (one real actor, hardcoded dispatch). The current state is
+> the six-descriptor first-party registry described in the status note above.
 
-An actor is the thing that drives a persona scenario and produces evidence. Today
-Humanish has exactly one real actor: the local Codex integration in
+An actor is the thing that drives a persona scenario and produces evidence. At
+design time Humanish had exactly one real actor: the local Codex integration in
 `src/codex-app-server.ts` (plus the `codex-exec` and `codex-tui` variants in
 `src/run.ts`). The actor selection is a hardcoded `if (actor === ...)` dispatch,
 `RunStream.codex` is Codex-shaped, and the evidence schema is
@@ -91,6 +98,9 @@ API surface.
 
 ## The contract
 
+The excerpt below shows the central contract fields; exported source types are
+authoritative.
+
 ```ts
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 
@@ -127,20 +137,21 @@ export interface ActorTraceItem {
 export interface ActorCapabilities {
   headless: boolean;
   structuredTrace: boolean;
-  lanes: Array<"code" | "app" | "computer-use" | "scripted-browser">;
+  lanes: Array<"code" | "app" | "computer-use" | "scripted-browser" | "terminal">;
   producesScreenshots: boolean;
   byoModel: boolean;
   preGrantableApprovals: boolean;   // can run unattended without a human prompt
   inProcessTools: boolean;          // can inject product tools without a subprocess
   license: "open" | "source-available" | "proprietary";
+  keyPlacement?: "external" | "in-sandbox-command-scoped";
 }
 
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
-  provider: string;              // "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu" | "browser-persona"
+  provider: string;              // e.g. "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu" | "browser-persona" | "codex"
   providerVersion?: string;
-  protocol: "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps";
-  lane: "code" | "app" | "computer-use" | "scripted-browser";
+  protocol: "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps" | "terminal-exec";
+  lane: "code" | "app" | "computer-use" | "scripted-browser" | "terminal";
   persona: { id: string; traitsApplied: string[]; promptDigest: string };  // proves traits were threaded
   // "raw" = full-fidelity frames retained (valid for LOCAL use; redact before
   // publishing); "blurred"/"ocr_scrubbed" = publish-safe; "n/a" = none captured.

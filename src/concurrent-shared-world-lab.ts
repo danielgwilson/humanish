@@ -25,8 +25,8 @@
 // CAPABILITY vs PROOF (FIX-1): the deterministic $0 gate proves the PLUMBING + the honesty
 // contract — the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
 // latch in the fake session forces two lane fns in-flight while the REAL orchestrator clock
-// measures the windows). It does NOT prove "we ran many concurrent users at scale" — that
-// CAPABILITY is backed only by the deferred, separately-authorized live receipt.
+// measures the windows). Every generated bundle describes only its own observations; no one run
+// establishes scale, repeatability, or adopter-harness replacement.
 //
 // Synthetic-subject (FIX-3): a getHost URL is internet-reachable for the run, so this route is
 // synthetic-seeded-subjects ONLY. Verify fail-closes on subject.state.provenance != "seeded" and
@@ -1200,7 +1200,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.concurrency",
-    message: `Concurrency: ${laneWindows.length} actor window(s)${dryRun ? " (dry-run contract; $0)" : `, overlap ${overlaps ? "PROVEN" : "not observed"}`}; stateSeries ${stateSeries.length} snapshot(s), ${deltas} delta(s). Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. CAPABILITY at scale is backed only by the deferred live receipt.`
+    message: `Concurrency: ${laneWindows.length} actor window(s)${dryRun ? " (dry-run contract; $0)" : `, overlap ${overlaps ? "PROVEN" : "not observed"}`}; stateSeries ${stateSeries.length} snapshot(s), ${deltas} delta(s). Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`
   });
 
   // Concurrent verdict: dryRun → contract; else every actor produced a terminal, engaged PASSED
@@ -1224,7 +1224,7 @@ export function buildConcurrentSharedWorldBundle(args: {
         ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against ONE shared plane; final verification is pending.`
       : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${passedMissions}/${actorSpecs.length} reached their goal; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
     gaps: dryRun
-      ? ["Live concurrent shared-world session not yet run (dry-run contract only); the concurrency capability at scale is backed only by the deferred live receipt."]
+      ? ["This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."]
       : inProgress
         ? ["Final actor traces, screenshots, state deltas, and verification are pending; this Observer is for live watch only."]
       : actorResults

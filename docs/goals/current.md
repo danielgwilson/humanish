@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-07-14 (rev 14)
+Status date: 2026-07-14 (rev 15)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -16,7 +16,39 @@ Humanish should be the open-source CLI that lets a maintainer ask:
 The answer should be observable, verifiable, public-safe, and easy to turn into
 actionable feedback.
 
-## Current Safety State (`0.15.1`)
+## Current Program Truth (source `0.15.3`)
+
+The package source and repository implementation in this tree agree on these
+points:
+
+The immutable 2026-06-10 proof-roadmap packet is paired with a
+[current implementation checkpoint](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md).
+
+| Surface | Shipped | Still unproven or unbuilt |
+| --- | --- | --- |
+| Actor execution | Six first-party registry descriptors; computer-use, scripted-browser, and terminal-product dispatch paths | Public out-of-tree actor registration and conformance certification |
+| Persona scale | Bounded per-lane-world fan-out, including differentiated lanes and roster expansion; kept deterministic and live receipts | A completed first-party deletion branch that replaces a bespoke generic harness |
+| Shared state | Sequential and concurrent single-origin shared-world execution; sequential has deterministic proof, concurrent has deterministic and kept live proof | Multi-origin shared-world runtime/schema support; real-adopter deletion proof |
+| Subject sources/routes | Six declared sources: `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, and `local-tree`; support is route-specific and `this-repo` remains dry-run-only | One centralized run/resource lifecycle boundary across all routes |
+| Public proof | Version-pinned synthetic Observer sample shipped in the npm payload | A legible Observer hero from one verified real public-application run |
+| OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
+
+Capability proof and adopter replacement are different gates. A deterministic
+test or kept live receipt proves that a Humanish mechanism works. The depth-axis
+goal is met only when an adopter produces decision-equivalent evidence on a
+green branch that deletes its bespoke generic harness and retains at most a
+thin product-specific extension. No first-party deletion branch had met that
+bar as of this status date.
+
+Multi-origin shared-world has a ratified core-design direction, but the
+implementation gate is still closed. A real adopter must first show a concrete
+cross-origin need that the single-origin path or a downstream facade cannot
+serve cleanly; the implementation packet then requires maintainer review before
+build work starts. The current amendment is
+[`docs/goals/multi-origin-shared-world/README.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/multi-origin-shared-world/README.md);
+the dated design packet remains unchanged.
+
+## Current Safety Boundary
 
 - Managed run, Observer, feedback, lab, actor-output, and source-archive paths
   bind to validated physical filesystem identities and fail closed on unsafe
@@ -241,8 +273,9 @@ ONE shared world.
   host-side commit/dirty when the packed root is a git work tree; local-tree has no repo/publicRepo
   field. The N actor desktops on the concurrent route still drive the harness-minted getHost URL
   exactly as before; only the subject's provisioning + provenance source changed. The multi-origin
-  design (`docs/goals/multi-origin-shared-world/design.md`) remains a separate, still-held
-  downstream slice. `next patch`
+  design (`docs/goals/multi-origin-shared-world/design.md`) remains a separate,
+  ratified but implementation-gated downstream slice. It is not part of
+  `0.15.3`.
 
 Adopter-driven engine features (0.11.0; surfaced by real bespoke-sim migrations):
 
@@ -302,7 +335,7 @@ Evidence hygiene and readback polish (0.12.16):
   (`local_only`), while feedback draft/issue commands require `share_ready` and fail
   closed with structured reasons. `done`
 
-Attached CUA live Observer (next patch):
+Attached CUA live Observer (shipped):
 
 - Plain computer-use labs now honor the same attached `onObserverReady` lifecycle as shared-world
   labs: a live CUA run writes an in-progress bundle before actor sessions complete, loopback
@@ -356,7 +389,7 @@ Minimum acceptance:
 Make the maintainer `oss` lab report nested lane health back into the
 top-level Observer instead of relying on a human watching the desktops.
 
-The `0.15.1` safety state above governs this lane. The completed bullets below
+The current safety boundary above governs this lane. The completed bullets below
 record prior capability and evidence shape; they do not mean the live
 entrypoint is currently enabled.
 
@@ -414,15 +447,31 @@ Stop and correct course if:
 
 ## Best Next Work
 
-The next most useful engineering slice is repeated agent dogfood against real
-apps and tools, while preserving the public-safety boundary:
+After the public-truth reset, take one bounded public-proof side task: capture a
+verified, legible four-lane Observer from a commit-pinned public application.
+That run treats the application as a study subject, not a Humanish adopter, and
+must not imply endorsement. Stop and return to this order if the capture would
+require an Observer redesign or broader architecture work.
 
-- public/open-source fixture proof for publishable examples;
-- private maintainer dogfood through the repo-only public-safe packet, which is
-  intentionally not part of the npm payload, at
-  [`docs/goals/private-repo-agent-dogfood/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/private-repo-agent-dogfood/goal.md);
-- then richer provider-backed app-specific browser persona manifests.
+The next engineering proof slice remains the first depth-axis deletion branch:
+run an existing first-party consumer web-app study through current Humanish,
+compare the decision outputs, and delete the adopter's bespoke generic harness
+while retaining only a thin product extension. The public-application capture
+does not satisfy this depth gate.
 
-That sequence keeps the package honest: first prove a new maintainer or agent
-can start, then prove Humanish can observe real product behavior, then use the
-failures to improve the harness.
+After that checkpoint, re-evaluate this order rather than treating it as an
+automatic queue:
+
+1. centralize run identity, history, and provider ownership behind tested
+   `RunStore` and `ResourceLease` interfaces, and make generated first-run
+   source load-bearing or explicitly optional;
+2. complete the agent-skill deletion branch and use it to force the real
+   external extension budget;
+3. implement multi-origin shared-world only if its adopter gate opens and the
+   ratified packet passes maintainer review;
+4. complete the multi-app adopter deletion branch;
+5. establish the external stratified panel.
+
+The existing version-pinned README hero is a synthetic technical sample. It
+proves package/Observer rendering and public-safe asset delivery, not
+real-application evidence.

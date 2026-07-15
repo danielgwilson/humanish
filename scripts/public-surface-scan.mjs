@@ -174,7 +174,14 @@ function lineNumberFor(text, index) {
   return line;
 }
 
-const githubNoreplyEmail = /^(?:noreply@github\.com|(?:github-actions\[bot\]|\d+\+[A-Za-z0-9-]+)@users\.noreply\.github\.com)$/;
+// GitHub documents two personal-account noreply forms: ID+USERNAME for newer
+// accounts and USERNAME for accounts using the pre-July 18, 2017 privacy form.
+// Keep the exact GitHub Actions bot address and GitHub-generated fallback explicit.
+// A GitHub username is 1-39 alphanumeric characters or single interior hyphens.
+const githubUsername = String.raw`[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}`;
+const githubNoreplyEmail = new RegExp(
+  String.raw`^(?:noreply@github\.com|github-actions\[bot\]@users\.noreply\.github\.com|(?:\d+\+)?${githubUsername}@users\.noreply\.github\.com)$`
+);
 for (const email of reachableCommitEmails()) {
   if (!githubNoreplyEmail.test(email) && !approvedPublicCommitEmails.has(email)) {
     findings.push({

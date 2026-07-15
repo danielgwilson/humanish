@@ -1,9 +1,11 @@
 # Run Bundle Contract
 
-Date: 2026-06-02
+Date: 2026-06-02 (current-state note updated 2026-07-14)
 
-Status: v0 draft contract for bundle identity, layout, source state, history,
-lifecycle, and timing primitives.
+Status: `humanish.run-bundle.v1` is the shipped evidence contract. The
+TypeScript shape and fail-closed verification in `src/run.ts` are
+authoritative; this document explains the stable public fields and extension
+rules rather than independently versioning the runtime.
 
 ## Purpose
 

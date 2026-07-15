@@ -343,11 +343,11 @@ export interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
 
 export interface LabActor {
   /**
-   * The actor label. On app-url subjects this is a REAL dispatch key: it must resolve to a
-   * registered computer-use actor (e.g. openai-computer-use, paired with e2b-desktop) or a
-   * registered scripted-browser actor (e.g. scripted-browser, local execution), and that
-   * descriptor runs the session. On other routes it remains a free-form label (built-ins use
-   * descriptive labels like synthetic-persona, humanish-setup, codex-app-server).
+   * The actor label. On computer-use (including shared-world), scripted-browser, and
+   * terminal-product routes this is a REAL dispatch key resolved against the closed first-party
+   * actor registry. On synthetic and meta routes it remains a free-form descriptive label (e.g.
+   * synthetic-persona or humanish-setup). The terminal route owns its live lifecycle after using
+   * the descriptor for dispatch and capability enforcement.
    */
   type: string;
   /** Lane count — route-specific (see HONEST SCOPE header): synthetic simCount; scripted
@@ -381,13 +381,13 @@ export type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 export type LabTerminalTransport = "exec-stream";
 
 /** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is
- *  autonomous + comparable to an unassisted baseline). "planned" reserves the interventions-ledger
- *  path SLICE 2 builds; "sent" (assisted input) is NOT shippable until the ledger + comparability
- *  flag + verify check exist (the safety contract forbids an assisted run masquerading as green). */
+ *  autonomous + comparable to an unassisted baseline). "planned" records intent but sends no
+ *  input; "sent" is rejected because assisted-input capture and a non-comparable marker do not
+ *  ship (the safety contract forbids an assisted run masquerading as green). */
 export type LabTerminalStdin = "disabled" | "planned" | "sent";
 
 export interface LabExecutionTerminal {
-  /** Transport label. Default (and only honest value this slice) is "exec-stream". */
+  /** Transport label. Default and only shipped value is "exec-stream". */
   transport?: LabTerminalTransport;
   /** Operator stdin posture. Default "disabled". */
   stdin?: LabTerminalStdin;
@@ -396,8 +396,8 @@ export interface LabExecutionTerminal {
 /**
  * The runtime-auth channel for the in-sandbox agent (terminal route). "openai-env" declares that
  * OPENAI_API_KEY/CODEX_API_KEY is the runtime key — to be injected ONLY into the command-scoped
- * `codex` invocation (keyPlacement "in-sandbox-command-scoped"), never sandbox-global. DECLARED
- * this slice (recorded as names-only evidence); the engine injection lands in SLICE 2.
+ * `codex` invocation (keyPlacement "in-sandbox-command-scoped"), never sandbox-global. The live
+ * engine enforces that placement before sandbox creation; dry-run only records names.
  */
 export type LabRuntimeAuth = "openai-env";
 
@@ -447,18 +447,19 @@ export interface LabExecution {
   desktop?: LabExecutionDesktop;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: LabExecutionTerminal;
-  /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Consumed (names-only
-   *  evidence this slice; command-scoped injection in SLICE 2). Inert on other routes. */
+  /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Live runs inject the
+   *  key command-scoped; dry-runs record names only. Inert on other routes. */
   runtimeAuth?: LabRuntimeAuth;
 }
 
 export type LabScenarioMode = "dry-run" | "live";
 
 /**
- * The blast-radius budget for a route that places a live key inside the sandbox (terminal route).
+ * The blast-radius budget for a route that passes a live key to an in-sandbox command.
  * Per the safety contract, the live key is never exercised without a fail-closed cap in force.
- * All values are non-negative numbers (0 is the no-spend default). DECLARED + recorded this slice;
- * SLICE 2 folds in a minimal fail-closed cap and SLICE 3 enforces the full ledger.
+ * All values are non-negative numbers (0 is the no-spend default). Live runs require maxUsd and a
+ * positive maxMinutes; maxUsd/maxJobs are enforced against known ledger signals and maxMinutes is
+ * enforced as the command wall clock.
  */
 export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
@@ -505,20 +506,18 @@ export interface LabPolicies {
    */
   allowPublicTargets?: boolean;
   /**
-   * Terminal-product credential-boundary policies — all DEFAULT FALSE (deny-by-default). They are
-   * DECLARED + recorded this slice; the engine ENFORCES them by construction (what the sandbox is
-   * and is not given) + verifier checks in SLICE 2. Setting any to true is an affirmative,
-   * recorded declaration that widens the agent's blast radius.
+   * Terminal-product credential-boundary declarations — all DEFAULT FALSE (deny-by-default). The
+   * shipped live engine always passes only the runtime LLM key, command-scoped, and records these
+   * booleans as evidence. Setting one true records intent but does not create an injection channel
+   * or authorize any additional credential in the current route.
    */
-  /** Allow the in-sandbox agent to clone/inspect a private/downstream repo. Default FALSE — the
-   *  agent works from PUBLIC surfaces only (safety contract item 3). */
+  /** Recorded private-repo-access intent. No private-repo provisioning channel ships. */
   allowPrivateRepoAccess?: boolean;
-  /** Allow media/creative-provider keys into the sandbox. Default FALSE (only the runtime LLM key
-   *  enters, command-scoped — safety contract item 4). */
+  /** Recorded provider-credential intent. No provider-credential injection channel ships. */
   allowProviderCredentials?: boolean;
-  /** Allow payment-provider keys into the sandbox. Default FALSE. */
+  /** Recorded payment-credential intent. No payment-credential injection channel ships. */
   allowPaymentCredentials?: boolean;
-  /** Allow GitHub write tokens (mutating operations) into the sandbox. Default FALSE. */
+  /** Recorded GitHub-mutation intent. No GitHub-token injection channel ships. */
   allowGitHubMutation?: boolean;
 }
 
@@ -1235,9 +1234,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out lanes);
   // inert (warned) everywhere else.
   if (config.execution?.concurrency !== undefined && !routesToCua) inert.push("execution.concurrency");
-  // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}
-  // (recorded as evidence this slice — the agent prompt, the blast-radius budget, the transport +
-  // the names-only runtime-auth channel). On every OTHER route they are inert and must warn so a
+  // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}:
+  // dry-run records the contract; live execution enforces caps and command-scoped auth. On every
+  // OTHER route they are inert and must warn so a
   // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
   if (config.subject.product && !routesToTerminal) inert.push("subject.product (needs subject.source: terminal-product + a registered terminal actor)");
   if (config.scenario?.caps && !routesToTerminal) inert.push("scenario.caps (needs subject.source: terminal-product + a registered terminal actor)");
@@ -2070,8 +2069,8 @@ function parseTerminal(raw: unknown): { ok: true; value: LabExecutionTerminal | 
     if (transport !== "exec-stream") {
       // "pty" is deliberately rejected: stdin is disabled, so the capture is a non-interactive
       // exec stream — an interactive-PTY label would overstate the mechanism (invariant 6 + the
-      // goal packet's PTY ruling). True duplex PTY is the deferred SLICE 5.
-      return invalid("`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; a true duplex PTY transport is a later slice.");
+      // goal packet's PTY ruling). True duplex PTY does not ship.
+      return invalid("`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; true duplex PTY transport is not supported.");
     }
     terminal.transport = transport;
   }
@@ -2084,7 +2083,7 @@ function parseTerminal(raw: unknown): { ok: true; value: LabExecutionTerminal | 
       // Assisted input is forbidden until the interventions ledger + comparability flag + verify
       // check exist (safety contract item 7) — shipping it now would let an assisted run pose as
       // autonomous green proof.
-      return invalid("`execution.terminal.stdin: sent` (assisted input) is not supported yet — the interventions ledger + non-comparable marker land in SLICE 2. stdin is disabled by default.");
+      return invalid("`execution.terminal.stdin: sent` (assisted input) is not supported — the current route cannot capture assisted input with a non-comparable marker. stdin is disabled by default.");
     }
     terminal.stdin = stdin;
   }

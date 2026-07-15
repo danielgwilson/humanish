@@ -36,8 +36,8 @@ import {
   type ScriptedBrowserSessionResult
 } from "./scripted-browser-actor.js";
 
-// The set of pluggable actor harnesses. The union grows as adapters land
-// (stagehand-cua next). See docs/architecture/actor-contract.md.
+// Closed first-party actor registry. These ids are implemented in core; supported out-of-tree
+// actor registration does not ship. See docs/architecture/actor-contract.md.
 export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "scripted-browser" | "codex-exec";
 
 interface ActorDescriptorBase {
@@ -53,7 +53,7 @@ export interface CodexActorDescriptor extends ActorDescriptorBase {
   toActorTrace(result: CodexAppServerRunResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-// pi exposes ONLY the pure mapper in this slice: live invocation is deferred
+// pi currently exposes ONLY the pure mapper: live invocation is deferred
 // behind a DI seam (see src/pi-agent-core.ts header), so the descriptor honestly
 // advertises just the mapping capability that exists today.
 export interface PiActorDescriptor extends ActorDescriptorBase {
@@ -86,10 +86,10 @@ export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
   runSession(options: ScriptedBrowserSessionOptions): Promise<ScriptedBrowserSessionResult>;
 }
 
-// The terminal descriptor exposes runSession ONLY (no toActorTrace): the session returns a
-// fully-formed ActorTrace at result.trace, like the CUA / scripted shapes. SLICE 1 wires the
-// descriptor + capabilities (incl. keyPlacement) into the registry so routing and the contract
-// are honest; the live session is implemented in SLICE 2 (the dry-run path never calls it).
+// The terminal descriptor's capabilities are load-bearing for terminal-product route selection
+// and command-scoped key-placement enforcement. Its runSession member is a fail-closed
+// compatibility entry, not the shipped live runner: live execution is route-owned by
+// runTerminalProductLab so sandbox lifecycle, caps, evidence, and by-id cleanup stay atomic.
 export interface TerminalActorDescriptor extends ActorDescriptorBase {
   id: "codex-exec";
   runSession(options: TerminalAgentSessionOptions): Promise<TerminalAgentSessionResult>;
@@ -126,10 +126,10 @@ export function isScriptedBrowserActorDescriptor(descriptor: ActorDescriptor): d
 
 /**
  * REGISTRY CONTRACT (mirror of isCuaActorDescriptor / isScriptedBrowserActorDescriptor): an actor
- * whose capabilities include the "terminal" lane IS a TerminalActorDescriptor — runSession takes
- * TerminalAgentSessionOptions and returns TerminalAgentSessionResult (trace fully formed). This is
- * the guard the terminal-product lab dispatches on (capabilities, not ids). Any future terminal
- * agent (a non-Codex coding agent) must keep this signature AND declare keyPlacement honestly.
+ * whose capabilities include the "terminal" lane IS a TerminalActorDescriptor. This is the guard
+ * the terminal-product lab uses for route selection and capability enforcement. The current
+ * descriptor's direct runSession is intentionally unsupported; live execution is route-owned.
+ * Any future terminal actor must declare keyPlacement honestly and integrate with that lifecycle.
  */
 export function isTerminalActorDescriptor(descriptor: ActorDescriptor): descriptor is TerminalActorDescriptor {
   return descriptor.capabilities.lanes.includes("terminal");
@@ -173,9 +173,10 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     capabilities: SCRIPTED_BROWSER_CAPABILITIES,
     runSession: runScriptedBrowserSession
   },
-  // The ActorId names the dispatch slot #154 asks for; the trace's `provider` stays the concrete
-  // agent name ("codex") in SLICE 2. keyPlacement "in-sandbox-command-scoped" rides on the
-  // capabilities const — the registry-declared placement the engine enforces in SLICE 2.
+  // The ActorId names the terminal-product dispatch slot; the live route records the concrete
+  // provider as "codex". keyPlacement "in-sandbox-command-scoped" is registry-declared and
+  // enforced by runTerminalProductLab before it creates a sandbox. runSession is retained only as
+  // a fail-closed compatibility entry; it is not the live route.
   "codex-exec": {
     id: "codex-exec",
     label: "Codex Exec (autonomous terminal agent, in-sandbox)",

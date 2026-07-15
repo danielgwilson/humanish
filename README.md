@@ -9,7 +9,10 @@ It creates committed simulation source under `humanish/`, ignored run evidence
 under `.humanish/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Humanish Observer showing four completed synthetic lanes for UI, CLI, TUI, and Codex UI](https://unpkg.com/humanish@0.15.2/docs/assets/humanish-observer-hero.png)
+![Humanish Observer synthetic technical sample with four lanes for UI, CLI, TUI, and Codex UI](https://unpkg.com/humanish@0.15.2/docs/assets/humanish-observer-hero.png)
+
+This synthetic technical sample demonstrates the Observer's four-lane layout;
+it is not a completed real-application study.
 
 ## Install
 
@@ -424,7 +427,7 @@ preserve historical mechanisms and carry explicit amendments near the top.
 - [Ramp for future contributors and agents](docs/ramp/README.md)
 - [Project layout](docs/architecture/project-layout.md)
 - [Observer architecture](docs/architecture/observer.md)
-- [Actor contract (pluggable harnesses)](docs/architecture/actor-contract.md)
+- [Actor contract (first-party registry and extension direction)](docs/architecture/actor-contract.md)
 - [State-driven executor (drive a local app, no E2B/vision)](docs/architecture/state-driven-executor.md)
 - [OSS lab design record (historical; see its current safety amendment)](docs/architecture/oss-lab-poc.md)
 - [Feedback contract](docs/contracts/feedback.md)
@@ -436,6 +439,6 @@ preserve historical mechanisms and carry explicit amendments near the top.
 
 ## Release Status
 
-This package is prepared for public npm packaging, but publication is still a
-human release action. Do not run `npm publish` unless the maintainer explicitly
-approves it in the current context.
+The package is published on npm. Every future publication remains a human
+release action: do not run `npm publish` or create a release tag unless the
+maintainer explicitly approves it in the current context.
