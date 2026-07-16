@@ -355,12 +355,12 @@ a { color: inherit; text-decoration: none; }
 
 .tile-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 0 10px; height: 32px; flex: none;
+  padding: 0 10px; height: 38px; flex: none;
   border-bottom: 1px solid var(--line);
   background: var(--surface-1);
 }
-.tile-idx { font-family: var(--mono); font-size: 10px; color: var(--text-4); flex: none; }
-.tile-name { font-size: 12px; font-weight: 520; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.tile-idx { font-family: var(--mono); font-size: 11px; color: var(--text-4); flex: none; }
+.tile-name { font-size: 15px; font-weight: 520; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .kind-badge {
   font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
   padding: 2px 6px; border-radius: 5px; flex: none;
@@ -401,10 +401,10 @@ a { color: inherit; text-decoration: none; }
 }
 .tile-foot {
   display: flex; align-items: center; gap: 8px;
-  padding: 0 10px; height: 30px; flex: none;
+  padding: 0 10px; height: 36px; flex: none;
   border-top: 1px solid var(--line); background: var(--surface-1);
 }
-.tile-foot-text { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.tile-foot-text { font-size: 14px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .tile-foot-text .now-dot { color: var(--accent); margin-right: 6px; }
 .mini-prog { width: 46px; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; flex: none; }
 .mini-prog > span { display: block; height: 100%; background: var(--accent); transition: width .6s var(--ease-out); }
@@ -1025,6 +1025,7 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .sb-counts { display: inline-flex; align-items: center; gap: 8px; flex: none; }
 .sb-count { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
 .sb-count .si-dot { width: 7px; height: 7px; border-radius: 50%; }
+.sb-count-number, .sb-count-label { white-space: nowrap; }
 .sb-run { color: var(--text-4); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .sb-console {
@@ -1047,6 +1048,12 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 /* when docked above the bar, drop the console's bottom rounding/shadow seam */
 .console + .statusbar { border-top-color: var(--line); }
 
+@media (max-width: 1024px) {
+  .sb-count-label { display: none; }
+}
+@media (max-width: 900px) {
+  .sb-console-peek { display: none; }
+}
 @media (max-width: 720px) {
   .sb-counts, .sb-run, .sb-prog { display: none; }
   .sb-console-label { display: none; }
@@ -2152,8 +2159,8 @@ export function observerClientJs(): string {
     return '<footer class="statusbar">'
       + '<span class="sb-status" data-tone="' + tone(overall) + '">' + pip(overall, tone(overall) === "running") + '<span class="sb-status-label mono">' + statusLabel(overall) + '</span><span class="sb-pct mono">' + pct + '%</span></span>'
       + '<span class="sb-prog"><span style="width:' + pct + '%" data-tone="' + tone(overall) + '"></span></span>'
-      + '<span class="sb-counts">' + counts.map(function (c) { return '<span class="sb-count" title="' + c.count + ' ' + c.label + '"><span class="si-dot" style="background:' + c.color + '"></span><span class="mono">' + c.count + '</span></span>'; }).join("") + '</span>'
-      + '<span class="sb-run mono">' + esc((run.mode || "") + " · " + (run.runId || "")) + '</span>'
+      + '<span class="sb-counts">' + counts.map(function (c) { return '<span class="sb-count" title="' + c.count + ' ' + c.label + '"><span class="si-dot" style="background:' + c.color + '"></span><span class="mono sb-count-number">' + c.count + '</span><span class="mono sb-count-label">' + c.label + '</span></span>'; }).join("") + '</span>'
+      + '<span class="sb-run mono">' + esc("mode: " + (run.mode || "unknown") + " · " + (run.runId || "")) + '</span>'
       + '<div class="tb-spacer"></div>'
       + '<button class="sb-console" aria-expanded="' + (S.consoleOpen ? "true" : "false") + '" data-action="toggle-console" title="Run console (backtick)">' + icon("terminal", 14)
       + '<span class="sb-console-label">Run console</span>' + peek

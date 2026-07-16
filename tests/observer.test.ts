@@ -258,6 +258,57 @@ function browserLabObserverData(): Record<string, unknown> {
   };
 }
 
+type StatusBarLaneStatus = "passed" | "running" | "blocked" | "failed";
+
+function statusBarObserverData(status: StatusBarLaneStatus | StatusBarLaneStatus[], count = 4): Record<string, unknown> {
+  const laneStatuses = Array.isArray(status) ? status : Array.from({ length: count }, () => status);
+  const labels: Record<StatusBarLaneStatus, string> = {
+    passed: "Passed",
+    running: "Running",
+    blocked: "Blocked",
+    failed: "Failed"
+  };
+  return {
+    run: {
+      createdAt: "2026-07-16T12:00:00.000Z",
+      lifecycle: [],
+      mode: "live",
+      persona: { name: "Synthetic Status Operator" },
+      runId: "status-semantics-proof",
+      scenario: { goal: "Render truthful lane status.", title: "Status semantics proof" },
+      status: laneStatuses.every((laneStatus) => laneStatus === "passed") ? "pass" : "contract_proof_only"
+    },
+    events: [],
+    streams: laneStatuses.map((laneStatus, index) => ({
+      id: `lane-${index + 1}`,
+      simId: `sim-${index + 1}`,
+      kind: "summary",
+      kindLabel: "Summary",
+      label: `Synthetic lane ${index + 1}`,
+      status: laneStatus,
+      statusLabel: labels[laneStatus],
+      updatedAt: "2026-07-16T12:00:05.000Z",
+      artifacts: [],
+      sim: {
+        currentStep: `${labels[laneStatus]} synthetic lane.`,
+        id: `sim-${index + 1}`,
+        index: index + 1,
+        mode: "cli-sim",
+        personaId: "synthetic-status-operator",
+        progress: laneStatus === "running" ? 50 : 100,
+        scenarioId: "status-semantics",
+        startedAt: "2026-07-16T12:00:00.000Z",
+        status: laneStatus,
+        streamIds: [`lane-${index + 1}`],
+        streamKind: "summary",
+        summary: "Synthetic status lane",
+        updatedAt: "2026-07-16T12:00:05.000Z"
+      },
+      timeline: []
+    }))
+  };
+}
+
 function codexAppServerTraceObserverData(): Record<string, unknown> {
   return {
     run: {
@@ -640,6 +691,39 @@ describe("observer rendering", () => {
     expect(client.html()).toContain("Static file view cannot hydrate artifacts inline");
   });
 
+  it("labels completed lane counts separately from live execution mode", () => {
+    const html = renderObserverClientForTest(statusBarObserverData("passed")).html();
+
+    expect(html).toContain('<span class="sb-status-label mono">Complete</span><span class="sb-pct mono">100%</span>');
+    expect(html).toContain('title="4 done"');
+    expect(html).toContain('<span class="mono sb-count-number">4</span><span class="mono sb-count-label">done</span>');
+    expect(html).toContain('<span class="sb-run mono">mode: live · status-semantics-proof</span>');
+    expect(html).not.toContain('title="4 live"');
+  });
+
+  it("uses the live count label only for lanes that are actually running", () => {
+    const html = renderObserverClientForTest(statusBarObserverData("running")).html();
+
+    expect(html).toContain('title="4 live"');
+    expect(html).toContain('<span class="mono sb-count-number">4</span><span class="mono sb-count-label">live</span>');
+    expect(html).toContain('<span class="sb-run mono">mode: live · status-semantics-proof</span>');
+    expect(html).not.toContain('title="4 done"');
+  });
+
+  it("keeps mixed status labels distinct while collapsing footer detail at narrower widths", () => {
+    const html = renderObserverClientForTest(statusBarObserverData(["running", "passed", "blocked", "failed"])).html();
+    const css = observerCss();
+
+    for (const label of ["live", "done", "blocked", "failed"]) {
+      expect(html).toContain(`title="1 ${label}"`);
+      expect(html).toContain(`<span class="mono sb-count-label">${label}</span>`);
+    }
+    expect(html.match(/class="mono sb-count-number">1<\/span>/g)).toHaveLength(4);
+    expect(css).toMatch(/@media \(max-width: 1024px\) \{\s*\.sb-count-label \{ display: none; \}\s*\}/);
+    expect(css).toMatch(/@media \(max-width: 900px\) \{\s*\.sb-console-peek \{ display: none; \}\s*\}/);
+    expect(css).toMatch(/@media \(max-width: 720px\) \{[^}]*\.sb-counts, \.sb-run, \.sb-prog \{ display: none; \}/);
+  });
+
   it("ignores non-string screenshot placeholders while preserving valid screenshot paths", () => {
     const data = browserLabObserverData();
     const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
@@ -750,6 +834,16 @@ describe("observer rendering", () => {
     expect(overlay?.innerHTML).toContain('data-kind="app"');
     expect(overlay?.innerHTML).toContain('data-kind="observer"');
     expect(overlay?.innerHTML).toContain('data-kind="screenshot"');
+  });
+
+  it("keeps Observer grid labels legible in the four-lane hero layout", () => {
+    const css = observerCss();
+
+    expect(css).toMatch(/\.tile-head \{[^}]*height: 38px;/);
+    expect(css).toMatch(/\.tile-idx \{[^}]*font-size: 11px;/);
+    expect(css).toMatch(/\.tile-name \{[^}]*font-size: 15px;/);
+    expect(css).toMatch(/\.tile-foot \{[^}]*height: 36px;/);
+    expect(css).toMatch(/\.tile-foot-text \{[^}]*font-size: 14px;/);
   });
 
   it("keeps focus details reachable on constrained viewports", () => {
