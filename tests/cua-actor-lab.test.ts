@@ -1,8 +1,10 @@
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { symlinkSync, unlinkSync } from "node:fs";
 import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
@@ -20,8 +22,11 @@ import type {
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   buildCuaBundle,
+  chromeCdpPortResolutionScript,
+  makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
   runCuaActorLab,
+  type ChromeCdpEndpoint,
   type CuaActorLabHooks
 } from "../src/cua-actor-lab.js";
 import type {
@@ -387,6 +392,10 @@ describe("runCuaActorLab", () => {
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");
     expect(bundle.cwd).toBe("[target-cwd]");
+    expect(bundle.streams[0].desktopGeometry).toEqual({
+      screen: { requested: { width: 1280, height: 800 } }
+    });
+    expect(bundle.streams[0].viewport).toBeUndefined();
   });
 
   it("pins a symlink cwd before onPreflight can retarget the alias", async () => {
@@ -525,6 +534,16 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].actor.lane).toBe("computer-use");
     expect(bundle.streams[0].actor.provider).toBe("openai-responses-cu");
     expect(bundle.cwd).toBe("[target-cwd]");
+    // This fake does not expose runtime geometry. The bundle keeps the request but does not
+    // falsify it as a measured CSS viewport.
+    expect(bundle.streams[0].desktopGeometry).toMatchObject({
+      screen: { requested: { width: 1280, height: 800 } }
+    });
+    expect(bundle.streams[0].desktopGeometry.warnings).toEqual(expect.arrayContaining([
+      expect.stringContaining("requested geometry remains unverified"),
+      expect.stringContaining("stream.viewport is omitted")
+    ]));
+    expect(bundle.streams[0].viewport).toBeUndefined();
 
     // Screenshots were persisted (redacted upstream) and referenced relatively.
     const screenshotArtifacts = bundle.streams[0].artifacts.filter(
@@ -548,6 +567,93 @@ describe("runCuaActorLab", () => {
       expect(text, file).not.toContain("test-openai-key");
       expect(text, file).not.toContain("test-e2b-key");
     }
+  });
+
+  it("persists requested/verified screen, browser bounds, and a distinct measured CSS viewport", async () => {
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        if (command.includes("xdpyinfo")) {
+          return { exitCode: 0, stdout: "dimensions: 1280x800 pixels (300x200 millimeters)\n" };
+        }
+        if (command.includes("find_chrome_window")) {
+          return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
+        }
+        if (command.includes("getwindowgeometry")) {
+          return { exitCode: 0, stdout: "X=0\nY=0\nWIDTH=1280\nHEIGHT=800\n" };
+        }
+        if (command.includes("browserWindow: { x: window.screenX")) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              browserWindow: { x: 0, y: 0, width: 1280, height: 800 },
+              viewport: { width: 1280, height: 661, deviceScaleFactor: 1 }
+            })
+          };
+        }
+        if (command.includes("browser_preference='default'")) {
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
+        }
+        return undefined;
+      }
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) }
+          })
+      }
+    });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+
+    const bundle = JSON.parse(await readFile(
+      path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"),
+      "utf8"
+    ));
+    expect(bundle.streams[0].desktopGeometry).toEqual({
+      screen: {
+        requested: { width: 1280, height: 800 },
+        verified: { width: 1280, height: 800, source: "xdpyinfo" }
+      },
+      browserWindow: { x: 0, y: 0, width: 1280, height: 800, source: "cdp" },
+      viewport: { width: 1280, height: 661, deviceScaleFactor: 1, source: "cdp" }
+    });
+    expect(bundle.streams[0].viewport).toEqual({
+      width: 1280,
+      height: 661,
+      deviceScaleFactor: 1,
+      isMobile: false
+    });
+    expect(bundle.streams[0].viewport.height).not.toBe(bundle.streams[0].desktopGeometry.screen.requested.height);
+
+    // Duplicate measured geometry must remain exact; a forged stream-level mismatch is invalid.
+    bundle.streams[0].viewport.height = 660;
+    await writeFile(
+      path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"),
+      `${JSON.stringify(bundle, null, 2)}\n`,
+      "utf8"
+    );
+    const inconsistent = await verifyRun(cwd, outcome.result.runId);
+    expect(inconsistent.ok).toBe(false);
+    expect(inconsistent.error?.code).toBe("HUMANISH_INVALID_RUN_BUNDLE");
+
+    // Optional geometry is backward-compatible, but a present block is validated fail-closed.
+    bundle.streams[0].viewport.height = 661;
+    bundle.streams[0].desktopGeometry.viewport.source = "declared";
+    await writeFile(
+      path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"),
+      `${JSON.stringify(bundle, null, 2)}\n`,
+      "utf8"
+    );
+    const malformed = await verifyRun(cwd, outcome.result.runId);
+    expect(malformed.ok).toBe(false);
+    expect(malformed.error?.code).toBe("HUMANISH_INVALID_RUN_BUNDLE");
   });
 
   it("does not treat a negated blocker phrase in a success message as a self-reported blocker", async () => {
@@ -893,9 +999,11 @@ describe("runCuaActorLab", () => {
     // And the model is TOLD it's mobile (the sim-parity prompt signal, since touch/DPR can't render).
     expect(sessionOptionsSeen[0]?.instructions).toContain("mobile user");
     expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
-    // The bundle's stream viewport carries the honest device metadata.
+    // The bundle records the requested screen, but this fake exposes no CDP measurement and
+    // therefore cannot honestly claim a CSS viewport.
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
-    expect(bundle.streams[0].viewport).toMatchObject({ width: 414, height: 896, deviceScaleFactor: 3, isMobile: true });
+    expect(bundle.streams[0].desktopGeometry.screen.requested).toEqual({ width: 414, height: 896 });
+    expect(bundle.streams[0].viewport).toBeUndefined();
   });
 
   it("device resolution order: raw resolution overrides the preset; default is desktop 1440x950", async () => {
@@ -920,10 +1028,11 @@ describe("runCuaActorLab", () => {
     if (r2.backend !== "cua") throw new Error("expected cua");
     expect(ovMod.created[0]?.resolution).toEqual([1024, 768]);
     // Consistency: a raw resolution override must NOT inherit a named preset's mobile/DSF — the
-    // prompt + bundle metadata reflect the actual (custom, non-mobile) geometry, not "mobile".
+    // prompt + requested-screen metadata reflect the custom non-mobile geometry, not "mobile".
     expect(ovSeen[0]?.instructions).not.toContain("mobile user");
     const ovBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", r2.result.runId, "run.json"), "utf8"));
-    expect(ovBundle.streams[0].viewport).toMatchObject({ width: 1024, height: 768, deviceScaleFactor: 1, isMobile: false });
+    expect(ovBundle.streams[0].desktopGeometry.screen.requested).toEqual({ width: 1024, height: 768 });
+    expect(ovBundle.streams[0].viewport).toBeUndefined();
   });
 
   it("opens HTTP targets with a shell-quoted browser command so query params survive", async () => {
@@ -986,6 +1095,74 @@ describe("runCuaActorLab", () => {
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.desktopBrowser).toEqual({ requested: "chrome", resolved: "google-chrome" });
+  });
+
+  it("attributes explicit Firefox geometry to Firefox even when stale Chrome CDP is present", async () => {
+    const config: LabConfig = {
+      ...cuaConfig(),
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800], browser: "firefox" } }
+    };
+    const firefoxWindowId = "9437185";
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        if (command.includes("browser_preference='firefox'")) {
+          return { stdout: "HUMANISH_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
+        }
+        if (command.includes("xdpyinfo")) {
+          return { stdout: "dimensions: 1280x800 pixels (300x200 millimeters)\n", exitCode: 0 };
+        }
+        if (command.includes("find_firefox_window()")) {
+          return { stdout: `WINDOW_ID=${firefoxWindowId}\n`, exitCode: 0 };
+        }
+        if (command.includes("find_chrome_window()")) {
+          return { stdout: "WINDOW_ID=7340035\n", exitCode: 0 };
+        }
+        if (command.includes("getwindowgeometry")) {
+          return { stdout: "X=0\nY=0\nWIDTH=1280\nHEIGHT=800\n", exitCode: 0 };
+        }
+        if (command.includes("browserWindow: { x: window.screenX")) {
+          return {
+            stdout: JSON.stringify({
+              browserWindow: { x: 0, y: 0, width: 777, height: 555 },
+              viewport: { width: 777, height: 444, deviceScaleFactor: 1 }
+            }),
+            exitCode: 0
+          };
+        }
+        return undefined;
+      }
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    const commands = sandbox.calls
+      .filter((call) => call[0] === "commands.run")
+      .map((call) => String(call[1]));
+    expect(commands.some((command) => command.includes("find_firefox_window()"))).toBe(true);
+    expect(commands.some((command) => command.includes("find_chrome_window()"))).toBe(false);
+    expect(commands.some((command) => command.includes("browserWindow: { x: window.screenX"))).toBe(false);
+    expect(commands.some((command) => command.includes(`win='${firefoxWindowId}'`))).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
+    expect(bundle.streams[0].desktopGeometry.browserWindow).toEqual({
+      x: 0, y: 0, width: 1280, height: 800, source: "xdotool"
+    });
+    expect(bundle.streams[0].desktopGeometry.viewport).toBeUndefined();
+    expect(bundle.streams[0].viewport).toBeUndefined();
+    expect(bundle.streams[0].desktopGeometry.warnings).toEqual(expect.arrayContaining([
+      expect.stringContaining("unavailable for Firefox")
+    ]));
   });
 
   it("live with missing keys fails closed, names the variables, and never creates a sandbox", async () => {
@@ -2802,5 +2979,67 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(outcome.result.error?.code).not.toBe("HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER");
+  });
+});
+
+// Observe-time CDP port re-resolution: on a slow cold start the launch-time DevToolsActivePort
+// poll can miss the marker, and with --remote-debugging-port=0 the legacy fixed 9222 is dead,
+// which used to lose browser-state observation for the whole session. The resolution script is
+// pure, so the contract runs it under the REAL node the sandbox would use.
+describe("chromeCdpPortResolutionScript (observe-time CDP port re-resolution)", () => {
+  const execFileAsync = promisify(execFile);
+
+  async function resolvePort(endpoint: ChromeCdpEndpoint): Promise<number> {
+    const script = [
+      ...chromeCdpPortResolutionScript(endpoint),
+      "console.log(JSON.stringify({ cdpPort }));"
+    ].join("\n");
+    const { stdout } = await execFileAsync(process.execPath, ["--input-type=module", "-e", script]);
+    return (JSON.parse(stdout.trim()) as { cdpPort: number }).cdpPort;
+  }
+
+  let profileDir: string;
+  beforeEach(async () => {
+    profileDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-profile-"));
+  });
+  afterEach(async () => {
+    await rm(profileDir, { recursive: true, force: true });
+  });
+
+  it("cached launch-time port wins even when the marker file disagrees", async () => {
+    await writeFile(path.join(profileDir, "DevToolsActivePort"), "39321\n/devtools/browser/abc\n", "utf8");
+    expect(await resolvePort({ cdpPort: 41234, profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(41234);
+  });
+
+  it("no cached port: re-reads the profile's DevToolsActivePort at observe time (slow cold start)", async () => {
+    await writeFile(path.join(profileDir, "DevToolsActivePort"), "39321\n/devtools/browser/abc\n", "utf8");
+    expect(await resolvePort({ profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(39321);
+  });
+
+  it("no cached port + no marker: falls back to the legacy fixed 9222", async () => {
+    expect(await resolvePort({ profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(9222);
+  });
+
+  it("garbled marker degrades to the legacy fallback instead of a bogus port", async () => {
+    await writeFile(path.join(profileDir, "DevToolsActivePort"), "not-a-port\n", "utf8");
+    expect(await resolvePort({ profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(9222);
+  });
+
+  it("the chromium browser-state observer embeds the re-read seam (profile dir + marker path) in its in-sandbox script", async () => {
+    const commands: string[] = [];
+    const desktop = {
+      commands: {
+        run: async (command: string) => {
+          commands.push(command);
+          return { exitCode: 0, stdout: "{}" };
+        }
+      }
+    } as unknown as E2BDesktopSandbox;
+    const observe = makeChromeBrowserStateObserver(desktop, 5_000, { profileDir: "/tmp/humanish-profile-x", targetUrl: "http://127.0.0.1:3000/" });
+    // The fake endpoint answers with an empty page set, so the observer degrades to {}.
+    expect(await observe()).toEqual({});
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toContain("DevToolsActivePort");
+    expect(commands[0]).toContain("/tmp/humanish-profile-x");
   });
 });

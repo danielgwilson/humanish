@@ -1646,10 +1646,8 @@ function buildMetaBundle(args: {
         ...(screenshot ? { url: screenshot.observerUrl } : {}),
         title: `E2B desktop ${assignment.index}`
       },
-      viewport: {
-        width: 1440,
-        height: 960,
-        deviceScaleFactor: 1
+      desktopGeometry: {
+        screen: { requested: { width: 1440, height: 960 } }
       },
       terminal: {
         title: `${appServerMode ? "Codex app-server" : "Codex"} bootstrap - ${repoLabel}`,

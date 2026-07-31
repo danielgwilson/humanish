@@ -322,6 +322,31 @@ export interface RunSimulation {
   updatedAt: string;
 }
 
+export interface RunDesktopGeometry {
+  /** E2B/X display geometry. Requested config and verified runtime evidence stay distinct. */
+  screen: {
+    requested: { width: number; height: number };
+    verified?: { width: number; height: number; source: "xdpyinfo" };
+  };
+  /** Browser outer-window bounds measured after the fill attempt. */
+  browserWindow?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    source: "cdp" | "xdotool";
+  };
+  /** Browser CSS layout viewport measured from the running page, never copied from config. */
+  viewport?: {
+    width: number;
+    height: number;
+    deviceScaleFactor: number;
+    source: "cdp";
+  };
+  /** Public-safe geometry measurement/fill warnings retained with the stream evidence. */
+  warnings?: string[];
+}
+
 export interface RunStream {
   id: string;
   simId: string;
@@ -344,12 +369,19 @@ export interface RunStream {
     url?: string;
     title?: string;
   };
+  /**
+   * Browser CSS layout viewport. Deterministic browser adapters may declare and render this
+   * exactly; hosted-desktop CUA producers set it only from a runtime measurement. Historical
+   * hosted CUA bundles may contain the requested screen size here instead.
+   */
   viewport?: {
     width: number;
     height: number;
     deviceScaleFactor?: number;
     isMobile?: boolean;
   };
+  /** Truthful screen/window/viewport evidence for hosted desktop browser lanes. */
+  desktopGeometry?: RunDesktopGeometry;
   terminal?: {
     title: string;
     format: "ansi" | "plain";
@@ -3864,7 +3896,7 @@ async function verifyPreparedRun(
 
   const ok = checks.every((check) => check.ok);
   const warnings = isRunBundle(bundle)
-    ? [...rawScreenshotPostureWarnings(bundle), ...undeclaredSubjectStateWarnings(bundle)]
+    ? [...rawScreenshotPostureWarnings(bundle), ...undeclaredSubjectStateWarnings(bundle), ...desktopGeometryWarnings(bundle)]
     : [];
   const shareSafety = isRunBundle(bundle)
     ? buildShareSafety({ ok, bundle, publicSafetyFindings })
@@ -5202,6 +5234,11 @@ function rawScreenshotStreamIds(bundle: RunBundle): string[] {
   return rawStreamIds;
 }
 
+/** Non-fatal hosted-desktop geometry disclosures, deduplicated across shared-screen streams. */
+function desktopGeometryWarnings(bundle: RunBundle): string[] {
+  return [...new Set(bundle.streams.flatMap((stream) => stream.desktopGeometry?.warnings ?? []))];
+}
+
 function buildShareSafety(args: {
   ok: boolean;
   bundle: RunBundle;
@@ -6250,8 +6287,79 @@ function isRunStream(value: unknown): value is RunStream {
     && isRunSimulationStatus(value.status)
     && (value.transport === "snapshot" || value.transport === "polling" || value.transport === "sse" || value.transport === "pty" || value.transport === "app-server")
     && typeof value.updatedAt === "string"
+    && (value.viewport === undefined || isRunViewport(value.viewport))
+    && (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry))
+    && hasConsistentStreamGeometry(value)
     && Array.isArray(value.artifacts)
     && value.artifacts.every(isRunStreamArtifact);
+}
+
+function isRunViewport(value: unknown): value is NonNullable<RunStream["viewport"]> {
+  return isRecord(value)
+    && isPositiveFiniteNumber(value.width)
+    && isPositiveFiniteNumber(value.height)
+    && (value.deviceScaleFactor === undefined || isPositiveFiniteNumber(value.deviceScaleFactor))
+    && (value.isMobile === undefined || typeof value.isMobile === "boolean");
+}
+
+function isRunDesktopGeometry(value: unknown): value is RunDesktopGeometry {
+  if (!isRecord(value) || !isRecord(value.screen) || !isMeasuredSize(value.screen.requested)) {
+    return false;
+  }
+  const verified = value.screen.verified;
+  if (verified !== undefined) {
+    if (!isRecord(verified)) return false;
+    const source = verified.source;
+    if (!isMeasuredSize(verified) || source !== "xdpyinfo") return false;
+  }
+  const browserWindow = value.browserWindow;
+  if (browserWindow !== undefined && (
+    !isRecord(browserWindow)
+    || !isFiniteNumber(browserWindow.x)
+    || !isFiniteNumber(browserWindow.y)
+    || !isPositiveFiniteNumber(browserWindow.width)
+    || !isPositiveFiniteNumber(browserWindow.height)
+    || (browserWindow.source !== "cdp" && browserWindow.source !== "xdotool")
+  )) {
+    return false;
+  }
+  const viewport = value.viewport;
+  if (!(viewport === undefined || (
+    isRecord(viewport)
+    && isPositiveFiniteNumber(viewport.width)
+    && isPositiveFiniteNumber(viewport.height)
+    && isPositiveFiniteNumber(viewport.deviceScaleFactor)
+    && viewport.source === "cdp"
+  ))) return false;
+  return value.warnings === undefined || (
+    Array.isArray(value.warnings)
+    && value.warnings.every((warning) => typeof warning === "string" && warning.length > 0)
+  );
+}
+
+function hasConsistentStreamGeometry(value: Record<string, unknown>): boolean {
+  if (value.desktopGeometry === undefined) return true;
+  if (!isRunDesktopGeometry(value.desktopGeometry)) return false;
+  const measured = value.desktopGeometry.viewport;
+  if (measured === undefined) return value.viewport === undefined;
+  if (!isRunViewport(value.viewport)) return false;
+  return value.viewport.width === measured.width
+    && value.viewport.height === measured.height
+    && value.viewport.deviceScaleFactor === measured.deviceScaleFactor;
+}
+
+function isMeasuredSize(value: unknown): value is { width: number; height: number } {
+  return isRecord(value)
+    && isPositiveFiniteNumber(value.width)
+    && isPositiveFiniteNumber(value.height);
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][number] {

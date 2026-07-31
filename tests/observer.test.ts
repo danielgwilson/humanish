@@ -738,7 +738,7 @@ describe("observer rendering", () => {
     const placeholderClient = renderObserverClientForTest(data);
 
     expect(placeholderClient.html()).not.toContain('src="../false"');
-    expect(placeholderClient.html()).not.toContain('alt="viewport screenshot"');
+    expect(placeholderClient.html()).not.toContain('alt="browser screenshot"');
     expect(placeholderClient.html()).toContain("placeholder://browser-lane");
 
     stream.ui = {
@@ -749,7 +749,69 @@ describe("observer rendering", () => {
     const screenshotClient = renderObserverClientForTest(data);
 
     expect(screenshotClient.html()).toContain('src="../screenshots/synthetic-browser.png"');
-    expect(screenshotClient.html()).toContain('alt="viewport screenshot"');
+    expect(screenshotClient.html()).toContain('alt="browser screenshot"');
+  });
+
+  it("preserves 4:3 desktop screenshot framing without cropping", () => {
+    const data = browserLabObserverData();
+    const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
+    stream.viewport = { width: 1009, height: 643 };
+    stream.desktopGeometry = {
+      screen: {
+        requested: { width: 1024, height: 768 },
+        verified: { width: 1024, height: 768, source: "xdpyinfo" }
+      },
+      browserWindow: { x: 0, y: 0, width: 1024, height: 768, source: "xdotool" },
+      viewport: { width: 1009, height: 643, deviceScaleFactor: 1, source: "cdp" }
+    };
+    const client = renderObserverClientForTest(data);
+
+    client.click("media:screenshot");
+
+    expect(client.html()).toContain('<div class="tile-surface" style="--aspect:1024 / 768">');
+    expect(client.html()).toContain('>1024×768</span>');
+    expect(client.html()).toContain('title="Screen 1024×768 (verified via xdpyinfo; requested 1024×768) · Browser window 1024×768 at 0,0 (xdotool) · CSS viewport 1009×643, DPR 1 (CDP)"');
+    expect(client.html()).toContain('aria-label="Open lane 01: CorentinTh/it-tools desktop. Screen 1024×768 (verified via xdpyinfo; requested 1024×768) · Browser window 1024×768 at 0,0 (xdotool) · CSS viewport 1009×643, DPR 1 (CDP)"');
+    expect(client.html()).toContain('class="surface-fill surface-screenshot"');
+    expect(client.html()).toContain('alt="desktop screenshot"');
+    expect(client.html()).not.toContain('style="--aspect:1009 / 643"');
+    expect(client.html()).not.toContain("object-fit:cover");
+    expect(observerCss()).toMatch(/\.surface-screenshot \{ object-fit: contain; object-position: top center; \}/);
+    expect(observerCss()).toMatch(/\.grid \{[^}]*align-items: start;/);
+
+    client.click("open:lane-01");
+
+    expect(client.html()).toContain('class="focus-geometry"');
+    expect(client.html()).toContain('SCREEN <strong>1024×768</strong>');
+    expect(client.html()).toContain('VIEWPORT <strong>1009×643</strong> · DPR <strong>1</strong>');
+  });
+
+  it("preserves 16:9 desktop screenshot framing without distortion", () => {
+    const data = browserLabObserverData();
+    const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
+    stream.viewport = undefined;
+    stream.desktopGeometry = {
+      screen: {
+        requested: { width: 1920, height: 1080 }
+      }
+    };
+    const client = renderObserverClientForTest(data);
+
+    client.click("media:screenshot");
+
+    expect(client.html()).toContain('<div class="tile-surface" style="--aspect:1920 / 1080">');
+    expect(client.html()).toContain('>1920×1080</span>');
+    expect(client.html()).toContain('title="Screen 1920×1080 (requested; runtime verification unavailable)"');
+    expect(client.html()).toContain('class="surface-fill surface-screenshot"');
+    expect(client.html()).toContain('alt="desktop screenshot"');
+    expect(client.html()).not.toContain("CSS viewport");
+    expect(client.html()).not.toContain("object-fit:cover");
+
+    client.click("open:lane-01");
+
+    expect(client.html()).toContain('class="focus-geometry"');
+    expect(client.html()).toContain('SCREEN <strong>1920×1080</strong>');
+    expect(client.html()).not.toContain("VIEWPORT <strong>");
   });
 
   it("renders generic lane grouping metadata in the toolbar", () => {

@@ -816,8 +816,10 @@ describe("OSS lab command", () => {
       cwd: string;
       mode: string;
       streams: Array<{
+        desktopGeometry: { screen: { requested: { width: number; height: number } } };
         terminal: { tail: string };
         ui: { route: string };
+        viewport?: unknown;
       }>;
     };
     expect(bundle.cwd).toBe(PUBLIC_TARGET_CWD);
@@ -825,6 +827,13 @@ describe("OSS lab command", () => {
     expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install humanish init --yes");
     expect(bundle.streams[0]?.terminal.tail).toContain("npx --no-install humanish run --app-url");
     expect(bundle.streams[0]?.ui.route).toBe("e2b://desktop/repo-01");
+    expect(bundle.streams.every((stream) => stream.viewport === undefined)).toBe(true);
+    expect(bundle.streams.map((stream) => stream.desktopGeometry)).toEqual([
+      { screen: { requested: { width: 1440, height: 960 } } },
+      { screen: { requested: { width: 1440, height: 960 } } },
+      { screen: { requested: { width: 1440, height: 960 } } },
+      { screen: { requested: { width: 1440, height: 960 } } }
+    ]);
   });
 
   it("runs the bundled OSS meta-lab through the generic lab runner", async () => {
@@ -1164,6 +1173,10 @@ describe("OSS lab command", () => {
       path: "host-actors/todoapp/actor-plan.json",
       kind: "trace"
     });
+    expect(bundle.streams[0]?.desktopGeometry).toEqual({
+      screen: { requested: { width: 1440, height: 960 } }
+    });
+    expect(bundle.streams[0]?.viewport).toBeUndefined();
   });
 
   it("does not count suspended app-server actor completions as passed", () => {

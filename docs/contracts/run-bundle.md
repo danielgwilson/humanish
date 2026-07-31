@@ -79,6 +79,25 @@ Persisted `run.json` files must not contain absolute local target paths. Runtime
 commands may return the caller's working directory in process-local JSON
 responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 
+## Hosted Desktop Geometry
+
+Hosted browser streams may carry additive `desktopGeometry` evidence. Its fields keep four
+different facts separate:
+
+- `screen.requested`: the E2B/X screen size requested by config;
+- `screen.verified`: the screen size measured in-sandbox with `xdpyinfo`;
+- `browserWindow`: outer browser bounds measured after the window-fill attempt;
+- `viewport`: the page's CSS layout viewport and device-pixel ratio measured through CDP on
+  Chromium-family hosted browsers.
+
+For new hosted-desktop computer-use bundles, `stream.viewport` mirrors the measured
+`desktopGeometry.viewport`; it is omitted when runtime measurement is unavailable. It is never
+filled from the requested screen size. Dry-run bundles therefore carry the requested screen but
+no verified screen, browser bounds, or viewport. Historical bundles remain loadable and may
+contain the older requested-screen `stream.viewport` shape without `desktopGeometry`.
+Deterministic Playwright-style adapters remain free to declare a viewport that they also render
+exactly; this hosted-desktop rule does not change that contract.
+
 ## Subject Provenance
 
 `subject` is an optional, additive top-level field: structured provenance for

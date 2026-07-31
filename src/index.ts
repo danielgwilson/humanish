@@ -137,6 +137,7 @@ export type {
   RunAdapterScore,
   RunAttributionClass,
   RunBundle,
+  RunDesktopGeometry,
   RunEvent,
   RunFeedbackCandidate,
   RunMeaningfulUseComponentId,

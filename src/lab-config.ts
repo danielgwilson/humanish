@@ -303,7 +303,7 @@ export interface LabActorLane {
   caseGroup?: string;
   /** Persona id/label threaded into this lane's actor prompt. Default: actors[0].persona. */
   persona?: string;
-  /** Named device preset this lane renders at. XOR raw execution.desktop.resolution. */
+  /** Named hosted-screen preset for this lane. XOR raw execution.desktop.resolution. */
   device?: string;
   /** Per-lane steer appended to this lane's mission (the roster's per-lane focus). */
   instruction?: string;
@@ -411,7 +411,7 @@ export interface LabExecutionDesktop {
    * width-based responsive CSS fires) — touch/DPR/UA are sim-parity prompt signals, not rendered.
    */
   device?: string;
-  /** Raw desktop resolution [width, height] — an escape hatch that overrides `device`. */
+  /** Raw hosted screen resolution [width, height] — an escape hatch that overrides `device`. */
   resolution?: [number, number];
   /**
    * Browser family to launch for hosted desktop actor lanes. Absent/default preserves the
