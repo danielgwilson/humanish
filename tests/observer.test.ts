@@ -258,6 +258,57 @@ function browserLabObserverData(): Record<string, unknown> {
   };
 }
 
+type StatusBarLaneStatus = "passed" | "running" | "blocked" | "failed";
+
+function statusBarObserverData(status: StatusBarLaneStatus | StatusBarLaneStatus[], count = 4): Record<string, unknown> {
+  const laneStatuses = Array.isArray(status) ? status : Array.from({ length: count }, () => status);
+  const labels: Record<StatusBarLaneStatus, string> = {
+    passed: "Passed",
+    running: "Running",
+    blocked: "Blocked",
+    failed: "Failed"
+  };
+  return {
+    run: {
+      createdAt: "2026-07-16T12:00:00.000Z",
+      lifecycle: [],
+      mode: "live",
+      persona: { name: "Synthetic Status Operator" },
+      runId: "status-semantics-proof",
+      scenario: { goal: "Render truthful lane status.", title: "Status semantics proof" },
+      status: laneStatuses.every((laneStatus) => laneStatus === "passed") ? "pass" : "contract_proof_only"
+    },
+    events: [],
+    streams: laneStatuses.map((laneStatus, index) => ({
+      id: `lane-${index + 1}`,
+      simId: `sim-${index + 1}`,
+      kind: "summary",
+      kindLabel: "Summary",
+      label: `Synthetic lane ${index + 1}`,
+      status: laneStatus,
+      statusLabel: labels[laneStatus],
+      updatedAt: "2026-07-16T12:00:05.000Z",
+      artifacts: [],
+      sim: {
+        currentStep: `${labels[laneStatus]} synthetic lane.`,
+        id: `sim-${index + 1}`,
+        index: index + 1,
+        mode: "cli-sim",
+        personaId: "synthetic-status-operator",
+        progress: laneStatus === "running" ? 50 : 100,
+        scenarioId: "status-semantics",
+        startedAt: "2026-07-16T12:00:00.000Z",
+        status: laneStatus,
+        streamIds: [`lane-${index + 1}`],
+        streamKind: "summary",
+        summary: "Synthetic status lane",
+        updatedAt: "2026-07-16T12:00:05.000Z"
+      },
+      timeline: []
+    }))
+  };
+}
+
 function codexAppServerTraceObserverData(): Record<string, unknown> {
   return {
     run: {
@@ -640,6 +691,39 @@ describe("observer rendering", () => {
     expect(client.html()).toContain("Static file view cannot hydrate artifacts inline");
   });
 
+  it("labels completed lane counts separately from live execution mode", () => {
+    const html = renderObserverClientForTest(statusBarObserverData("passed")).html();
+
+    expect(html).toContain('<span class="sb-status-label mono">Complete</span><span class="sb-pct mono">100%</span>');
+    expect(html).toContain('title="4 done"');
+    expect(html).toContain('<span class="mono sb-count-number">4</span><span class="mono sb-count-label">done</span>');
+    expect(html).toContain('<span class="sb-run mono">mode: live · status-semantics-proof</span>');
+    expect(html).not.toContain('title="4 live"');
+  });
+
+  it("uses the live count label only for lanes that are actually running", () => {
+    const html = renderObserverClientForTest(statusBarObserverData("running")).html();
+
+    expect(html).toContain('title="4 live"');
+    expect(html).toContain('<span class="mono sb-count-number">4</span><span class="mono sb-count-label">live</span>');
+    expect(html).toContain('<span class="sb-run mono">mode: live · status-semantics-proof</span>');
+    expect(html).not.toContain('title="4 done"');
+  });
+
+  it("keeps mixed status labels distinct while collapsing footer detail at narrower widths", () => {
+    const html = renderObserverClientForTest(statusBarObserverData(["running", "passed", "blocked", "failed"])).html();
+    const css = observerCss();
+
+    for (const label of ["live", "done", "blocked", "failed"]) {
+      expect(html).toContain(`title="1 ${label}"`);
+      expect(html).toContain(`<span class="mono sb-count-label">${label}</span>`);
+    }
+    expect(html.match(/class="mono sb-count-number">1<\/span>/g)).toHaveLength(4);
+    expect(css).toMatch(/@media \(max-width: 1024px\) \{\s*\.sb-count-label \{ display: none; \}\s*\}/);
+    expect(css).toMatch(/@media \(max-width: 900px\) \{\s*\.sb-console-peek \{ display: none; \}\s*\}/);
+    expect(css).toMatch(/@media \(max-width: 720px\) \{[^}]*\.sb-counts, \.sb-run, \.sb-prog \{ display: none; \}/);
+  });
+
   it("ignores non-string screenshot placeholders while preserving valid screenshot paths", () => {
     const data = browserLabObserverData();
     const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
@@ -654,7 +738,7 @@ describe("observer rendering", () => {
     const placeholderClient = renderObserverClientForTest(data);
 
     expect(placeholderClient.html()).not.toContain('src="../false"');
-    expect(placeholderClient.html()).not.toContain('alt="viewport screenshot"');
+    expect(placeholderClient.html()).not.toContain('alt="browser screenshot"');
     expect(placeholderClient.html()).toContain("placeholder://browser-lane");
 
     stream.ui = {
@@ -665,7 +749,69 @@ describe("observer rendering", () => {
     const screenshotClient = renderObserverClientForTest(data);
 
     expect(screenshotClient.html()).toContain('src="../screenshots/synthetic-browser.png"');
-    expect(screenshotClient.html()).toContain('alt="viewport screenshot"');
+    expect(screenshotClient.html()).toContain('alt="browser screenshot"');
+  });
+
+  it("preserves 4:3 desktop screenshot framing without cropping", () => {
+    const data = browserLabObserverData();
+    const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
+    stream.viewport = { width: 1009, height: 643 };
+    stream.desktopGeometry = {
+      screen: {
+        requested: { width: 1024, height: 768 },
+        verified: { width: 1024, height: 768, source: "xdpyinfo" }
+      },
+      browserWindow: { x: 0, y: 0, width: 1024, height: 768, source: "xdotool" },
+      viewport: { width: 1009, height: 643, deviceScaleFactor: 1, source: "cdp" }
+    };
+    const client = renderObserverClientForTest(data);
+
+    client.click("media:screenshot");
+
+    expect(client.html()).toContain('<div class="tile-surface" style="--aspect:1024 / 768">');
+    expect(client.html()).toContain('>1024×768</span>');
+    expect(client.html()).toContain('title="Screen 1024×768 (verified via xdpyinfo; requested 1024×768) · Browser window 1024×768 at 0,0 (xdotool) · CSS viewport 1009×643, DPR 1 (CDP)"');
+    expect(client.html()).toContain('aria-label="Open lane 01: CorentinTh/it-tools desktop. Screen 1024×768 (verified via xdpyinfo; requested 1024×768) · Browser window 1024×768 at 0,0 (xdotool) · CSS viewport 1009×643, DPR 1 (CDP)"');
+    expect(client.html()).toContain('class="surface-fill surface-screenshot"');
+    expect(client.html()).toContain('alt="desktop screenshot"');
+    expect(client.html()).not.toContain('style="--aspect:1009 / 643"');
+    expect(client.html()).not.toContain("object-fit:cover");
+    expect(observerCss()).toMatch(/\.surface-screenshot \{ object-fit: contain; object-position: top center; \}/);
+    expect(observerCss()).toMatch(/\.grid \{[^}]*align-items: start;/);
+
+    client.click("open:lane-01");
+
+    expect(client.html()).toContain('class="focus-geometry"');
+    expect(client.html()).toContain('SCREEN <strong>1024×768</strong>');
+    expect(client.html()).toContain('VIEWPORT <strong>1009×643</strong> · DPR <strong>1</strong>');
+  });
+
+  it("preserves 16:9 desktop screenshot framing without distortion", () => {
+    const data = browserLabObserverData();
+    const stream = (data.streams as Array<Record<string, unknown>>)[0]!;
+    stream.viewport = undefined;
+    stream.desktopGeometry = {
+      screen: {
+        requested: { width: 1920, height: 1080 }
+      }
+    };
+    const client = renderObserverClientForTest(data);
+
+    client.click("media:screenshot");
+
+    expect(client.html()).toContain('<div class="tile-surface" style="--aspect:1920 / 1080">');
+    expect(client.html()).toContain('>1920×1080</span>');
+    expect(client.html()).toContain('title="Screen 1920×1080 (requested; runtime verification unavailable)"');
+    expect(client.html()).toContain('class="surface-fill surface-screenshot"');
+    expect(client.html()).toContain('alt="desktop screenshot"');
+    expect(client.html()).not.toContain("CSS viewport");
+    expect(client.html()).not.toContain("object-fit:cover");
+
+    client.click("open:lane-01");
+
+    expect(client.html()).toContain('class="focus-geometry"');
+    expect(client.html()).toContain('SCREEN <strong>1920×1080</strong>');
+    expect(client.html()).not.toContain("VIEWPORT <strong>");
   });
 
   it("renders generic lane grouping metadata in the toolbar", () => {
@@ -750,6 +896,16 @@ describe("observer rendering", () => {
     expect(overlay?.innerHTML).toContain('data-kind="app"');
     expect(overlay?.innerHTML).toContain('data-kind="observer"');
     expect(overlay?.innerHTML).toContain('data-kind="screenshot"');
+  });
+
+  it("keeps Observer grid labels legible in the four-lane hero layout", () => {
+    const css = observerCss();
+
+    expect(css).toMatch(/\.tile-head \{[^}]*height: 38px;/);
+    expect(css).toMatch(/\.tile-idx \{[^}]*font-size: 11px;/);
+    expect(css).toMatch(/\.tile-name \{[^}]*font-size: 15px;/);
+    expect(css).toMatch(/\.tile-foot \{[^}]*height: 36px;/);
+    expect(css).toMatch(/\.tile-foot-text \{[^}]*font-size: 14px;/);
   });
 
   it("keeps focus details reachable on constrained viewports", () => {

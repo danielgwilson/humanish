@@ -107,6 +107,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
+  type RunDesktopGeometry,
   type RunEvent,
   type RunRerunLineage,
   type RunSimulation,
@@ -143,7 +144,24 @@ export interface DesktopBrowserEvidence {
   resolved?: string;
 }
 
-// Device/viewport comes from the named-preset registry (device-presets.ts), selectable per run
+export type DesktopBrowserFamily = "chromium" | "firefox" | "unknown";
+
+/** Runtime-only identity for the exact browser process started by this lane. */
+export interface DesktopBrowserLaunchIdentity {
+  processId: string;
+  profileDir: string;
+  targetUrl: string;
+  cdpPort?: number;
+}
+
+/** Runtime-only launch result. `evidence` preserves the existing public persistence policy. */
+export interface DesktopBrowserLaunchResult {
+  family: DesktopBrowserFamily;
+  identity?: DesktopBrowserLaunchIdentity;
+  evidence?: DesktopBrowserEvidence;
+}
+
+// Device/screen size comes from the named-preset registry (device-presets.ts), selectable per run
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
 // per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
 // fan-out. On this E2B-desktop route only width/height physically render — isMobile/DSF are
@@ -287,6 +305,7 @@ export interface CuaLanePlanEntry {
   index: number;
   persona: string;
   device: string;
+  /** Requested E2B/X screen resolution. This is not the measured browser CSS viewport. */
   resolution: [number, number];
   instructionDigest: string;
   /** Present only when a lane overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
@@ -321,6 +340,7 @@ export interface CuaLaneResult {
   index: number;
   persona: string;
   device: string;
+  /** Requested E2B/X screen resolution. See the run stream's desktopGeometry for measurements. */
   resolution: [number, number];
   /** Terminal lane status; "blocked" = skipped (gate/fail-fast); "contract_proof_only" = dry-run. */
   status: ActorStatus | "blocked" | "contract_proof_only";
@@ -881,6 +901,14 @@ export interface CuaLaneDeps {
   hooks: CuaActorLabHooks;
   /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
   signalProvisioned?: (ok: boolean) => void;
+  /**
+   * How a PARSEABLE requested-vs-verified screen mismatch is treated. Default ("fail-closed"):
+   * the lane's device claim is falsified, so the lane fails with DEVICE_GEOMETRY (the
+   * single-lane/fan-out contract). "record-evidence" (the concurrent shared-world route):
+   * requested and verified stay recorded as separate facts plus an explicit warning, and the
+   * lane keeps running, so one seat's screen drift cannot abort a live multi-actor world.
+   */
+  screenMismatchPolicy?: "fail-closed" | "record-evidence";
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -894,6 +922,8 @@ export interface LaneRunOutcome {
   screenshots: string[];
   subjectCommit?: string;
   desktopBrowser?: DesktopBrowserEvidence;
+  /** Requested + measured desktop/browser geometry. Viewport is absent when measurement failed. */
+  desktopGeometry?: RunDesktopGeometry;
   stateStepRecords: RunSubjectStateStepRecord[];
   /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups),
    *  folded into bundle.events at build time. Empty on the in-process route (no provisioning). */
@@ -932,34 +962,43 @@ export function makeLaneWriteScreenshot(
 }
 
 /**
- * Verify the desktop geometry IN-SANDBOX (the per-lane device claim is checked, never assumed).
- * Returns a fail-closed DEVICE_GEOMETRY message on a PARSEABLE mismatch. When xdpyinfo is
- * unavailable or unparseable (only in fakes — a real E2B desktop always answers), it cannot be
- * verified, so the lane proceeds with the requested geometry (no false failure).
+ * Verify the desktop screen geometry IN-SANDBOX (the per-lane device claim is checked, never
+ * assumed). A parseable mismatch fails closed. Unavailable/unparseable evidence is returned as
+ * an explicit warning: the lane may still run, but its bundle records only the requested screen
+ * and never upgrades that request into a verified measurement.
  */
-async function checkLaneGeometry(
-  desktop: E2BDesktopSandbox,
-  spec: CuaLaneSpec,
-  requestTimeoutMs: number
-): Promise<string | undefined> {
+export async function inspectDesktopScreenGeometry(args: {
+  desktop: E2BDesktopSandbox;
+  laneId: string;
+  requestedScreen: readonly [number, number];
+  requestTimeoutMs: number;
+}
+): Promise<{
+  verified?: RunDesktopGeometry["screen"]["verified"];
+  error?: string;
+  warning?: string;
+}> {
   let out = "";
   try {
-    const result = await desktop.commands.run("xdpyinfo 2>/dev/null | grep -i dimensions || true", { requestTimeoutMs });
+    const result = await args.desktop.commands.run("xdpyinfo 2>/dev/null | grep -i dimensions || true", { requestTimeoutMs: args.requestTimeoutMs });
     out = (result.stdout ?? "").trim();
   } catch {
-    return undefined;
+    return { warning: `Desktop screen geometry could not be measured for lane ${args.laneId}; requested geometry remains unverified.` };
   }
   const match = out.match(/(\d+)\s*x\s*(\d+)\s*pixels/i);
   if (!match) {
-    return undefined;
+    return { warning: `Desktop screen geometry could not be parsed for lane ${args.laneId}; requested geometry remains unverified.` };
   }
   const width = Number(match[1]);
   const height = Number(match[2]);
-  const [expectedWidth, expectedHeight] = spec.resolution;
+  const [expectedWidth, expectedHeight] = args.requestedScreen;
   if (width === expectedWidth && height === expectedHeight) {
-    return undefined;
+    return { verified: { width, height, source: "xdpyinfo" } };
   }
-  return `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: lane ${spec.laneId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`;
+  return {
+    verified: { width, height, source: "xdpyinfo" },
+    error: `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: lane ${args.laneId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`
+  };
 }
 
 /** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
@@ -981,28 +1020,60 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
 
 async function findVisibleBrowserWindowId(
   desktop: E2BDesktopSandbox,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
+  browserFamily: DesktopBrowserFamily,
+  launchIdentity: DesktopBrowserLaunchIdentity | undefined
 ): Promise<string | undefined> {
+  if (browserFamily === "unknown") return undefined;
+  // The candidate loop keeps the LAST identity match: with a launch identity the match is
+  // unique anyway, and without one every family candidate matches, so the newest visible
+  // window of the launched family wins (the window this lane just opened).
+  const finder = browserFamily === "firefox"
+    ? [
+        "find_firefox_window() {",
+        "  timeout 2s xdotool search --onlyvisible --class 'firefox|Firefox' 2>/dev/null || true",
+        "}",
+        "window_id=",
+        "for _ in $(seq 1 10); do",
+        "  for candidate in $(find_firefox_window); do",
+        "    window_pid=\"$(xdotool getwindowpid \"$candidate\" 2>/dev/null || true)\"",
+        "    if matches_launch_identity \"$window_pid\"; then window_id=\"$candidate\"; fi",
+        "  done",
+        "  if [ -n \"$window_id\" ]; then break; fi",
+        "  sleep 0.5",
+        "done"
+      ]
+    : [
+        "find_chrome_window() {",
+        "  timeout 2s xdotool search --onlyvisible --class 'google-chrome|Google-chrome|chromium|Chromium|chrome|Chrome' 2>/dev/null || true",
+        "}",
+        "window_id=",
+        "for _ in $(seq 1 10); do",
+        "  for candidate in $(find_chrome_window); do",
+        "    window_pid=\"$(xdotool getwindowpid \"$candidate\" 2>/dev/null || true)\"",
+        "    if matches_launch_identity \"$window_pid\"; then window_id=\"$candidate\"; fi",
+        "  done",
+        "  if [ -n \"$window_id\" ]; then break; fi",
+        "  sleep 0.5",
+        "done"
+      ];
   const result = await desktop.commands.run([
     "set -euo pipefail",
     "export DISPLAY=\"${DISPLAY:-:0}\"",
-    "find_chrome_window() {",
-    "  timeout 2s xdotool search --onlyvisible --class 'google-chrome|Google-chrome|chromium|Chromium|chrome|Chrome' 2>/dev/null | tail -n 1 || true",
+    `launch_pid=${shellSingleQuote(launchIdentity?.processId ?? "")}`,
+    `profile_dir=${shellSingleQuote(launchIdentity?.profileDir ?? "")}`,
+    "matches_launch_identity() {",
+    "  if [ -z \"$launch_pid\" ] && [ -z \"$profile_dir\" ]; then return 0; fi",
+    "  local current=\"${1:-}\"",
+    "  while [[ \"$current\" =~ ^[0-9]+$ ]] && [ \"$current\" -gt 1 ]; do",
+    "    cmdline=\"$(tr '\\0' ' ' < \"/proc/$current/cmdline\" 2>/dev/null || true)\"",
+    "    if [ -n \"$profile_dir\" ] && [[ \"$cmdline\" == *\"$profile_dir\"* ]]; then return 0; fi",
+    "    if [ \"$current\" = \"$launch_pid\" ]; then return 0; fi",
+    "    current=\"$(ps -o ppid= -p \"$current\" 2>/dev/null | tr -d ' ' || true)\"",
+    "  done",
+    "  return 1",
     "}",
-    "find_firefox_window() {",
-    "  timeout 2s xdotool search --onlyvisible --class 'firefox|Firefox' 2>/dev/null | tail -n 1 || true",
-    "}",
-    "find_named_window() {",
-    "  timeout 2s xdotool search --onlyvisible --name 'Google Chrome|Chromium|Mozilla Firefox|127[.]0[.]0[.]1|localhost|e2b[.]app|e2b[.]dev' 2>/dev/null | tail -n 1 || true",
-    "}",
-    "window_id=",
-    "for _ in $(seq 1 10); do",
-    "  window_id=\"$(find_chrome_window)\"",
-    "  if [ -z \"$window_id\" ]; then window_id=\"$(find_firefox_window)\"; fi",
-    "  if [ -z \"$window_id\" ]; then window_id=\"$(find_named_window)\"; fi",
-    "  if [ -n \"$window_id\" ]; then break; fi",
-    "  sleep 0.5",
-    "done",
+    ...finder,
     "if [ -n \"$window_id\" ]; then printf 'WINDOW_ID=%s\\n' \"$window_id\"; fi"
   ].join("\n"), {
     requestTimeoutMs,
@@ -1057,7 +1128,7 @@ async function openDesktopBrowserTarget(
   targetUrl: string,
   requestTimeoutMs: number,
   browserPreference: LabDesktopBrowser | undefined
-): Promise<DesktopBrowserEvidence | undefined> {
+): Promise<DesktopBrowserLaunchResult> {
   const requestedBrowser = browserPreference ?? "default";
   if (isHttpUrl(targetUrl)) {
     const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellSingleQuote).join(" ");
@@ -1065,9 +1136,10 @@ async function openDesktopBrowserTarget(
       "set -euo pipefail",
       `target_url=${shellSingleQuote(targetUrl)}`,
       `browser_preference=${shellSingleQuote(requestedBrowser)}`,
-      "chrome_profile_dir=/tmp/humanish-chrome-profile",
+      "chrome_profile_dir=",
       `chrome_preferences_json=${shellSingleQuote(chromiumEvidenceProfilePreferencesJson())}`,
       "prepare_chrome_profile() {",
+      "  chrome_profile_dir=\"$(mktemp -d /tmp/humanish-chrome-profile.XXXXXX)\"",
       "  mkdir -p \"$chrome_profile_dir/Default\"",
       "  printf '%s\\n' \"$chrome_preferences_json\" > \"$chrome_profile_dir/Default/Preferences\"",
       "}",
@@ -1077,38 +1149,53 @@ async function openDesktopBrowserTarget(
       "  shift 2",
       "  if command -v \"$binary\" >/dev/null 2>&1; then",
       "    nohup \"$binary\" \"$@\" \"$target_url\" >/tmp/humanish-browser-open.log 2>&1 &",
+      "    local launch_pid=$!",
       "    printf 'HUMANISH_BROWSER_RESOLVED=%s\\n' \"$label\"",
+      "    printf 'HUMANISH_BROWSER_PID=%s\\n' \"$launch_pid\"",
+      "    printf 'HUMANISH_BROWSER_PROFILE_DIR=%s\\n' \"$chrome_profile_dir\"",
+      "    if [[ \"$label\" =~ ^(google-chrome|google-chrome-stable|chromium|chromium-browser)$ ]]; then",
+      "      for _ in $(seq 1 30); do",
+      "        if [ -s \"$chrome_profile_dir/DevToolsActivePort\" ]; then",
+      "          head -n 1 \"$chrome_profile_dir/DevToolsActivePort\" | sed 's/^/HUMANISH_BROWSER_CDP_PORT=/'",
+      "          break",
+      "        fi",
+      "        sleep 0.1",
+      "      done",
+      "    fi",
       "    return 0",
       "  fi",
       "  return 1",
       "}",
-      `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "--user-data-dir=$chrome_profile_dir" ${chromiumFlags})`,
-      "prepare_chrome_profile",
+      `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=0 ${chromiumFlags})`,
       "open_target() {",
       "  case \"$browser_preference\" in",
       "    chrome)",
-      "      launch_browser google-chrome google-chrome --new-window \"${chrome_debug_flags[@]}\" && return 0",
-      "      launch_browser google-chrome-stable google-chrome-stable --new-window \"${chrome_debug_flags[@]}\" && return 0",
+      "      prepare_chrome_profile",
+      "      launch_browser google-chrome google-chrome --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
+      "      launch_browser google-chrome-stable google-chrome-stable --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
       "      echo 'requested browser chrome was not found' >&2",
       "      return 127",
       "      ;;",
       "    chromium)",
-      "      launch_browser chromium chromium --new-window \"${chrome_debug_flags[@]}\" && return 0",
-      "      launch_browser chromium-browser chromium-browser --new-window \"${chrome_debug_flags[@]}\" && return 0",
+      "      prepare_chrome_profile",
+      "      launch_browser chromium chromium --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
+      "      launch_browser chromium-browser chromium-browser --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
       "      echo 'requested browser chromium was not found' >&2",
       "      return 127",
       "      ;;",
       "    firefox)",
-      "      launch_browser firefox firefox --new-window && return 0",
+      "      prepare_chrome_profile",
+      "      launch_browser firefox firefox --new-instance --no-remote --new-window --profile \"$chrome_profile_dir\" && return 0",
       "      echo 'requested browser firefox was not found' >&2",
       "      return 127",
     "      ;;",
     "    default)",
-    "      launch_browser google-chrome google-chrome --new-window \"${chrome_debug_flags[@]}\" && return 0",
-    "      launch_browser google-chrome-stable google-chrome-stable --new-window \"${chrome_debug_flags[@]}\" && return 0",
-    "      launch_browser chromium chromium --new-window \"${chrome_debug_flags[@]}\" && return 0",
-    "      launch_browser chromium-browser chromium-browser --new-window \"${chrome_debug_flags[@]}\" && return 0",
-    "      launch_browser firefox firefox --new-window && return 0",
+    "      prepare_chrome_profile",
+    "      launch_browser google-chrome google-chrome --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser google-chrome-stable google-chrome-stable --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser chromium chromium --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
+    "      launch_browser chromium-browser chromium-browser --new-window \"--user-data-dir=$chrome_profile_dir\" \"${chrome_debug_flags[@]}\" && return 0",
+      "      launch_browser firefox firefox --new-instance --no-remote --new-window --profile \"$chrome_profile_dir\" && return 0",
     "      launch_browser xdg-open xdg-open && return 0",
     "      echo 'no browser opener found' >&2",
     "      return 127",
@@ -1132,9 +1219,18 @@ async function openDesktopBrowserTarget(
       throw new Error(`browser launch failed with exit ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
     }
     const resolved = (result.stdout ?? "").match(/^HUMANISH_BROWSER_RESOLVED=(\S+)$/m)?.[1];
-    return browserPreference === undefined ? undefined : {
-      requested: requestedBrowser,
-      ...(resolved === undefined ? {} : { resolved })
+    const processId = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PID=(\d+)$/m)?.[1];
+    const profileDir = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PROFILE_DIR=(\S+)$/m)?.[1];
+    const cdpPortRaw = (result.stdout ?? "").match(/^HUMANISH_BROWSER_CDP_PORT=(\d+)$/m)?.[1];
+    const cdpPort = cdpPortRaw === undefined ? undefined : Number(cdpPortRaw);
+    return {
+      family: desktopBrowserFamily(resolved ?? requestedBrowser),
+      ...(processId === undefined || profileDir === undefined
+        ? {}
+        : { identity: { processId, profileDir, targetUrl, ...(cdpPort === undefined ? {} : { cdpPort }) } }),
+      ...(browserPreference === undefined
+        ? {}
+        : { evidence: { requested: requestedBrowser, ...(resolved === undefined ? {} : { resolved }) } })
     };
   }
 
@@ -1144,7 +1240,10 @@ async function openDesktopBrowserTarget(
     } else {
       await desktop.launch("google-chrome", targetUrl);
     }
-    return browserPreference === undefined ? undefined : { requested: requestedBrowser };
+    return {
+      family: desktop.open ? "unknown" : "chromium",
+      ...(browserPreference === undefined ? {} : { evidence: { requested: requestedBrowser } })
+    };
   }
 
   const launchTarget = requestedBrowser === "chrome" ? "google-chrome"
@@ -1152,17 +1251,81 @@ async function openDesktopBrowserTarget(
       : requestedBrowser === "firefox" ? "firefox"
         : "google-chrome";
   await desktop.launch(launchTarget, targetUrl);
-  return { requested: requestedBrowser, resolved: launchTarget };
+  return {
+    family: desktopBrowserFamily(launchTarget),
+    evidence: { requested: requestedBrowser, resolved: launchTarget }
+  };
+}
+
+export function desktopBrowserFamily(value: string | undefined): DesktopBrowserFamily {
+  if (value === "firefox") return "firefox";
+  if (value === "chrome" || value === "chromium" || value === "google-chrome" || value === "google-chrome-stable" || value === "chromium-browser") {
+    return "chromium";
+  }
+  return "unknown";
+}
+
+/**
+ * Runtime-only CDP endpoint attribution for the exact chromium this lane launched. Port
+ * resolution at OBSERVE time: the cached launch-time `cdpPort` wins; absent that, the observer
+ * script re-reads `profileDir`'s DevToolsActivePort marker (a slow cold start can publish it
+ * AFTER the launch-time poll gave up); absent both it falls back to the legacy fixed 9222,
+ * where a dead endpoint degrades into an honest warning.
+ */
+export interface ChromeCdpEndpoint {
+  cdpPort?: number;
+  /** The launched profile dir; lets observers re-read DevToolsActivePort at observe time. */
+  profileDir?: string;
+  /** The URL this lane opened; attributes the CDP page when no target id is pinned yet. */
+  targetUrl: string;
+}
+
+/**
+ * Observe-time CDP port resolution lines (pure; exported for contract tests): cached
+ * launch-time port first, then a re-read of the profile's DevToolsActivePort marker, then the
+ * legacy fixed 9222. The re-read is a local best-effort file read inside the already
+ * time-bounded observer command, so a missing/garbled marker degrades to the fallback,
+ * never a hang.
+ */
+export function chromeCdpPortResolutionScript(endpoint: ChromeCdpEndpoint): string[] {
+  return [
+    `let cdpPort = ${endpoint.cdpPort === undefined ? "undefined" : JSON.stringify(endpoint.cdpPort)};`,
+    `const cdpProfileDir = ${JSON.stringify(endpoint.profileDir ?? "")};`,
+    "if (cdpPort === undefined && cdpProfileDir) {",
+    "  try {",
+    "    const { readFileSync } = await import('node:fs');",
+    "    const marker = readFileSync(cdpProfileDir + '/DevToolsActivePort', 'utf8');",
+    "    const parsed = Number.parseInt(String(marker.split('\\n')[0] ?? ''), 10);",
+    "    if (Number.isInteger(parsed) && parsed > 0) cdpPort = parsed;",
+    "  } catch {}",
+    "}",
+    "if (cdpPort === undefined) cdpPort = 9222;"
+  ];
+}
+
+/** Shared CDP page-selection preamble: pinned target id first, then this lane's target URL,
+ *  then a single-page fallback; never an arbitrary page from a multi-page endpoint. */
+function chromeCdpPageSelectionScript(endpoint: ChromeCdpEndpoint, targetId: string | undefined): string[] {
+  return [
+    ...chromeCdpPortResolutionScript(endpoint),
+    "const pages = await fetch('http://127.0.0.1:' + cdpPort + '/json').then((r) => r.json()).catch(() => []);",
+    `const expectedTargetId = ${JSON.stringify(targetId ?? "")};`,
+    `const expectedTargetUrl = ${JSON.stringify(endpoint.targetUrl)};`,
+    "const normalizeUrl = (value) => String(value || '').replace(/\\/$/, '');",
+    "const httpPages = Array.isArray(pages) ? pages.filter((entry) => entry && entry.type === 'page' && /^https?:/.test(String(entry.url || ''))) : [];",
+    "const page = expectedTargetId ? httpPages.find((entry) => entry.id === expectedTargetId) : (httpPages.find((entry) => normalizeUrl(entry.url) === normalizeUrl(expectedTargetUrl)) || (httpPages.length === 1 ? httpPages[0] : undefined));"
+  ];
 }
 
 export function makeChromeBrowserStateObserver(
   desktop: E2BDesktopSandbox,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
+  endpoint: ChromeCdpEndpoint,
+  targetId?: string
 ): () => Promise<{ url?: string; title?: string; text?: string }> {
   return async () => {
     const script = [
-      "const pages = await fetch('http://127.0.0.1:9222/json').then((r) => r.json()).catch(() => []);",
-      "const page = Array.isArray(pages) ? pages.find((entry) => entry && entry.type === 'page' && /^https?:/.test(String(entry.url || ''))) : undefined;",
+      ...chromeCdpPageSelectionScript(endpoint, targetId),
       "if (!page) { console.log('{}'); process.exit(0); }",
       "let text = '';",
       "let url = String(page.url || '');",
@@ -1211,6 +1374,190 @@ export function makeChromeBrowserStateObserver(
     } catch {
       return {};
     }
+  };
+}
+
+/**
+ * Read the running browser's actual outer-window bounds and CSS layout viewport through the
+ * already-enabled local Chrome DevTools endpoint. The returned values come from `window.*` in
+ * the target page; requested E2B resolution is deliberately not an input to this function.
+ */
+export function makeChromeDesktopGeometryObserver(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+  endpoint: ChromeCdpEndpoint,
+  targetId?: string
+): () => Promise<(Pick<RunDesktopGeometry, "browserWindow" | "viewport"> & { targetId?: string }) | undefined> {
+  return async () => {
+    const script = [
+      ...chromeCdpPageSelectionScript(endpoint, targetId),
+      "if (!page || typeof WebSocket !== 'function' || !page.webSocketDebuggerUrl) { console.log('{}'); process.exit(0); }",
+      "const ws = new WebSocket(page.webSocketDebuggerUrl);",
+      "const result = await new Promise((resolve) => {",
+      "  const timer = setTimeout(() => resolve(undefined), 1500);",
+      "  ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: '({ browserWindow: { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight }, viewport: { width: window.innerWidth, height: window.innerHeight, deviceScaleFactor: window.devicePixelRatio } })' } }));",
+      "  ws.onmessage = (event) => {",
+      "    try {",
+      "      const payload = JSON.parse(String(event.data));",
+      "      if (payload.id !== 1) return;",
+      "      clearTimeout(timer);",
+      "      resolve(payload.result && payload.result.result && payload.result.result.value);",
+      "    } catch { clearTimeout(timer); resolve(undefined); }",
+      "  };",
+      "  ws.onerror = () => { clearTimeout(timer); resolve(undefined); };",
+      "}).finally(() => { try { ws.close(); } catch {} });",
+      "console.log(JSON.stringify(result ? { ...result, targetId: String(page.id || '') } : {}));"
+    ].join("\n");
+    const result = await desktop.commands.run(`node --input-type=module -e ${shellSingleQuote(script)}`, {
+      requestTimeoutMs,
+      timeoutMs: 5_000
+    });
+    if (result.exitCode !== undefined && result.exitCode !== 0) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse((result.stdout ?? "{}").trim() || "{}") as unknown;
+      if (!parsed || typeof parsed !== "object") return undefined;
+      const record = parsed as Record<string, unknown>;
+      const rawWindow = record.browserWindow;
+      const rawViewport = record.viewport;
+      if (!isMeasuredRect(rawWindow) || !isMeasuredViewport(rawViewport)) return undefined;
+      return {
+        browserWindow: { ...rawWindow, source: "cdp" },
+        viewport: { ...rawViewport, source: "cdp" },
+        ...(typeof record.targetId === "string" && record.targetId.length > 0 ? { targetId: record.targetId } : {})
+      };
+    } catch {
+      return undefined;
+    }
+  };
+}
+
+function isMeasuredRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return Number.isFinite(record.x)
+    && Number.isFinite(record.y)
+    && isPositiveMeasurement(record.width)
+    && isPositiveMeasurement(record.height);
+}
+
+function isMeasuredViewport(value: unknown): value is { width: number; height: number; deviceScaleFactor: number } {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return isPositiveMeasurement(record.width)
+    && isPositiveMeasurement(record.height)
+    && isPositiveMeasurement(record.deviceScaleFactor);
+}
+
+function isPositiveMeasurement(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+async function measureBrowserWindowWithXdotool(
+  desktop: E2BDesktopSandbox,
+  windowId: string,
+  requestTimeoutMs: number
+): Promise<RunDesktopGeometry["browserWindow"] | undefined> {
+  const result = await desktop.commands.run([
+    "set -euo pipefail",
+    `win=${shellSingleQuote(windowId)}`,
+    "xdotool getwindowgeometry --shell \"$win\" 2>/dev/null || true"
+  ].join("\n"), { requestTimeoutMs, timeoutMs: 5_000 });
+  const output = result.stdout ?? "";
+  const read = (name: string): number | undefined => {
+    const raw = output.match(new RegExp(`^${name}=(-?\\d+)$`, "m"))?.[1];
+    if (raw === undefined) return undefined;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : undefined;
+  };
+  const x = read("X");
+  const y = read("Y");
+  const width = read("WIDTH");
+  const height = read("HEIGHT");
+  if (x === undefined || y === undefined || width === undefined || height === undefined || width <= 0 || height <= 0) {
+    return undefined;
+  }
+  return { x, y, width, height, source: "xdotool" };
+}
+
+/** Shared hosted-browser geometry capture used by per-lane and sequential shared-world routes. */
+export async function captureDesktopBrowserGeometry(args: {
+  desktop: E2BDesktopSandbox;
+  browserFamily: DesktopBrowserFamily;
+  launchIdentity?: DesktopBrowserLaunchIdentity;
+  browserTargetId?: string;
+  browserWindowId?: string;
+  laneId: string;
+  /** Runtime-only lane target URL (attributes the CDP page); never persisted by this capture. */
+  targetUrl: string;
+  requestedScreen: readonly [number, number];
+  requestTimeoutMs: number;
+  resize?: boolean;
+}): Promise<{
+  browserWindowId?: string;
+  browserTargetId?: string;
+  browserWindow?: RunDesktopGeometry["browserWindow"];
+  viewport?: RunDesktopGeometry["viewport"];
+  warnings: string[];
+}> {
+  const warnings: string[] = [];
+  let browserWindowId = args.browserWindowId;
+  if (browserWindowId === undefined && args.browserFamily !== "unknown") {
+    browserWindowId = await findVisibleBrowserWindowId(
+      args.desktop,
+      args.requestTimeoutMs,
+      args.browserFamily,
+      args.launchIdentity
+    ).catch((error: unknown) => {
+      warnings.push(`Browser window lookup failed for lane ${args.laneId}: ${redactText(toErrorMessage(error))}`);
+      return undefined;
+    });
+  }
+
+  let xdotoolWindow: RunDesktopGeometry["browserWindow"] | undefined;
+  if (browserWindowId !== undefined) {
+    if (args.resize !== false) {
+      await fillDesktopBrowserWindow(args.desktop, browserWindowId, args.requestedScreen, args.requestTimeoutMs);
+      // Let the window manager apply the resize before querying both X and page layout geometry.
+      await args.desktop.wait(250).catch(() => undefined);
+    }
+    xdotoolWindow = await measureBrowserWindowWithXdotool(args.desktop, browserWindowId, args.requestTimeoutMs)
+      .catch(() => undefined);
+  } else {
+    warnings.push(`Browser window bounds could not be measured for lane ${args.laneId}; the live stream will use the full desktop.`);
+  }
+
+  const chromeGeometry = args.browserFamily === "chromium"
+    ? await makeChromeDesktopGeometryObserver(
+        args.desktop,
+        args.requestTimeoutMs,
+        {
+          ...(args.launchIdentity?.cdpPort === undefined ? {} : { cdpPort: args.launchIdentity.cdpPort }),
+          ...(args.launchIdentity?.profileDir === undefined ? {} : { profileDir: args.launchIdentity.profileDir }),
+          targetUrl: args.targetUrl
+        },
+        args.browserTargetId
+      )().catch(() => undefined)
+    : undefined;
+  const browserWindow = chromeGeometry?.browserWindow ?? xdotoolWindow;
+  const viewport = chromeGeometry?.viewport;
+  if (!browserWindow) {
+    warnings.push(`Browser outer bounds could not be measured for lane ${args.laneId}.`);
+  } else if (browserWindow.width !== args.requestedScreen[0] || browserWindow.height !== args.requestedScreen[1]) {
+    warnings.push(`Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured outer bounds are ${browserWindow.width}x${browserWindow.height}.`);
+  }
+  if (!viewport) {
+    warnings.push(args.browserFamily === "firefox"
+      ? `Browser CSS viewport measurement is unavailable for Firefox on lane ${args.laneId}; stream.viewport is omitted instead of reading a different browser's CDP endpoint.`
+      : `Browser CSS viewport could not be measured for lane ${args.laneId}; stream.viewport is omitted instead of copying the requested screen resolution.`);
+  }
+  return {
+    ...(browserWindowId === undefined ? {} : { browserWindowId }),
+    ...(chromeGeometry?.targetId === undefined ? {} : { browserTargetId: chromeGeometry.targetId }),
+    ...(browserWindow === undefined ? {} : { browserWindow }),
+    ...(viewport === undefined ? {} : { viewport }),
+    warnings
   };
 }
 
@@ -1289,6 +1636,15 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let streamUrl: string | undefined;
   let subjectCommit: string | undefined;
   let desktopBrowser: DesktopBrowserEvidence | undefined;
+  let launchedBrowserFamily: DesktopBrowserFamily = "unknown";
+  let browserLaunchIdentity: DesktopBrowserLaunchIdentity | undefined;
+  let browserLaunched = false;
+  let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
+  let browserWindowId: string | undefined;
+  let browserTargetId: string | undefined;
+  let desktopGeometry: RunDesktopGeometry = {
+    screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+  };
   let provisioned = false;
   let signaled = false;
   const signal = (ok: boolean): void => {
@@ -1332,11 +1688,38 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     }
 
     // Per-lane geometry assertion (fail-closed) — the device claim is verified in-sandbox.
-    const geometryError = await checkLaneGeometry(desktop, spec, deps.requestTimeoutMs);
-    if (geometryError) {
-      sessionError = geometryError;
+    const screenGeometry = await inspectDesktopScreenGeometry({
+      desktop,
+      laneId: spec.laneId,
+      requestedScreen: spec.resolution,
+      requestTimeoutMs: deps.requestTimeoutMs
+    });
+    if (screenGeometry.verified) {
+      desktopGeometry = {
+        ...desktopGeometry,
+        screen: { ...desktopGeometry.screen, verified: screenGeometry.verified }
+      };
+    }
+    if (screenGeometry.warning) {
+      warnings.push(screenGeometry.warning);
+      desktopGeometry = { ...desktopGeometry, warnings: [screenGeometry.warning] };
+    }
+    if (screenGeometry.error && deps.screenMismatchPolicy !== "record-evidence") {
+      sessionError = screenGeometry.error;
       failureCode = "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
     } else {
+      if (screenGeometry.error && screenGeometry.verified) {
+        // record-evidence policy: the bundle keeps requested vs verified as separate facts and
+        // discloses the divergence instead of failing this lane's world mid-flight.
+        const mismatchWarning = deps.scrubKnownValues(
+          `Lane ${spec.laneId} requested a ${spec.resolution[0]}x${spec.resolution[1]} screen but xdpyinfo reports ${screenGeometry.verified.width}x${screenGeometry.verified.height}; recording requested vs verified separately instead of failing the lane closed.`
+        );
+        warnings.push(mismatchWarning);
+        desktopGeometry = {
+          ...desktopGeometry,
+          warnings: [...(desktopGeometry.warnings ?? []), mismatchWarning]
+        };
+      }
       if (cloneRoute && serve && subjectRepo) {
         subjectCommit = await provisionCloneSubject(desktop, {
           repo: subjectRepo,
@@ -1370,12 +1753,16 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         });
       }
 
-      desktopBrowser = await openDesktopBrowserTarget(
+      const browserLaunch = await openDesktopBrowserTarget(
         desktop,
         targetUrl,
         deps.requestTimeoutMs,
         config.execution?.desktop?.browser
       );
+      desktopBrowser = browserLaunch.evidence;
+      launchedBrowserFamily = browserLaunch.family;
+      browserLaunchIdentity = browserLaunch.identity;
+      browserLaunched = true;
       await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
 
       // World is ready: release the pipeline gate so the remaining lanes may start.
@@ -1383,19 +1770,18 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       signal(true);
 
       try {
-        const browserWindowId = await findVisibleBrowserWindowId(desktop, deps.requestTimeoutMs)
-          .catch((error: unknown) => {
-            warnings.push(`Browser window lookup failed before live stream start (falling back to desktop stream): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
-            return undefined;
-          });
-        if (browserWindowId !== undefined) {
-          await fillDesktopBrowserWindow(
-            desktop,
-            browserWindowId,
-            spec.resolution,
-            deps.requestTimeoutMs,
-          );
-        }
+        const browserGeometry = await captureDesktopBrowserGeometry({
+          desktop,
+          browserFamily: launchedBrowserFamily,
+          ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+          laneId: spec.laneId,
+          targetUrl,
+          requestedScreen: spec.resolution,
+          requestTimeoutMs: deps.requestTimeoutMs
+        });
+        initialBrowserGeometry = browserGeometry;
+        browserWindowId = browserGeometry.browserWindowId;
+        browserTargetId = browserGeometry.browserTargetId;
         await startDesktopStream(desktop, browserWindowId);
         const candidateStreamUrl: unknown = desktop.stream.getUrl({
           authKey: desktop.stream.getAuthKey(),
@@ -1428,9 +1814,22 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
         },
         desktop: desktop as unknown as E2BDesktopLike,
-        executorOptions: {
-          observeBrowserState: makeChromeBrowserStateObserver(desktop, deps.requestTimeoutMs)
-        },
+        ...(launchedBrowserFamily === "chromium"
+          ? {
+              executorOptions: {
+                observeBrowserState: makeChromeBrowserStateObserver(
+                  desktop,
+                  deps.requestTimeoutMs,
+                  {
+                    ...(browserLaunchIdentity?.cdpPort === undefined ? {} : { cdpPort: browserLaunchIdentity.cdpPort }),
+                    ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
+                    targetUrl
+                  },
+                  browserTargetId
+                )
+              }
+            }
+          : {}),
         redactScreenshots: deps.redactScreenshots,
         scrubText: deps.scrubKnownValues,
         writeScreenshot,
@@ -1445,6 +1844,39 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       signal(false);
     }
     if (desktop && desktopModule) {
+      if (browserLaunched) {
+        const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> = await captureDesktopBrowserGeometry({
+          desktop,
+          browserFamily: launchedBrowserFamily,
+          ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+          ...(browserWindowId === undefined ? {} : { browserWindowId }),
+          ...(browserTargetId === undefined ? {} : { browserTargetId }),
+          laneId: spec.laneId,
+          targetUrl,
+          requestedScreen: spec.resolution,
+          requestTimeoutMs: deps.requestTimeoutMs,
+          resize: false
+        }).catch((error: unknown) => ({
+          warnings: [`Final browser geometry measurement failed for lane ${spec.laneId}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`]
+        }));
+        // Chosen capture rule: final-if-it-measured-anything, else launch-time. A final capture
+        // that measured EITHER field wins whole, so a partial final capture omits fields the
+        // launch-time capture had (honest omission); only a final capture that measured NOTHING
+        // falls back to the launch-time capture.
+        const chosenGeometry = finalGeometry.browserWindow !== undefined || finalGeometry.viewport !== undefined
+          ? finalGeometry
+          : initialBrowserGeometry ?? finalGeometry;
+        const geometryWarnings = [...new Set(chosenGeometry.warnings.map((warning) => deps.scrubKnownValues(warning)))];
+        warnings.push(...geometryWarnings);
+        desktopGeometry = {
+          screen: desktopGeometry.screen,
+          ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),
+          ...(chosenGeometry.viewport === undefined ? {} : { viewport: chosenGeometry.viewport }),
+          ...((desktopGeometry.warnings?.length ?? 0) + geometryWarnings.length === 0
+            ? {}
+            : { warnings: [...(desktopGeometry.warnings ?? []), ...geometryWarnings] })
+        };
+      }
       const failed = sessionError !== undefined || session === undefined;
       // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
       // a local-tree lane's teardown decision, and vice versa.
@@ -1505,6 +1937,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     screenshots,
     ...(subjectCommit === undefined ? {} : { subjectCommit }),
     ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
+    desktopGeometry,
     stateStepRecords,
     phaseRecords,
     warnings,
@@ -2495,7 +2928,8 @@ function buildSingleLaneBundle(args: {
     mission: spec.instructions,
     persona: spec.persona,
     resolution: spec.resolution,
-    deviceScaleFactor: spec.devicePreset.deviceScaleFactor,
+    desktopRoute: !args.inProcessRoute,
+    ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     isMobile: spec.devicePreset.isMobile,
     runId: args.runId,
     screenshots: outcome?.screenshots ?? [],
@@ -2947,8 +3381,12 @@ export function buildCuaBundle(args: {
   mission: string;
   persona: ActorPersonaRef;
   resolution: [number, number];
-  /** Device metadata for the stream viewport (honest; isMobile/DSF are not rendered on this route). */
-  deviceScaleFactor?: number;
+  /** False only for the custom in-process route, which has no hosted screen/window to claim. */
+  desktopRoute?: boolean;
+  /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
+  desktopGeometry?: RunDesktopGeometry;
+  /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
+   *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
   isMobile?: boolean;
   runId: string;
   screenshots: string[];
@@ -2996,6 +3434,11 @@ export function buildCuaBundle(args: {
     ?? args.sessionError
     ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
   const lastScreenshot = args.screenshots[args.screenshots.length - 1];
+  const desktopGeometry = args.desktopRoute === false
+    ? undefined
+    : args.desktopGeometry ?? {
+        screen: { requested: { width: args.resolution[0], height: args.resolution[1] } }
+      };
 
   // Honest labels (invariant 6: claims match mechanism): every screenshot label names the
   // run's ACTUAL mode. The session trace is the evidence-of-record; the capture policy covers
@@ -3043,12 +3486,17 @@ export function buildCuaBundle(args: {
     embed: lastScreenshot
       ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
       : { kind: "placeholder", title: "CUA desktop" },
-    viewport: {
-      width: args.resolution[0],
-      height: args.resolution[1],
-      deviceScaleFactor: args.deviceScaleFactor ?? 1,
-      ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile })
-    },
+    ...(desktopGeometry?.viewport === undefined
+      ? {}
+      : {
+          viewport: {
+            width: desktopGeometry.viewport.width,
+            height: desktopGeometry.viewport.height,
+            deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+            ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile })
+          }
+        }),
+    ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
     ui: {
       route: publicAppUrl,
       intent: "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
@@ -3160,6 +3608,17 @@ export function buildCuaBundle(args: {
       level: phase.ok === false ? "warn" : "info",
       type: phase.type,
       message: phase.durationMs === undefined ? phase.message : `${phase.message} (${phase.durationMs}ms)`,
+      simId: "sim-001",
+      streamId: "stream-001"
+    });
+  }
+  for (const warning of desktopGeometry?.warnings ?? []) {
+    events.push({
+      id: `event-${String(phaseEventSeq++).padStart(3, "0")}-geometry-warning`,
+      at: args.createdAt,
+      level: "warn",
+      type: "cua-lab.geometry.warning",
+      message: warning,
       simId: "sim-001",
       streamId: "stream-001"
     });
@@ -3343,6 +3802,9 @@ export function buildCuaFanoutBundle(args: {
     const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
     const subject = args.laneSubjects[index]!;
     const session = outcome?.session;
+    const desktopGeometry: RunDesktopGeometry = outcome?.desktopGeometry ?? {
+      screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+    };
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];
     const status: RunSimulationStatus = args.inProgress === true && outcome === undefined
@@ -3406,12 +3868,17 @@ export function buildCuaFanoutBundle(args: {
       embed: lastScreenshot
         ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop ${spec.laneId} (${screenshotMode})` }
         : { kind: "placeholder", title: `CUA desktop ${spec.laneId}` },
-      viewport: {
-        width: spec.resolution[0],
-        height: spec.resolution[1],
-        deviceScaleFactor: spec.devicePreset.deviceScaleFactor,
-        isMobile: spec.devicePreset.isMobile
-      },
+      ...(desktopGeometry.viewport === undefined
+        ? {}
+        : {
+            viewport: {
+              width: desktopGeometry.viewport.width,
+              height: desktopGeometry.viewport.height,
+              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+              isMobile: spec.devicePreset.isMobile
+            }
+          }),
+      desktopGeometry,
       ui: {
         route: publicLaneAppUrl,
         intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
@@ -3530,6 +3997,18 @@ export function buildCuaFanoutBundle(args: {
         level: "info",
         type: "cua-lab.contract.ready",
         message: `Lane ${spec.laneId}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    }
+
+    for (const warning of desktopGeometry.warnings ?? []) {
+      events.push({
+        id: nextEventId(`geometry-warning-${spec.laneId}`),
+        at: args.createdAt,
+        level: "warn",
+        type: "cua-lab.geometry.warning",
+        message: warning,
         simId: spec.simId,
         streamId: spec.streamId
       });

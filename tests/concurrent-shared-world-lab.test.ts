@@ -37,6 +37,9 @@ interface FakeSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
 }
 
+const FAKE_DESKTOP_SCREEN = { width: 1440, height: 950 } as const;
+const FAKE_DESKTOP_VIEWPORT = { width: 1440, height: 817, deviceScaleFactor: 1 } as const;
+
 function browserTargetFromCalls(calls: Array<[string, ...unknown[]]>): string | undefined {
   for (const call of calls) {
     if (call[0] === "open") return String(call[1]);
@@ -117,11 +120,17 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
 
 function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string } | undefined {
   return (command: string): { stdout?: string } | undefined => {
+    if (command.includes("xdpyinfo")) return { stdout: "dimensions: 1440x950 pixels (381x251 millimeters)\n" };
+    if (command.includes("browser_preference='default'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
     if (command.includes("/status")) return { stdout: "0" };
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" };
     if (command.includes("curl")) return { stdout: "READY" };
     if (command.includes("checkpoint-") && command.includes("tail -c")) return { stdout: `world=${state.worldVersion}\n` };
     if (command.includes("find_chrome_window")) return { stdout: "WINDOW_ID=424242\n" };
+    if (command.includes("getwindowgeometry")) return { stdout: "X=0\nY=0\nWIDTH=1440\nHEIGHT=950\n" };
+    if (command.includes("browserWindow: { x: window.screenX")) {
+      return { stdout: JSON.stringify({ browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN }, viewport: FAKE_DESKTOP_VIEWPORT }) };
+    }
     if (command.includes("tail -c")) return { stdout: "" };
     return undefined;
   };
@@ -310,6 +319,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("deferred live receipt");
     expect(publicTruth).not.toContain("capability at scale");
+    expect(bundle.streams.every((stream: { viewport?: unknown }) => stream.viewport === undefined)).toBe(true);
+    expect(bundle.streams.map((stream: { desktopGeometry: { screen: { requested: unknown } } }) => stream.desktopGeometry.screen.requested)).toEqual([
+      FAKE_DESKTOP_SCREEN, FAKE_DESKTOP_SCREEN, FAKE_DESKTOP_SCREEN
+    ]);
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -391,6 +404,17 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.plane.hostDigest).toMatch(/^[0-9a-f]{16}$/);
     expect(bundle.sharedWorld.plane.exposure).toBe("synthetic");
+    for (const stream of bundle.streams) {
+      expect(stream.desktopGeometry).toEqual({
+        screen: {
+          requested: FAKE_DESKTOP_SCREEN,
+          verified: { ...FAKE_DESKTOP_SCREEN, source: "xdpyinfo" }
+        },
+        browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN, source: "cdp" },
+        viewport: { ...FAKE_DESKTOP_VIEWPORT, source: "cdp" }
+      });
+      expect(stream.viewport).toEqual({ ...FAKE_DESKTOP_VIEWPORT, isMobile: false });
+    }
 
     // PROVEN CONCURRENCY (FIX-1): the laneWindows the REAL clock measured overlap (≥2 in flight).
     const windows = bundle.sharedWorld.laneWindows as Array<{ startedAt: number; endedAt: number; routeHostDigest: string; actorType?: string; surface?: string; caseGroup?: string }>;

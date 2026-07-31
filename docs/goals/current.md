@@ -173,9 +173,9 @@ Minimum acceptance:
   re-sequences the proof roadmap: a redaction redesign and an overridable
   public-target policy are prerequisites for any decision-grade depth evidence, so
   they land BEFORE the consumer-web-app / agent-skill depth phases. `done`
-- Device presets (0.6.1): viewport/device is a real dimension, with LITERAL values copied
+- Device presets (0.6.1): screen/device is a real dimension, with LITERAL values copied
   from the in-house sims (mobile 414×896 … wide 1920×1080; default `desktop` 1440×950) —
-  not guessed. `execution.desktop.device` picks the per-run viewport; the guessed 1280×800
+  not guessed. `execution.desktop.device` picks the per-run hosted screen; the guessed 1280×800
   is gone. Honest fidelity: on the E2B route only width/height render (real mobile *layout*)
   + the model is told its device, matching the sims' organic lanes; true touch/DPR/UA needs
   the CDP actor. Per-*persona* device (N×devices) rides fan-out. `done`

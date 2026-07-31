@@ -713,7 +713,12 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         redactScreenshots,
         scrubKnownValues,
         runSession,
-        hooks: cuaHooks
+        hooks: cuaHooks,
+        // Concurrent lanes are independent evidence seats: a requested-vs-verified screen
+        // mismatch is recorded as separate facts + a warning instead of failing the lane's
+        // device claim closed, so one seat's window-manager drift cannot abort the whole
+        // live multi-actor world (the single-lane/fan-out routes keep fail-closed).
+        screenMismatchPolicy: "record-evidence"
       };
 
       actorResults = await mapWithConcurrency(actorSpecs, Math.max(1, concurrency), async (spec, i) => {
@@ -1009,6 +1014,9 @@ export function buildConcurrentSharedWorldBundle(args: {
         ? "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it."
         : "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
     const traceScreenshotMode = session?.trace.redaction.screenshots;
+    const desktopGeometry = outcome?.desktopGeometry ?? {
+      screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+    };
     const screenshotMode: "raw" | "blurred" =
       traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
         ? traceScreenshotMode
@@ -1047,12 +1055,17 @@ export function buildConcurrentSharedWorldBundle(args: {
       embed: lastScreenshot
         ? { kind: "screenshot", url: lastScreenshot, title: `Shared plane, persona ${spec.laneId} (${screenshotMode})` }
         : { kind: "placeholder", title: `Shared plane, persona ${spec.laneId}` },
-      viewport: {
-        width: spec.resolution[0],
-        height: spec.resolution[1],
-        deviceScaleFactor: spec.devicePreset.deviceScaleFactor,
-        isMobile: spec.devicePreset.isMobile
-      },
+      ...(desktopGeometry.viewport === undefined
+        ? {}
+        : {
+            viewport: {
+              width: desktopGeometry.viewport.width,
+              height: desktopGeometry.viewport.height,
+              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+              isMobile: spec.devicePreset.isMobile
+            }
+          }),
+      desktopGeometry,
       ui: {
         route,
         intent: `Watch persona ${spec.laneId}${taxonomy} (${spec.persona.id}) drive the SHARED plane concurrently with the other personas.`,

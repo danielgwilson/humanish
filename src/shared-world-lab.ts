@@ -17,9 +17,9 @@
 // persist DIGEST-ONLY. The concurrent (getHost) topology, a handoff/barrier grammar, an onTurn
 // hook, and real per-role login are named NON-GOALS (PR2+).
 //
-// FIDELITY NOTE: one sandbox has ONE desktop geometry, so a role's `device` is a PROMPT SIGNAL
-// (composed into its persona context) — physical per-role geometry is the concurrent topology's
-// job. Each role's stream viewport records the sandbox's actual rendered resolution (honest).
+// FIDELITY NOTE: one sandbox has ONE screen geometry, so a role's `device` is a PROMPT SIGNAL
+// (composed into its persona context) — physical per-role screen geometry is the concurrent
+// topology's job. Each role records its measured browser viewport separately from that screen.
 
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -43,6 +43,8 @@ import {
   composeLaneInstructions,
   defaultPackLocalTree,
   makeChromeBrowserStateObserver,
+  captureDesktopBrowserGeometry,
+  inspectDesktopScreenGeometry,
   makeLaneWriteScreenshot,
   provisionCloneSubject,
   provisionLocalTreeSubject,
@@ -50,6 +52,10 @@ import {
   resolveSubjectState,
   SUBJECT_DIR,
   type DesktopBrowserEvidence,
+  type DesktopBrowserFamily,
+  type DesktopBrowserLaunchIdentity,
+  type DesktopBrowserLaunchResult,
+  desktopBrowserFamily,
   type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
@@ -83,6 +89,7 @@ import {
   SHARED_WORLD_SCHEMA,
   type ReviewSummary,
   type RunBundle,
+  type RunDesktopGeometry,
   type RunEvent,
   type RunSimulation,
   type RunSimulationStatus,
@@ -104,6 +111,8 @@ export const SHARED_WORLD_LAB_PROVIDER_METADATA = {
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 // Settle after opening a seat's browser, before the session's first screenshot.
 const BROWSER_SETTLE_MS = 8_000;
+// In-sandbox budget for ending one seat's browser at turn end (TERM, short wait, KILL).
+const SEAT_BROWSER_TERMINATION_TIMEOUT_MS = 15_000;
 // Server-side reclamation buffer past the loop's own wall-clock stop.
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room for the one-time clone/install/build/start/probe + the sequential per-role sessions.
@@ -256,6 +265,7 @@ interface RoleOutcome {
   sessionError?: string;
   screenshots: string[];
   desktopBrowser?: DesktopBrowserEvidence;
+  desktopGeometry?: RunDesktopGeometry;
   /** Set when fail-fast skipped this role before it ran. */
   skippedReason?: string;
   noEngagement: boolean;
@@ -294,7 +304,7 @@ async function launchSeatBrowser(
     requestTimeoutMs: number;
     seatUrl: string;
   }
-): Promise<DesktopBrowserEvidence | undefined> {
+): Promise<DesktopBrowserLaunchResult> {
   const requested = args.browserPreference ?? "default";
   const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellQuote).join(" ");
   const command = [
@@ -313,15 +323,27 @@ async function launchSeatBrowser(
     "  local label=\"$1\"",
     "  local binary=\"$2\"",
     "  if ! command -v \"$binary\" >/dev/null 2>&1; then return 127; fi",
-    "  echo \"HUMANISH_BROWSER_RESOLVED=$label\"",
-    "  pkill -f '[r]emote-debugging-port=9222' 2>/dev/null || true",
     "  prepare_chrome_profile",
-    "  setsid -f \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=\"$profile_dir\" \"${chrome_debug_flags[@]}\" \"$seat_url\" > /dev/null 2>&1 < /dev/null",
+    "  rm -f \"$profile_dir/DevToolsActivePort\"",
+    "  setsid \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 --user-data-dir=\"$profile_dir\" \"${chrome_debug_flags[@]}\" \"$seat_url\" > /dev/null 2>&1 < /dev/null &",
+    "  local launch_pid=$!",
+    "  echo \"HUMANISH_BROWSER_RESOLVED=$label\"",
+    "  echo \"HUMANISH_BROWSER_PID=$launch_pid\"",
+    "  for _ in $(seq 1 30); do",
+    "    if [ -s \"$profile_dir/DevToolsActivePort\" ]; then",
+    "      head -n 1 \"$profile_dir/DevToolsActivePort\" | sed 's/^/HUMANISH_BROWSER_CDP_PORT=/'",
+    "      break",
+    "    fi",
+    "    sleep 0.1",
+    "  done",
     "}",
     "launch_firefox() {",
     "  if ! command -v firefox >/dev/null 2>&1; then return 127; fi",
+    "  setsid firefox --new-instance --no-remote --new-window --profile \"$profile_dir\" \"$seat_url\" > /dev/null 2>&1 < /dev/null &",
+    "  local launch_pid=$!",
     "  echo \"HUMANISH_BROWSER_RESOLVED=firefox\"",
-    "  setsid -f firefox --new-window --profile \"$profile_dir\" \"$seat_url\" > /dev/null 2>&1 < /dev/null",
+    "  echo \"HUMANISH_BROWSER_PID=$launch_pid\"",
+    "  echo \"HUMANISH_BROWSER_PROFILE_DIR=$profile_dir\"",
     "}",
     "case \"$browser_preference\" in",
     "  chrome)",
@@ -348,14 +370,61 @@ async function launchSeatBrowser(
   if (args.browserPreference !== undefined && args.browserPreference !== "default" && result.exitCode !== undefined && result.exitCode !== 0) {
     throw new Error(`requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`);
   }
-  if (args.browserPreference === undefined) {
-    return undefined;
-  }
   const resolved = (result.stdout ?? "").match(/^HUMANISH_BROWSER_RESOLVED=(\S+)$/m)?.[1];
+  const processId = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PID=(\d+)$/m)?.[1];
+  const profileDir = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PROFILE_DIR=(\S+)$/m)?.[1] ?? args.profileDir;
+  const cdpPortRaw = (result.stdout ?? "").match(/^HUMANISH_BROWSER_CDP_PORT=(\d+)$/m)?.[1];
+  const cdpPort = cdpPortRaw === undefined ? undefined : Number(cdpPortRaw);
   return {
-    requested,
-    ...(resolved === undefined ? {} : { resolved })
+    family: desktopBrowserFamily(resolved ?? requested),
+    ...(processId === undefined
+      ? {}
+      : { identity: { processId, profileDir, targetUrl: args.seatUrl, ...(cdpPort === undefined ? {} : { cdpPort }) } }),
+    ...(args.browserPreference === undefined
+      ? {}
+      : { evidence: { requested, ...(resolved === undefined ? {} : { resolved }) } })
   };
+}
+
+/**
+ * Self-match-proof pkill/pgrep -f pattern for a seat's unique profile dir: bracket the first
+ * character so the in-sandbox shell running the termination script (whose own command line
+ * carries this pattern) can never match itself. Exported (pure) for contract tests.
+ */
+export function seatProfilePkillPattern(profileDir: string): string {
+  const head = profileDir.slice(0, 1);
+  const tail = profileDir.slice(1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return `[${head}]${tail}`;
+}
+
+/**
+ * Build the in-sandbox command that ends ONE seat's browser when its turn ends (pure; exported
+ * for contract tests). All roles share the ONE desktop, so a prior seat's browser left alive
+ * could keep polling/holding websockets and mutating the shared plane during a later role's
+ * turn, with its authenticated window one Alt-Tab away from the current actor. The recorded
+ * launch PID (a setsid session leader) is the primary kill (its process group takes the whole
+ * browser tree); pkill -f on the seat's unique profile dir is the fallback; a short bounded
+ * wait escalates to SIGKILL. Exit is always 0: a termination failure degrades to the caller's
+ * warning, never a failed run.
+ */
+export function buildSeatBrowserTerminationCommand(processId: string | undefined, profileDir: string): string {
+  return [
+    "set -u",
+    `launch_pid=${shellQuote(processId ?? "")}`,
+    `profile_pattern=${shellQuote(seatProfilePkillPattern(profileDir))}`,
+    'if [ -n "$launch_pid" ]; then',
+    '  kill -TERM -- "-$launch_pid" 2>/dev/null || kill -TERM "$launch_pid" 2>/dev/null || true',
+    "fi",
+    'pkill -TERM -f "$profile_pattern" 2>/dev/null || true',
+    "for _ in $(seq 1 20); do",
+    '  if ! pgrep -f "$profile_pattern" >/dev/null 2>&1; then',
+    "    exit 0",
+    "  fi",
+    "  sleep 0.1",
+    "done",
+    'pkill -KILL -f "$profile_pattern" 2>/dev/null || true',
+    "exit 0"
+  ].join("\n");
 }
 
 /** Combine a snapshot's per-probe digests into ONE sha256-16 (digest-only; no raw value). */
@@ -562,6 +631,9 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   let sandboxId: string | undefined;
   let killed = false;
   let failFastReason: string | undefined;
+  let sharedScreenGeometry: RunDesktopGeometry = {
+    screen: { requested: { width: sandboxResolution[0], height: sandboxResolution[1] } }
+  };
 
   // Pack the working tree ONCE per run, on the host, BEFORE any sandbox is created (mirrors the
   // cua route's ordering): a packing failure fails the run closed here, never spending sandbox
@@ -623,6 +695,23 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
       if (hooks.prepareDesktop) {
         await hooks.prepareDesktop(desktop);
       }
+
+      const screenGeometry = await inspectDesktopScreenGeometry({
+        desktop,
+        laneId: "shared-world",
+        requestedScreen: sandboxResolution,
+        requestTimeoutMs
+      });
+      if (screenGeometry.verified) {
+        sharedScreenGeometry = {
+          screen: { ...sharedScreenGeometry.screen, verified: screenGeometry.verified }
+        };
+      }
+      if (screenGeometry.warning) {
+        warnings.push(screenGeometry.warning);
+        sharedScreenGeometry = { ...sharedScreenGeometry, warnings: [screenGeometry.warning] };
+      }
+      if (screenGeometry.error) throw new Error(screenGeometry.error);
 
       // Provision the shared plane ONCE: clone + install/build + seed + serve + readiness probe
       // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
@@ -693,15 +782,38 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         let session: CuaLoopResult | undefined;
         let sessionError: string | undefined;
         let desktopBrowser: DesktopBrowserEvidence | undefined;
+        let launchedBrowserFamily: DesktopBrowserFamily = "unknown";
+        let browserLaunchIdentity: DesktopBrowserLaunchIdentity | undefined;
+        let browserLaunched = false;
+        let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
+        let browserWindowId: string | undefined;
+        let browserTargetId: string | undefined;
+        let desktopGeometry = sharedScreenGeometry;
         try {
           // Fresh isolated browser profile per seat, opened at the role's same-origin loopback entry.
-          desktopBrowser = await launchSeatBrowser(desktop, {
+          const browserLaunch = await launchSeatBrowser(desktop, {
             ...(config.execution?.desktop?.browser === undefined ? {} : { browserPreference: config.execution.desktop.browser }),
             profileDir: spec.profileDir,
             seatUrl: spec.seatUrl,
             requestTimeoutMs
           });
+          desktopBrowser = browserLaunch.evidence;
+          launchedBrowserFamily = browserLaunch.family;
+          browserLaunchIdentity = browserLaunch.identity;
+          browserLaunched = true;
           await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+          const browserGeometry = await captureDesktopBrowserGeometry({
+            desktop,
+            browserFamily: launchedBrowserFamily,
+            ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+            laneId: spec.roleId,
+            targetUrl: spec.seatUrl,
+            requestedScreen: sandboxResolution,
+            requestTimeoutMs
+          });
+          initialBrowserGeometry = browserGeometry;
+          browserWindowId = browserGeometry.browserWindowId;
+          browserTargetId = browserGeometry.browserTargetId;
           const sessionOptions: CuaActorSessionOptions = {
             instructions: spec.instructions,
             persona: spec.persona,
@@ -711,9 +823,22 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
               ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
             },
             desktop: desktop as unknown as E2BDesktopLike,
-            executorOptions: {
-              observeBrowserState: makeChromeBrowserStateObserver(desktop, requestTimeoutMs)
-            },
+            ...(launchedBrowserFamily === "chromium"
+              ? {
+                  executorOptions: {
+                    observeBrowserState: makeChromeBrowserStateObserver(
+                      desktop,
+                      requestTimeoutMs,
+                      {
+                        ...(browserLaunchIdentity?.cdpPort === undefined ? {} : { cdpPort: browserLaunchIdentity.cdpPort }),
+                        ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
+                        targetUrl: spec.seatUrl
+                      },
+                      browserTargetId
+                    )
+                  }
+                }
+              : {}),
             redactScreenshots,
             scrubText: scrubKnownValues,
             writeScreenshot,
@@ -722,6 +847,53 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
           session = await runSession(sessionOptions);
         } catch (error) {
           sessionError = redactText(scrubKnownValues(toErrorMessage(error)));
+        }
+
+        if (browserLaunched) {
+          const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> = await captureDesktopBrowserGeometry({
+            desktop,
+            browserFamily: launchedBrowserFamily,
+            ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+            ...(browserWindowId === undefined ? {} : { browserWindowId }),
+            ...(browserTargetId === undefined ? {} : { browserTargetId }),
+            laneId: spec.roleId,
+            targetUrl: spec.seatUrl,
+            requestedScreen: sandboxResolution,
+            requestTimeoutMs,
+            resize: false
+          }).catch((error: unknown) => ({
+            warnings: [`Final browser geometry measurement failed for lane ${spec.roleId}: ${redactText(scrubKnownValues(toErrorMessage(error)))}`]
+          }));
+          // Chosen capture rule (mirrors runCuaLane): seat-end-if-it-measured-anything, else
+          // seat-open. A seat-end capture that measured EITHER field wins whole, so a partial
+          // seat-end capture omits fields the seat-open capture had (honest omission); only a
+          // seat-end capture that measured NOTHING falls back to the seat-open capture.
+          const chosenGeometry = finalGeometry.browserWindow !== undefined || finalGeometry.viewport !== undefined
+            ? finalGeometry
+            : initialBrowserGeometry ?? finalGeometry;
+          const geometryWarnings = [...new Set(chosenGeometry.warnings.map((warning) => scrubKnownValues(warning)))];
+          warnings.push(...geometryWarnings);
+          desktopGeometry = {
+            ...sharedScreenGeometry,
+            ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),
+            ...(chosenGeometry.viewport === undefined ? {} : { viewport: chosenGeometry.viewport }),
+            ...((sharedScreenGeometry.warnings?.length ?? 0) + geometryWarnings.length === 0
+              ? {}
+              : { warnings: [...(sharedScreenGeometry.warnings ?? []), ...geometryWarnings] })
+          };
+
+          // End THIS seat's browser now that its turn (and its final geometry capture) is done:
+          // every role shares the ONE desktop, so this is the per-seat identity boundary. Runs
+          // after the final seat too. Bounded + best-effort: a failure degrades to an explicit
+          // warning (the run continues), never a hang.
+          try {
+            await desktop.commands.run(
+              buildSeatBrowserTerminationCommand(browserLaunchIdentity?.processId, spec.profileDir),
+              { requestTimeoutMs, timeoutMs: SEAT_BROWSER_TERMINATION_TIMEOUT_MS }
+            );
+          } catch (error) {
+            warnings.push(`Seat browser termination failed for role ${spec.roleId} (run continues; the seat's browser may remain open on the shared desktop): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+          }
         }
 
         if (session) {
@@ -760,6 +932,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
           ...(sessionError === undefined ? {} : { sessionError }),
           screenshots,
           ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
+          desktopGeometry,
           noEngagement,
           harnessError,
           afterCheckpoint
@@ -842,6 +1015,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     subject,
     sandboxResolution,
     sandboxPreset,
+    desktopGeometry: sharedScreenGeometry,
     seedDigest: seedRecipeDigest(config),
     ...(planeCommit === undefined ? {} : { subjectCommit: planeCommit }),
     ...(failFastReason === undefined ? {} : { failFastReason })
@@ -980,6 +1154,7 @@ export function buildSharedWorldBundle(args: {
   subject: RunSubjectProvenance;
   sandboxResolution: [number, number];
   sandboxPreset: DevicePreset;
+  desktopGeometry?: RunDesktopGeometry;
   seedDigest: string;
   subjectCommit?: string;
   failFastReason?: string;
@@ -1026,6 +1201,9 @@ export function buildSharedWorldBundle(args: {
   roleSpecs.forEach((spec, index) => {
     const outcome = roleOutcomes[index];
     const session = outcome?.session;
+    const desktopGeometry = outcome?.desktopGeometry ?? args.desktopGeometry ?? {
+      screen: { requested: { width: args.sandboxResolution[0], height: args.sandboxResolution[1] } }
+    };
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];
     const status: RunSimulationStatus = outcome?.skippedReason !== undefined
@@ -1078,12 +1256,17 @@ export function buildSharedWorldBundle(args: {
       embed: lastScreenshot
         ? { kind: "screenshot", url: lastScreenshot, title: `Shared desktop, role ${spec.roleId} (${screenshotMode})` }
         : { kind: "placeholder", title: `Shared desktop, role ${spec.roleId}` },
-      viewport: {
-        width: args.sandboxResolution[0],
-        height: args.sandboxResolution[1],
-        deviceScaleFactor: args.sandboxPreset.deviceScaleFactor,
-        isMobile: args.sandboxPreset.isMobile
-      },
+      ...(desktopGeometry.viewport === undefined
+        ? {}
+        : {
+            viewport: {
+              width: desktopGeometry.viewport.width,
+              height: desktopGeometry.viewport.height,
+              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+              isMobile: args.sandboxPreset.isMobile
+            }
+          }),
+      desktopGeometry,
       ui: {
         route: spec.seatUrl,
         intent: `Watch role ${spec.roleId} (${spec.persona.id}) drive the SHARED app (one plane; sequential turn).`,
@@ -1145,6 +1328,18 @@ export function buildSharedWorldBundle(args: {
         level: "info",
         type: "shared-world.contract.ready",
         message: `Role ${spec.roleId}: dry-run contract role ready; switch scenario.mode to live for a real shared-world session.`,
+        simId: spec.simId,
+        streamId: spec.streamId
+      });
+    }
+
+    for (const warning of desktopGeometry.warnings ?? []) {
+      events.push({
+        id: nextEventId(`geometry-warning-${spec.roleId}`),
+        at: createdAt,
+        level: "warn",
+        type: "shared-world.geometry.warning",
+        message: warning,
         simId: spec.simId,
         streamId: spec.streamId
       });

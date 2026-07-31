@@ -14,7 +14,12 @@ import type {
 } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig, type LabDesktopBrowser } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
-import { runSharedWorldLab, type SharedWorldLabHooks } from "../src/shared-world-lab.js";
+import {
+  buildSeatBrowserTerminationCommand,
+  runSharedWorldLab,
+  seatProfilePkillPattern,
+  type SharedWorldLabHooks
+} from "../src/shared-world-lab.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 import type { LocalTreeArchive } from "../src/source-archive.js";
@@ -31,6 +36,12 @@ import type { LocalTreeArchive } from "../src/source-archive.js";
 interface FakeSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
 }
+
+const FAKE_SCREEN_GEOMETRY = { width: 1440, height: 950 } as const;
+const FAKE_BROWSER_WINDOW = { x: 0, y: 0, width: 1440, height: 950 } as const;
+// Browser chrome consumes vertical space: this must stay distinct from the X display and outer
+// window so the sequential shared-world contract cannot regress to copying requested resolution.
+const FAKE_CSS_VIEWPORT = { width: 1440, height: 817, deviceScaleFactor: 1 } as const;
 
 function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string; exitCode?: number } | undefined): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
@@ -95,8 +106,34 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
 }
 
 /** A scripted command handler whose checkpoint output reflects the shared world version. */
-function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string; exitCode?: number } | undefined {
+function makeCommandHandler(
+  state: { worldVersion: number },
+  options: { cdpGeometry?: "measured" | "unavailable" } = {}
+): (command: string) => { stdout?: string; exitCode?: number } | undefined {
   return (command: string): { stdout?: string; exitCode?: number } | undefined => {
+    if (command.includes("xdpyinfo") && command.includes("dimensions")) {
+      return { stdout: `  dimensions:    ${FAKE_SCREEN_GEOMETRY.width}x${FAKE_SCREEN_GEOMETRY.height} pixels (381x251 millimeters)\n`, exitCode: 0 };
+    }
+    if (command.includes("find_chrome_window()")) return { stdout: "WINDOW_ID=10485761\n", exitCode: 0 };
+    if (command.includes("find_firefox_window()")) return { stdout: "WINDOW_ID=20971522\n", exitCode: 0 };
+    if (command.includes("xdotool getwindowgeometry --shell")) {
+      return {
+        stdout: [
+          `X=${FAKE_BROWSER_WINDOW.x}`,
+          `Y=${FAKE_BROWSER_WINDOW.y}`,
+          `WIDTH=${FAKE_BROWSER_WINDOW.width}`,
+          `HEIGHT=${FAKE_BROWSER_WINDOW.height}`
+        ].join("\n"),
+        exitCode: 0
+      };
+    }
+    if (command.includes("browserWindow: { x: window.screenX")) {
+      if (options.cdpGeometry === "unavailable") return { stdout: "{}", exitCode: 0 };
+      return {
+        stdout: JSON.stringify({ browserWindow: FAKE_BROWSER_WINDOW, viewport: FAKE_CSS_VIEWPORT }),
+        exitCode: 0
+      };
+    }
     if (command.includes("browser_preference='firefox'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
     if (command.includes("browser_preference='chrome'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
     if (command.includes("browser_preference='chromium'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
@@ -223,7 +260,7 @@ function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: stri
   return parsed.config;
 }
 
-function baseHooks(state: { worldVersion: number }): {
+function baseHooks(state: { worldVersion: number }, options: { cdpGeometry?: "measured" | "unavailable" } = {}): {
   hooks: SharedWorldLabHooks;
   created: E2BDesktopCreateOptions[];
   templates: (string | undefined)[];
@@ -231,7 +268,7 @@ function baseHooks(state: { worldVersion: number }): {
   sandbox: FakeSandbox;
   phaseEvents: SubjectPhaseEvent[];
 } {
-  const sandbox = makeFakeSandbox(makeCommandHandler(state));
+  const sandbox = makeFakeSandbox(makeCommandHandler(state, options));
   const { module, created, templates, killed } = makeFakeModule(sandbox);
   const phaseEvents: SubjectPhaseEvent[] = [];
   const hooks: SharedWorldLabHooks = {
@@ -287,6 +324,12 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     );
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
+    for (const stream of bundle.streams) {
+      expect(stream.viewport).toBeUndefined();
+      expect(stream.desktopGeometry).toEqual({
+        screen: { requested: FAKE_SCREEN_GEOMETRY }
+      });
+    }
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -330,6 +373,70 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
+    expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("find_firefox_window()"))).toBe(true);
+    expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("find_chrome_window()"))).toBe(false);
+    expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("browserWindow: { x: window.screenX"))).toBe(false);
+    for (const stream of bundle.streams) {
+      expect(stream.desktopGeometry.browserWindow).toEqual({ ...FAKE_BROWSER_WINDOW, source: "xdotool" });
+      expect(stream.desktopGeometry.viewport).toBeUndefined();
+      expect(stream.viewport).toBeUndefined();
+      expect(stream.desktopGeometry.warnings).toEqual(expect.arrayContaining([
+        expect.stringContaining("unavailable for Firefox")
+      ]));
+    }
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+
+  it("records requested + verified screen, browser outer bounds, and the measured CSS viewport as distinct geometry", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state);
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    for (const stream of bundle.streams) {
+      expect(stream.desktopGeometry).toEqual({
+        screen: {
+          requested: FAKE_SCREEN_GEOMETRY,
+          verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" }
+        },
+        browserWindow: { ...FAKE_BROWSER_WINDOW, source: "cdp" },
+        viewport: { ...FAKE_CSS_VIEWPORT, source: "cdp" }
+      });
+      expect(stream.viewport).toEqual({
+        ...FAKE_CSS_VIEWPORT,
+        isMobile: false
+      });
+      expect(stream.viewport).not.toEqual(expect.objectContaining(FAKE_SCREEN_GEOMETRY));
+    }
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+
+  it("omits stream.viewport when live CSS viewport measurement is unavailable instead of copying the requested screen", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, { cdpGeometry: "unavailable" });
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual(expect.arrayContaining([
+      expect.stringContaining("stream.viewport is omitted instead of copying the requested screen resolution")
+    ]));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    for (const stream of bundle.streams) {
+      expect(stream.viewport).toBeUndefined();
+      expect(stream.desktopGeometry).toEqual({
+        screen: {
+          requested: FAKE_SCREEN_GEOMETRY,
+          verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" }
+        },
+        browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xdotool" },
+        warnings: [expect.stringContaining("stream.viewport is omitted")]
+      });
+    }
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -403,6 +510,64 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // Per-role actor traces written.
     const actorsDir = await readdir(path.join(cwd, ".humanish", "runs", result.runId, "actors"));
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json"]);
+  });
+
+  it("ends each seat's browser at turn end: kill by recorded PID + pkill on the seat profile; prior seat gone before the next launch, final seat too", async () => {
+    const state = { worldVersion: 0 };
+    const base = makeCommandHandler(state);
+    // The default chrome seat launch also reports its PID (the real launch script records it).
+    const sandbox = makeFakeSandbox((command) => {
+      if (command.includes("browser_preference='default'")) {
+        return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\n", exitCode: 0 };
+      }
+      return base(command);
+    });
+    const { module, killed } = makeFakeModule(sandbox);
+    const hooks: SharedWorldLabHooks = {
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
+      loadDesktopModule: async () => module,
+      runSession: makeRunSession(state),
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
+      onPhase: () => {}
+    };
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+
+    const runs = sandbox.calls
+      .map((call, index) => ({ name: call[0], command: String(call[1]), index }))
+      .filter((entry) => entry.name === "commands.run");
+    const launches = runs.filter((entry) => entry.command.includes("--user-data-dir="));
+    const terminations = runs.filter((entry) => entry.command.includes("profile_pattern="));
+    expect(launches).toHaveLength(2);
+    expect(terminations).toHaveLength(2);
+
+    // Each seat's termination kills the RECORDED launch PID first and falls back to pkill on
+    // the seat's own unique profile dir (self-match-proof bracketed pattern).
+    expect(terminations[0]!.command).toContain("launch_pid='4242'");
+    expect(terminations[0]!.command).toContain("profile_pattern='[/]tmp/seat-role-author'");
+    expect(terminations[0]!.command).toContain("pkill");
+    expect(terminations[1]!.command).toContain("launch_pid='4242'");
+    expect(terminations[1]!.command).toContain("profile_pattern='[/]tmp/seat-role-reviewer'");
+
+    // Role-author's browser ends BEFORE role-reviewer's seat launches (ONE shared desktop: no
+    // idle prior-seat browser mutating the plane during a later role's turn, no authenticated
+    // window one Alt-Tab away), and the FINAL seat's browser is ended too.
+    expect(terminations[0]!.index).toBeGreaterThan(launches[0]!.index);
+    expect(terminations[0]!.index).toBeLessThan(launches[1]!.index);
+    expect(terminations[1]!.index).toBeGreaterThan(launches[1]!.index);
+
+    expect(killed).toEqual([sandbox.sandboxId]);
+  });
+
+  it("seatProfilePkillPattern matches the seat browser's cmdline but never the termination command's own text", () => {
+    const pattern = seatProfilePkillPattern("/tmp/seat-role-author");
+    const regex = new RegExp(pattern);
+    // Matches the launched browser's real cmdline (the expanded --user-data-dir path)...
+    expect(regex.test("chromium --new-window --user-data-dir=/tmp/seat-role-author http://127.0.0.1:3000/")).toBe(true);
+    // ...but never the termination command itself (its text carries only the bracketed
+    // pattern), so pkill/pgrep -f can never match the shell running the termination.
+    expect(regex.test(buildSeatBrowserTerminationCommand("4242", "/tmp/seat-role-author"))).toBe(false);
   });
 
   it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {

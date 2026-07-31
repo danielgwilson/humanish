@@ -336,7 +336,7 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(min(var(--tile-min), 100%), 1fr));
-  align-content: start;
+  align-content: start; align-items: start;
 }
 
 .tile {
@@ -355,12 +355,12 @@ a { color: inherit; text-decoration: none; }
 
 .tile-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 0 10px; height: 32px; flex: none;
+  padding: 0 10px; height: 38px; flex: none;
   border-bottom: 1px solid var(--line);
   background: var(--surface-1);
 }
-.tile-idx { font-family: var(--mono); font-size: 10px; color: var(--text-4); flex: none; }
-.tile-name { font-size: 12px; font-weight: 520; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.tile-idx { font-family: var(--mono); font-size: 11px; color: var(--text-4); flex: none; }
+.tile-name { font-size: 15px; font-weight: 520; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .kind-badge {
   font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
   padding: 2px 6px; border-radius: 5px; flex: none;
@@ -401,10 +401,10 @@ a { color: inherit; text-decoration: none; }
 }
 .tile-foot {
   display: flex; align-items: center; gap: 8px;
-  padding: 0 10px; height: 30px; flex: none;
+  padding: 0 10px; height: 36px; flex: none;
   border-top: 1px solid var(--line); background: var(--surface-1);
 }
-.tile-foot-text { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.tile-foot-text { font-size: 14px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .tile-foot-text .now-dot { color: var(--accent); margin-right: 6px; }
 .mini-prog { width: 46px; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; flex: none; }
 .mini-prog > span { display: block; height: 100%; background: var(--accent); transition: width .6s var(--ease-out); }
@@ -417,6 +417,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ============================================================ STREAM SURFACES */
 .surface-fill { position: absolute; inset: 0; width: 100%; height: 100%; }
+.surface-screenshot { object-fit: contain; object-position: top center; }
 .live-stream-mount { position: absolute; inset: 0; overflow: hidden; background: #000; }
 .live-stream-overlay { position: absolute; overflow: hidden; pointer-events: none; z-index: 2; }
 .live-stream-overlay[data-focus="true"] .bw-lab-dock { max-height: 86px; }
@@ -658,6 +659,15 @@ a.cx-artifact:hover { border-color: var(--line-3); color: var(--text-1); }
   max-width: 100%; max-height: 100%;
   width: auto; height: 100%;
 }
+.focus-geometry {
+  position: absolute; z-index: 4; left: 50%; bottom: 3px; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 7px; max-width: calc(100% - 44px);
+  height: 19px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: var(--radius-pill);
+  background: var(--surface-0); box-shadow: var(--shadow-1); color: var(--text-3);
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: .04em; white-space: nowrap;
+}
+.focus-geometry strong { color: var(--text-2); font-weight: 500; }
+.focus-geometry-sep { color: var(--text-4); }
 @supports not (aspect-ratio: 1) { .focus-frame { height: 100%; width: 100%; } }
 
 /* side panel */
@@ -847,6 +857,10 @@ html[data-theme="light"] .scrim { background: rgba(20,28,40,.32); }
     width: 100%; height: auto; max-height: none;
     min-height: 280px;
   }
+  .focus-geometry {
+    position: relative; left: auto; bottom: auto; transform: none;
+    width: max-content; max-width: 100%; margin: 8px auto 0; overflow-x: auto;
+  }
   .focus-side {
     position: relative; left: auto; right: auto; bottom: auto; top: auto; z-index: auto;
     min-height: 360px; max-height: none; border-left: none; border-top: 1px solid var(--line-2);
@@ -1025,6 +1039,7 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .sb-counts { display: inline-flex; align-items: center; gap: 8px; flex: none; }
 .sb-count { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
 .sb-count .si-dot { width: 7px; height: 7px; border-radius: 50%; }
+.sb-count-number, .sb-count-label { white-space: nowrap; }
 .sb-run { color: var(--text-4); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .sb-console {
@@ -1047,6 +1062,12 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 /* when docked above the bar, drop the console's bottom rounding/shadow seam */
 .console + .statusbar { border-top-color: var(--line); }
 
+@media (max-width: 1024px) {
+  .sb-count-label { display: none; }
+}
+@media (max-width: 900px) {
+  .sb-console-peek { display: none; }
+}
 @media (max-width: 720px) {
   .sb-counts, .sb-run, .sb-prog { display: none; }
   .sb-console-label { display: none; }
@@ -1202,17 +1223,71 @@ export function observerClientJs(): string {
   function laneEvents(s) { return s.timeline || []; }
   function laneArtifacts(s) { return s.artifacts || []; }
 
+  function geometrySize(value) {
+    var width = value && Number(value.width);
+    var height = value && Number(value.height);
+    return width > 0 && height > 0 ? { width: width, height: height } : null;
+  }
+  function screenSizeFor(s) {
+    var screen = s.desktopGeometry && s.desktopGeometry.screen;
+    return geometrySize(screen && screen.verified) || geometrySize(screen && screen.requested);
+  }
+  function geometrySource(value) {
+    if (value === "cdp") return "CDP";
+    return String(value || "runtime");
+  }
+  function geometryDetailFor(s) {
+    var geometry = s.desktopGeometry;
+    if (!geometry) return "";
+    var screen = geometry.screen || {};
+    var requested = geometrySize(screen.requested);
+    var verified = geometrySize(screen.verified);
+    var browserWindow = geometrySize(geometry.browserWindow);
+    var viewport = geometrySize(geometry.viewport);
+    var bits = [];
+    if (verified) {
+      bits.push("Screen " + verified.width + TIMES + verified.height + " (verified via " + geometrySource(screen.verified && screen.verified.source) + (requested ? "; requested " + requested.width + TIMES + requested.height : "") + ")");
+    } else if (requested) {
+      bits.push("Screen " + requested.width + TIMES + requested.height + " (requested; runtime verification unavailable)");
+    }
+    if (browserWindow) {
+      var x = Number(geometry.browserWindow.x);
+      var y = Number(geometry.browserWindow.y);
+      var origin = isFinite(x) && isFinite(y) ? " at " + x + "," + y : "";
+      bits.push("Browser window " + browserWindow.width + TIMES + browserWindow.height + origin + " (" + geometrySource(geometry.browserWindow.source) + ")");
+    }
+    if (viewport) {
+      var dpr = Number(geometry.viewport.deviceScaleFactor);
+      bits.push("CSS viewport " + viewport.width + TIMES + viewport.height + (dpr > 0 ? ", DPR " + dpr : "") + " (" + geometrySource(geometry.viewport.source) + ")");
+    }
+    return bits.join(" · ");
+  }
+  function focusGeometry(s) {
+    var screen = screenSizeFor(s);
+    var viewport = geometrySize(s.desktopGeometry && s.desktopGeometry.viewport);
+    if (!screen && !viewport) return "";
+    var parts = [];
+    if (screen) parts.push('<span>SCREEN <strong>' + screen.width + TIMES + screen.height + '</strong></span>');
+    if (viewport) {
+      var dpr = Number(s.desktopGeometry.viewport.deviceScaleFactor);
+      parts.push('<span>VIEWPORT <strong>' + viewport.width + TIMES + viewport.height + '</strong>' + (dpr > 0 ? ' · DPR <strong>' + esc(dpr) + '</strong>' : '') + '</span>');
+    }
+    var detail = geometryDetailFor(s);
+    return '<div class="focus-geometry" title="' + esc(detail) + '" aria-label="' + esc(detail) + '">' + parts.join('<span class="focus-geometry-sep">·</span>') + '</div>';
+  }
   function aspectFor(s) {
     if (s.kind === "terminal" || s.kind === "tui") return "16 / 10";
-    var vp = s.viewport;
-    if (vp && vp.height > vp.width) return vp.width + " / " + vp.height;
+    var frame = screenSizeFor(s) || geometrySize(s.viewport);
+    if (frame) return frame.width + " / " + frame.height;
     return "16 / 9";
   }
   function dimsFor(s) {
     if (s.kind === "terminal") return "CLI";
     if (s.kind === "tui") return "TUI";
     if (s.kind === "codex-ui") return "CODEX";
-    var vp = s.viewport;
+    var screen = screenSizeFor(s);
+    if (screen) return screen.width + TIMES + screen.height;
+    var vp = geometrySize(s.viewport);
     if (vp) return vp.width > vp.height ? (vp.width + TIMES + vp.height) : "MOB";
     return "SIM";
   }
@@ -1516,7 +1591,7 @@ export function observerClientJs(): string {
     var dock = focus ? browserLabDock(s, shot) : "";
     var body;
     if (liveUrl && S.media === "live") body = liveStreamMount(s, liveUrl);
-    else if (shot) body = '<img class="surface-fill" style="object-fit:cover;object-position:top" src="' + esc(shot) + '" alt="viewport screenshot"/>';
+    else if (shot) body = '<img class="surface-fill surface-screenshot" src="' + esc(shot) + '" alt="' + (s.desktopGeometry ? "desktop screenshot" : "browser screenshot") + '"/>';
     else body = '<div class="bw-app-wait"><div class="wait-spinner" style="width:24px;height:24px"></div>'
       + '<div class="mono" style="font-size:9px">' + esc(route) + '</div>'
       + '<div style="font-size:10px">' + esc(laneStep(s)) + '</div></div>';
@@ -1919,11 +1994,13 @@ export function observerClientJs(): string {
   var TILE_MIN = { comfortable: "440px", compact: "330px", dense: "240px" };
   function buildTile(s, i) {
     var live = tone(s.status) === "running";
-    return '<article class="tile" data-selected="' + (s.id === S.focusedId ? "true" : "false") + '" tabindex="0" role="button" data-action="open:' + esc(s.id) + '" aria-label="Open lane ' + pad2(i + 1) + ': ' + esc(laneName(s)) + '">'
+    var geometryDetail = geometryDetailFor(s);
+    var accessibleLabel = "Open lane " + pad2(i + 1) + ": " + laneName(s) + (geometryDetail ? ". " + geometryDetail : "");
+    return '<article class="tile" data-selected="' + (s.id === S.focusedId ? "true" : "false") + '" tabindex="0" role="button" data-action="open:' + esc(s.id) + '" aria-label="' + esc(accessibleLabel) + '">'
       + '<header class="tile-head"><span class="tile-idx mono">' + pad2(i + 1) + '</span>' + pip(s.status, live)
       + '<span class="tile-name" title="' + esc(laneName(s)) + '">' + esc(laneName(s)) + '</span>'
       + '<span class="kind-badge" data-kind="' + esc(s.kind) + '">' + esc(s.kindLabel || s.kind) + '</span>'
-      + '<span class="tile-dims mono">' + esc(dimsFor(s)) + '</span>'
+      + '<span class="tile-dims mono"' + (geometryDetail ? ' title="' + esc(geometryDetail) + '"' : '') + '>' + esc(dimsFor(s)) + '</span>'
       + '<span class="tile-open">' + icon("expand", 13) + '</span></header>'
       + '<div class="tile-surface" style="--aspect:' + aspectFor(s) + '">' + streamSurface(s, false) + '</div>'
       + '<footer class="tile-foot" data-status="' + esc(s.status) + '"><span class="tile-foot-text">' + (live ? '<span class="now-dot">▸</span>' : '') + esc(laneStep(s)) + '</span>'
@@ -2106,7 +2183,7 @@ export function observerClientJs(): string {
           + '<span class="rail-meta"><span class="rail-name">' + esc(laneName(r)) + '</span><span class="rail-sub">' + pip(r.status, tone(r.status) === "running") + ' ' + esc(r.kindLabel || r.kind) + '</span></span></button>';
       }).join("") + '</div></aside>';
 
-    var stage = '<section class="focus-stage"><div class="focus-stage-area"><div class="focus-frame" style="--aspect:' + aspectFor(s) + '">' + streamSurface(s, true) + '</div></div></section>';
+    var stage = '<section class="focus-stage"><div class="focus-stage-area"><div class="focus-frame" style="--aspect:' + aspectFor(s) + '">' + streamSurface(s, true) + '</div>' + focusGeometry(s) + '</div></section>';
 
     var side = '<aside class="focus-side" aria-hidden="' + (S.sideCollapsed ? "true" : "false") + '" data-sheet="' + (S.sheetOpen ? "open" : "closed") + '">'
         + '<button class="sheet-grip" data-action="toggle-sheet" aria-label="Toggle details"></button>'
@@ -2152,8 +2229,8 @@ export function observerClientJs(): string {
     return '<footer class="statusbar">'
       + '<span class="sb-status" data-tone="' + tone(overall) + '">' + pip(overall, tone(overall) === "running") + '<span class="sb-status-label mono">' + statusLabel(overall) + '</span><span class="sb-pct mono">' + pct + '%</span></span>'
       + '<span class="sb-prog"><span style="width:' + pct + '%" data-tone="' + tone(overall) + '"></span></span>'
-      + '<span class="sb-counts">' + counts.map(function (c) { return '<span class="sb-count" title="' + c.count + ' ' + c.label + '"><span class="si-dot" style="background:' + c.color + '"></span><span class="mono">' + c.count + '</span></span>'; }).join("") + '</span>'
-      + '<span class="sb-run mono">' + esc((run.mode || "") + " · " + (run.runId || "")) + '</span>'
+      + '<span class="sb-counts">' + counts.map(function (c) { return '<span class="sb-count" title="' + c.count + ' ' + c.label + '"><span class="si-dot" style="background:' + c.color + '"></span><span class="mono sb-count-number">' + c.count + '</span><span class="mono sb-count-label">' + c.label + '</span></span>'; }).join("") + '</span>'
+      + '<span class="sb-run mono">' + esc("mode: " + (run.mode || "unknown") + " · " + (run.runId || "")) + '</span>'
       + '<div class="tb-spacer"></div>'
       + '<button class="sb-console" aria-expanded="' + (S.consoleOpen ? "true" : "false") + '" data-action="toggle-console" title="Run console (backtick)">' + icon("terminal", 14)
       + '<span class="sb-console-label">Run console</span>' + peek

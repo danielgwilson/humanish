@@ -217,7 +217,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-dry-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
-  it("a 4-lane roster yields ONE bundle, simCount 4, per-lane persona/device/viewport, a plan event, contract statuses; verifyRun ok", async () => {
+  it("a 4-lane roster yields ONE bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
     const planSeen: CuaLanePlan[] = [];
     const outcome = await runLab(fanoutConfig(), { cwd, dryRun: true, cuaHooks: { onPreflight: (plan) => planSeen.push(plan) } });
     expect(outcome.backend).toBe("cua");
@@ -244,10 +244,14 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(bundle.streams.map((s: { status: string }) => s.status)).toEqual([
       "contract_proof_only", "contract_proof_only", "contract_proof_only", "contract_proof_only"
     ]);
-    // Per-lane persona + device viewport carried honestly.
-    expect(bundle.streams.map((s: { viewport: { width: number; height: number } }) => [s.viewport.width, s.viewport.height])).toEqual([
+    // Dry-run carries the requested screens but does not invent measured CSS viewports.
+    expect(bundle.streams.map((s: { desktopGeometry: { screen: { requested: { width: number; height: number } } } }) => [
+      s.desktopGeometry.screen.requested.width,
+      s.desktopGeometry.screen.requested.height
+    ])).toEqual([
       [414, 896], [360, 740], [1440, 950], [1920, 1080]
     ]);
+    expect(bundle.streams.every((s: { viewport?: unknown }) => s.viewport === undefined)).toBe(true);
     expect(bundle.simulations.map((s: { personaId: string }) => s.personaId)).toEqual([
       "first-time-visitor", "impatient-skimmer", "power-user", "comparison-shopper"
     ]);

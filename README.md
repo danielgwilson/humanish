@@ -224,12 +224,15 @@ not capture.) `humanish verify` reports raw-screenshot bundles as
 `shareSafety.status: local_only`; `humanish feedback issue` refuses them until the
 run is share-ready.
 
-**Device presets.** `execution.desktop.device` picks the viewport the run renders at —
+**Device presets.** `execution.desktop.device` picks the hosted desktop screen size —
 `mobile` (414×896), `small-mobile` (360×740), `narrow-mobile` (320×700), `tablet`
 (820×1180), `desktop` (1440×950, default), or `wide` (1920×1080). The values are copied
 from the mature in-house sims, not invented. **Honest fidelity:** on the computer-use /
-E2B-desktop route only width/height physically render — so a site's width-based responsive
-CSS fires (real mobile *layout*), and the model is *told* its device in the prompt, matching
+E2B-desktop route width/height size the virtual display and browser outer window. The actual
+page viewport is smaller because browser chrome occupies space; Chromium-family live bundles
+measure it through CDP and record it separately from requested/verified screen geometry. Browsers
+without that measurement seam omit the viewport rather than guessing. A site's width-based
+responsive CSS still fires, and the model is *told* its device in the prompt, matching
 how those sims run organic mobile lanes. There is no touch input, the device-pixel-ratio
 isn't rendered, and the user-agent stays desktop on this route; true touch/DPR/UA emulation
 arrives with the deterministic CDP actor. Device is run-wide today; per-*persona* device

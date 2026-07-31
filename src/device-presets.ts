@@ -1,5 +1,5 @@
-// Device/viewport presets — a per-persona dimension, with LITERAL values copied from mature
-// in-house ui-sim viewport tables rather than guessed. Where two independent reference sims
+// Device/screen presets — a per-persona dimension, with LITERAL values copied from mature
+// in-house ui-sim geometry tables rather than guessed. Where two independent reference sims
 // agree (mobile/small-mobile/tablet) the value is copied verbatim; where they diverge (desktop
 // baseline) both are kept as distinct named presets (laptop vs external monitor).
 //
@@ -13,9 +13,9 @@
 // here as honest metadata + a prompt signal, not a rendered guarantee on this route.
 
 export interface DevicePreset {
-  /** CSS-pixel viewport width. */
+  /** Requested CSS-pixel screen width on the hosted E2B desktop route. */
   width: number;
-  /** CSS-pixel viewport height. */
+  /** Requested CSS-pixel screen height on the hosted E2B desktop route. */
   height: number;
   /** Whether this models a touch/mobile device (metadata + prompt signal on the CUA route). */
   isMobile: boolean;
@@ -25,7 +25,7 @@ export interface DevicePreset {
 
 /**
  * Named presets. Keys are the public vocabulary for `execution.desktop.device` and (later) a
- * per-persona `device`. Values are copied verbatim from the in-house ui-sim viewport tables;
+ * per-persona `device`. Values are copied verbatim from the in-house ui-sim screen tables;
  * the per-line notes record where the two reference sims agree vs. diverge.
  */
 export const DEVICE_PRESETS = {
@@ -37,7 +37,7 @@ export const DEVICE_PRESETS = {
   "narrow-mobile": { width: 320, height: 700, isMobile: true, deviceScaleFactor: 2 },
   // tablet — both reference sims agree
   tablet: { width: 820, height: 1180, isMobile: false, deviceScaleFactor: 2 },
-  // laptop baseline (the in-house desktop viewport; ~matches humanish's own run.ts desktop surface)
+  // laptop baseline (the in-house desktop screen; ~matches humanish's own run.ts desktop surface)
   desktop: { width: 1440, height: 950, isMobile: false, deviceScaleFactor: 1 },
   // external monitor / most-common desktop resolution
   wide: { width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 }
@@ -47,7 +47,7 @@ export type DevicePresetName = keyof typeof DEVICE_PRESETS;
 
 /**
  * Default device for a run that does not declare one. `desktop` (1440x950) is the median
- * first-run laptop — the in-house desktop default, within 10px of humanish's own
+ * first-run laptop screen — the in-house desktop default, within 10px of humanish's own
  * pre-existing run.ts desktop surface. `wide` (1920x1080), the most-common external monitor, is
  * one keystroke away (`execution.desktop.device: wide`) but is deliberately not the default,
  * because the median device a first-time user arrives on is a laptop, not a 1080p monitor.
