@@ -9,10 +9,13 @@ It creates committed simulation source under `humanish/`, ignored run evidence
 under `.humanish/`, a watchable Observer UI, verification gates, and public-safe
 feedback drafts.
 
-![Humanish Observer synthetic technical sample with four lanes for UI, CLI, TUI, and Codex UI](https://unpkg.com/humanish@0.15.2/docs/assets/humanish-observer-hero.png)
+![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
 
-This synthetic technical sample demonstrates the Observer's four-lane layout;
-it is not a completed real-application study.
+A live four-persona study of [drawDB](https://github.com/drawdb-io/drawdb), a
+public open-source database diagram editor, driven against a commit-pinned
+local checkout. Every lane is a real computer-use session on a hosted desktop;
+the captions are each persona's own final report. drawDB is the application
+studied; it is not a Humanish adopter or endorser.
 
 ## Install
 

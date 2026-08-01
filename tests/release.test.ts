@@ -113,7 +113,7 @@ describe("release readiness", () => {
 
     expect(readme).toContain("docs/ramp/README.md");
     expect(readme).toContain("docs/goals/current.md");
-    expect(readme).toContain("it is not a completed real-application study");
+    expect(readme).toContain("it is not a Humanish adopter or endorser");
     expect(agents).toContain("Assume this repository is public.");
     expect(ramp).toContain("Future agents should be able to continue from the repo");
     expect(ramp).toContain("[`AGENTS.md`](../../AGENTS.md)");
@@ -149,12 +149,12 @@ describe("release readiness", () => {
     }
   });
 
-  it("links the version-pinned Observer hero and ships it in the npm payload", async () => {
+  it("links the version-pinned drawDB study hero and ships it in the npm payload", async () => {
     const readme = await readFile("README.md", "utf8");
-    const screenshotPath = "docs/assets/humanish-observer-hero.png";
+    const screenshotPath = "docs/assets/humanish-drawdb-hero.png";
     const screenshotMarkdown =
-      `![Humanish Observer synthetic technical sample with four lanes for UI, CLI, TUI, and Codex UI]` +
-      `(https://unpkg.com/humanish@0.15.2/${screenshotPath})`;
+      `![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome]` +
+      `(https://unpkg.com/humanish@0.16.0/${screenshotPath})`;
     const screenshot = await stat(screenshotPath);
     const inventory = JSON.parse(execFileSync(
       "npm",
@@ -174,14 +174,14 @@ describe("release readiness", () => {
     }
 
     expect(readme).toContain(screenshotMarkdown);
-    expect(readme).toContain("it is not a completed real-application study");
+    expect(readme).toContain("it is not a Humanish adopter or endorser");
     expect(readme).not.toContain(`https://unpkg.com/humanish@latest/${screenshotPath}`);
     expect(packedScreenshot.size).toBe(screenshot.size);
     expect(packedScreenshot.size).toBeGreaterThan(50_000);
   }, 45_000);
 
-  it("ships the drawDB study hero in the npm payload", async () => {
-    const screenshotPath = "docs/assets/humanish-drawdb-hero.png";
+  it("keeps the legacy synthetic hero in the npm payload for older pinned READMEs", async () => {
+    const screenshotPath = "docs/assets/humanish-observer-hero.png";
     const screenshot = await stat(screenshotPath);
     const inventory = JSON.parse(execFileSync(
       "npm",
