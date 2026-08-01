@@ -26,12 +26,10 @@ import {
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "../src/run.js";
+import { SYNTHETIC_PNG_1X1_BASE64, syntheticPng1x1 } from "./image-fixtures.js";
 
 const execFileAsync = promisify(execFile);
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
-  "base64"
-);
+const PNG_1X1 = syntheticPng1x1();
 
 function isNodeErrorCode(error: unknown, ...codes: string[]): boolean {
   return error instanceof Error
@@ -139,7 +137,7 @@ async function writeFakeBrowserCommand(cwd: string): Promise<string> {
       "  process.stderr.write('missing screenshot arg\\n');",
       "  process.exit(2);",
       "}",
-      "const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=', 'base64');",
+      `const png = Buffer.from('${SYNTHETIC_PNG_1X1_BASE64}', 'base64');`,
       "fs.writeFileSync(screenshotArg.slice('--screenshot='.length), png);",
       "process.exit(0);"
     ].join("\n"),

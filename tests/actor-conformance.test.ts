@@ -16,11 +16,9 @@ import {
   type ScriptedPageLike
 } from "../src/scripted-browser-actor.js";
 import { buildClaudeSession, buildCodexResult, buildPiSession, fixturePersona } from "./actor-fixtures.js";
+import { syntheticPng1x1 } from "./image-fixtures.js";
 
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
-  "base64"
-);
+const PNG_1X1 = syntheticPng1x1();
 
 // The shared contract every adapter's ActorTrace must satisfy. This is what makes
 // the harnesses interchangeable (ADR step 7): one persona run through codex and pi

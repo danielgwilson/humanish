@@ -20,12 +20,10 @@ import {
   type ScriptedBrowserLabHooks
 } from "../src/scripted-browser-lab.js";
 import type { ScriptedBrowserLike, ScriptedBrowserSessionResult, ScriptedLocatorLike, ScriptedPageLike } from "../src/scripted-browser-actor.js";
+import { syntheticPng1x1 } from "./image-fixtures.js";
 
 const ROOT = process.cwd();
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
-  "base64"
-);
+const PNG_1X1 = syntheticPng1x1();
 
 // ---------------------------------------------------------------------------
 // Fakes + fixtures. The fake browser drives the REAL step executor and writes

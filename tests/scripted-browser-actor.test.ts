@@ -17,11 +17,9 @@ import {
   type ScriptedLocatorLike,
   type ScriptedPageLike
 } from "../src/scripted-browser-actor.js";
+import { syntheticPng1x1 } from "./image-fixtures.js";
 
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
-  "base64"
-);
+const PNG_1X1 = syntheticPng1x1();
 
 // ---------------------------------------------------------------------------
 // Fake browser: a tiny in-memory "app" behind the structural seams, driven by
