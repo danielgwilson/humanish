@@ -83,7 +83,8 @@ const allowedEmailDomains = new Set([
 // The rebranded Observer hero was captured from a synthetic four-lane run and
 // manually reviewed before its exact bytes were approved for publication.
 const approvedBinaryAssets = new Map([
-  ["docs/assets/humanish-observer-hero.png", "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1"]
+  ["docs/assets/humanish-observer-hero.png", "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1"],
+  ["docs/assets/humanish-drawdb-hero.png", "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983"]
 ]);
 const approvedPublicCommitEmails = new Set([
   "daniel@danielgwilson.com",
