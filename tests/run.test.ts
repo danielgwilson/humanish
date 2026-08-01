@@ -28,6 +28,10 @@ import {
 } from "../src/run.js";
 
 const execFileAsync = promisify(execFile);
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
+  "base64"
+);
 
 function isNodeErrorCode(error: unknown, ...codes: string[]): boolean {
   return error instanceof Error
@@ -135,7 +139,7 @@ async function writeFakeBrowserCommand(cwd: string): Promise<string> {
       "  process.stderr.write('missing screenshot arg\\n');",
       "  process.exit(2);",
       "}",
-      "const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c49444154789c6360f8cf000000040003027e7b040000000049454e44ae426082', 'hex');",
+      "const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=', 'base64');",
       "fs.writeFileSync(screenshotArg.slice('--screenshot='.length), png);",
       "process.exit(0);"
     ].join("\n"),
@@ -787,7 +791,7 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("rejects referenced screenshot files that are not valid image evidence", async () => {
+  it("rejects referenced screenshot files that have a valid PNG signature but cannot be decoded", async () => {
     await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({
         cwd,
@@ -797,9 +801,9 @@ describe("dry-run bundles", () => {
       expect(run.ok).toBe(true);
 
       const runRoot = path.join(cwd, ".humanish/runs/invalid-screenshot-regression");
-      const screenshotPath = "screenshots/not-a-real-png.png";
+      const screenshotPath = "screenshots/truncated.png";
       await mkdir(path.join(runRoot, "screenshots"), { recursive: true });
-      await writeFile(path.join(runRoot, screenshotPath), "this file is non-empty but not an image", "utf8");
+      await writeFile(path.join(runRoot, screenshotPath), PNG_1X1.subarray(0, 24));
 
       const bundlePath = path.join(runRoot, "run.json");
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
@@ -819,7 +823,7 @@ describe("dry-run bundles", () => {
       const verify = await verifyRun(cwd, "invalid-screenshot-regression");
       expect(verify.ok).toBe(false);
       expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-        .toContain("screenshots/not-a-real-png.png (expected PNG signature)");
+        .toContain("screenshots/truncated.png (could not decode PNG evidence)");
     });
   });
 

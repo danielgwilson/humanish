@@ -18,7 +18,7 @@ import {
 import { buildClaudeSession, buildCodexResult, buildPiSession, fixturePersona } from "./actor-fixtures.js";
 
 const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
   "base64"
 );
 

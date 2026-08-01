@@ -12,7 +12,7 @@ import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
 import { runDryRun } from "../src/run.js";
 
 const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=",
   "base64"
 );
 
