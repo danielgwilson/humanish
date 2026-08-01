@@ -3,6 +3,8 @@ import { realpathSync } from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
 
+import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./screenshot-image.js";
+
 // Single source of truth for public-safety redaction patterns. Both the Codex
 // actor trace (src/codex-app-server.ts) and the run-bundle scanner/redactor
 // (src/run.ts) use these so the denylist cannot drift between producers and the
@@ -136,9 +138,7 @@ const SCREENSHOT_MAX_WIDTH_DEFAULT = 96;
 const SCREENSHOT_MAX_WIDTH_CAP = 128;
 // Reject absurd source dimensions before decode so a crafted IHDR cannot OOM the
 // process before the try/catch can fall back to a placeholder.
-const SCREENSHOT_MAX_SOURCE_PIXELS = 50_000_000;
 const SCREENSHOT_PLACEHOLDER_GRAY = 128;
-const PNG_SIGNATURE_BE = 0x89_50_4e_47;
 
 /**
  * A redacted screenshot safe to persist to a public run bundle. `buffer` is
@@ -217,13 +217,9 @@ function effectiveBlurRadius(outW: number): number {
 // the pixel count exceeds the cap. A too-short or non-PNG buffer returns false
 // and falls through to PNG.sync.read, which throws and lands on the placeholder.
 function sourcePixelsExceedCap(buf: Buffer): boolean {
-  if (buf.length < 24 || buf.readUInt32BE(0) !== PNG_SIGNATURE_BE) {
-    return false;
-  }
-  // IHDR is the first chunk: width at byte 16, height at byte 20 (big-endian).
-  const width = buf.readUInt32BE(16);
-  const height = buf.readUInt32BE(20);
-  return width * height > SCREENSHOT_MAX_SOURCE_PIXELS;
+  const dimensions = readPngDeclaredDimensions(buf);
+  return dimensions !== null
+    && dimensions.width * dimensions.height > SCREENSHOT_MAX_SOURCE_PIXELS;
 }
 
 function placeholderScreenshot(maxWidth: number): RedactedScreenshot {

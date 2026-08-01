@@ -1,0 +1,6 @@
+export const SYNTHETIC_PNG_1X1_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=";
+
+export function syntheticPng1x1(): Buffer {
+  return Buffer.from(SYNTHETIC_PNG_1X1_BASE64, "base64");
+}
