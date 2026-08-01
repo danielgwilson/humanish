@@ -20,7 +20,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.15.3");
+    expect(packageJson.version).toBe("0.16.0");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
@@ -176,6 +176,30 @@ describe("release readiness", () => {
     expect(readme).toContain(screenshotMarkdown);
     expect(readme).toContain("it is not a completed real-application study");
     expect(readme).not.toContain(`https://unpkg.com/humanish@latest/${screenshotPath}`);
+    expect(packedScreenshot.size).toBe(screenshot.size);
+    expect(packedScreenshot.size).toBeGreaterThan(50_000);
+  }, 45_000);
+
+  it("ships the drawDB study hero in the npm payload", async () => {
+    const screenshotPath = "docs/assets/humanish-drawdb-hero.png";
+    const screenshot = await stat(screenshotPath);
+    const inventory = JSON.parse(execFileSync(
+      "npm",
+      ["pack", "--dry-run", "--json", "--ignore-scripts"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        maxBuffer: 5 * 1024 * 1024,
+        timeout: 30_000
+      }
+    )) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
+
+    expect(inventory).toHaveLength(1);
+    const packedScreenshot = inventory[0]?.files?.find((file) => file.path === screenshotPath);
+    if (!packedScreenshot) {
+      throw new Error(`npm pack inventory omitted ${screenshotPath}`);
+    }
+
     expect(packedScreenshot.size).toBe(screenshot.size);
     expect(packedScreenshot.size).toBeGreaterThan(50_000);
   }, 45_000);
