@@ -64,6 +64,39 @@ graphically dense (pixel-art) UI. `stableProgressKey(appState)`:
   correctness-load-bearing: a hostile or merely large state blob cannot crash the
   loop.
 
+## A single desktop command failure is a recoverable skipped action
+
+`execute(action)` runs against a real substrate, and the real `@e2b/desktop`
+Sandbox **throws** `CommandExitError` on **any** non-zero exit — a `press`,
+`scroll`, `drag`, `moveMouse`, or `click` can exit non-zero for reasons that have
+nothing to do with the run's health (a `Ctrl+Minus` zoom keypress exiting `2` was
+the reproduced case). The loop treats one such failure as a **recoverable skipped
+action**, not a fatal error:
+
+- The per-action `execute()` call is wrapped at the loop boundary (so the recovery
+  covers every action kind uniformly). When the caught error
+  `isCommandExitError` (`command-failure.ts` — matches the SDK class name or any
+  object carrying a numeric `exitCode`), the loop records a `notice` item
+  (`status: "error"`, title `action skipped: desktop command failed`, text = the
+  public-safe action label + exit code + a redacted `stderrTail`), does **not**
+  count the action as a material action, and **continues**. The next `observe()`
+  hands the model a fresh screenshot/state to adapt to.
+- **Every other error is re-thrown**, byte-identically preserving the existing
+  fatal handling: a `raceSettle` deadline still classifies as `timed_out` (or
+  `budget_reached` after material progress), a `CuaAbortError` as `harness_error`,
+  and any genuine non-`CommandExitError` adapter fault as `actor_error`.
+- **No infinite loop.** A skipped action changes nothing on screen, so it is not
+  progress. A run that keeps failing every action makes no progress and still
+  terminates honestly through the existing idle / no-progress backstop
+  (`gave_up`) — the resilience only converts a *single flaky command* from fatal
+  to survivable; it never masks a genuinely stuck run.
+
+Public-safety: the notice text carries only the substrate's own stderr (tailed +
+whitespace-collapsed) and a numeric exit code, and is still run through the loop's
+`redactNarration` (known-value scrub + pattern redaction). Raw typed text, secret
+values, and machine paths never appear — the action label comes from
+`describeCuaAction`, which never includes typed text.
+
 ## You need a NON-vision provider too
 
 Swapping the executor is not enough. The default OpenAI computer-use provider is

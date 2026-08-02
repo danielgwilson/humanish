@@ -7,6 +7,7 @@ import {
   type ActorTrace,
   type ActorTraceItem
 } from "./actor-contract.js";
+import { commandFailureInfo, isCommandExitError } from "./command-failure.js";
 import type { RedactionHooks } from "./redaction.js";
 import {
   evaluateStopWhen,
@@ -699,6 +700,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         lastActionTitle = actionTitle;
         recentActionTitles.push(actionTitle);
         if (recentActionTitles.length > 8) recentActionTitles.shift();
+        // Captured so a recovered (skipped) material action can restore it: a
+        // skipped action must not leave its title as the "last material action".
+        const priorMaterialActionTitle = lastMaterialActionTitle;
         if (!isIdleAction(action)) {
           lastMaterialActionTitle = actionTitle;
           materialActions += 1;
@@ -709,7 +713,54 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         // Record the action as completed only AFTER execute() resolves: a failed
         // action must not appear as a plainly-completed ui_action (#248). On
         // failure the error notice below captures the failing action + phase.
-        await raceSettle(executor.execute(action), remaining(), signal);
+        try {
+          await raceSettle(executor.execute(action), remaining(), signal);
+        } catch (error) {
+          // RECOVERY at the loop boundary (covers ALL action kinds uniformly):
+          // only a genuine substrate-command failure is recoverable. The real
+          // @e2b/desktop Sandbox THROWS a CommandExitError on ANY non-zero exit
+          // (e.g. a Ctrl+Minus keypress exiting 2), so one flaky desktop command
+          // must not end the whole run. Everything else — a raceSettle deadline
+          // (CuaDeadlineError) or abort (CuaAbortError), a sandbox-gone failure,
+          // any non-CommandExitError — is RE-THROWN so the existing fatal handling
+          // (actor_error / timed_out / harness_error) stays byte-identical.
+          if (!isCommandExitError(error)) throw error;
+          if (!isIdleAction(action)) {
+            // The material count was applied above assuming the action would
+            // actuate; it did not, so roll it back — a failed action is not
+            // progress. The next observe() hands the model a fresh screenshot to
+            // adapt, and because a skipped action changes nothing on screen a
+            // persistently-failing run makes no progress and still terminates
+            // honestly via the idle/no-progress backstop (gave_up), never a
+            // silent actor_error and never an infinite loop.
+            materialActions -= 1;
+            counts.materialActions = materialActions;
+            // Roll back the title too, so a later gave_up backstop notice never
+            // cites a never-actuated action as the "last material action" while
+            // counts.materialActions is 0 (honest-evidence invariant).
+            lastMaterialActionTitle = priorMaterialActionTitle;
+          }
+          const { exitCode, stderrTail } = commandFailureInfo(error);
+          items.push({
+            id: nextId("notice"),
+            kind: "notice",
+            lifecycle: "completed",
+            status: "error",
+            title: "action skipped: desktop command failed",
+            // Public-safe: describeCuaAction never includes raw typed text, the
+            // exit code is a number, and the tail is only the substrate's own
+            // stderr (tailed+whitespace-collapsed); the whole line is still run
+            // through redactNarration (scrubKnownValues + pattern redaction).
+            text: redactNarration(
+              [
+                `action: ${actionTitle}`,
+                exitCode === undefined ? undefined : `exit code: ${exitCode}`,
+                stderrTail.length > 0 ? `stderr: ${stderrTail}` : undefined
+              ].filter(Boolean).join("; ")
+            )
+          });
+          continue;
+        }
         items.push({
           id: nextId("ui_action"),
           kind: "ui_action",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { commandFailureInfo, runDesktopCommandOrThrow, tailOf } from "../src/command-failure.js";
+import { commandFailureInfo, isCommandExitError, runDesktopCommandOrThrow, tailOf } from "../src/command-failure.js";
 
 /** Shape matching @e2b/desktop's CommandExitError (name + exitCode + stderr/stdout). */
 function commandExitError(fields: { exitCode?: number; stderr?: string; stdout?: string; message?: string }): Error {
@@ -42,6 +42,32 @@ describe("commandFailureInfo", () => {
     expect(out.length).toBeLessThanOrEqual(240);
     expect(out).not.toContain("\n");
     expect(out.endsWith("with spaces")).toBe(true);
+  });
+});
+
+describe("isCommandExitError", () => {
+  it("is true for a thrown CommandExitError (by SDK class name)", () => {
+    expect(isCommandExitError(commandExitError({ exitCode: 2, stderr: "boom" }))).toBe(true);
+  });
+
+  it("is true for any Error carrying a numeric exitCode (structural fake, no SDK name)", () => {
+    expect(isCommandExitError(Object.assign(new Error("exit status 1"), { exitCode: 1 }))).toBe(true);
+    expect(isCommandExitError({ exitCode: 0 })).toBe(true); // 0 is still a numeric exit signal
+  });
+
+  it("is FALSE for a generic Error with no name override and no exitCode (deadline/abort-shaped)", () => {
+    class CuaDeadlineError extends Error {}
+    class CuaAbortError extends Error {}
+    expect(isCommandExitError(new Error("request timed out"))).toBe(false);
+    expect(isCommandExitError(new CuaDeadlineError())).toBe(false);
+    expect(isCommandExitError(new CuaAbortError())).toBe(false);
+  });
+
+  it("is FALSE for a non-object throw or a non-numeric exitCode", () => {
+    expect(isCommandExitError(undefined)).toBe(false);
+    expect(isCommandExitError(null)).toBe(false);
+    expect(isCommandExitError("boom")).toBe(false);
+    expect(isCommandExitError({ exitCode: "2" })).toBe(false);
   });
 });
 

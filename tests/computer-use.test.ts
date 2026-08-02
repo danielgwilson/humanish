@@ -84,6 +84,37 @@ class SignatureExecutor implements CuaExecutor {
   async execute(): Promise<void> {}
 }
 
+/** Shape matching @e2b/desktop's CommandExitError (name + numeric exitCode + stderr). */
+function commandExitError(fields: { exitCode?: number; stderr?: string; message?: string }): Error {
+  return Object.assign(new Error(fields.message ?? `exit status ${fields.exitCode ?? 1}`), {
+    name: "CommandExitError",
+    ...fields
+  });
+}
+
+// An executor that actuates normally but throws a caller-chosen error on selected actions —
+// used to prove a single desktop CommandExitError is a recoverable skipped action while any
+// other throw stays fatal. `executed` records only actions that actually actuated.
+class FlakyExecutor implements CuaExecutor {
+  private i = 0;
+  readonly frame = frame();
+  readonly executed: CuaAction[] = [];
+  constructor(
+    private readonly signatures: string[],
+    private readonly failOn: (action: CuaAction) => Error | undefined
+  ) {}
+  async observe(): Promise<CuaObservation> {
+    const sig = this.signatures[Math.min(this.i, this.signatures.length - 1)] ?? "sig";
+    this.i += 1;
+    return { screenshot: this.frame, stateSignature: sig };
+  }
+  async execute(action: CuaAction): Promise<void> {
+    const err = this.failOn(action);
+    if (err) throw err;
+    this.executed.push(action);
+  }
+}
+
 class ObservationSequenceExecutor implements CuaExecutor {
   private i = 0;
   readonly frame = frame();
@@ -412,6 +443,172 @@ describe("runComputerUseLoop", () => {
       title: "computer-use loop error",
       text: "phase: executing click (11, 22); error: Error; message: desktop actuator exited 1; last action: click (11, 22)"
     });
+  });
+
+  // Issue: a single flaky desktop command must not end the whole run. The real @e2b/desktop
+  // Sandbox THROWS a CommandExitError on any non-zero exit (e.g. a Ctrl+Minus keypress exiting
+  // 2), so ONE such throw is a recoverable skipped action, not a fatal actor_error.
+  it("skips a single desktop CommandExitError action (recoverable) and completes normally, not actor_error", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "keypress", keys: ["Control", "-"] }], pendingSafetyChecks: [], done: false, responseId: "r1" },
+      { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false, responseId: "r2" },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done", responseId: "r3" }
+    ]);
+    const executor = new FlakyExecutor(["s0", "s1", "s2", "s3"], (action) =>
+      action.kind === "keypress" ? commandExitError({ exitCode: 2, stderr: "zoom failed" }) : undefined
+    );
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock()
+    });
+
+    // NOT fatal: the run reached its natural endpoint despite the failed keypress.
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.status).toBe("passed");
+    // The failed keypress did NOT actuate — only the click counts as a material action.
+    expect(result.trace.counts.materialActions).toBe(1);
+    expect(executor.executed).toEqual([{ kind: "click", x: 10, y: 20 }]);
+    // A public-safe skipped-action notice was recorded (action label + exit code + stderr tail).
+    const notice = result.trace.items.find((item) => item.title === "action skipped: desktop command failed");
+    expect(notice).toMatchObject({ kind: "notice", lifecycle: "completed", status: "error" });
+    expect(notice?.text).toBe("action: keypress Control+-; exit code: 2; stderr: zoom failed");
+    // The failed action did NOT emit a completed ui_action, and the run did NOT crash.
+    expect(result.trace.items.filter((item) => item.kind === "ui_action")).toHaveLength(1);
+    expect(result.trace.items.some((item) => item.title === "computer-use loop error")).toBe(false);
+  });
+
+  it("a NON-CommandExitError from execute() is still fatal (actor_error path byte-preserved)", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 11, y: 22 }], pendingSafetyChecks: [], done: false }
+    ]);
+    // A generic Error carries no CommandExitError name and no numeric exitCode → not recoverable.
+    const executor = new FlakyExecutor(["s0"], () => new Error("desktop actuator exited 1"));
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock()
+    });
+
+    expect(result.completionReason).toBe("actor_error");
+    expect(result.status).toBe("failed");
+    // It was NOT swallowed by the recovery path — the fatal loop-error notice is present.
+    expect(result.trace.items.some((item) => item.title === "action skipped: desktop command failed")).toBe(false);
+    expect(result.trace.items.at(-1)).toMatchObject({
+      kind: "notice",
+      status: "error",
+      title: "computer-use loop error",
+      text: "phase: executing click (11, 22); error: Error; message: desktop actuator exited 1; last action: click (11, 22)"
+    });
+  });
+
+  it("a raceSettle DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
+    let t = 0;
+    const now = (): number => t;
+    const provider: CuaProvider = {
+      id: "hang-exec",
+      version: "h",
+      capabilities: FAKE_CAPS,
+      async nextTurn() {
+        t = 1000; // jump past the 100ms deadline before the (idle) action runs
+        return { actions: [{ kind: "wait", ms: 5 }], pendingSafetyChecks: [], done: false };
+      }
+    };
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: "s0" }),
+      execute: () => new Promise<void>(() => {}) // hangs; only the deadline can settle it
+    };
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 100,
+      now
+    });
+
+    expect(result.completionReason).toBe("timed_out");
+    expect(result.status).toBe("timed_out");
+    expect(result.trace.items.some((item) => item.title === "action skipped: desktop command failed")).toBe(false);
+  });
+
+  it("an ABORT during execute() propagates (harness_error), never swallowed as a skipped action", async () => {
+    const controller = new AbortController();
+    const provider: CuaProvider = {
+      id: "abort-exec",
+      version: "a",
+      capabilities: FAKE_CAPS,
+      // Material action; signal is still un-aborted at the pre-action guard, so the abort
+      // is exercised INSIDE the execute await (through the new recovery boundary).
+      async nextTurn() {
+        return { actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false };
+      }
+    };
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: "s0" }),
+      execute: () => {
+        controller.abort();
+        return new Promise<void>(() => {}); // hangs; only the abort can settle it
+      }
+    };
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      signal: controller.signal
+    });
+
+    expect(result.completionReason).toBe("harness_error");
+    expect(result.status).toBe("failed");
+    expect(result.trace.items.some((item) => item.title === "action skipped: desktop command failed")).toBe(false);
+  });
+
+  it("ends as gave_up (friction backstop) — never actor_error and never an infinite loop — when EVERY action fails with CommandExitError", async () => {
+    const provider = new RepeatProvider({
+      actions: [{ kind: "keypress", keys: ["Control", "-"] }],
+      pendingSafetyChecks: [],
+      done: false
+    });
+    // Every keypress throws, and the observation signature never changes, so nothing progresses.
+    const executor = new FlakyExecutor(["constant"], () => commandExitError({ exitCode: 2, stderr: "zoom failed" }));
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      noProgressSteps: 3
+    });
+
+    // The existing no-progress backstop still terminates the run honestly.
+    expect(result.completionReason).toBe("gave_up");
+    expect(result.status).toBe("failed");
+    // Not fatal, and every failed action was skipped (no material progress ever counted).
+    expect(result.trace.items.some((item) => item.title === "computer-use loop error")).toBe(false);
+    expect(result.trace.counts.materialActions).toBe(0);
+    expect(
+      result.trace.items.filter((item) => item.title === "action skipped: desktop command failed").length
+    ).toBeGreaterThanOrEqual(3);
   });
 
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {
