@@ -621,11 +621,23 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // above and BEFORE the next provider.nextTurn request, so a model stuck retrying cannot keep
       // spending: the moment the running estimate crosses maxUsd the loop breaks with a terminal,
       // non-harness-error stop. A null estimate cannot trip it (preflight guaranteed a rate).
+      //
+      // Classify the outcome HONESTLY, mirroring the wall-clock path above: budget_reached maps to
+      // "passed", a verdict only earned AFTER material progress (real work that then hit its cost
+      // budget). A zero-action runaway that crosses the cap is NOT a pass — it is the exact runaway
+      // the cap exists to catch (maxUsd:0 makes it deterministic: the first turn with any usage
+      // trips here before any action executes) — so it surfaces as "gave_up" (→ failed). Either way
+      // the running estimate + the cap are cited so the operator sees WHY the loop stopped.
       if (maxUsd !== undefined && estimateTurnCostUsd) {
         const running = estimateTurnCostUsd(usageInput, usageOutput);
         if (running !== null && running > maxUsd) {
-          completionReason = "budget_reached";
-          reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd}; aborted fail-closed before the next model turn`;
+          if (materialActions > 0) {
+            completionReason = "budget_reached";
+            reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${counts.turns} turn(s)); aborted fail-closed before the next model turn`;
+          } else {
+            completionReason = "gave_up";
+            reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd} with no material progress; aborted fail-closed before the next model turn`;
+          }
           break;
         }
       }

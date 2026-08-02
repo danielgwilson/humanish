@@ -1019,12 +1019,44 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     });
 
     // Cumulative estimate: turn1 $0.15, turn2 $0.30, turn3 $0.45 > $0.35 → break at turn 3.
+    // Two material clicks executed BEFORE the cap tripped → a productive lane that hit its cost
+    // budget → budget_reached (passed), with the estimate + cap cited in the detail.
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("passed");
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0.35");
+    expect(result.reason).toContain("after productive activity");
+    expect(result.trace.counts.materialActions).toBeGreaterThan(0);
     // The cap fires BEFORE the next provider.nextTurn: exactly 3 turns were requested, no 4th.
     expect(provider.seen).toHaveLength(3);
     expect(result.trace.tokenUsage).toEqual({ input: 300, output: 150, total: 450 });
+  });
+
+  it("classifies a ZERO-action runaway that crosses the cap as FAILED (gave_up), not a passed budget stop", async () => {
+    // maxUsd:0 is deterministic: the first turn's usage accrues, then the cap check at the TOP of
+    // the loop trips BEFORE the turn's click is ever executed → materialActions is still 0. This is
+    // the exact runaway the cap exists to catch; it must surface as FAILED, never a passed lane.
+    const provider = new RepeatProvider(usageTurn);
+    const executor = new SignatureExecutor(["s0", "s1"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Any token usage on the first turn must trip the $0 cap before any material action.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      maxUsd: 0,
+      estimateTurnCostUsd
+    });
+
+    expect(result.completionReason).toBe("gave_up");
+    expect(result.status).toBe("failed");
+    expect(result.trace.counts.materialActions).toBe(0);
+    expect(result.reason).toContain("crossed execution.caps.maxUsd=$0");
+    expect(result.reason).toContain("no material progress");
+    // Tripped on turn 1, before a second provider turn was ever requested.
+    expect(provider.seen).toHaveLength(1);
   });
 
   it("is a no-op when maxUsd is unset — the loop runs to its natural completion unchanged", async () => {

@@ -2718,6 +2718,16 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // `first.source !== "clone"` branch below returns it directly, with no unanimity math needed
   // (there is nothing that could diverge).
   const aggregateWarnings: string[] = [];
+  // execution.caps.maxUsd is a PER-LANE cap: it is enforced INSIDE each lane's loop independently,
+  // so an N-lane fan-out can spend up to N × maxUsd before any lane aborts, while the run cost
+  // summary reports the (larger) aggregate. Warn at run level so the operator sees the true ceiling.
+  // A shared, run-level budget is future work — there is no cross-lane counter today.
+  const perLaneCapUsd = config.execution?.caps?.maxUsd;
+  if (perLaneCapUsd !== undefined && laneCount > 1) {
+    aggregateWarnings.push(
+      `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. A shared run-level budget is future work.`
+    );
+  }
   const aggregateSubject = ((): CuaSubjectProjection => {
     const first = laneSubjects[0]!;
     if (first.source !== "clone") {
@@ -3462,7 +3472,7 @@ function tailOf(log: string): string {
  * reason and contributes NOTHING to estimatedTotalUsd (never coerced to 0); an all-null summary
  * has a null total. Every non-null figure carries its ratesAsOf date + source (invariant 6).
  */
-function buildCuaCostSummary(args: {
+export function buildCuaCostSummary(args: {
   lanes: Array<{ laneId?: string; trace: ActorTrace }>;
   desktopMinutes: number | undefined;
 }): RunCostSummary | undefined {
@@ -3512,7 +3522,10 @@ function buildCuaCostSummary(args: {
   let anyKnown = false;
   let anyNull = false;
   let placeholder = false;
-  let maxRatesAsOf: string | null = null;
+  // Aggregate freshness is CONSERVATIVE: an aggregate estimate is only as current as its OLDEST
+  // contributing rate, so ratesAsOf takes the MIN (oldest) asOf — MAX would overclaim freshness the
+  // moment operator-edited rates in src/pricing.ts diverge. Each breakdown line keeps its own true asOf.
+  let minRatesAsOf: string | null = null;
   for (const line of breakdown) {
     if (line.estimatedCostUsd === null) {
       anyNull = true;
@@ -3521,20 +3534,20 @@ function buildCuaCostSummary(args: {
     anyKnown = true;
     knownSum += line.estimatedCostUsd;
     if (line.placeholder) placeholder = true;
-    if (line.ratesAsOf !== null && (maxRatesAsOf === null || line.ratesAsOf > maxRatesAsOf)) {
-      maxRatesAsOf = line.ratesAsOf;
+    if (line.ratesAsOf !== null && (minRatesAsOf === null || line.ratesAsOf < minRatesAsOf)) {
+      minRatesAsOf = line.ratesAsOf;
     }
   }
   const estimatedTotalUsd = anyKnown ? round6(knownSum) : null;
   const note = estimatedTotalUsd === null
     ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/pricing.ts to estimate this model.`
-    : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${maxRatesAsOf}), a rate-table multiply, NOT an authoritative provider charge.`;
+    : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
 
   return {
     schema: "humanish.run-cost-summary.v1",
     currency: "usd",
     estimatedTotalUsd,
-    ratesAsOf: maxRatesAsOf,
+    ratesAsOf: minRatesAsOf,
     fullyEstimated: !anyNull,
     placeholder,
     breakdown,

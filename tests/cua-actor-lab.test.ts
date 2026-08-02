@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import type { ActorCapabilities } from "../src/actor-contract.js";
+import type { ActorCapabilities, ActorTrace } from "../src/actor-contract.js";
 import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import type {
@@ -22,6 +22,7 @@ import type {
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   buildCuaBundle,
+  buildCuaCostSummary,
   chromeCdpPortResolutionScript,
   makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
@@ -2208,6 +2209,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     env?: string[];
     state?: unknown;
     count?: number;
+    caps?: { maxUsd?: number };
     localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
   }): LabConfig {
     const parsed = parseLabConfig({
@@ -2232,7 +2234,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
         mission: "Explore the app and stop.",
         ...(extra?.count === undefined ? {} : { count: extra.count })
       }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, ...(extra?.caps ? { caps: extra.caps } : {}) },
       scenario: { mode: "live" }
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -2378,6 +2380,32 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     expect(bundle.subject).toEqual(expectedSubject);
 
     expect(killed.length).toBeGreaterThan(0);
+  });
+
+  it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a PER-LANE cap and cites the ~N × cap ceiling", async () => {
+    const config = localTreeCuaConfig({ count: 2, caps: { maxUsd: 3 } });
+    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+    const { module } = makeFakeModule(sandbox);
+
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+
+    const capWarning = result.warnings.find((w) => w.includes("PER-LANE cap"));
+    expect(capWarning).toBeDefined();
+    // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3.
+    expect(capWarning).toContain("2 × $3");
+    expect(capWarning).toContain("~$6");
+    expect(capWarning).toContain("future work");
   });
 
   it("live fan-out (2 lanes): onPhase captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
@@ -3299,6 +3327,55 @@ describe("runCuaActorLab cost estimates", () => {
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
     expect(verify.ok).toBe(true);
+  });
+
+  it("aggregate ratesAsOf is the OLDEST contributing asOf, never the newest — an aggregate is only as fresh as its stalest input", () => {
+    const costTrace = (estimatedCostUsd: number, ratesAsOf: string, input: number, output: number): ActorTrace => ({
+      schema: ACTOR_TRACE_SCHEMA,
+      provider: "openai-responses-cu",
+      protocol: "cua-loop",
+      lane: "computer-use",
+      persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "d" },
+      redaction: { status: "passed", screenshots: "n/a", notes: "" },
+      startedAt: "2026-08-01T00:00:00.000Z",
+      completedAt: "2026-08-01T00:00:01.000Z",
+      durationMs: 1000,
+      status: "passed",
+      completionReason: "goal_satisfied",
+      reason: "done",
+      ids: {},
+      counts: {},
+      items: [],
+      tokenUsage: { input, output, total: input + output },
+      estimatedCost: {
+        schema: "humanish.actor-estimated-cost.v1",
+        estimatedCostUsd,
+        ratesAsOf,
+        source: "openai.com/api/pricing",
+        modelId: "computer-use-preview"
+      },
+      capabilities: STATE_CAPS
+    });
+
+    // Two priced model-token lines with DIVERGENT asOf dates (an operator edited one rate later).
+    const cost = buildCuaCostSummary({
+      lanes: [
+        { laneId: "lane-01", trace: costTrace(1, "2026-08-01", 1000, 100) },
+        { laneId: "lane-02", trace: costTrace(2, "2026-01-15", 2000, 200) }
+      ],
+      desktopMinutes: undefined
+    });
+
+    expect(cost).toBeDefined();
+    // The aggregate reports the OLDER date (MIN), never the newer one (MAX would overclaim freshness).
+    expect(cost!.ratesAsOf).toBe("2026-01-15");
+    expect(cost!.note).toContain("2026-01-15");
+    expect(cost!.note).toContain("OLDEST");
+    // Per-line breakdown keeps each line's OWN true asOf — only the aggregate is conservative.
+    const asOfById = new Map(cost!.breakdown.map((l) => [l.laneId, l.ratesAsOf]));
+    expect(asOfById.get("lane-01")).toBe("2026-08-01");
+    expect(asOfById.get("lane-02")).toBe("2026-01-15");
+    expect(cost!.estimatedTotalUsd).toBeCloseTo(3, 6);
   });
 
   it("DECLARES ABSENT (null + reason) for an unpriced model and sums ONLY the known lines into the total", async () => {

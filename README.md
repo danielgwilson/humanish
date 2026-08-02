@@ -340,10 +340,13 @@ AND the `asOf` date when providers change pricing.
 
 **Fail-closed spend cap.** Set `execution.caps.maxUsd` on a computer-use lab to abort a session
 the moment its running estimated spend crosses the cap — the runaway-retry guard (mirrors the
-terminal lane's `scenario.caps.maxUsd`). Absent = uncapped (the historical CUA behavior);
-`maxUsd: 0` = no-spend. A cap on a model `src/pricing.ts` cannot price is refused at preflight
-(`HUMANISH_CUA_LAB_UNPRICED_CAP`) rather than run uncapped — an unenforceable cap is more
-dangerous than none, so add a rate or drop the cap.
+terminal lane's `scenario.caps.maxUsd`). It is a **per-lane** cap: enforced inside each lane's loop,
+so an N-lane fan-out can spend up to N × `maxUsd` before any lane aborts (the run bundle warns with
+the true ~N × cap ceiling; a shared run-level budget is future work). A lane that did real work then
+hits its cap passes (`budget_reached`); a zero-action runaway that crosses it fails (`gave_up`).
+Absent = uncapped (the historical CUA behavior); `maxUsd: 0` = no-spend. A cap on a model
+`src/pricing.ts` cannot price is refused at preflight (`HUMANISH_CUA_LAB_UNPRICED_CAP`) rather than
+run uncapped — an unenforceable cap is more dangerous than none, so add a rate or drop the cap.
 
 **Failed-lane reruns.** Multi-lane CUA fan-out can be rerun surgically without mutating
 the source run:

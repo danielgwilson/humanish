@@ -785,7 +785,9 @@ in `breakdown` with `estimatedCostUsd: null` + a `reason` (it records that we
 tried and could not price it) and contributes nothing. `fullyEstimated` is
 `false` when any applicable line is null (the total is then a lower bound);
 `placeholder` is true when any contributing rate is a stand-in; `ratesAsOf` is
-the max `asOf` across contributing rates. `desktopMinutes` is a HOST-SIDE
+the MIN (oldest) `asOf` across contributing rates — an aggregate is only as fresh
+as its stalest input, so MAX would overclaim freshness (each `breakdown` line
+keeps its own true `asOf`). `desktopMinutes` is a HOST-SIDE
 create→teardown span — an approximation of E2B's server-side billed lifetime, so
 the desktop dollar figure is doubly an estimate.
 
@@ -794,7 +796,7 @@ schema: humanish.run-cost-summary.v1
 currency: usd
 estimatedTotalUsd: 11.60167          # sum of KNOWN lines only; null iff every line null
 ratesAsOf: "2026-08-01"
-fullyEstimated: false                 # a null line makes the total a lower bound
+fullyEstimated: true                  # both breakdown lines are priced (no null line)
 placeholder: true                     # a stand-in rate contributed
 breakdown:
   - { kind: model-tokens, laneId: lane-01, modelId: computer-use-preview,
@@ -816,9 +818,15 @@ secret nor a share-blocker, so it never affects `shareSafety`.
 
 **Fail-closed spend cap.** `execution.caps.maxUsd` (the terminal lane's
 `LabScenarioCaps` shape, consumed on the CUA route) aborts a session the moment
-its running ESTIMATED spend crosses the cap — the runaway-retry guard. Absent =
-uncapped (the historical behavior); `maxUsd: 0` = no-spend. A cap on a model
-`src/pricing.ts` cannot price is REFUSED at preflight
+its running ESTIMATED spend crosses the cap — the runaway-retry guard. It is a
+**PER-LANE** cap: enforced INSIDE each lane's loop independently, so an N-lane
+fan-out can spend up to N × `maxUsd` before any lane aborts (the run bundle
+warns with the true ~N × cap ceiling; a shared run-level budget is future work).
+A lane that does real work THEN crosses its cap ends `budget_reached` (passed); a
+zero-action runaway that crosses it ends `gave_up` (failed) — the cap classifies
+its outcome honestly rather than greenlighting the runaway it exists to catch.
+Absent = uncapped (the historical behavior); `maxUsd: 0` = no-spend. A cap on a
+model `src/pricing.ts` cannot price is REFUSED at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before any sandbox rather than run uncapped —
 an unenforceable cap is more dangerous than none.
 
