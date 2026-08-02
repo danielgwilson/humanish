@@ -112,6 +112,29 @@ instead (a dirty working tree cannot be commit-pinned), and `app-url` carries
 no code pin at all. No path, basename, or other host-machine string ever
 enters this field; identity is digests, a sha, a boolean, and counts.
 
+## Cost Estimate (advisory)
+
+`cost` is optional and additive (`humanish.run-cost-summary.v1`): the
+computer-use lane's run-level cost ESTIMATE — the sum of each lane's
+token-derived model cost plus one aggregate E2B desktop-minute figure. It is an
+ESTIMATE, never authoritative: every dollar is a rate-table multiply from the
+operator-editable `src/pricing.ts`, carries the pricing `ratesAsOf` date and
+`source`, and is surfaced with the "estimated (rates as of `<date>`)" label —
+never a bare charge. It follows the same **declared-absent** discipline as the
+terminal cost ledger: an unpriceable line stays present with
+`estimatedCostUsd: null` + a `reason` and contributes nothing;
+`estimatedTotalUsd` is `null` iff every line is null (never coerced to `0`).
+Dry-runs and lanes that spend nothing omit `cost` entirely, so pre-existing
+bundles stay byte-stable. Each lane's own estimate also rides its
+`stream.actor.estimatedCost` (`humanish.actor-estimated-cost.v1`), kept distinct
+from the reserved provider-returned `tokenUsage.costUsd`. See
+[`schemas.md`](schemas.md) → Run Cost Summary And Estimated Actor Cost.
+
+`humanish verify` treats cost as ADVISORY on magnitude and FAIL-CLOSED on
+labeling: absence passes, but a claimed dollar figure without its `ratesAsOf`
+date + `source`, or a total that does not match its known lines, fails. Verify
+never inspects the magnitude — a correctly-labeled large estimate still passes.
+
 ## Adapter Score
 
 `adapterScore` is optional and namespaced. It lets a downstream adapter summarize

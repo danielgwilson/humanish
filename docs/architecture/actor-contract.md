@@ -165,6 +165,7 @@ export interface ActorTrace {
   counts: Record<string, number>;
   items: ActorTraceItem[];
   tokenUsage?: { input?: number; output?: number; total?: number; costUsd?: number };
+  estimatedCost?: ActorEstimatedCost;                // humanish.actor-estimated-cost.v1 (additive)
   capabilities: ActorCapabilities;
 }
 
@@ -232,6 +233,17 @@ export interface Actor {
   target URLs, or unredacted provider payloads in the trace.
 - **Capabilities.** Declare them honestly; the registry uses them to refuse
   unsuitable dispatch.
+- **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays RESERVED for a
+  real, provider-returned charge (the codex/agent-SDK path) — a bare `costUsd`
+  always means "the provider billed this". The optional `estimatedCost`
+  (`humanish.actor-estimated-cost.v1`) is a SEPARATE, differently-named field: a
+  token-derived rate-table multiply from the operator-editable `src/pricing.ts`,
+  labeled honestly as an estimate and projected up into `RunBundle.cost` (see
+  [`../contracts/schemas.md`](../contracts/schemas.md) → Run Cost Summary And
+  Estimated Actor Cost). The CUA lab computes and attaches `estimatedCost` at the
+  lab boundary before persisting the trace, so the pure computer-use loop never
+  depends on the pricing table. An unknown model yields
+  `estimatedCostUsd: null` + a `reason`, never a guessed charge.
 
 ## The scripted-browser lane (shipped)
 

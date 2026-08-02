@@ -63,6 +63,19 @@ export type {
   BrowserLabScoringContext
 } from "./adapter-extension.js";
 export type { RedactionHooks } from "./redaction.js";
+export {
+  DESKTOP_RATE,
+  MODEL_RATES,
+  PRICING_SCHEMA,
+  estimateActorCost,
+  estimateDesktopCost
+} from "./pricing.js";
+export type {
+  ActorEstimatedCost,
+  DesktopCostEstimate,
+  DesktopRate,
+  ModelRate
+} from "./pricing.js";
 export { normalizeCliArgv } from "./argv.js";
 export {
   CODEX_APP_SERVER_UI_SCHEMA,
@@ -137,6 +150,8 @@ export type {
   RunAdapterScore,
   RunAttributionClass,
   RunBundle,
+  RunCostLine,
+  RunCostSummary,
   RunDesktopGeometry,
   RunEvent,
   RunFeedbackCandidate,

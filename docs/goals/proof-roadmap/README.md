@@ -18,6 +18,15 @@ file records current implementation truth without rewriting that packet.
   schema implementation. Its adopter-need and maintainer-review gate is closed.
 - Public out-of-tree actor registration and conformance certification remain
   unbuilt.
+- Cost tracking (ESTIMATED) shipped in `0.19.0`: a dated, operator-editable
+  pricing table (`src/pricing.ts`), a per-lane + run-level cost ESTIMATE on the
+  computer-use bundle (`humanish.run-cost-summary.v1` /
+  `humanish.actor-estimated-cost.v1`, additive so `humanish.run-bundle.v1` stays
+  v1), an `execution.caps.maxUsd` fail-closed abort for the CUA lane (default
+  uncapped; an unpriced cap is refused at preflight), and Observer/library
+  labeling ("estimated (rates as of `<date>`)", never a bare charge). Every
+  dollar figure is an estimate; `verify` asserts its labeling, never its
+  magnitude.
 
 ## Proof state
 

@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.18.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.19.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -43,6 +43,9 @@ workflow without leaking private upstream truth into core.
 | Feedback | `humanish.feedback.v1` | `public-safe-feedback` |
 | Terminal cost ledger | `humanish.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
 | Terminal no-spend proof | `humanish.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
+| Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/pricing.ts`; dated per-model + E2B desktop rates) | see Run Cost Summary And Estimated Actor Cost below |
+| Run cost summary | `humanish.run-cost-summary.v1` (additive `RunBundle.cost`; estimate, never a charge) | see Run Cost Summary And Estimated Actor Cost below |
+| Estimated actor cost | `humanish.actor-estimated-cost.v1` (additive `ActorTrace.estimatedCost`) | see Run Cost Summary And Estimated Actor Cost below |
 | Adapter score | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
 | Adapter artifact | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
 | Shared-world evidence | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
@@ -607,6 +610,14 @@ Core-owned fields:
   distinct from `timed_out`, which stays reserved for a zero-progress deadline
   hit and remains a failure)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`
+- optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
+  cost ESTIMATE for this lane (see Run Cost Summary And Estimated Actor Cost).
+  It is deliberately a DIFFERENT field from `tokenUsage.costUsd`: a bare
+  `costUsd` is RESERVED for a real provider-returned charge, while
+  `estimatedCost.estimatedCostUsd` is a rate-table multiply, named honestly as
+  an estimate so a reader can never confuse the two (invariant 6). Absent on
+  codex/scripted lanes and on every pre-existing bundle; a `null`
+  `estimatedCostUsd` is DECLARED ABSENT (unknown rate / no usage), never 0.
 
 Unexpected actor-loop diagnostics live inside `items[]` as
 `kind: notice`, `status: error` rows. They are public-safe evidence, not crash
@@ -661,7 +672,7 @@ mode (`loopback | exposed | share-safe-open`), the loopback host/port,
 `allowEmails`, `allowDomains` — operator-supplied allow rules, public-safe to
 echo to the operator's own stdout, never persisted into any bundle), runs
 listed, computed warnings, and the `ServeErrorCode` union. Exposure auth is
-tunnel-edge only — as of 0.18.0 there are no `capabilityUrl`/`publicCapabilityUrl`
+tunnel-edge only — as of 0.19.0 there are no `capabilityUrl`/`publicCapabilityUrl`
 /`ttlMinutes` fields, no `--auth`/`--ttl` flags, and no `capability-link` mode
 (the in-process `observer-auth.ts` capability-link was removed as a pre-1.0
 breaking change).
@@ -742,6 +753,82 @@ Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
 measure) and never grant a green pass (they surface as unmeasured). `verifyRun`
 fails closed when a live bundle lacks the cost ledger or no-spend proof, when the
 proof claims zero on a `null` line, or when known spend exceeds the declared cap.
+
+## Run Cost Summary And Estimated Actor Cost
+
+The computer-use (CUA) lane surfaces an ADVISORY, additive cost ESTIMATE. It is
+never authoritative: every dollar figure is a rate-table multiply, labeled
+"estimated (rates as of `<date>`)", and is NEVER presented as a provider charge
+(invariant 6). Three new `.v1` schema tags ship, all additive and optional so
+`humanish.run-bundle.v1` stays v1 and every pre-existing bundle is byte-stable:
+
+- `humanish.pricing.v1` — the OPERATOR-EDITABLE rate table in `src/pricing.ts`:
+  dated per-model input/output USD-per-token rates and an E2B desktop
+  USD-per-minute rate, each with a public pricing-page `source` and an `asOf`
+  date. A prominent banner says these are estimates to update when providers
+  change pricing. Some entries are `placeholder: true` stand-ins (the shipped
+  `gpt-5.5` model rate and the E2B desktop rate) — an operator MUST confirm them
+  before trusting the magnitude; the flag propagates into every estimate so a
+  stand-in is never mistaken for a live rate. An UNKNOWN model/desktop rate is
+  DECLARED ABSENT (`estimatedCostUsd: null` + a `reason`), never guessed.
+- `humanish.actor-estimated-cost.v1` — `ActorTrace.estimatedCost`: one lane's
+  token-derived model cost, with `estimatedCostUsd` (or `null` + `reason`
+  `no_rate_for_model`/`no_token_usage`), `ratesAsOf`, `source`, `modelId`,
+  optional `placeholder`, and a `breakdown`.
+- `humanish.run-cost-summary.v1` — `RunBundle.cost`: the sum of every lane's
+  `model-tokens` line PLUS one aggregate `desktop-minutes` line.
+
+The summary follows the SAME null discipline as the terminal cost ledger above.
+`estimatedTotalUsd` sums ONLY the non-null `breakdown` lines and is `null` iff
+EVERY line is null (never coerced to `0`); a present-but-unpriceable line stays
+in `breakdown` with `estimatedCostUsd: null` + a `reason` (it records that we
+tried and could not price it) and contributes nothing. `fullyEstimated` is
+`false` when any applicable line is null (the total is then a lower bound);
+`placeholder` is true when any contributing rate is a stand-in; `ratesAsOf` is
+the MIN (oldest) `asOf` across contributing rates — an aggregate is only as fresh
+as its stalest input, so MAX would overclaim freshness (each `breakdown` line
+keeps its own true `asOf`). `desktopMinutes` is a HOST-SIDE
+create→teardown span — an approximation of E2B's server-side billed lifetime, so
+the desktop dollar figure is doubly an estimate.
+
+```yaml
+schema: humanish.run-cost-summary.v1
+currency: usd
+estimatedTotalUsd: 11.60167          # sum of KNOWN lines only; null iff every line null
+ratesAsOf: "2026-08-01"
+fullyEstimated: true                  # both breakdown lines are priced (no null line)
+placeholder: true                     # a stand-in rate contributed
+breakdown:
+  - { kind: model-tokens, laneId: lane-01, modelId: computer-use-preview,
+      estimatedCostUsd: 11.60, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing" }
+  - { kind: desktop-minutes, estimatedCostUsd: 0.00167, ratesAsOf: "2026-08-01",
+      source: "…e2b.dev/pricing", placeholder: true }
+tokenUsage: { input: 3843523, output: 5869, total: 3849392 }
+desktopMinutes: 1
+note: "Estimated 11.60167 USD total…"
+```
+
+`verifyRun` asserts LABELING/provenance, never MAGNITUDE. Absence PASSES
+(fail-open on display): a bundle with no cost, a null estimate, or a lane without
+`estimatedCost` verifies fine. A CLAIMED number FAILS closed when it lacks its
+`ratesAsOf` date or `source`, or when `estimatedTotalUsd` does not equal the
+rounded sum of its non-null lines (a null line coerced to 0 is a mechanism
+mismatch). A correctly-labeled huge estimate still passes. Cost is neither a
+secret nor a share-blocker, so it never affects `shareSafety`.
+
+**Fail-closed spend cap.** `execution.caps.maxUsd` (the terminal lane's
+`LabScenarioCaps` shape, consumed on the CUA route) aborts a session the moment
+its running ESTIMATED spend crosses the cap — the runaway-retry guard. It is a
+**PER-LANE** cap: enforced INSIDE each lane's loop independently, so an N-lane
+fan-out can spend up to N × `maxUsd` before any lane aborts (the run bundle
+warns with the true ~N × cap ceiling; a shared run-level budget is future work).
+A lane that does real work THEN crosses its cap ends `budget_reached` (passed); a
+zero-action runaway that crosses it ends `gave_up` (failed) — the cap classifies
+its outcome honestly rather than greenlighting the runaway it exists to catch.
+Absent = uncapped (the historical behavior); `maxUsd: 0` = no-spend. A cap on a
+model `src/pricing.ts` cannot price is REFUSED at preflight
+(`HUMANISH_CUA_LAB_UNPRICED_CAP`) before any sandbox rather than run uncapped —
+an unenforceable cap is more dangerous than none.
 
 ## Product-Adapter Extension Seam
 

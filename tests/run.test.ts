@@ -23,6 +23,7 @@ import {
   readReview,
   runDryRun,
   verifyRun,
+  type RunCostSummary,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "../src/run.js";
@@ -2965,7 +2966,7 @@ function cuaActorTrace(args: {
 async function writeCuaRunFixture(
   cwd: string,
   runId: string,
-  args: { dryRun: boolean; trace?: ActorTrace; subject?: RunSubjectProvenance; forceReviewVerdict?: "pass" | "fail" | "blocked" | "timed_out" | "contract_proof_only" }
+  args: { dryRun: boolean; trace?: ActorTrace; subject?: RunSubjectProvenance; cost?: RunCostSummary; forceReviewVerdict?: "pass" | "fail" | "blocked" | "timed_out" | "contract_proof_only" }
 ): Promise<void> {
   const session: CuaLoopResult | undefined = args.trace
     ? {
@@ -2993,6 +2994,9 @@ async function writeCuaRunFixture(
   // claim over a failed step) — verify must reject them from the persisted evidence alone.
   if (args.subject) {
     bundle.subject = args.subject;
+  }
+  if (args.cost) {
+    bundle.cost = args.cost;
   }
   if (args.forceReviewVerdict) {
     bundle.review.verdict = args.forceReviewVerdict;
@@ -3469,6 +3473,138 @@ describe("verify: subject provenance (local-tree)", () => {
       const verify = await verifyRun(cwd, "local-tree-dryrun");
       expect(verify.ok).toBe(true);
       expect(stateCheck(verify)?.ok).toBe(true);
+    });
+  });
+});
+
+describe("verify: cost estimate labeling", () => {
+  // An ENGAGED live trace so the review verdict is a genuine pass; that isolates the cost check
+  // from the actor-engagement gate. Cost is ADVISORY on magnitude, FAIL-CLOSED on provenance.
+  const engagedTrace = (estimatedCost?: ActorTrace["estimatedCost"]): ActorTrace => {
+    const trace = cuaActorTrace({
+      counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+      items: [
+        { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
+        { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
+      ]
+    });
+    if (estimatedCost) trace.estimatedCost = estimatedCost;
+    return trace;
+  };
+  const costCheck = (verify: Awaited<ReturnType<typeof verifyRun>>) =>
+    verify.checks.find((entry) => entry.name === "cost estimate labeling");
+  const labeledSummary = (overrides: Partial<RunCostSummary> = {}): RunCostSummary => ({
+    schema: "humanish.run-cost-summary.v1",
+    currency: "usd",
+    estimatedTotalUsd: 11.6,
+    ratesAsOf: "2026-08-01",
+    fullyEstimated: false,
+    placeholder: false,
+    breakdown: [
+      { kind: "model-tokens", laneId: "lane-01", modelId: "computer-use-preview", estimatedCostUsd: 11.6, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing (computer-use-preview)" },
+      { kind: "desktop-minutes", estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null }
+    ],
+    tokenUsage: { input: 3843523, output: 5869, total: 3849392 },
+    desktopMinutes: null,
+    note: "Estimated model-token cost; desktop minutes unmeasured.",
+    ...overrides
+  });
+
+  it("passes when the bundle carries NO cost at all (fail-open on absence)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "cost-absent", { dryRun: false, trace: engagedTrace() });
+      const verify = await verifyRun(cwd, "cost-absent");
+      expect(costCheck(verify)?.ok).toBe(true);
+      expect(verify.ok).toBe(true);
+    });
+  });
+
+  it("passes a properly-labeled estimate and a HUGE but correctly-labeled estimate (magnitude never fails)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "cost-labeled", { dryRun: false, trace: engagedTrace(), cost: labeledSummary() });
+      const labeled = await verifyRun(cwd, "cost-labeled");
+      expect(costCheck(labeled)?.ok).toBe(true);
+      expect(labeled.ok).toBe(true);
+
+      await writeCuaRunFixture(cwd, "cost-huge", {
+        dryRun: false,
+        trace: engagedTrace(),
+        cost: labeledSummary({
+          estimatedTotalUsd: 1_000_000,
+          breakdown: [
+            { kind: "model-tokens", laneId: "lane-01", modelId: "computer-use-preview", estimatedCostUsd: 1_000_000, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing" }
+          ]
+        })
+      });
+      const huge = await verifyRun(cwd, "cost-huge");
+      expect(costCheck(huge)?.ok).toBe(true);
+      expect(huge.ok).toBe(true);
+    });
+  });
+
+  it("FAILS a number total that lacks its ratesAsOf date (a token-derived charge without provenance)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "cost-no-rates", {
+        dryRun: false,
+        trace: engagedTrace(),
+        cost: labeledSummary({ ratesAsOf: null })
+      });
+      const verify = await verifyRun(cwd, "cost-no-rates");
+      expect(costCheck(verify)?.ok).toBe(false);
+      expect(verify.ok).toBe(false);
+    });
+  });
+
+  it("FAILS a total that does not equal the sum of its known breakdown lines", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "cost-mismatch", {
+        dryRun: false,
+        trace: engagedTrace(),
+        cost: labeledSummary({ estimatedTotalUsd: 99.99 })
+      });
+      const verify = await verifyRun(cwd, "cost-mismatch");
+      expect(costCheck(verify)?.ok).toBe(false);
+    });
+  });
+
+  it("FAILS a null total sitting beside a known (non-null) breakdown line", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "cost-null-hides", {
+        dryRun: false,
+        trace: engagedTrace(),
+        cost: labeledSummary({ estimatedTotalUsd: null })
+      });
+      const verify = await verifyRun(cwd, "cost-null-hides");
+      expect(costCheck(verify)?.ok).toBe(false);
+    });
+  });
+
+  it("asserts per-actor estimate labeling: a number estimate without ratesAsOf fails; a declared-absent null passes", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await writeCuaRunFixture(cwd, "actor-cost-bad", {
+        dryRun: false,
+        trace: engagedTrace({
+          schema: "humanish.actor-estimated-cost.v1",
+          estimatedCostUsd: 4.86,
+          ratesAsOf: null,
+          source: "openai.com/api/pricing"
+        })
+      });
+      expect(costCheck(await verifyRun(cwd, "actor-cost-bad"))?.ok).toBe(false);
+
+      await writeCuaRunFixture(cwd, "actor-cost-null", {
+        dryRun: false,
+        trace: engagedTrace({
+          schema: "humanish.actor-estimated-cost.v1",
+          estimatedCostUsd: null,
+          reason: "no_rate_for_model",
+          ratesAsOf: null,
+          modelId: "mystery-model"
+        })
+      });
+      const nullVerify = await verifyRun(cwd, "actor-cost-null");
+      expect(costCheck(nullVerify)?.ok).toBe(true);
+      expect(nullVerify.ok).toBe(true);
     });
   });
 });

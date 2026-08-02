@@ -1,4 +1,4 @@
-import type { RunBundle, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
+import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 
@@ -34,6 +34,12 @@ export interface ObserverData {
     warnings: number;
   };
   laneGroups: ObserverLaneGroup[];
+  /**
+   * OPTIONAL run-level cost ESTIMATE projected straight through from the bundle
+   * (humanish.run-cost-summary.v1). Absent when the bundle carries none. The Observer LABELS every
+   * figure as estimated (rates as of <asOf>) and never presents it as an authoritative charge.
+   */
+  cost?: RunCostSummary;
   streams: ObserverStream[];
   events: RunEvent[];
   artifactLinks: ObserverArtifactLink[];
@@ -114,6 +120,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       warnings
     },
     laneGroups: buildLaneGroups(bundle),
+    ...(bundle.cost === undefined ? {} : { cost: bundle.cost }),
     streams,
     events,
     artifactLinks: [

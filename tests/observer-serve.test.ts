@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
 import { buildCuaBundle } from "../src/cua-actor-lab.js";
+import { renderObserver } from "../src/observer.js";
 import type { LibraryHistory } from "../src/observer-library.js";
 import { serveObserverLibrary } from "../src/observer-serve.js";
 import type { ServeLibraryOptions, ServeLibraryServer } from "../src/observer-serve.js";
@@ -727,5 +728,73 @@ describe("serve: safe mode resilience", () => {
     expect(second.runs).toEqual([]);
     expect((await fetch(new URL("/_humanish/runs/ttl-run/observer/index.html", server.url))).status).toBe(404);
     expect(verifySpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("serve library: labeled cost estimate", () => {
+  async function writeCostRun(cwd: string, runId: string, estimatedCostUsd: number): Promise<void> {
+    const trace: ActorTrace = {
+      ...rawScreenshotActorTrace(),
+      ids: { model: "gpt-5.5" },
+      tokenUsage: { input: 2_000_000, output: 4_000, total: 2_004_000 },
+      estimatedCost: {
+        schema: "humanish.actor-estimated-cost.v1",
+        estimatedCostUsd,
+        ratesAsOf: "2026-08-01",
+        source: "openai.com/api/pricing",
+        modelId: "gpt-5.5",
+        placeholder: true,
+        breakdown: { inputUsd: estimatedCostUsd, outputUsd: 0, inputTokens: 2_000_000, outputTokens: 4_000 }
+      }
+    };
+    const session: CuaLoopResult = { status: trace.status, completionReason: trace.completionReason, reason: trace.reason, trace };
+    const bundle = buildCuaBundle({
+      actorId: "openai-computer-use",
+      appUrl: "http://127.0.0.1:3000/",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      dryRun: false,
+      labId: "serve-cost-proof",
+      mission: "Explore the app and stop.",
+      persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
+      resolution: [1440, 960],
+      runId,
+      screenshots: [],
+      session,
+      traceArtifactPath: "actor.json",
+      desktopMinutes: 1,
+      source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" })
+    });
+    const runDir = path.join(cwd, ".humanish", "runs", runId);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+    await writeFile(path.join(runDir, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
+    await writeFile(path.join(runDir, "review.md"), `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`, "utf8");
+    await writeFile(path.join(runDir, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+    await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
+    // Render the observer so observer-data.json (which the library reads) carries the cost summary.
+    expect((await renderObserver(cwd, runId)).ok).toBe(true);
+  }
+
+  it("carries estimatedCostUsd + costRatesAsOf on the history row and renders a labeled '$ est.' token", async () => {
+    const cwd = await createProjectFixture();
+    await writeCostRun(cwd, "cost-run", 2.5);
+    const server = await startLibrary(cwd);
+
+    const historyResponse = await fetch(new URL("/_humanish/history.json", server.url));
+    const history = (await historyResponse.json()) as LibraryHistory;
+    const row = history.runs.find((run) => run.runId === "cost-run");
+    if (!row) throw new Error("cost-run missing from history");
+    // Run-total: model 2.5 + desktop (1 min * placeholder rate) — a positive number carrying its date.
+    expect(row.estimatedCostUsd).not.toBeNull();
+    expect(row.estimatedCostUsd as number).toBeGreaterThan(2.5);
+    expect(row.costRatesAsOf).toBe("2026-08-01");
+    expect(row.costPlaceholder).toBe(true);
+
+    const html = await (await fetch(server.url)).text();
+    const embedded = extractLibraryData(html);
+    expect(embedded.runs.find((run) => run.runId === "cost-run")?.estimatedCostUsd).not.toBeNull();
+    // The library client always renders "~$X est." (never a bare "$X") — the token literal ships
+    // in the inlined client, and the embedded data drives its value.
+    expect(html).toContain(" est.");
   });
 });

@@ -40,6 +40,7 @@ import {
 } from "./browser-evidence-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
@@ -114,9 +115,12 @@ import {
   type RunSimulationStatus,
   type RunStream,
   type RunProviderResource,
+  type RunCostLine,
+  type RunCostSummary,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "./run.js";
+import { estimateActorCost, estimateDesktopCost, MODEL_RATES, round6 } from "./pricing.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
@@ -259,6 +263,10 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor }) => Promise<CuaProvider>;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
+  /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
+   *  feeds the desktop-minute cost estimate. Defaults to Date.now; tests inject a frozen/stepped
+   *  clock so the desktop-minute line is deterministic. */
+  now?: () => number;
   /** Injected clock/sleep for the detached-step polling (tests only). */
   detachedTimers?: DetachedTimers;
   /**
@@ -390,6 +398,10 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_CUA_LAB_FANOUT_INVALID"
   | "HUMANISH_CUA_LAB_RERUN_INVALID"
   | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY"
+  // A fail-closed spend cap (execution.caps.maxUsd) was set but src/pricing.ts has no rate for the
+  // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
+  // rather than run uncapped — an unenforceable cap is more dangerous than none.
+  | "HUMANISH_CUA_LAB_UNPRICED_CAP"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by runCuaBackend
   // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
   // render through the same formatter as any other CUA lab failure.
@@ -910,6 +922,9 @@ export interface CuaLaneDeps {
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
   runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
+  /** Injected clock (ms). Used to measure the host-side E2B desktop create->teardown span so the
+   *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
+  now: () => number;
   hooks: CuaActorLabHooks;
   /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
   signalProvisioned?: (ok: boolean) => void;
@@ -929,6 +944,10 @@ export interface LaneRunOutcome {
   session?: CuaLoopResult;
   sessionError?: string;
   sandboxId?: string;
+  /** Host-side E2B desktop create->teardown span (ms). An APPROXIMATION of E2B's server-side
+   *  billed lifetime (server-side kill-on-timeout can extend it) — so the derived dollar figure is
+   *  doubly an estimate. Absent on the in-process route (no sandbox) and on dry-run. */
+  desktopDurationMs?: number;
   killed: boolean;
   streamUrlPresent: boolean;
   screenshots: string[];
@@ -1644,6 +1663,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let sessionError: string | undefined;
   let failureCode: CuaActorLabErrorCode | undefined;
   let sandboxId: string | undefined;
+  // Host-side E2B desktop billed-span endpoints, measured via the injected clock. Captured right
+  // after create() succeeds and again in the finally after teardown resolves (both the killed and
+  // kept-for-debug paths), so the desktop-minute cost estimate reflects the honest lifetime.
+  let sandboxCreatedAtMs: number | undefined;
+  let sandboxTornDownAtMs: number | undefined;
   let killed = false;
   let streamUrl: string | undefined;
   let subjectCommit: string | undefined;
@@ -1694,6 +1718,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       lifecycle: { onTimeout: "kill" }
     }, config.execution?.desktop?.template);
     sandboxId = desktop.sandboxId;
+    // The billed span starts the instant the sandbox exists.
+    sandboxCreatedAtMs = deps.now();
 
     if (deps.hooks.prepareDesktop) {
       await deps.hooks.prepareDesktop(desktop, { laneId: spec.laneId, laneIndex: spec.laneIndex, laneCount: deps.laneCount });
@@ -1817,6 +1843,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         warnings.push(`Live desktop stream unavailable (run continues; evidence still captured): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
       }
 
+      // The FAIL-CLOSED spend cap (execution.caps.maxUsd) is wired into the loop as maxUsd + an
+      // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
+      // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
+      // model id here matches provider.version (openai-responses-cu resolves the default when unset).
+      const capModelId = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
+      const maxUsd = config.execution?.caps?.maxUsd;
       const sessionOptions: CuaActorSessionOptions = {
         instructions: spec.instructions,
         persona: spec.persona,
@@ -1825,6 +1857,13 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           apiKey: deps.openaiApiKey,
           ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
         },
+        ...(maxUsd === undefined
+          ? {}
+          : {
+              maxUsd,
+              estimateTurnCostUsd: (input: number, output: number): number | null =>
+                estimateActorCost({ input, output }, capModelId).estimatedCostUsd
+            }),
         desktop: desktop as unknown as E2BDesktopLike,
         ...(launchedBrowserFamily === "chromium"
           ? {
@@ -1910,10 +1949,24 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       } else {
         warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
       }
+      // Close the billed span for BOTH the killed and kept-for-debug paths (a kept sandbox is
+      // still billed until its server-side timeout, so the honest span ends here either way).
+      sandboxTornDownAtMs = deps.now();
     }
   }
 
+  // Host-side approximation of the E2B desktop's billed lifetime; feeds the desktop-minute cost
+  // estimate. Never negative.
+  const desktopDurationMs = sandboxCreatedAtMs !== undefined && sandboxTornDownAtMs !== undefined
+    ? Math.max(0, sandboxTornDownAtMs - sandboxCreatedAtMs)
+    : undefined;
+
   if (session) {
+    // Per-lane model-token cost ESTIMATE, attached to the trace before it is persisted (the model
+    // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
+    // never depends on the operator rate table. estimateActorCost declares absent (null) for an
+    // unknown rate / missing usage rather than guessing.
+    session.trace.estimatedCost = estimateActorCost(session.trace.tokenUsage, session.trace.ids.model);
     await writeContainedOutputFile(deps.artifactRoot, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
     if (session.trace.redaction.screenshots === "raw") {
       warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
@@ -1944,6 +1997,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     ...(session ? { session } : {}),
     ...(sessionError === undefined ? {} : { sessionError }),
     ...(sandboxId === undefined ? {} : { sandboxId }),
+    ...(desktopDurationMs === undefined ? {} : { desktopDurationMs }),
     killed,
     streamUrlPresent: streamUrl !== undefined,
     screenshots,
@@ -2470,6 +2524,22 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         descriptor.id
       );
     }
+    // FAIL-CLOSED CAP TENSION (discipline #3): a maxUsd cap needs a MEASURABLE per-turn estimate.
+    // If the operator set execution.caps.maxUsd but src/pricing.ts has no rate for the resolved
+    // model, the loop could not enforce the cap — and silently running uncapped would break the
+    // runaway-retry protection. Refuse at PREFLIGHT (before any sandbox/spend) rather than run
+    // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
+    // src/pricing.ts (the honest place) or removes the cap.
+    if (config.execution?.caps?.maxUsd !== undefined) {
+      const capModelId = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
+      if (!MODEL_RATES[capModelId]) {
+        return fail(
+          "HUMANISH_CUA_LAB_UNPRICED_CAP",
+          `execution.caps.maxUsd is set but src/pricing.ts has no rate for model "${config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
+          descriptor.id
+        );
+      }
+    }
   }
 
   const runId = options.runId ?? makeCuaRunId();
@@ -2543,6 +2613,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     redactScreenshots,
     scrubKnownValues,
     runSession,
+    now: hooks.now ?? Date.now,
     hooks: liveHooks
   };
 
@@ -2647,6 +2718,16 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // `first.source !== "clone"` branch below returns it directly, with no unanimity math needed
   // (there is nothing that could diverge).
   const aggregateWarnings: string[] = [];
+  // execution.caps.maxUsd is a PER-LANE cap: it is enforced INSIDE each lane's loop independently,
+  // so an N-lane fan-out can spend up to N × maxUsd before any lane aborts, while the run cost
+  // summary reports the (larger) aggregate. Warn at run level so the operator sees the true ceiling.
+  // A shared, run-level budget is future work — there is no cross-lane counter today.
+  const perLaneCapUsd = config.execution?.caps?.maxUsd;
+  if (perLaneCapUsd !== undefined && laneCount > 1) {
+    aggregateWarnings.push(
+      `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. A shared run-level budget is future work.`
+    );
+  }
   const aggregateSubject = ((): CuaSubjectProjection => {
     const first = laneSubjects[0]!;
     if (first.source !== "clone") {
@@ -2962,6 +3043,9 @@ function buildSingleLaneBundle(args: {
     }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
+    ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
+      ? {}
+      : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
     phaseEvents: outcome?.phaseRecords ?? []
   });
 }
@@ -3379,6 +3463,105 @@ function tailOf(log: string): string {
  * `stream.actor = session.trace` — the provider-neutral ActorTrace seam the Observer renders.
  * Exported for the bundle-builder tests.
  */
+/**
+ * Assemble the run-level cost ESTIMATE from each lane's persisted per-actor estimate
+ * (trace.estimatedCost, set at the lab boundary) plus the aggregated E2B desktop-minute span.
+ * Returns undefined (cost OMITTED) when nothing was priceable AND no sandbox ran — a pure dry-run
+ * or an in-process lane (no trace.estimatedCost, no desktop) stays byte-stable with no cost block.
+ * The null-discipline mirrors the terminal ledger: a present-but-unpriceable line is null + a
+ * reason and contributes NOTHING to estimatedTotalUsd (never coerced to 0); an all-null summary
+ * has a null total. Every non-null figure carries its ratesAsOf date + source (invariant 6).
+ */
+export function buildCuaCostSummary(args: {
+  lanes: Array<{ laneId?: string; trace: ActorTrace }>;
+  desktopMinutes: number | undefined;
+}): RunCostSummary | undefined {
+  const breakdown: RunCostLine[] = [];
+  let sumInput = 0;
+  let sumOutput = 0;
+
+  for (const lane of args.lanes) {
+    const usage = lane.trace.tokenUsage;
+    if (usage) {
+      sumInput += usage.input ?? 0;
+      sumOutput += usage.output ?? 0;
+    }
+    const est = lane.trace.estimatedCost;
+    if (!est) {
+      continue;
+    }
+    breakdown.push({
+      kind: "model-tokens",
+      ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
+      ...(est.modelId === undefined ? {} : { modelId: est.modelId }),
+      estimatedCostUsd: est.estimatedCostUsd,
+      ...(est.reason === undefined ? {} : { reason: est.reason }),
+      ratesAsOf: est.ratesAsOf,
+      ...(est.source === undefined ? {} : { source: est.source }),
+      ...(est.placeholder ? { placeholder: true } : {})
+    });
+  }
+
+  if (args.desktopMinutes !== undefined) {
+    const desktop = estimateDesktopCost(args.desktopMinutes);
+    breakdown.push({
+      kind: "desktop-minutes",
+      estimatedCostUsd: desktop.estimatedCostUsd,
+      ...(desktop.reason === undefined ? {} : { reason: desktop.reason }),
+      ratesAsOf: desktop.ratesAsOf,
+      ...(desktop.source === undefined ? {} : { source: desktop.source }),
+      ...(desktop.placeholder ? { placeholder: true } : {})
+    });
+  }
+
+  if (breakdown.length === 0) {
+    return undefined;
+  }
+
+  let knownSum = 0;
+  let anyKnown = false;
+  let anyNull = false;
+  let placeholder = false;
+  // Aggregate freshness is CONSERVATIVE: an aggregate estimate is only as current as its OLDEST
+  // contributing rate, so ratesAsOf takes the MIN (oldest) asOf — MAX would overclaim freshness the
+  // moment operator-edited rates in src/pricing.ts diverge. Each breakdown line keeps its own true asOf.
+  let minRatesAsOf: string | null = null;
+  for (const line of breakdown) {
+    if (line.estimatedCostUsd === null) {
+      anyNull = true;
+      continue;
+    }
+    anyKnown = true;
+    knownSum += line.estimatedCostUsd;
+    if (line.placeholder) placeholder = true;
+    if (line.ratesAsOf !== null && (minRatesAsOf === null || line.ratesAsOf < minRatesAsOf)) {
+      minRatesAsOf = line.ratesAsOf;
+    }
+  }
+  const estimatedTotalUsd = anyKnown ? round6(knownSum) : null;
+  const note = estimatedTotalUsd === null
+    ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/pricing.ts to estimate this model.`
+    : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
+
+  return {
+    schema: "humanish.run-cost-summary.v1",
+    currency: "usd",
+    estimatedTotalUsd,
+    ratesAsOf: minRatesAsOf,
+    fullyEstimated: !anyNull,
+    placeholder,
+    breakdown,
+    tokenUsage: { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
+    desktopMinutes: args.desktopMinutes ?? null,
+    note
+  };
+}
+
+// Convert a host-side desktop span (ms) into billed minutes, or undefined when no sandbox ran.
+function desktopSpanToMinutes(desktopDurationMs: number | undefined): number | undefined {
+  return desktopDurationMs === undefined ? undefined : desktopDurationMs / 60_000;
+}
+
 export function buildCuaBundle(args: {
   actorId: string;
   appUrl: string;
@@ -3431,8 +3614,16 @@ export function buildCuaBundle(args: {
   /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
    *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
   phaseEvents?: SubjectPhaseEvent[];
+  /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
+   *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
+  desktopMinutes?: number;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
+  // Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran).
+  const cost = buildCuaCostSummary({
+    lanes: args.session ? [{ ...(args.laneId === undefined ? {} : { laneId: args.laneId }), trace: args.session.trace }] : [],
+    desktopMinutes: args.desktopMinutes
+  });
   const status: RunSimulationStatus = args.inProgress === true
     ? "running"
     : args.session
@@ -3712,7 +3903,8 @@ export function buildCuaBundle(args: {
     // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
     // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
     // shaped, so no reconstruction is needed beyond the app-url fallback.
-    subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } }
+    subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } },
+    ...(cost === undefined ? {} : { cost })
   };
 }
 
@@ -4113,6 +4305,18 @@ export function buildCuaFanoutBundle(args: {
       laneId: outcome.spec.laneId
     }));
 
+  // Run-level cost ESTIMATE: one model-token line per lane that ran a session (from its persisted
+  // trace.estimatedCost) + one aggregate desktop-minutes line summing each lane's OWN sandbox span
+  // (per-lane worlds => no shared provisioning to double-count). Omitted on a pure dry-run.
+  const costLanes = specs
+    .map((spec, index) => ({ laneId: spec.laneId, outcome: outcomes?.[index] }))
+    .filter((entry): entry is { laneId: string; outcome: LaneRunOutcome } => entry.outcome?.session !== undefined)
+    .map((entry) => ({ laneId: entry.laneId, trace: entry.outcome.session!.trace }));
+  const desktopMinutesTotal = (outcomes ?? []).some((outcome) => outcome.desktopDurationMs !== undefined)
+    ? (outcomes ?? []).reduce((sum, outcome) => sum + (outcome.desktopDurationMs ?? 0), 0) / 60_000
+    : undefined;
+  const cost = buildCuaCostSummary({ lanes: costLanes, desktopMinutes: desktopMinutesTotal });
+
   return {
     schema: RUN_BUNDLE_SCHEMA,
     runId: args.runId,
@@ -4169,7 +4373,8 @@ export function buildCuaFanoutBundle(args: {
       ? {}
       : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),
     ...(providerResources.length === 0 ? {} : { providerResources }),
-    subject: args.aggregateSubject
+    subject: args.aggregateSubject,
+    ...(cost === undefined ? {} : { cost })
   };
 }
 

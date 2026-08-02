@@ -1223,6 +1223,30 @@ export function observerClientJs(): string {
   function laneEvents(s) { return s.timeline || []; }
   function laneArtifacts(s) { return s.artifacts || []; }
 
+  // ---------------------------------------------------------------- cost (ALWAYS labeled estimated)
+  function fmtCostUsd(v) {
+    if (typeof v !== "number" || !isFinite(v)) return null;
+    return v >= 0.01 ? v.toFixed(2) : String(v);
+  }
+  // A single honest label for any cost figure. A number ALWAYS reads "~$X estimated (rates as of
+  // <date>)" (never a bare "$X"); a placeholder rate is tagged; a null is "not estimated (<reason>)".
+  function costText(usd, ratesAsOf, placeholder, reason) {
+    if (usd == null) return "not estimated (" + (reason || "unmeasured") + ")";
+    var s = "~$" + (fmtCostUsd(usd) || "0") + " estimated (rates as of " + (ratesAsOf || "unknown") + ")";
+    if (placeholder) s += " · placeholder rate";
+    return s;
+  }
+  function runCostText() {
+    var c = currentData.cost;
+    if (!c) return "";
+    return costText(c.estimatedTotalUsd, c.ratesAsOf, c.placeholder, "no priced lines");
+  }
+  function laneCostText(s) {
+    var est = s && s.actor && s.actor.estimatedCost;
+    if (!est) return "";
+    return costText(est.estimatedCostUsd, est.ratesAsOf, est.placeholder, est.reason);
+  }
+
   function geometrySize(value) {
     var width = value && Number(value.width);
     var height = value && Number(value.height);
@@ -2192,7 +2216,9 @@ export function observerClientJs(): string {
         + '<div class="side-goal"><span class="eyebrow">Persona</span><div class="side-goal-text">' + esc((run.persona && run.persona.name) || "Synthetic persona") + ' is attempting this lane as a realistic setup operator.</div></div>'
         + '<div class="side-goal"><span class="eyebrow">Scenario</span><div class="side-goal-text">' + esc((run.scenario && run.scenario.goal) || laneSummary(s)) + '</div></div>'
         + '<div class="side-now"><div class="side-now-row">' + pip(s.status, live) + '<span class="eyebrow" style="color:' + (live ? "var(--accent-2)" : "var(--text-3)") + '">' + (live ? "Now" : "Last step") + '</span></div>'
-        + '<div class="side-now-text">' + esc(laneStep(s)) + '</div></div>' + buildMeaningfulUseCard(s) + '</div>'
+        + '<div class="side-now-text">' + esc(laneStep(s)) + '</div></div>'
+        + (laneCostText(s) ? '<div class="side-goal"><span class="eyebrow">Est. cost</span><div class="side-goal-text">' + esc(laneCostText(s)) + '</div></div>' : "")
+        + buildMeaningfulUseCard(s) + '</div>'
         + '<div class="side-tabs" role="tablist">' + tabs.map(function (t) {
           return '<button class="side-tab" role="tab" aria-selected="' + (S.tab === t.id ? "true" : "false") + '" data-action="tab:' + t.id + '">' + t.label + '<span class="tab-n">' + t.n + '</span></button>';
         }).join("") + '</div>'
@@ -2231,6 +2257,7 @@ export function observerClientJs(): string {
       + '<span class="sb-prog"><span style="width:' + pct + '%" data-tone="' + tone(overall) + '"></span></span>'
       + '<span class="sb-counts">' + counts.map(function (c) { return '<span class="sb-count" title="' + c.count + ' ' + c.label + '"><span class="si-dot" style="background:' + c.color + '"></span><span class="mono sb-count-number">' + c.count + '</span><span class="mono sb-count-label">' + c.label + '</span></span>'; }).join("") + '</span>'
       + '<span class="sb-run mono">' + esc("mode: " + (run.mode || "unknown") + " · " + (run.runId || "")) + '</span>'
+      + (currentData.cost ? '<span class="sb-run sb-cost mono" title="' + esc(currentData.cost.note || "") + '">' + esc("cost: " + runCostText()) + '</span>' : "")
       + '<div class="tb-spacer"></div>'
       + '<button class="sb-console" aria-expanded="' + (S.consoleOpen ? "true" : "false") + '" data-action="toggle-console" title="Run console (backtick)">' + icon("terminal", 14)
       + '<span class="sb-console-label">Run console</span>' + peek
@@ -2246,6 +2273,7 @@ export function observerClientJs(): string {
       + popRow("Started", esc(shortStamp(run.createdAt)))
       + popRow("Mode", '<span class="tag">' + esc(run.mode || "") + '</span>')
       + popRow("Package", esc(run.packageName || "(none)"))
+      + (currentData.cost ? popRow("Est. cost", esc(runCostText())) : "")
       + popRow("Evidence", '<span class="tag" data-tone="green">' + icon("lock", 10) + ' local-only</span>')
       + '</div>';
   }
@@ -2275,7 +2303,10 @@ export function observerClientJs(): string {
   function historyRuns() {
     if (historyIndex && historyIndex.runs && historyIndex.runs.length) return historyIndex.runs;
     var run = currentData.run;
-    return [{ runId: run.runId, createdAt: run.createdAt, mode: run.mode, status: overallStatus(), streamCount: currentData.streams.length, href: null }];
+    return [{ runId: run.runId, createdAt: run.createdAt, mode: run.mode, status: overallStatus(), streamCount: currentData.streams.length, href: null,
+      estimatedCostUsd: currentData.cost ? currentData.cost.estimatedTotalUsd : null,
+      costRatesAsOf: currentData.cost ? currentData.cost.ratesAsOf : null,
+      costPlaceholder: currentData.cost ? currentData.cost.placeholder : false }];
   }
   function buildDrawer() {
     var runs = historyRuns();
@@ -2284,11 +2315,14 @@ export function observerClientJs(): string {
       var t = tone(r.status);
       var col = t === "running" ? "var(--accent-2)" : t === "complete" ? "var(--green)" : t === "blocked" ? "var(--amber)" : r.status === "failed" ? "var(--red)" : "var(--text-2)";
       var liveTagTxt = (r.runId === activeId && t === "running") ? '<span style="color:var(--accent-2)"> · live</span>' : "";
+      var meta = (r.mode || "run") + " · " + (r.streamCount || 0) + " lanes · " + shortStamp(r.createdAt);
+      if (r.estimatedCostUsd != null) meta += " · ~$" + (fmtCostUsd(r.estimatedCostUsd) || "0") + " est." + (r.costPlaceholder ? " (placeholder)" : "");
+      var metaTitle = r.estimatedCostUsd != null && r.costRatesAsOf ? "estimated, rates as of " + r.costRatesAsOf : "";
       return '<button class="run-row" data-active="' + (r.runId === activeId ? "true" : "false") + '" data-action="run:' + esc(r.runId) + '">'
         + pip(r.status, t === "running")
         + '<span class="run-row-id mono">' + esc(r.runId) + liveTagTxt + '</span>'
         + '<span class="run-row-stat" style="color:' + col + '">' + statusLabel(r.status) + '</span>'
-        + '<span class="run-row-meta mono">' + esc((r.mode || "run") + " · " + (r.streamCount || 0) + " lanes · " + shortStamp(r.createdAt)) + '</span></button>';
+        + '<span class="run-row-meta mono"' + (metaTitle ? ' title="' + esc(metaTitle) + '"' : "") + '>' + esc(meta) + '</span></button>';
     }).join("");
     return '<div class="scrim" data-action="close-history"></div><aside class="drawer" role="dialog" aria-label="Run history">'
       + '<header class="drawer-head"><div><span class="eyebrow">Run history</span><h2>Recent runs</h2></div>'

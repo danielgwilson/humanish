@@ -9,8 +9,8 @@ import { describe, expect, it } from "vitest";
 import { observerClientJs, observerCss } from "../src/observer-assets.js";
 import { createProgram } from "../src/program.js";
 import { attachObserverRuntimeStreamUrls, renderObserver, serveObserver } from "../src/observer.js";
-import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
-import { runDryRun } from "../src/run.js";
+import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../src/observer-data.js";
+import { runDryRun, type RunBundle, type RunCostSummary } from "../src/run.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
@@ -1420,5 +1420,103 @@ describe("observer rendering", () => {
       expect(envelope.error.code).toBe("HUMANISH_WATCH_OPTION_CONFLICT");
       expect(envelope.error.message).toContain("Use either --run");
     });
+  });
+});
+
+describe("observer cost estimate (always labeled)", () => {
+  const labeledCost: RunCostSummary = {
+    schema: "humanish.run-cost-summary.v1",
+    currency: "usd",
+    estimatedTotalUsd: 11.60,
+    ratesAsOf: "2026-08-01",
+    fullyEstimated: false,
+    placeholder: true,
+    breakdown: [
+      { kind: "model-tokens", laneId: "lane-1", modelId: "gpt-5.5", estimatedCostUsd: 11.60, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing", placeholder: true },
+      { kind: "desktop-minutes", estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null }
+    ],
+    tokenUsage: { input: 3843523, output: 5869, total: 3849392 },
+    desktopMinutes: null,
+    note: "Estimated 11.6 USD total (LOWER BOUND); includes PLACEHOLDER rate(s)."
+  };
+  const nullCost: RunCostSummary = {
+    schema: "humanish.run-cost-summary.v1",
+    currency: "usd",
+    estimatedTotalUsd: null,
+    ratesAsOf: null,
+    fullyEstimated: false,
+    placeholder: false,
+    breakdown: [{ kind: "model-tokens", laneId: "lane-1", estimatedCostUsd: null, reason: "no_rate_for_model", ratesAsOf: null }],
+    tokenUsage: { input: 100, output: 20, total: 120 },
+    desktopMinutes: null,
+    note: "No priced spend lines this run."
+  };
+
+  function costObserverData(cost: RunCostSummary, actorEstimate?: unknown): Record<string, unknown> {
+    const base = statusBarObserverData("passed", 1);
+    base.cost = cost;
+    if (actorEstimate !== undefined) {
+      (base.streams as Array<Record<string, unknown>>)[0]!.actor = { schema: "humanish.actor-trace.v1", estimatedCost: actorEstimate };
+    }
+    (base.streams as Array<Record<string, unknown>>)[0]!.id = "lane-1";
+    return base;
+  }
+
+  it("buildObserverData projects bundle.cost straight through to ObserverData.cost", () => {
+    const bundle = {
+      schema: "humanish.run-bundle.v1",
+      runId: "cost-observer",
+      mode: "live",
+      simCount: 0,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      cwd: "[target-cwd]",
+      artifactRoot: ".humanish/runs/cost-observer",
+      source: { packageName: "humanish", humanishSource: "present", git: { schema: "humanish.git-state.v1", status: "missing" } },
+      persona: { id: "p", name: "P", source: "lab:x", sourceDigest: "d" },
+      scenario: { id: "s", title: "S", goal: "g", source: "lab:x", sourceDigest: "d" },
+      lifecycle: [],
+      simulations: [],
+      streams: [],
+      events: [],
+      redaction: { status: "passed", notes: "" },
+      artifacts: { run: "run.json", reviewJson: "review.json", reviewMarkdown: "review.md", observerData: "observer/observer-data.json", events: "events.ndjson" },
+      review: { schema: "humanish.review.v1", verdict: "pass", summary: "", gaps: [] },
+      feedbackCandidates: [],
+      cost: labeledCost
+    } as unknown as RunBundle;
+    const data = buildObserverData(bundle);
+    expect(data.cost).toEqual(labeledCost);
+
+    const noCost = buildObserverData({ ...bundle, cost: undefined } as unknown as RunBundle);
+    expect(noCost.cost).toBeUndefined();
+  });
+
+  it("renders the run-total cost as a LABELED estimate (never a bare $) in the status bar", () => {
+    const html = renderObserverClientForTest(costObserverData(labeledCost)).html();
+    expect(html).toContain("estimated (rates as of 2026-08-01)");
+    expect(html).toContain("placeholder rate");
+    expect(html).toContain("~$11.60");
+  });
+
+  it("renders a NULL run-total as 'not estimated' (declared absent, fail-open on display)", () => {
+    const html = renderObserverClientForTest(costObserverData(nullCost)).html();
+    expect(html).toContain("not estimated");
+    expect(html).not.toContain("estimated (rates as of");
+  });
+
+  it("surfaces the labeled estimate in the run-details popover", () => {
+    const client = renderObserverClientForTest(costObserverData(labeledCost));
+    client.click("toggle-details");
+    expect(client.html()).toContain("Est. cost");
+    expect(client.html()).toContain("estimated (rates as of 2026-08-01)");
+  });
+
+  it("labels the per-lane estimate in the focus side panel", () => {
+    const html = renderObserverClientForTest(
+      costObserverData(labeledCost, { schema: "humanish.actor-estimated-cost.v1", estimatedCostUsd: 4.86, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing", placeholder: true }),
+      "#focus=lane-1"
+    ).html();
+    expect(html).toContain("Est. cost");
+    expect(html).toContain("~$4.86 estimated (rates as of 2026-08-01)");
   });
 });

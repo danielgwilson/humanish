@@ -1,4 +1,5 @@
 import type { CodexAppServerRunResult, CodexAppServerStatus, CodexAppServerTrace } from "./codex-app-server.js";
+import type { ActorEstimatedCost } from "./pricing.js";
 import { redactText } from "./redaction.js";
 
 // The provider-neutral evidence schema. Codex item/* events, Claude
@@ -129,6 +130,15 @@ export interface ActorTrace {
   counts: Record<string, number>;
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
+  /**
+   * ADDITIVE + OPTIONAL token-derived cost ESTIMATE for this lane (humanish.actor-estimated-cost.v1).
+   * Distinct from `tokenUsage.costUsd`, which is RESERVED for a real provider-returned charge: a
+   * bare `costUsd` always means "the provider billed this", while `estimatedCost.estimatedCostUsd`
+   * is a rate-table multiply named honestly as an estimate (invariant 6). Absent on codex/scripted
+   * lanes and on every pre-existing bundle — its absence is tolerated by verify (fail-open on
+   * display). A `null` estimatedCostUsd is DECLARED ABSENT (unknown rate / no usage), never 0.
+   */
+  estimatedCost?: ActorEstimatedCost;
   capabilities: ActorCapabilities;
 }
 
