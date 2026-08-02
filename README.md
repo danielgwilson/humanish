@@ -115,6 +115,41 @@ The CI-safe equivalent is:
 npx humanish watch --json --no-open
 ```
 
+## Serve the Library
+
+`humanish watch` follows one attached run; `humanish serve` serves the whole
+local run library under `.humanish/runs/` — a library index plus every run's
+Observer page:
+
+```bash
+npx humanish serve
+npx humanish serve --expose --tunnel ngrok --tunnel-domain observer.example.dev
+npx humanish serve --safe --expose --auth none --tunnel ngrok
+```
+
+The first serves the library on loopback only. The second is the phone path:
+it prints a secret capability link once; tapping the link mints a session
+cookie, and every request without a valid session is refused. The third is a
+secretless safe observer: no link required, but only runs whose `humanish
+verify` shareSafety is `share_ready` exist at all — everything else is absent
+and 404s.
+
+In every mode the server binds `127.0.0.1`; exposure only ever happens through
+a tunnel forwarding to the loopback port. The capability link is minted fresh
+per process: Ctrl-C revokes the link and all sessions, and restarting mints a
+new link.
+
+Send the capability link by AirDrop or manual entry rather than a chat app:
+link unfurlers prefetch URLs server-side, and the link is deliberately not
+single-use for exactly that reason — a preview fetch must not burn the link
+before you tap it. On iOS, the first tap can land in an in-app webview whose
+partitioned cookies do not carry over to the real browser; re-tapping the link
+in the real browser mints a fresh session.
+
+Live desktop stream URLs are never served in any mode; remote viewers see
+persisted evidence (screenshots, events, terminal tails) only. See
+[Serve architecture](docs/architecture/serve.md).
+
 ## Commands
 
 | Command | Purpose |
@@ -124,6 +159,7 @@ npx humanish watch --json --no-open
 | `humanish run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
 | `humanish run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
 | `humanish watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
+| `humanish serve` | Serve the local run library over loopback; optional capability-link or share-safe exposure. |
 | `humanish lab list` | List committed and ignored lab manifests. |
 | `humanish lab inspect <lab>` | Show the source manifest for a lab without running it. |
 | `humanish lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |
@@ -433,6 +469,7 @@ preserve historical mechanisms and carry explicit amendments near the top.
 - [Ramp for future contributors and agents](docs/ramp/README.md)
 - [Project layout](docs/architecture/project-layout.md)
 - [Observer architecture](docs/architecture/observer.md)
+- [Serve: the run library surface](docs/architecture/serve.md)
 - [Actor contract (first-party registry and extension direction)](docs/architecture/actor-contract.md)
 - [State-driven executor (drive a local app, no E2B/vision)](docs/architecture/state-driven-executor.md)
 - [OSS lab design record (historical; see its current safety amendment)](docs/architecture/oss-lab-poc.md)

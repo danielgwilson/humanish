@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.16.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.17.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -46,6 +46,8 @@ workflow without leaking private upstream truth into core.
 | Adapter score | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
 | Adapter artifact | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
 | Shared-world evidence | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
+| Serve result | `humanish.serve-result.v1` (`src/observer-serve.ts` is authoritative) | none (command result envelope; see Serve Result below) |
+| Serve control plane | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1) | none |
 
 ## Lab Manifest
 
@@ -645,6 +647,26 @@ Reserved: `humanish.substrate.v1` is named here for layering intent but has
 never shipped — no code emits or validates it. Substrate truth today lives
 inside run bundles (per-stream transport and status) and lab execution config
 (`execution.target: local | e2b-desktop`). Do not emit this schema.
+
+## Serve Result And Reserved Control-Plane Namespace
+
+`humanish serve` reports `humanish.serve-result.v1`. The exported `ServeResult`
+type and `SERVE_SCHEMA` constant in `src/observer-serve.ts` are authoritative:
+mode (`loopback | capability-link | share-safe-open`), the loopback host/port,
+capability/public URLs, runs listed, computed warnings, and the
+`ServeErrorCode` union. Capability URLs embed a live secret; they belong on the
+operator's terminal and never in a persisted or committed artifact.
+
+Reserved: `/_humanish/api/*` is the serve control-plane namespace. In v1 any
+request under it that clears the auth gate answers `501` with error code
+`HUMANISH_SERVE_CONTROL_PLANE_DISABLED`; under `--expose --auth link` a
+session-less request answers the uniform `401` first. The typed `ServeControlPlane`
+parameter exists in the handler options and is always `undefined` in v1; no
+code dispatches into it yet. Do not build against the namespace; the
+reservation guarantees only that no run artifact or observer asset will ever be
+served under it. See
+[`docs/architecture/serve.md`](../architecture/serve.md) for the v2 seam
+contract.
 
 ## Terminal Cost Ledger And No-Spend Proof
 

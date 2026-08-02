@@ -34,7 +34,10 @@ const secretPatterns = [
   ["private_key_block", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
   ["db_connection_with_credentials", /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g],
   ["npm_auth_token", /_authToken\s*=\s*[A-Za-z0-9._~+\/=-]{20,}/g],
-  ["bearer_token", /\bBearer\s+[A-Za-z0-9._~+\/-]{24,}\b/g]
+  ["bearer_token", /\bBearer\s+[A-Za-z0-9._~+\/-]{24,}\b/g],
+  // ngrok authtokens are two base62 chunks joined by "_"; require the literal
+  // "authtoken" nearby so ordinary underscore-joined identifiers do not match.
+  ["ngrok_authtoken", /\bauthtoken['":=\s]+[0-9A-Za-z]{20,}_[0-9A-Za-z]{18,}\b/gi]
 ];
 
 const staleInternalDocDirs = ["operations"];
@@ -47,6 +50,10 @@ const staleInternalContextNames = [
 
 const privateResiduePatterns = [
   ["absolute_local_user_path", /\/Users\/[A-Za-z0-9._-]+\//g],
+  // Linux host home dirs (e.g. a maintainer's /home/azureuser/...), excluding
+  // the synthetic usernames this repo uses on purpose: /home/user/ is the E2B
+  // sandbox constant and /home/someuser/ is redaction-test fixture data.
+  ["absolute_linux_home_path", /\/home\/(?!user\/|someuser\/)[A-Za-z0-9._-]+\//g],
   ["local_git_path", /\blocal_git\b/g],
   ["provider_sandbox_id", /\b(?:(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?|sandboxId["']?\s*[:=]\s*["']?)(?!\[redacted-sandbox-id\])i[a-z0-9]{18,}`?/g],
   ["stale_internal_docs_path", new RegExp(`\\bdocs/(?:${staleInternalDocDirs.join("|")})\\b`, "g")],

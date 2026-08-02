@@ -1,6 +1,7 @@
 import { CommanderError } from "commander";
 import { EventEmitter } from "node:events";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { connect as netConnect, createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
@@ -779,4 +780,342 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
     process.stdout.isTTY = false;
     expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: true, mode: "run", wantsMachine: false })).toBe(true);
   });
+});
+
+interface ServeEnvelope {
+  schema: string;
+  ok: boolean;
+  mode: string;
+  safe: boolean;
+  host: string;
+  port?: number;
+  url?: string;
+  capabilityUrl?: string;
+  publicUrl?: string;
+  publicCapabilityUrl?: string;
+  tunnel?: { provider: string; url: string };
+  ttlMinutes?: number;
+  runsListed: number;
+  shareReadyCount?: number;
+  warnings: string[];
+  error?: { code: string; message: string };
+}
+
+const SERVE_LAB_FIXTURE: Record<string, string> = {
+  "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+  "humanish/labs/first-run.yaml": [
+    "schema: humanish.lab.v2",
+    "id: first-run",
+    "subject:",
+    "  source: this-repo",
+    "actors:",
+    "  - type: synthetic-persona",
+    "    count: 2",
+    "scenario:",
+    "  mode: dry-run"
+  ].join("\n")
+};
+
+async function seedDryRunBundle(cwd: string, runId: string): Promise<void> {
+  const seeded = await runCli(["run", "first-run", "--cwd", cwd, "--run-id", runId, "--json"]);
+  expect(seeded.exitCode, `seeding dry-run bundle ${runId}`).toBe(0);
+}
+
+// serve's action awaits serveObserveUntilSignal, so the CLI promise must run
+// unawaited while the test polls its output and then delivers the stop signal
+// (the watch signal-cleanup technique, with process itself as the target).
+function startAttachedCli(args: string[]): {
+  exitCode: () => number;
+  stdout: () => string;
+  stderr: () => string;
+  finished: Promise<void>;
+} {
+  let exitCode = 0;
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const program = createProgram({
+    writeOut: (text) => stdout.push(text),
+    writeErr: (text) => stderr.push(text),
+    setExitCode: (code) => {
+      exitCode = code;
+    }
+  });
+  program.exitOverride();
+  const finished = program.parseAsync(["node", "humanish", ...args], { from: "node" }).then(() => undefined);
+  return {
+    exitCode: () => exitCode,
+    stdout: () => stdout.join(""),
+    stderr: () => stderr.join(""),
+    finished
+  };
+}
+
+async function waitForOutput(read: () => string, needle: string, timeoutMs = 10_000): Promise<void> {
+  const start = Date.now();
+  while (!read().includes(needle)) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`timed out waiting for ${JSON.stringify(needle)}; saw: ${JSON.stringify(read())}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
+// serve registers its stop handler with process.once("SIGTERM", ...); invoking
+// exactly the listeners that appeared since the snapshot mirrors the watch
+// test's signalTarget.emit without tripping the test runner's own handlers.
+function sigtermListenersSince(preexisting: ReadonlySet<unknown>): NodeJS.SignalsListener[] {
+  return process.listeners("SIGTERM").filter((listener) => !preexisting.has(listener));
+}
+
+function portRefusesConnections(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = netConnect({ host: "127.0.0.1", port });
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once("error", () => resolve(true));
+  });
+}
+
+function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createNetServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      if (!address || typeof address === "string") {
+        reject(new Error("port probe did not bind a TCP port"));
+        return;
+      }
+      probe.close(() => resolve(address.port));
+    });
+  });
+}
+
+describe("humanish serve command", () => {
+  it("serves the run library over loopback with a machine envelope, then tears down once on SIGTERM", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "serve-loopback-run");
+
+      const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+      const cli = startAttachedCli(["serve", "--cwd", cwd, "--json", "--no-open"]);
+      await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+
+      const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+      expect(envelope.schema).toBe("humanish.serve-result.v1");
+      expect(envelope.ok).toBe(true);
+      expect(envelope.mode).toBe("loopback");
+      expect(envelope.safe).toBe(false);
+      expect(envelope.host).toBe("127.0.0.1");
+      expect(envelope.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+      expect(envelope.capabilityUrl).toBeUndefined();
+      expect(envelope.runsListed).toBe(1);
+
+      // Mirror the watch signal test: deliver SIGTERM twice; the stop path must
+      // run exactly once and exit with exitCodeForSignal(SIGTERM).
+      const listeners = sigtermListenersSince(preexisting);
+      expect(listeners).toHaveLength(1);
+      for (const listener of listeners) listener("SIGTERM");
+      for (const listener of listeners) listener("SIGTERM");
+      await cli.finished;
+
+      expect(cli.exitCode()).toBe(143);
+      expect(cli.stderr().split("observe stopped").length - 1).toBe(1);
+      expect(cli.stderr()).not.toContain("cleanup failed");
+    });
+  }, 20_000);
+
+  it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes", async () => {
+    await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
+      const matrix: Array<{ args: string[]; code: string }> = [
+        { args: ["--auth", "link"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        // --auth none is gated on --safe before --expose's origin requirement,
+        // so the no-secret publishing refusal is observable without an origin.
+        { args: ["--expose", "--auth", "none"], code: "HUMANISH_SERVE_OPEN_REQUIRES_SAFE" },
+        { args: ["--tunnel", "ngrok"], code: "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE" },
+        { args: ["--tunnel-domain", "observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--expose", "--tunnel", "ngrok", "--public-url", "https://observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--expose"], code: "HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN" },
+        { args: ["--public-url", "https://observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--expose", "--public-url", "notaurl"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--expose", "--public-url", "https://observer.example.dev", "--ttl", "0"], code: "HUMANISH_SERVE_INVALID_TTL" },
+        { args: ["--ttl", "5"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--port", "99999"], code: "HUMANISH_INVALID_PORT" }
+      ];
+
+      for (const row of matrix) {
+        const result = await runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...row.args]);
+        const envelope = JSON.parse(result.stdout) as ServeEnvelope;
+        expect(result.exitCode, `exit code for: ${row.args.join(" ")}`).toBe(2);
+        expect(envelope.error?.code, `error code for: ${row.args.join(" ")}`).toBe(row.code);
+      }
+    });
+  }, 20_000);
+
+  it("fails HUMANISH_RUN_NOT_FOUND for an unknown --run before printing any serving banner", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "serve-entry-run");
+
+      const result = await runCli(["serve", "--run", "nope", "--cwd", cwd, "--json", "--no-open"]);
+      const envelope = JSON.parse(result.stdout) as ServeEnvelope;
+      expect(result.exitCode).toBe(2);
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error?.code).toBe("HUMANISH_RUN_NOT_FOUND");
+      // Fail-before-bind pin: the attach banner must never appear on either stream.
+      expect(result.stdout).not.toContain("serving:");
+      expect(result.stderr).not.toContain("serving:");
+    });
+  }, 20_000);
+
+  it("refuses to serve a blocked run under --safe, naming the shareSafety status and reason code", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "serve-blocked-run");
+      // Same poisoning pattern as the run.test.ts public-safety scan test: a
+      // secret-shaped token in a text artifact drives verify to blocked.
+      await writeFile(
+        path.join(cwd, ".humanish/runs/serve-blocked-run/events.ndjson"),
+        `{"message":"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}"}\n`,
+        "utf8"
+      );
+
+      const result = await runCli(["serve", "--safe", "--run", "serve-blocked-run", "--cwd", cwd, "--json", "--no-open"]);
+      const envelope = JSON.parse(result.stdout) as ServeEnvelope;
+      expect(result.exitCode).toBe(2);
+      expect(envelope.error?.code).toBe("HUMANISH_SERVE_RUN_NOT_SHAREABLE");
+      expect(envelope.error?.message).toContain("blocked");
+      expect(envelope.error?.message).toContain("PUBLIC_SAFETY_FINDINGS");
+    });
+  }, 20_000);
+
+  it("mints a capability link under --expose --auth link and mirrors it onto the declared public origin", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "serve-capability-run");
+
+      const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+      const cli = startAttachedCli([
+        "serve", "--cwd", cwd, "--expose", "--auth", "link",
+        "--public-url", "https://observer.example.dev", "--json", "--no-open"
+      ]);
+      await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+
+      const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+      expect(envelope.mode).toBe("capability-link");
+      expect(envelope.capabilityUrl?.startsWith("http://127.0.0.1:")).toBe(true);
+      expect(envelope.capabilityUrl).toContain("/_humanish/auth/");
+      const token = envelope.capabilityUrl?.split("/_humanish/auth/")[1];
+      expect(token).toBeTruthy();
+      expect(envelope.publicCapabilityUrl).toBe(`https://observer.example.dev/_humanish/auth/${token}`);
+      expect(envelope.ttlMinutes).toBe(720);
+      expect(envelope.warnings.join("\n")).toContain(`all ${envelope.runsListed} local runs`);
+
+      for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
+      await cli.finished;
+      expect(cli.exitCode()).toBe(143);
+    });
+  }, 20_000);
+
+  it("serves share_ready runs openly under --safe --expose --auth none, naming the public origin", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "serve-open-run");
+
+      const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+      const cli = startAttachedCli([
+        "serve", "--cwd", cwd, "--safe", "--expose", "--auth", "none",
+        "--public-url", "https://observer.example.dev", "--json", "--no-open"
+      ]);
+      await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+
+      const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+      expect(envelope.mode).toBe("share-safe-open");
+      expect(envelope.capabilityUrl).toBeUndefined();
+      expect(envelope.shareReadyCount).toBe(1);
+      expect(envelope.warnings.join("\n")).toContain("https://observer.example.dev");
+
+      for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
+      await cli.finished;
+      expect(cli.exitCode()).toBe(143);
+    });
+  }, 20_000);
+
+  it("starts the ngrok tunnel against the loopback port and tears both down on SIGTERM", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "serve-tunnel-run");
+
+      const stubDir = await mkdtemp(path.join(os.tmpdir(), "humanish-ngrok-stub-"));
+      const teardownMarker = path.join(stubDir, "ngrok-teardown-marker");
+      // Started-tunnel log line field shape captured from a real ngrok 3.x
+      // `--log stdout --log-format json` session, with the url genericized.
+      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.dev"}`;
+      await writeFile(
+        path.join(stubDir, "ngrok"),
+        [
+          "#!/bin/sh",
+          "# Stub ngrok: emit one started-tunnel line, wait for SIGTERM, record teardown.",
+          `trap 'touch "${teardownMarker}"; kill "$SLEEP_PID" 2>/dev/null; exit 0' TERM INT`,
+          `printf '%s\\n' '${startedTunnelLine}'`,
+          "sleep 120 &",
+          "SLEEP_PID=$!",
+          "wait \"$SLEEP_PID\"",
+          ""
+        ].join("\n"),
+        { encoding: "utf8", mode: 0o755 }
+      );
+
+      const originalPath = process.env.PATH;
+      process.env.PATH = `${stubDir}${path.delimiter}${originalPath ?? ""}`;
+      try {
+        const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+        const cli = startAttachedCli(["serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok", "--json", "--no-open"]);
+        await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+
+        const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+        expect(envelope.tunnel).toEqual({ provider: "ngrok", url: "https://observer.example.dev" });
+        const token = envelope.capabilityUrl?.split("/_humanish/auth/")[1];
+        expect(token).toBeTruthy();
+        expect(envelope.publicCapabilityUrl).toBe(`https://observer.example.dev/_humanish/auth/${token}`);
+        if (typeof envelope.port !== "number") {
+          throw new Error("expected a bound port in the serve envelope");
+        }
+
+        for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
+        await cli.finished;
+        expect(cli.exitCode()).toBe(143);
+        await expect(stat(teardownMarker)).resolves.toBeTruthy();
+        expect(await portRefusesConnections(envelope.port)).toBe(true);
+      } finally {
+        process.env.PATH = originalPath;
+        await rm(stubDir, { force: true, recursive: true });
+      }
+    });
+  }, 20_000);
+
+  it("fails HUMANISH_SERVE_TUNNEL_NOT_FOUND when ngrok is absent and tears the bound server down", async () => {
+    await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
+      await mkdir(path.join(cwd, ".humanish", "runs"), { recursive: true });
+
+      const emptyDir = await mkdtemp(path.join(os.tmpdir(), "humanish-empty-path-"));
+      const port = await findFreePort();
+      const originalPath = process.env.PATH;
+      // The CLI runs in-process and spawns nothing but ngrok on this path, so a
+      // PATH of one empty directory makes that exact spawn fail ENOENT.
+      process.env.PATH = emptyDir;
+      try {
+        const result = await runCli([
+          "serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok",
+          "--port", String(port), "--json", "--no-open"
+        ]);
+        const envelope = JSON.parse(result.stdout) as ServeEnvelope;
+        expect(result.exitCode).toBe(2);
+        expect(envelope.ok).toBe(false);
+        expect(envelope.error?.code).toBe("HUMANISH_SERVE_TUNNEL_NOT_FOUND");
+        expect(result.stdout).not.toContain("serving:");
+        expect(result.stderr).not.toContain("serving:");
+        expect(await portRefusesConnections(port)).toBe(true);
+      } finally {
+        process.env.PATH = originalPath;
+        await rm(emptyDir, { force: true, recursive: true });
+      }
+    });
+  }, 20_000);
 });

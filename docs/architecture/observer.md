@@ -71,6 +71,13 @@ sanitized transcripts, traces, and verdict events are available. This gives a
 served Observer a truthful active state to poll while noninteractive local
 actors are still running.
 
+Watch is deliberately distinct from `humanish serve`. Watch serves ONE
+attached run, and the process that created it may inject runtime stream URLs
+(live hosted-desktop viewers) into the observer data it serves. Serve is the
+LIBRARY surface — every run under `.humanish/runs/` — and never serves runtime
+stream URLs in any mode; remote viewers see persisted evidence only. See
+[Serve: the run library surface](serve.md).
+
 ## UI Shape
 
 The Observer shell has:
