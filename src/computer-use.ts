@@ -348,6 +348,13 @@ function statusForCompletion(reason: ActorCompletionReason): ActorStatus {
     case "goal_satisfied":
     case "turn_completed": // turn_completed is a Codex-lane reason; this loop emits goal_satisfied
       return "passed";
+    // Productive wall-clock stop: an open-ended watch session that reached the safety cap AFTER
+    // material progress is a non-failure completion (ActorStatus has no "budget_reached" member; the
+    // honest distinction lives in completionReason). This switch is exhaustive with no default, so a
+    // new completion reason forces a compile error here until it is handled — the safety net that
+    // guarantees budget_reached is mapped.
+    case "budget_reached":
+      return "passed";
     case "timed_out":
       return "timed_out";
     case "blocked_approval":
@@ -440,12 +447,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const counts: Record<string, number> = {
     turns: 0,
     actions: 0,
+    materialActions: 0,
     screenshots: 0,
     reasonings: 0,
     messages: 0,
     idleTurns: 0,
     noProgressTurns: 0
   };
+  // Productivity signal for the wall-clock deadline: a session that took at least one material
+  // (non-idle) action before the cap reached its BUDGET rather than stalling. A deadline hit with
+  // zero material actions is still an honest failure (timed_out). Kept beside counts.materialActions
+  // so the evidence self-describes the distinction.
+  let materialActions = 0;
   let seq = 0;
   let usageInput = 0;
   let usageOutput = 0;
@@ -558,8 +571,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         break;
       }
       if (now() - startedAtMs > timeoutMs) {
-        completionReason = "timed_out";
-        reason = `wall-clock deadline reached after ${timeoutMs}ms`;
+        if (materialActions > 0) {
+          completionReason = "budget_reached";
+          reason = `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${counts.turns} turn(s))`;
+        } else {
+          completionReason = "timed_out";
+          reason = `wall-clock deadline reached after ${timeoutMs}ms with no material progress`;
+        }
         break;
       }
 
@@ -639,7 +657,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         lastActionTitle = actionTitle;
         recentActionTitles.push(actionTitle);
         if (recentActionTitles.length > 8) recentActionTitles.shift();
-        if (!isIdleAction(action)) lastMaterialActionTitle = actionTitle;
+        if (!isIdleAction(action)) {
+          lastMaterialActionTitle = actionTitle;
+          materialActions += 1;
+          counts.materialActions = materialActions;
+        }
         bump("actions");
         currentPhase = `executing ${actionTitle}`;
         // Record the action as completed only AFTER execute() resolves: a failed
@@ -741,8 +763,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     if (error instanceof CuaFrameGuardStop || error instanceof CuaStopWhenStop) {
       // completionReason/reason were already set by the frame guard or stopWhen guard.
     } else if (error instanceof CuaDeadlineError) {
-      completionReason = "timed_out";
-      reason = `wall-clock deadline reached after ${timeoutMs}ms`;
+      if (materialActions > 0) {
+        completionReason = "budget_reached";
+        reason = `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${counts.turns} turn(s))`;
+      } else {
+        completionReason = "timed_out";
+        reason = `wall-clock deadline reached after ${timeoutMs}ms with no material progress`;
+      }
     } else if (error instanceof CuaAbortError) {
       completionReason = "harness_error";
       reason = "run aborted by the harness";

@@ -111,7 +111,10 @@ export type ActorCompletionReason =
   | "turn_completed"      // harness saw an explicit done signal, no predicate
   | "gave_up"             // persona abandoned in character: friction exceeded its tolerance
   | "blocked_approval"    // an action was auto-declined and the actor could not proceed
-  | "timed_out"
+  | "timed_out"           // wall-clock deadline hit with ZERO material progress → still a FAILURE
+  | "budget_reached"      // wall-clock time budget hit AFTER productive activity (>=1 material
+                          // action) → ActorStatus "passed", a NON-FAILURE open-ended-watch
+                          // completion; distinct from goal_satisfied (no goal was claimed)
   | "actor_error"
   | "step_failed"         // a deterministic scripted step/expectation evaluated false: the
                           // SUBJECT failed the script; the harness executed faithfully
@@ -245,8 +248,31 @@ Completion semantics: `goal_satisfied` means the scenario's `expect` blocks — 
 predicate — all held ("the app still affords this exact journey", nothing about user
 behavior); `step_failed` means a deterministic step or expectation evaluated false (the
 subject failed the script; the harness ran faithfully); `timed_out` is the journey wall-clock
-budget; `harness_error` is a browser that could not launch. `gave_up` and `blocked_approval`
-are unreachable — no persona patience, no approvals exist on a deterministic replay.
+budget hit with NO material progress (still a failure); `harness_error` is a browser that could
+not launch. `gave_up` and `blocked_approval` are unreachable — no persona patience, no
+approvals exist on a deterministic replay.
+
+### The time budget vs. a stuck timeout (`budget_reached`)
+
+`execution.timeoutMs` is a GENEROUS wall-clock SAFETY cap, not a goal. For an open-ended
+"watch it play" session there is no success predicate — productive play IS the outcome — so the
+computer-use loop distinguishes two ways to hit the cap:
+
+- **`budget_reached`** — the deadline was reached AFTER at least one material (non-idle) action.
+  This maps to `ActorStatus: "passed"`: a non-failure completion, `laneOutcomeOk` returns true,
+  the verdict is `pass`, and the CLI exits `0`. It stays a distinct `completionReason` (never
+  `goal_satisfied`), and the trace `reason` says it reached the budget after productive activity,
+  so a reviewer of a strictly goal-directed lab sees it hit the cap rather than reaching a goal
+  (goal-directed labs should set a tight `timeoutMs`).
+- **`timed_out`** — the deadline was reached with ZERO material actions (a hung provider, an
+  idle-only stall). This maps to `ActorStatus: "timed_out"`, `laneOutcomeOk` is false, the
+  verdict is `fail`, and the CLI exits `2`. "Made zero progress then timed out" stays a failure.
+
+`ActorStatus` intentionally gains NO new member — the honest distinction lives in
+`completionReason`/`reason` — which keeps the change from rippling through ~10 provider mappers.
+`statusForCompletion` is an exhaustive switch with no default, so a new completion reason forces a
+compile-time decision about its status. ~30 min (`1_800_000`) is a reasonable default for
+open-ended watch; the persona still stops early on `goal_satisfied`/`gave_up`/`stopWhen`.
 
 Actuation-vs-spend gate: on the scripted lab route `scenario.mode: live` is still required
 even though provider spend is $0 by mechanism. The gate's justification there is ACTUATION,
