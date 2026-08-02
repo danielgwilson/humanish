@@ -150,6 +150,8 @@ export type {
   RunAdapterScore,
   RunAttributionClass,
   RunBundle,
+  RunCostLine,
+  RunCostSummary,
   RunDesktopGeometry,
   RunEvent,
   RunFeedbackCandidate,

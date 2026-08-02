@@ -34,6 +34,7 @@ import { mapWithConcurrency } from "./concurrency.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import { round6 } from "./pricing.js";
 import { containsSensitive, digestText, redactText, redactToSecretLabel, tailText } from "./redaction.js";
 import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
 import {
@@ -753,6 +754,58 @@ export interface RunBundle {
    * resource lease. Optional + additive; core never enumerates provider accounts.
    */
   providerResources?: RunProviderResource[];
+  /**
+   * OPTIONAL, ADDITIVE run-level cost ESTIMATE (humanish.run-cost-summary.v1): the sum of every
+   * lane's model-token estimate PLUS the E2B desktop-minute estimate, carrying the SAME
+   * null-discipline the terminal cost ledger already ships. Absent on every pre-existing bundle
+   * and on dry-runs that invent no spend (byte-stable). Every dollar figure here is an ESTIMATE,
+   * never an authoritative charge; verify asserts its LABELING/provenance, never its magnitude.
+   */
+  cost?: RunCostSummary;
+}
+
+/**
+ * One contributing cost line of a RunCostSummary. A line is PRESENT even when it cannot be priced
+ * (records that we TRIED and could not) — an unpriceable line carries estimatedCostUsd: null + a
+ * `reason` and contributes NOTHING to the summary total (invariant 5). `estimatedCostUsd` is NEVER
+ * coerced to 0.
+ */
+export interface RunCostLine {
+  kind: "model-tokens" | "desktop-minutes";
+  laneId?: string;
+  modelId?: string;
+  /** null = NOT MEASURED / no rate; never coerced to 0. */
+  estimatedCostUsd: number | null;
+  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration";
+  /** Pricing provenance date; non-null iff estimatedCostUsd is non-null. */
+  ratesAsOf: string | null;
+  source?: string;
+  placeholder?: boolean;
+}
+
+/**
+ * The run-level cost ESTIMATE. `estimatedTotalUsd` is the rounded sum of ONLY the non-null
+ * `breakdown` lines; it is null iff EVERY line is null (never 0-coerced). `fullyEstimated` is
+ * false when any applicable line is null (the total is then a LOWER BOUND). Every non-null dollar
+ * figure carries `ratesAsOf`; `placeholder` is true when any contributing rate is a stand-in.
+ */
+export interface RunCostSummary {
+  schema: "humanish.run-cost-summary.v1";
+  currency: "usd";
+  /** Sum of the KNOWN (non-null) lines; null iff every applicable line is null. */
+  estimatedTotalUsd: number | null;
+  /** Max asOf across contributing rates; null when nothing was priced. */
+  ratesAsOf: string | null;
+  /** false when any applicable line is null (the total is a lower bound). */
+  fullyEstimated: boolean;
+  /** true when any contributing rate is a placeholder (a stand-in, not a live sheet). */
+  placeholder: boolean;
+  breakdown: RunCostLine[];
+  tokenUsage: { input: number; output: number; total: number };
+  /** Host-side create->teardown span in minutes; null when no sandbox was created. */
+  desktopMinutes: number | null;
+  /** Honest "estimated; <x> unmeasured" statement. */
+  note: string;
 }
 
 export interface RunProviderResource {
@@ -3893,6 +3946,18 @@ async function verifyPreparedRun(
       ? "rerun bundles either are absent or link selected lanes to prior lane status and a fan-out rerun event"
       : `rerun lineage findings: ${rerunFindings.join(", ")}`
   });
+  // Cost is ADVISORY on magnitude, FAIL-CLOSED on labeling/provenance (claims match mechanism).
+  // Absence PASSES (fail-open on display); a claimed dollar figure without its ratesAsOf date +
+  // source, or a total that does not match its known lines, FAILS. Magnitude is never inspected —
+  // a correctly-labeled huge estimate still passes.
+  const costFindings = isRunBundle(bundle) ? costLabelingFindings(bundle) : [];
+  checks.push({
+    name: "cost estimate labeling",
+    ok: costFindings.length === 0,
+    message: costFindings.length === 0
+      ? "cost figures are absent, or every claimed estimate carries its ratesAsOf date + source and the total matches its known lines (estimates never presented as exact)"
+      : `cost labeling findings: ${costFindings.join(", ")}`
+  });
 
   const ok = checks.every((check) => check.ok);
   const warnings = isRunBundle(bundle)
@@ -5419,6 +5484,81 @@ function rerunLineageFindings(bundle: RunBundle): string[] {
   }
   if (!bundle.events.some((event) => event.type === "cua-lab.fanout.rerun")) {
     findings.push("missing cua-lab.fanout.rerun event");
+  }
+
+  return findings;
+}
+
+/**
+ * Verify the LABELING/provenance of any cost figure a bundle CLAIMS — never its magnitude. Returns
+ * [] (pass) unless a dollar claim lacks its provenance (invariant 6) or a total misreports its
+ * known lines. ABSENCE always passes (fail-open on display, discipline #3): a bundle with no cost,
+ * a null estimate, or a lane without estimatedCost is fine. A NON-NULL figure must carry its
+ * ratesAsOf date + source; a NUMBER total must equal round6(sum of ONLY the non-null lines) and a
+ * null line may never be coerced to 0. A null estimate must be declared honestly (a reason + null
+ * ratesAsOf), mirroring the terminal no-spend proof's null-discipline.
+ */
+function costLabelingFindings(bundle: RunBundle): string[] {
+  const findings: string[] = [];
+
+  const cost = bundle.cost;
+  if (cost) {
+    if (cost.schema !== "humanish.run-cost-summary.v1") {
+      findings.push(`run cost summary schema is ${String(cost.schema)}, expected humanish.run-cost-summary.v1`);
+    }
+    let knownSum = 0;
+    let anyKnown = false;
+    for (const [index, line] of (cost.breakdown ?? []).entries()) {
+      if (line.estimatedCostUsd === null) {
+        continue;
+      }
+      anyKnown = true;
+      knownSum += line.estimatedCostUsd;
+      if (typeof line.ratesAsOf !== "string" || line.ratesAsOf.length === 0) {
+        findings.push(`cost breakdown line ${index} (${line.kind}) claims $${line.estimatedCostUsd} without a ratesAsOf date`);
+      }
+      if (typeof line.source !== "string" || line.source.length === 0) {
+        findings.push(`cost breakdown line ${index} (${line.kind}) claims $${line.estimatedCostUsd} without a pricing source`);
+      }
+    }
+    if (cost.estimatedTotalUsd !== null) {
+      if (typeof cost.ratesAsOf !== "string" || cost.ratesAsOf.length === 0) {
+        findings.push("run cost summary claims a number estimatedTotalUsd without a ratesAsOf date");
+      }
+      if (round6(cost.estimatedTotalUsd) !== round6(knownSum)) {
+        findings.push(`run cost estimatedTotalUsd ${cost.estimatedTotalUsd} does not equal the sum of its known breakdown lines (${round6(knownSum)})`);
+      }
+    } else if (anyKnown) {
+      // Every-line-null is the only honest null total; a null total beside a known line hides spend.
+      findings.push("run cost estimatedTotalUsd is null but a breakdown line carries a known (non-null) cost");
+    }
+  }
+
+  for (const stream of bundle.streams) {
+    const estimate = stream.actor?.estimatedCost;
+    if (!estimate) {
+      continue;
+    }
+    const laneLabel = stream.laneId ?? stream.id;
+    if (estimate.schema !== "humanish.actor-estimated-cost.v1") {
+      findings.push(`lane ${laneLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`);
+    }
+    if (estimate.estimatedCostUsd !== null) {
+      if (typeof estimate.ratesAsOf !== "string" || estimate.ratesAsOf.length === 0) {
+        findings.push(`lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`);
+      }
+      if (typeof estimate.source !== "string" || estimate.source.length === 0) {
+        findings.push(`lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`);
+      }
+    } else {
+      // Declared-absent honesty (invariant 5): a null estimate must say WHY and carry null ratesAsOf.
+      if (estimate.reason === undefined) {
+        findings.push(`lane ${laneLabel} records a null cost estimate without a reason`);
+      }
+      if (estimate.ratesAsOf !== null) {
+        findings.push(`lane ${laneLabel} records a null cost estimate but carries a non-null ratesAsOf`);
+      }
+    }
   }
 
   return findings;
