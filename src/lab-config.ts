@@ -445,6 +445,15 @@ export interface LabExecution {
   /** FORWARD-DECLARED. */
   concurrency?: number;
   desktop?: LabExecutionDesktop;
+  /**
+   * Blast-radius budget for the computer-use lane. CONSUMED on the CUA route: `caps.maxUsd`, when
+   * set, is a FAIL-CLOSED abort — the session stops the moment its running ESTIMATED spend crosses
+   * it (the runaway-retry guard), and a cap on a model src/pricing.ts cannot price is REFUSED at
+   * preflight rather than run uncapped. Absent = UNCAPPED (the historical CUA behavior);
+   * maxUsd: 0 = no-spend (any measurable estimate > 0 aborts). Inert (warned) on non-CUA routes.
+   * Reuses the same LabScenarioCaps shape as the terminal lane's `scenario.caps` (not a fork).
+   */
+  caps?: LabScenarioCaps;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: LabExecutionTerminal;
   /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Live runs inject the
@@ -1234,6 +1243,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out lanes);
   // inert (warned) everywhere else.
   if (config.execution?.concurrency !== undefined && !routesToCua) inert.push("execution.concurrency");
+  // execution.caps is CONSUMED on the cua route (maxUsd is the fail-closed spend abort); inert
+  // (warned) everywhere else so a misplaced budget field is never trusted to cap a route it cannot.
+  if (config.execution?.caps && !routesToCua) inert.push("execution.caps (the fail-closed spend abort is a computer-use route capability; needs a computer-use actor on e2b-desktop)");
   // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}:
   // dry-run records the contract; live execution enforces caps and command-scoped auth. On every
   // OTHER route they are inert and must warn so a
@@ -2041,6 +2053,13 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
     return desktopResult;
   }
   if (desktopResult.value) execution.desktop = desktopResult.value;
+  // Reuse the terminal lane's caps parser (same shape, not a fork) — a malformed budget is a hard
+  // error, never silently dropped (a cap that silently does nothing would be a safety lie).
+  const capsResult = parseCaps(raw.caps);
+  if (!capsResult.ok) {
+    return capsResult;
+  }
+  if (capsResult.value) execution.caps = capsResult.value;
   const terminalResult = parseTerminal(raw.terminal);
   if (!terminalResult.ok) {
     return terminalResult;

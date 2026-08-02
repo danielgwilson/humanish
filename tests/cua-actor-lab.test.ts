@@ -3220,3 +3220,169 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(persisted).not.toContain("stream.invalid");
   });
 });
+
+describe("runCuaActorLab cost estimates", () => {
+  let cwd: string;
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-cost-")); });
+  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+  // A stepped clock: runCuaLane reads it exactly twice — right after create() and right after
+  // teardown — so delta == one step == the deterministic billed span.
+  function steppedClock(stepMs: number): () => number {
+    let t = 0;
+    return () => (t += stepMs);
+  }
+  // A scripted OpenAI Responses session that reports token usage, so a real estimate is produced.
+  const usageSession = (input: number, output: number): unknown[] => [
+    { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }], usage: { input_tokens: input, output_tokens: output } },
+    { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }], usage: { input_tokens: 0, output_tokens: 0 } }
+  ];
+  function configWithModel(model?: string, caps?: { maxUsd?: number }): LabConfig {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-cost-proof",
+      title: "CUA cost proof",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop.", ...(model ? { model } : {}) }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800] }, ...(caps ? { caps } : {}) },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+  const readBundle = async (runId: string): Promise<any> =>
+    JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"));
+
+  it("attaches a labeled per-lane + run-level estimated cost with provenance and deterministic desktop-minutes; verify passes", async () => {
+    const { module, killed } = makeFakeModule(makeFakeSandbox());
+    const result = await runCuaActorLab({
+      cwd,
+      config: configWithModel(), // default resolves to gpt-5.5 (a documented PLACEHOLDER rate)
+      dryRun: false,
+      hooks: {
+        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+        loadDesktopModule: async () => module,
+        now: steppedClock(60_000), // create → 60000ms, teardown → 120000ms → 1 billed minute
+        runSession: async (o) => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(2_000_000, 4_000)) } })
+      }
+    });
+    expect(result.ok).toBe(true);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+
+    const bundle = await readBundle(result.runId);
+    // Per-actor estimate on the persisted trace: labeled with provenance, placeholder flagged.
+    const est = bundle.streams[0].actor.estimatedCost;
+    expect(est.schema).toBe("humanish.actor-estimated-cost.v1");
+    // gpt-5.5 placeholder: 2_000_000*1.25e-6 + 4_000*10e-6 = 2.5 + 0.04 = 2.54.
+    expect(est.estimatedCostUsd).toBeCloseTo(2.54, 6);
+    expect(est.ratesAsOf).toBe("2026-08-01");
+    expect(est.source).toContain("openai.com/api/pricing");
+    expect(est.placeholder).toBe(true);
+    expect(est.modelId).toBe("gpt-5.5");
+
+    const cost = bundle.cost;
+    expect(cost.schema).toBe("humanish.run-cost-summary.v1");
+    expect(cost.currency).toBe("usd");
+    expect(cost.desktopMinutes).toBe(1);
+    expect(cost.tokenUsage).toEqual({ input: 2_000_000, output: 4_000, total: 2_004_000 });
+    const modelLine = cost.breakdown.find((l: any) => l.kind === "model-tokens");
+    const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
+    expect(modelLine.estimatedCostUsd).toBeCloseTo(2.54, 6);
+    expect(modelLine.ratesAsOf).toBe("2026-08-01");
+    expect(modelLine.source).toContain("openai.com/api/pricing");
+    expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00167, 6);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(2.54167, 6);
+    expect(cost.placeholder).toBe(true);
+    expect(cost.fullyEstimated).toBe(true);
+    expect(cost.ratesAsOf).toBe("2026-08-01");
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
+    expect(verify.ok).toBe(true);
+  });
+
+  it("DECLARES ABSENT (null + reason) for an unpriced model and sums ONLY the known lines into the total", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    const result = await runCuaActorLab({
+      cwd,
+      config: configWithModel("gpt-4o-unpriced-xyz"),
+      dryRun: false,
+      hooks: {
+        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+        loadDesktopModule: async () => module,
+        now: steppedClock(60_000),
+        runSession: async (o) => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
+      }
+    });
+
+    const bundle = await readBundle(result.runId);
+    const est = bundle.streams[0].actor.estimatedCost;
+    expect(est.estimatedCostUsd).toBeNull();
+    expect(est.reason).toBe("no_rate_for_model");
+    expect(est.ratesAsOf).toBeNull();
+
+    const cost = bundle.cost;
+    const modelLine = cost.breakdown.find((l: any) => l.kind === "model-tokens");
+    const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
+    expect(modelLine.estimatedCostUsd).toBeNull();
+    expect(modelLine.reason).toBe("no_rate_for_model");
+    // The total is the desktop line ALONE — the null model line is never coerced to 0.
+    expect(cost.estimatedTotalUsd).toBeCloseTo(desktopLine.estimatedCostUsd, 6);
+    expect(cost.fullyEstimated).toBe(false);
+    // token usage is still summed even though the model could not be priced.
+    expect(cost.tokenUsage).toEqual({ input: 1000, output: 200, total: 1200 });
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
+  });
+
+  it("DRY-RUN invents no spend: the bundle carries no cost block", async () => {
+    const result = await runCuaActorLab({ cwd, config: configWithModel(), dryRun: true, runId: "cost-dry-run" });
+    expect(result.ok).toBe(true);
+    const bundle = await readBundle("cost-dry-run");
+    expect(bundle.cost).toBeUndefined();
+  });
+
+  it("refuses a maxUsd cap on a model src/pricing.ts cannot price, BEFORE creating any sandbox", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    const result = await runCuaActorLab({
+      cwd,
+      config: configWithModel("gpt-4o-unpriced-xyz", { maxUsd: 5 }),
+      dryRun: false,
+      hooks: {
+        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+        loadDesktopModule: async () => module,
+        runSession: async () => { throw new Error("a session must never run under an unenforceable cap"); }
+      }
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(created).toHaveLength(0);
+  });
+
+  it("accepts a maxUsd cap on a PRICED model and runs — a priced cap is wired, never a refusal", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    const result = await runCuaActorLab({
+      cwd,
+      config: configWithModel("computer-use-preview", { maxUsd: 50 }),
+      dryRun: false,
+      hooks: {
+        env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+        loadDesktopModule: async () => module,
+        now: steppedClock(60_000),
+        runSession: async (o) => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
+      }
+    });
+    expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.ok).toBe(true);
+    const bundle = await readBundle(result.runId);
+    // computer-use-preview is a CONFIRMED (non-placeholder) MODEL rate — the per-actor estimate
+    // and its model-tokens line carry no placeholder flag.
+    expect(bundle.streams[0].actor.estimatedCost.placeholder).toBeUndefined();
+    const modelLine = bundle.cost.breakdown.find((l: any) => l.kind === "model-tokens");
+    expect(modelLine.placeholder).toBeUndefined();
+    // The summary is STILL flagged placeholder because the E2B DESKTOP rate is a placeholder — an
+    // honest signal that a stand-in rate contributed to the total.
+    expect(bundle.cost.placeholder).toBe(true);
+  });
+});

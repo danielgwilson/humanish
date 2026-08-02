@@ -713,6 +713,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         redactScreenshots,
         scrubKnownValues,
         runSession,
+        now,
         hooks: cuaHooks,
         // Concurrent lanes are independent evidence seats: a requested-vs-verified screen
         // mismatch is recorded as separate facts + a warning instead of failing the lane's

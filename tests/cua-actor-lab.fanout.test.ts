@@ -949,3 +949,62 @@ describe("cua fan-out — engine fail-closed guards", () => {
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
   });
 });
+
+describe("cua fan-out — cost estimate (sum lane token lines + one aggregate desktop line)", () => {
+  let cwd: string;
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-cost-")); });
+  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+  const usageSession = (input: number, output: number): unknown[] => [
+    { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }], usage: { input_tokens: input, output_tokens: output } },
+    { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }], usage: { input_tokens: 0, output_tokens: 0 } }
+  ];
+
+  it("emits one model-tokens line per lane and a SINGLE aggregate desktop-minutes line, summing without double-counting", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 2,
+      lanes: [
+        { id: "role-a", persona: "role-a", device: "desktop", instruction: "Explore role A." },
+        { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." }
+      ]
+    });
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => handle.module,
+        runSession: async (options: CuaActorSessionOptions) =>
+          runCuaActorSession({ ...options, openai: { ...options.openai, apiKey: "test-openai-key", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
+      }
+    });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.ok).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const cost = bundle.cost;
+    expect(cost.schema).toBe("humanish.run-cost-summary.v1");
+
+    const modelLines = cost.breakdown.filter((l: { kind: string }) => l.kind === "model-tokens");
+    const desktopLines = cost.breakdown.filter((l: { kind: string }) => l.kind === "desktop-minutes");
+    // One model-tokens line PER lane, keyed by laneId; exactly ONE aggregate desktop line.
+    expect(modelLines).toHaveLength(2);
+    expect(new Set(modelLines.map((l: { laneId?: string }) => l.laneId))).toEqual(new Set(["role-a", "role-b"]));
+    expect(desktopLines).toHaveLength(1);
+
+    // Token usage summed across BOTH lanes (2 * {input:1000, output:200}).
+    expect(cost.tokenUsage).toEqual({ input: 2000, output: 400, total: 2400 });
+
+    // The total is exactly the sum of the KNOWN lines — the invariant verify also asserts.
+    const knownSum = cost.breakdown
+      .filter((l: { estimatedCostUsd: number | null }) => l.estimatedCostUsd !== null)
+      .reduce((s: number, l: { estimatedCostUsd: number }) => s + l.estimatedCostUsd, 0);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(Math.round(knownSum * 1e6) / 1e6, 9);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
+    expect(verify.ok).toBe(true);
+  });
+});
