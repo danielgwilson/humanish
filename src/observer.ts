@@ -20,6 +20,7 @@ import {
 import {
   writeContainedOutputFile
 } from "./selected-output-paths.js";
+import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -50,13 +51,23 @@ export interface ObserverOptions {
 export interface ObserverServeOptions {
   open?: boolean;
   port?: number;
+  // Exposed mode: when true, the live server enforces the same DNS-rebinding defense as the
+  // run-library surface — a strict Host allowlist (loopback names seeded at bind, extended by
+  // addPublicOrigin, 421 otherwise) plus the shared security headers on every response. Loopback
+  // default (false) keeps the permissive local-dev behavior byte-identical.
+  exposed?: boolean;
 }
 
 export interface ObserverServer {
   url: string;
+  port: number;
   opened: boolean;
   openCommand?: string;
   warning?: string;
+  // Declare an additional public origin (the tunnel URL or an operator --public-url). Extends the
+  // Host allowlist so an authenticated edge forwarding under that Host is admitted; a no-op when the
+  // server is not exposed. Never changes the loopback bind.
+  addPublicOrigin(origin: string): void;
   close(): Promise<void>;
 }
 
@@ -269,8 +280,23 @@ export async function serveObserver(
     throw new Error("Observer path does not match the selected run.");
   }
   const runtimeStreamUrls = () => observerRuntimeStreamUrls.get(result) ?? [];
+  const exposed = options.exposed === true;
+  // Host allowlist for exposed mode (DNS-rebinding defense, identical to the run-library surface).
+  // Seeded with the loopback names after bind; addPublicOrigin extends it with the tunnel/public-url
+  // host. Never consulted in loopback (non-exposed) mode.
+  const hostAllowlist = new Set<string>();
   const server = createServer(async (request, response) => {
     try {
+      if (exposed) {
+        for (const [name, value] of Object.entries(buildServeSecurityHeaders())) {
+          response.setHeader(name, value);
+        }
+        if (!hostAllowed(request.headers.host, hostAllowlist)) {
+          writeResponse(response, 421, "Misdirected Request", "text/plain; charset=utf-8");
+          return;
+        }
+      }
+
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
 
       if (url.pathname === "/") {
@@ -307,14 +333,32 @@ export async function serveObserver(
   });
 
   const port = await listen(server, options.port ?? 0);
+  if (exposed) {
+    hostAllowlist.add(`127.0.0.1:${port}`);
+    hostAllowlist.add(`localhost:${port}`);
+    hostAllowlist.add(`[::1]:${port}`);
+  }
   const url = `http://127.0.0.1:${port}/observer/index.html`;
   const openResult = options.open === true ? openTarget(url) : { opened: false };
 
   return {
     url,
+    port,
     opened: openResult.opened,
     ...(openResult.command ? { openCommand: openResult.command } : {}),
     ...(openResult.warning ? { warning: openResult.warning } : {}),
+    // A tunnel's public origin is only known after it starts (post bind). Declaring it here extends
+    // the Host allowlist so the authenticated edge is admitted; a no-op in loopback mode (the
+    // allowlist is never consulted) and for an unparseable origin.
+    addPublicOrigin(origin: string): void {
+      if (!exposed) {
+        return;
+      }
+      const parsed = parsePublicOrigin(origin);
+      if (parsed) {
+        hostAllowlist.add(parsed.host);
+      }
+    },
     close: () => closeServer(server)
   };
 }

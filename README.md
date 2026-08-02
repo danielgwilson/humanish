@@ -123,31 +123,38 @@ Observer page:
 
 ```bash
 npx humanish serve
-npx humanish serve --expose --tunnel ngrok --tunnel-domain observer.example.dev
-npx humanish serve --safe --expose --auth none --tunnel ngrok
+npx humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com
+npx humanish serve --safe --expose --tunnel ngrok
+npx humanish serve --expose --public-url https://observer.example.dev
 ```
 
 The first serves the library on loopback only. The second is the phone path:
-it prints a secret capability link once; tapping the link mints a session
-cookie, and every request without a valid session is refused. The third is a
-secretless safe observer: no link required, but only runs whose `humanish
-verify` shareSafety is `share_ready` exist at all — everything else is absent
-and 404s.
+ngrok's edge authenticates viewers with Google OAuth (restricted to your
+`--allow-email`/`--allow-domain` allow rules) before any request reaches the
+loopback server — humanish carries no in-process auth. The third is a secretless
+safe observer: no login, but only runs whose `humanish verify` shareSafety is
+`share_ready` exist at all — everything else is absent and 404s. The fourth
+trusts an edge you already secure (Cloudflare Access, Tailscale, a proxy you own)
+and just binds loopback behind it.
 
 In every mode the server binds `127.0.0.1`; exposure only ever happens through
-a tunnel forwarding to the loopback port. The capability link is minted fresh
-per process: Ctrl-C revokes the link and all sessions, and restarting mints a
-new link.
+an authenticated edge forwarding to the loopback port. Exposure is fail-closed:
+`--expose` requires EITHER edge auth (`--oauth` on the tunnel, or a `--public-url`
+you secure) OR `--safe`. `--oauth google` with no allow rule lets any Google
+account in and warns loudly.
 
-Send the capability link by AirDrop or manual entry rather than a chat app:
-link unfurlers prefetch URLs server-side, and the link is deliberately not
-single-use for exactly that reason — a preview fetch must not burn the link
-before you tap it. On iOS, the first tap can land in an in-app webview whose
-partitioned cookies do not carry over to the real browser; re-tapping the link
-in the real browser mints a fresh session.
+### Watch a live run from your phone
 
-Live desktop stream URLs are never served in any mode; remote viewers see
-persisted evidence (screenshots, events, terminal tails) only. See
+`humanish watch <cua-lab> --expose --tunnel ngrok --oauth google --allow-email
+you@example.com` streams the LIVE desktop of a computer-use run to an
+edge-authenticated remote viewer while it plays. The attached server comes up
+during the run and survives a timed-out/failed run, so you can inspect a failed
+run's evidence too. A live run is never `share_ready`, so `watch --expose` always
+requires edge auth (`--safe` alone is refused).
+
+Live E2B desktop stream URLs are served ONLY on `watch --expose`, and only behind
+edge auth; `serve` never injects them (remote viewers of the library see
+persisted evidence — screenshots, events, terminal tails — only). See
 [Serve architecture](docs/architecture/serve.md).
 
 ## Commands
@@ -159,7 +166,7 @@ persisted evidence (screenshots, events, terminal tails) only. See
 | `humanish run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
 | `humanish run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
 | `humanish watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
-| `humanish serve` | Serve the local run library over loopback; optional capability-link or share-safe exposure. |
+| `humanish serve` | Serve the local run library over loopback; optional tunnel-edge authenticated or share-safe exposure. |
 | `humanish lab list` | List committed and ignored lab manifests. |
 | `humanish lab inspect <lab>` | Show the source manifest for a lab without running it. |
 | `humanish lab preflight <lab>` | Check lab routing and optional target reachability before actor/model spend. |

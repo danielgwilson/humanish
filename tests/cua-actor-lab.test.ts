@@ -36,6 +36,7 @@ import type {
 } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
+import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
 import type {
   BrowserLabScoringContext,
@@ -3041,5 +3042,181 @@ describe("chromeCdpPortResolutionScript (observe-time CDP port re-resolution)", 
     expect(commands).toHaveLength(1);
     expect(commands[0]).toContain("DevToolsActivePort");
     expect(commands[0]).toContain("/tmp/humanish-profile-x");
+  });
+});
+
+// Budget vs. timed_out semantics through the lab, and live-serve-during-run wiring. Every session
+// is driven by the REAL loop against an injected clock + state executor/provider (no vision, no
+// screenshots, $0). The fake sandbox provisions a stream URL before the session runs, so the live
+// Observer picks it up even when the session ends timed_out/failed.
+describe("runCuaActorLab budget/timeout semantics + live serve", () => {
+  let cwd: string;
+  const openServers: ObserverServer[] = [];
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-budget-"));
+  });
+  afterEach(async () => {
+    await Promise.all(openServers.splice(0).map((server) => server.close()));
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  // A state executor (no screenshot) reading a shared clock so the loop's deadline is deterministic.
+  function clockExecutor(clock: { t: number }): CuaExecutor {
+    let turn = 0;
+    return {
+      async observe(): Promise<CuaObservation> {
+        turn += 1;
+        return { stateSignature: `sig-${turn}`, appState: { turn, t: clock.t } };
+      },
+      async execute(): Promise<void> {}
+    };
+  }
+
+  // Reaches budget: takes one MATERIAL action, then the clock jumps past the deadline.
+  function budgetProvider(clock: { t: number }): CuaProvider {
+    return {
+      id: "budget-brain",
+      version: "0.1.0",
+      requiresFrame: false,
+      capabilities: STATE_CAPS,
+      async nextTurn(): Promise<CuaTurn> {
+        clock.t = 1000;
+        return { actions: [{ kind: "type", text: "hello" }], pendingSafetyChecks: [], done: false };
+      }
+    };
+  }
+
+  // Zero material progress: only an idle wait, then the clock jumps past the deadline → timed_out.
+  function idleTimeoutProvider(clock: { t: number }): CuaProvider {
+    return {
+      id: "idle-brain",
+      version: "0.1.0",
+      requiresFrame: false,
+      capabilities: STATE_CAPS,
+      async nextTurn(): Promise<CuaTurn> {
+        clock.t = 1000;
+        return { actions: [{ kind: "wait", ms: 1 }], pendingSafetyChecks: [], done: false };
+      }
+    };
+  }
+
+  it("classifies a productive budget stop as a NON-FAILURE pass (budget_reached) and verifies the bundle", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          const clock = { t: 0 };
+          return runCuaActorSession({
+            ...options,
+            provider: budgetProvider(clock),
+            executor: clockExecutor(clock),
+            now: () => clock.t,
+            timeoutMs: 100
+          });
+        }
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.session?.completionReason).toBe("budget_reached");
+    expect(result.session?.status).toBe("passed");
+    expect(result.ok).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.review.verdict).toBe("pass");
+    expect(bundle.streams[0].actor.completionReason).toBe("budget_reached");
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("keeps a zero-progress timeout an honest FAILURE (timed_out → result.ok false)", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          const clock = { t: 0 };
+          return runCuaActorSession({
+            ...options,
+            provider: idleTimeoutProvider(clock),
+            executor: clockExecutor(clock),
+            now: () => clock.t,
+            timeoutMs: 100
+          });
+        }
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.session?.completionReason).toBe("timed_out");
+    expect(result.session?.status).toBe("timed_out");
+    expect(result.ok).toBe(false);
+  });
+
+  it("fires onObserverReady for a single lane and serves the LIVE in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    let readyObserver: (ObserverResult & { ok: true }) | undefined;
+    let server: ObserverServer | undefined;
+
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      onObserverReady: async (observer) => {
+        // Invoked BEFORE the actor loop, for laneCount === 1, with an ok in-progress bundle.
+        readyObserver = observer;
+        expect(observer.ok).toBe(true);
+        server = await serveObserver(observer, { port: 0 });
+        openServers.push(server);
+      },
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          const clock = { t: 0 };
+          return runCuaActorSession({
+            ...options,
+            provider: idleTimeoutProvider(clock),
+            executor: clockExecutor(clock),
+            now: () => clock.t,
+            timeoutMs: 100
+          });
+        }
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+
+    // Serve-on-failure: the run ended timed_out (not ok) but the attached server still came up.
+    expect(result.ok).toBe(false);
+    expect(readyObserver).toBeTruthy();
+    expect(server).toBeTruthy();
+
+    const served = await fetch(new URL("observer-data.json", server!.url));
+    expect(served.status).toBe(200);
+    const observerData = await served.json() as {
+      streams: Array<{ transport?: string; url?: string; embed?: { kind: string } }>;
+    };
+    // The runtime E2B stream URL was injected into the LIVE bundle (the whole point of watch-live).
+    expect(observerData.streams[0]?.transport).toBe("sse");
+    expect(observerData.streams[0]?.url).toBe("https://stream.invalid/fake-auth-key");
+    // ...but it is NEVER persisted to disk.
+    const persisted = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8");
+    expect(persisted).not.toContain("fake-auth-key");
+    expect(persisted).not.toContain("stream.invalid");
   });
 });

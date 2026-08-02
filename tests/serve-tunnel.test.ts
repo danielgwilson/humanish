@@ -116,6 +116,63 @@ describe("startNgrokTunnel", () => {
     expect(args[urlFlagIndex + 1]).toBe("observer.example.dev");
   });
 
+  it("maps --oauth google plus each allow rule onto the ngrok edge OAuth flags", async () => {
+    const harness = createSpawnHarness();
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      oauthProvider: "google",
+      oauthAllowEmails: ["a@example.com", "b@example.com"],
+      oauthAllowDomains: ["example.com"],
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000
+    });
+    onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
+    await tunnelPromise;
+
+    const args = harness.calls[0]?.args ?? [];
+    const oauthIndex = args.indexOf("--oauth");
+    expect(oauthIndex).toBeGreaterThanOrEqual(0);
+    expect(args[oauthIndex + 1]).toBe("google");
+    // One flag emitted per repeated allow value, each preceding its value.
+    expect(args.filter((arg) => arg === "--oauth-allow-email")).toHaveLength(2);
+    expect(args.filter((arg) => arg === "--oauth-allow-domain")).toHaveLength(1);
+    const emailIndexes = args.flatMap((arg, index) => (arg === "--oauth-allow-email" ? [index] : []));
+    expect(emailIndexes.map((index) => args[index + 1])).toEqual(["a@example.com", "b@example.com"]);
+    const domainIndex = args.indexOf("--oauth-allow-domain");
+    expect(args[domainIndex + 1]).toBe("example.com");
+    // The port is still the trailing positional arg.
+    expect(args[args.length - 1]).toBe("8732");
+  });
+
+  it("emits --oauth google with no allow flags when no allow rules are provided", async () => {
+    const harness = createSpawnHarness();
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      oauthProvider: "google",
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000
+    });
+    onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
+    await tunnelPromise;
+
+    const args = harness.calls[0]?.args ?? [];
+    expect(args).toContain("--oauth");
+    expect(args).not.toContain("--oauth-allow-email");
+    expect(args).not.toContain("--oauth-allow-domain");
+  });
+
+  it("emits no oauth flags when oauth is absent", async () => {
+    const harness = createSpawnHarness();
+    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
+    await tunnelPromise;
+
+    const args = harness.calls[0]?.args ?? [];
+    expect(args).not.toContain("--oauth");
+    expect(args).not.toContain("--oauth-allow-email");
+    expect(args).not.toContain("--oauth-allow-domain");
+  });
+
   // Spec item 31: ENOENT spawn error maps to the not-found code with actionable guidance.
   it("rejects with HUMANISH_SERVE_TUNNEL_NOT_FOUND when the ngrok binary is missing", async () => {
     const harness = createSpawnHarness();

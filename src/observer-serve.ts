@@ -11,33 +11,26 @@ import {
   serveRunPath
 } from "./observer.js";
 import type { PinnedDirectory } from "./observer.js";
-import {
-  buildSessionCookie,
-  createServeSessionStore,
-  mintServeToken,
-  sha256Digest,
-  verifyTokenDigest
-} from "./observer-auth.js";
-import type { ServeSessionStore } from "./observer-auth.js";
 import { renderLibraryHtml } from "./observer-library.js";
 import type { LibraryHistory } from "./observer-library.js";
+import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin, type ServeMode } from "./serve-http.js";
+import type { ExposureErrorCode } from "./serve-exposure.js";
 import { listRuns, verifyRun } from "./run.js";
 
 export const SERVE_SCHEMA = "humanish.serve-result.v1";
 
-export type ServeMode = "loopback" | "capability-link" | "share-safe-open";
+// Re-exported for compat: these hardening primitives now live in serve-http.js so the live Observer
+// server can share them without a module cycle.
+export { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin };
+export type { ServeMode };
 
 export type ServeErrorCode =
   | "HUMANISH_INVALID_PORT"
-  | "HUMANISH_SERVE_INVALID_TTL"
-  | "HUMANISH_SERVE_OPTION_CONFLICT"
-  | "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE"
-  | "HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN"
-  | "HUMANISH_SERVE_OPEN_REQUIRES_SAFE"
   | "HUMANISH_SERVE_TUNNEL_NOT_FOUND"
   | "HUMANISH_SERVE_TUNNEL_START_FAILED"
   | "HUMANISH_RUN_NOT_FOUND"
-  | "HUMANISH_SERVE_RUN_NOT_SHAREABLE";
+  | "HUMANISH_SERVE_RUN_NOT_SHAREABLE"
+  | ExposureErrorCode;
 
 export interface ServeResult {
   schema: typeof SERVE_SCHEMA;
@@ -48,11 +41,11 @@ export interface ServeResult {
   host: "127.0.0.1";
   port?: number;
   url?: string;
-  capabilityUrl?: string;
   publicUrl?: string;
-  publicCapabilityUrl?: string;
   tunnel?: { provider: "ngrok"; url: string };
-  ttlMinutes?: number;
+  // Edge OAuth echo (no secrets): the operator-supplied allow rules, echoed to the operator's own
+  // stdout only. Never persisted into any run bundle; scrubbed through the redaction path to be safe.
+  oauth?: { provider: "google"; allowEmails: string[]; allowDomains: string[] };
   runsListed: number;
   shareReadyCount?: number;
   entryRunId?: string;
@@ -121,50 +114,6 @@ export function createShareSafetyAdmission(
   };
 }
 
-export function buildServeSecurityHeaders(): Record<string, string> {
-  return {
-    "cache-control": "no-store",
-    "referrer-policy": "no-referrer",
-    "x-content-type-options": "nosniff",
-    "x-frame-options": "DENY",
-    "x-robots-tag": "noindex, nofollow"
-  };
-}
-
-export function hostAllowed(hostHeader: string | undefined, allowlist: ReadonlySet<string>): boolean {
-  return typeof hostHeader === "string" && allowlist.has(hostHeader.trim().toLowerCase());
-}
-
-export function parsePublicOrigin(value: string): { origin: string; host: string; scheme: "http" | "https" } | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    return null;
-  }
-  if ((parsed.pathname !== "/" && parsed.pathname !== "") || parsed.search || parsed.hash || !parsed.host) {
-    return null;
-  }
-  return {
-    origin: parsed.origin,
-    host: parsed.host.toLowerCase(),
-    scheme: parsed.protocol === "https:" ? "https" : "http"
-  };
-}
-
-export interface ServeAuthContext {
-  tokenDigest: Buffer;
-  sessions: ServeSessionStore;
-  ttlSeconds: number;
-  // Cookie Secure attribute is decided from the DECLARED public origin's
-  // scheme, not the spoofable X-Forwarded-Proto hop header. Undefined means no
-  // public origin was declared (plain loopback mint), so Secure is omitted.
-  publicScheme?: "http" | "https";
-}
-
 export interface ServeRequestHandlerOptions {
   proofRoot: PinnedDirectory;
   safe: boolean;
@@ -172,14 +121,11 @@ export interface ServeRequestHandlerOptions {
   // admit is absent would silently serve every run. serveObserverLibrary always
   // wires it; the type keeps future callers from omitting it.
   admit: (runId: string) => Promise<boolean>;
-  auth?: ServeAuthContext | null;
   hostAllowlist: ReadonlySet<string>;
   entryRunId?: string;
   renderLibrary: (history: LibraryHistory) => string;
   controlPlane?: ServeControlPlane;
 }
-
-const UNAUTHORIZED_BODY = "humanish serve: capability link required";
 
 export function createServeRequestHandler(
   options: ServeRequestHandlerOptions
@@ -202,42 +148,6 @@ export function createServeRequestHandler(
       }
 
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
-
-      if (options.auth) {
-        const mintMatch = url.pathname.match(/^\/_humanish\/auth\/([^/]+)$/);
-        if (mintMatch) {
-          let candidate = "";
-          try {
-            candidate = decodeURIComponent(mintMatch[1] ?? "");
-          } catch {
-            candidate = "";
-          }
-          if (candidate && verifyTokenDigest(candidate, options.auth.tokenDigest)) {
-            const { cookieValue } = options.auth.sessions.mint();
-            const secure = options.auth.publicScheme === "https";
-            response.setHeader(
-              "set-cookie",
-              buildSessionCookie(cookieValue, { ttlSeconds: options.auth.ttlSeconds, secure })
-            );
-            response.writeHead(302, { location: "/" });
-            response.end();
-            return;
-          }
-          writeText(response, 401, UNAUTHORIZED_BODY);
-          return;
-        }
-
-        // Every route below requires a valid session, regardless of source
-        // address: the tunnel agent connects from 127.0.0.1, so a loopback-peer
-        // trust shortcut would disable auth in exactly the deployment it protects.
-        if (!options.auth.sessions.validate(request.headers.cookie)) {
-          writeText(response, 401, UNAUTHORIZED_BODY);
-          return;
-        }
-      } else if (url.pathname.startsWith("/_humanish/auth/")) {
-        writeText(response, 404, "Not found");
-        return;
-      }
 
       if (url.pathname === "/_humanish/api" || url.pathname.startsWith("/_humanish/api/")) {
         writeText(
@@ -322,8 +232,10 @@ export interface ServeLibraryOptions {
   port: number;
   safe: boolean;
   expose: boolean;
-  authMode: "link" | "none";
-  ttlMinutes: number;
+  // Edge auth (ngrok --oauth or an operator --public-url) is decided by the CLI's validateExposure
+  // and passed in: it drives the mode label (exposed vs share-safe-open). humanish carries no
+  // in-process auth — the gate lives at the tunnel/proxy edge.
+  edgeAuthed: boolean;
   publicOrigin?: string;
   entryRunId?: string;
   controlPlane?: ServeControlPlane;
@@ -335,7 +247,6 @@ export interface ServeLibraryServer {
   url: string;
   port: number;
   mode: ServeMode;
-  capabilityToken?: string;
   runsListed: number;
   shareReadyCount?: number;
   entryRunId?: string;
@@ -371,8 +282,11 @@ export async function serveObserverLibrary(
     verifyImpl,
     ...(options.now ? { now: options.now } : {})
   });
+  // Exposure auth is tunnel-edge only. Under --expose, an edge-authed surface (ngrok --oauth or an
+  // operator --public-url) serves every run (mode "exposed"); an un-authed surface is admissible
+  // only because --safe narrows it to share_ready runs (mode "share-safe-open").
   const mode: ServeMode = options.expose
-    ? options.authMode === "link" ? "capability-link" : "share-safe-open"
+    ? options.edgeAuthed ? "exposed" : "share-safe-open"
     : "loopback";
 
   let entryRunId: string | undefined;
@@ -403,7 +317,7 @@ export async function serveObserverLibrary(
   }
 
   // Counts are computed over the UNCAPPED run list, not the 80-item history
-  // index: a capability link (non-safe) grants access to every run by direct
+  // index: an edge-authed surface (non-safe) grants access to every run by direct
   // URL, and share-safe modes admit every share_ready run per request, so a
   // count capped at 80 would understate exactly what the exposure warning
   // claims. runsListed feeds the operator's declared-friction warning.
@@ -420,27 +334,11 @@ export async function serveObserverLibrary(
 
   const declaredOrigin = options.publicOrigin ? parsePublicOrigin(options.publicOrigin) : null;
 
-  let auth: ServeAuthContext | null = null;
-  let capabilityToken: string | undefined;
-  if (options.expose && options.authMode === "link") {
-    capabilityToken = mintServeToken();
-    auth = {
-      tokenDigest: sha256Digest(capabilityToken),
-      sessions: createServeSessionStore({
-        ttlMs: options.ttlMinutes * 60_000,
-        ...(options.now ? { now: options.now } : {})
-      }),
-      ttlSeconds: options.ttlMinutes * 60,
-      ...(declaredOrigin ? { publicScheme: declaredOrigin.scheme } : {})
-    };
-  }
-
   const hostAllowlist = new Set<string>();
   const handler = createServeRequestHandler({
     proofRoot,
     safe: options.safe,
     admit: (runId) => admission.admit(runId),
-    auth,
     hostAllowlist,
     ...(entryRunId ? { entryRunId } : {}),
     renderLibrary: (history) => renderLibraryHtml(history, {
@@ -468,25 +366,20 @@ export async function serveObserverLibrary(
       url: `http://127.0.0.1:${port}/`,
       port,
       mode,
-      ...(capabilityToken ? { capabilityToken } : {}),
       runsListed,
       ...(shareReadyCount !== undefined ? { shareReadyCount } : {}),
       ...(entryRunId ? { entryRunId } : {}),
-      // A tunnel's public origin is only known after the tunnel starts (post
-      // bind); this lets the caller declare it, extending the Host allowlist and
-      // — for an https origin like every ngrok tunnel — marking cookies Secure.
+      // A tunnel's public origin is only known after the tunnel starts (post bind); this lets the
+      // caller declare it, extending the Host allowlist so the authenticated edge forwarding under
+      // that Host is admitted. Never flips any in-process auth flag (there is none).
       addPublicOrigin(origin: string): void {
         const parsed = parsePublicOrigin(origin);
         if (!parsed) {
           return;
         }
         hostAllowlist.add(parsed.host);
-        if (auth) {
-          auth.publicScheme = parsed.scheme;
-        }
       },
       close: async () => {
-        auth?.sessions.revokeAll();
         const closed = closeServer(server);
         // Keep-alive sockets would otherwise keep close() pending past the point
         // the operator believes Ctrl-C tore the server down.

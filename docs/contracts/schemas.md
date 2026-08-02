@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.17.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.18.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -601,7 +601,11 @@ Core-owned fields:
 - `startedAt` / `completedAt` / `durationMs`
 - `status` / `completionReason` / `reason` (`completionReason` includes
   `step_failed`: a deterministic scripted step/expectation evaluated false —
-  the subject failed the script while the harness executed faithfully)
+  the subject failed the script while the harness executed faithfully; and
+  `budget_reached`: an open-ended watch session that hit the wall-clock time
+  budget AFTER productive activity — status `passed`, a NON-FAILURE completion,
+  distinct from `timed_out`, which stays reserved for a zero-progress deadline
+  hit and remains a failure)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`
 
 Unexpected actor-loop diagnostics live inside `items[]` as
@@ -652,19 +656,24 @@ inside run bundles (per-stream transport and status) and lab execution config
 
 `humanish serve` reports `humanish.serve-result.v1`. The exported `ServeResult`
 type and `SERVE_SCHEMA` constant in `src/observer-serve.ts` are authoritative:
-mode (`loopback | capability-link | share-safe-open`), the loopback host/port,
-capability/public URLs, runs listed, computed warnings, and the
-`ServeErrorCode` union. Capability URLs embed a live secret; they belong on the
-operator's terminal and never in a persisted or committed artifact.
+mode (`loopback | exposed | share-safe-open`), the loopback host/port,
+`publicUrl`, the `tunnel` provider/url, an `oauth` echo (`provider`,
+`allowEmails`, `allowDomains` — operator-supplied allow rules, public-safe to
+echo to the operator's own stdout, never persisted into any bundle), runs
+listed, computed warnings, and the `ServeErrorCode` union. Exposure auth is
+tunnel-edge only — as of 0.18.0 there are no `capabilityUrl`/`publicCapabilityUrl`
+/`ttlMinutes` fields, no `--auth`/`--ttl` flags, and no `capability-link` mode
+(the in-process `observer-auth.ts` capability-link was removed as a pre-1.0
+breaking change).
 
-Reserved: `/_humanish/api/*` is the serve control-plane namespace. In v1 any
-request under it that clears the auth gate answers `501` with error code
-`HUMANISH_SERVE_CONTROL_PLANE_DISABLED`; under `--expose --auth link` a
-session-less request answers the uniform `401` first. The typed `ServeControlPlane`
-parameter exists in the handler options and is always `undefined` in v1; no
-code dispatches into it yet. Do not build against the namespace; the
-reservation guarantees only that no run artifact or observer asset will ever be
-served under it. See
+Reserved: `/_humanish/api/*` is the serve control-plane namespace. Any request
+under it answers `501` with error code `HUMANISH_SERVE_CONTROL_PLANE_DISABLED`.
+Because the in-process auth gate is gone, a request that clears the edge (or a
+loopback caller) reaches the `501` directly — there is no `401`-first anymore.
+The typed `ServeControlPlane` parameter exists in the handler options and is
+always `undefined` in v1; no code dispatches into it yet. Do not build against
+the namespace; the reservation guarantees only that no run artifact or observer
+asset will ever be served under it. See
 [`docs/architecture/serve.md`](../architecture/serve.md) for the v2 seam
 contract.
 

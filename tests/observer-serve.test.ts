@@ -7,7 +7,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
 import { buildCuaBundle } from "../src/cua-actor-lab.js";
-import { SERVE_COOKIE_NAME } from "../src/observer-auth.js";
 import type { LibraryHistory } from "../src/observer-library.js";
 import { serveObserverLibrary } from "../src/observer-serve.js";
 import type { ServeLibraryOptions, ServeLibraryServer } from "../src/observer-serve.js";
@@ -23,7 +22,6 @@ const PNG_1X1 = Buffer.from(
 const SYNTHETIC_SECRET = "sk-" + "testsecretvalue1234567890abcd";
 const SECRET_EVENT_LINE = `{"message":"synthetic ${SYNTHETIC_SECRET}"}\n`;
 
-const UNAUTHORIZED_BODY = "humanish serve: capability link required";
 const CONTROL_PLANE_DISABLED_BODY = `${JSON.stringify(
   {
     error: {
@@ -59,8 +57,7 @@ async function startLibrary(cwd: string, overrides: Partial<ServeLibraryOptions>
     port: 0,
     safe: false,
     expose: false,
-    authMode: "none",
-    ttlMinutes: 720,
+    edgeAuthed: false,
     ...overrides
   };
   const started = await serveObserverLibrary(cwd, options);
@@ -71,12 +68,13 @@ async function startLibrary(cwd: string, overrides: Partial<ServeLibraryOptions>
   return started.server;
 }
 
-function capabilityOptions(overrides: Partial<ServeLibraryOptions> = {}): Partial<ServeLibraryOptions> {
+// Edge-authed exposure (ngrok --oauth or an operator --public-url): the auth gate lives at the
+// tunnel edge, so this loopback server serves every route with NO cookie and NO 401.
+function exposedOptions(overrides: Partial<ServeLibraryOptions> = {}): Partial<ServeLibraryOptions> {
   return {
     expose: true,
-    authMode: "link",
+    edgeAuthed: true,
     publicOrigin: "https://observer.example.dev",
-    ttlMinutes: 30,
     ...overrides
   };
 }
@@ -122,25 +120,6 @@ function rawRequest(
     request.on("error", reject);
     request.end();
   });
-}
-
-async function mintSession(
-  port: number,
-  token: string,
-  headers: Record<string, string> = {}
-): Promise<{ response: RawResponse; cookie: string; setCookie: string }> {
-  const response = await rawRequest(port, `/_humanish/auth/${token}`, { headers });
-  const setCookieHeaders = response.headers["set-cookie"] ?? [];
-  const setCookie = setCookieHeaders[0] ?? "";
-  const cookie = setCookie.split(";")[0] ?? "";
-  return { response, cookie, setCookie };
-}
-
-function requireToken(server: ServeLibraryServer): string {
-  if (!server.capabilityToken) {
-    throw new Error("expected a capability token on this server");
-  }
-  return server.capabilityToken;
 }
 
 function extractLibraryData(html: string): LibraryHistory {
@@ -493,7 +472,7 @@ describe("serve: stream gate", () => {
   });
 });
 
-describe("serve: capability-link mode", () => {
+describe("serve: exposed (edge-authed) mode", () => {
   let cwd: string;
 
   beforeAll(async () => {
@@ -504,178 +483,57 @@ describe("serve: capability-link mode", () => {
     await writeFile(path.join(runDir, "screenshots", "proof.png"), PNG_1X1);
   });
 
-  it("(15) answers every cookieless route with a byte-identical 401 body", async () => {
-    const server = await startLibrary(cwd, capabilityOptions());
-    expect(server.mode).toBe("capability-link");
-    expect(server.capabilityToken).toBeTruthy();
+  it("(15) serves every route with NO cookie and NO 401 — the gate moved to the tunnel edge", async () => {
+    const server = await startLibrary(cwd, exposedOptions());
+    expect(server.mode).toBe("exposed");
+    // The in-process capability-link token is gone entirely.
+    expect((server as { capabilityToken?: string }).capabilityToken).toBeUndefined();
 
     const routes = ["/", "/_humanish/history.json", "/_humanish/runs/cap-run/observer/index.html"];
-    const responses = await Promise.all(routes.map((route) => rawRequest(server.port, route)));
-    for (const response of responses) {
-      expect(response.status).toBe(401);
-      expect(response.body).toBe(UNAUTHORIZED_BODY);
-      expect(response.bodyBytes.equals(Buffer.from(UNAUTHORIZED_BODY, "utf8"))).toBe(true);
+    for (const route of routes) {
+      const response = await rawRequest(server.port, route);
+      expect(response.status, `route ${route}`).toBe(200);
+      expect(response.headers["set-cookie"]).toBeUndefined();
     }
-  });
 
-  it("(16) rejects wrong and odd-length token candidates without crashing the server", async () => {
-    const server = await startLibrary(cwd, capabilityOptions());
-
-    const wrong = await rawRequest(server.port, "/_humanish/auth/definitely-not-the-token");
-    expect(wrong.status).toBe(401);
-    expect(wrong.body).toBe(UNAUTHORIZED_BODY);
-
-    // Odd-length candidate: a naive hex-decode comparison would throw inside
-    // timingSafeEqual; the digest-first comparison must not.
-    const oddLength = await rawRequest(server.port, "/_humanish/auth/abc");
-    expect(oddLength.status).toBe(401);
-
-    // Malformed percent-encoding must also be handled, not crash the process.
-    const malformed = await rawRequest(server.port, "/_humanish/auth/%zz");
-    expect(malformed.status).toBe(401);
-
-    // Server is still up and still mints for the real token.
-    const mint = await mintSession(server.port, requireToken(server));
-    expect(mint.response.status).toBe(302);
-    const authed = await rawRequest(server.port, "/", { headers: { cookie: mint.cookie } });
-    expect(authed.status).toBe(200);
-  });
-
-  it("(17) mints a session with exact cookie attributes; Secure follows the declared origin scheme, not a forwarded header", async () => {
-    // Declared https origin -> Secure present, and a spoofable x-forwarded-proto
-    // header cannot downgrade it (sent here as http, must be ignored).
-    const server = await startLibrary(cwd, capabilityOptions());
-    const token = requireToken(server);
-    const httpsMint = await rawRequest(server.port, `/_humanish/auth/${token}`, {
-      headers: { "x-forwarded-proto": "http" }
-    });
-    expect(httpsMint.status).toBe(302);
-    expect(httpsMint.headers.location).toBe("/");
-    const httpsCookies = httpsMint.headers["set-cookie"] ?? [];
-    expect(httpsCookies).toHaveLength(1);
-    // ttlMinutes 30 -> Max-Age=1800.
-    expect(httpsCookies[0]).toMatch(
-      new RegExp(`^${SERVE_COOKIE_NAME}=[A-Za-z0-9_-]{43}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800; Secure$`)
-    );
-
-    // Declared http origin -> Secure absent, even when x-forwarded-proto claims https.
-    const httpServer = await startLibrary(cwd, capabilityOptions({ publicOrigin: "http://observer.example.dev" }));
-    const httpToken = requireToken(httpServer);
-    const httpMint = await rawRequest(httpServer.port, `/_humanish/auth/${httpToken}`, {
-      headers: { "x-forwarded-proto": "https" }
-    });
-    expect(httpMint.status).toBe(302);
-    const httpCookies = httpMint.headers["set-cookie"] ?? [];
-    expect(httpCookies).toHaveLength(1);
-    expect(httpCookies[0]).toMatch(
-      new RegExp(`^${SERVE_COOKIE_NAME}=[A-Za-z0-9_-]{43}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800$`)
-    );
-
-    // fetch with redirect manual sees the same 302 contract.
-    const viaFetch = await fetch(new URL(`/_humanish/auth/${token}`, server.url), { redirect: "manual" });
-    expect(viaFetch.status).toBe(302);
-    expect(viaFetch.headers.get("location")).toBe("/");
-  });
-
-  it("(18) root-relative pin: one minted cookie reaches library, history, observer data, and screenshots", async () => {
-    const server = await startLibrary(cwd, capabilityOptions());
-    const { cookie } = await mintSession(server.port, requireToken(server));
-
-    const library = await fetch(server.url, { headers: { cookie } });
-    expect(library.status).toBe(200);
-    expect(extractLibraryData(await library.text()).runs.map((run) => run.runId)).toContain("cap-run");
-
-    const history = await fetch(new URL("/_humanish/history.json", server.url), { headers: { cookie } });
-    expect(history.status).toBe(200);
-
-    const observerData = await fetch(
-      new URL("/_humanish/runs/cap-run/observer/observer-data.json", server.url),
-      { headers: { cookie } }
-    );
-    expect(observerData.status).toBe(200);
-
-    const screenshot = await fetch(
-      new URL("/_humanish/runs/cap-run/screenshots/proof.png", server.url),
-      { headers: { cookie } }
-    );
+    // Screenshots resolve without any auth exchange.
+    const screenshot = await fetch(new URL("/_humanish/runs/cap-run/screenshots/proof.png", server.url));
     expect(screenshot.status).toBe(200);
     expect(screenshot.headers.get("content-type")).toBe("image/png");
-    expect(Buffer.from(await screenshot.arrayBuffer()).equals(PNG_1X1)).toBe(true);
   });
 
-  it("(19) never trusts the loopback peer address as authentication", async () => {
-    const server = await startLibrary(cwd, capabilityOptions());
+  it("(17) the Host allowlist still admits the declared public origin and 421s undeclared Hosts", async () => {
+    const server = await startLibrary(cwd, exposedOptions());
 
-    // This request arrives over the real 127.0.0.1 socket -- exactly where a
-    // tunnel agent connects from. A loopback-peer bypass would return 200 here.
-    const response = await rawRequest(server.port, "/_humanish/history.json");
-    expect(response.status).toBe(401);
-    expect(response.body).toBe(UNAUTHORIZED_BODY);
-  });
-
-  it("(20) expires sessions by injected clock, while the mint URL stays reusable", async () => {
-    let nowMs = Date.parse("2026-01-01T12:00:00.000Z");
-    const server = await startLibrary(cwd, capabilityOptions({ ttlMinutes: 10, now: () => nowMs }));
-    const token = requireToken(server);
-
-    const first = await mintSession(server.port, token);
-    expect(first.response.status).toBe(302);
-    expect((await rawRequest(server.port, "/", { headers: { cookie: first.cookie } })).status).toBe(200);
-
-    nowMs += 10 * 60_000; // expiresAt <= now
-    const expired = await rawRequest(server.port, "/", { headers: { cookie: first.cookie } });
-    expect(expired.status).toBe(401);
-    expect(expired.body).toBe(UNAUTHORIZED_BODY);
-
-    // Re-tapping the same capability link mints a fresh session: not single-use.
-    const second = await mintSession(server.port, token);
-    expect(second.response.status).toBe(302);
-    expect((await rawRequest(server.port, "/", { headers: { cookie: second.cookie } })).status).toBe(200);
-  });
-
-  it("(21) accepts the declared public Host with a valid cookie and 421s undeclared Hosts regardless", async () => {
-    const server = await startLibrary(cwd, capabilityOptions());
-    const { cookie } = await mintSession(server.port, requireToken(server));
-
-    const declared = await rawRequest(server.port, "/", {
-      headers: { host: "observer.example.dev", cookie }
-    });
+    const declared = await rawRequest(server.port, "/", { headers: { host: "observer.example.dev" } });
     expect(declared.status).toBe(200);
 
-    const undeclared = await rawRequest(server.port, "/", {
-      headers: { host: "evil.example", cookie }
-    });
+    const undeclared = await rawRequest(server.port, "/", { headers: { host: "evil.example" } });
     expect(undeclared.status).toBe(421);
+    expect(undeclared.body).toBe("Misdirected Request");
   });
 
-  it("(22) redirects an authenticated GET / to the entry run's observer page", async () => {
-    const server = await startLibrary(cwd, capabilityOptions({ entryRunId: "cap-run" }));
-    expect(server.entryRunId).toBe("cap-run");
-    const { cookie } = await mintSession(server.port, requireToken(server));
+  it("(18) the control-plane seam answers 501 directly under exposure (no 401-first gate)", async () => {
+    const server = await startLibrary(cwd, exposedOptions());
+    const response = await rawRequest(server.port, "/_humanish/api/runs");
+    expect(response.status).toBe(501);
+    expect(response.body).toBe(CONTROL_PLANE_DISABLED_BODY);
+    expect(response.headers["set-cookie"]).toBeUndefined();
+  });
 
-    const root = await rawRequest(server.port, "/", { headers: { cookie } });
+  it("(22) redirects GET / to the entry run's observer page with no auth exchange", async () => {
+    const server = await startLibrary(cwd, exposedOptions({ entryRunId: "cap-run" }));
+    expect(server.entryRunId).toBe("cap-run");
+    const root = await rawRequest(server.port, "/");
     expect(root.status).toBe(302);
     expect(root.headers.location).toBe("/_humanish/runs/cap-run/observer/index.html");
-
-    // Auth still precedes the entry redirect.
-    const cookieless = await rawRequest(server.port, "/");
-    expect(cookieless.status).toBe(401);
   });
 
-  it("(23) a second mint creates a second concurrently valid session", async () => {
-    const server = await startLibrary(cwd, capabilityOptions());
-    const token = requireToken(server);
-
-    const first = await mintSession(server.port, token);
-    const second = await mintSession(server.port, token);
-    expect(first.response.status).toBe(302);
-    expect(second.response.status).toBe(302);
-    expect(first.cookie).not.toBe(second.cookie);
-
-    expect((await rawRequest(server.port, "/", { headers: { cookie: first.cookie } })).status).toBe(200);
-    expect((await rawRequest(server.port, "/", { headers: { cookie: second.cookie } })).status).toBe(200);
-    // The first session survives the second mint.
-    expect((await rawRequest(server.port, "/", { headers: { cookie: first.cookie } })).status).toBe(200);
+  it("(23) the /_humanish/auth mint route no longer exists (404, no cookie)", async () => {
+    const server = await startLibrary(cwd, exposedOptions());
+    const response = await rawRequest(server.port, "/_humanish/auth/anything");
+    expect(response.status).toBe(404);
+    expect(response.headers["set-cookie"]).toBeUndefined();
   });
 });
 
@@ -742,23 +600,16 @@ describe("serve: safe mode", () => {
     expect((await fetch(new URL("/_humanish/runs/safe-ready/observer/index.html", server.url))).status).toBe(200);
   });
 
-  it("(27) safe mode composes with the capability link: 401 without a session, 404 for non-admitted runs with one", async () => {
-    const server = await startLibrary(cwd, capabilityOptions({ safe: true }));
-    expect(server.mode).toBe("capability-link");
+  it("(27) safe mode composes with edge auth: no cookie needed, non-admitted runs still 404", async () => {
+    const server = await startLibrary(cwd, exposedOptions({ safe: true }));
+    // With edge auth AND --safe, the mode stays exposed (edge-authed) and the share-safety admission
+    // still hides non-share_ready runs — defense in depth, no in-process cookie.
+    expect(server.mode).toBe("exposed");
 
-    const cookieless = await rawRequest(server.port, "/");
-    expect(cookieless.status).toBe(401);
-    expect(cookieless.body).toBe(UNAUTHORIZED_BODY);
-
-    const { cookie } = await mintSession(server.port, requireToken(server));
-    const blocked = await rawRequest(server.port, "/_humanish/runs/safe-blocked/observer/index.html", {
-      headers: { cookie }
-    });
+    const blocked = await rawRequest(server.port, "/_humanish/runs/safe-blocked/observer/index.html");
     expect(blocked.status).toBe(404);
 
-    const ready = await rawRequest(server.port, "/_humanish/runs/safe-ready/observer/index.html", {
-      headers: { cookie }
-    });
+    const ready = await rawRequest(server.port, "/_humanish/runs/safe-ready/observer/index.html");
     expect(ready.status).toBe(200);
   });
 

@@ -1,5 +1,6 @@
 import { cp, link, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { symlinkSync, unlinkSync } from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { runInNewContext } from "node:vm";
@@ -1020,6 +1021,78 @@ describe("observer rendering", () => {
           transport: "sse",
           url: "https://stream.example/live-desktop"
         });
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it("exposed mode enforces a Host allowlist (421) and sends security headers; addPublicOrigin admits the tunnel host", async () => {
+    await withRunBundle(async (cwd) => {
+      const rendered = await renderObserver(cwd, "latest");
+      const server = await serveObserver(rendered, { port: 0, exposed: true });
+      const rawGet = (headers: Record<string, string>): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> =>
+        new Promise((resolve, reject) => {
+          const request = http.request(
+            { host: "127.0.0.1", port: server.port, path: "/observer/index.html", method: "GET", headers },
+            (response) => {
+              const chunks: Buffer[] = [];
+              response.on("data", (chunk: Buffer) => chunks.push(chunk));
+              response.on("end", () => resolve({
+                status: response.statusCode ?? 0,
+                headers: response.headers,
+                body: Buffer.concat(chunks).toString("utf8")
+              }));
+            }
+          );
+          request.on("error", reject);
+          request.end();
+        });
+
+      try {
+        // Loopback Host is admitted, and carries the shared security headers.
+        const loopback = await rawGet({ host: `127.0.0.1:${server.port}` });
+        expect(loopback.status).toBe(200);
+        expect(loopback.headers["x-frame-options"]).toBe("DENY");
+        expect(loopback.headers["referrer-policy"]).toBe("no-referrer");
+        expect(loopback.headers["x-content-type-options"]).toBe("nosniff");
+        expect(loopback.headers["cache-control"]).toBe("no-store");
+
+        // An undeclared Host is a DNS-rebinding attempt: 421, no bundle bytes.
+        const evil = await rawGet({ host: "evil.example" });
+        expect(evil.status).toBe(421);
+        expect(evil.body).toBe("Misdirected Request");
+
+        // Declaring the tunnel origin admits its Host.
+        server.addPublicOrigin("https://observer.example.dev");
+        const declared = await rawGet({ host: "observer.example.dev" });
+        expect(declared.status).toBe(200);
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it("loopback (non-exposed) mode stays permissive: any Host is served and no allowlist applies", async () => {
+    await withRunBundle(async (cwd) => {
+      const rendered = await renderObserver(cwd, "latest");
+      const server = await serveObserver(rendered, { port: 0 });
+      try {
+        const response = await new Promise<number>((resolve, reject) => {
+          const request = http.request(
+            { host: "127.0.0.1", port: server.port, path: "/observer/index.html", headers: { host: "anything.example" } },
+            (res) => {
+              res.resume();
+              res.on("end", () => resolve(res.statusCode ?? 0));
+            }
+          );
+          request.on("error", reject);
+          request.end();
+        });
+        // The permissive local-dev server never consults a Host allowlist.
+        expect(response).toBe(200);
+        // addPublicOrigin is a no-op in loopback mode.
+        server.addPublicOrigin("https://observer.example.dev");
       } finally {
         await server.close();
       }

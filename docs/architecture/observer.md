@@ -78,6 +78,29 @@ LIBRARY surface — every run under `.humanish/runs/` — and never serves runti
 stream URLs in any mode; remote viewers see persisted evidence only. See
 [Serve: the run library surface](serve.md).
 
+### Exposed hardening and `watch --expose`
+
+The live `serveObserver` server binds `127.0.0.1` and, by default, is a
+permissive local-dev server (no Host allowlist, no security headers). Under its
+`exposed` option — set by `watch --expose` — it enforces the SAME
+DNS-rebinding defense as the library surface: a strict Host allowlist (loopback
+names at bind, extended by `addPublicOrigin(tunnel.url | public-url)`, `421
+Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
+every response (both live in `src/serve-http.ts`, shared without a module cycle).
+Loopback (non-exposed) behavior is byte-identical to before.
+
+`watch --expose` is the ONE surface that DELIBERATELY streams the live E2B
+desktop to a remote viewer: the attached watch process genuinely holds the
+runtime stream URLs (in the in-memory `WeakMap`, never persisted), and streaming
+them is the whole point of watching from a phone. It is safe only because the
+ngrok edge (Google OAuth + allow rules) or an operator `--public-url` edge
+authenticates the viewer first — `watch --expose` therefore always requires edge
+auth (a live run is never `share_ready`, so `--safe` alone cannot gate it). The
+attached server comes up DURING the run and survives a `timed_out`/`failed` run
+(serving is not gated on pass/fail), so a failed run's evidence stays inspectable
+to Ctrl-C. `serve` still never injects stream URLs. See
+[Serve: the run library surface](serve.md).
+
 ## UI Shape
 
 The Observer shell has:
