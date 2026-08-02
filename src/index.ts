@@ -259,12 +259,16 @@ export {
   CONCURRENT_ATTRIBUTION_LIMITS,
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
+  EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS,
+  LOBBY_CODE_PATTERN,
   buildConcurrentSharedWorldBundle,
+  extractLobbyCode,
   runConcurrentSharedWorld
 } from "./concurrent-shared-world-lab.js";
 export type {
   ConcurrentSharedWorldLabErrorCode,
   ConcurrentSharedWorldLabResult,
+  ConcurrentSharedWorldPlaneClass,
   ConcurrentSharedWorldRoleResult,
   RunConcurrentSharedWorldLabOptions
 } from "./concurrent-shared-world-lab.js";
@@ -287,10 +291,13 @@ export {
   LAB_CONFIG_SCHEMA,
   MAX_CUA_LANES,
   concurrentSharedWorldValidationReason,
+  externalPublicSharedWorldValidationReason,
   parseLabConfig,
   resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
+  routesToExternalPublicSharedWorld,
+  routesToProvisionedSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,

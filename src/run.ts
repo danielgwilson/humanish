@@ -489,8 +489,13 @@ export interface RunSubjectProvenance {
      *   and failed live provisioning.
      * undeclared: no subject.state block (stateless apps, app-url subjects) — the explicit
      *   "absence declared" marker invariant 5 requires.
+     * external-public: (#164 phase 2) an operator-DECLARED, operator-OWNED public deployment used
+     *   directly as the shared plane — humanish neither provisioned nor seeded it (no getHost, no
+     *   clone, no in-sandbox filesystem). NOT "seeded" (nothing was seeded), NOT "unpinned" (this is
+     *   an owned target, not an uncontrolled external DB). The honest marker for the external-public
+     *   plane class; verify asserts it in place of the getHost seeded gate.
      */
-    provenance: "seeded" | "unpinned" | "declared-not-run" | "undeclared";
+    provenance: "seeded" | "unpinned" | "declared-not-run" | "undeclared" | "external-public";
     seed?: RunSubjectStateStepRecord[];
     externalEnvNames?: string[];
   };
@@ -528,8 +533,29 @@ export interface SharedWorldPlane {
    * CONCURRENT route only: the author's REQUIRED attestation that the subject behind the
    * internet-reachable getHost URL is synthetic seeded data (FIX-3). This is author-trust + a
    * provenance gate, NOT a no-real-data guarantee. Verify fails closed if absent on the concurrent route.
+   *
+   * FORBIDDEN on the external-public plane class: claiming synthetic on a real public site the
+   * harness neither provisioned nor exposed would be a lie (verify asserts it ABSENT there).
    */
   exposure?: "synthetic";
+  /**
+   * EXTERNAL-PUBLIC plane class only (#164 phase 2): sha256-16 of the OBSERVED origin the seats
+   * CONVERGED on (the honest analog of hostDigest, but WEAKER and disclosed — the harness only
+   * OBSERVES that each seat reached this origin; it never MINTED it). It is derived from what the
+   * seats actually reached, NOT from the declared appUrl: verify proves every laneWindow.routeHostDigest
+   * (that seat's CDP-observed final URL origin) equals it — inter-seat convergence on ONE OBSERVED
+   * origin, not harness control of the plane. A digest, not the raw origin (kept consistent with
+   * hostDigest hygiene). Absent on getHost.
+   */
+  publicOriginDigest?: string;
+  /**
+   * EXTERNAL-PUBLIC plane class only: sha256-16 of the operator-DECLARED origin (from subject.appUrl),
+   * recorded for reference/evidence ONLY. It is NEVER asserted equal to publicOriginDigest: a normal
+   * cross-origin redirect (apex->www, http->https) makes the OBSERVED origin differ from the declared
+   * one, which is expected. Operator OWNERSHIP rests on the subject.publicTarget.authorized attestation
+   * + the declared appUrl, NOT on digest equality. A digest, not the raw origin. Absent on getHost.
+   */
+  declaredOriginDigest?: string;
 }
 
 /**
@@ -634,11 +660,29 @@ export interface SharedWorldEvidence {
   topology: "shared-world";
   /** The substrate discriminator (FIX-8). Branched on FIRST by validateSharedWorldEvidence. */
   topologyMode: "sequential" | "concurrent";
+  /**
+   * CONCURRENT route only (#164 phase 2): the PLANE-class discriminator. Absent == the historical
+   * "provisioned-getHost" plane (a clone/local-tree subject served + getHost-exposed in-sandbox — the
+   * harness MINTED the host; synthetic-seeded attestation + authoritative in-sandbox checkpoint
+   * stateSeries). "external-public" == a real operator-owned public deployment used directly as the
+   * plane (NO getHost/clone/seed; operator-attested, not harness-controlled; NO authoritative
+   * shared-state proof — concurrency evidenced by temporal co-occupancy + observed lobby convergence).
+   * verify gates EVERY getHost-specific assertion on this discriminator; existing bundles omit it and
+   * default to provisioned-getHost, byte-stable.
+   */
+  planeClass?: "provisioned-getHost" | "external-public";
   /** The DECLARED number of role seats. */
   roleCount: number;
   plane: SharedWorldPlane;
-  /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode). */
+  /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode/planeClass). */
   attributionLimits: string[];
+  /**
+   * EXTERNAL-PUBLIC plane class only (#164 phase 2, optional-but-strong): sha256-16 of the shared
+   * `/lobby/CODE` PATH every seat's CDP-observed URL converged on — the concrete "they were in ONE
+   * shared world" proof, observation-derived and needing no subject change. Digest-only (the raw
+   * 6-char CODE and full URLs are runtime-only and never land). Absent when seats did not converge.
+   */
+  lobbyConvergenceDigest?: string;
   // --- SEQUENTIAL shape ---
   /** The role ids that actually took a turn, in declared order. */
   sequence?: string[];
@@ -5431,6 +5475,21 @@ function subjectStateFindings(bundle: RunBundle): string[] {
     }
     case "undeclared":
       break;
+    case "external-public": {
+      // #164 phase 2: an operator-declared, operator-owned public deployment humanish neither
+      // provisioned nor seeded. There is no in-sandbox state story — a seed record or an external
+      // channel here would contradict the "no subject sandbox" invariant of this plane class.
+      if (subject.source !== "app-url") {
+        findings.push('state marker "external-public" requires subject.source "app-url" — the external-public plane is a real public deployment, not a clone/local-tree subject');
+      }
+      if (seed.length > 0) {
+        findings.push('state marker "external-public" cannot carry seed step records — the external-public plane is neither provisioned nor seeded by the harness');
+      }
+      if ((state.externalEnvNames ?? []).length > 0) {
+        findings.push('state marker "external-public" cannot carry externalEnvNames — the plane is operator-owned, not an uncontrolled external channel');
+      }
+      break;
+    }
     default:
       findings.push("unknown subject state provenance marker");
   }
@@ -5585,6 +5644,23 @@ const CONCURRENT_REQUIRED_LIMITS = [
   "state-change-not-isolated-to-actors"
 ] as const;
 const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
+
+// EXTERNAL-PUBLIC plane class (#164 phase 2): the honest-downgrade required set. Keeps the concurrent
+// family (an honest ceiling) AND adds the mandatory disclosures for a plane the harness does NOT own:
+// the operator-attested (not harness-controlled) target, the ABSENCE of a synthetic attestation (you
+// cannot claim synthetic on a real site), the ABSENCE of an authoritative shared-state proof (no
+// in-sandbox filesystem to digest), and concurrency evidenced by temporal co-occupancy ONLY. Verify
+// FAILS CLOSED if any is missing (an absent honest-downgrade limit overclaims) — invariant 5.
+const EXTERNAL_PUBLIC_EXTRA_LIMITS = [
+  "external-public-plane",
+  "operator-attested-target-not-harness-controlled",
+  "no-synthetic-attestation",
+  "no-authoritative-shared-state-proof",
+  "concurrency-by-temporal-co-occupancy-only"
+] as const;
+// Any seeded/synthetic limit on this class is a getHost claim leaking onto a real public site — forbid
+// it alongside the sequential family. (A synthetic attestation on a plane the harness did not seed is a lie.)
+const EXTERNAL_PUBLIC_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races", "seeded", "synthetic"] as const;
 
 // A shared-world checkpoint record persists DIGEST-ONLY: exactly these keys, nothing value-shaped.
 const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "deltaFromPrev"]);
@@ -5770,6 +5846,30 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
  * (genuine overlap + a state delta AT/AFTER an overlap start — FIX-6).
  */
 function concurrentSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
+  // The PLANE-class discriminator (#164 phase 2). Absent == the historical provisioned-getHost plane
+  // (byte-stable). EVERY getHost-specific assertion (hostDigest, exposure: synthetic, seeded
+  // provenance, state-delta on pass) is gated on this — it never leaks onto the external-public class,
+  // and the external-public assertions never leak onto getHost.
+  const planeClass = (sw as { planeClass?: unknown }).planeClass;
+  if (planeClass === "external-public") {
+    return externalPublicConcurrentFindings(bundle, sw);
+  }
+  if (planeClass !== undefined && planeClass !== "provisioned-getHost") {
+    return [
+      ...sharedWorldCommonFindings(bundle, sw),
+      `sharedWorld.planeClass must be "provisioned-getHost" or "external-public" (got "${String(planeClass)}")`
+    ];
+  }
+  return provisionedGetHostConcurrentFindings(bundle, sw);
+}
+
+/**
+ * PROVISIONED-getHost concurrent branch (the historical plane; #164 phase 2): a clone/local-tree
+ * subject served + getHost-exposed in-sandbox — the harness MINTED the host, so it asserts the
+ * synthetic-seeded attestation, the harness-minted host identity, and an authoritative in-sandbox
+ * checkpoint state-delta on pass. UNCHANGED from the pre-external-public verify (byte-stable).
+ */
+function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
   const findings: string[] = sharedWorldCommonFindings(bundle, sw);
 
   // FIX-8: shape coherence — concurrent carries laneWindows/stateSeries/outcomes, NOT a timeline.
@@ -5918,6 +6018,176 @@ function concurrentSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
       if (!deltaInWindow) {
         findings.push("review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)");
       }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * EXTERNAL-PUBLIC concurrent branch (#164 phase 2): N seats drove ONE real operator-owned public
+ * deployment at once. The honest evidence class for a plane the harness does NOT own. Verify
+ * fail-closed on the honest DOWNGRADES (asserted-absent, never silently dropped): provenance is
+ * "external-public" (NOT seeded), exposure is ABSENT (claiming synthetic on a real site is a lie),
+ * plane control is operator-attested (publicOriginDigest, not a harness-minted hostDigest), there is
+ * NO authoritative shared-state proof (stateSeries omitted — option A), and concurrency is proven by
+ * temporal co-occupancy ONLY (relaxed concurrency-on-pass: ≥2 overlapping windows, no state delta).
+ * Every getHost-only claim (exposure: synthetic / plane.hostDigest / seeded / synthetic limit)
+ * appearing here FAILS CLOSED.
+ */
+function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
+  const findings: string[] = sharedWorldCommonFindings(bundle, sw);
+
+  // Shape coherence: concurrent carries laneWindows + outcomes, NOT a timeline. stateSeries is
+  // deliberately OMITTED on this class (no in-sandbox filesystem to authoritatively digest).
+  if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
+    findings.push("an external-public concurrent bundle must NOT carry a sequential timeline (topologyMode mismatch)");
+  }
+  const laneWindows = Array.isArray(sw.laneWindows) ? (sw.laneWindows as unknown[]).filter(isRecord) : null;
+  const outcomes = Array.isArray(sw.outcomes) ? (sw.outcomes as unknown[]).filter(isRecord) : null;
+  if (laneWindows === null) findings.push("an external-public concurrent bundle must carry laneWindows");
+  if (outcomes === null) findings.push("an external-public concurrent bundle must carry outcomes");
+  // Option A: NO authoritative shared-state proof — a non-empty stateSeries would falsely imply the
+  // harness digested the plane's backend state (it cannot; there is no in-sandbox filesystem).
+  const stateSeries = (sw as { stateSeries?: unknown }).stateSeries;
+  if (Array.isArray(stateSeries) && stateSeries.length > 0) {
+    findings.push("an external-public concurrent bundle must NOT carry a stateSeries — the harness cannot authoritatively digest a real public plane's backend state (no in-sandbox filesystem); concurrency is proven by temporal co-occupancy, not a state series");
+  }
+  if (laneWindows === null || outcomes === null) {
+    return findings; // can't reason further without the core series
+  }
+
+  // Attribution ceiling: the concurrent family AND every external-public honest-downgrade disclosure
+  // must be present; the sequential family + any seeded/synthetic limit must be absent.
+  const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
+  for (const required of [...CONCURRENT_REQUIRED_LIMITS, ...EXTERNAL_PUBLIC_EXTRA_LIMITS]) {
+    if (!limits.includes(required)) {
+      findings.push(`attributionLimits is missing the mandatory external-public disclosure "${required}" — an absent honest-downgrade ceiling overclaims`);
+    }
+  }
+  for (const forbidden of EXTERNAL_PUBLIC_FORBIDDEN_LIMITS) {
+    if (limits.includes(forbidden)) {
+      findings.push(`attributionLimits carries the forbidden disclosure "${forbidden}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`);
+    }
+  }
+
+  // Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount.
+  if (laneWindows.length !== sw.roleCount) {
+    findings.push(`phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`);
+  }
+  if (outcomes.length !== sw.roleCount) {
+    findings.push(`phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`);
+  }
+
+  // laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present.
+  for (const window of laneWindows) {
+    const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+    if (typeof window.startedAt !== "number" || typeof window.endedAt !== "number" || !((window.startedAt as number) <= (window.endedAt as number))) {
+      findings.push(`laneWindow "${roleId}" must carry numeric startedAt <= endedAt on one clock`);
+    }
+    if (typeof window.routeHostDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)) {
+      findings.push(`laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the origin it reached`);
+    }
+    if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
+      findings.push(`laneWindow "${roleId}" references unknown simId "${String(window.simId)}"`);
+    }
+    if (!bundle.streams.some((stream) => stream.id === window.streamId)) {
+      findings.push(`laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`);
+    }
+  }
+
+  // Plane identity (the honest analog of invariant 2, WEAKER + disclosed): the convergence proof is
+  // about what the seats OBSERVED, not what was DECLARED. plane.publicOriginDigest is the OBSERVED
+  // origin the seats converged on; verify requires every seat's CDP-OBSERVED routeHostDigest to agree
+  // on ONE origin, and that publicOriginDigest BE that origin. Convergence on one observed origin proves
+  // inter-seat co-location — NOT harness control of the plane. IMPORTANT: operator OWNERSHIP rests on
+  // the subject.publicTarget.authorized attestation + the declared appUrl, NOT on digest equality — a
+  // normal cross-origin redirect (apex->www, http->https) makes the observed origin differ from the
+  // DECLARED one, which is expected and must NEVER fail verify (declaredOriginDigest is evidence-only).
+  const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
+  const publicOriginDigest = typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
+  if (!publicOriginDigest || !COMMAND_DIGEST_PATTERN.test(publicOriginDigest)) {
+    findings.push("sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class");
+  }
+  // The observed origins across seats must agree on exactly ONE (that agreement IS the convergence).
+  const observedOrigins = laneWindows
+    .map((window) => (typeof window.routeHostDigest === "string" ? window.routeHostDigest : undefined))
+    .filter((digest): digest is string => digest !== undefined);
+  const distinctObserved = [...new Set(observedOrigins)];
+  if (distinctObserved.length > 1) {
+    findings.push(`the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: ${distinctObserved.join(", ")}`);
+  } else if (publicOriginDigest && distinctObserved.length === 1 && distinctObserved[0] !== publicOriginDigest) {
+    findings.push(`sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the seats converged on (${distinctObserved[0]})`);
+  }
+  // declaredOriginDigest is recorded for evidence ONLY. Validate its shape when present, but NEVER
+  // assert it equals the observed origin — a cross-origin redirect is normal and expected.
+  if (plane.declaredOriginDigest !== undefined
+    && (typeof plane.declaredOriginDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.declaredOriginDigest))) {
+    findings.push("sharedWorld.plane.declaredOriginDigest, when present, must be a sha256-16 digest of the operator-declared origin (evidence-only; not asserted equal to the observed origin)");
+  }
+
+  // INVERT the getHost gate: exposure MUST be absent (claiming synthetic on a real site is a lie) and
+  // the harness-minted hostDigest MUST be absent (the harness minted no host here).
+  if (plane.exposure !== undefined) {
+    findings.push('sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest "synthetic" on a real site');
+  }
+  if (plane.hostDigest !== undefined) {
+    findings.push("sharedWorld.plane.hostDigest must be ABSENT on the external-public plane class — a harness-minted host identity is a getHost claim; this plane is operator-attested, not harness-minted");
+  }
+  // Provenance is the NEW external-public marker — NOT seeded (nothing was seeded), NOT unpinned.
+  if (bundle.subject?.state.provenance !== "external-public") {
+    findings.push(`the external-public plane class requires subject.state.provenance == "external-public" (got "${bundle.subject?.state.provenance ?? "absent"}") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest`);
+  }
+  if (bundle.subject?.source !== "app-url") {
+    findings.push('the external-public plane class requires subject.source == "app-url" — the plane is a real public deployment, not a provisioned subject');
+  }
+
+  // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane. commit
+  // is absent on this class (nothing cloned); seedDigest is the constant empty-recipe digest.
+  const planeKeys = new Set(laneWindows.map((window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`));
+  if (planeKeys.size > 1) {
+    findings.push("laneWindows reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane");
+  }
+  for (const window of laneWindows) {
+    if (String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "")
+      || String(window.commit ?? "") !== String(plane.commit ?? "")) {
+      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+      findings.push(`laneWindow "${roleId}" plane provenance diverges from sharedWorld.plane`);
+      break;
+    }
+  }
+
+  // The lobby-convergence proof (optional-but-strong): if present it must be a sha256-16 digest of the
+  // shared /lobby/CODE path all seats converged on (digest-only; the raw CODE never lands).
+  const lobbyConvergenceDigest = (sw as { lobbyConvergenceDigest?: unknown }).lobbyConvergenceDigest;
+  if (lobbyConvergenceDigest !== undefined
+    && (typeof lobbyConvergenceDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(lobbyConvergenceDigest))) {
+    findings.push("sharedWorld.lobbyConvergenceDigest must be a sha256-16 digest (digest-only; the raw lobby code never lands)");
+  }
+
+  // The RELAXED concurrency-on-pass gate: a PASSED external-public run MUST show genuine temporal
+  // co-occupancy (≥2 laneWindows overlapping in time). There is NO state-delta requirement — the
+  // observed co-occupancy of one declared origin (plus the optional lobby convergence) carries the
+  // "they shared a world" claim, disclosed as concurrency-by-temporal-co-occupancy-only.
+  if (bundle.review.verdict === "pass") {
+    let overlap = false;
+    for (let i = 0; i < laneWindows.length && !overlap; i += 1) {
+      for (let j = i + 1; j < laneWindows.length; j += 1) {
+        const a = laneWindows[i]!;
+        const b = laneWindows[j]!;
+        const aStart = a.startedAt as number;
+        const aEnd = a.endedAt as number;
+        const bStart = b.startedAt as number;
+        const bEnd = b.endedAt as number;
+        if (typeof aStart === "number" && typeof aEnd === "number" && typeof bStart === "number" && typeof bEnd === "number"
+          && aStart < bEnd && bStart < aEnd) {
+          overlap = true;
+          break;
+        }
+      }
+    }
+    if (!overlap) {
+      findings.push("review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)");
     }
   }
 
@@ -6242,6 +6512,10 @@ function isSharedWorldEvidence(value: unknown): value is SharedWorldEvidence {
   if (!(Array.isArray(plane.envNames) && plane.envNames.every((name) => typeof name === "string"))) return false;
   if (plane.hostDigest !== undefined && typeof plane.hostDigest !== "string") return false;
   if (plane.exposure !== undefined && typeof plane.exposure !== "string") return false;
+  if (plane.publicOriginDigest !== undefined && typeof plane.publicOriginDigest !== "string") return false;
+  if (plane.declaredOriginDigest !== undefined && typeof plane.declaredOriginDigest !== "string") return false;
+  if (value.planeClass !== undefined && typeof value.planeClass !== "string") return false;
+  if (value.lobbyConvergenceDigest !== undefined && typeof value.lobbyConvergenceDigest !== "string") return false;
   if (!(Array.isArray(value.attributionLimits) && value.attributionLimits.every((limit) => typeof limit === "string"))) return false;
   // Tolerant: validate the TYPE of each present field only (the coherence + topologyMode dispatch
   // are validateSharedWorldEvidence's job — an injected value-shaped field must pass this guard so
@@ -6327,7 +6601,8 @@ function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {
   const state = value.state;
   if (!isRecord(state)) return false;
   if (state.provenance !== "seeded" && state.provenance !== "unpinned"
-    && state.provenance !== "declared-not-run" && state.provenance !== "undeclared") {
+    && state.provenance !== "declared-not-run" && state.provenance !== "undeclared"
+    && state.provenance !== "external-public") {
     return false;
   }
   if (state.seed !== undefined

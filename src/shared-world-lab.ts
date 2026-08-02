@@ -159,6 +159,14 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   /** CONCURRENT route only: the background stateSeries prober cadence (ms). Default 1000. */
   proberCadenceMs?: number;
   /**
+   * EXTERNAL-PUBLIC concurrent route only (#164 phase 2): the host-first handoff barrier deadline
+   * (ms). The host seat must surface a shared-session (/lobby/CODE) URL within this budget or the run
+   * fails closed with HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT and no follower opens.
+   * Default 120000 (also capped by execution.timeoutMs). Tests inject a short value to exercise the
+   * fail-closed path deterministically.
+   */
+  handoffDeadlineMs?: number;
+  /**
    * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
    * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced archive
    * file into an ArrayBuffer (the SAME default cua-actor-lab.ts uses). Called ONCE per run, before

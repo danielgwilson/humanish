@@ -1,0 +1,68 @@
+schema: humanish.lab.v2
+id: cineguessr-3player
+title: CineGuessr 3-player mobile lobby (external-public shared world; deterministic dry-run)
+description: >
+  THREE mobile-layout personas play the SAME CineGuessr multiplayer lobby on a REAL public
+  deployment AT ONCE — the external-public shared-world plane (#164 phase 2). The public site is used
+  DIRECTLY as the shared plane: NO getHost, NO clone, NO subject sandbox, NO seed. A host-first
+  barrier extracts the /lobby/CODE from the host seat's CDP-observed URL and threads it into the
+  follower join missions; followers go through the real Join flow (a direct /lobby/CODE visit does
+  not auto-join a non-member). Dry-run (the default) emits ONE run bundle with the external-public
+  concurrent evidence block (attributionClass: shared-world; planeClass: external-public;
+  laneWindows + outcomes; publicOriginDigest; the external-public attributionLimits) at $0 — no
+  sandboxes, no provider tokens. A live run needs OPENAI_API_KEY + E2B_API_KEY and scenario.mode:
+  live.
+  MOBILE FIDELITY CAVEAT: on the E2B-desktop route only width/height physically render — the X
+  screen is sized to the preset so the app's width-based responsive CSS fires (real mobile LAYOUT),
+  but there is NO touch input and isMobile/DPR are prompt-signal + metadata (DPR renders only via
+  the CDP geometry path). "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium seats, not
+  touch devices.
+  HONESTY: this is a real public-application study of a deployment the operator attests they
+  own/operate (subject.publicTarget). The harness OBSERVES that each seat reached the operator-
+  declared origin and converged on one lobby path; it did NOT provision, seed, or control the plane.
+  Attribution stays shared-world (N seats, ONE plane) but every strength claim degrades honestly and
+  is asserted-absent: provenance external-public (not seeded); NO synthetic attestation (you cannot
+  claim synthetic on a real site); NO authoritative shared-state proof; concurrency by temporal
+  co-occupancy + observed lobby convergence. No one run implies adoption, scale, or repeatability.
+subject:
+  source: app-url # the real public deployment IS the shared plane (no clone, no getHost)
+  topology: shared-world # the declared override of the per-lane-worlds default (#164)
+  appUrl: https://cineguessr.com/
+  # REQUIRED ownership attestation (the honest analog of exposure: synthetic — you cannot attest
+  # synthetic on a real site, but you MUST attest you own/operate it). Author-trust; unverifiable.
+  publicTarget:
+    owner: danielgwilson/cineguessr
+    authorized: true
+policies:
+  # REQUIRED: the shared plane is a real non-loopback public deployment the operator owns.
+  allowPublicTargets: true
+actors:
+  - type: openai-computer-use # REAL dispatch key: resolves in the actor registry
+    mission: >-
+      You are one of several friends playing a round of CineGuessr together on your phones at the
+      same time. Play your role, then stop.
+    # The roster IS the persona roster (>=2) with EXACTLY ONE host: true seat. On the external-public
+    # route every seat opens the SAME public appUrl; the host creates the shared lobby and the
+    # followers join it through the real UI with the code the host is told.
+    lanes:
+      - id: host
+        host: true # the designated host seat that creates the shared lobby
+        device: mobile # 414x896 mobile LAYOUT (no touch; DPR is prompt-signal on this route)
+        persona: party-host
+        instruction: Create a lobby, then wait in the waiting room; once 3 players are in, start the game and play your guesses.
+      - id: player-2
+        device: mobile
+        persona: competitive-friend
+        instruction: Join the lobby you're told the code for, then play your guesses.
+      - id: player-3
+        device: small-mobile # 360x740 small-phone LAYOUT
+        persona: casual-friend
+        instruction: Join the lobby you're told the code for, then play your guesses.
+execution:
+  target: e2b-desktop # required: each persona drives a hosted desktop browser (mobile LAYOUT)
+  timeoutMs: 120000 # PER-PERSONA session budget; also caps the host-first handoff deadline
+  concurrency: 3 # > 1 selects the CONCURRENT substrate (max in-flight paid actor desktops)
+scenario:
+  mode: dry-run # default; the live path opens 3 real mobile-layout seats against the public app
+defaults:
+  open: true

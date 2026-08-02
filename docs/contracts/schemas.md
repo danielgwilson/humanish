@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.19.1`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.20.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -168,7 +168,19 @@ A lab is a composition over code primitives, not a hardcoded kind:
   wall clock. `policies.allowPublicTargets` cannot combine with N>1 against one
   implicit public `subject.appUrl` (ambiguous shared-world-ish topology); it may
   combine with N>1 only when the roster declares explicit `lanes[].target` for
-  every lane;
+  every lane, OR when `subject.topology: shared-world` is ALSO declared — that
+  routes N>1 against one public target to the EXTERNAL-PUBLIC shared-world plane
+  (see Shared-World Evidence below), not per-lane worlds;
+- `subject.publicTarget: { owner, authorized: true }` (external-public shared-world
+  route ONLY): the operator's REQUIRED ownership attestation when a real PUBLIC
+  deployment (`source: app-url` + `topology: shared-world` + `allowPublicTargets` +
+  `concurrency > 1`) is used directly as the shared plane. The harness neither
+  provisions nor exposes the target, so it cannot attest synthetic data; the operator
+  MUST attest they own/operate it. Author-trust (unverifiable); rejected on every other
+  route. `actors[0].lanes[].host: true` marks the single designated host seat there;
+- `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, OR — on the
+  external-public shared-world route — the non-loopback public deployment used as the
+  shared plane (with `publicTarget` + `allowPublicTargets`);
 - `execution`: where it runs — `local`, `e2b-desktop`, or `e2b-terminal`, plus
   desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
   with a computer-use actor, or `local` (or absent) with a scripted-browser
@@ -418,10 +430,13 @@ shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v
   - `topology: shared-world`
   - `topologyMode: sequential | concurrent`
   - `roleCount` — the DECLARED number of role/persona seats.
-  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure? }` — the ONE
+  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure?, publicOriginDigest? }` — the ONE
     shared-plane provenance. `seedDigest` is the sha256-16 of the ordered seed-step
     command digests (the seed RECIPE identity, not the runtime state); `envNames` are
-    NAMES only. `hostDigest`/`exposure` are CONCURRENT-only (below).
+    NAMES only. `hostDigest`/`exposure` are CONCURRENT provisioned-getHost-only, and
+    `publicOriginDigest` is CONCURRENT external-public-only (below).
+  - `planeClass?: provisioned-getHost | external-public` and `lobbyConvergenceDigest?` are
+    CONCURRENT-only (below); both absent on the sequential shape.
   - `attributionLimits: [...]` — the verify-enforced attribution ceiling (the set
     differs per `topologyMode`, below).
 
@@ -500,6 +515,50 @@ PROVEN absent). HONESTY: the deterministic $0 gate proves the plumbing + the
 attribution contract. A kept 2026-06-17 live receipt separately proves one
 bounded three-persona trial against a synthetic plane. Neither the deterministic
 gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
+
+### Concurrent plane classes: provisioned-getHost vs external-public (#164 phase 2, 0.20.0)
+
+The CONCURRENT shape carries a PLANE-class discriminator, `sharedWorld.planeClass:
+"provisioned-getHost" | "external-public"`. Absent == `provisioned-getHost` (every existing
+concurrent bundle byte-stable). It gates EVERY getHost-specific verify assertion, so a getHost
+claim can never leak onto the external-public class (or vice versa).
+
+- `provisioned-getHost` — the historical plane described above: a `clone`/`local-tree` subject the
+  harness serves + getHost-exposes in-sandbox. The harness MINTED the host, so it asserts the
+  synthetic-seeded attestation (`plane.exposure: synthetic` + `subject.state.provenance == seeded`),
+  the harness-minted host identity (`plane.hostDigest`, every `routeHostDigest == it`), and an
+  authoritative in-sandbox checkpoint `stateSeries` with a delta-on-pass.
+
+- `external-public` — a real, operator-OWNED public deployment used DIRECTLY as the shared plane
+  (`subject.source: app-url` + `topology: shared-world` + `policies.allowPublicTargets: true` +
+  `execution.concurrency > 1`). NO getHost, NO clone, NO subject sandbox, NO seed. The subject
+  carries the ownership attestation `subject.publicTarget: { owner, authorized: true }` (the honest
+  analog of `exposure: synthetic` — you cannot attest synthetic on a real site, but you MUST attest
+  you own/operate it; author-trust, unverifiable by the harness). Evidence deltas, all
+  asserted-absent (never silently dropped):
+  - `plane.publicOriginDigest` — sha256-16 of the operator-DECLARED origin. Every
+    `laneWindow.routeHostDigest` (computed from that seat's CDP-OBSERVED final-URL origin) equals it.
+    This proves inter-seat CONVERGENCE on one declared origin, NOT harness control of the plane
+    (WEAKER than getHost's `hostDigest`, and disclosed).
+  - `plane.exposure` is ABSENT (verify fails closed if `synthetic` appears — a lie on a real site);
+    `plane.hostDigest` is ABSENT (the harness minted no host).
+  - `subject.state.provenance == "external-public"` — NOT `seeded`, NOT `unpinned`, NOT `undeclared`.
+  - `stateSeries` is OMITTED (Option A): no in-sandbox filesystem to authoritatively digest, so there
+    is NO authoritative shared-state proof. Concurrency-on-pass is RELAXED to temporal co-occupancy
+    ONLY (≥2 overlapping `laneWindows`); there is no state-delta requirement.
+  - `lobbyConvergenceDigest` (optional, strong, cheap) — sha256-16 of the shared `/lobby/CODE` PATH
+    all seats' CDP URLs converged on; present only when every seat converged on ONE code. Digest-only
+    (the raw 6-char code and full URLs are runtime-only and never land).
+  - `attributionLimits` MUST contain the concurrent family PLUS `external-public-plane`,
+    `operator-attested-target-not-harness-controlled`, `no-synthetic-attestation`,
+    `no-authoritative-shared-state-proof`, `concurrency-by-temporal-co-occupancy-only`; and MUST NOT
+    contain `sequential-only`, `no-concurrent-races`, or any `seeded`/`synthetic` limit.
+
+The getHost synthetic gate is deliberately NOT reachable from the app-url branch, and why: that gate
+exists because getHost is internet-reachable AND harness-owned (real data behind a harness-exposed
+URL is the hazard). A public site the harness neither provisioned nor exposed has neither property,
+so the gate's hazard does not exist there. Attribution stays `shared-world` (N seats, ONE plane); the
+plane-control claim degrades from "harness-controlled" to "operator-attested, observed-only".
 
 ## Adapter
 
@@ -672,7 +731,7 @@ mode (`loopback | exposed | share-safe-open`), the loopback host/port,
 `allowEmails`, `allowDomains` — operator-supplied allow rules, public-safe to
 echo to the operator's own stdout, never persisted into any bundle), runs
 listed, computed warnings, and the `ServeErrorCode` union. Exposure auth is
-tunnel-edge only — as of 0.19.1 there are no `capabilityUrl`/`publicCapabilityUrl`
+tunnel-edge only — as of 0.20.0 there are no `capabilityUrl`/`publicCapabilityUrl`
 /`ttlMinutes` fields, no `--auth`/`--ttl` flags, and no `capability-link` mode
 (the in-process `observer-auth.ts` capability-link was removed as a pre-1.0
 breaking change).

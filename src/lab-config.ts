@@ -230,6 +230,19 @@ export interface LabSubject {
    * `topology: shared-world` + `execution.concurrency > 1`; inert/warned elsewhere.
    */
   exposure?: "synthetic";
+  /**
+   * EXTERNAL-PUBLIC shared-world route ONLY (#164 phase 2): the author's REQUIRED ownership
+   * attestation when a real PUBLIC deployment (`source: app-url` + `topology: shared-world` +
+   * `concurrency > 1` + `policies.allowPublicTargets: true`) is used directly as the shared plane.
+   * The harness neither provisions nor exposes this target (no getHost, no clone, no seed), so it
+   * cannot attest the data is synthetic; instead the operator MUST attest they own/operate it.
+   * `owner` is a public-safe operator/repo label; `authorized` must be true. This is author-trust —
+   * the harness cannot verify ownership — surfaced honestly in the evidence class. Required on the
+   * external-public branch. On a non-`app-url` subject it is REJECTED (parse error); on any OTHER
+   * `app-url` config that does not route to external-public shared-world it is IGNORED-WITH-A-WARNING
+   * (forwardDeclaredWarnings), never silently consumed — it is meaningless without that plane.
+   */
+  publicTarget?: { owner: string; authorized: boolean };
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
   repos?: string[];
   clone?: LabSubjectClone;
@@ -327,6 +340,14 @@ export interface LabActorLane {
    * non-shared-world route (the per-lane-worlds fan-out roster has no per-lane entry).
    */
   entry?: string;
+  /**
+   * EXTERNAL-PUBLIC shared-world ONLY (#164 phase 2): marks this lane the DESIGNATED HOST seat — it
+   * creates the shared session (e.g. a multiplayer lobby) that the follower seats then join. Exactly
+   * ONE lane in the roster may carry `host: true` (validated in externalPublicSharedWorldValidationReason).
+   * The orchestrator watches the host seat's observed URL for the shared-session code and threads it
+   * into the follower missions at a host-first barrier. Inert/warned on every other route.
+   */
+  host?: boolean;
 }
 
 /**
@@ -812,9 +833,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // silently downgrading to a per-lane-worlds cua run. With `execution.concurrency > 1` the
   // concurrent extras (synthetic-subject attestation, 0.0.0.0 serve bind, no clone.keep) also apply.
   if (config.subject.topology === "shared-world") {
-    const reason = (config.execution?.concurrency ?? 1) > 1
-      ? concurrentSharedWorldValidationReason(config)
-      : sharedWorldValidationReason(config);
+    const reason = config.subject.source === "app-url"
+      // The external-public plane (a real public deployment as the shared plane): NEVER the getHost
+      // synthetic gate — that gate exists because getHost is internet-reachable AND harness-owned; a
+      // public site the harness neither provisioned nor exposed has neither property.
+      ? externalPublicSharedWorldValidationReason(config)
+      : (config.execution?.concurrency ?? 1) > 1
+        ? concurrentSharedWorldValidationReason(config)
+        : sharedWorldValidationReason(config);
     if (reason) {
       return invalid(reason);
     }
@@ -968,9 +994,13 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   }
   // Public targets fan out into N independent worlds driving the SAME public app — that is an
   // ambiguous shared-world-ish shape, not a per-lane target swarm. Permit N>1 public runs only when
-  // every roster lane declares its own target, making the adapter-owned topology explicit.
-  if (laneCount > 1 && config.policies?.allowPublicTargets === true && declaredLaneTargets(config).length === 0) {
-    return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Fan out against a loopback/provisioned subject, or run a single public-target lane.";
+  // every roster lane declares its own target, making the adapter-owned topology explicit. But when
+  // `subject.topology: shared-world` is ALSO declared, N lanes against one public target is the
+  // EXTERNAL-PUBLIC shared-world topology (#164 phase 2) — ROUTE it there (a real public deployment
+  // as the shared plane) instead of refusing; externalPublicSharedWorldValidationReason then applies.
+  if (laneCount > 1 && config.policies?.allowPublicTargets === true && declaredLaneTargets(config).length === 0
+    && config.subject.topology !== "shared-world") {
+    return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target lane.";
   }
   return null;
 }
@@ -1076,6 +1106,11 @@ export function routesToComputerUse(config: LabConfig): boolean {
  * (the cua route) — the topology declaration is the override switch.
  */
 export function routesToSharedWorld(config: LabConfig): boolean {
+  return routesToProvisionedSharedWorld(config) || routesToExternalPublicSharedWorld(config);
+}
+
+/** The getHost provisioned-subject shared-world shape (clone/local-tree served + exposed in-sandbox). */
+export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
   return (config.subject.source === "clone" || config.subject.source === "local-tree")
     && config.subject.topology === "shared-world"
     && config.execution?.target === "e2b-desktop"
@@ -1083,10 +1118,30 @@ export function routesToSharedWorld(config: LabConfig): boolean {
 }
 
 /**
+ * The EXTERNAL-PUBLIC shared-world shape (#164 phase 2): a real PUBLIC deployment used DIRECTLY as
+ * the shared plane — `source: app-url` + `topology: shared-world` + a computer-use actor on
+ * e2b-desktop + `policies.allowPublicTargets: true`. NO getHost, NO clone, NO subject sandbox, NO
+ * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
+ * externalPublicSharedWorldValidationReason, not here — this predicate is the router only, so a
+ * half-declared external-public config still routes here to get its precise fail-closed reason
+ * rather than silently downgrading to the per-lane cua route). Always concurrent (concurrency > 1 is
+ * enforced by the validation reason).
+ */
+export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
+  return config.subject.source === "app-url"
+    && config.subject.topology === "shared-world"
+    && config.execution?.target === "e2b-desktop"
+    && actorResolvesToComputerUse(config.actors[0]?.type)
+    && config.policies?.allowPublicTargets === true;
+}
+
+/**
  * True when this config routes to the CONCURRENT shared-world backend (#164 phase 2): a shared-world
- * config with `execution.concurrency > 1` (N actor seats driving ONE getHost-exposed plane AT ONCE).
- * `concurrency` absent or 1 stays the sequential PoC (`routesToSharedWorld` → the sequential
- * backend). selectLabBackend checks this BEFORE routesToSharedWorld.
+ * config with `execution.concurrency > 1` (N actor seats driving ONE plane AT ONCE). Two plane
+ * classes: the getHost provisioned-subject shape (clone/local-tree) AND the external-public shape (a
+ * real public deployment used directly as the plane — `source: app-url` + `allowPublicTargets`, no
+ * getHost/clone/seed). `concurrency` absent or 1 stays the sequential PoC (getHost only).
+ * selectLabBackend checks this BEFORE routesToSharedWorld.
  */
 export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
   return routesToSharedWorld(config) && (config.execution?.concurrency ?? 1) > 1;
@@ -1118,6 +1173,75 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
   if (config.subject.clone?.keep === true || config.subject.localTree?.keep === true) {
     const keepField = config.subject.clone?.keep === true ? "subject.clone.keep" : "subject.localTree.keep";
     return `\`${keepField}\` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id.`;
+  }
+  return null;
+}
+
+/**
+ * Cross-validate the EXTERNAL-PUBLIC shared-world declaration (#164 phase 2): a real PUBLIC
+ * deployment used DIRECTLY as the shared plane (no getHost, no clone, no subject sandbox, no seed).
+ * The honest analog of concurrentSharedWorldValidationReason for a plane the harness does NOT own:
+ * it FORBIDS every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
+ * are inert with no sandbox — fail closed, never silently ignored, per invariant 6), and REQUIRES a
+ * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
+ * concurrency > 1 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host lane. The getHost synthetic
+ * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
+ * Enforced at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
+ */
+export function externalPublicSharedWorldValidationReason(config: LabConfig): string | null {
+  const structuralReason = laneRosterStructuralValidationReason(config);
+  if (structuralReason) {
+    return structuralReason;
+  }
+  if (config.subject.source !== "app-url") {
+    return "the external-public shared-world route requires `subject.source: app-url` — a real public deployment is used directly as the shared plane (no clone, no provisioned subject).";
+  }
+  if (config.execution?.target !== "e2b-desktop") {
+    return "the external-public shared-world route requires `execution.target: e2b-desktop` — the role seats drive hosted desktop browsers against the one public deployment.";
+  }
+  if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
+    return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
+  }
+  if ((config.execution?.concurrency ?? 1) <= 1) {
+    return "the external-public shared-world route requires `execution.concurrency > 1` (N concurrent seats sharing ONE public plane); concurrency 1 proves no shared world.";
+  }
+  if (config.policies?.allowPublicTargets !== true) {
+    return "the external-public shared-world route requires `policies.allowPublicTargets: true` — the shared plane is a real non-loopback public deployment.";
+  }
+  const appUrl = config.subject.appUrl ?? "";
+  if (!isHttpUrl(appUrl) || isLoopbackUrl(appUrl)) {
+    return "the external-public shared-world route requires a non-loopback http(s) `subject.appUrl` — a loopback URL is not a shared public plane (use the getHost provisioned route for a local subject).";
+  }
+  // The operator-ownership attestation (the honest analog of exposure: synthetic — you cannot claim
+  // synthetic on a real site, but you MUST attest you own/operate it). Author-trust; unverifiable.
+  if (config.subject.publicTarget?.authorized !== true) {
+    return "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).";
+  }
+  // FORBID every provisioned-subject field: with no sandbox they cannot act, so they are rejected
+  // with a precise reason, never silently ignored (invariant 6). exposure: synthetic in particular
+  // would be a LIE on a real site (the harness neither provisioned nor exposed it).
+  if (config.subject.exposure !== undefined) {
+    return "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead.";
+  }
+  if (config.subject.serve !== undefined) {
+    return "`subject.serve` is forbidden on the external-public shared-world route — the harness does not serve the plane (it is an already-deployed public app); there is no in-sandbox serve to run.";
+  }
+  if (config.subject.state?.seed !== undefined || config.subject.state?.checkpoint !== undefined || config.subject.state !== undefined) {
+    return "`subject.state` (seed/checkpoint/external) is forbidden on the external-public shared-world route — the harness neither seeds nor snapshots the plane (no in-sandbox filesystem to digest); no authoritative shared-state proof is possible on this class.";
+  }
+  if (config.subject.clone !== undefined || config.subject.repos !== undefined) {
+    return "`subject.clone`/`subject.repos` are forbidden on the external-public shared-world route — nothing is cloned; the public deployment IS the plane.";
+  }
+  const lanes = config.actors[0]?.lanes;
+  if (!lanes || lanes.length < 2) {
+    return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session).";
+  }
+  if (lanes.some((lane) => lane.entry !== undefined)) {
+    return "`actors[0].lanes[].entry` (the loopback same-origin seat path) is forbidden on the external-public shared-world route — there is no harness-served serve.url to resolve it against; seats open the public appUrl and reach the shared session through the real UI.";
+  }
+  const hostLanes = lanes.filter((lane) => lane.host === true);
+  if (hostLanes.length !== 1) {
+    return `the external-public shared-world route requires EXACTLY ONE \`host: true\` lane (the designated host seat that creates the shared session; got ${hostLanes.length}). The other ≥1 lanes are followers that join it.`;
   }
   return null;
 }
@@ -1192,12 +1316,19 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routesToTerminal = routesToTerminalProduct(config);
   const routesToShared = routesToSharedWorld(config);
   const routesToConcurrent = routesToConcurrentSharedWorld(config);
+  // The external-public plane (a real public deployment as the shared plane) consumes host lanes +
+  // subject.publicTarget; it is only ever the concurrent app-url shape.
+  const routesToExternalPublic = routesToConcurrent && config.subject.source === "app-url";
   const routesToHostedCuaBrowser = config.execution?.target === "e2b-desktop"
     && routesToCua;
   for (const [index, actor] of config.actors.entries()) {
     // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
     if (actor.lanes?.some((lane) => lane.entry !== undefined) && !routesToShared) {
       inert.push(`actors[${index}].lanes[].entry (the per-role loopback entry is a shared-world capability; needs subject.topology: shared-world)`);
+    }
+    // The host-seat marker acts ONLY on the external-public shared-world route; inert elsewhere.
+    if (actor.lanes?.some((lane) => lane.host === true) && !routesToExternalPublic) {
+      inert.push(`actors[${index}].lanes[].host (the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)`);
     }
     if (routesToCua || routesToTerminal) {
       // The cua + terminal routes consume mission/persona/model + laneFocus.instruction (they
@@ -1232,6 +1363,11 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   }
   if (config.subject.state?.checkpoint !== undefined && !routesToShared) {
     inert.push("subject.state.checkpoint (the shared-world state-checkpoint probe; needs subject.topology: shared-world)");
+  }
+  // publicTarget (the external-public ownership attestation) acts ONLY on the external-public
+  // shared-world route; inert elsewhere. (It is already parse-rejected on non-app-url sources.)
+  if (config.subject.publicTarget !== undefined && !routesToExternalPublic) {
+    inert.push("subject.publicTarget (the external-public ownership attestation; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)");
   }
   // exposure (the synthetic-subject attestation) acts ONLY on the CONCURRENT shared-world route
   // (the getHost-exposed plane); inert on the sequential shared-world route (loopback) and elsewhere.
@@ -1364,6 +1500,11 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
   if (source !== "local-tree" && raw.localTree !== undefined) {
     return invalid("`subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree).");
   }
+  // publicTarget is app-url-ONLY (the external-public shared-world ownership attestation). It is
+  // meaningless without a real public deployment as the plane — reject it elsewhere (invariant 6).
+  if (source !== "app-url" && raw.publicTarget !== undefined) {
+    return invalid("`subject.publicTarget` applies only to app-url subjects on the external-public shared-world route (the operator's ownership attestation for a real public deployment used directly as the shared plane).");
+  }
 
   if (source === "clone") {
     const repos = strList(raw.repos);
@@ -1466,6 +1607,15 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       return invalid("`subject.appUrl` must be an http(s) URL.");
     }
     subject.appUrl = appUrl;
+    // publicTarget (external-public shared-world ownership attestation) is app-url-only. Shape it
+    // here; its REQUIRED-on-that-route semantics live in externalPublicSharedWorldValidationReason.
+    if (source === "app-url" && raw.publicTarget !== undefined) {
+      const publicTargetResult = parsePublicTarget(raw.publicTarget);
+      if (!publicTargetResult.ok) {
+        return publicTargetResult;
+      }
+      subject.publicTarget = publicTargetResult.value;
+    }
   }
 
   if (source === "terminal-product") {
@@ -1477,6 +1627,26 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
   }
 
   return { ok: true, value: subject };
+}
+
+// The publicTarget.owner is a public-safe operator/repo label surfaced in evidence (e.g.
+// "danielgwilson/cineguessr" or a bare org name). Slash allowed for the owner/repo convention.
+const PUBLIC_TARGET_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
+
+/** Parse the external-public shared-world ownership attestation ({ owner, authorized: true }). The
+ *  harness cannot verify ownership — this is author-trust, surfaced honestly in the evidence class. */
+function parsePublicTarget(raw: unknown): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {
+  if (!isRecord(raw)) {
+    return invalid("`subject.publicTarget` must be an object ({ owner, authorized: true }) — the operator's ownership attestation for the external-public shared plane.");
+  }
+  const owner = str(raw.owner);
+  if (!owner || !PUBLIC_TARGET_OWNER_PATTERN.test(owner)) {
+    return invalid("`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret.");
+  }
+  if (raw.authorized !== true) {
+    return invalid("`subject.publicTarget.authorized` must be true — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).");
+  }
+  return { ok: true, value: { owner, authorized: true } };
 }
 
 // The product name interpolates into evidence labels and the composed prompt; the public-safe
@@ -1939,6 +2109,14 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const laneEntry = str(entry.entry);
     if (laneEntry !== undefined) lane.entry = laneEntry;
+    // `host` marks the designated host seat on the external-public shared-world route; the
+    // exactly-one-host check runs in externalPublicSharedWorldValidationReason (route context).
+    if (entry.host !== undefined) {
+      if (typeof entry.host !== "boolean") {
+        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].host must be a boolean (marks the designated host seat on the external-public shared-world route).`);
+      }
+      if (entry.host) lane.host = true;
+    }
     lanes.push(lane);
   }
   return { ok: true, value: lanes };
