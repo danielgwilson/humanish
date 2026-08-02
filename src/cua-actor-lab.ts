@@ -3458,6 +3458,8 @@ function describeSubjectState(state: RunSubjectProvenance["state"], dryRun: bool
       return `declared, not run (${dryRun ? "dry-run contract" : "provisioning did not complete"})`;
     case "undeclared":
       return "undeclared";
+    case "external-public":
+      return "external-public (operator-declared, operator-owned public deployment; neither provisioned nor seeded)";
   }
 }
 
