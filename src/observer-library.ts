@@ -7,6 +7,10 @@ export interface LibraryHistory {
     href: string;
     status: string;
     streamCount: number;
+    /** Labeled run-total cost ESTIMATE (null when the run carries no cost summary). */
+    estimatedCostUsd: number | null;
+    costRatesAsOf: string | null;
+    costPlaceholder: boolean;
   }>;
 }
 
@@ -145,7 +149,14 @@ function libraryClientJs(): string {
       }
       var meta = document.createElement("div");
       meta.className = "run-meta";
-      meta.textContent = [run.mode || "unknown", run.streamCount + " lanes", run.createdAt || ""].filter(Boolean).join(" \\u00b7 ");
+      var metaBits = [run.mode || "unknown", run.streamCount + " lanes", run.createdAt || ""];
+      // Labeled cost token: ALWAYS "~$X est." (never a bare "$X"), so the library never implies an
+      // authoritative charge. Null = omitted (advisory, fail-open on display).
+      if (run.estimatedCostUsd != null) {
+        metaBits.push("~$" + Number(run.estimatedCostUsd).toFixed(2) + " est." + (run.costPlaceholder ? " (placeholder)" : ""));
+        if (run.costRatesAsOf) meta.title = "estimated, rates as of " + run.costRatesAsOf;
+      }
+      meta.textContent = metaBits.filter(Boolean).join(" \\u00b7 ");
       link.appendChild(top);
       link.appendChild(meta);
       item.appendChild(link);

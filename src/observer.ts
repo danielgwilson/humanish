@@ -524,7 +524,7 @@ function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRu
 /** internal: consumed by observer-serve */
 export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   latestRunId: string | null;
-  runs: Array<{ runId: string; createdAt: string | null; mode: string | null; href: string; status: string; streamCount: number }>;
+  runs: Array<{ runId: string; createdAt: string | null; mode: string | null; href: string; status: string; streamCount: number; estimatedCostUsd: number | null; costRatesAsOf: string | null; costPlaceholder: boolean }>;
 }> {
   await assertPinnedDirectory(proofRoot);
   const physicalCwd = path.dirname(path.dirname(proofRoot.physicalPath));
@@ -539,7 +539,11 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
         mode: run.mode,
         href: `/_humanish/runs/${encodeURIComponent(run.runId)}/observer/index.html`,
         status: data?.run.status ?? "unknown",
-        streamCount: data?.streams.length ?? 0
+        streamCount: data?.streams.length ?? 0,
+        // Labeled run-total cost estimate (advisory; null when the run carries no cost summary).
+        estimatedCostUsd: data?.cost?.estimatedTotalUsd ?? null,
+        costRatesAsOf: data?.cost?.ratesAsOf ?? null,
+        costPlaceholder: data?.cost?.placeholder ?? false
       };
     })
   );
