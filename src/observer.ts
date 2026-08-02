@@ -65,7 +65,8 @@ export interface ObserverRuntimeStreamUrl {
   url: string;
 }
 
-interface PinnedDirectory {
+/** internal: consumed by observer-serve */
+export interface PinnedDirectory {
   readonly birthtimeNs: bigint;
   readonly dev: bigint;
   readonly ino: bigint;
@@ -342,7 +343,8 @@ function renderObserverHtml(data: ObserverData): string {
 `;
 }
 
-async function serveRunPath(
+/** internal: consumed by observer-serve */
+export async function serveRunPath(
   runRoot: PinnedDirectory,
   relativePath: string,
   response: ServerResponse,
@@ -452,7 +454,8 @@ function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRu
   };
 }
 
-async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
+/** internal: consumed by observer-serve */
+export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   latestRunId: string | null;
   runs: Array<{ runId: string; createdAt: string | null; mode: string | null; href: string; status: string; streamCount: number }>;
 }> {
@@ -481,7 +484,8 @@ async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   };
 }
 
-function matchRunRoute(pathname: string): { runId: string; relativePath: string } | null {
+/** internal: consumed by observer-serve */
+export function matchRunRoute(pathname: string): { runId: string; relativePath: string } | null {
   const match = pathname.match(/^\/_humanish\/runs\/([^/]+)(?:\/(.*))?$/);
   if (!match) return null;
   try {
@@ -568,7 +572,8 @@ async function inspectContainedRegularFile(
   return fileIdentity;
 }
 
-async function pinDirectory(directoryInput: string): Promise<PinnedDirectory> {
+/** internal: consumed by observer-serve */
+export async function pinDirectory(directoryInput: string): Promise<PinnedDirectory> {
   const physicalPath = await realpath(path.resolve(directoryInput));
   const stats = await lstat(physicalPath, { bigint: true });
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
@@ -577,7 +582,8 @@ async function pinDirectory(directoryInput: string): Promise<PinnedDirectory> {
   return Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino, physicalPath });
 }
 
-async function pinDirectChildDirectory(root: PinnedDirectory, name: string): Promise<PinnedDirectory | null> {
+/** internal: consumed by observer-serve */
+export async function pinDirectChildDirectory(root: PinnedDirectory, name: string): Promise<PinnedDirectory | null> {
   if (!isSafeRunIdSegment(name)) return null;
   try {
     await assertPinnedDirectory(root);
