@@ -700,6 +700,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         lastActionTitle = actionTitle;
         recentActionTitles.push(actionTitle);
         if (recentActionTitles.length > 8) recentActionTitles.shift();
+        // Captured so a recovered (skipped) material action can restore it: a
+        // skipped action must not leave its title as the "last material action".
+        const priorMaterialActionTitle = lastMaterialActionTitle;
         if (!isIdleAction(action)) {
           lastMaterialActionTitle = actionTitle;
           materialActions += 1;
@@ -732,6 +735,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             // silent actor_error and never an infinite loop.
             materialActions -= 1;
             counts.materialActions = materialActions;
+            // Roll back the title too, so a later gave_up backstop notice never
+            // cites a never-actuated action as the "last material action" while
+            // counts.materialActions is 0 (honest-evidence invariant).
+            lastMaterialActionTitle = priorMaterialActionTitle;
           }
           const { exitCode, stderrTail } = commandFailureInfo(error);
           items.push({
