@@ -16,7 +16,7 @@ Humanish should be the open-source CLI that lets a maintainer ask:
 The answer should be observable, verifiable, public-safe, and easy to turn into
 actionable feedback.
 
-## Current Program Truth (source `0.16.0`)
+## Current Program Truth (source `0.17.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -32,6 +32,7 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 | Subject sources/routes | Six declared sources: `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, and `local-tree`; support is route-specific and `this-repo` remains dry-run-only | One centralized run/resource lifecycle boundary across all routes |
 | Public proof | Version-pinned synthetic Observer sample shipped in the npm payload | A legible Observer hero from one verified real public-application run |
 | OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
+| Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store; a control plane that can start runs |
 
 Capability proof and adopter replacement are different gates. A deterministic
 test or kept live receipt proves that a Humanish mechanism works. The depth-axis
