@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.19.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.19.1`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -672,7 +672,7 @@ mode (`loopback | exposed | share-safe-open`), the loopback host/port,
 `allowEmails`, `allowDomains` — operator-supplied allow rules, public-safe to
 echo to the operator's own stdout, never persisted into any bundle), runs
 listed, computed warnings, and the `ServeErrorCode` union. Exposure auth is
-tunnel-edge only — as of 0.19.0 there are no `capabilityUrl`/`publicCapabilityUrl`
+tunnel-edge only — as of 0.19.1 there are no `capabilityUrl`/`publicCapabilityUrl`
 /`ttlMinutes` fields, no `--auth`/`--ttl` flags, and no `capability-link` mode
 (the in-process `observer-auth.ts` capability-link was removed as a pre-1.0
 breaking change).
