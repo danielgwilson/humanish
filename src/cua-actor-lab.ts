@@ -936,6 +936,13 @@ export interface CuaLaneDeps {
    * lane keeps running, so one seat's screen drift cannot abort a live multi-actor world.
    */
   screenMismatchPolicy?: "fail-closed" | "record-evidence";
+  /**
+   * RUNTIME-ONLY observed-URL callback (#164 handoff crux): threaded into the lane's session so the
+   * orchestrator watches this seat's live location.href mid-run. Never persisted (see
+   * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host-seat latch here
+   * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
+   */
+  onObservedUrl?: (url: string | undefined) => void;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -1884,7 +1891,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         redactScreenshots: deps.redactScreenshots,
         scrubText: deps.scrubKnownValues,
         writeScreenshot,
-        ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen })
+        ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
+        ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl })
       };
       session = await deps.runSession(sessionOptions);
     }

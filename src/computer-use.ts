@@ -232,6 +232,15 @@ export interface CuaLoopOptions {
    * vanished-rate harness condition, not a silent uncapped pass.
    */
   estimateTurnCostUsd?: (input: number, output: number) => number | null;
+  /**
+   * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
+   * after EVERY executor.observe() (the initial observe and each post-action observe), so the
+   * orchestrator can watch a seat's live `location.href` mid-run WITHOUT the loop ever persisting it.
+   * The URL is the same runtime-only field documented on CuaObservation.url (never written to the
+   * trace); this callback keeps that hygiene — it only hands the value back in memory. Used by the
+   * concurrent shared-world barrier to latch a host seat's `/lobby/CODE` URL. Default: no-op.
+   */
+  onObservedUrl?: (url: string | undefined) => void;
 }
 
 export interface CuaLoopResult {
@@ -451,7 +460,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     writeScreenshot = async (name) => `screenshots/${name}`,
     stopWhen,
     maxUsd,
-    estimateTurnCostUsd
+    estimateTurnCostUsd,
+    onObservedUrl
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
   const idleRecoverySteps = Math.min(Math.max(1, idleSteps - 1), 3);
@@ -566,6 +576,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   try {
     currentPhase = "observing initial UI state";
     let observation = await raceSettle(executor.observe(), remaining(), signal);
+    // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
+    onObservedUrl?.(observation.url);
     if (observation.appState !== undefined) observedAppState = true;
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
@@ -772,6 +784,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (signal?.aborted) throw new CuaAbortError();
       currentPhase = `observing UI state after turn ${turnNumber}`;
       observation = await raceSettle(executor.observe(), remaining(), signal);
+      // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
+      onObservedUrl?.(observation.url);
       if (observation.appState !== undefined) observedAppState = true;
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;

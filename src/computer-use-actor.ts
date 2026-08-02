@@ -79,6 +79,9 @@ export interface CuaActorSessionOptions {
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
   estimateTurnCostUsd?: (input: number, output: number) => number | null;
+  /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
+   *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
+  onObservedUrl?: (url: string | undefined) => void;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
@@ -102,7 +105,8 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot }),
     ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen }),
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
-    ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd })
+    ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
+    ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl })
   };
 
   return runComputerUseLoop(loopOptions);
