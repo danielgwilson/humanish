@@ -9,7 +9,7 @@ real public app possible without any persona-to-persona messaging.
 | | provisioned-getHost (historical) | external-public (new) |
 |---|---|---|
 | Shared plane | a `clone`/`local-tree` subject served + `getHost`-exposed IN-SANDBOX | a real operator-OWNED public deployment (`source: app-url`) used DIRECTLY |
-| Harness role | MINTED and controls the host URL | OBSERVES that each seat reached the operator-declared origin |
+| Harness role | MINTED and controls the host URL | OBSERVES that the seats converged on ONE origin (tolerant of a declared→observed redirect) |
 | Subject sandbox | one (headless service host) + N actor desktops | NONE — only N actor desktops |
 | Attestation | `subject.exposure: synthetic` (synthetic seeded data) | `subject.publicTarget: { owner, authorized }` (you own/operate it) |
 | Provenance | `subject.state.provenance == seeded` | `subject.state.provenance == external-public` |
@@ -72,6 +72,24 @@ Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
    window + a handoff-failed outcome for followers. A host that reaches the lobby but whose followers
    fail to JOIN is a normal per-lane non-pass (the concurrency-on-pass gate then simply won't see ≥2
    overlap, and the verdict stays non-pass, honestly), not a whole-run abort.
+
+> **Temporary shim (tracked by #296).** This CDP URL-relay handoff — reading the host's `/lobby/CODE`
+> off its own browser and threading it into the follower missions — is a TEMPORARY coordination shim.
+> It is to be augmented/replaced by the actor message bus (faux SMS/email invite) in #297: the
+> human-realistic version is the HOST SENDING the invite link and followers RECEIVING and tapping it,
+> rather than the orchestrator relaying the code out-of-band.
+
+## Observed-origin convergence (not declared)
+
+The convergence proof is about what the seats OBSERVED, not what was DECLARED. `plane.publicOriginDigest`
+is the sha256-16 of the ONE origin the seats' CDP-observed final URLs converged on; verify requires every
+`laneWindow.routeHostDigest` to agree on it. A normal cross-origin redirect (apex→www, http→https;
+cineguessr.com 307-redirects) makes the OBSERVED origin differ from the declared `subject.appUrl`, which
+is EXPECTED and must never fail the run — so the declared origin is recorded separately as
+`plane.declaredOriginDigest` for reference and is NEVER asserted equal to the observed one. Operator
+OWNERSHIP rests on the `subject.publicTarget.authorized` attestation + the declared `appUrl`, NOT on
+digest equality. Verify fails closed only when the seats did not converge on a single OBSERVED origin
+(it then lists the distinct observed origin digests).
 
 ## Hygiene
 

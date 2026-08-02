@@ -141,30 +141,42 @@ function makeTrace(args: { persona: CuaActorSessionOptions["persona"]; status: A
 
 const HOST_HOLD_MS = 60; // host keeps its window open past the followers' (overlap)
 const FOLLOWER_HOLD_MS = 10;
+const DEFAULT_OBSERVED_ORIGIN = "https://cineguessr.com"; // matches the declared apex appUrl (no redirect)
+const lobbyUrlFor = (origin: string): string => `${origin}/en/lobby/AB2CD9`; // locale-prefixed + valid code
+const homeUrlFor = (origin: string): string => `${origin}/`; // a seat stuck here observes no lobby code
 
 /** A runSession fake for the external-public route. It detects the host by its unique mission text,
  *  fires the loop's onObservedUrl to drive the handoff latch + convergence, and returns an engaged
  *  trace. `stuckPersonaId` steers one follower (by persona id) onto the home page (no lobby code) and
- *  makes it fail — a deterministic non-converging seat. */
+ *  makes it fail — a deterministic non-converging seat. `observedOrigin` steers ALL seats onto a
+ *  DIFFERENT observed origin than the declared appUrl (simulates a cross-origin redirect, e.g.
+ *  apex->www); `divergentPersonaId`+`divergentOrigin` steer ONE follower onto a different observed
+ *  origin than the others (a genuine non-convergence on observed origins). */
 function makeExternalRunSession(args: {
   seen: CuaActorSessionOptions[];
   stuckPersonaId?: string;
   hostFiresLobby?: boolean;
+  observedOrigin?: string;
+  divergentPersonaId?: string;
+  divergentOrigin?: string;
 }): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
+  const baseOrigin = args.observedOrigin ?? DEFAULT_OBSERVED_ORIGIN;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
     args.seen.push(options);
     const isHost = options.instructions.toLowerCase().includes("create a");
     if (isHost) {
       if (args.hostFiresLobby !== false) {
-        options.onObservedUrl?.(HOME_URL); // first observe: still on the home page
-        options.onObservedUrl?.(LOBBY_URL); // then the host lands on /lobby/CODE -> resolves the latch
+        options.onObservedUrl?.(homeUrlFor(baseOrigin)); // first observe: still on the home page
+        options.onObservedUrl?.(lobbyUrlFor(baseOrigin)); // then the host lands on /lobby/CODE -> resolves the latch
       }
       await new Promise<void>((resolve) => { setTimeout(resolve, HOST_HOLD_MS); });
       const trace = makeTrace({ persona: options.persona, status: "passed", completionReason: "goal_satisfied" });
       return { status: "passed", completionReason: "goal_satisfied", reason: trace.reason, trace };
     }
     const stuck = args.stuckPersonaId !== undefined && options.persona.id === args.stuckPersonaId;
-    options.onObservedUrl?.(stuck ? HOME_URL : LOBBY_URL);
+    const divergent = args.divergentPersonaId !== undefined && options.persona.id === args.divergentPersonaId;
+    const followerOrigin = divergent ? (args.divergentOrigin ?? baseOrigin) : baseOrigin;
+    options.onObservedUrl?.(stuck ? homeUrlFor(followerOrigin) : lobbyUrlFor(followerOrigin));
     await new Promise<void>((resolve) => { setTimeout(resolve, FOLLOWER_HOLD_MS); });
     const status: ActorStatus = stuck ? "failed" : "passed";
     const completionReason: ActorCompletionReason = stuck ? "gave_up" : "goal_satisfied";
@@ -178,12 +190,21 @@ function externalPublicConfig(overrides?: {
   hostCount?: number;
   concurrency?: number;
   omitPublicTarget?: boolean;
+  hostLast?: boolean;
 }): unknown {
-  const lanes: Array<Record<string, unknown>> = [
-    { id: "host", host: true, device: "mobile", persona: "party-host", instruction: "Create a lobby, then wait; once 3 players are in, start and play." },
-    { id: "player-2", device: "mobile", persona: "competitive-friend", instruction: "Join the lobby you're told the code for, then play." },
-    { id: "player-3", device: "small-mobile", persona: "casual-friend", instruction: "Join the lobby you're told the code for, then play." }
-  ];
+  const lanes: Array<Record<string, unknown>> = overrides?.hostLast
+    ? [
+        // Host is the LAST roster lane (blockers 1 & 4): with concurrency < laneCount it must still be
+        // schedulable on its dedicated slot rather than starved behind the follower pool.
+        { id: "player-2", device: "mobile", persona: "competitive-friend", instruction: "Join the lobby you're told the code for, then play." },
+        { id: "player-3", device: "small-mobile", persona: "casual-friend", instruction: "Join the lobby you're told the code for, then play." },
+        { id: "host", host: true, device: "mobile", persona: "party-host", instruction: "Create a lobby, then wait; once 3 players are in, start and play." }
+      ]
+    : [
+        { id: "host", host: true, device: "mobile", persona: "party-host", instruction: "Create a lobby, then wait; once 3 players are in, start and play." },
+        { id: "player-2", device: "mobile", persona: "competitive-friend", instruction: "Join the lobby you're told the code for, then play." },
+        { id: "player-3", device: "small-mobile", persona: "casual-friend", instruction: "Join the lobby you're told the code for, then play." }
+      ];
   if (overrides?.hostCount === 0) delete lanes[0]!.host;
   if (overrides?.hostCount === 2) lanes[1]!.host = true;
   return {
@@ -476,6 +497,123 @@ describe("host-first handoff barrier + convergence", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 4b. Host-first scheduling: the host lane is NEVER starved (blockers 1 & 4).
+// ---------------------------------------------------------------------------
+describe("host-first scheduling: host runs on a dedicated slot, never starved", () => {
+  it("lanes [follower, follower, host] with concurrency 2 does NOT deadlock; followers receive the code", async () => {
+    // The host is the LAST roster lane and concurrency (2) < laneCount (3): if the host were scheduled
+    // inside the same bounded pool as the followers, the two follower workers would block on the latch
+    // holding both slots and the host would never be scheduled -> a spurious HANDOFF_TIMEOUT. On its
+    // dedicated slot the host runs immediately, resolves the latch, and the followers proceed.
+    const seen: CuaActorSessionOptions[] = [];
+    const { hooks, created } = makeExternalHooks(
+      makeExternalRunSession({ seen }),
+      { handoffDeadlineMs: 5_000 } // a real deadline; a deadlock would blow past it and fail the test
+    );
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: parseExternal({ hostLast: true, concurrency: 2 }),
+      dryRun: false,
+      hooks
+    });
+
+    expect(result.ok).toBe(true); // no deadlock, no HANDOFF_TIMEOUT
+    expect(result.error).toBeUndefined();
+    expect(created).toHaveLength(3); // all three seats opened (host + 2 followers)
+
+    // Both followers received the host's CODE threaded into their mission.
+    const followerInstructions = seen.filter((o) => !o.instructions.toLowerCase().includes("create a")).map((o) => o.instructions);
+    expect(followerInstructions).toHaveLength(2);
+    expect(followerInstructions.every((text) => text.includes("AB2CD9"))).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.sharedWorld?.lobbyConvergenceDigest).toMatch(/^[0-9a-f]{16}$/); // all seats on one lobby
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4c. Observed-origin convergence: redirect tolerated, divergence fails closed (blocker 2).
+// ---------------------------------------------------------------------------
+describe("observed-origin convergence (redirect tolerated)", () => {
+  it("seats observed on www while declared apex PASSES; publicOriginDigest = the OBSERVED origin", async () => {
+    // Declared appUrl is the apex https://cineguessr.com/, but every seat's CDP-observed final URL is
+    // on https://www.cineguessr.com (a normal apex->www 307 redirect). This must PASS: the convergence
+    // proof is about the OBSERVED origin, and publicOriginDigest is derived from it (not the declared).
+    const seen: CuaActorSessionOptions[] = [];
+    const { hooks } = makeExternalHooks(makeExternalRunSession({ seen, observedOrigin: "https://www.cineguessr.com" }));
+    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const plane = bundle.sharedWorld?.plane as { publicOriginDigest?: string; declaredOriginDigest?: string };
+    expect(plane.publicOriginDigest).toMatch(/^[0-9a-f]{16}$/);
+    expect(plane.declaredOriginDigest).toMatch(/^[0-9a-f]{16}$/);
+    // publicOriginDigest is the OBSERVED (www) origin; declaredOriginDigest is the DECLARED (apex) origin.
+    // A redirect makes them DIFFER — and that difference must not fail verify.
+    expect(plane.publicOriginDigest).not.toBe(plane.declaredOriginDigest);
+    // Every seat's observed routeHostDigest equals the observed publicOriginDigest (they converged).
+    for (const w of bundle.sharedWorld?.laneWindows ?? []) expect(w.routeHostDigest).toBe(plane.publicOriginDigest);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+    expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  it("seats on TWO different observed origins FAIL closed (did not converge on ONE observed origin)", async () => {
+    // The host + player-2 observe www; player-3 observes the apex origin. The seats genuinely diverge
+    // on their OBSERVED origins, so publicOriginDigest cannot be set and verify fails closed.
+    const seen: CuaActorSessionOptions[] = [];
+    const { hooks } = makeExternalHooks(makeExternalRunSession({
+      seen,
+      observedOrigin: "https://www.cineguessr.com",
+      divergentPersonaId: "casual-friend", // player-3 lands on the apex origin instead
+      divergentOrigin: "https://cineguessr.com"
+    }));
+    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    // Divergent observed origins -> no single observed origin -> publicOriginDigest absent.
+    expect((bundle.sharedWorld?.plane as { publicOriginDigest?: string }).publicOriginDigest).toBeUndefined();
+    const distinct = new Set((bundle.sharedWorld?.laneWindows ?? []).map((w) => w.routeHostDigest));
+    expect(distinct.size).toBe(2);
+
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(false);
+    const check = verify.checks.find((c) => c.name === "shared-world evidence");
+    expect(check?.ok).toBe(false);
+    expect(check?.message).toContain("did not converge on ONE OBSERVED origin");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4d. review.summary is plane-class-aware (external-public, not getHost).
+// ---------------------------------------------------------------------------
+describe("review.summary is external-public plane-aware", () => {
+  it("dry-run summary names the external-public plane (no getHost/clone/seed), not a getHost-exposed plane", async () => {
+    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: true });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const summary = bundle.review.summary;
+    expect(summary).toContain("external-public");
+    expect(summary).toContain("no getHost");
+    expect(summary).not.toContain("getHost-exposed");
+  });
+
+  it("live summary reports lobby convergence and drops the 'state delta(s) under load' clause", async () => {
+    const seen: CuaActorSessionOptions[] = [];
+    const { hooks } = makeExternalHooks(makeExternalRunSession({ seen }));
+    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const summary = bundle.review.summary;
+    expect(summary).not.toContain("state delta(s) under load");
+    expect(summary).toContain("seats converged on one lobby");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 5. Handoff timeout fail-closed.
 // ---------------------------------------------------------------------------
 describe("handoff timeout fail-closed", () => {
@@ -539,10 +677,10 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
     expect(message).toContain("exposure must be ABSENT");
   });
 
-  it("fails closed when a routeHostDigest diverges from publicOriginDigest", async () => {
+  it("fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)", async () => {
     const { ok, message } = await mutateAndVerify(await goodRun(), (b) => { b.sharedWorld!.laneWindows![1]!.routeHostDigest = "0000000000000000"; });
     expect(ok).toBe(false);
-    expect(message).toContain("did not converge on ONE declared origin");
+    expect(message).toContain("did not converge on ONE OBSERVED origin");
   });
 
   it("fails closed when a required external-public attributionLimit is missing", async () => {

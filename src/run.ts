@@ -539,14 +539,23 @@ export interface SharedWorldPlane {
    */
   exposure?: "synthetic";
   /**
-   * EXTERNAL-PUBLIC plane class only (#164 phase 2): sha256-16 of the operator-DECLARED origin of the
-   * public deployment used as the shared plane (the honest analog of hostDigest, but WEAKER and
-   * disclosed — the harness only OBSERVES that each seat reached this origin; it never MINTED it).
-   * verify proves every laneWindow.routeHostDigest (computed from that seat's CDP-observed final URL
-   * origin) equals it — inter-seat convergence on ONE declared origin, not harness control of the
-   * plane. A digest, not the raw origin (kept consistent with hostDigest hygiene). Absent on getHost.
+   * EXTERNAL-PUBLIC plane class only (#164 phase 2): sha256-16 of the OBSERVED origin the seats
+   * CONVERGED on (the honest analog of hostDigest, but WEAKER and disclosed — the harness only
+   * OBSERVES that each seat reached this origin; it never MINTED it). It is derived from what the
+   * seats actually reached, NOT from the declared appUrl: verify proves every laneWindow.routeHostDigest
+   * (that seat's CDP-observed final URL origin) equals it — inter-seat convergence on ONE OBSERVED
+   * origin, not harness control of the plane. A digest, not the raw origin (kept consistent with
+   * hostDigest hygiene). Absent on getHost.
    */
   publicOriginDigest?: string;
+  /**
+   * EXTERNAL-PUBLIC plane class only: sha256-16 of the operator-DECLARED origin (from subject.appUrl),
+   * recorded for reference/evidence ONLY. It is NEVER asserted equal to publicOriginDigest: a normal
+   * cross-origin redirect (apex->www, http->https) makes the OBSERVED origin differ from the declared
+   * one, which is expected. Operator OWNERSHIP rests on the subject.publicTarget.authorized attestation
+   * + the declared appUrl, NOT on digest equality. A digest, not the raw origin. Absent on getHost.
+   */
+  declaredOriginDigest?: string;
 }
 
 /**
@@ -6087,20 +6096,34 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
     }
   }
 
-  // Plane identity (the honest analog of invariant 2, WEAKER + disclosed): plane.publicOriginDigest
-  // present (sha256-16) + every seat's CDP-OBSERVED routeHostDigest equals it. Equality proves
-  // inter-seat CONVERGENCE on one operator-declared origin — NOT harness control of the plane.
+  // Plane identity (the honest analog of invariant 2, WEAKER + disclosed): the convergence proof is
+  // about what the seats OBSERVED, not what was DECLARED. plane.publicOriginDigest is the OBSERVED
+  // origin the seats converged on; verify requires every seat's CDP-OBSERVED routeHostDigest to agree
+  // on ONE origin, and that publicOriginDigest BE that origin. Convergence on one observed origin proves
+  // inter-seat co-location — NOT harness control of the plane. IMPORTANT: operator OWNERSHIP rests on
+  // the subject.publicTarget.authorized attestation + the declared appUrl, NOT on digest equality — a
+  // normal cross-origin redirect (apex->www, http->https) makes the observed origin differ from the
+  // DECLARED one, which is expected and must NEVER fail verify (declaredOriginDigest is evidence-only).
   const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
   const publicOriginDigest = typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
   if (!publicOriginDigest || !COMMAND_DIGEST_PATTERN.test(publicOriginDigest)) {
-    findings.push("sharedWorld.plane.publicOriginDigest (sha256-16 of the operator-declared origin) is required on the external-public plane class");
-  } else {
-    for (const window of laneWindows) {
-      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
-      if (typeof window.routeHostDigest === "string" && window.routeHostDigest !== publicOriginDigest) {
-        findings.push(`laneWindow "${roleId}" reached an origin that differs from the operator-declared plane.publicOriginDigest — the seats did not converge on ONE declared origin`);
-      }
-    }
+    findings.push("sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class");
+  }
+  // The observed origins across seats must agree on exactly ONE (that agreement IS the convergence).
+  const observedOrigins = laneWindows
+    .map((window) => (typeof window.routeHostDigest === "string" ? window.routeHostDigest : undefined))
+    .filter((digest): digest is string => digest !== undefined);
+  const distinctObserved = [...new Set(observedOrigins)];
+  if (distinctObserved.length > 1) {
+    findings.push(`the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: ${distinctObserved.join(", ")}`);
+  } else if (publicOriginDigest && distinctObserved.length === 1 && distinctObserved[0] !== publicOriginDigest) {
+    findings.push(`sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the seats converged on (${distinctObserved[0]})`);
+  }
+  // declaredOriginDigest is recorded for evidence ONLY. Validate its shape when present, but NEVER
+  // assert it equals the observed origin — a cross-origin redirect is normal and expected.
+  if (plane.declaredOriginDigest !== undefined
+    && (typeof plane.declaredOriginDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.declaredOriginDigest))) {
+    findings.push("sharedWorld.plane.declaredOriginDigest, when present, must be a sha256-16 digest of the operator-declared origin (evidence-only; not asserted equal to the observed origin)");
   }
 
   // INVERT the getHost gate: exposure MUST be absent (claiming synthetic on a real site is a lie) and
@@ -6490,6 +6513,7 @@ function isSharedWorldEvidence(value: unknown): value is SharedWorldEvidence {
   if (plane.hostDigest !== undefined && typeof plane.hostDigest !== "string") return false;
   if (plane.exposure !== undefined && typeof plane.exposure !== "string") return false;
   if (plane.publicOriginDigest !== undefined && typeof plane.publicOriginDigest !== "string") return false;
+  if (plane.declaredOriginDigest !== undefined && typeof plane.declaredOriginDigest !== "string") return false;
   if (value.planeClass !== undefined && typeof value.planeClass !== "string") return false;
   if (value.lobbyConvergenceDigest !== undefined && typeof value.lobbyConvergenceDigest !== "string") return false;
   if (!(Array.isArray(value.attributionLimits) && value.attributionLimits.every((limit) => typeof limit === "string"))) return false;

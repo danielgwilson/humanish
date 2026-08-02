@@ -238,7 +238,9 @@ export interface LabSubject {
    * cannot attest the data is synthetic; instead the operator MUST attest they own/operate it.
    * `owner` is a public-safe operator/repo label; `authorized` must be true. This is author-trust —
    * the harness cannot verify ownership — surfaced honestly in the evidence class. Required on the
-   * external-public branch; rejected on every other route (it is meaningless without that plane).
+   * external-public branch. On a non-`app-url` subject it is REJECTED (parse error); on any OTHER
+   * `app-url` config that does not route to external-public shared-world it is IGNORED-WITH-A-WARNING
+   * (forwardDeclaredWarnings), never silently consumed — it is meaningless without that plane.
    */
   publicTarget?: { owner: string; authorized: boolean };
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */

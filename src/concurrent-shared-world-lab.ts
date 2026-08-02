@@ -607,9 +607,18 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   // its ORIGIN is persisted digest-only (publicOriginDigest), never raw (the raw URL + the runtime
   // observed lobby CODE never land — TENSION 3). The latch code is scrubbed from all narration.
   const publicAppUrl = config.subject.appUrl ?? "";
-  const publicOriginDigest = planeClass === "external-public" && publicAppUrl
+  // The operator-DECLARED origin (from subject.appUrl) — recorded for evidence/reference ONLY. The
+  // operator-OWNERSHIP claim rests on the subject.publicTarget.authorized attestation + this declared
+  // appUrl, NOT on digest equality (blocker 2): a normal cross-origin redirect (apex->www, http->https;
+  // cineguessr.com 307-redirects) makes the seats' OBSERVED origin differ from the declared one, which
+  // is expected and MUST NOT fail the run. Persisted digest-only (never the raw origin).
+  const declaredOriginDigest = planeClass === "external-public" && publicAppUrl
     ? hostOriginDigest(publicAppUrl)
     : undefined;
+  // The OBSERVED convergence origin — computed AFTER fan-out from what the seats ACTUALLY reached (the
+  // convergence proof is what the seats OBSERVED, not what was declared). Set iff every observing seat
+  // agrees on ONE origin; that agreement IS the convergence proof and becomes plane.publicOriginDigest.
+  let publicOriginDigest: string | undefined;
   // Per-lane runtime-only observed state (never persisted raw): the last observed URL and the last
   // observed /lobby/CODE per seat, fed by onObservedUrl. The URL is digested to ORIGIN for each seat's
   // routeHostDigest (no code leaks); the codes drive the cross-seat lobby-convergence digest.
@@ -950,7 +959,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         subject: { source: "app-url", envNames: [], state: { provenance: "external-public" } },
         seedDigest,
         planeClass: "external-public",
-        ...(publicOriginDigest === undefined ? {} : { publicOriginDigest })
+        // Pre-fan-out snapshot: no seat has observed an origin yet, so the OBSERVED publicOriginDigest
+        // is not available; surface the DECLARED origin for the live Observer's reference.
+        ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest })
       });
       await writeConcurrentRunArtifacts(inProgressBundle, runPaths);
       liveObserver = observerResultForConcurrentArtifacts(cwd, runId, artifactRoot, [
@@ -960,6 +971,12 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     }
 
     // The host-first handoff barrier.
+    //
+    // TEMPORARY SHIM (tracked by #296): this CDP URL-relay handoff — reading the host's /lobby/CODE off
+    // its own browser and threading it into the follower missions — is a temporary coordination shim.
+    // It is to be augmented/replaced by the actor message bus (faux SMS/email invite) in #297: the
+    // human-realistic version is the HOST SENDING the invite link and followers RECEIVING and tapping
+    // it, rather than the orchestrator relaying the code out-of-band.
     const lobbyCodeLatch = deferred<string>();
     const handoffDeadlineMs = hooks.handoffDeadlineMs ?? Math.min(DEFAULT_HANDOFF_DEADLINE_MS, timeoutMs);
     let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
@@ -982,45 +999,97 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       }
     };
 
+    // The HOST lane (which yields the /lobby/CODE the followers wait on) runs on its OWN dedicated
+    // slot, and the FOLLOWERS run through a bounded pool of size concurrency-1 (blockers 1 & 4):
+    // followers block on `Promise.race([lobbyCodeLatch.promise, deadline])` while holding a worker
+    // slot, so if the host lane were scheduled INSIDE the same bounded pool it could be starved (never
+    // scheduled among the first `concurrency` workers) and the run would die with a spurious
+    // HANDOFF_TIMEOUT (e.g. lanes [p2,p3,host] with concurrency 2). Giving the host its own slot,
+    // started IMMEDIATELY and OUTSIDE the follower pool, guarantees it is ALWAYS schedulable regardless
+    // of its roster position or of concurrency vs lane count — while total in-flight paid desktops stay
+    // ≤ the declared concurrency (host + up to concurrency-1 followers), preserving the spend cap.
+    const runHostLane = async (spec: CuaLaneSpec, laneIndex: number): Promise<ActorLaneResult> => {
+      const onObservedUrl = makeLaneObservedUrl(laneIndex, true);
+      const startedAt = now();
+      let outcome: LaneRunOutcome;
+      try {
+        outcome = await runCuaLane(spec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
+      } finally {
+        // If the host finished without ever surfacing a code, release followers to fail closed
+        // immediately rather than wait the full deadline (a no-op if it already resolved).
+        lobbyCodeLatch.reject(new HandoffTimeoutError(handoffDeadlineMs));
+      }
+      const endedAt = now();
+      return { spec, outcome, startedAt, endedAt, route: observedFinalUrls[laneIndex] ?? publicAppUrl };
+    };
+    const runFollowerLane = async (spec: CuaLaneSpec, laneIndex: number): Promise<ActorLaneResult> => {
+      const onObservedUrl = makeLaneObservedUrl(laneIndex, false);
+      // FOLLOWER: do NOT compose a mission or open the target until the host yields a lobby code.
+      let code: string;
+      try {
+        code = await Promise.race([lobbyCodeLatch.promise, deadline]);
+      } catch {
+        // Fail closed WITHOUT opening (no wasted turns against a codeless home page).
+        handoffTimedOut = true;
+        const at = now();
+        return { spec, outcome: makeBlockedFollowerOutcome(spec, handoffDeadlineMs), startedAt: at, endedAt: at, route: publicAppUrl };
+      }
+      const followerSpec = withLobbyCodeMission(spec, code);
+      const startedAt = now();
+      const outcome = await runCuaLane(followerSpec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
+      const endedAt = now();
+      return { spec, outcome, startedAt, endedAt, route: observedFinalUrls[laneIndex] ?? publicAppUrl };
+    };
+
+    // Split the roster into the designated host lane and the followers, preserving each follower's
+    // ORIGINAL lane index so results land back in lane order (validation guarantees EXACTLY ONE host).
+    const hostLaneIndex = roles.findIndex((role) => role.host === true);
+    const followerEntries = actorSpecs
+      .map((spec, index) => ({ spec, index }))
+      .filter(({ index }) => index !== hostLaneIndex);
+    const laneResults: ActorLaneResult[] = new Array(actorSpecs.length);
     try {
-      actorResults = await mapWithConcurrency(actorSpecs, Math.max(1, concurrency), async (spec, i) => {
-        const isHost = roles[i]?.host === true;
-        const onObservedUrl = makeLaneObservedUrl(i, isHost);
-        if (isHost) {
-          const startedAt = now();
-          let outcome: LaneRunOutcome;
-          try {
-            outcome = await runCuaLane(spec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
-          } finally {
-            // If the host finished without ever surfacing a code, release followers to fail closed
-            // immediately rather than wait the full deadline (a no-op if it already resolved).
-            lobbyCodeLatch.reject(new HandoffTimeoutError(handoffDeadlineMs));
-          }
-          const endedAt = now();
-          return { spec, outcome, startedAt, endedAt, route: observedFinalUrls[i] ?? publicAppUrl };
-        }
-        // FOLLOWER: do NOT compose a mission or open the target until the host yields a lobby code.
-        let code: string;
-        try {
-          code = await Promise.race([lobbyCodeLatch.promise, deadline]);
-        } catch {
-          // Fail closed WITHOUT opening (no wasted turns against a codeless home page).
-          handoffTimedOut = true;
-          const at = now();
-          return { spec, outcome: makeBlockedFollowerOutcome(spec, handoffDeadlineMs), startedAt: at, endedAt: at, route: publicAppUrl };
-        }
-        const followerSpec = withLobbyCodeMission(spec, code);
-        const startedAt = now();
-        const outcome = await runCuaLane(followerSpec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
-        const endedAt = now();
-        return { spec, outcome, startedAt, endedAt, route: observedFinalUrls[i] ?? publicAppUrl };
-      });
+      const hostPromise = hostLaneIndex >= 0 && actorSpecs[hostLaneIndex] !== undefined
+        ? runHostLane(actorSpecs[hostLaneIndex]!, hostLaneIndex)
+        : undefined;
+      const followerResultsPromise = mapWithConcurrency(
+        followerEntries,
+        Math.max(1, concurrency - 1),
+        ({ spec, index }) => runFollowerLane(spec, index)
+      );
+      const [hostResult, followerResults] = await Promise.all([hostPromise, followerResultsPromise]);
+      if (hostResult !== undefined && hostLaneIndex >= 0) {
+        laneResults[hostLaneIndex] = hostResult;
+      }
+      followerEntries.forEach((entry, i) => { laneResults[entry.index] = followerResults[i]!; });
+      actorResults = laneResults;
     } catch (error) {
       runError = redactText(scrubKnownValuesWithLobbyCode(toErrorMessage(error)));
       warnings.push(`External-public concurrent shared-world run failed before completion: ${runError}`);
     } finally {
       if (deadlineTimer) { clearTimeout(deadlineTimer); deadlineTimer = undefined; }
     }
+
+    // Observed-origin convergence proof (blocker 2): the convergence claim is about what the seats
+    // OBSERVED, not what was DECLARED. Digest each observing seat's origin and require they AGREE on
+    // ONE — that agreement IS the convergence proof and becomes plane.publicOriginDigest. A normal
+    // cross-origin redirect (declared apex -> observed www) is therefore tolerated: the seats still
+    // converge on ONE observed origin. Leave it undefined (verify fails closed) only if the seats did
+    // not converge on a single observed origin (or none observed one).
+    const observedOriginDigests = observedFinalUrls
+      .filter((url): url is string => typeof url === "string" && url.length > 0)
+      .map((url) => hostOriginDigest(url));
+    const distinctObservedOrigins = new Set(observedOriginDigests);
+    publicOriginDigest = distinctObservedOrigins.size === 1
+      ? [...distinctObservedOrigins][0]
+      // NOTHING observed (e.g. a handoff-timeout run where no seat ever navigated): fall back to the
+      // DECLARED origin so a FAILED run's bundle stays structurally valid (every seat's route then
+      // digests to the declared origin too). The run still fails closed for its own reason (HANDOFF_
+      // TIMEOUT / no lobby convergence / no overlap-on-pass). GENUINE divergence (≥2 distinct observed
+      // origins) leaves it undefined so verify fails closed on the non-convergence.
+      : distinctObservedOrigins.size === 0
+        ? declaredOriginDigest
+        : undefined;
 
     // Lobby-convergence proof: a digest of the shared /lobby/CODE path iff EVERY seat converged on the
     // SAME code (a follower stuck on "/" yields no code → no false convergence). Digest-only. NOTE:
@@ -1072,6 +1141,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     ...(planeCommit === undefined ? {} : { subjectCommit: planeCommit }),
     ...(getHostUrl === undefined ? {} : { hostDigest: hostOriginDigest(getHostUrl) }),
     ...(publicOriginDigest === undefined ? {} : { publicOriginDigest }),
+    ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
     ...(lobbyConvergenceDigest === undefined ? {} : { lobbyConvergenceDigest }),
     ...(runError === undefined ? {} : { runError })
   });
@@ -1155,13 +1225,15 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
 
   const errorResult = ((): ConcurrentSharedWorldLabResult["error"] | undefined => {
     if (ok) return undefined;
+    if (handoffTimedOut) {
+      // Checked BEFORE the observer failure: the host never yielded a /lobby/CODE within the
+      // deadline (followers failed closed without opening), which is the ROOT CAUSE — and it can
+      // itself make the Observer unable to render a coherent run. Report the distinct, honest
+      // handoff-timeout code rather than a generic observer/run failure.
+      return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT", message: runError ?? "The host seat never produced a /lobby/CODE URL within the handoff deadline." };
+    }
     if (!observer.ok) {
       return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the concurrent shared-world run." };
-    }
-    if (handoffTimedOut) {
-      // The host never yielded a /lobby/CODE within the deadline; followers failed closed without
-      // opening — a distinct, honest error code (not a generic run failure).
-      return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT", message: runError ?? "The host seat never produced a /lobby/CODE URL within the handoff deadline." };
     }
     if (runError) {
       return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: runError };
@@ -1240,8 +1312,12 @@ export function buildConcurrentSharedWorldBundle(args: {
   hostDigest?: string;
   /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
   planeClass?: ConcurrentSharedWorldPlaneClass;
-  /** external-public only: sha256-16 of the operator-declared plane origin. */
+  /** external-public only: sha256-16 of the OBSERVED origin the seats converged on (the convergence
+   *  proof — what the seats actually reached, tolerant of a declared->observed redirect). */
   publicOriginDigest?: string;
+  /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
+   *  NOT asserted equal to the observed origin — a cross-origin redirect is normal and expected). */
+  declaredOriginDigest?: string;
   /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
   lobbyConvergenceDigest?: string;
   runError?: string;
@@ -1508,7 +1584,10 @@ export function buildConcurrentSharedWorldBundle(args: {
     ? {
         seedDigest: args.seedDigest,
         envNames: [],
-        ...(args.publicOriginDigest === undefined ? {} : { publicOriginDigest: args.publicOriginDigest })
+        // publicOriginDigest is the OBSERVED convergence origin; declaredOriginDigest records the
+        // operator-declared origin for reference (a redirect makes them differ — not a failure).
+        ...(args.publicOriginDigest === undefined ? {} : { publicOriginDigest: args.publicOriginDigest }),
+        ...(args.declaredOriginDigest === undefined ? {} : { declaredOriginDigest: args.declaredOriginDigest })
       }
     : {
         ...(planeCommit === undefined ? {} : { commit: planeCommit }),
@@ -1565,11 +1644,18 @@ export function buildConcurrentSharedWorldBundle(args: {
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
+    // Plane-class-aware: the external-public plane has NO getHost/clone/seed and carries NO
+    // authoritative state series, so its summary must not claim a getHost-exposed plane (dry-run) nor
+    // report "state delta(s) under load" (live) — it reports lobby convergence instead.
     summary: dryRun
-      ? `Dry-run concurrent shared-world contract: ${actorSpecs.length} persona(s) declared against ONE getHost-exposed plane (${descriptor.id}); no sandboxes launched, $0 spend.`
+      ? external
+        ? `Dry-run concurrent shared-world contract: ${actorSpecs.length} persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.`
+        : `Dry-run concurrent shared-world contract: ${actorSpecs.length} persona(s) declared against ONE getHost-exposed plane (${descriptor.id}); no sandboxes launched, $0 spend.`
       : inProgress
         ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against ONE shared plane; final verification is pending.`
-      : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${passedMissions}/${actorSpecs.length} reached their goal; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
+      : external
+        ? `Concurrent shared-world (ONE external-public plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${passedMissions}/${actorSpecs.length} reached their goal; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} seats converged on one lobby` : "lobby convergence not observed"}.`
+        : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${passedMissions}/${actorSpecs.length} reached their goal; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
     gaps: dryRun
       ? ["This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."]
       : inProgress
