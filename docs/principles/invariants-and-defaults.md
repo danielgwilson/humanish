@@ -43,6 +43,22 @@ certify (see the conformance suite).
 5. **Provenance is recorded or its absence is declared.** Every bundle states what the
    subject was (commit, image, fixture, or an explicit "unpinned" marker). Evidence that
    cannot say what it measured cannot support a decision.
+   - External-public plane class (#164 phase 2, 0.20.0): when a real operator-owned public
+     deployment is used DIRECTLY as a concurrent shared-world plane (`source: app-url` +
+     `topology: shared-world` + `allowPublicTargets` + `concurrency > 1`), provenance is the
+     marker `external-public` — humanish neither provisioned nor seeded it, so it is NOT `seeded`
+     and NOT `unpinned`. Attribution stays `shared-world` (N seats, ONE plane), but every strength
+     claim degrades HONESTLY and is asserted-ABSENT, never silently dropped: a synthetic attestation
+     is FORBIDDEN (you cannot claim synthetic on a real site — the honest analog is the
+     operator-ownership attestation `subject.publicTarget`, author-trust and unverifiable); plane
+     control is "operator-attested, observed-only" (`plane.publicOriginDigest`) not
+     "harness-controlled" (`plane.hostDigest`); there is NO authoritative shared-state proof
+     (`stateSeries` omitted); and concurrency is proven by temporal co-occupancy + observed lobby
+     convergence only. Verify FAILS CLOSED if any honest-downgrade limit is missing or if a
+     getHost-only claim (`exposure: synthetic`, `hostDigest`, a `seeded`/`synthetic` limit) appears
+     on this class. The getHost synthetic gate is deliberately unreachable here — it exists because
+     getHost is internet-reachable AND harness-owned; a public site the harness neither provisioned
+     nor exposed is neither.
 6. **Claims match mechanism.** A config field that is parsed but not consumed warns; a
    document that overstates behavior is a defect; an evidence artifact never claims a
    stronger evidence class than its actor and scenario can support.
