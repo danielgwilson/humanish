@@ -1023,10 +1023,12 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     }
 
     // Lobby-convergence proof: a digest of the shared /lobby/CODE path iff EVERY seat converged on the
-    // SAME code (a follower stuck on "/" yields no code → no false convergence). Digest-only.
-    const distinctCodes = new Set(observedLobbyCodes.filter((code): code is string => code !== undefined));
-    if (distinctCodes.size === 1 && observedLobbyCodes.length === roles.length
-      && observedLobbyCodes.every((code) => code !== undefined)) {
+    // SAME code (a follower stuck on "/" yields no code → no false convergence). Digest-only. NOTE:
+    // observedLobbyCodes may be a SPARSE array (a seat that never observed a code leaves a hole), and
+    // Array.prototype.every SKIPS holes — so count the DEFINED codes explicitly, never rely on every().
+    const definedCodes = observedLobbyCodes.filter((code): code is string => code !== undefined);
+    const distinctCodes = new Set(definedCodes);
+    if (distinctCodes.size === 1 && definedCodes.length === roles.length) {
       lobbyConvergenceDigest = commandDigestOf(`/lobby/${[...distinctCodes][0]}`);
     }
     if (handoffTimedOut && runError === undefined) {

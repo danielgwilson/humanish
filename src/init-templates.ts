@@ -213,6 +213,58 @@ defaults:
 `
   },
   {
+    path: "humanish/labs/cineguessr-3player.yaml",
+    plane: "source",
+    contents: `schema: humanish.lab.v2
+id: cineguessr-3player
+title: External-public shared world (N mobile personas share ONE public app at once)
+description: >-
+  A worked example of the EXTERNAL-PUBLIC shared-world route (#164 phase 2): N mobile-LAYOUT
+  personas play the SAME multiplayer lobby on a REAL public deployment AT ONCE. The public site is
+  the shared plane DIRECTLY — NO clone, NO getHost, NO subject sandbox, NO seed. A host-first barrier
+  extracts the shared-session code from the host seat's CDP-observed URL and threads it into the
+  follower join missions (followers go through the real Join flow). Dry-run (the default) emits ONE
+  external-public evidence bundle at $0. A live run needs OPENAI_API_KEY + E2B_API_KEY and
+  scenario.mode: live. Point appUrl + publicTarget at a public deployment YOU own/operate.
+  MOBILE FIDELITY: on the E2B-desktop route only width/height render (real mobile LAYOUT); there is
+  no touch input and DPR/isMobile are prompt-signal + metadata. HONESTY: attribution stays
+  shared-world, but every strength claim degrades honestly — provenance external-public (not seeded),
+  NO synthetic attestation (you cannot claim synthetic on a real site), NO authoritative shared-state
+  proof, concurrency by temporal co-occupancy + observed lobby convergence.
+subject:
+  source: app-url # the real public deployment IS the shared plane (no clone, no getHost)
+  topology: shared-world # the declared override of the per-lane-worlds default
+  appUrl: https://your-public-app.example/ # a deployment YOU own/operate
+  publicTarget: # REQUIRED ownership attestation (the honest analog of exposure: synthetic)
+    owner: your-org/your-app
+    authorized: true
+policies:
+  allowPublicTargets: true # REQUIRED: the shared plane is a real non-loopback public deployment
+actors:
+  - type: openai-computer-use
+    mission: You are one of several users on the same shared session at once. Play your role, then stop.
+    lanes: # the roster (>=2) with EXACTLY ONE host: true seat
+      - id: host
+        host: true # the designated host seat that creates the shared session
+        device: mobile # 414x896 mobile LAYOUT (no touch; DPR is prompt-signal on this route)
+        instruction: Create a shared lobby, wait for the others to join, then start and play.
+      - id: player-2
+        device: mobile
+        instruction: Join the lobby you're told the code for, then play.
+      - id: player-3
+        device: small-mobile
+        instruction: Join the lobby you're told the code for, then play.
+execution:
+  target: e2b-desktop
+  timeoutMs: 120000 # PER-SEAT session budget; also caps the host-first handoff deadline
+  concurrency: 3 # > 1 selects the CONCURRENT substrate
+scenario:
+  mode: dry-run # default; the live path opens N real mobile-layout seats against the public app
+defaults:
+  open: true
+`
+  },
+  {
     path: "humanish/policies/redaction.yaml",
     plane: "source",
     contents: `schema: humanish.redaction-policy.v1
