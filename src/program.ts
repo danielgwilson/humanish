@@ -42,6 +42,14 @@ import { openTarget, renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
 import { serveObserverStatic } from "./observer-static.js";
 import {
+  SERVE_SCHEMA,
+  parsePublicOrigin,
+  serveObserverLibrary
+} from "./observer-serve.js";
+import type { ServeErrorCode, ServeResult } from "./observer-serve.js";
+import { ServeTunnelError, startNgrokTunnel } from "./serve-tunnel.js";
+import type { ServeTunnel } from "./serve-tunnel.js";
+import {
   DEFAULT_OSS_REPOS,
   runOssLab
 } from "./oss-lab.js";
@@ -290,6 +298,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerRunsCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
   registerObserveCommand(program, cliIo);
+  registerServeCommand(program, cliIo);
   registerCodexCommands(program, cliIo);
   registerLabCommands(program, cliIo);
   registerFeedbackCommands(program, cliIo);
@@ -1014,6 +1023,287 @@ async function serveObserveUntilSignal(
       process.once(signal, handler);
     }
   });
+}
+
+function registerServeCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("serve")
+    .description("Serve the local run library over loopback http, with optional capability-link exposure.")
+    .summary("Serve the run library; optional capability-link exposure.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--port <port>", "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.", "0")
+    .option("--run <id>", "Land on this run id (or latest) instead of the library index.")
+    .option("--safe", "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).")
+    .option("--expose", "Declare exposure intent: enables the capability-link auth gate on every request and prints the secret link once. Requires --tunnel or --public-url.")
+    .addOption(new Option("--auth <mode>", "Auth mode under --expose: capability link, or none (requires --safe).").choices(["link", "none"]).default("link"))
+    .option("--ttl <minutes>", "Capability session lifetime in minutes under --expose.", "720")
+    .addOption(new Option("--tunnel <provider>", "Spawn the OPTIONAL external tunnel binary against the loopback port.").choices(["ngrok"]))
+    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.dev). Requires --tunnel.")
+    .option("--public-url <origin>", "Declared public origin when you run your own tunnel/proxy (e.g. https://observer.example.dev). Requires --expose; never affects binding.")
+    .option("--open", "Open the library in the default browser.")
+    .option("--no-open", "Serve without opening a browser.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .addHelpText(
+      "after",
+      [
+        "",
+        "Happy path:",
+        "  humanish serve",
+        "  humanish serve --expose --tunnel ngrok --tunnel-domain observer.example.dev",
+        "  humanish serve --safe --expose --auth none --tunnel ngrok",
+        "",
+        "Agent/CI path:",
+        "  humanish serve --json --no-open",
+        "",
+        "The server always binds 127.0.0.1; exposure only ever happens through a tunnel",
+        "forwarding to the loopback port. The capability link is minted fresh per process:",
+        "Ctrl-C revokes the link and every session. Live desktop stream URLs are never",
+        "served in any mode; remote viewers see persisted evidence (screenshots, events).",
+        "--safe composes with the capability link for defense in depth."
+      ].join("\n")
+    )
+    .action(async (options: {
+      auth: "link" | "none";
+      cwd: string;
+      expose?: boolean;
+      json?: boolean;
+      open?: boolean;
+      port: string;
+      publicUrl?: string;
+      run?: string;
+      safe?: boolean;
+      ttl: string;
+      tunnel?: "ngrok";
+      tunnelDomain?: string;
+    }, command) => {
+      const wantsMachine = wantsJson(command);
+      const fail = (code: ServeErrorCode, message: string): void => {
+        const result: ServeResult = {
+          schema: SERVE_SCHEMA,
+          ok: false,
+          cwd: options.cwd,
+          mode: "loopback",
+          safe: options.safe === true,
+          host: "127.0.0.1",
+          runsListed: 0,
+          warnings: [],
+          error: { code, message }
+        };
+        writeResult(command, io, result, formatServeHuman);
+        io.setExitCode(2);
+      };
+
+      const port = parseObserverPort(options.port);
+      if (port === null) {
+        fail("HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
+        return;
+      }
+
+      const ttlMinutes = /^\d+$/.test(options.ttl) ? Number.parseInt(options.ttl, 10) : null;
+      if (ttlMinutes === null || ttlMinutes < 1 || ttlMinutes > 10_080) {
+        fail("HUMANISH_SERVE_INVALID_TTL", "--ttl must be an integer between 1 and 10080 (minutes).");
+        return;
+      }
+
+      const authExplicit = command.getOptionValueSource("auth") === "cli";
+      const ttlExplicit = command.getOptionValueSource("ttl") === "cli";
+      if (authExplicit && options.expose !== true) {
+        fail("HUMANISH_SERVE_OPTION_CONFLICT", "--auth only applies with --expose.");
+        return;
+      }
+      if (ttlExplicit && options.expose !== true) {
+        fail("HUMANISH_SERVE_OPTION_CONFLICT", "--ttl only applies with --expose.");
+        return;
+      }
+      if (options.auth === "none" && options.safe !== true) {
+        fail(
+          "HUMANISH_SERVE_OPEN_REQUIRES_SAFE",
+          "--auth none serves without a secret; that is publishing, so it requires --safe (share_ready runs only)."
+        );
+        return;
+      }
+      if (options.tunnel && options.expose !== true) {
+        fail("HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE", "--tunnel exposes the library; declare that intent with --expose.");
+        return;
+      }
+      if (options.publicUrl !== undefined && options.expose !== true) {
+        fail("HUMANISH_SERVE_OPTION_CONFLICT", "--public-url only applies with --expose.");
+        return;
+      }
+      if (options.tunnelDomain !== undefined && !options.tunnel) {
+        fail("HUMANISH_SERVE_OPTION_CONFLICT", "--tunnel-domain requires --tunnel.");
+        return;
+      }
+      if (options.tunnel && options.publicUrl !== undefined) {
+        fail("HUMANISH_SERVE_OPTION_CONFLICT", "Use either --tunnel or --public-url as the public origin, not both.");
+        return;
+      }
+      if (options.expose === true && !options.tunnel && options.publicUrl === undefined) {
+        fail(
+          "HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN",
+          "--expose needs a declared public origin: pass --tunnel ngrok or --public-url <origin>. The Host allowlist stays strict in every mode."
+        );
+        return;
+      }
+      const declaredOrigin = options.publicUrl !== undefined ? parsePublicOrigin(options.publicUrl) : null;
+      if (options.publicUrl !== undefined && !declaredOrigin) {
+        fail("HUMANISH_SERVE_OPTION_CONFLICT", "--public-url must be an http(s) origin like https://observer.example.dev.");
+        return;
+      }
+
+      const started = await serveObserverLibrary(options.cwd, {
+        port,
+        safe: options.safe === true,
+        expose: options.expose === true,
+        authMode: options.auth,
+        ttlMinutes,
+        ...(declaredOrigin ? { publicOrigin: declaredOrigin.origin } : {}),
+        ...(options.run ? { entryRunId: options.run } : {})
+      });
+      if (!started.ok) {
+        fail(started.error.code, started.error.message);
+        return;
+      }
+      const server = started.server;
+
+      let tunnel: ServeTunnel | undefined;
+      if (options.tunnel) {
+        try {
+          tunnel = await startNgrokTunnel({
+            port: server.port,
+            ...(options.tunnelDomain ? { domain: options.tunnelDomain } : {})
+          });
+        } catch (error: unknown) {
+          await server.close();
+          if (error instanceof ServeTunnelError) {
+            fail(error.code, error.message);
+          } else {
+            fail(
+              "HUMANISH_SERVE_TUNNEL_START_FAILED",
+              `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+          return;
+        }
+        const tunnelHost = parsePublicOrigin(tunnel.url);
+        if (tunnelHost) {
+          server.addPublicHost(tunnelHost.host);
+        }
+      }
+
+      const publicUrl = tunnel ? tunnel.url.replace(/\/$/, "") : declaredOrigin?.origin;
+      const capabilityUrl = server.capabilityToken
+        ? `${server.url.replace(/\/$/, "")}/_humanish/auth/${server.capabilityToken}`
+        : undefined;
+      const publicCapabilityUrl = server.capabilityToken && publicUrl
+        ? `${publicUrl}/_humanish/auth/${server.capabilityToken}`
+        : undefined;
+
+      const warnings: string[] = [];
+      if (server.mode === "capability-link" && options.safe !== true) {
+        warnings.push(
+          `capability link grants read access to all ${server.runsListed} local runs, including any not verified share_ready (local_only raw screenshots, blocked bundles); anyone holding the link can view them until this process exits; restart rotates the link; add --safe to restrict to share_ready`
+        );
+      }
+      if (server.mode === "capability-link" && options.safe === true) {
+        warnings.push(
+          `capability link grants read access to ${server.shareReadyCount ?? 0} share_ready runs; non-share_ready runs are absent even to link holders`
+        );
+      }
+      if (server.mode === "share-safe-open") {
+        warnings.push(
+          `serving ${server.shareReadyCount ?? 0} share_ready runs to anyone who can reach ${publicUrl}; non-share_ready runs are absent and their URLs 404`
+        );
+      }
+      warnings.push(
+        "live desktop stream URLs are never served; remote viewers see persisted evidence (screenshots, events, terminal tails) only"
+      );
+
+      const shouldOpen = options.open === false
+        ? false
+        : options.open === true
+          ? true
+          : !wantsMachine && process.stdout.isTTY === true;
+      const openResult: { opened: boolean; command?: string; warning?: string } =
+        shouldOpen ? openTarget(capabilityUrl ?? server.url) : { opened: false };
+      if (openResult.warning) {
+        warnings.push(openResult.warning);
+      }
+
+      const result: ServeResult = {
+        schema: SERVE_SCHEMA,
+        ok: true,
+        cwd: options.cwd,
+        mode: server.mode,
+        safe: options.safe === true,
+        host: "127.0.0.1",
+        port: server.port,
+        url: server.url,
+        ...(capabilityUrl ? { capabilityUrl } : {}),
+        ...(publicUrl ? { publicUrl } : {}),
+        ...(publicCapabilityUrl ? { publicCapabilityUrl } : {}),
+        ...(tunnel ? { tunnel: { provider: "ngrok", url: tunnel.url } } : {}),
+        ...(server.mode === "capability-link" ? { ttlMinutes } : {}),
+        runsListed: server.runsListed,
+        ...(server.shareReadyCount !== undefined ? { shareReadyCount: server.shareReadyCount } : {}),
+        ...(server.entryRunId ? { entryRunId: server.entryRunId } : {}),
+        opened: openResult.opened,
+        ...(openResult.command ? { openCommand: openResult.command } : {}),
+        warnings
+      };
+
+      writeResult(command, io, result, formatServeHuman);
+      io.setExitCode(0);
+
+      await serveObserveUntilSignal(io, {
+        url: server.url,
+        close: async () => {
+          if (tunnel) {
+            await tunnel.close();
+          }
+          await server.close();
+        }
+      }, { json: wantsMachine });
+    });
+}
+
+function formatServeHuman(result: ServeResult): string {
+  if (!result.ok) {
+    return [
+      "humanish serve failed",
+      ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
+      ...result.warnings.map((warning) => `warning: ${warning}`)
+    ].join("\n");
+  }
+
+  const modeSuffix = result.safe ? " (share_ready only)" : "";
+  const lines = [
+    "humanish serve",
+    `mode: ${result.mode}${modeSuffix}`,
+    `library: ${result.url ?? ""}`,
+    `runs: ${result.runsListed}`
+  ];
+  if (result.capabilityUrl) {
+    lines.push("SECRET LINK (anyone holding it can read the library until Ctrl-C):");
+    lines.push(`  ${result.capabilityUrl}`);
+    if (result.publicCapabilityUrl) {
+      lines.push(`  ${result.publicCapabilityUrl}`);
+    }
+    lines.push("revocation: Ctrl-C revokes the link and all sessions; restarting mints a new link");
+  } else if (result.publicUrl) {
+    lines.push(`public: ${result.publicUrl}`);
+  }
+  if (result.tunnel) {
+    lines.push(`tunnel: ${result.tunnel.provider} ${result.tunnel.url}`);
+  }
+  if (result.entryRunId) {
+    lines.push(`entry: ${result.entryRunId}`);
+  }
+  lines.push(`opened: ${result.opened === true ? "yes" : "no"}`);
+  for (const warning of result.warnings) {
+    lines.push(`warning: ${warning}`);
+  }
+  return lines.join("\n");
 }
 
 function registerFeedbackCommands(parent: Command, io: CliIo): void {
