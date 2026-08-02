@@ -389,7 +389,19 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
   | "HUMANISH_CUA_LAB_FANOUT_INVALID"
   | "HUMANISH_CUA_LAB_RERUN_INVALID"
-  | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
+  | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY"
+  // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by runCuaBackend
+  // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
+  // render through the same formatter as any other CUA lab failure.
+  | "HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH"
+  | "HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL"
+  | "HUMANISH_WATCH_OPTION_CONFLICT"
+  | "HUMANISH_WATCH_TUNNEL_REQUIRES_EXPOSE"
+  | "HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH"
+  | "HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW"
+  | "HUMANISH_WATCH_SAFE_NOT_APPLICABLE"
+  | "HUMANISH_SERVE_TUNNEL_NOT_FOUND"
+  | "HUMANISH_SERVE_TUNNEL_START_FAILED";
 
 /** Subject provenance projection (invariant 5): what the actor actually drove. */
 export interface CuaSubjectProjection {

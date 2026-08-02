@@ -7,7 +7,7 @@ import { ServeTunnelError, startNgrokTunnel } from "../src/serve-tunnel.js";
 // Field shape captured from a real ngrok 3.x `--log stdout --log-format json`
 // session; the url value has been genericized.
 const STARTED_TUNNEL_LINE =
-  '{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.dev"}';
+  '{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.com"}';
 
 class FakeStdout extends EventEmitter {
   encoding: string | undefined;
@@ -86,7 +86,7 @@ describe("startNgrokTunnel", () => {
     child.stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
 
     const tunnel = await tunnelPromise;
-    expect(tunnel.url).toBe("https://observer.example.dev");
+    expect(tunnel.url).toBe("https://observer.example.com");
     expect(child.stdout.encoding).toBe("utf8");
 
     const call = harness.calls[0];
@@ -102,7 +102,7 @@ describe("startNgrokTunnel", () => {
   it("passes --url <domain> to ngrok only when a domain is provided", async () => {
     const harness = createSpawnHarness();
     const tunnelPromise = startNgrokTunnel({
-      domain: "observer.example.dev",
+      domain: "observer.example.com",
       port: 8732,
       spawnImpl: harness.spawnImpl,
       timeoutMs: 1_000
@@ -113,7 +113,64 @@ describe("startNgrokTunnel", () => {
     const args = harness.calls[0]?.args ?? [];
     const urlFlagIndex = args.indexOf("--url");
     expect(urlFlagIndex).toBeGreaterThanOrEqual(0);
-    expect(args[urlFlagIndex + 1]).toBe("observer.example.dev");
+    expect(args[urlFlagIndex + 1]).toBe("observer.example.com");
+  });
+
+  it("maps --oauth google plus each allow rule onto the ngrok edge OAuth flags", async () => {
+    const harness = createSpawnHarness();
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      oauthProvider: "google",
+      oauthAllowEmails: ["a@example.com", "b@example.com"],
+      oauthAllowDomains: ["example.com"],
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000
+    });
+    onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
+    await tunnelPromise;
+
+    const args = harness.calls[0]?.args ?? [];
+    const oauthIndex = args.indexOf("--oauth");
+    expect(oauthIndex).toBeGreaterThanOrEqual(0);
+    expect(args[oauthIndex + 1]).toBe("google");
+    // One flag emitted per repeated allow value, each preceding its value.
+    expect(args.filter((arg) => arg === "--oauth-allow-email")).toHaveLength(2);
+    expect(args.filter((arg) => arg === "--oauth-allow-domain")).toHaveLength(1);
+    const emailIndexes = args.flatMap((arg, index) => (arg === "--oauth-allow-email" ? [index] : []));
+    expect(emailIndexes.map((index) => args[index + 1])).toEqual(["a@example.com", "b@example.com"]);
+    const domainIndex = args.indexOf("--oauth-allow-domain");
+    expect(args[domainIndex + 1]).toBe("example.com");
+    // The port is still the trailing positional arg.
+    expect(args[args.length - 1]).toBe("8732");
+  });
+
+  it("emits --oauth google with no allow flags when no allow rules are provided", async () => {
+    const harness = createSpawnHarness();
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      oauthProvider: "google",
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000
+    });
+    onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
+    await tunnelPromise;
+
+    const args = harness.calls[0]?.args ?? [];
+    expect(args).toContain("--oauth");
+    expect(args).not.toContain("--oauth-allow-email");
+    expect(args).not.toContain("--oauth-allow-domain");
+  });
+
+  it("emits no oauth flags when oauth is absent", async () => {
+    const harness = createSpawnHarness();
+    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
+    await tunnelPromise;
+
+    const args = harness.calls[0]?.args ?? [];
+    expect(args).not.toContain("--oauth");
+    expect(args).not.toContain("--oauth-allow-email");
+    expect(args).not.toContain("--oauth-allow-domain");
   });
 
   // Spec item 31: ENOENT spawn error maps to the not-found code with actionable guidance.
@@ -164,7 +221,7 @@ describe("startNgrokTunnel", () => {
     child.stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
 
     const tunnel = await tunnelPromise;
-    expect(tunnel.url).toBe("https://observer.example.dev");
+    expect(tunnel.url).toBe("https://observer.example.com");
   });
 
   it("resolves when the started-tunnel line is split across two data chunks", async () => {
@@ -177,6 +234,6 @@ describe("startNgrokTunnel", () => {
     child.stdout.emit("data", `${STARTED_TUNNEL_LINE.slice(splitAt)}\n`);
 
     const tunnel = await tunnelPromise;
-    expect(tunnel.url).toBe("https://observer.example.dev");
+    expect(tunnel.url).toBe("https://observer.example.com");
   });
 });

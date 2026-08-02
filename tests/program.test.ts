@@ -109,7 +109,9 @@ describe("humanish CLI scaffold", () => {
       },
       {
         opened: false,
+        port: 1234,
         url: "http://127.0.0.1:1234/observer/index.html",
+        addPublicOrigin: () => {},
         close: async () => {
           closed += 1;
         }
@@ -790,11 +792,9 @@ interface ServeEnvelope {
   host: string;
   port?: number;
   url?: string;
-  capabilityUrl?: string;
   publicUrl?: string;
-  publicCapabilityUrl?: string;
   tunnel?: { provider: string; url: string };
-  ttlMinutes?: number;
+  oauth?: { provider: string; allowEmails: string[]; allowDomains: string[] };
   runsListed: number;
   shareReadyCount?: number;
   warnings: string[];
@@ -909,7 +909,7 @@ describe("humanish serve command", () => {
       expect(envelope.safe).toBe(false);
       expect(envelope.host).toBe("127.0.0.1");
       expect(envelope.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
-      expect(envelope.capabilityUrl).toBeUndefined();
+      expect(envelope.oauth).toBeUndefined();
       expect(envelope.runsListed).toBe(1);
 
       // Mirror the watch signal test: deliver SIGTERM twice; the stop path must
@@ -926,21 +926,22 @@ describe("humanish serve command", () => {
     });
   }, 20_000);
 
-  it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes", async () => {
+  it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes (fail-closed matrix)", async () => {
     await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
       const matrix: Array<{ args: string[]; code: string }> = [
-        { args: ["--auth", "link"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        // --auth none is gated on --safe before --expose's origin requirement,
-        // so the no-secret publishing refusal is observable without an origin.
-        { args: ["--expose", "--auth", "none"], code: "HUMANISH_SERVE_OPEN_REQUIRES_SAFE" },
+        // Exposure requires EITHER edge auth OR --safe: a bare tunnel to local bundles is refused.
+        { args: ["--expose", "--tunnel", "ngrok"], code: "HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE" },
+        // --oauth is only meaningful on the ngrok edge.
+        { args: ["--oauth", "google"], code: "HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL" },
+        { args: ["--expose", "--oauth", "google"], code: "HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL" },
+        // Allow rules require --oauth.
+        { args: ["--allow-email", "a@example.com"], code: "HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH" },
+        // Tunnel + public-url are mutually exclusive origins.
+        { args: ["--expose", "--tunnel", "ngrok", "--oauth", "google", "--public-url", "https://observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
         { args: ["--tunnel", "ngrok"], code: "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE" },
-        { args: ["--tunnel-domain", "observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--expose", "--tunnel", "ngrok", "--public-url", "https://observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--expose"], code: "HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN" },
-        { args: ["--public-url", "https://observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--tunnel-domain", "observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--public-url", "https://observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
         { args: ["--expose", "--public-url", "notaurl"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--expose", "--public-url", "https://observer.example.dev", "--ttl", "0"], code: "HUMANISH_SERVE_INVALID_TTL" },
-        { args: ["--ttl", "5"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
         { args: ["--port", "99999"], code: "HUMANISH_INVALID_PORT" }
       ];
 
@@ -949,6 +950,16 @@ describe("humanish serve command", () => {
         const envelope = JSON.parse(result.stdout) as ServeEnvelope;
         expect(result.exitCode, `exit code for: ${row.args.join(" ")}`).toBe(2);
         expect(envelope.error?.code, `error code for: ${row.args.join(" ")}`).toBe(row.code);
+      }
+    });
+  }, 20_000);
+
+  it("rejects the removed --auth and --ttl flags as unknown options (capability-link machinery deleted)", async () => {
+    await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
+      for (const removed of [["--auth", "link"], ["--auth", "none"], ["--ttl", "5"]]) {
+        // The flags are gone: commander refuses the unknown option (a non-zero exit, surfaced here as
+        // a thrown error), rather than silently accepting a no-op — the pre-1.0 breaking change.
+        await expect(runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...removed])).rejects.toThrow();
       }
     });
   }, 20_000);
@@ -988,25 +999,23 @@ describe("humanish serve command", () => {
     });
   }, 20_000);
 
-  it("mints a capability link under --expose --auth link and mirrors it onto the declared public origin", async () => {
+  it("exposes the library under --expose --public-url (operator-secured edge; no in-process token)", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
-      await seedDryRunBundle(cwd, "serve-capability-run");
+      await seedDryRunBundle(cwd, "serve-exposed-run");
 
       const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
       const cli = startAttachedCli([
-        "serve", "--cwd", cwd, "--expose", "--auth", "link",
-        "--public-url", "https://observer.example.dev", "--json", "--no-open"
+        "serve", "--cwd", cwd, "--expose",
+        "--public-url", "https://observer.example.com", "--json", "--no-open"
       ]);
       await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
       const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
-      expect(envelope.mode).toBe("capability-link");
-      expect(envelope.capabilityUrl?.startsWith("http://127.0.0.1:")).toBe(true);
-      expect(envelope.capabilityUrl).toContain("/_humanish/auth/");
-      const token = envelope.capabilityUrl?.split("/_humanish/auth/")[1];
-      expect(token).toBeTruthy();
-      expect(envelope.publicCapabilityUrl).toBe(`https://observer.example.dev/_humanish/auth/${token}`);
-      expect(envelope.ttlMinutes).toBe(720);
+      expect(envelope.mode).toBe("exposed");
+      // No capability-link machinery: the JSON envelope carries no in-process token/url of any kind.
+      expect((envelope as { capabilityUrl?: string }).capabilityUrl).toBeUndefined();
+      expect((envelope as { publicCapabilityUrl?: string }).publicCapabilityUrl).toBeUndefined();
+      expect(envelope.publicUrl).toBe("https://observer.example.com");
       expect(envelope.warnings.join("\n")).toContain(`all ${envelope.runsListed} local runs`);
 
       for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
@@ -1015,43 +1024,66 @@ describe("humanish serve command", () => {
     });
   }, 20_000);
 
-  it("serves share_ready runs openly under --safe --expose --auth none, naming the public origin", async () => {
+  it("serves share_ready runs openly under --safe --expose --tunnel (no edge auth), naming the public origin", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
       await seedDryRunBundle(cwd, "serve-open-run");
 
-      const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
-      const cli = startAttachedCli([
-        "serve", "--cwd", cwd, "--safe", "--expose", "--auth", "none",
-        "--public-url", "https://observer.example.dev", "--json", "--no-open"
-      ]);
-      await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
+      const stubDir = await mkdtemp(path.join(os.tmpdir(), "humanish-ngrok-stub-"));
+      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.com"}`;
+      await writeFile(
+        path.join(stubDir, "ngrok"),
+        [
+          "#!/bin/sh",
+          `trap 'kill "$SLEEP_PID" 2>/dev/null; exit 0' TERM INT`,
+          `printf '%s\\n' '${startedTunnelLine}'`,
+          "sleep 120 &",
+          "SLEEP_PID=$!",
+          "wait \"$SLEEP_PID\"",
+          ""
+        ].join("\n"),
+        { encoding: "utf8", mode: 0o755 }
+      );
+      const originalPath = process.env.PATH;
+      process.env.PATH = `${stubDir}${path.delimiter}${originalPath ?? ""}`;
+      try {
+        const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
+        const cli = startAttachedCli([
+          "serve", "--cwd", cwd, "--safe", "--expose", "--tunnel", "ngrok", "--json", "--no-open"
+        ]);
+        await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
-      const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
-      expect(envelope.mode).toBe("share-safe-open");
-      expect(envelope.capabilityUrl).toBeUndefined();
-      expect(envelope.shareReadyCount).toBe(1);
-      expect(envelope.warnings.join("\n")).toContain("https://observer.example.dev");
+        const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
+        expect(envelope.mode).toBe("share-safe-open");
+        expect(envelope.oauth).toBeUndefined();
+        expect(envelope.shareReadyCount).toBe(1);
+        expect(envelope.warnings.join("\n")).toContain("https://observer.example.com");
 
-      for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
-      await cli.finished;
-      expect(cli.exitCode()).toBe(143);
+        for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
+        await cli.finished;
+        expect(cli.exitCode()).toBe(143);
+      } finally {
+        process.env.PATH = originalPath;
+        await rm(stubDir, { force: true, recursive: true });
+      }
     });
   }, 20_000);
 
-  it("starts the ngrok tunnel against the loopback port and tears both down on SIGTERM", async () => {
+  it("starts the ngrok tunnel with edge OAuth args against the loopback port and tears both down on SIGTERM", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
       await seedDryRunBundle(cwd, "serve-tunnel-run");
 
       const stubDir = await mkdtemp(path.join(os.tmpdir(), "humanish-ngrok-stub-"));
       const teardownMarker = path.join(stubDir, "ngrok-teardown-marker");
+      const argsMarker = path.join(stubDir, "ngrok-args");
       // Started-tunnel log line field shape captured from a real ngrok 3.x
       // `--log stdout --log-format json` session, with the url genericized.
-      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.dev"}`;
+      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.com"}`;
       await writeFile(
         path.join(stubDir, "ngrok"),
         [
           "#!/bin/sh",
-          "# Stub ngrok: emit one started-tunnel line, wait for SIGTERM, record teardown.",
+          "# Stub ngrok: record argv, emit one started-tunnel line, wait for SIGTERM, record teardown.",
+          `printf '%s\\n' "$@" > "${argsMarker}"`,
           `trap 'touch "${teardownMarker}"; kill "$SLEEP_PID" 2>/dev/null; exit 0' TERM INT`,
           `printf '%s\\n' '${startedTunnelLine}'`,
           "sleep 120 &",
@@ -1066,17 +1098,29 @@ describe("humanish serve command", () => {
       process.env.PATH = `${stubDir}${path.delimiter}${originalPath ?? ""}`;
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
-        const cli = startAttachedCli(["serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok", "--json", "--no-open"]);
+        const cli = startAttachedCli([
+          "serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok",
+          "--oauth", "google", "--allow-email", "you@example.com", "--json", "--no-open"
+        ]);
         await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
         const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
-        expect(envelope.tunnel).toEqual({ provider: "ngrok", url: "https://observer.example.dev" });
-        const token = envelope.capabilityUrl?.split("/_humanish/auth/")[1];
-        expect(token).toBeTruthy();
-        expect(envelope.publicCapabilityUrl).toBe(`https://observer.example.dev/_humanish/auth/${token}`);
+        expect(envelope.mode).toBe("exposed");
+        expect(envelope.tunnel).toEqual({ provider: "ngrok", url: "https://observer.example.com" });
+        expect(envelope.publicUrl).toBe("https://observer.example.com");
+        expect(envelope.oauth).toEqual({ provider: "google", allowEmails: ["you@example.com"], allowDomains: [] });
+        // No in-process token leaked into the envelope.
+        expect((envelope as { capabilityUrl?: string }).capabilityUrl).toBeUndefined();
         if (typeof envelope.port !== "number") {
           throw new Error("expected a bound port in the serve envelope");
         }
+
+        // ngrok was actually invoked with the mapped edge OAuth args.
+        const recordedArgs = (await readFile(argsMarker, "utf8")).split("\n").filter(Boolean);
+        expect(recordedArgs).toContain("--oauth");
+        expect(recordedArgs).toContain("google");
+        expect(recordedArgs).toContain("--oauth-allow-email");
+        expect(recordedArgs).toContain("you@example.com");
 
         for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
         await cli.finished;
@@ -1102,7 +1146,7 @@ describe("humanish serve command", () => {
       process.env.PATH = emptyDir;
       try {
         const result = await runCli([
-          "serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok",
+          "serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok", "--oauth", "google",
           "--port", String(port), "--json", "--no-open"
         ]);
         const envelope = JSON.parse(result.stdout) as ServeEnvelope;
@@ -1116,6 +1160,110 @@ describe("humanish serve command", () => {
         process.env.PATH = originalPath;
         await rm(emptyDir, { force: true, recursive: true });
       }
+    });
+  }, 20_000);
+});
+
+// A live-mode CUA lab so runCuaBackend runs the exposure validator. Every case below is a REFUSAL
+// that aborts at validateExposure BEFORE runLab, so no sandbox/provider spend occurs ($0).
+const CUA_LAB_FIXTURE: Record<string, string> = {
+  "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+  "humanish/labs/cua-live.yaml": [
+    "schema: humanish.lab.v2",
+    "id: cua-live",
+    "subject:",
+    "  source: app-url",
+    "  appUrl: http://127.0.0.1:3000/",
+    "actors:",
+    "  - type: openai-computer-use",
+    "    persona: first-time-visitor",
+    "    mission: Explore the app and stop.",
+    "execution:",
+    "  target: e2b-desktop",
+    "  timeoutMs: 60000",
+    "scenario:",
+    "  mode: live"
+  ].join("\n")
+};
+
+interface CuaEnvelope {
+  ok: boolean;
+  error?: { code: string; message: string };
+}
+
+describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
+  it("refuses a live watch --expose --tunnel ngrok with NO edge auth (edge auth is required)", async () => {
+    await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
+      // No --json: --json would trip the live-follow refusal first; here we isolate the edge-auth gate.
+      const result = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--tunnel", "ngrok"]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH");
+      // Aborted before any run: no attach/serving banner.
+      expect(result.stdout).not.toContain("watching:");
+      expect(result.stderr).not.toContain("watching:");
+    });
+  }, 20_000);
+
+  it("refuses a live watch --expose --safe with SAFE_NOT_APPLICABLE (--safe is a `serve` filter, not a watch gate)", async () => {
+    await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
+      const result = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--safe"]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).toContain("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
+    });
+  }, 20_000);
+
+  it("refuses watch --expose --json (no attached follow) with EXPOSE_REQUIRES_LIVE_FOLLOW", async () => {
+    await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
+      const result = await runCli([
+        "watch", "cua-live", "--cwd", cwd, "--no-open",
+        "--expose", "--tunnel", "ngrok", "--oauth", "google", "--json"
+      ]);
+      expect(result.exitCode).toBe(2);
+      const envelope = JSON.parse(result.stdout) as CuaEnvelope;
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error?.code).toBe("HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW");
+    });
+  }, 20_000);
+
+  it("refuses watch --expose --dry-run and --detach (no live desktop / no attached follow)", async () => {
+    await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
+      for (const extra of [["--dry-run"], ["--detach"]]) {
+        const result = await runCli([
+          "watch", "cua-live", "--cwd", cwd, "--no-open",
+          "--expose", "--tunnel", "ngrok", "--oauth", "google", ...extra
+        ]);
+        expect(result.exitCode, extra.join(" ")).toBe(2);
+        expect(result.stdout, extra.join(" ")).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW");
+      }
+    });
+  }, 20_000);
+
+  it("refuses --oauth without --tunnel and --allow-email without --oauth", async () => {
+    await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
+      const noTunnel = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--oauth", "google"]);
+      expect(noTunnel.exitCode).toBe(2);
+      expect(noTunnel.stdout).toContain("HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL");
+
+      const noOauth = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--allow-email", "you@example.com"]);
+      expect(noOauth.exitCode).toBe(2);
+      expect(noOauth.stdout).toContain("HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH");
+    });
+  }, 20_000);
+
+  it("refuses exposure on a non-CUA (synthetic) lab: no live desktop to stream", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      const result = await runCli(["watch", "first-run", "--cwd", cwd, "--no-open", "--expose", "--tunnel", "ngrok", "--oauth", "google"]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
+    });
+  }, 20_000);
+
+  it("refuses exposure on the non-lab watch path (existing evidence)", async () => {
+    await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
+      await seedDryRunBundle(cwd, "watch-existing-run");
+      const result = await runCli(["watch", "--run", "latest", "--cwd", cwd, "--no-open", "--expose", "--tunnel", "ngrok", "--oauth", "google"]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
   }, 20_000);
 });

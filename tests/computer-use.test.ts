@@ -516,10 +516,12 @@ describe("runComputerUseLoop", () => {
     );
   });
 
-  it("stops on the wall-clock deadline (checked at the top of the loop)", async () => {
+  it("reaches the time BUDGET (non-failure) when the wall-clock deadline hits after a material action", async () => {
     let t = 0;
     const now = (): number => t;
-    // The first model turn jumps the clock past the deadline; iteration 2 trips it.
+    // The first model turn takes a material click, then jumps the clock past the deadline; iteration
+    // 2 trips it. Because at least one material action ran, this is a productive budget stop — a
+    // non-failure open-ended-watch completion, NOT a stuck timeout.
     const provider: CuaProvider = {
       id: "tick",
       version: "t",
@@ -541,12 +543,46 @@ describe("runComputerUseLoop", () => {
       now
     });
 
-    expect(result.completionReason).toBe("timed_out");
-    expect(result.status).toBe("timed_out");
+    expect(result.completionReason).toBe("budget_reached");
+    expect(result.status).toBe("passed");
+    expect(result.trace.counts.materialActions).toBeGreaterThan(0);
+    expect(result.reason).toContain("time budget after productive activity");
     expect(result.trace.counts.turns).toBe(1);
   });
 
-  it("enforces the deadline on a hung provider call (raceSettle)", async () => {
+  it("stays a FAILURE (timed_out) when the deadline hits after only idle turns (no material progress)", async () => {
+    let t = 0;
+    const now = (): number => t;
+    // The model only waits/screenshots (idle), then the clock jumps past the deadline. Zero material
+    // actions → an honest stuck timeout, not a budget stop.
+    const provider: CuaProvider = {
+      id: "idle-tick",
+      version: "t",
+      capabilities: FAKE_CAPS,
+      async nextTurn() {
+        t = 1000;
+        return { actions: [{ kind: "wait", ms: 10 }], pendingSafetyChecks: [], done: false };
+      }
+    };
+    const executor = new SignatureExecutor(["s0", "s1"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 100,
+      now
+    });
+
+    expect(result.completionReason).toBe("timed_out");
+    expect(result.status).toBe("timed_out");
+    expect(result.trace.counts.materialActions).toBe(0);
+    expect(result.reason).toContain("no material progress");
+  });
+
+  it("enforces the deadline on a hung provider call (raceSettle) as a zero-progress timed_out failure", async () => {
     const provider: CuaProvider = {
       id: "hang",
       version: "h",
@@ -567,6 +603,7 @@ describe("runComputerUseLoop", () => {
 
     expect(result.completionReason).toBe("timed_out");
     expect(result.status).toBe("timed_out");
+    expect(result.trace.counts.materialActions).toBe(0);
   });
 
   it("does not actuate the desktop once aborted mid-turn", async () => {

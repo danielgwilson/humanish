@@ -20,6 +20,7 @@ import {
 import {
   writeContainedOutputFile
 } from "./selected-output-paths.js";
+import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -50,13 +51,23 @@ export interface ObserverOptions {
 export interface ObserverServeOptions {
   open?: boolean;
   port?: number;
+  // Exposed mode: when true, the live server enforces the same DNS-rebinding defense as the
+  // run-library surface — a strict Host allowlist (loopback names seeded at bind, extended by
+  // addPublicOrigin, 421 otherwise) plus the shared security headers on every response. Loopback
+  // default (false) keeps the permissive local-dev behavior byte-identical.
+  exposed?: boolean;
 }
 
 export interface ObserverServer {
   url: string;
+  port: number;
   opened: boolean;
   openCommand?: string;
   warning?: string;
+  // Declare an additional public origin (the tunnel URL or an operator --public-url). Extends the
+  // Host allowlist so an authenticated edge forwarding under that Host is admitted; a no-op when the
+  // server is not exposed. Never changes the loopback bind.
+  addPublicOrigin(origin: string): void;
   close(): Promise<void>;
 }
 
@@ -269,8 +280,23 @@ export async function serveObserver(
     throw new Error("Observer path does not match the selected run.");
   }
   const runtimeStreamUrls = () => observerRuntimeStreamUrls.get(result) ?? [];
+  const exposed = options.exposed === true;
+  // Host allowlist for exposed mode (DNS-rebinding defense, identical to the run-library surface).
+  // Seeded with the loopback names after bind; addPublicOrigin extends it with the tunnel/public-url
+  // host. Never consulted in loopback (non-exposed) mode.
+  const hostAllowlist = new Set<string>();
   const server = createServer(async (request, response) => {
     try {
+      if (exposed) {
+        for (const [name, value] of Object.entries(buildServeSecurityHeaders())) {
+          response.setHeader(name, value);
+        }
+        if (!hostAllowed(request.headers.host, hostAllowlist)) {
+          writeResponse(response, 421, "Misdirected Request", "text/plain; charset=utf-8");
+          return;
+        }
+      }
+
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
 
       if (url.pathname === "/") {
@@ -281,6 +307,23 @@ export async function serveObserver(
 
       if (url.pathname === "/_humanish/history.json") {
         const history = await buildHistoryIndex(proofRoot);
+        // Exposed watch serves ONLY the attached live run: filter the library index down to that one
+        // run so an edge-authed remote viewer cannot enumerate (or reach) any prior run's raw,
+        // unverified evidence. Loopback (local-dev) mode keeps the full-library index byte-identical.
+        if (exposed) {
+          const attachedRuns = history.runs.filter((entry) => entry.runId === result.run);
+          writeResponse(
+            response,
+            200,
+            JSON.stringify(
+              { latestRunId: attachedRuns.length > 0 ? result.run : null, runs: attachedRuns },
+              null,
+              2
+            ),
+            "application/json; charset=utf-8"
+          );
+          return;
+        }
         writeResponse(response, 200, JSON.stringify(history, null, 2), "application/json; charset=utf-8");
         return;
       }
@@ -288,6 +331,12 @@ export async function serveObserver(
       if (url.pathname.startsWith("/_humanish/runs/")) {
         const runRoute = matchRunRoute(url.pathname);
         if (!runRoute) {
+          writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
+          return;
+        }
+        // Exposed watch reaches only the attached run: any other run id 404s byte-identically to a
+        // nonexistent run (no cross-run access, no existence oracle). Loopback mode is unchanged.
+        if (exposed && runRoute.runId !== result.run) {
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }
@@ -307,14 +356,32 @@ export async function serveObserver(
   });
 
   const port = await listen(server, options.port ?? 0);
+  if (exposed) {
+    hostAllowlist.add(`127.0.0.1:${port}`);
+    hostAllowlist.add(`localhost:${port}`);
+    hostAllowlist.add(`[::1]:${port}`);
+  }
   const url = `http://127.0.0.1:${port}/observer/index.html`;
   const openResult = options.open === true ? openTarget(url) : { opened: false };
 
   return {
     url,
+    port,
     opened: openResult.opened,
     ...(openResult.command ? { openCommand: openResult.command } : {}),
     ...(openResult.warning ? { warning: openResult.warning } : {}),
+    // A tunnel's public origin is only known after it starts (post bind). Declaring it here extends
+    // the Host allowlist so the authenticated edge is admitted; a no-op in loopback mode (the
+    // allowlist is never consulted) and for an unparseable origin.
+    addPublicOrigin(origin: string): void {
+      if (!exposed) {
+        return;
+      }
+      const parsed = parsePublicOrigin(origin);
+      if (parsed) {
+        hostAllowlist.add(parsed.host);
+      }
+    },
     close: () => closeServer(server)
   };
 }

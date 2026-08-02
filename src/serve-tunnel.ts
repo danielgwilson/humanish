@@ -20,14 +20,32 @@ export interface ServeTunnel {
   close(): Promise<void>;
 }
 
-export async function startNgrokTunnel(options: {
+export interface StartNgrokTunnelOptions {
   port: number;
   domain?: string;
+  // Edge OAuth: ngrok authenticates the viewer at its edge before any request reaches the loopback
+  // port. On ngrok 3.39.x these flags are ACCEPTED and functional but reported deprecated (an info
+  // line, not an error) — the JSON stdout parser skips every line except "started tunnel", so the
+  // deprecation notice is ignored automatically. A future ngrok major may require a Traffic Policy
+  // instead; that is a documented fast-follow, not part of 0.18.0.
+  oauthProvider?: "google";
+  oauthAllowEmails?: string[];
+  oauthAllowDomains?: string[];
   timeoutMs?: number;
   spawnImpl?: typeof spawn;
-}): Promise<ServeTunnel> {
+}
+
+export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promise<ServeTunnel> {
   const spawnImpl = options.spawnImpl ?? spawn;
   const timeoutMs = options.timeoutMs ?? 15_000;
+  const oauthArgs = options.oauthProvider
+    ? [
+        "--oauth",
+        options.oauthProvider,
+        ...(options.oauthAllowEmails ?? []).flatMap((email) => ["--oauth-allow-email", email]),
+        ...(options.oauthAllowDomains ?? []).flatMap((domain) => ["--oauth-allow-domain", domain])
+      ]
+    : [];
   const args = [
     "http",
     "--log",
@@ -35,6 +53,7 @@ export async function startNgrokTunnel(options: {
     "--log-format",
     "json",
     ...(options.domain ? ["--url", options.domain] : []),
+    ...oauthArgs,
     String(options.port)
   ];
 

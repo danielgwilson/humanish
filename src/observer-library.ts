@@ -11,7 +11,7 @@ export interface LibraryHistory {
 }
 
 export interface LibraryRenderOptions {
-  mode: "loopback" | "capability-link" | "share-safe-open";
+  mode: "loopback" | "exposed" | "share-safe-open";
   safe: boolean;
   capabilities: { actions: boolean };
 }
@@ -57,7 +57,7 @@ export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOp
 }
 
 function modeLabel(opts: LibraryRenderOptions): string {
-  const auth = opts.mode === "capability-link" ? "capability link" : opts.mode === "share-safe-open" ? "open" : "loopback";
+  const auth = opts.mode === "exposed" ? "edge-authed" : opts.mode === "share-safe-open" ? "open" : "loopback";
   return opts.safe ? `${auth} · share_ready only` : auth;
 }
 
@@ -162,11 +162,6 @@ function libraryClientJs(): string {
   function poll() {
     if (stopped) return;
     fetch("/_humanish/history.json", { cache: "no-store" }).then(function (response) {
-      if (response.status === 401) {
-        stopped = true;
-        note("session expired \\u2014 tap your capability link again");
-        return null;
-      }
       return response.json();
     }).then(function (history) {
       if (history) {

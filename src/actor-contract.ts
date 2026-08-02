@@ -20,6 +20,12 @@ export type ActorCompletionReason =
   | "gave_up"
   | "blocked_approval"
   | "timed_out"
+  // Reached the wall-clock time budget AFTER productive activity (at least one material action).
+  // This is a NON-FAILURE completion for open-ended "watch it play" sessions: there is no goal to
+  // satisfy, productive play IS the outcome, so it maps to ActorStatus "passed". It stays distinct
+  // from "goal_satisfied" (a claimed endpoint) and from "timed_out" (a zero-progress deadline hit,
+  // which remains a failure). See docs/architecture/actor-contract.md.
+  | "budget_reached"
   | "actor_error"
   // A deterministic scripted step or expectation evaluated false: the scenario predicate
   // failed. Distinct from actor_error/harness_error — the harness executed faithfully; the
