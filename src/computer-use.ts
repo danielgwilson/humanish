@@ -215,6 +215,22 @@ export interface CuaLoopOptions {
    * wandering after the product already reached an app-visible endpoint.
    */
   stopWhen?: StopWhen;
+  /**
+   * FAIL-CLOSED spend cap (USD). When set, the loop aborts (completionReason "budget_reached")
+   * the moment the running ESTIMATED spend crosses it, BEFORE the next provider turn — the
+   * runaway-retry-loop guard. Absent = uncapped (the historical CUA behavior). maxUsd: 0 means
+   * no-spend (any measurable estimate > 0 aborts). Enforcement needs a measurable estimate, so
+   * the lab refuses a cap on an unpriced model at PREFLIGHT rather than running uncapped.
+   */
+  maxUsd?: number;
+  /**
+   * Injected PURE per-turn cost estimator (keeps the loop free of the operator rate table and
+   * makes the cap deterministic in tests). Given running (input, output) token totals, returns the
+   * estimated USD, or null when unpriceable. Only consulted when `maxUsd` is set. A null estimate
+   * mid-run cannot trip the cap — preflight already guaranteed a rate exists, so a null here is a
+   * vanished-rate harness condition, not a silent uncapped pass.
+   */
+  estimateTurnCostUsd?: (input: number, output: number) => number | null;
 }
 
 export interface CuaLoopResult {
@@ -432,7 +448,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     redactScreenshots = false,
     scrubText = (text) => text,
     writeScreenshot = async (name) => `screenshots/${name}`,
-    stopWhen
+    stopWhen,
+    maxUsd,
+    estimateTurnCostUsd
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
   const idleRecoverySteps = Math.min(Math.max(1, idleSteps - 1), 3);
@@ -598,6 +616,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         sawUsage = true;
         usageInput += turn.usage.input ?? 0;
         usageOutput += turn.usage.output ?? 0;
+      }
+      // FAIL-CLOSED spend cap (runaway-retry guard). Placed alongside the wall-clock runaway stop
+      // above and BEFORE the next provider.nextTurn request, so a model stuck retrying cannot keep
+      // spending: the moment the running estimate crosses maxUsd the loop breaks with a terminal,
+      // non-harness-error stop. A null estimate cannot trip it (preflight guaranteed a rate).
+      if (maxUsd !== undefined && estimateTurnCostUsd) {
+        const running = estimateTurnCostUsd(usageInput, usageOutput);
+        if (running !== null && running > maxUsd) {
+          completionReason = "budget_reached";
+          reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd}; aborted fail-closed before the next model turn`;
+          break;
+        }
       }
       if (turn.reasoning) {
         items.push({

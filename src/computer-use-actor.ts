@@ -75,6 +75,10 @@ export interface CuaActorSessionOptions {
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
   /** Deterministic harness-owned stop guards evaluated between model turns. */
   stopWhen?: StopWhen;
+  /** FAIL-CLOSED spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
+  maxUsd?: number;
+  /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
+  estimateTurnCostUsd?: (input: number, output: number) => number | null;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
@@ -96,7 +100,9 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.redactScreenshots === undefined ? {} : { redactScreenshots: options.redactScreenshots }),
     ...(options.scrubText === undefined ? {} : { scrubText: options.scrubText }),
     ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot }),
-    ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen })
+    ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen }),
+    ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
+    ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd })
   };
 
   return runComputerUseLoop(loopOptions);

@@ -989,3 +989,88 @@ describe("runComputerUseLoop vision-provider frame guard (issue #148, RUNG 3)", 
     expect(result.completionReason).toBe("goal_satisfied");
   });
 });
+
+describe("runComputerUseLoop fail-closed maxUsd cap", () => {
+  // A non-idle turn that also reports fixed per-turn usage; a RepeatProvider emits it forever so
+  // only the cap (or a backstop) can stop the loop.
+  const usageTurn: CuaTurn = {
+    actions: [{ kind: "click", x: 10, y: 20 }],
+    pendingSafetyChecks: [],
+    done: false,
+    usage: { input: 100, output: 50 }
+  };
+  // An injected PURE estimator with a fake rate (no live pricing table): $0.001 per token.
+  const estimateTurnCostUsd = (input: number, output: number): number => (input + output) * 0.001;
+
+  it("aborts fail-closed the moment the running estimate crosses maxUsd, BEFORE the next model turn", async () => {
+    const provider = new RepeatProvider(usageTurn);
+    const executor = new SignatureExecutor(["s0", "s1", "s2", "s3", "s4", "s5"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Drive until the budget cap fires.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      maxUsd: 0.35,
+      estimateTurnCostUsd
+    });
+
+    // Cumulative estimate: turn1 $0.15, turn2 $0.30, turn3 $0.45 > $0.35 → break at turn 3.
+    expect(result.completionReason).toBe("budget_reached");
+    expect(result.status).toBe("passed");
+    expect(result.reason).toContain("crossed execution.caps.maxUsd=$0.35");
+    // The cap fires BEFORE the next provider.nextTurn: exactly 3 turns were requested, no 4th.
+    expect(provider.seen).toHaveLength(3);
+    expect(result.trace.tokenUsage).toEqual({ input: 300, output: 150, total: 450 });
+  });
+
+  it("is a no-op when maxUsd is unset — the loop runs to its natural completion unchanged", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false, usage: { input: 100, output: 50 } },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "Done.", usage: { input: 100, output: 50 } }
+    ]);
+    const executor = new SignatureExecutor(["s0", "s1", "s2"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Finish naturally.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      // estimator present but no cap → the cap branch is never consulted.
+      estimateTurnCostUsd
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.reason).toBe("Done.");
+    expect(result.trace.tokenUsage).toEqual({ input: 200, output: 100, total: 300 });
+  });
+
+  it("cannot trip on a null (unpriceable) estimate mid-run — it runs to natural completion", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false, usage: { input: 100, output: 50 } },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "Done.", usage: { input: 100, output: 50 } }
+    ]);
+    const executor = new SignatureExecutor(["s0", "s1", "s2"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "Finish naturally.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      maxUsd: 0,
+      // A vanished rate returns null; the cap must NOT abort on it (never a silent-zero abort).
+      estimateTurnCostUsd: () => null
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+  });
+});
