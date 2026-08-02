@@ -38,9 +38,18 @@ export function createServeSessionStore(options: {
 
   return {
     mint(): { cookieValue: string } {
+      // Sweep expired records on each mint so the map cannot grow without bound
+      // when many links are tapped: without this, a record is only pruned when
+      // its own cookie is presented again, which an abandoned session never is.
+      const currentTime = now();
+      for (const [digest, record] of sessions) {
+        if (record.expiresAt <= currentTime) {
+          sessions.delete(digest);
+        }
+      }
       const cookieValue = randomBytes(32).toString("base64url");
       sessions.set(sha256Digest(cookieValue).toString("hex"), {
-        expiresAt: now() + options.ttlMs,
+        expiresAt: currentTime + options.ttlMs,
         scope: "viewer"
       });
       return { cookieValue };

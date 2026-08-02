@@ -75,10 +75,17 @@ export interface ShareSafetyAdmission {
 
 export function createShareSafetyAdmission(
   cwd: string,
-  options: { verifyImpl?: typeof verifyRun } = {}
+  options: { verifyImpl?: typeof verifyRun; ttlMs?: number; now?: () => number } = {}
 ): ShareSafetyAdmission {
   const verifyImpl = options.verifyImpl ?? verifyRun;
-  const cache = new Map<string, { identity: string; admitted: Promise<boolean> }>();
+  const now = options.now ?? (() => Date.now());
+  // verifyRun scans the ENTIRE run tree, but the cache key is run.json's stat
+  // identity, so an out-of-band edit to a scanned artifact that leaves run.json
+  // untouched would otherwise keep a stale share_ready verdict. A short TTL
+  // bounds that window: any mutation is re-scanned within ttlMs even when
+  // run.json never changes. Defense in depth on top of pre-persist redaction.
+  const ttlMs = options.ttlMs ?? 30_000;
+  const cache = new Map<string, { identity: string; verifiedAt: number; admitted: Promise<boolean> }>();
 
   const bundleIdentity = async (runId: string): Promise<string | null> => {
     try {
@@ -101,14 +108,14 @@ export function createShareSafetyAdmission(
       }
 
       const cached = cache.get(runId);
-      if (cached && cached.identity === identity) {
+      if (cached && cached.identity === identity && now() - cached.verifiedAt < ttlMs) {
         return cached.admitted;
       }
 
       const admitted = verifyImpl(cwd, runId)
         .then((verified) => verified.ok === true && verified.shareSafety.status === "share_ready")
         .catch(() => false);
-      cache.set(runId, { identity, admitted });
+      cache.set(runId, { identity, verifiedAt: now(), admitted });
       return admitted;
     }
   };
@@ -128,7 +135,7 @@ export function hostAllowed(hostHeader: string | undefined, allowlist: ReadonlyS
   return typeof hostHeader === "string" && allowlist.has(hostHeader.trim().toLowerCase());
 }
 
-export function parsePublicOrigin(value: string): { origin: string; host: string } | null {
+export function parsePublicOrigin(value: string): { origin: string; host: string; scheme: "http" | "https" } | null {
   let parsed: URL;
   try {
     parsed = new URL(value);
@@ -141,19 +148,30 @@ export function parsePublicOrigin(value: string): { origin: string; host: string
   if ((parsed.pathname !== "/" && parsed.pathname !== "") || parsed.search || parsed.hash || !parsed.host) {
     return null;
   }
-  return { origin: parsed.origin, host: parsed.host.toLowerCase() };
+  return {
+    origin: parsed.origin,
+    host: parsed.host.toLowerCase(),
+    scheme: parsed.protocol === "https:" ? "https" : "http"
+  };
 }
 
 export interface ServeAuthContext {
   tokenDigest: Buffer;
   sessions: ServeSessionStore;
   ttlSeconds: number;
+  // Cookie Secure attribute is decided from the DECLARED public origin's
+  // scheme, not the spoofable X-Forwarded-Proto hop header. Undefined means no
+  // public origin was declared (plain loopback mint), so Secure is omitted.
+  publicScheme?: "http" | "https";
 }
 
 export interface ServeRequestHandlerOptions {
   proofRoot: PinnedDirectory;
   safe: boolean;
-  admit?: (runId: string) => Promise<boolean>;
+  // Required even when safe is false: a fail-open path where safe===true but
+  // admit is absent would silently serve every run. serveObserverLibrary always
+  // wires it; the type keeps future callers from omitting it.
+  admit: (runId: string) => Promise<boolean>;
   auth?: ServeAuthContext | null;
   hostAllowlist: ReadonlySet<string>;
   entryRunId?: string;
@@ -196,9 +214,7 @@ export function createServeRequestHandler(
           }
           if (candidate && verifyTokenDigest(candidate, options.auth.tokenDigest)) {
             const { cookieValue } = options.auth.sessions.mint();
-            const forwardedProto = request.headers["x-forwarded-proto"];
-            const secure = typeof forwardedProto === "string"
-              && forwardedProto.split(",")[0]?.trim().toLowerCase() === "https";
+            const secure = options.auth.publicScheme === "https";
             response.setHeader(
               "set-cookie",
               buildSessionCookie(cookieValue, { ttlSeconds: options.auth.ttlSeconds, secure })
@@ -263,7 +279,7 @@ export function createServeRequestHandler(
           writeText(response, 404, "Run not found");
           return;
         }
-        if (options.safe && options.admit && !(await options.admit(runRoute.runId))) {
+        if (options.safe && !(await options.admit(runRoute.runId))) {
           // Byte-identical to the nonexistent-run 404: no existence oracle.
           writeText(response, 404, "Run not found");
           return;
@@ -288,12 +304,12 @@ export function createServeRequestHandler(
 
 async function loadFilteredHistory(options: ServeRequestHandlerOptions): Promise<LibraryHistory> {
   const history = await buildHistoryIndex(options.proofRoot);
-  if (!options.safe || !options.admit) {
+  if (!options.safe) {
     return history;
   }
 
   const admissions = await Promise.all(
-    history.runs.map(async (run) => ((await options.admit?.(run.runId)) === true ? run : null))
+    history.runs.map(async (run) => ((await options.admit(run.runId)) === true ? run : null))
   );
   const runs = admissions.filter((run): run is LibraryHistory["runs"][number] => run !== null);
   const latestRunId = runs.some((run) => run.runId === history.latestRunId)
@@ -323,7 +339,7 @@ export interface ServeLibraryServer {
   runsListed: number;
   shareReadyCount?: number;
   entryRunId?: string;
-  addPublicHost(host: string): void;
+  addPublicOrigin(origin: string): void;
   close(): Promise<void>;
 }
 
@@ -351,7 +367,10 @@ export async function serveObserverLibrary(
     };
   }
 
-  const admission = createShareSafetyAdmission(cwd, { verifyImpl });
+  const admission = createShareSafetyAdmission(cwd, {
+    verifyImpl,
+    ...(options.now ? { now: options.now } : {})
+  });
   const mode: ServeMode = options.expose
     ? options.authMode === "link" ? "capability-link" : "share-safe-open"
     : "loopback";
@@ -383,14 +402,23 @@ export async function serveObserverLibrary(
     entryRunId = resolved;
   }
 
-  const startupHistory = await loadFilteredHistory({
-    proofRoot,
-    safe: options.safe,
-    admit: (runId) => admission.admit(runId),
-    hostAllowlist: new Set(),
-    renderLibrary: () => ""
-  });
-  const runsListed = startupHistory.runs.length;
+  // Counts are computed over the UNCAPPED run list, not the 80-item history
+  // index: a capability link (non-safe) grants access to every run by direct
+  // URL, and share-safe modes admit every share_ready run per request, so a
+  // count capped at 80 would understate exactly what the exposure warning
+  // claims. runsListed feeds the operator's declared-friction warning.
+  const allRuns = (await listRuns(cwd)).runs;
+  let runsListed: number;
+  let shareReadyCount: number | undefined;
+  if (options.safe) {
+    const admitted = await Promise.all(allRuns.map((run) => admission.admit(run.runId)));
+    shareReadyCount = admitted.filter(Boolean).length;
+    runsListed = shareReadyCount;
+  } else {
+    runsListed = allRuns.length;
+  }
+
+  const declaredOrigin = options.publicOrigin ? parsePublicOrigin(options.publicOrigin) : null;
 
   let auth: ServeAuthContext | null = null;
   let capabilityToken: string | undefined;
@@ -402,7 +430,8 @@ export async function serveObserverLibrary(
         ttlMs: options.ttlMinutes * 60_000,
         ...(options.now ? { now: options.now } : {})
       }),
-      ttlSeconds: options.ttlMinutes * 60
+      ttlSeconds: options.ttlMinutes * 60,
+      ...(declaredOrigin ? { publicScheme: declaredOrigin.scheme } : {})
     };
   }
 
@@ -429,11 +458,8 @@ export async function serveObserverLibrary(
   hostAllowlist.add(`127.0.0.1:${port}`);
   hostAllowlist.add(`localhost:${port}`);
   hostAllowlist.add(`[::1]:${port}`);
-  if (options.publicOrigin) {
-    const parsed = parsePublicOrigin(options.publicOrigin);
-    if (parsed) {
-      hostAllowlist.add(parsed.host);
-    }
+  if (declaredOrigin) {
+    hostAllowlist.add(declaredOrigin.host);
   }
 
   return {
@@ -444,14 +470,28 @@ export async function serveObserverLibrary(
       mode,
       ...(capabilityToken ? { capabilityToken } : {}),
       runsListed,
-      ...(options.safe ? { shareReadyCount: runsListed } : {}),
+      ...(shareReadyCount !== undefined ? { shareReadyCount } : {}),
       ...(entryRunId ? { entryRunId } : {}),
-      addPublicHost(host: string): void {
-        hostAllowlist.add(host.trim().toLowerCase());
+      // A tunnel's public origin is only known after the tunnel starts (post
+      // bind); this lets the caller declare it, extending the Host allowlist and
+      // — for an https origin like every ngrok tunnel — marking cookies Secure.
+      addPublicOrigin(origin: string): void {
+        const parsed = parsePublicOrigin(origin);
+        if (!parsed) {
+          return;
+        }
+        hostAllowlist.add(parsed.host);
+        if (auth) {
+          auth.publicScheme = parsed.scheme;
+        }
       },
       close: async () => {
         auth?.sessions.revokeAll();
-        await closeServer(server);
+        const closed = closeServer(server);
+        // Keep-alive sockets would otherwise keep close() pending past the point
+        // the operator believes Ctrl-C tore the server down.
+        server.closeAllConnections?.();
+        await closed;
       }
     }
   };

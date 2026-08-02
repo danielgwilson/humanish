@@ -541,28 +541,34 @@ describe("serve: capability-link mode", () => {
     expect(authed.status).toBe(200);
   });
 
-  it("(17) mints a session with the exact cookie attributes, Secure only behind https forwarding", async () => {
+  it("(17) mints a session with exact cookie attributes; Secure follows the declared origin scheme, not a forwarded header", async () => {
+    // Declared https origin -> Secure present, and a spoofable x-forwarded-proto
+    // header cannot downgrade it (sent here as http, must be ignored).
     const server = await startLibrary(cwd, capabilityOptions());
     const token = requireToken(server);
-
-    const plain = await rawRequest(server.port, `/_humanish/auth/${token}`);
-    expect(plain.status).toBe(302);
-    expect(plain.headers.location).toBe("/");
-    const plainSetCookies = plain.headers["set-cookie"] ?? [];
-    expect(plainSetCookies).toHaveLength(1);
-    // ttlMinutes 30 -> Max-Age=1800. Secure ABSENT on plain loopback.
-    expect(plainSetCookies[0]).toMatch(
-      new RegExp(`^${SERVE_COOKIE_NAME}=[A-Za-z0-9_-]{43}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800$`)
+    const httpsMint = await rawRequest(server.port, `/_humanish/auth/${token}`, {
+      headers: { "x-forwarded-proto": "http" }
+    });
+    expect(httpsMint.status).toBe(302);
+    expect(httpsMint.headers.location).toBe("/");
+    const httpsCookies = httpsMint.headers["set-cookie"] ?? [];
+    expect(httpsCookies).toHaveLength(1);
+    // ttlMinutes 30 -> Max-Age=1800.
+    expect(httpsCookies[0]).toMatch(
+      new RegExp(`^${SERVE_COOKIE_NAME}=[A-Za-z0-9_-]{43}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800; Secure$`)
     );
 
-    const forwarded = await rawRequest(server.port, `/_humanish/auth/${token}`, {
+    // Declared http origin -> Secure absent, even when x-forwarded-proto claims https.
+    const httpServer = await startLibrary(cwd, capabilityOptions({ publicOrigin: "http://observer.example.dev" }));
+    const httpToken = requireToken(httpServer);
+    const httpMint = await rawRequest(httpServer.port, `/_humanish/auth/${httpToken}`, {
       headers: { "x-forwarded-proto": "https" }
     });
-    expect(forwarded.status).toBe(302);
-    const forwardedSetCookies = forwarded.headers["set-cookie"] ?? [];
-    expect(forwardedSetCookies).toHaveLength(1);
-    expect(forwardedSetCookies[0]).toMatch(
-      new RegExp(`^${SERVE_COOKIE_NAME}=[A-Za-z0-9_-]{43}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800; Secure$`)
+    expect(httpMint.status).toBe(302);
+    const httpCookies = httpMint.headers["set-cookie"] ?? [];
+    expect(httpCookies).toHaveLength(1);
+    expect(httpCookies[0]).toMatch(
+      new RegExp(`^${SERVE_COOKIE_NAME}=[A-Za-z0-9_-]{43}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800$`)
     );
 
     // fetch with redirect manual sees the same 302 contract.
@@ -841,5 +847,34 @@ describe("serve: safe mode resilience", () => {
     expect(callsFor("cache-ready")).toBe(1);
 
     expect((await fetch(new URL("/_humanish/runs/cache-blocked/observer/index.html", server.url))).status).toBe(200);
+  });
+
+  it("(26b) re-verifies a stale admission after the TTL even when run.json is unchanged", async () => {
+    const cwd = await createProjectFixture();
+    expect((await runDryRun({ cwd, dryRun: true, runId: "ttl-run" })).ok).toBe(true);
+
+    // A run that verifies share_ready once, then blocked on every later verify —
+    // modelling an out-of-band artifact change that does not touch run.json, the
+    // exact fail-open the TTL closes. admit() only reads .ok and shareSafety.status.
+    const shareReady = { ok: true, shareSafety: { status: "share_ready", reasons: [] } };
+    const blocked = { ok: false, shareSafety: { status: "blocked", reasons: [{ code: "PUBLIC_SAFETY_FINDINGS", message: "x" }] } };
+    const verifySpy = vi.fn().mockResolvedValueOnce(shareReady).mockResolvedValue(blocked);
+
+    let clock = 1_000_000;
+    const server = await startLibrary(cwd, {
+      safe: true,
+      verifyImpl: verifySpy as unknown as typeof verifyRun,
+      now: () => clock
+    });
+
+    const first = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    expect(first.runs.map((run) => run.runId)).toEqual(["ttl-run"]);
+
+    // Advance past the 30s admission TTL without touching run.json.
+    clock += 31_000;
+    const second = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    expect(second.runs).toEqual([]);
+    expect((await fetch(new URL("/_humanish/runs/ttl-run/observer/index.html", server.url))).status).toBe(404);
+    expect(verifySpy).toHaveBeenCalledTimes(2);
   });
 });

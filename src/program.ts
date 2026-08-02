@@ -1185,10 +1185,9 @@ function registerServeCommand(parent: Command, io: CliIo): void {
           }
           return;
         }
-        const tunnelHost = parsePublicOrigin(tunnel.url);
-        if (tunnelHost) {
-          server.addPublicHost(tunnelHost.host);
-        }
+        // Declares the tunnel's https origin: extends the Host allowlist and
+        // marks minted cookies Secure (every ngrok tunnel is https).
+        server.addPublicOrigin(tunnel.url);
       }
 
       const publicUrl = tunnel ? tunnel.url.replace(/\/$/, "") : declaredOrigin?.origin;
@@ -1219,11 +1218,15 @@ function registerServeCommand(parent: Command, io: CliIo): void {
         "live desktop stream URLs are never served; remote viewers see persisted evidence (screenshots, events, terminal tails) only"
       );
 
+      // Auto-open is suppressed under --expose so the capability token is not
+      // placed into a local opener process's argv (readable via `ps`) without
+      // the operator asking — the exposure target is a remote device anyway.
+      // Explicit --open still honors intent and opens the capability URL.
       const shouldOpen = options.open === false
         ? false
         : options.open === true
           ? true
-          : !wantsMachine && process.stdout.isTTY === true;
+          : !wantsMachine && process.stdout.isTTY === true && options.expose !== true;
       const openResult: { opened: boolean; command?: string; warning?: string } =
         shouldOpen ? openTarget(capabilityUrl ?? server.url) : { opened: false };
       if (openResult.warning) {
@@ -1273,7 +1276,7 @@ function formatServeHuman(result: ServeResult): string {
       "humanish serve failed",
       ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
       ...result.warnings.map((warning) => `warning: ${warning}`)
-    ].join("\n");
+    ].join("\n") + "\n";
   }
 
   const modeSuffix = result.safe ? " (share_ready only)" : "";
@@ -1303,7 +1306,7 @@ function formatServeHuman(result: ServeResult): string {
   for (const warning of result.warnings) {
     lines.push(`warning: ${warning}`);
   }
-  return lines.join("\n");
+  return lines.join("\n") + "\n";
 }
 
 function registerFeedbackCommands(parent: Command, io: CliIo): void {

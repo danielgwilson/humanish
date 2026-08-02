@@ -70,7 +70,7 @@ accepted and documented, not solved.
 | --- | --- | --- |
 | `loopback` | `humanish serve` | Capture-side trust: readable only by whoever can already read gitignored `.humanish/` on this machine; no new boundary is crossed. |
 | `capability-link` | `--expose` (auth defaults to `link`) | Declared-friction exposure: publishing-adjacent, not publishing. Anyone holding the secret link reads everything it grants until Ctrl-C — the printed warning names the run count, including non-`share_ready` runs unless `--safe` composes in. |
-| `share-safe-open` | `--expose --safe --auth none` | Genuine publishing, behind the feedback-grade `share_ready` gate: only verify-admitted runs exist; everything else is absent, 404ing byte-identically to a nonexistent run (no existence oracle). |
+| `share-safe-open` | `--expose --safe --auth none` | Genuine publishing, behind the feedback-grade `share_ready` gate: only runs that pass verify are served — admission is re-checked when a bundle changes and re-verified within a bounded window (default 30s), so it is fresh, not perfectly live; everything else is absent, 404ing byte-identically to a nonexistent run (no existence oracle). |
 
 ## Stream-URL doctrine
 
@@ -109,8 +109,10 @@ none` as publishing because it is.
 ## v2 control-plane seam contract
 
 The reserved `/_humanish/api/*` namespace answers `501` with
-`HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1 — in every mode, before any
-route matching, so no artifact can ever shadow it. The seam is already typed:
+`HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1 to any request that clears the
+auth gate — so under `--expose --auth link` a session-less request gets the
+uniform `401` first, and the `501` is what an authenticated (or loopback) caller
+sees. No run artifact can ever shadow the namespace. The seam is already typed:
 `createServeRequestHandler` accepts an optional `ServeControlPlane`, and v1
 always passes `undefined`. Before any mutating route ships, the contract is:
 

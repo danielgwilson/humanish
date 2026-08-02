@@ -657,9 +657,10 @@ capability/public URLs, runs listed, computed warnings, and the
 `ServeErrorCode` union. Capability URLs embed a live secret; they belong on the
 operator's terminal and never in a persisted or committed artifact.
 
-Reserved: `/_humanish/api/*` is the serve control-plane namespace. In v1 every
-request under it — in every mode, session or not — answers `501` with error
-code `HUMANISH_SERVE_CONTROL_PLANE_DISABLED`. The typed `ServeControlPlane`
+Reserved: `/_humanish/api/*` is the serve control-plane namespace. In v1 any
+request under it that clears the auth gate answers `501` with error code
+`HUMANISH_SERVE_CONTROL_PLANE_DISABLED`; under `--expose --auth link` a
+session-less request answers the uniform `401` first. The typed `ServeControlPlane`
 parameter exists in the handler options and is always `undefined` in v1; no
 code dispatches into it yet. Do not build against the namespace; the
 reservation guarantees only that no run artifact or observer asset will ever be
