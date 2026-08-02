@@ -675,12 +675,12 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--expose", "CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth.")
     .addOption(new Option("--tunnel <provider>", "Spawn the external tunnel binary against the loopback port.").choices(["ngrok"]))
-    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.dev). Requires --tunnel.")
+    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.")
     .addOption(new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices(["google"]))
     .option("--allow-email <addr>", "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.", collectRepeated, [])
     .option("--allow-domain <domain>", "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.", collectRepeated, [])
     .option("--public-url <origin>", "Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose.")
-    .option("--safe", "Orthogonal content filter (share_ready only); cannot be the sole gate for a live watch --expose.")
+    .option("--safe", "Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
@@ -1095,11 +1095,11 @@ function registerServeCommand(parent: Command, io: CliIo): void {
     .option("--safe", "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).")
     .option("--expose", "Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe.")
     .addOption(new Option("--tunnel <provider>", "Spawn the external tunnel binary against the loopback port.").choices(["ngrok"]))
-    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.dev). Requires --tunnel.")
+    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.")
     .addOption(new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices(["google"]))
     .option("--allow-email <addr>", "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.", collectRepeated, [])
     .option("--allow-domain <domain>", "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.", collectRepeated, [])
-    .option("--public-url <origin>", "Bring-your-own authed edge (e.g. https://observer.example.dev). Requires --expose; never affects binding.")
+    .option("--public-url <origin>", "Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding.")
     .option("--open", "Open the library in the default browser.")
     .option("--no-open", "Serve without opening a browser.")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -1111,7 +1111,7 @@ function registerServeCommand(parent: Command, io: CliIo): void {
         "  humanish serve",
         "  humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com",
         "  humanish serve --safe --expose --tunnel ngrok",
-        "  humanish serve --expose --public-url https://observer.example.dev",
+        "  humanish serve --expose --public-url https://observer.example.com",
         "",
         "Agent/CI path:",
         "  humanish serve --json --no-open",
@@ -2078,6 +2078,7 @@ async function runCuaBackend(args: {
   let attachedObserver: (ObserverResult & { ok: true }) | null = null;
   let tunnel: ServeTunnel | undefined;
   let exposeWarnings: string[] = [];
+  let exposePublicTarget: string | undefined;
 
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
@@ -2110,6 +2111,7 @@ async function runCuaBackend(args: {
                 }
                 exposeWarnings = exposeResult.warnings;
                 const phoneTarget = exposeResult.publicUrl ?? activeServer.url;
+                exposePublicTarget = phoneTarget;
                 args.io.writeOut(`watch: exposed live desktop at ${phoneTarget} (edge-authed; open it on your phone)\n`);
                 for (const warning of exposeResult.warnings) {
                   args.io.writeErr(`warning: ${warning}\n`);
@@ -2166,7 +2168,12 @@ async function runCuaBackend(args: {
       warnings: [
         ...result.warnings,
         "Live CUA server is polling observer-data.json with no-store caching.",
-        ...(exposeRequested ? [`Exposed live desktop stream URLs to an edge-authenticated remote viewer${tunnel ? ` via ${tunnel.url.replace(/\/$/, "")}` : ""}.`] : []),
+        ...(exposeRequested
+          ? [
+              `Exposed live desktop stream URLs to an edge-authenticated remote viewer${tunnel ? ` via ${tunnel.url.replace(/\/$/, "")}` : ""}.`,
+              `this live run's raw, unverified evidence (screenshots, events) is viewable by anyone who clears the edge auth at ${exposePublicTarget ?? activeServer.url}; only the run being watched is served, not your other runs`
+            ]
+          : []),
         ...exposeWarnings,
         ...(activeServer.warning ? [activeServer.warning] : [])
       ]

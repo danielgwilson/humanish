@@ -18,12 +18,14 @@ export type ExposureErrorCode =
   | "HUMANISH_SERVE_OPTION_CONFLICT"
   | "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE"
   | "HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE"
+  | "HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN"
   | "HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH"
   | "HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL"
   | "HUMANISH_WATCH_OPTION_CONFLICT"
   | "HUMANISH_WATCH_TUNNEL_REQUIRES_EXPOSE"
   | "HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH"
-  | "HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW";
+  | "HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW"
+  | "HUMANISH_WATCH_SAFE_NOT_APPLICABLE";
 
 export interface ExposureRequest {
   expose: boolean;
@@ -94,7 +96,7 @@ export function validateExposure(
 
   const publicOrigin = request.publicUrl !== undefined ? parsePublicOrigin(request.publicUrl) : null;
   if (request.publicUrl !== undefined && !publicOrigin) {
-    return fail("OPTION_CONFLICT", "--public-url must be an http(s) origin like https://observer.example.dev.");
+    return fail("OPTION_CONFLICT", "--public-url must be an http(s) origin like https://observer.example.com.");
   }
 
   if (!request.expose) {
@@ -128,17 +130,36 @@ export function validateExposure(
         "watch --expose streams a live desktop over an attached follow channel; it cannot combine with --dry-run, --detach, or --json."
       );
     }
+    // --safe is a share_ready LIBRARY filter for `serve`; watch streams a single live run that is
+    // never share_ready, so --safe would silently do nothing here. Reject it rather than ignore it.
+    if (request.safe) {
+      return fail(
+        "SAFE_NOT_APPLICABLE",
+        "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+      );
+    }
     if (!edgeAuthed) {
       return fail(
         "EXPOSE_REQUIRES_EDGE_AUTH",
         "watch --expose serves a live run that is never share_ready, so --safe cannot gate it; require edge auth: --tunnel ngrok --oauth google, or an operator-secured --public-url."
       );
     }
-  } else if (!edgeAuthed && !request.safe) {
-    return fail(
-      "EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE",
-      "--expose opens a public URL to local run bundles; require edge auth (--oauth google with --tunnel, or a --public-url you secure) OR --safe (share_ready runs only)."
-    );
+  } else {
+    // serve: --expose must ALWAYS resolve to a reachable public origin (a tunnel or a --public-url),
+    // even under --safe. Without one the exposed server is an unreachable loopback no-op, so fail
+    // closed before the origin-less bind. When an origin IS present, keep the edge-auth-OR-safe gate.
+    if (!request.tunnel && !publicOrigin) {
+      return fail(
+        "EXPOSE_REQUIRES_ORIGIN",
+        "--expose needs a declared public origin: pass --tunnel ngrok or --public-url <origin>."
+      );
+    }
+    if (!edgeAuthed && !request.safe) {
+      return fail(
+        "EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE",
+        "--expose opens a public URL to local run bundles; require edge auth (--oauth google with --tunnel, or a --public-url you secure) OR --safe (share_ready runs only)."
+      );
+    }
   }
 
   if (request.oauth && request.allowEmails.length === 0 && request.allowDomains.length === 0) {

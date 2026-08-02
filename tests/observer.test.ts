@@ -1064,8 +1064,8 @@ describe("observer rendering", () => {
         expect(evil.body).toBe("Misdirected Request");
 
         // Declaring the tunnel origin admits its Host.
-        server.addPublicOrigin("https://observer.example.dev");
-        const declared = await rawGet({ host: "observer.example.dev" });
+        server.addPublicOrigin("https://observer.example.com");
+        const declared = await rawGet({ host: "observer.example.com" });
         expect(declared.status).toBe(200);
       } finally {
         await server.close();
@@ -1092,9 +1092,82 @@ describe("observer rendering", () => {
         // The permissive local-dev server never consults a Host allowlist.
         expect(response).toBe(200);
         // addPublicOrigin is a no-op in loopback mode.
-        server.addPublicOrigin("https://observer.example.dev");
+        server.addPublicOrigin("https://observer.example.com");
       } finally {
         await server.close();
+      }
+    });
+  });
+
+  it("exposed watch is scoped to the attached run: only it is listed and reachable; loopback still serves the whole library", async () => {
+    await withRunBundle(async (cwd) => {
+      // A second, UNATTACHED run lives alongside the attached one in .humanish/runs/.
+      await runDryRun({ cwd, dryRun: true, runId: "other-run" });
+
+      const rawGet = (
+        port: number,
+        requestPath: string
+      ): Promise<{ status: number; body: string }> =>
+        new Promise((resolve, reject) => {
+          const request = http.request(
+            { host: "127.0.0.1", port, path: requestPath, method: "GET", headers: { host: `127.0.0.1:${port}` } },
+            (response) => {
+              const chunks: Buffer[] = [];
+              response.on("data", (chunk: Buffer) => chunks.push(chunk));
+              response.on("end", () => resolve({
+                status: response.statusCode ?? 0,
+                body: Buffer.concat(chunks).toString("utf8")
+              }));
+            }
+          );
+          request.on("error", reject);
+          request.end();
+        });
+
+      // Attach to the FIRST run explicitly (result.run === "observer-proof").
+      const rendered = await renderObserver(cwd, "observer-proof");
+      expect(rendered.run).toBe("observer-proof");
+
+      // (exposed) Only the attached run is listed, reachable, and admitted.
+      const exposedServer = await serveObserver(rendered, { port: 0, exposed: true });
+      try {
+        const history = JSON.parse((await rawGet(exposedServer.port, "/_humanish/history.json")).body) as {
+          latestRunId: string | null;
+          runs: Array<{ runId: string }>;
+        };
+        expect(history.runs.map((run) => run.runId)).toEqual(["observer-proof"]);
+        expect(history.latestRunId).toBe("observer-proof");
+
+        // Another real run 404s byte-identically to a nonexistent run (no cross-run access, no oracle).
+        const other = await rawGet(exposedServer.port, "/_humanish/runs/other-run/observer/index.html");
+        const nonexistent = await rawGet(exposedServer.port, "/_humanish/runs/nonexistent-run/observer/index.html");
+        expect(other.status).toBe(404);
+        expect(other.body).toBe("Run not found");
+        expect(other).toEqual(nonexistent);
+
+        // The attached run stays fully reachable on every route shape.
+        const own = await rawGet(exposedServer.port, "/_humanish/runs/observer-proof/observer/index.html");
+        expect(own.status).toBe(200);
+        const pageIndex = await rawGet(exposedServer.port, "/observer/index.html");
+        expect(pageIndex.status).toBe(200);
+        const pageData = await rawGet(exposedServer.port, "/observer/observer-data.json");
+        expect(pageData.status).toBe(200);
+        expect(() => JSON.parse(pageData.body)).not.toThrow();
+      } finally {
+        await exposedServer.close();
+      }
+
+      // (loopback) The full library is still served, byte-identical to today: other runs listed AND reachable.
+      const loopbackServer = await serveObserver(rendered, { port: 0 });
+      try {
+        const history = JSON.parse((await rawGet(loopbackServer.port, "/_humanish/history.json")).body) as {
+          runs: Array<{ runId: string }>;
+        };
+        expect(history.runs.map((run) => run.runId).sort()).toEqual(["observer-proof", "other-run"]);
+        const other = await rawGet(loopbackServer.port, "/_humanish/runs/other-run/observer/index.html");
+        expect(other.status).toBe(200);
+      } finally {
+        await loopbackServer.close();
       }
     });
   });

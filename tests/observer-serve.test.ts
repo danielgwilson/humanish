@@ -74,7 +74,7 @@ function exposedOptions(overrides: Partial<ServeLibraryOptions> = {}): Partial<S
   return {
     expose: true,
     edgeAuthed: true,
-    publicOrigin: "https://observer.example.dev",
+    publicOrigin: "https://observer.example.com",
     ...overrides
   };
 }
@@ -505,7 +505,7 @@ describe("serve: exposed (edge-authed) mode", () => {
   it("(17) the Host allowlist still admits the declared public origin and 421s undeclared Hosts", async () => {
     const server = await startLibrary(cwd, exposedOptions());
 
-    const declared = await rawRequest(server.port, "/", { headers: { host: "observer.example.dev" } });
+    const declared = await rawRequest(server.port, "/", { headers: { host: "observer.example.com" } });
     expect(declared.status).toBe(200);
 
     const undeclared = await rawRequest(server.port, "/", { headers: { host: "evil.example" } });

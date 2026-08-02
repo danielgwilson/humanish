@@ -37,24 +37,30 @@ authenticated edge (or `--safe`, see the fail-closed matrix).
 ## Fail-closed exposure matrix
 
 One shared validator (`validateExposure` in `src/serve-exposure.ts`) governs
-both `serve` and `watch`. Exposure requires EITHER edge auth (`--oauth` on the
-ngrok edge, or a `--public-url` you secure) OR `--safe` (share_ready runs only).
-A tunnel with neither is a wide-open public URL to local bundles and is refused.
+both `serve` and `watch`. `--expose` must ALWAYS resolve to a reachable public
+origin (a `--tunnel` or a `--public-url`) — even under `--safe`, since an
+origin-less exposed server is an unreachable loopback no-op. With an origin
+present, exposure requires EITHER edge auth (`--oauth` on the ngrok edge, or a
+`--public-url` you secure) OR `--safe` (share_ready runs only). A tunnel with
+neither is a wide-open public URL to local bundles and is refused.
 
-| `--tunnel` | `--oauth` | `--public-url` | `--safe` | Outcome |
-| --- | --- | --- | --- | --- |
-| — | — | — | any | `loopback` (no exposure) |
-| ✓ | ✓ | — | any | OK → `exposed` (edge-authed; all runs unless `--safe`) |
-| ✓ | — | — | ✓ | OK → `share-safe-open` (public, share_ready only) |
-| ✓ | — | — | — | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE` |
-| — | — | ✓ | any | OK → `exposed` (operator-secured edge) |
-| — | ✓ | — | any | **REFUSED** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL` |
-| ✓ | ✓ | ✓ | any | **REFUSED** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url) |
+| `--expose` | `--tunnel` | `--oauth` | `--public-url` | `--safe` | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| — | — | — | — | any | `loopback` (no exposure) |
+| ✓ | ✓ | ✓ | — | any | OK → `exposed` (edge-authed; all runs unless `--safe`) |
+| ✓ | ✓ | — | — | ✓ | OK → `share-safe-open` (public, share_ready only) |
+| ✓ | ✓ | — | — | — | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE` |
+| ✓ | — | — | ✓ | any | OK → `exposed` (operator-secured edge) |
+| ✓ | — | — | — | any | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN` (no reachable origin, even with `--safe`) |
+| ✓ | — | ✓ | — | any | **REFUSED** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL` |
+| ✓ | ✓ | ✓ | ✓ | any | **REFUSED** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url) |
 
 Guard order (all before any bind/spawn): `--allow-email`/`--allow-domain`
 without `--oauth` → `HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH`; `--oauth` without
 `--tunnel` → `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`; `--tunnel`+`--public-url` →
-conflict; `--tunnel-domain` without `--tunnel` → conflict; `--expose` without
+conflict; `--tunnel-domain` without `--tunnel` → conflict; `--expose` with no
+tunnel and no `--public-url` (even under `--safe`) →
+`HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN`; `--expose` with an origin but without
 edge auth and without `--safe` →
 `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`; a tunnel/public-url without
 `--expose` → `HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE`/conflict. `--oauth google`
@@ -63,9 +69,14 @@ prominent warning recommending at least one `--allow-email`/`--allow-domain`.
 
 The `watch` surface reuses the same validator but is stricter: a live,
 in-progress run is never `share_ready` (raw, unverified screenshots), so `--safe`
-would admit nothing — `watch --expose` therefore ALWAYS requires edge auth
-(`--tunnel --oauth` or `--public-url`), and is additionally refused with
-`--dry-run`/`--detach`/`--json` (no live desktop / no attached follow).
+would admit nothing. `watch --expose --safe` is therefore REFUSED outright with
+`HUMANISH_WATCH_SAFE_NOT_APPLICABLE` (rather than silently ignoring the flag);
+`watch --expose` ALWAYS requires edge auth (`--tunnel --oauth` or `--public-url`),
+and is additionally refused with `--dry-run`/`--detach`/`--json` (no live desktop
+/ no attached follow). An exposed watch serves ONLY the attached live run: its
+`/_humanish/history.json` lists just that run and every other run id 404s
+byte-identically to a nonexistent one, so a remote viewer can never enumerate or
+reach any prior run's raw evidence (loopback watch still serves the full library).
 
 ## ngrok edge OAuth
 

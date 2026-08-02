@@ -89,6 +89,13 @@ Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
 every response (both live in `src/serve-http.ts`, shared without a module cycle).
 Loopback (non-exposed) behavior is byte-identical to before.
 
+Exposed mode also SCOPES the surface to the attached live run (`result.run`): the
+`/_humanish/history.json` index is filtered to that one run, and `/_humanish/runs/<id>/…`
+404s byte-identically to a nonexistent run for any other id. A remote viewer who
+clears the edge auth can therefore see only the run being watched — never enumerate
+or fetch a prior run's raw, unverified evidence. Loopback keeps the full cross-run
+library (history + any run by id) exactly as before.
+
 `watch --expose` is the ONE surface that DELIBERATELY streams the live E2B
 desktop to a remote viewer: the attached watch process genuinely holds the
 runtime stream URLs (in the in-memory `WeakMap`, never persisted), and streaming

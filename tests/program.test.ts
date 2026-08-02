@@ -937,10 +937,10 @@ describe("humanish serve command", () => {
         // Allow rules require --oauth.
         { args: ["--allow-email", "a@example.com"], code: "HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH" },
         // Tunnel + public-url are mutually exclusive origins.
-        { args: ["--expose", "--tunnel", "ngrok", "--oauth", "google", "--public-url", "https://observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--expose", "--tunnel", "ngrok", "--oauth", "google", "--public-url", "https://observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
         { args: ["--tunnel", "ngrok"], code: "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE" },
-        { args: ["--tunnel-domain", "observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--public-url", "https://observer.example.dev"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--tunnel-domain", "observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+        { args: ["--public-url", "https://observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
         { args: ["--expose", "--public-url", "notaurl"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
         { args: ["--port", "99999"], code: "HUMANISH_INVALID_PORT" }
       ];
@@ -1006,7 +1006,7 @@ describe("humanish serve command", () => {
       const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
       const cli = startAttachedCli([
         "serve", "--cwd", cwd, "--expose",
-        "--public-url", "https://observer.example.dev", "--json", "--no-open"
+        "--public-url", "https://observer.example.com", "--json", "--no-open"
       ]);
       await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
@@ -1015,7 +1015,7 @@ describe("humanish serve command", () => {
       // No capability-link machinery: the JSON envelope carries no in-process token/url of any kind.
       expect((envelope as { capabilityUrl?: string }).capabilityUrl).toBeUndefined();
       expect((envelope as { publicCapabilityUrl?: string }).publicCapabilityUrl).toBeUndefined();
-      expect(envelope.publicUrl).toBe("https://observer.example.dev");
+      expect(envelope.publicUrl).toBe("https://observer.example.com");
       expect(envelope.warnings.join("\n")).toContain(`all ${envelope.runsListed} local runs`);
 
       for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
@@ -1029,7 +1029,7 @@ describe("humanish serve command", () => {
       await seedDryRunBundle(cwd, "serve-open-run");
 
       const stubDir = await mkdtemp(path.join(os.tmpdir(), "humanish-ngrok-stub-"));
-      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.dev"}`;
+      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.com"}`;
       await writeFile(
         path.join(stubDir, "ngrok"),
         [
@@ -1056,7 +1056,7 @@ describe("humanish serve command", () => {
         expect(envelope.mode).toBe("share-safe-open");
         expect(envelope.oauth).toBeUndefined();
         expect(envelope.shareReadyCount).toBe(1);
-        expect(envelope.warnings.join("\n")).toContain("https://observer.example.dev");
+        expect(envelope.warnings.join("\n")).toContain("https://observer.example.com");
 
         for (const listener of sigtermListenersSince(preexisting)) listener("SIGTERM");
         await cli.finished;
@@ -1077,7 +1077,7 @@ describe("humanish serve command", () => {
       const argsMarker = path.join(stubDir, "ngrok-args");
       // Started-tunnel log line field shape captured from a real ngrok 3.x
       // `--log stdout --log-format json` session, with the url genericized.
-      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.dev"}`;
+      const startedTunnelLine = `{"addr":"http://localhost:8732","lvl":"info","msg":"started tunnel","name":"command_line","obj":"tunnels","t":"2026-08-01T23:33:48.610569992Z","url":"https://observer.example.com"}`;
       await writeFile(
         path.join(stubDir, "ngrok"),
         [
@@ -1106,8 +1106,8 @@ describe("humanish serve command", () => {
 
         const envelope = JSON.parse(cli.stdout()) as ServeEnvelope;
         expect(envelope.mode).toBe("exposed");
-        expect(envelope.tunnel).toEqual({ provider: "ngrok", url: "https://observer.example.dev" });
-        expect(envelope.publicUrl).toBe("https://observer.example.dev");
+        expect(envelope.tunnel).toEqual({ provider: "ngrok", url: "https://observer.example.com" });
+        expect(envelope.publicUrl).toBe("https://observer.example.com");
         expect(envelope.oauth).toEqual({ provider: "google", allowEmails: ["you@example.com"], allowDomains: [] });
         // No in-process token leaked into the envelope.
         expect((envelope as { capabilityUrl?: string }).capabilityUrl).toBeUndefined();
@@ -1204,11 +1204,11 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
     });
   }, 20_000);
 
-  it("refuses a live watch --expose --safe with no edge auth (a live run is never share_ready)", async () => {
+  it("refuses a live watch --expose --safe with SAFE_NOT_APPLICABLE (--safe is a `serve` filter, not a watch gate)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       const result = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--safe"]);
       expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH");
+      expect(result.stdout).toContain("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
     });
   }, 20_000);
 

@@ -307,6 +307,23 @@ export async function serveObserver(
 
       if (url.pathname === "/_humanish/history.json") {
         const history = await buildHistoryIndex(proofRoot);
+        // Exposed watch serves ONLY the attached live run: filter the library index down to that one
+        // run so an edge-authed remote viewer cannot enumerate (or reach) any prior run's raw,
+        // unverified evidence. Loopback (local-dev) mode keeps the full-library index byte-identical.
+        if (exposed) {
+          const attachedRuns = history.runs.filter((entry) => entry.runId === result.run);
+          writeResponse(
+            response,
+            200,
+            JSON.stringify(
+              { latestRunId: attachedRuns.length > 0 ? result.run : null, runs: attachedRuns },
+              null,
+              2
+            ),
+            "application/json; charset=utf-8"
+          );
+          return;
+        }
         writeResponse(response, 200, JSON.stringify(history, null, 2), "application/json; charset=utf-8");
         return;
       }
@@ -314,6 +331,12 @@ export async function serveObserver(
       if (url.pathname.startsWith("/_humanish/runs/")) {
         const runRoute = matchRunRoute(url.pathname);
         if (!runRoute) {
+          writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
+          return;
+        }
+        // Exposed watch reaches only the attached run: any other run id 404s byte-identically to a
+        // nonexistent run (no cross-run access, no existence oracle). Loopback mode is unchanged.
+        if (exposed && runRoute.runId !== result.run) {
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }

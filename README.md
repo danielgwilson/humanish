@@ -125,7 +125,7 @@ Observer page:
 npx humanish serve
 npx humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com
 npx humanish serve --safe --expose --tunnel ngrok
-npx humanish serve --expose --public-url https://observer.example.dev
+npx humanish serve --expose --public-url https://observer.example.com
 ```
 
 The first serves the library on loopback only. The second is the phone path:
@@ -139,9 +139,10 @@ and just binds loopback behind it.
 
 In every mode the server binds `127.0.0.1`; exposure only ever happens through
 an authenticated edge forwarding to the loopback port. Exposure is fail-closed:
-`--expose` requires EITHER edge auth (`--oauth` on the tunnel, or a `--public-url`
-you secure) OR `--safe`. `--oauth google` with no allow rule lets any Google
-account in and warns loudly.
+`--expose` always needs a reachable public origin (a `--tunnel` or a `--public-url`,
+even under `--safe`), and then requires EITHER edge auth (`--oauth` on the tunnel,
+or a `--public-url` you secure) OR `--safe`. `--oauth google` with no allow rule
+lets any Google account in and warns loudly.
 
 ### Watch a live run from your phone
 
@@ -150,7 +151,10 @@ you@example.com` streams the LIVE desktop of a computer-use run to an
 edge-authenticated remote viewer while it plays. The attached server comes up
 during the run and survives a timed-out/failed run, so you can inspect a failed
 run's evidence too. A live run is never `share_ready`, so `watch --expose` always
-requires edge auth (`--safe` alone is refused).
+requires edge auth; `--safe` is a `serve` library filter and is rejected on watch
+(`HUMANISH_WATCH_SAFE_NOT_APPLICABLE`). An exposed watch serves ONLY the attached
+run — its history lists just that run and every other run id 404s — so a remote
+viewer can never reach your other runs' raw evidence.
 
 Live E2B desktop stream URLs are served ONLY on `watch --expose`, and only behind
 edge auth; `serve` never injects them (remote viewers of the library see
