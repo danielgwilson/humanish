@@ -184,13 +184,15 @@ export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
 // instant the host actually reaches /lobby, so a generous ceiling only affects the fail-closed case.
 const DEFAULT_HANDOFF_DEADLINE_MS = 120_000;
 const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
-// Runaway backstop for the vision-off-frame handoff relay: at most this many single-frame reads before
-// the host is assumed to be somewhere without a code. The relay stops the instant any path latches, so
-// in practice only a handful fire (the host reaches /lobby within a few turns). NOTE: these reads are
-// out-of-band OpenAI calls (host-lane setup, external-public route only) and are NOT counted against
-// execution.caps.maxUsd — this hard cap is what bounds their spend instead (each read is one cheap
-// single-frame OCR call). If this route ever runs under a strict budget, fold the estimate in.
-const MAX_HOST_VISION_READS = 30;
+// Per-seat runaway backstop for the vision-off-frame lobby-code read (used by the host to LATCH the
+// handoff code, and by each follower to independently OBSERVE its own code for the convergence proof):
+// at most this many single-frame reads before the seat is assumed to be somewhere without a code. Each
+// reader stops the instant it has what it needs, so in practice only a handful fire (a seat reaches its
+// /lobby within a few turns). NOTE: these reads are out-of-band OpenAI calls (external-public route
+// only) and are NOT counted against execution.caps.maxUsd — this hard cap is what bounds their spend
+// instead (each read is one cheap single-frame OCR call). If this route ever runs under a strict
+// budget, fold the estimate in.
+const MAX_LOBBY_CODE_VISION_READS = 30;
 // Idle/no-progress backstop for the HOST lane specifically (default is 6/8). The host legitimately sits
 // on an unchanging waiting-room screen while followers provision and join; it must not give up first.
 const HOST_WAIT_IDLE_STEPS = 80;
@@ -698,6 +700,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const subjectEnvNames = config.subject.env ?? [];
   const checkpoints = config.subject.state?.checkpoint ?? [];
   const runSession = hooks.runSession ?? descriptor.runSession;
+  // The per-seat vision lobby-code reader (default: the real single-frame OpenAI read). Injectable so the
+  // barrier's handoff + convergence proof are testable without a live vision call.
+  const readLobbyCode = hooks.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame;
 
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
@@ -1154,6 +1159,29 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       lobbyCodeLatch.resolve(code);
     };
 
+    // Build an onScreenshot handler that vision-reads the lobby code off THIS seat's own frame (the
+    // CDP-independent observation). `done()` short-circuits once this seat has what it needs (the host
+    // once latched; a follower once it has recorded its own observed code), `onCode` records/latches the
+    // result. One read in flight at a time, bounded by MAX_LOBBY_CODE_VISION_READS so a seat that never
+    // reaches a lobby can't rack up unbounded calls (fire-and-forget; the loop never awaits it).
+    const makeLobbyCodeVisionReader = (done: () => boolean, onCode: (code: string) => void): ((frame: Buffer) => void) => {
+      let inFlight = false;
+      let reads = 0;
+      return (frame: Buffer): void => {
+        if (done() || inFlight || reads >= MAX_LOBBY_CODE_VISION_READS) return;
+        inFlight = true;
+        reads += 1;
+        void readLobbyCode(frame, openaiApiKey)
+          .then((code) => {
+            if (code !== undefined && !done()) onCode(code);
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            inFlight = false;
+          });
+      };
+    };
+
     const makeLaneObservedUrl = (laneIndex: number, isHost: boolean) => (url: string | undefined): void => {
       if (typeof url !== "string" || url.length === 0) return;
       observedFinalUrls[laneIndex] = url; // runtime-only; digested to origin, never persisted raw
@@ -1188,23 +1216,11 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         const code = extractLobbyCodeFromNarration(text);
         if (code !== undefined) latchLobbyCode(code, laneIndex);
       };
-      let visionInFlight = false;
-      let visionReads = 0;
-      const onScreenshot = (frame: Buffer): void => {
-        // One read at a time, only until latched, and bounded so a host that never reaches a lobby can't
-        // rack up unbounded vision calls (~30 cheap single-frame reads is far past when the code appears).
-        if (latchedLobbyCode !== undefined || visionInFlight || visionReads >= MAX_HOST_VISION_READS) return;
-        visionInFlight = true;
-        visionReads += 1;
-        void readLobbyCodeFromFrame(frame, openaiApiKey)
-          .then((code) => {
-            if (code !== undefined && latchedLobbyCode === undefined) latchLobbyCode(code, laneIndex);
-          })
-          .catch(() => undefined)
-          .finally(() => {
-            visionInFlight = false;
-          });
-      };
+      // Vision-read the host's waiting-room frame and LATCH the code for the followers (stops once latched).
+      const onScreenshot = makeLobbyCodeVisionReader(
+        () => latchedLobbyCode !== undefined,
+        (code) => latchLobbyCode(code, laneIndex)
+      );
       // The host's job includes a long LEGITIMATE idle wait — sitting in the waiting room while the
       // followers provision their own desktops and walk the Join flow (easily 15-30 turns of an
       // unchanging "waiting for players" screen). At the default idle backstop (6) the host would give up
@@ -1247,8 +1263,19 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         idleSteps: spec.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
         noProgressSteps: spec.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS
       };
+      // Independently OBSERVE this follower's own lobby code by vision-reading its waiting-room frame,
+      // and record it for the cross-seat convergence proof. This does NOT latch anything (followers gate
+      // on the HOST's code, not their own) — it just fills this seat's observedLobbyCodes slot from a
+      // reliable signal instead of the flaky CDP url-read, so lobbyConvergenceDigest can prove all seats
+      // reached the SAME /lobby/CODE. If a follower somehow joined a DIFFERENT lobby, it reads a different
+      // code and convergence correctly fails (no false proof); if it never reads one, the seat stays a
+      // hole and convergence is honestly "not observed" for that seat.
+      const onScreenshot = makeLobbyCodeVisionReader(
+        () => observedLobbyCodes[laneIndex] !== undefined,
+        (observed) => { observedLobbyCodes[laneIndex] = observed; }
+      );
       const startedAt = now();
-      const outcome = await runCuaLane(followerSpec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
+      const outcome = await runCuaLane(followerSpec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl, onScreenshot });
       const endedAt = now();
       return { spec, outcome, startedAt, endedAt, route: observedFinalUrls[laneIndex] ?? publicAppUrl };
     };

@@ -494,6 +494,40 @@ describe("host-first handoff barrier + convergence", () => {
     const stuck = bundle.sharedWorld?.outcomes?.find((o) => o.roleId === "player-3");
     expect(stuck?.ok).toBe(false);
   });
+
+  it("proves convergence from the VISION read when CDP never surfaces a /lobby/CODE (the real E2B case)", async () => {
+    // The unreliable-E2B reality: the CDP url-read yields only the ORIGIN (home), never a /lobby/CODE. The
+    // lobby code reaches the harness ONLY through the vision-off-frame read — the host latches the handoff
+    // with it, and every follower INDEPENDENTLY observes its own code with it. Convergence must still be
+    // PROVEN (previously it read "not observed" because followers' codes came solely from the flaky CDP).
+    const seen: CuaActorSessionOptions[] = [];
+    const frame = Buffer.from("waiting-room-frame-bytes");
+    let visionReads = 0;
+    const runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
+      seen.push(options);
+      const isHost = options.instructions.toLowerCase().includes("create a");
+      options.onObservedUrl?.(homeUrlFor(DEFAULT_OBSERVED_ORIGIN)); // origin only — CDP never sees the code
+      options.onScreenshot?.(frame); // this seat's waiting-room frame -> the vision reader extracts the code
+      await new Promise<void>((resolve) => { setTimeout(resolve, isHost ? HOST_HOLD_MS : FOLLOWER_HOLD_MS); });
+      const trace = makeTrace({ persona: options.persona, status: "passed", completionReason: "goal_satisfied" });
+      return { status: "passed", completionReason: "goal_satisfied", reason: trace.reason, trace };
+    };
+    const { hooks } = makeExternalHooks(runSession, {
+      readLobbyCodeFromFrame: async () => { visionReads += 1; return "AB2CD9"; },
+      handoffDeadlineMs: 5_000
+    });
+    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    // Convergence PROVEN purely from the vision reads (CDP surfaced no /lobby/CODE for any seat).
+    expect(bundle.sharedWorld?.lobbyConvergenceDigest).toMatch(/^[0-9a-f]{16}$/);
+    expect(visionReads).toBeGreaterThanOrEqual(3); // host latch + each follower observing its own code
+    // Hygiene preserved: the raw code never lands in the bundle.
+    expect(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")).not.toContain("AB2CD9");
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

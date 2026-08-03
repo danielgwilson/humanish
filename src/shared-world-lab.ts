@@ -167,6 +167,13 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
    */
   handoffDeadlineMs?: number;
   /**
+   * EXTERNAL-PUBLIC concurrent route only: the vision reader that extracts a /lobby/CODE off a seat's
+   * screenshot frame (the CDP-independent handoff relay + per-seat convergence observation). Defaults to
+   * the real single-frame OpenAI read (readLobbyCodeFromFrame). Tests inject a fake so the barrier's
+   * handoff + convergence proof can be exercised deterministically without a live vision call.
+   */
+  readLobbyCodeFromFrame?: (frame: Buffer, apiKey: string) => Promise<string | undefined>;
+  /**
    * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
    * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced archive
    * file into an ArrayBuffer (the SAME default cua-actor-lab.ts uses). Called ONCE per run, before
