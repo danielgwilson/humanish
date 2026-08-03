@@ -11,6 +11,7 @@ import {
   floorRenderResolution,
   MIN_DESKTOP_RENDER_WIDTH,
   resolveCuaLanePlan,
+  declaredScreenForRender,
   resolveLaneDevice,
   runCuaActorLab,
   type CuaActorLabHooks,
@@ -1042,6 +1043,34 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
     expect(d.resolution).toEqual([500, 896]); // rendered screen the window fits (no clip)
     expect(d.preset.width).toBe(414); // declared device identity (prompt + metadata) is unfloored
     expect(d.preset.isMobile).toBe(true);
+  });
+
+  it("records the DECLARED preset when the width was floored, so the bundle is not self-confirming", () => {
+    // A floored run must not look like a faithful one. `verified` compares the floored number with
+    // itself, so without `declared` a reader sees requested 500 / verified 500 and concludes a
+    // 500-wide screen was asked for. Both mobile presets render at 500 and are otherwise identical.
+    const mobile = resolveLaneDevice(cfg("mobile"), { id: "solo", device: "mobile", persona: "p", instruction: "x" } as never);
+    expect(declaredScreenForRender(mobile.preset, mobile.name, mobile.resolution)).toEqual({
+      width: 414,
+      height: 896,
+      preset: "mobile"
+    });
+
+    const small = resolveLaneDevice(cfg("small-mobile"), { id: "solo", device: "small-mobile", persona: "p", instruction: "x" } as never);
+    expect(declaredScreenForRender(small.preset, small.name, small.resolution)).toEqual({
+      width: 360,
+      height: 740,
+      preset: "small-mobile"
+    });
+
+    // ...and the two floored seats really are indistinguishable by rendered width, which is the
+    // reason a lab cannot claim it exercised two different mobile layouts on this route.
+    expect(mobile.resolution[0]).toBe(small.resolution[0]);
+  });
+
+  it("omits `declared` when the preset rendered faithfully", () => {
+    const desktop = resolveLaneDevice(cfg("desktop"), { id: "solo", device: "desktop", persona: "p", instruction: "x" } as never);
+    expect(declaredScreenForRender(desktop.preset, desktop.name, desktop.resolution)).toBeUndefined();
   });
 
   it("small-mobile floors to 500 too; desktop is untouched", () => {

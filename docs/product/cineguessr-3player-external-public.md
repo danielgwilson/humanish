@@ -18,11 +18,20 @@ a public deployment YOU own/operate.
 ## Mobile fidelity caveat (read before over-reading the results)
 
 The seats are `device: mobile` (414×896) and `device: small-mobile` (360×740). On the E2B-desktop
-route ONLY width/height physically render — the X screen is sized to the preset so the app's
-width-based responsive CSS fires (real mobile LAYOUT), but there is NO touch input, and isMobile/DPR
-are prompt-signal + metadata (DPR renders only via the CDP geometry path). So "3 mobile personas"
-means 3 mobile-LAYOUT desktop-Chromium seats, NOT touch devices. If a flow needs true touch/tap
-semantics, these seats will not exercise it.
+route the rendered WIDTH is floored to `MIN_DESKTOP_RENDER_WIDTH` (500): Chrome refuses a window
+narrower than ~500 CSS px, and a narrower X screen let the window overflow and clip the page
+(0.20.3, #304). So both presets render at **500 wide**, `mobile` and `small-mobile` are identical in
+layout on this route, and this example does NOT currently exercise two different mobile widths. Only
+the HEIGHT renders as declared (896 and 740).
+
+Note that `desktopGeometry.screen.verified` checks the FLOORED number against itself, so a matching
+`verified` block is not evidence that the preset width rendered. Read `requested` against the preset
+in `device-presets.ts` if you need to know.
+
+There is NO touch input, and isMobile/DPR are prompt-signal + metadata (DPR renders only via the CDP
+geometry path). So "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium seats, NOT touch
+devices. If a flow needs true touch/tap semantics, these seats will not exercise it. True sub-500
+CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
 
 ## Run it
 
