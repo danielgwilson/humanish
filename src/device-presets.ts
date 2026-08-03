@@ -11,6 +11,13 @@
 // model its device in the prompt, which this harness also does. True touch/DPR/UA emulation
 // needs the deterministic CDP driver (a later actor); `isMobile`/`deviceScaleFactor` are carried
 // here as honest metadata + a prompt signal, not a rendered guarantee on this route.
+//
+// ONE MORE ROUTE CONSTRAINT: Chrome won't render a window narrower than ~500 CSS px, so the RENDERED
+// screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveLaneDevice — a sub-500 preset (mobile
+// 414, small-mobile 360, narrow-mobile 320) is rendered on a 500-wide screen the window fits exactly
+// (otherwise the 500-wide window overflowed the narrow screen and clipped the page). These preset
+// widths remain the honest device identity (prompt + metadata); rendering the page at the true sub-500
+// CSS viewport regardless of window width is the #221 CDP-device-emulation upgrade.
 
 export interface DevicePreset {
   /** Requested CSS-pixel screen width on the hosted E2B desktop route. */
