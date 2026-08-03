@@ -53,9 +53,20 @@ actors:
     lanes:
       - id: host
         host: true # the designated host seat that creates the shared lobby
-        device: mobile # 414x896 mobile LAYOUT (no touch; DPR is prompt-signal on this route)
+        device: mobile # 414x896 preset, RENDERED AT 500 wide (see the width-floor caveat above)
         persona: party-host
-        instruction: Create a lobby, then wait in the waiting room; once 3 players are in, start the game and play your guesses.
+        # The host-first barrier means the followers only start provisioning AFTER this seat has
+        # created the lobby, so being alone in the waiting room is the EXPECTED opening state, not a
+        # blocker. Say so explicitly: a 2026-08-03 run had the host see "1/8", decide it was blocked
+        # from starting, and end its own session 32s in, before either follower had finished joining.
+        # The harness already raises this lane's idle backstop (HOST_WAIT_IDLE_STEPS); this stops the
+        # MODEL from declaring itself done first.
+        instruction: >-
+          Create a lobby. You will be alone in the waiting room at first, which is normal: your
+          friends are still opening the app on their own phones and will appear over the next minute.
+          Keep waiting and re-checking the player list. Do NOT end your turn while you are waiting,
+          and do NOT treat being alone as being blocked. Once the other players show up, start the
+          game and play your guesses.
       - id: player-2
         device: mobile
         persona: competitive-friend
