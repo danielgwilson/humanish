@@ -658,6 +658,48 @@ describe("observer rendering", () => {
     });
   });
 
+  it("renders a scrubbable keyframe replay for a finished browser lane from its actor.items (#292)", () => {
+    const data = {
+      run: { createdAt: "2026-08-03T00:00:00.000Z", lifecycle: [], mode: "cua", persona: { name: "P" }, runId: "replay-proof", scenario: { title: "Replay" }, status: "pass" },
+      events: [],
+      laneGroups: [],
+      streams: [
+        {
+          id: "stream-001", simId: "sim-01", kind: "browser", kindLabel: "Browser", label: "CUA browser",
+          status: "passed", statusLabel: "Passed", transport: "snapshot", updatedAt: "2026-08-03T00:00:05.000Z",
+          ui: { route: "https://cineguessr.com/" },
+          actor: {
+            items: [
+              { id: "s0", kind: "screenshot", lifecycle: "completed", title: "turn-00-start", screenshotRef: { path: "screenshots/turn-00-start.png", redaction: "none" } },
+              { id: "a1", kind: "ui_action", lifecycle: "completed", title: "click (100, 200)" },
+              { id: "m1", kind: "message", lifecycle: "completed", title: "message turn 1", text: "I clicked Create." },
+              { id: "s1", kind: "screenshot", lifecycle: "completed", title: "turn-01", screenshotRef: { path: "screenshots/turn-01.png", redaction: "none" } },
+              { id: "a2", kind: "ui_action", lifecycle: "completed", title: "type [6 chars]" },
+              { id: "s2", kind: "screenshot", lifecycle: "completed", title: "turn-02", screenshotRef: { path: "screenshots/turn-02.png", redaction: "blurred" } }
+            ]
+          },
+          artifacts: []
+        }
+      ]
+    };
+    const client = renderObserverClientForTest(data);
+    // Grid view shows a single still (no scrubber); the scrubber is a FOCUS-view surface.
+    expect(client.html()).not.toContain('class="replay"');
+    client.click("open:stream-001");
+    const html = client.html();
+    // The scrubber renders: slider + play/step controls + a frame counter defaulting to the LAST frame.
+    expect(html).toContain('class="replay"');
+    expect(html).toContain('data-role="scrub"');
+    expect(html).toContain('data-action="scrub:stream-001:play"');
+    expect(html).toContain("3/3"); // 3 frames (one per screenshot item), defaulting to the last
+    expect(html).toContain("../screenshots/turn-02.png"); // last frame's src, resolved to a run-relative href
+    expect(html).toContain("blurred"); // last frame's capture-fidelity badge
+    expect(html).toContain("type [6 chars]"); // the action taken just before the last frame, in the info panel
+    // Stepping does not throw (the scrub action + input handler are wired).
+    client.click("scrub:stream-001:-1");
+    client.click("scrub:stream-001:1");
+  });
+
   it("renders multi-surface browser lab metadata without hiding live and screenshot modes", () => {
     const client = renderObserverClientForTest(browserLabObserverData());
 

@@ -418,6 +418,20 @@ a { color: inherit; text-decoration: none; }
 /* ============================================================ STREAM SURFACES */
 .surface-fill { position: absolute; inset: 0; width: 100%; height: 100%; }
 .surface-screenshot { object-fit: contain; object-position: top center; }
+/* Replay scrubber (#292 first slice): a per-turn keyframe timeline built from persisted frames + trace. */
+.replay { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0b0d10; }
+.replay-stage { position: relative; flex: 1 1 auto; min-height: 0; }
+.replay-badge { position: absolute; top: 6px; right: 8px; z-index: 2; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); background: rgba(0,0,0,.55); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 7px; }
+.replay-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--line-2); background: var(--surface-2); }
+.replay-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line-2); background: transparent; color: var(--text-1); cursor: pointer; }
+.replay-btn:hover { background: var(--surface-3); }
+.replay-range { flex: 1 1 auto; accent-color: var(--accent-color); cursor: pointer; height: 4px; min-width: 40px; }
+.replay-count { flex: 0 0 auto; font-size: 11px; color: var(--text-2); min-width: 44px; text-align: right; }
+.replay-info { flex: 0 0 auto; max-height: 32%; overflow-y: auto; padding: 8px 10px; border-top: 1px solid var(--line-2); background: var(--surface-1); font-size: 12px; line-height: 1.5; color: var(--text-1); }
+.replay-acts { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.replay-act { font-family: var(--mono); font-size: 10px; color: var(--text-2); background: var(--surface-3); border: 1px solid var(--line-2); border-radius: 5px; padding: 2px 6px; }
+.replay-narr { white-space: pre-wrap; color: var(--text-1); }
+.replay-dim { color: var(--text-2); font-style: italic; }
 .live-stream-mount { position: absolute; inset: 0; overflow: hidden; background: #000; }
 .live-stream-overlay { position: absolute; overflow: hidden; pointer-events: none; z-index: 2; }
 .live-stream-overlay[data-focus="true"] .bw-lab-dock { max-height: 86px; }
@@ -1145,6 +1159,12 @@ export function observerClientJs(): string {
     motion: readPref("motion", "full")
   };
   var artifactCache = {};
+  // Replay-scrubber state: per-stream current frame index + auto-advance timer. Kept OUTSIDE the S
+  // render-state so a data-poll re-render preserves the scrub position; indices survive because
+  // render() reads scrubIndexFor() (which defaults to the last frame — also fixing the "finished lane
+  // cuts to black" symptom). Timers are cleared on every render() so playback never orphans.
+  var scrubState = {};
+  var scrubTimers = {};
   var liveStreamFrames = {};
   var liveStreamHost = null;
   var liveStreamLayoutRaf = null;
@@ -1200,7 +1220,9 @@ export function observerClientJs(): string {
     lock: '<rect x="4.5" y="10" width="15" height="10" rx="2"' + P + '/><path d="M8 10V7a4 4 0 0 1 8 0v3"' + P + '/>',
     caret: '<path d="m6 9 6 6 6-6"' + P + '/>',
     filter: '<path d="M3 5h18l-7 8.2V20l-4-2.2v-4.6L3 5Z"' + P + '/>',
-    panelRight: '<rect x="3" y="4" width="18" height="16" rx="2"' + P + '/><path d="M15 4v16"' + P + '/>'
+    panelRight: '<rect x="3" y="4" width="18" height="16" rx="2"' + P + '/><path d="M15 4v16"' + P + '/>',
+    play: '<path d="M7 5l12 7-12 7z"' + P + '/>',
+    pause: '<path d="M9 5v14M15 5v14"' + P + '/>'
   };
   function icon(name, size) {
     var s = size || 18;
@@ -1607,14 +1629,147 @@ export function observerClientJs(): string {
     }
     return '<div class="wait"><div class="wait-inner">' + inner + '</div></div>';
   }
+  // ---------------------------------------------------------------- replay scrubber
+  // A durable per-turn keyframe replay built PURELY from the artifacts already in the bundle: the
+  // ordered actor.items (reasoning/message/ui_action) sequenced against each persisted screenshot.
+  // No new capture, no schema change, no new privacy surface — it reuses the frames' existing
+  // gitignored / publishable:false posture. (#292 first slice.)
+  function replayFrames(s) {
+    var actor = s && s.actor;
+    var items = actor && actor.items;
+    if (!items || !items.length) return [];
+    var frames = [];
+    var narration = [];
+    var actions = [];
+    for (var i = 0; i < items.length; i += 1) {
+      var it = items[i];
+      if (!it) continue;
+      if (it.kind === "reasoning" || it.kind === "message") { if (it.text) narration.push(String(it.text)); }
+      else if (it.kind === "ui_action") { if (it.title) actions.push(String(it.title)); }
+      else if (it.kind === "screenshot" && it.screenshotRef && it.screenshotRef.path) {
+        frames.push({
+          src: it.screenshotRef.path,
+          label: it.title || ("frame " + (frames.length + 1)),
+          redaction: (it.screenshotRef.redaction && it.screenshotRef.redaction !== "none") ? it.screenshotRef.redaction : "raw",
+          narration: narration,
+          actions: actions
+        });
+        narration = [];
+        actions = [];
+      }
+    }
+    return frames;
+  }
+  function streamById(id) {
+    var ss = currentData.streams || [];
+    for (var i = 0; i < ss.length; i += 1) { if (ss[i].id === id) return ss[i]; }
+    return null;
+  }
+  function scrubIndexOf(id, frames) {
+    var v = scrubState[id];
+    if (v == null) return frames.length ? frames.length - 1 : 0; // default: the last real frame
+    v = Number(v);
+    if (!(v >= 0)) v = 0;
+    if (v > frames.length - 1) v = frames.length - 1;
+    return v;
+  }
+  function frameInfoHtml(f) {
+    if (!f) return "";
+    var out = "";
+    var acts = (f.actions || []).filter(Boolean);
+    var narr = (f.narration || []).filter(Boolean);
+    if (acts.length) out += '<div class="replay-acts">' + acts.map(function (a) { return '<span class="replay-act">' + esc(a) + '</span>'; }).join("") + '</div>';
+    if (narr.length) out += '<div class="replay-narr">' + esc(narr.join(NL + NL)) + '</div>';
+    if (!out) out = '<div class="replay-narr replay-dim">No narration recorded before this frame.</div>';
+    return out;
+  }
+  function replayScrubber(s) {
+    var frames = replayFrames(s);
+    var id = s.id;
+    var idx = scrubIndexOf(id, frames);
+    var f = frames[idx];
+    var playing = !!scrubTimers[id];
+    return '<div class="replay" data-stream="' + esc(id) + '">'
+      + '<div class="replay-stage"><img class="surface-fill surface-screenshot" id="replay-img-' + esc(id) + '" src="' + esc(runArtifactHref(f && f.src)) + '" alt="replay frame ' + (idx + 1) + '"/>'
+      + '<span class="replay-badge" id="replay-badge-' + esc(id) + '" title="frame capture fidelity">' + esc(f ? f.redaction : "raw") + '</span></div>'
+      + '<div class="replay-bar">'
+      + '<button class="replay-btn" id="replay-play-' + esc(id) + '" data-action="scrub:' + esc(id) + ':play" aria-label="Play replay">' + icon(playing ? "pause" : "play", 13) + '</button>'
+      + '<button class="replay-btn" data-action="scrub:' + esc(id) + ':-1" aria-label="Previous frame">' + icon("chevL", 13) + '</button>'
+      + '<input class="replay-range" type="range" data-role="scrub" data-stream="' + esc(id) + '" min="0" max="' + (frames.length - 1) + '" step="1" value="' + idx + '" aria-label="Scrub frames"/>'
+      + '<button class="replay-btn" data-action="scrub:' + esc(id) + ':1" aria-label="Next frame">' + icon("chevR", 13) + '</button>'
+      + '<span class="replay-count mono" id="replay-count-' + esc(id) + '">' + (idx + 1) + '/' + frames.length + '</span>'
+      + '</div>'
+      + '<div class="replay-info" id="replay-info-' + esc(id) + '">' + frameInfoHtml(f) + '</div>'
+      + '</div>';
+  }
+  function updateScrubDom(id) {
+    var s = streamById(id);
+    if (!s) return;
+    var frames = replayFrames(s);
+    if (!frames.length) return;
+    var idx = scrubIndexOf(id, frames);
+    var f = frames[idx];
+    var img = document.getElementById("replay-img-" + id);
+    if (img) img.setAttribute("src", runArtifactHref(f && f.src));
+    var badge = document.getElementById("replay-badge-" + id);
+    if (badge) badge.textContent = f ? f.redaction : "raw";
+    var cnt = document.getElementById("replay-count-" + id);
+    if (cnt) cnt.textContent = (idx + 1) + "/" + frames.length;
+    var info = document.getElementById("replay-info-" + id);
+    if (info) info.innerHTML = frameInfoHtml(f);
+    var range = app.querySelector('.replay-range[data-stream="' + id + '"]');
+    if (range && String(range.value) !== String(idx)) range.value = idx;
+  }
+  function syncPlayBtn(id) {
+    var btn = document.getElementById("replay-play-" + id);
+    if (btn) btn.innerHTML = icon(scrubTimers[id] ? "pause" : "play", 13);
+  }
+  function stopScrubPlay(id) {
+    if (scrubTimers[id]) { clearInterval(scrubTimers[id]); delete scrubTimers[id]; syncPlayBtn(id); }
+  }
+  function stopAllScrubTimers() {
+    for (var k in scrubTimers) { if (scrubTimers.hasOwnProperty(k)) clearInterval(scrubTimers[k]); }
+    scrubTimers = {};
+  }
+  function toggleScrubPlay(id) {
+    if (scrubTimers[id]) { stopScrubPlay(id); return; }
+    var s = streamById(id);
+    var frames = s ? replayFrames(s) : [];
+    if (frames.length < 2) return;
+    if (scrubIndexOf(id, frames) >= frames.length - 1) { scrubState[id] = 0; updateScrubDom(id); } // restart from the top
+    scrubTimers[id] = setInterval(function () {
+      var st = streamById(id);
+      var fr = st ? replayFrames(st) : [];
+      if (fr.length < 2) { stopScrubPlay(id); return; }
+      var cur = scrubIndexOf(id, fr);
+      if (cur >= fr.length - 1) { stopScrubPlay(id); return; }
+      scrubState[id] = cur + 1;
+      updateScrubDom(id);
+    }, 850);
+    syncPlayBtn(id);
+  }
+  function handleScrub(id, op) {
+    var s = streamById(id);
+    var frames = s ? replayFrames(s) : [];
+    if (!frames.length) return;
+    if (op === "play") { toggleScrubPlay(id); return; }
+    stopScrubPlay(id);
+    var idx = scrubIndexOf(id, frames) + Number(op);
+    if (idx < 0) idx = 0;
+    if (idx > frames.length - 1) idx = frames.length - 1;
+    scrubState[id] = idx;
+    updateScrubDom(id);
+  }
   function browserSurface(s, focus) {
     var live = tone(s.status) === "running";
     var route = laneRoute(s) || "(local)";
     var liveUrl = browserLiveUrl(s);
     var shot = browserShot(s);
     var dock = focus ? browserLabDock(s, shot) : "";
+    var showReplay = focus && !(liveUrl && S.media === "live") && replayFrames(s).length >= 2;
     var body;
     if (liveUrl && S.media === "live") body = liveStreamMount(s, liveUrl);
+    else if (showReplay) body = replayScrubber(s);
     else if (shot) body = '<img class="surface-fill surface-screenshot" src="' + esc(shot) + '" alt="' + (s.desktopGeometry ? "desktop screenshot" : "browser screenshot") + '"/>';
     else body = '<div class="bw-app-wait"><div class="wait-spinner" style="width:24px;height:24px"></div>'
       + '<div class="mono" style="font-size:9px">' + esc(route) + '</div>'
@@ -2497,6 +2652,7 @@ export function observerClientJs(): string {
   }
 
   function render() {
+    stopAllScrubTimers(); // a full rebuild replaces the scrubber DOM; never leave a timer ticking on stale nodes
     var docEl = document.documentElement;
     docEl.setAttribute("data-theme", S.theme);
     docEl.setAttribute("data-motion", S.motion);
@@ -2563,6 +2719,7 @@ export function observerClientJs(): string {
     var arg = parts[1];
     var arg2 = parts[2];
     switch (cmd) {
+      case "scrub": handleScrub(arg, arg2); break;
       case "open": openFocus(arg); break;
       case "select": S.focusedId = arg; writeHash(arg); render(); break;
       case "exit-focus": exitFocus(); break;
@@ -2617,7 +2774,16 @@ export function observerClientJs(): string {
   });
   app.addEventListener("input", function (e) {
     var t = e.target;
-    if (t && t.getAttribute && t.getAttribute("data-role") === "search") { S.query = t.value; render(); }
+    if (!t || !t.getAttribute) return;
+    if (t.getAttribute("data-role") === "search") { S.query = t.value; render(); return; }
+    if (t.getAttribute("data-role") === "scrub") {
+      // Direct DOM update (NOT a full render) so dragging the slider stays smooth and the slider
+      // element is not rebuilt mid-drag. Position is stashed in scrubState so a later render restores it.
+      var sid = t.getAttribute("data-stream");
+      stopScrubPlay(sid);
+      scrubState[sid] = Number(t.value);
+      updateScrubDom(sid);
+    }
   });
   document.addEventListener("mousedown", function (e) {
     if (openDd) {
