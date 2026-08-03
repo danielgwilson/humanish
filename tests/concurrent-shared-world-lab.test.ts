@@ -12,7 +12,13 @@ import type { CuaLoopResult } from "../src/computer-use.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { concurrentSharedWorldValidationReason, LAB_CONFIG_SCHEMA, parseLabConfig, routesToConcurrentSharedWorld, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
-import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
+import {
+  runConcurrentSharedWorld,
+  extractLobbyCodeFromNarration,
+  parseLobbyCodeReply,
+  extractResponsesOutputText,
+  readLobbyCodeFromFrame
+} from "../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
@@ -1118,5 +1124,78 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
+  });
+});
+
+describe("lobby-code handoff relays (CDP-independent: narration + vision-off-frame)", () => {
+  it("extractLobbyCodeFromNarration reads a /lobby/CODE or a labeled UPPERCASE code, never lowercase prose", () => {
+    expect(extractLobbyCodeFromNarration("I'm in! The link is https://cineguessr.com/en/lobby/UDYCPH now.")).toBe("UDYCPH");
+    expect(extractLobbyCodeFromNarration("lobby code: MHDTP2")).toBe("MHDTP2");
+    expect(extractLobbyCodeFromNarration("LOBBY_CODE=AB8K9Q done")).toBe("AB8K9Q");
+    // A wrong latch fails the whole run: ordinary lowercase words after "lobby code" must NOT latch,
+    // even though the label match is case-insensitive (regression: the /i flag used to grab them).
+    expect(extractLobbyCodeFromNarration("I clicked the lobby code screen to check")).toBeUndefined();
+    expect(extractLobbyCodeFromNarration("the lobby code button was there")).toBeUndefined();
+    expect(extractLobbyCodeFromNarration("no code here")).toBeUndefined();
+    expect(extractLobbyCodeFromNarration(undefined)).toBeUndefined();
+  });
+
+  it("parseLobbyCodeReply is PRECISION-FIRST: only a bare code or an echoed /lobby/CODE, never prose", () => {
+    expect(parseLobbyCodeReply("UDYCPH")).toBe("UDYCPH");
+    expect(parseLobbyCodeReply("  mhdtp2 ")).toBe("MHDTP2");
+    expect(parseLobbyCodeReply("/lobby/QW3RTY")).toBe("QW3RTY");
+    expect(parseLobbyCodeReply("https://cineguessr.com/en/lobby/QW3RTY?x=1")).toBe("QW3RTY");
+    // A wrong latch fails the whole run, so these must NOT match — a miss just retries next frame.
+    expect(parseLobbyCodeReply("The code is ABC234")).toBeUndefined();
+    expect(parseLobbyCodeReply("I see a home SCREEN")).toBeUndefined();
+    expect(parseLobbyCodeReply("NONE")).toBeUndefined();
+    expect(parseLobbyCodeReply("No lobby code visible: NONE")).toBeUndefined();
+    expect(parseLobbyCodeReply("")).toBeUndefined();
+    expect(parseLobbyCodeReply(undefined)).toBeUndefined();
+  });
+
+  it("extractResponsesOutputText handles the output_text convenience field and the output[] array", () => {
+    expect(extractResponsesOutputText({ output_text: "AB8K9Q" })).toBe("AB8K9Q");
+    expect(
+      extractResponsesOutputText({ output: [{ type: "message", content: [{ type: "output_text", text: "ZZ4T5U" }] }] })
+    ).toBe("ZZ4T5U");
+    expect(extractResponsesOutputText({})).toBeUndefined();
+    expect(extractResponsesOutputText(null)).toBeUndefined();
+  });
+
+  it("readLobbyCodeFromFrame POSTs the frame and returns the parsed code; fail-soft on non-ok / bad key", async () => {
+    const frame = Buffer.from("fake-png-bytes");
+    const calls: Array<{ url: string; body: string; signal: unknown }> = [];
+    const okFetch = (async (url: string, init: { body: string; signal: unknown }) => {
+      calls.push({ url, body: init.body, signal: init.signal });
+      return { ok: true, status: 200, json: async () => ({ output_text: "QW3RTY" }) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const code = await readLobbyCodeFromFrame(frame, "sk-test", { fetchFn: okFetch });
+    expect(code).toBe("QW3RTY");
+    expect(calls).toHaveLength(1);
+    // The frame is sent as a base64 data URL (same shape the CU provider already uses); key never in body.
+    expect(calls[0]!.body).toContain("data:image/png;base64,");
+    expect(calls[0]!.body).not.toContain("sk-test");
+    // A timeout signal is always attached even when the caller passes none, so a stalled request cannot
+    // wedge the caller's in-flight guard.
+    expect(calls[0]!.signal).toBeInstanceOf(AbortSignal);
+
+    const notOk = (async () => ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)) as unknown as typeof fetch;
+    expect(await readLobbyCodeFromFrame(frame, "sk-test", { fetchFn: notOk })).toBeUndefined();
+
+    const threw = (async () => {
+      throw new Error("network down");
+    }) as unknown as typeof fetch;
+    expect(await readLobbyCodeFromFrame(frame, "sk-test", { fetchFn: threw })).toBeUndefined();
+
+    // No key / empty frame => no network call at all.
+    let called = false;
+    const spy = (async () => {
+      called = true;
+      return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    expect(await readLobbyCodeFromFrame(frame, "", { fetchFn: spy })).toBeUndefined();
+    expect(await readLobbyCodeFromFrame(Buffer.alloc(0), "sk-test", { fetchFn: spy })).toBeUndefined();
+    expect(called).toBe(false);
   });
 });
