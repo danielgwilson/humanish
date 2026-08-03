@@ -102,11 +102,14 @@ e2b-URL / host-digest redaction discipline.
 ## Mobile fidelity caveat
 
 The example roster runs mobile-LAYOUT seats (`device: mobile` 414×896, `small-mobile` 360×740). On the
-E2B-desktop route ONLY width/height physically render — the X screen is sized to the preset so the
-app's width-based responsive CSS fires (real mobile LAYOUT), but there is NO touch input, and
-`isMobile`/DPR are prompt-signal + metadata (DPR renders only via the CDP geometry path). "3 mobile
-personas" = 3 mobile-LAYOUT desktop-Chromium seats, not touch devices. Do not over-read the results as
-true mobile-device coverage.
+E2B-desktop route the rendered WIDTH is floored to `MIN_DESKTOP_RENDER_WIDTH` (500) because Chrome
+refuses a narrower window and a narrower X screen clipped the page (0.20.3, #304), so both presets
+render at 500 wide and are identical in layout; only HEIGHT renders as declared.
+`desktopGeometry.screen.verified` compares the floored number with itself, so it does not attest the
+preset width. There is NO touch input, and `isMobile`/DPR are prompt-signal + metadata (DPR renders
+only via the CDP geometry path). "3 mobile personas" = 3 mobile-LAYOUT desktop-Chromium seats, not
+touch devices. Do not over-read the results as true mobile-device coverage. True sub-500 rendering is
+the #221 upgrade.
 
 ## Watch-from-phone
 

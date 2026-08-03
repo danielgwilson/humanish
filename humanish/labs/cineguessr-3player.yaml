@@ -12,11 +12,17 @@ description: >
   laneWindows + outcomes; publicOriginDigest; the external-public attributionLimits) at $0 — no
   sandboxes, no provider tokens. A live run needs OPENAI_API_KEY + E2B_API_KEY and scenario.mode:
   live.
-  MOBILE FIDELITY CAVEAT: on the E2B-desktop route only width/height physically render — the X
-  screen is sized to the preset so the app's width-based responsive CSS fires (real mobile LAYOUT),
-  but there is NO touch input and isMobile/DPR are prompt-signal + metadata (DPR renders only via
+  MOBILE FIDELITY CAVEAT: on the E2B-desktop route the rendered WIDTH IS FLOORED to
+  MIN_DESKTOP_RENDER_WIDTH (500), because Chrome refuses a window narrower than ~500 CSS px and a
+  narrower X screen let the window overflow and clip the page (0.20.3, #304). So BOTH seats below
+  render at 500 wide: `mobile` (414) and `small-mobile` (360) are IDENTICAL in layout on this route,
+  and this lab does NOT currently exercise two different mobile widths. Only the HEIGHT renders as
+  declared (896 and 740). The preset widths remain the honest device identity for the persona prompt
+  and metadata, not a rendered guarantee; desktopGeometry.screen.verified confirms the FLOORED
+  number against itself, so a matching `verified` block is NOT evidence the preset width rendered.
+  There is also NO touch input, and isMobile/DPR are prompt-signal + metadata (DPR renders only via
   the CDP geometry path). "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium seats, not
-  touch devices.
+  touch devices. True sub-500 CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
   HONESTY: this is a real public-application study of a deployment the operator attests they
   own/operate (subject.publicTarget). The harness OBSERVES that each seat reached the operator-
   declared origin and converged on one lobby path; it did NOT provision, seed, or control the plane.
@@ -47,9 +53,20 @@ actors:
     lanes:
       - id: host
         host: true # the designated host seat that creates the shared lobby
-        device: mobile # 414x896 mobile LAYOUT (no touch; DPR is prompt-signal on this route)
+        device: mobile # 414x896 preset, RENDERED AT 500 wide (see the width-floor caveat above)
         persona: party-host
-        instruction: Create a lobby, then wait in the waiting room; once 3 players are in, start the game and play your guesses.
+        # The host-first barrier means the followers only start provisioning AFTER this seat has
+        # created the lobby, so being alone in the waiting room is the EXPECTED opening state, not a
+        # blocker. Say so explicitly: a 2026-08-03 run had the host see "1/8", decide it was blocked
+        # from starting, and end its own session 32s in, before either follower had finished joining.
+        # The harness already raises this lane's idle backstop (HOST_WAIT_IDLE_STEPS); this stops the
+        # MODEL from declaring itself done first.
+        instruction: >-
+          Create a lobby. You will be alone in the waiting room at first, which is normal: your
+          friends are still opening the app on their own phones and will appear over the next minute.
+          Keep waiting and re-checking the player list. Do NOT end your turn while you are waiting,
+          and do NOT treat being alone as being blocked. Once the other players show up, start the
+          game and play your guesses.
       - id: player-2
         device: mobile
         persona: competitive-friend

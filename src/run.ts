@@ -328,6 +328,17 @@ export interface RunDesktopGeometry {
   screen: {
     requested: { width: number; height: number };
     verified?: { width: number; height: number; source: "xdpyinfo" };
+    /**
+     * The device preset as DECLARED by the lab, present only when it differs from `requested`
+     * because the rendered width was floored to MIN_DESKTOP_RENDER_WIDTH.
+     *
+     * Without this, a floored run is indistinguishable from a faithful one: `verified` compares
+     * the floored number with itself and reports a match, so a reader of the bundle sees
+     * requested 500 / verified 500 and reasonably concludes a 500-wide preset was asked for. A
+     * `mobile` (414) and a `small-mobile` (360) seat both render at 500 and look identical here.
+     * When this field is set, the preset width did NOT render; see #221.
+     */
+    declared?: { width: number; height: number; preset: string };
   };
   /** Browser outer-window bounds measured after the fill attempt. */
   browserWindow?: {
@@ -6726,6 +6737,13 @@ function isRunDesktopGeometry(value: unknown): value is RunDesktopGeometry {
     if (!isRecord(verified)) return false;
     const source = verified.source;
     if (!isMeasuredSize(verified) || source !== "xdpyinfo") return false;
+  }
+  const declared = value.screen.declared;
+  if (declared !== undefined) {
+    if (!isRecord(declared)) return false;
+    // read before isMeasuredSize narrows `declared` to {width, height}
+    const preset = declared.preset;
+    if (!isMeasuredSize(declared) || typeof preset !== "string") return false;
   }
   const browserWindow = value.browserWindow;
   if (browserWindow !== undefined && (

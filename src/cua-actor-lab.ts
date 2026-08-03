@@ -578,6 +578,24 @@ export function floorRenderResolution(resolution: readonly [number, number]): [n
 }
 
 /**
+ * The DECLARED preset to record alongside the rendered screen, or undefined when the preset
+ * rendered faithfully.
+ *
+ * `desktopGeometry.screen.verified` compares the FLOORED number with itself, so on its own a
+ * floored run is indistinguishable from a faithful one: a reader sees requested 500 / verified 500
+ * and concludes a 500-wide screen was asked for. Recording the declared preset is what makes
+ * "the preset width did not render" legible in the bundle.
+ */
+export function declaredScreenForRender(
+  preset: DevicePreset,
+  presetName: string,
+  rendered: readonly [number, number],
+): { width: number; height: number; preset: string } | undefined {
+  if (preset.width === rendered[0] && preset.height === rendered[1]) return undefined;
+  return { width: preset.width, height: preset.height, preset: presetName };
+}
+
+/**
  * Resolve a lane's device + rendered resolution (most-specific wins, exactly as the single-lane
  * path always has): a raw execution.desktop.resolution escape hatch (only legal when no lane
  * sets a device — XOR enforced at parse) → the lane's named device → the run-wide
@@ -1724,8 +1742,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
   let browserWindowId: string | undefined;
   let browserTargetId: string | undefined;
+  const declaredScreen = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
   let desktopGeometry: RunDesktopGeometry = {
-    screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+    screen: {
+      requested: { width: spec.resolution[0], height: spec.resolution[1] },
+      ...(declaredScreen ? { declared: declaredScreen } : {})
+    }
   };
   let provisioned = false;
   let signaled = false;
@@ -4059,8 +4081,12 @@ export function buildCuaFanoutBundle(args: {
     const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
     const subject = args.laneSubjects[index]!;
     const session = outcome?.session;
+    const fallbackDeclared = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
     const desktopGeometry: RunDesktopGeometry = outcome?.desktopGeometry ?? {
-      screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+      screen: {
+        requested: { width: spec.resolution[0], height: spec.resolution[1] },
+        ...(fallbackDeclared ? { declared: fallbackDeclared } : {})
+      }
     };
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];

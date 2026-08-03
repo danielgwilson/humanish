@@ -50,6 +50,7 @@ import {
   defaultPackLocalTree,
   provisionCloneSubject,
   provisionLocalTreeSubject,
+  declaredScreenForRender,
   resolveLaneDevice,
   resolveSubjectState,
   runCuaLane,
@@ -1634,8 +1635,15 @@ export function buildConcurrentSharedWorldBundle(args: {
         ? "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it."
         : "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
     const traceScreenshotMode = session?.trace.redaction.screenshots;
+    // Include `declared` on the no-outcome fallback too (dry-run, skipped lane): otherwise an
+    // ABSENT declared means either "the preset rendered faithfully" or "there was no live
+    // outcome", and a dry-run bundle keeps the self-confirming shape this field exists to kill.
+    const fallbackDeclared = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
     const desktopGeometry = outcome?.desktopGeometry ?? {
-      screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+      screen: {
+        requested: { width: spec.resolution[0], height: spec.resolution[1] },
+        ...(fallbackDeclared ? { declared: fallbackDeclared } : {})
+      }
     };
     const screenshotMode: "raw" | "blurred" =
       traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"

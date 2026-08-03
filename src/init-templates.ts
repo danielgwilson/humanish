@@ -201,7 +201,9 @@ execution:
   desktop:
     device: desktop             # mobile | small-mobile | narrow-mobile | tablet | desktop | wide
     # browser: chrome            # default | chrome | chromium | firefox; concrete values fail closed
-    # On this route only width/height render (real mobile LAYOUT); the model is told its device.
+    # Only HEIGHT renders as declared: a sub-500 width is floored to Chrome's ~500px window
+    # minimum, so mobile (414) and small-mobile (360) both render 500 wide. The model is told its
+    # device.
     # True touch/DPR/UA emulation comes with the deterministic CDP actor (a later slice).
 scenario:
   mode: dry-run
@@ -226,8 +228,9 @@ description: >-
   follower join missions (followers go through the real Join flow). Dry-run (the default) emits ONE
   external-public evidence bundle at $0. A live run needs OPENAI_API_KEY + E2B_API_KEY and
   scenario.mode: live. Point appUrl + publicTarget at a public deployment YOU own/operate.
-  MOBILE FIDELITY: on the E2B-desktop route only width/height render (real mobile LAYOUT); there is
-  no touch input and DPR/isMobile are prompt-signal + metadata. HONESTY: attribution stays
+  MOBILE FIDELITY: on the E2B-desktop route a sub-500 preset width is FLOORED to 500 (Chrome will
+  not render a narrower window), so mobile (414) and small-mobile (360) render identically; only
+  HEIGHT renders as declared. There is no touch input and DPR/isMobile are prompt-signal + metadata. HONESTY: attribution stays
   shared-world, but every strength claim degrades honestly — provenance external-public (not seeded),
   NO synthetic attestation (you cannot claim synthetic on a real site), NO authoritative shared-state
   proof, concurrency by temporal co-occupancy + observed lobby convergence.
@@ -246,7 +249,7 @@ actors:
     lanes: # the roster (>=2) with EXACTLY ONE host: true seat
       - id: host
         host: true # the designated host seat that creates the shared session
-        device: mobile # 414x896 mobile LAYOUT (no touch; DPR is prompt-signal on this route)
+        device: mobile # 414x896 preset, RENDERED 500 wide (see the width floor above)
         instruction: Create a shared lobby, wait for the others to join, then start and play.
       - id: player-2
         device: mobile
