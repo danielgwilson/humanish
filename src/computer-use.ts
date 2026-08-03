@@ -241,6 +241,25 @@ export interface CuaLoopOptions {
    * concurrent shared-world barrier to latch a host seat's `/lobby/CODE` URL. Default: no-op.
    */
   onObservedUrl?: (url: string | undefined) => void;
+  /**
+   * RUNTIME-ONLY per-turn actor-narration callback: invoked with the model's own reasoning+message
+   * text each turn. The concurrent shared-world host-first barrier scans it for the lobby code the
+   * host states after creating the lobby — a CDP-INDEPENDENT path to the same code, because the
+   * E2B-desktop Chrome CDP url-read the onObservedUrl path relies on is unreliable in practice. Like
+   * onObservedUrl this is in-memory only; the barrier extracts a code and persists only a digest.
+   * Default: no-op.
+   */
+  onMessage?: (text: string) => void;
+  /**
+   * RUNTIME-ONLY per-turn raw-frame callback: invoked with the same full-fidelity screenshot Buffer
+   * the vision provider already sends to OpenAI that turn (never the redacted/persisted copy). The
+   * concurrent shared-world host-first barrier vision-reads the lobby code straight off the host's
+   * waiting-room frame — the robust CDP-INDEPENDENT relay, since the code is rendered on screen even
+   * when the CDP url-read fails and even when the host never narrates it. The frame Buffer is in-memory
+   * only here (this hook never persists it; the loop's own screenshot persistence is separate and
+   * governed by redactScreenshots). Fire-and-forget (never awaited by the loop). Default: no-op.
+   */
+  onScreenshot?: (frame: Buffer) => void;
 }
 
 export interface CuaLoopResult {
@@ -461,7 +480,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     stopWhen,
     maxUsd,
     estimateTurnCostUsd,
-    onObservedUrl
+    onObservedUrl,
+    onMessage,
+    onScreenshot
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
   const idleRecoverySteps = Math.min(Math.max(1, idleSteps - 1), 3);
@@ -578,6 +599,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     let observation = await raceSettle(executor.observe(), remaining(), signal);
     // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
     onObservedUrl?.(observation.url);
+    if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
     if (observation.appState !== undefined) observedAppState = true;
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
@@ -629,6 +651,15 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         sawUsage = true;
         usageInput += turn.usage.input ?? 0;
         usageOutput += turn.usage.output ?? 0;
+      }
+      // RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read
+      // the lobby code the host states after creating the lobby (CDP url-read is unreliable). Raw
+      // text stays in memory; only an extracted code is used (and only as a digest).
+      {
+        const narration = [turn.reasoning, turn.message]
+          .filter((t): t is string => typeof t === "string" && t.length > 0)
+          .join("\n");
+        if (narration.length > 0) onMessage?.(narration);
       }
       // FAIL-CLOSED spend cap (runaway-retry guard). Placed alongside the wall-clock runaway stop
       // above and BEFORE the next provider.nextTurn request, so a model stuck retrying cannot keep
@@ -786,6 +817,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       observation = await raceSettle(executor.observe(), remaining(), signal);
       // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
       onObservedUrl?.(observation.url);
+      if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
       if (observation.appState !== undefined) observedAppState = true;
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;

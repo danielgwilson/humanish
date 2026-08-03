@@ -82,6 +82,10 @@ export interface CuaActorSessionOptions {
   /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;
+  /** RUNTIME-ONLY per-turn narration callback threaded to the loop; see CuaLoopOptions.onMessage. */
+  onMessage?: (text: string) => void;
+  /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
+  onScreenshot?: (frame: Buffer) => void;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
@@ -106,7 +110,9 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen }),
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
     ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
-    ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl })
+    ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl }),
+    ...(options.onMessage === undefined ? {} : { onMessage: options.onMessage }),
+    ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot })
   };
 
   return runComputerUseLoop(loopOptions);

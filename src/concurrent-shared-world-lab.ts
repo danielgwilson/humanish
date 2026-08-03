@@ -175,9 +175,26 @@ export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
   "concurrency-by-temporal-co-occupancy-only"
 ] as const;
 
-// The default host-first handoff barrier deadline (ms). The host seat must surface a shared-session
-// (/lobby/CODE) URL within this budget or the run fails closed and no follower opens.
+// The FLOOR for the host-first handoff barrier deadline (ms). The host seat must surface a
+// shared-session (/lobby/CODE) URL within the deadline or the run fails closed and no follower
+// opens. The effective deadline SCALES with the per-seat run budget (execution.timeoutMs): a fixed
+// 2 min is too tight for a real create-a-lobby flow on a mobile-layout seat once you subtract the
+// seat's own desktop provisioning — the host reaches /lobby/CODE, but after the followers already
+// gave up. So use max(FLOOR, 40% of the budget), capped at the budget. The latch resolves the
+// instant the host actually reaches /lobby, so a generous ceiling only affects the fail-closed case.
 const DEFAULT_HANDOFF_DEADLINE_MS = 120_000;
+const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
+// Runaway backstop for the vision-off-frame handoff relay: at most this many single-frame reads before
+// the host is assumed to be somewhere without a code. The relay stops the instant any path latches, so
+// in practice only a handful fire (the host reaches /lobby within a few turns). NOTE: these reads are
+// out-of-band OpenAI calls (host-lane setup, external-public route only) and are NOT counted against
+// execution.caps.maxUsd — this hard cap is what bounds their spend instead (each read is one cheap
+// single-frame OCR call). If this route ever runs under a strict budget, fold the estimate in.
+const MAX_HOST_VISION_READS = 30;
+// Idle/no-progress backstop for the HOST lane specifically (default is 6/8). The host legitimately sits
+// on an unchanging waiting-room screen while followers provision and join; it must not give up first.
+const HOST_WAIT_IDLE_STEPS = 80;
+const FOLLOWER_WAIT_IDLE_STEPS = 40;
 
 /**
  * The cineguessr (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
@@ -192,6 +209,143 @@ export function extractLobbyCode(url: string | undefined): string | undefined {
   if (typeof url !== "string") return undefined;
   const match = url.match(LOBBY_CODE_PATTERN);
   return match ? match[1] : undefined;
+}
+
+/**
+ * Extract a lobby CODE from free-form ACTOR NARRATION (the host's reasoning/message where it states
+ * the lobby URL it sees), where the /lobby/CODE is followed by arbitrary prose (a space, backtick,
+ * newline) rather than end-of-string or /?# — so the strict LOBBY_CODE_PATTERN would miss it. Uses a
+ * negative-lookahead boundary (exactly 6 code chars). This is the CDP-INDEPENDENT handoff path: the
+ * host reads the code on screen and states it, and this reads it from the model's own text. Pure;
+ * input is runtime-only; only the code is used (as a digest).
+ */
+const LOBBY_CODE_IN_TEXT = /\/lobby\/([A-Z2-9]{6})(?![A-Z2-9])/;
+export function extractLobbyCodeFromNarration(text: string | undefined): string | undefined {
+  if (typeof text !== "string") return undefined;
+  const inUrl = text.match(LOBBY_CODE_IN_TEXT);
+  if (inUrl) return inUrl[1];
+  // Fallback: an explicitly-labeled bare code (e.g. "LOBBY_CODE=ABC123"), which the host may state
+  // if it copied the code rather than the URL. The label is matched case-insensitively, but the CODE
+  // itself must be UPPERCASE [A-Z2-9] — a real lobby code always renders uppercase, whereas an /i match
+  // on the code class would also grab an ordinary lowercase word after "lobby code " (e.g. "the lobby
+  // code screen") and latch a WRONG code. Precision-first, matching parseLobbyCodeReply's rationale.
+  const labeled = text.match(/lobby[ _-]?code[=:\s]+([A-Z2-9]{6})(?![A-Za-z2-9])/i);
+  return labeled && labeled[1] && /^[A-Z2-9]{6}$/.test(labeled[1]) ? labeled[1] : undefined;
+}
+
+/** Pull the assistant's plain text out of an OpenAI Responses API body (`output_text` convenience
+ *  field, else the concatenated `output[].content[].text`). Tolerant of shape drift; pure. */
+export function extractResponsesOutputText(parsed: unknown): string | undefined {
+  if (typeof parsed !== "object" || parsed === null) return undefined;
+  const obj = parsed as Record<string, unknown>;
+  if (typeof obj.output_text === "string" && obj.output_text.length > 0) return obj.output_text;
+  const out = obj.output;
+  if (!Array.isArray(out)) return undefined;
+  const parts: string[] = [];
+  for (const item of out) {
+    if (typeof item !== "object" || item === null) continue;
+    const content = (item as Record<string, unknown>).content;
+    if (!Array.isArray(content)) continue;
+    for (const chunk of content) {
+      if (typeof chunk === "object" && chunk !== null && typeof (chunk as Record<string, unknown>).text === "string") {
+        parts.push((chunk as Record<string, unknown>).text as string);
+      }
+    }
+  }
+  return parts.length > 0 ? parts.join("\n") : undefined;
+}
+
+/** Parse a vision reply into a lobby CODE. PRECISION-FIRST: accept ONLY when the whole reply IS the
+ *  six-character code, or when it echoes an explicit /lobby/CODE — never a bare 6-letter token buried in
+ *  prose (e.g. "I see a home SCREEN"), because a wrong latch fails the entire run, whereas a miss just
+ *  retries on the next frame while the host keeps waiting. NONE (the instructed "no code" reply) is
+ *  rejected. Pure. */
+export function parseLobbyCodeReply(reply: string | undefined): string | undefined {
+  if (typeof reply !== "string") return undefined;
+  const up = reply.trim().toUpperCase();
+  if (up.length === 0 || /\bNONE\b/.test(up)) return undefined;
+  if (/^[A-Z2-9]{6}$/.test(up)) return up; // the well-behaved "code only" reply
+  const inUrl = up.match(/\/LOBBY\/([A-Z2-9]{6})(?![A-Z2-9])/); // model echoed the invite link
+  return inUrl ? inUrl[1] : undefined;
+}
+
+const LOBBY_CODE_VISION_PROMPT =
+  "This is a screenshot of a CineGuessr multiplayer lobby. If a waiting-room / invite screen is " +
+  "shown, read the 6-character lobby code (characters A-Z and 2-9 only) — it appears near a 'lobby " +
+  "code'/'room code' label or inside an invite link of the form /lobby/CODE. Your entire reply MUST be " +
+  "exactly those 6 characters in uppercase and NOTHING else (no words, no punctuation). If no lobby " +
+  "code is visible on this screen (e.g. it is the home screen or a game round), reply exactly NONE.";
+
+const LOBBY_CODE_VISION_ENDPOINT = "https://api.openai.com/v1/responses";
+// A single-frame OCR-style read. gpt-5.5 (the CU default) is used deliberately: it reliably reads the
+// 6-char code off a dense MOBILE-viewport waiting room — a smaller/cheaper model (gpt-4.1-mini) was
+// tried and could NOT read it. reasoning.effort stays "low" (minimal) and the output budget is small
+// but comfortably clear of the "incomplete on reasoning overflow" edge. Kept on the same account/key
+// as the actor; the same full-fidelity frame is already sent to this API by the CU provider, so this
+// adds no new data-exposure surface. See onScreenshot in runHostLane.
+const LOBBY_CODE_VISION_MODEL = "gpt-5.5";
+// Output-token budget for the read. The answer is 6 chars, but leave clear margin over any low-effort
+// reasoning tokens so the response never comes back status:"incomplete" with empty output.
+const LOBBY_CODE_VISION_MAX_OUTPUT_TOKENS = 64;
+// Per-read wall-clock cap. Without it a stalled fetch (Node fetch has no default timeout) would leave
+// visionInFlight pinned true and silently kill the relay for the rest of the host run.
+const LOBBY_CODE_VISION_TIMEOUT_MS = 15_000;
+
+export interface ReadLobbyCodeOptions {
+  model?: string;
+  endpoint?: string;
+  fetchFn?: typeof fetch;
+  signal?: AbortSignal;
+}
+
+/**
+ * Vision-read a lobby CODE straight off a host waiting-room FRAME (the robust, CDP-independent handoff
+ * relay). Fail-soft: any network/HTTP/parse problem returns undefined so the caller simply retries on
+ * the next frame. The frame is runtime-only; only the extracted code is used (as a digest downstream).
+ */
+export async function readLobbyCodeFromFrame(
+  frame: Buffer,
+  apiKey: string,
+  options: ReadLobbyCodeOptions = {}
+): Promise<string | undefined> {
+  if (typeof apiKey !== "string" || apiKey.length === 0 || frame.length === 0) return undefined;
+  const fetchFn = options.fetchFn ?? fetch;
+  // Default a wall-clock timeout so a stalled request can't wedge the caller's in-flight guard. An
+  // explicit signal (e.g. run abort) takes precedence when provided.
+  const signal = options.signal ?? AbortSignal.timeout(LOBBY_CODE_VISION_TIMEOUT_MS);
+  const body = {
+    model: options.model ?? LOBBY_CODE_VISION_MODEL,
+    reasoning: { effort: "low" },
+    max_output_tokens: LOBBY_CODE_VISION_MAX_OUTPUT_TOKENS,
+    input: [
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: LOBBY_CODE_VISION_PROMPT },
+          { type: "input_image", image_url: `data:image/png;base64,${frame.toString("base64")}` }
+        ]
+      }
+    ]
+  };
+  let res: Awaited<ReturnType<typeof fetch>>;
+  try {
+    res = await fetchFn(options.endpoint ?? LOBBY_CODE_VISION_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal
+    });
+  } catch {
+    return undefined; // transient network error: skip this frame, next turn retries
+  }
+  if (!res.ok) return undefined; // never read a non-ok body (it can echo the frame/input)
+  let parsed: unknown;
+  try {
+    parsed = await res.json();
+  } catch {
+    return undefined;
+  }
+  return parseLobbyCodeReply(extractResponsesOutputText(parsed));
 }
 
 interface Deferred<T> {
@@ -978,12 +1132,27 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     // human-realistic version is the HOST SENDING the invite link and followers RECEIVING and tapping
     // it, rather than the orchestrator relaying the code out-of-band.
     const lobbyCodeLatch = deferred<string>();
-    const handoffDeadlineMs = hooks.handoffDeadlineMs ?? Math.min(DEFAULT_HANDOFF_DEADLINE_MS, timeoutMs);
+    const handoffDeadlineMs = hooks.handoffDeadlineMs
+      ?? Math.min(timeoutMs, Math.max(DEFAULT_HANDOFF_DEADLINE_MS, Math.floor(timeoutMs * HANDOFF_DEADLINE_BUDGET_FRACTION)));
     let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
       deadlineTimer = setTimeout(() => reject(new HandoffTimeoutError(handoffDeadlineMs)), handoffDeadlineMs);
     });
     deadline.catch(() => undefined); // never an unhandled rejection
+
+    // Resolve the host->follower handoff latch from WHICHEVER path sees the code first (CDP url-read,
+    // host narration, or vision-off-frame). Idempotent: only the first code wins, and it is also stashed
+    // as latchedLobbyCode so it gets scrubbed from any later narration. The latched code and observed URLs
+    // are runtime-only and land in persisted METADATA only as digests (origin + convergence). (The code
+    // is a shareable game code, not a secret, and it still renders in the host's screenshots, which are
+    // full-fidelity unless redactScreenshots is set — the digesting is about narration/URL metadata.)
+    const latchLobbyCode = (code: string, laneIndex: number): void => {
+      if (latchedLobbyCode !== undefined) return;
+      observedLobbyCodes[laneIndex] = code;
+      latchedLobbyCode = code;
+      if (deadlineTimer) { clearTimeout(deadlineTimer); deadlineTimer = undefined; }
+      lobbyCodeLatch.resolve(code);
+    };
 
     const makeLaneObservedUrl = (laneIndex: number, isHost: boolean) => (url: string | undefined): void => {
       if (typeof url !== "string" || url.length === 0) return;
@@ -991,11 +1160,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       const code = extractLobbyCode(url);
       if (code !== undefined) {
         observedLobbyCodes[laneIndex] = code;
-        if (isHost) {
-          latchedLobbyCode = code; // scrub it from any subsequent narration
-          if (deadlineTimer) { clearTimeout(deadlineTimer); deadlineTimer = undefined; }
-          lobbyCodeLatch.resolve(code);
-        }
+        if (isHost) latchLobbyCode(code, laneIndex);
       }
     };
 
@@ -1010,10 +1175,50 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     // ≤ the declared concurrency (host + up to concurrency-1 followers), preserving the spend cap.
     const runHostLane = async (spec: CuaLaneSpec, laneIndex: number): Promise<ActorLaneResult> => {
       const onObservedUrl = makeLaneObservedUrl(laneIndex, true);
+      // CDP-INDEPENDENT handoff paths (the E2B-desktop CDP url-read the onObservedUrl path relies on is
+      // unreliable in practice). Two backups, both resolving the SAME latch; whichever sees the code first
+      // wins, all digest-only:
+      //   (1) onMessage — scan the host's own narration IF it happens to state the lobby URL; and
+      //   (2) onScreenshot — vision-read the code straight off the host's waiting-room frame. This is the
+      //       robust one: the code is rendered on screen even when CDP fails AND when the host never
+      //       narrates it, and — crucially — the host is NOT asked to announce anything, so it keeps
+      //       running (create -> wait for players -> Start -> play) instead of ending on a stray message.
+      const onMessage = (text: string): void => {
+        if (latchedLobbyCode !== undefined) return;
+        const code = extractLobbyCodeFromNarration(text);
+        if (code !== undefined) latchLobbyCode(code, laneIndex);
+      };
+      let visionInFlight = false;
+      let visionReads = 0;
+      const onScreenshot = (frame: Buffer): void => {
+        // One read at a time, only until latched, and bounded so a host that never reaches a lobby can't
+        // rack up unbounded vision calls (~30 cheap single-frame reads is far past when the code appears).
+        if (latchedLobbyCode !== undefined || visionInFlight || visionReads >= MAX_HOST_VISION_READS) return;
+        visionInFlight = true;
+        visionReads += 1;
+        void readLobbyCodeFromFrame(frame, openaiApiKey)
+          .then((code) => {
+            if (code !== undefined && latchedLobbyCode === undefined) latchLobbyCode(code, laneIndex);
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            visionInFlight = false;
+          });
+      };
+      // The host's job includes a long LEGITIMATE idle wait — sitting in the waiting room while the
+      // followers provision their own desktops and walk the Join flow (easily 15-30 turns of an
+      // unchanging "waiting for players" screen). At the default idle backstop (6) the host would give up
+      // before anyone arrives, orphaning the lobby (exactly the earlier failure). Raise the host's idle /
+      // no-progress tolerance so it waits patiently; the per-seat timeout still bounds a truly stuck host.
+      const hostSpec: CuaLaneSpec = {
+        ...spec,
+        idleSteps: spec.idleSteps ?? HOST_WAIT_IDLE_STEPS,
+        noProgressSteps: spec.noProgressSteps ?? HOST_WAIT_IDLE_STEPS
+      };
       const startedAt = now();
       let outcome: LaneRunOutcome;
       try {
-        outcome = await runCuaLane(spec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
+        outcome = await runCuaLane(hostSpec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl, onMessage, onScreenshot });
       } finally {
         // If the host finished without ever surfacing a code, release followers to fail closed
         // immediately rather than wait the full deadline (a no-op if it already resolved).
@@ -1034,7 +1239,14 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         const at = now();
         return { spec, outcome: makeBlockedFollowerOutcome(spec, handoffDeadlineMs), startedAt: at, endedAt: at, route: publicAppUrl };
       }
-      const followerSpec = withLobbyCodeMission(spec, code);
+      // Followers also idle-wait — in the waiting room until the host starts, and between rounds. Raise
+      // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
+      // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
+      const followerSpec: CuaLaneSpec = {
+        ...withLobbyCodeMission(spec, code),
+        idleSteps: spec.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
+        noProgressSteps: spec.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS
+      };
       const startedAt = now();
       const outcome = await runCuaLane(followerSpec, { ...baseActorDeps, appUrl: publicAppUrl, onObservedUrl });
       const endedAt = now();

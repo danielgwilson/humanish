@@ -514,6 +514,12 @@ export interface CuaLaneSpec {
   targetUrl?: string;
   /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
   stopWhen?: StopWhen;
+  /** Per-lane override of the CUA idle backstop (consecutive screenshot/wait turns before gave_up).
+   *  Absent falls back to the loop default. Raised for a lane whose job includes a long LEGITIMATE
+   *  wait (e.g. a shared-world HOST idling in the waiting room while followers provision + join). */
+  idleSteps?: number;
+  /** Per-lane override of the non-idle no-progress backstop; see idleSteps. */
+  noProgressSteps?: number;
   deviceName: string;
   devicePreset: DevicePreset;
   resolution: [number, number];
@@ -943,6 +949,12 @@ export interface CuaLaneDeps {
    * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
    */
   onObservedUrl?: (url: string | undefined) => void;
+  /** RUNTIME-ONLY per-turn narration callback; see CuaLoopOptions.onMessage. The concurrent
+   * shared-world barrier passes a host-seat message scanner here to latch the lobby code. */
+  onMessage?: (text: string) => void;
+  /** RUNTIME-ONLY per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
+   * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
+  onScreenshot?: (frame: Buffer) => void;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -1204,7 +1216,13 @@ async function openDesktopBrowserTarget(
       "  fi",
       "  return 1",
       "}",
-      `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=0 ${chromiumFlags})`,
+      // Fixed CDP port (not :0/random): each seat has its OWN desktop sandbox, so a known port
+      // cannot conflict, and it makes the observer's port resolution deterministic. With :0 the
+      // real port lives only in DevToolsActivePort; when the launch-time capture misses on a cold
+      // start the observer falls back to 9222 and — being wrong — every CDP read fails for the
+      // whole run (the lobby-code handoff then never sees the host's /lobby URL). 9222 is already
+      // the fallback, so making it the actual port aligns launch, capture, and fallback.
+      `chrome_debug_flags=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 ${chromiumFlags})`,
       "open_target() {",
       "  case \"$browser_preference\" in",
       "    chrome)",
@@ -1891,8 +1909,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         redactScreenshots: deps.redactScreenshots,
         scrubText: deps.scrubKnownValues,
         writeScreenshot,
+        ...(spec.idleSteps === undefined ? {} : { idleSteps: spec.idleSteps }),
+        ...(spec.noProgressSteps === undefined ? {} : { noProgressSteps: spec.noProgressSteps }),
         ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
-        ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl })
+        ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
+        ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
+        ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot })
       };
       session = await deps.runSession(sessionOptions);
     }
