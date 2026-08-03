@@ -996,15 +996,17 @@ describe("runCuaActorLab", () => {
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    // The mobile preset (414x896, copied from the sims) sizes the E2B desktop — NOT 1280x800.
-    expect(created[0]?.resolution).toEqual([414, 896]);
-    // And the model is TOLD it's mobile (the sim-parity prompt signal, since touch/DPR can't render).
+    // The mobile preset (414x896) sizes the E2B desktop — NOT 1280x800 — but its width is FLOORED to
+    // Chrome's ~500px window minimum, so the rendered screen the window fits is 500x896 (no clip).
+    expect(created[0]?.resolution).toEqual([500, 896]);
+    // And the model is TOLD it's a 414 mobile device (the device IDENTITY / sim-parity prompt signal is
+    // the unfloored preset, even though the screen renders at the 500px floor).
     expect(sessionOptionsSeen[0]?.instructions).toContain("mobile user");
     expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
-    // The bundle records the requested screen, but this fake exposes no CDP measurement and
-    // therefore cannot honestly claim a CSS viewport.
+    // The bundle records the requested screen (the floored render target we actually asked E2B for), but
+    // this fake exposes no CDP measurement and therefore cannot honestly claim a CSS viewport.
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
-    expect(bundle.streams[0].desktopGeometry.screen.requested).toEqual({ width: 414, height: 896 });
+    expect(bundle.streams[0].desktopGeometry.screen.requested).toEqual({ width: 500, height: 896 });
     expect(bundle.streams[0].viewport).toBeUndefined();
   });
 

@@ -8,7 +8,10 @@ import { PNG } from "pngjs";
 import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import {
   buildCuaFanoutBundle,
+  floorRenderResolution,
+  MIN_DESKTOP_RENDER_WIDTH,
   resolveCuaLanePlan,
+  resolveLaneDevice,
   runCuaActorLab,
   type CuaActorLabHooks,
   type CuaLaneSpec,
@@ -244,12 +247,13 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(bundle.streams.map((s: { status: string }) => s.status)).toEqual([
       "contract_proof_only", "contract_proof_only", "contract_proof_only", "contract_proof_only"
     ]);
-    // Dry-run carries the requested screens but does not invent measured CSS viewports.
+    // Dry-run carries the requested screens but does not invent measured CSS viewports. Sub-500 mobile
+    // widths (mobile 414, small-mobile 360) are floored to Chrome's 500px window minimum (no clip).
     expect(bundle.streams.map((s: { desktopGeometry: { screen: { requested: { width: number; height: number } } } }) => [
       s.desktopGeometry.screen.requested.width,
       s.desktopGeometry.screen.requested.height
     ])).toEqual([
-      [414, 896], [360, 740], [1440, 950], [1920, 1080]
+      [500, 896], [500, 740], [1440, 950], [1920, 1080]
     ]);
     expect(bundle.streams.every((s: { viewport?: unknown }) => s.viewport === undefined)).toBe(true);
     expect(bundle.simulations.map((s: { personaId: string }) => s.personaId)).toEqual([
@@ -524,8 +528,9 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     ]);
     expect(handle.created.map((c) => c.metadata?.laneIndex)).toEqual(["0", "1", "2", "3"]);
     expect(handle.created.every((c) => c.metadata?.laneCount === "4")).toBe(true);
-    // Per-lane device geometry drove each sandbox's resolution.
-    expect(handle.created.map((c) => c.resolution)).toEqual([[414, 896], [360, 740], [1440, 950], [1920, 1080]]);
+    // Per-lane device geometry drove each sandbox's resolution (sub-500 mobile widths floored to the
+    // 500px Chrome window minimum so the window fits its X screen — no clip).
+    expect(handle.created.map((c) => c.resolution)).toEqual([[500, 896], [500, 740], [1440, 950], [1920, 1080]]);
     // The model's key NEVER enters any sandbox.
     expect(handle.created.every((c) => c.envs === undefined)).toBe(true);
 
@@ -1006,5 +1011,45 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
     expect(verify.ok).toBe(true);
+  });
+});
+
+describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window minimum (no clip)", () => {
+  const cfg = (device?: string, rawResolution?: [number, number]): LabConfig => {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "floor-probe",
+      title: "floor probe",
+      subject: { source: "app-url", appUrl: "https://example.com/" },
+      policies: { allowPublicTargets: true },
+      actors: [{ type: "openai-computer-use", mission: "Look.", lanes: [{ id: "solo", ...(device ? { device } : {}), instruction: "Look at the screen." }] }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, ...(rawResolution ? { desktop: { resolution: rawResolution } } : {}) },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  };
+
+  it("floorRenderResolution raises a sub-minimum width, leaves height + wide screens untouched", () => {
+    expect(floorRenderResolution([414, 896])).toEqual([MIN_DESKTOP_RENDER_WIDTH, 896]);
+    expect(floorRenderResolution([360, 740])).toEqual([MIN_DESKTOP_RENDER_WIDTH, 740]);
+    expect(floorRenderResolution([1440, 950])).toEqual([1440, 950]);
+    expect(MIN_DESKTOP_RENDER_WIDTH).toBe(500);
+  });
+
+  it("mobile lane renders at the 500px floor but keeps the 414 device identity", () => {
+    const d = resolveLaneDevice(cfg("mobile"), { id: "solo", device: "mobile", persona: "p", instruction: "x" } as never);
+    expect(d.resolution).toEqual([500, 896]); // rendered screen the window fits (no clip)
+    expect(d.preset.width).toBe(414); // declared device identity (prompt + metadata) is unfloored
+    expect(d.preset.isMobile).toBe(true);
+  });
+
+  it("small-mobile floors to 500 too; desktop is untouched", () => {
+    expect(resolveLaneDevice(cfg("small-mobile"), { id: "solo", device: "small-mobile", persona: "p", instruction: "x" } as never).resolution).toEqual([500, 740]);
+    expect(resolveLaneDevice(cfg("desktop"), { id: "solo", device: "desktop", persona: "p", instruction: "x" } as never).resolution).toEqual([1440, 950]);
+  });
+
+  it("a raw sub-500 escape-hatch resolution is floored as well", () => {
+    expect(resolveLaneDevice(cfg(undefined, [400, 800]), undefined).resolution).toEqual([500, 800]);
   });
 });
