@@ -4081,8 +4081,12 @@ export function buildCuaFanoutBundle(args: {
     const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
     const subject = args.laneSubjects[index]!;
     const session = outcome?.session;
+    const fallbackDeclared = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
     const desktopGeometry: RunDesktopGeometry = outcome?.desktopGeometry ?? {
-      screen: { requested: { width: spec.resolution[0], height: spec.resolution[1] } }
+      screen: {
+        requested: { width: spec.resolution[0], height: spec.resolution[1] },
+        ...(fallbackDeclared ? { declared: fallbackDeclared } : {})
+      }
     };
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];

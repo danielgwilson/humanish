@@ -81,11 +81,17 @@ responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 
 ## Hosted Desktop Geometry
 
-Hosted browser streams may carry additive `desktopGeometry` evidence. Its fields keep four
+Hosted browser streams may carry additive `desktopGeometry` evidence. Its fields keep five
 different facts separate:
 
 - `screen.requested`: the E2B/X screen size requested by config;
 - `screen.verified`: the screen size measured in-sandbox with `xdpyinfo`;
+- `screen.declared`: the device preset the lab ASKED for, present only when it differs from
+  `screen.requested` because the rendered width was floored to Chrome's ~500px window minimum.
+  `verified` compares the floored number with itself and reports a match, so a matching
+  `verified` block is NOT evidence that the preset width rendered. When `declared` is present,
+  it did not: a `mobile` (414) and a `small-mobile` (360) seat both render at 500 and are
+  indistinguishable by rendered width;
 - `browserWindow`: outer browser bounds measured after the window-fill attempt;
 - `viewport`: the page's CSS layout viewport and device-pixel ratio measured through CDP on
   Chromium-family hosted browsers.
