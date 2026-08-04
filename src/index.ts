@@ -71,6 +71,12 @@ export { FauxInbox, extractLinks, extractOtpCodes } from "./comms-faux-inbox.js"
 export type { FauxInboxOptions } from "./comms-faux-inbox.js";
 export { DEFAULT_EMAIL_PROFILES, genericEmailProfile, sendgridEmailProfile, startEmailCatchServer } from "./comms-email-catch.js";
 export type { EmailCatchOptions, EmailCatchServer, EmailSendProfile, NormalizedSend } from "./comms-email-catch.js";
+// In-sandbox deployment of the catch + the host-side delivery bridge (the config-block core: the
+// listener must live inside the subject sandbox, since 127.0.0.1 from the app is the sandbox loopback).
+export { DEFAULT_SANDBOX_CATCH_PORT, SANDBOX_CATCH_SCRIPT, deployCommsCatch, drainCommsCatch, routeCapturedSends } from "./comms-sandbox-catch.js";
+export type { DeployCommsCatchOptions, DeployedCommsCatch, RawCapturedSend } from "./comms-sandbox-catch.js";
+export { COMMS_THREAD_SCHEMA, buildCommsThreadArtifact } from "./comms-evidence.js";
+export type { CommsThreadArtifact, CommsThreadEntry } from "./comms-evidence.js";
 export type {
   CommsAddress,
   CommsChannel,
