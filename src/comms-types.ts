@@ -14,7 +14,7 @@ export interface CommsAddress {
   channel: CommsChannelKind;
   /** Which lane owns this inbox. */
   actorId: string;
-  /** Runtime-only raw address, e.g. patient-07@example.test | +15550137. */
+  /** Runtime-only raw address, e.g. user-07@example.test | +15550137. */
   value: string;
   /** sha256-short(value) — the only form persisted (redaction.digestText). */
   digest: string;

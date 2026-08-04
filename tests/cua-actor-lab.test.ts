@@ -926,13 +926,13 @@ describe("runCuaActorLab", () => {
     const base = cloneCuaConfig();
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "user", address: "user@example.test" }] } }
     };
     // What the (simulated) subject app POSTed to its Resend-shaped base URL during the run — a
     // verification email to the declared recipient, captured by the in-sandbox catch as NDJSON.
     const verificationHtml = '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
@@ -972,7 +972,7 @@ describe("runCuaActorLab", () => {
     expect(thread.count).toBe(1);
     expect(thread.thread[0]!.codeCount).toBe(1); // the OTP is a count, never stored
     // Public-safety: NO raw address / link / OTP / subject text in the persisted evidence.
-    expect(threadRaw).not.toContain("patient@example.test");
+    expect(threadRaw).not.toContain("user@example.test");
     expect(threadRaw).not.toContain("app.example.test/verify");
     expect(threadRaw).not.toContain("481920");
     expect(threadRaw).not.toContain("Confirm your email");
@@ -984,7 +984,7 @@ describe("runCuaActorLab", () => {
     // comms declared but NO recipients → the app's send is captured but matches no provisioned inbox.
     const config: LabConfig = { ...base, comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } } };
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm", html: "<p>Code: 481920</p>" }) }) + "\n";
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm", html: "<p>Code: 481920</p>" }) }) + "\n";
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
@@ -1018,11 +1018,11 @@ describe("runCuaActorLab", () => {
     // Recipient lane must match the N=1 lane id (lane-01) for the inbox instruction to be injected.
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
     };
     const verificationHtml = '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
     let t = 0;
     let seenInstructions = "";
     const sandbox = makeFakeSandbox({
@@ -1058,7 +1058,7 @@ describe("runCuaActorLab", () => {
     const base = cloneCuaConfig();
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
     };
     let t = 0;
     const sandbox = makeFakeSandbox({

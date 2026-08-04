@@ -55,11 +55,11 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "comms-lab",
-      subject: { source: "clone", repos: ["example-org/patient-app"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } },
+      subject: { source: "clone", repos: ["example-org/user-app"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } },
       actors: [{ type: "openai-computer-use", count: 1 }],
       execution: { target: "e2b-desktop" },
       scenario: { mode: "live" },
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: 9100, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: 9100, recipients: [{ lane: "user", address: "user@example.test" }] } }
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -67,7 +67,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       kind: "fake",
       injectEnv: "RESEND_API_URL",
       port: 9100,
-      recipients: [{ lane: "patient", address: "patient@example.test" }]
+      recipients: [{ lane: "user", address: "user@example.test" }]
     });
   });
 

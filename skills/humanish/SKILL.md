@@ -1,6 +1,6 @@
 ---
 name: humanish
-description: Install and configure Humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
+description: Install and configure Humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email or SMS an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
 ---
 
 # Humanish CLI
@@ -165,6 +165,33 @@ npx humanish lab inspect first-run
 npx humanish watch first-run
 npx humanish lab run first-run --json --no-open
 ```
+
+### Off-app email/SMS verification (comms)
+
+When a flow is gated behind an email or SMS the app itself SENDS — a signup
+verification link, a one-time code, a magic link — add a `comms:` block. The
+harness redirects the app's email-API sends into a catch INSIDE the sandbox (no
+mail leaves the machine), gives the persona a synthetic inbox to open and click
+through, and writes a digest-only `humanish.comms-thread.v1` evidence artifact (no
+raw address/link/code persists). Reach for this whenever a persona must read mail
+the app sent it to finish a step.
+
+```yaml
+comms:
+  email:
+    injectEnv: RESEND_API_URL      # adopter-named: whatever env var YOUR app reads for its
+                                   # email-API base URL. The harness sets it to the in-sandbox
+                                   # catch — do NOT also list it in subject.env.
+    recipients:
+      - lane: lane-01              # the actor lane that signs up
+        address: user@example.test # the literal address the app emails (what the persona uses)
+```
+
+The app keeps calling its email API normally (Resend/SendGrid-shaped, or a custom
+profile); only the base URL is redirected. Works on the clone/local-tree route and
+the concurrent shared-world route. It needs `python3` in the subject sandbox (the
+stock E2B desktop has it). See `docs/contracts/schemas.md` for the full `comms:`
+shape and `humanish <cmd> --help` for run flags — this skill does not restate them.
 
 ## First Proof Run
 

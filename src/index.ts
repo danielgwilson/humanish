@@ -63,22 +63,12 @@ export type {
   BrowserLabScoringContext
 } from "./adapter-extension.js";
 export type { RedactionHooks } from "./redaction.js";
-// Addressed comms bus (#297): fake email/SMS inboxes + a VENDOR-NEUTRAL email-API catch that
-// redirects an API-first app into the fake bus with one env var (Resend-/SendGrid-compatible via
-// pluggable profiles, no named vendor dependency). Real (provider-backed) adapters implement the
-// same CommsChannel port.
-export { FakeInbox, extractLinks, extractOtpCodes } from "./comms-fake-inbox.js";
-export type { FakeInboxOptions } from "./comms-fake-inbox.js";
-export { DEFAULT_EMAIL_PROFILES, genericEmailProfile, sendgridEmailProfile, startEmailCatchServer } from "./comms-email-catch.js";
-export type { EmailCatchOptions, EmailCatchServer, EmailSendProfile, NormalizedSend } from "./comms-email-catch.js";
-// In-sandbox deployment of the catch + the host-side delivery bridge (the config-block core: the
-// listener must live inside the subject sandbox, since 127.0.0.1 from the app is the sandbox loopback).
-export { DEFAULT_SANDBOX_CATCH_PORT, SANDBOX_CATCH_SCRIPT, collectCommsThread, deployCommsCatch, drainCommsCatch, refreshInboxSurface, routeCapturedSends, writeInboxSurface } from "./comms-sandbox-catch.js";
-export type { CommsThreadCollection, DeployCommsCatchOptions, DeployedCommsCatch, InboxSurfaceRecipient, RawCapturedSend } from "./comms-sandbox-catch.js";
-export { INBOX_SURFACE_CSP, buildInboxSurface, buildOriginMap, inboxMessageJson, pickVerifyUrl, renderInboxList, renderInboxMessage, renderInboxMessageSynth, rewriteOrigin } from "./comms-inbox.js";
-export type { InboxRenderOptions, InboxSurfaceFile, OriginMap } from "./comms-inbox.js";
-export { COMMS_THREAD_SCHEMA, buildCommsThreadArtifact } from "./comms-evidence.js";
-export type { CommsThreadArtifact, CommsThreadEntry } from "./comms-evidence.js";
+// Off-app comms (#297) — the LIBRARY extension surface only. The capability is driven CLI-first via a
+// lab `comms:` block (see the humanish skill + lab schema), so the catch, drain, inbox-render, and
+// origin-rewrite MACHINERY is internal to that route and intentionally NOT re-exported. What IS public:
+// the `CommsChannel` port (implement it for a custom/real provider-backed adapter), its reference
+// in-process adapter (`FakeInbox`), and the digest-only evidence types (to read a `humanish.comms-thread.v1`
+// artifact from a run bundle).
 export type {
   CommsAddress,
   CommsChannel,
@@ -87,6 +77,10 @@ export type {
   InboundRaw,
   OutboundMessage
 } from "./comms-types.js";
+export { FakeInbox } from "./comms-fake-inbox.js";
+export type { FakeInboxOptions } from "./comms-fake-inbox.js";
+export { COMMS_THREAD_SCHEMA } from "./comms-evidence.js";
+export type { CommsThreadArtifact, CommsThreadEntry } from "./comms-evidence.js";
 export {
   DESKTOP_RATE,
   MODEL_RATES,

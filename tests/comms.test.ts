@@ -3,12 +3,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FakeInbox, extractLinks, extractOtpCodes } from "../src/comms-fake-inbox.js";
 import { startEmailCatchServer, type EmailCatchServer } from "../src/comms-email-catch.js";
 
-// A realistic patient-signup verification email (magic link + OTP) — the exact thing the north-star
-// use case needs. Used across the extraction + end-to-end tests. No external app/repo involved.
+// A realistic user-signup verification email (magic link + OTP) — the exact shape an app's signup
+// flow emails. Used across the extraction + end-to-end tests. No external app/repo involved.
 const VERIFICATION_HTML = [
   "<html><body>",
-  "<h1>Welcome to Example Health</h1>",
-  "<p>Confirm your email address to finish creating your patient account.</p>",
+  "<h1>Welcome to Example App</h1>",
+  "<p>Confirm your email address to finish creating your user account.</p>",
   '<p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify my email</a></p>',
   "<p>Or enter this verification code: <b>481920</b></p>",
   "<p style='color:#999'>If you did not request this, ignore this message. (ref 2026)</p>",
@@ -44,26 +44,26 @@ describe("comms extraction (magic link + OTP from a verification email)", () => 
 describe("FakeInbox (the in-process bus)", () => {
   it("provisions a stable, digest-bearing address per actor (raw value stays separate from the digest)", async () => {
     const bus = new FakeInbox({ now: () => 1000 });
-    const a = await bus.provision("patient-07");
-    expect(a.value).toBe("patient-07@example.test");
+    const a = await bus.provision("user-07");
+    expect(a.value).toBe("user-07@example.test");
     expect(a.channel).toBe("email");
     expect(a.digest).toMatch(/^[0-9a-f]{16}$/);
-    expect(a.digest).not.toContain("patient-07"); // the digest is the only persist-safe form
-    expect(await bus.provision("patient-07")).toEqual(a); // idempotent per actor
+    expect(a.digest).not.toContain("user-07"); // the digest is the only persist-safe form
+    expect(await bus.provision("user-07")).toEqual(a); // idempotent per actor
   });
 
   it("provisionAddress registers an explicit declared recipient address (idempotent by value) that deliverRaw resolves", async () => {
     const bus = new FakeInbox();
-    // A declared local part distinct from what provision("patient") would auto-generate — proving an
+    // A declared local part distinct from what provision("user") would auto-generate — proving an
     // ARBITRARY declared address is honored (not just the default actor-id-keyed one).
-    const a = await bus.provisionAddress("patient", "patient-07@example.test");
-    expect(a.value).toBe("patient-07@example.test");
-    expect(a.actorId).toBe("patient");
+    const a = await bus.provisionAddress("user", "user-07@example.test");
+    expect(a.value).toBe("user-07@example.test");
+    expect(a.actorId).toBe("user");
     expect(a.digest).toMatch(/^[0-9a-f]{16}$/);
     // Idempotent by value (case-insensitive): re-declaring returns the SAME inbox (never resets its queue).
-    await bus.deliverRaw({ from: "no-reply@example.test", to: ["patient-07@example.test"], subject: "hi", body: "<a href=\"https://app.example.test/verify?t=1\">v</a>" });
-    const again = await bus.provisionAddress("patient", "PATIENT-07@example.test");
-    expect(again.value).toBe("patient-07@example.test");
+    await bus.deliverRaw({ from: "no-reply@example.test", to: ["user-07@example.test"], subject: "hi", body: "<a href=\"https://app.example.test/verify?t=1\">v</a>" });
+    const again = await bus.provisionAddress("user", "USER-07@example.test");
+    expect(again.value).toBe("user-07@example.test");
     expect(await bus.poll(again)).toHaveLength(1); // queue preserved across the idempotent re-declare
     // The app's send to a DIFFERENT address is dropped (only the declared literal resolves).
     expect(await bus.deliverRaw({ from: "no-reply@example.test", to: ["someone-else@example.test"], body: "hi" })).toHaveLength(0);
@@ -72,25 +72,25 @@ describe("FakeInbox (the in-process bus)", () => {
   it("routes an INGRESS delivery to the addressed inbox and extracts link + code; poll is since-scoped", async () => {
     let clock = 100;
     const bus = new FakeInbox({ now: () => clock });
-    const patient = await bus.provision("patient-07");
+    const user = await bus.provision("user-07");
 
     clock = 200;
     const delivered = await bus.deliverRaw({
-      from: "Example Health <no-reply@example.test>",
-      to: [patient.value],
+      from: "Example App <no-reply@example.test>",
+      to: [user.value],
       subject: "Confirm your email",
       body: VERIFICATION_HTML
     });
     expect(delivered).toHaveLength(1);
-    expect(delivered[0]!.to.map((t) => t.actorId)).toEqual(["patient-07"]);
+    expect(delivered[0]!.to.map((t) => t.actorId)).toEqual(["user-07"]);
     expect(delivered[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(delivered[0]!.codes).toEqual(["481920"]);
 
     // The persona polls its inbox and sees the new message.
-    expect(await bus.poll(patient)).toHaveLength(1);
+    expect(await bus.poll(user)).toHaveLength(1);
     // …but not messages at-or-before a `since` boundary.
-    expect(await bus.poll(patient, 200)).toHaveLength(0);
-    expect(await bus.poll(patient, 199)).toHaveLength(1);
+    expect(await bus.poll(user, 200)).toHaveLength(0);
+    expect(await bus.poll(user, 199)).toHaveLength(1);
   });
 
   it("drops a delivery to an unprovisioned recipient (no inbox to deliver to); broadcast hits all matched", async () => {
@@ -125,7 +125,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
 
   it("captures a flat-shape (Resend-compatible) verification email via POST /emails and delivers it", async () => {
     const bus = new FakeInbox();
-    const patient = await bus.provision("patient-07");
+    const user = await bus.provision("user-07");
     server = await startEmailCatchServer(bus, { idFor: (n) => `test-${n}` });
 
     // Exactly what an app does when its email-API base URL is pointed at us via one env var: a
@@ -134,8 +134,8 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
       method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer dummy-api-key" },
       body: JSON.stringify({
-        from: "Example Health <no-reply@example.test>",
-        to: [patient.value],
+        from: "Example App <no-reply@example.test>",
+        to: [user.value],
         subject: "Confirm your email",
         html: VERIFICATION_HTML
       })
@@ -143,19 +143,19 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: "test-1" });
 
-    const inbox = await bus.poll(patient);
+    const inbox = await bus.poll(user);
     expect(inbox).toHaveLength(1);
     expect(inbox[0]!.from).toContain("example.test");
     expect(inbox[0]!.subject).toBe("Confirm your email");
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(inbox[0]!.codes).toEqual(["481920"]);
     expect(server.received).toHaveLength(1);
-    expect(server.received[0]!.to).toEqual([patient.value]);
+    expect(server.received[0]!.to).toEqual([user.value]);
   });
 
   it("is genuinely vendor-neutral: the SAME server also captures SendGrid's nested POST /v3/mail/send shape", async () => {
     const bus = new FakeInbox();
-    const patient = await bus.provision("patient-08");
+    const user = await bus.provision("user-08");
     server = await startEmailCatchServer(bus);
 
     // A structurally DIFFERENT wire shape (nested personalizations + typed content) — not a rename.
@@ -163,9 +163,9 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        from: { email: "no-reply@example.test", name: "Example Health" },
+        from: { email: "no-reply@example.test", name: "Example App" },
         subject: "Confirm your email",
-        personalizations: [{ to: [{ email: patient.value, name: "Patient Eight" }] }],
+        personalizations: [{ to: [{ email: user.value, name: "User Eight" }] }],
         content: [
           { type: "text/plain", value: "code 903117" },
           { type: "text/html", value: VERIFICATION_HTML }
@@ -175,7 +175,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     expect(res.status).toBe(202); // SendGrid-faithful response
     expect(res.headers.get("x-message-id")).toBeTruthy();
 
-    const inbox = await bus.poll(patient);
+    const inbox = await bus.poll(user);
     expect(inbox).toHaveLength(1);
     // The HTML content part was chosen over text/plain → the magic link + code come from the HTML.
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
@@ -184,7 +184,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
 
   it("resolves a 'Name <email>' recipient, handles the batch endpoint, and 404s unknown paths", async () => {
     const bus = new FakeInbox();
-    const patient = await bus.provision("patient-09");
+    const user = await bus.provision("user-09");
     server = await startEmailCatchServer(bus);
 
     const health = await fetch(`${server.url}/health`);
@@ -197,19 +197,19 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify([
-        { from: "app", to: [`Patient Nine <${patient.value}>`], subject: "code", html: "Your code is 771002" }
+        { from: "app", to: [`User Nine <${user.value}>`], subject: "code", html: "Your code is 771002" }
       ])
     });
     expect(batch.status).toBe(200);
     expect((await batch.json() as { data: unknown[] }).data).toHaveLength(1);
-    expect((await bus.poll(patient))[0]!.codes).toEqual(["771002"]);
+    expect((await bus.poll(user))[0]!.codes).toEqual(["771002"]);
 
     expect((await fetch(`${server.url}/unknown`)).status).toBe(404);
   });
 
   it("returns a bad-request (not a fabricated success id) for an empty/undeliverable send, and tolerates malformed nested payloads", async () => {
     const bus = new FakeInbox();
-    await bus.provision("patient-10");
+    await bus.provision("user-10");
     server = await startEmailCatchServer(bus);
 
     // Empty body → nothing deliverable → 422, not { id: "...000000" }.

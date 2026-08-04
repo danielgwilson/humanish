@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.30.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.31.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -49,6 +49,7 @@ workflow without leaking private upstream truth into core.
 | Adapter score | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
 | Adapter artifact | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
 | Shared-world evidence | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
+| Comms thread | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of DIGESTS only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest |
 | Serve result | `humanish.serve-result.v1` (`src/observer-serve.ts` is authoritative) | none (command result envelope; see Serve Result below) |
 | Serve control plane | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1) | none |
 
@@ -242,6 +243,22 @@ A lab is a composition over code primitives, not a hardcoded kind:
   only command-scoped). The scripted-browser route is loopback-only and rejects
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
+- `comms` (clone/local-tree + shared-world computer-use routes; #297): off-app
+  email/SMS the app itself SENDS, made a persona-driven testable surface.
+  `comms.email` = `{ kind: fake, injectEnv, port?, recipients?, linkOrigin? }`.
+  `injectEnv` is the ADOPTER-NAMED env var the app reads for its email-API base
+  URL (e.g. `RESEND_API_URL`); the harness sets it to an in-sandbox catch (so it
+  is NOT declared in `subject.env`) that captures the app's sends without touching
+  the internet. `kind` must be `fake` (`real`/provider-backed is rejected until
+  implemented); `port` ≤ 65534 (the catch reserves `port+1` for the read-only
+  inbox listener the shared-world route getHost-exposes); `recipients[]` =
+  `{ lane, address? }` declare the literal address each lane's app emails (so the
+  drain can match it, and the persona is told an inbox URL to read + click);
+  `linkOrigin` is an optional operator-declared origin the app bakes into links
+  when it differs from the serve origin. Captured mail is drained into a
+  digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link DIGESTS +
+  an OTP COUNT — no raw address/link/code persists). Requires `python3` in the
+  subject sandbox (the stock E2B desktop template has it).
 
 Lab backends report results in their own schemas (`humanish.run-result.v1`,
 `humanish.oss-lab-result.v1`, `humanish.oss-meta-lab-result.v1`,
