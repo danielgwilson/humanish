@@ -55,6 +55,7 @@ import {
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, deployCommsCatch } from "./comms-sandbox-catch.js";
 import {
   DEFAULT_DEVICE_PRESET,
   isDevicePresetName,
@@ -1709,6 +1710,15 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
   const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
+  // Off-app comms (#297): on an in-sandbox subject route, redirect the app's email-API sends into an
+  // in-sandbox catch (loopback) so its verification mail is CAPTURED, not sent to the internet. Gated
+  // ENTIRELY on config.comms — no comms declared → zero change. The base-URL env is injected at
+  // sandbox-create (below, so the app reads it at boot); the catch is started right after create.
+  const commsEmail = (cloneRoute || localTreeRoute) ? config.comms?.email : undefined;
+  const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
+  const commsEnv: Record<string, string> = commsEmail && commsPort !== undefined
+    ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
+    : {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
@@ -1778,8 +1788,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       },
       // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model drives
       // from outside). The SUBJECT's declared env NAMES are provisioned here on the clone route.
-      ...(subjectEnvNames.length > 0
-        ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
+      ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
+        ? { envs: { ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])), ...commsEnv } }
         : {}),
       resolution: spec.resolution,
       dpi: 96,
@@ -1791,6 +1801,16 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 
     if (deps.hooks.prepareDesktop) {
       await deps.hooks.prepareDesktop(desktop, { laneId: spec.laneId, laneIndex: spec.laneIndex, laneCount: deps.laneCount });
+    }
+
+    // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL (injected
+    // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
+    // catch up is a setup failure (fail closed) rather than silently sending real mail.
+    if (commsEmail && commsPort !== undefined) {
+      const deployedComms = await deployCommsCatch(desktop, { port: commsPort, requestTimeoutMs: deps.requestTimeoutMs });
+      if (!deployedComms.ready) {
+        throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
+      }
     }
 
     // Per-lane geometry assertion (fail-closed) — the device claim is verified in-sandbox.
