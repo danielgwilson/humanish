@@ -2497,6 +2497,8 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   if (raw.port !== undefined) {
     const port = posInt(raw.port);
     if (port === undefined) return invalid("`comms.email.port` must be a positive integer.");
+    // Cap at 65534: the catch reserves port+1 for the read-only inbox listener on the shared-world route.
+    if (port > 65_534) return invalid("`comms.email.port` must be ≤ 65534 (the catch reserves port+1 for the inbox listener).");
     email.port = port;
   }
   if (raw.recipients !== undefined) {
