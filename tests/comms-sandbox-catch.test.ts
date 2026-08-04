@@ -13,6 +13,7 @@ import {
   collectCommsThread,
   deployCommsCatch,
   drainCommsCatch,
+  refreshInboxSurface,
   routeCapturedSends,
   type RawCapturedSend
 } from "../src/comms-sandbox-catch.js";
@@ -231,6 +232,36 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     expect(strangerCollected.artifact).toBeUndefined();
     expect(strangerCollected.captured).toBe(1); // captured but unmatched → caller surfaces a warning
     expect(strangerCollected.matched).toBe(0);
+  });
+});
+
+describe("comms-sandbox-catch: refreshInboxSurface (mid-run render cycle)", () => {
+  it("drains incrementally into the surface channel, renders on new mail, advances the cursor, idles otherwise", async () => {
+    const channel = new FakeInbox();
+    const patient = await channel.provisionAddress("patient", "patient-07@example.test");
+    const captured =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+    const nd = { value: "" };
+    const { desktop, files } = makeFakeDesktop((cmd) => (cmd.startsWith("cat ") ? { stdout: nd.value } : undefined));
+    const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
+
+    // Empty catch → no render, cursor unchanged.
+    let r = await refreshInboxSurface({ desktop, deployed, channel, inboxes: [patient], cursor: 0 });
+    expect(r).toEqual({ cursor: 0, rendered: false });
+    expect(Object.keys(files)).toHaveLength(0);
+
+    // Mail arrives → render + cursor advances; the served files were written into the surface dir.
+    nd.value = captured;
+    r = await refreshInboxSurface({ desktop, deployed, channel, inboxes: [patient], cursor: 0 });
+    expect(r).toEqual({ cursor: 1, rendered: true });
+    expect(Object.keys(files)).toContain("/tmp/x/surface/inbox/index");
+    expect(Object.keys(files)).toContain("/tmp/x/surface/api/inbox/latest");
+
+    // Next tick from the advanced cursor sees no NEW sends → no render (idle ticks are cheap).
+    const before = Object.keys(files).length;
+    r = await refreshInboxSurface({ desktop, deployed, channel, inboxes: [patient], cursor: r.cursor });
+    expect(r).toEqual({ cursor: 1, rendered: false });
+    expect(Object.keys(files).length).toBe(before);
   });
 });
 

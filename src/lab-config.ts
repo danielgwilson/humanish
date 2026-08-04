@@ -586,6 +586,12 @@ export interface LabCommsEmail {
   injectEnv: string;
   /** Fixed in-sandbox loopback port the catch listens on (default 8025). Known before sandbox create. */
   port?: number;
+  /** Optional escape hatch: the exact absolute origin the app-under-test bakes into its email verify
+   *  links, when that differs from the serve origin (e.g. an app configured with an absolute
+   *  APP_URL/NEXT_PUBLIC_BASE_URL). The harness cannot infer it, so the operator declares it; it is
+   *  prepended to the inbox link-origin rewrite so the persona's clicked link resolves to a reachable
+   *  host. Omit when the app emits loopback links (the default derivation covers those). */
+  linkOrigin?: string;
   /** Declare each lane's inbox address the app-under-test sends to, so the teardown drain can MATCH
    *  and evidence captured mail (an email-gated allowlist can also pre-seed it). An entry without
    *  `address` reserves the lane for the persona inbox surface (a later slice, which assigns a
@@ -2504,6 +2510,16 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
       recipients.push({ lane, ...(address === undefined ? {} : { address }) });
     }
     email.recipients = recipients;
+  }
+  if (raw.linkOrigin !== undefined) {
+    const linkOrigin = str(raw.linkOrigin);
+    if (linkOrigin === undefined) return invalid("`comms.email.linkOrigin` must be a string.");
+    try {
+      new URL(linkOrigin);
+    } catch {
+      return invalid(`\`comms.email.linkOrigin\` must be an absolute URL origin (got "${linkOrigin}").`);
+    }
+    email.linkOrigin = linkOrigin;
   }
   return { ok: true, value: email };
 }

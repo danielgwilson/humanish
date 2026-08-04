@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FakeInbox } from "../src/comms-fake-inbox.js";
 import {
   buildInboxSurface,
+  buildOriginMap,
   inboxMessageJson,
   pickVerifyUrl,
   renderInboxList,
@@ -44,6 +45,35 @@ describe("comms-inbox: rewriteOrigin + pickVerifyUrl", () => {
     expect(pickVerifyUrl(["https://a.test/home", "https://a.test/confirm?t=1"])).toBe("https://a.test/confirm?t=1");
     expect(pickVerifyUrl(["https://a.test/x", "https://a.test/y"])).toBe("https://a.test/x");
     expect(pickVerifyUrl([])).toBeUndefined();
+  });
+});
+
+describe("comms-inbox: buildOriginMap", () => {
+  it("maps the serve origin + loopback aliases to the reachable origin (shared-world: loopback → getHost)", () => {
+    const map = buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000/", reachableBaseUrl: "https://3000-abc.e2b.app" });
+    expect(map).toEqual([
+      ["http://127.0.0.1:3000", "https://3000-abc.e2b.app"],
+      ["http://localhost:3000", "https://3000-abc.e2b.app"],
+      ["http://0.0.0.0:3000", "https://3000-abc.e2b.app"]
+    ]);
+  });
+
+  it("drops the identity row when serve origin == reachable origin (CUA same-sandbox), keeps alias rows", () => {
+    const map = buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: "http://127.0.0.1:3000/app" });
+    expect(map).toEqual([
+      ["http://localhost:3000", "http://127.0.0.1:3000"],
+      ["http://0.0.0.0:3000", "http://127.0.0.1:3000"]
+    ]);
+  });
+
+  it("prepends an operator-declared linkOrigin (matched first)", () => {
+    const map = buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: "https://x-abc.e2b.app", linkOrigin: "https://app.example.test" });
+    expect(map[0]).toEqual(["https://app.example.test", "https://x-abc.e2b.app"]);
+  });
+
+  it("returns [] when there is no valid reachable origin", () => {
+    expect(buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: undefined })).toEqual([]);
+    expect(buildOriginMap({ reachableBaseUrl: "not a url" })).toEqual([]);
   });
 });
 

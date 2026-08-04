@@ -55,8 +55,9 @@ import {
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
-import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
 import { FakeInbox } from "./comms-fake-inbox.js";
+import { buildOriginMap } from "./comms-inbox.js";
 import type { CommsAddress } from "./comms-types.js";
 import {
   DEFAULT_DEVICE_PRESET,
@@ -71,6 +72,7 @@ import {
   MAX_CUA_LANES,
   subjectStateInvalidReason,
   type LabActorLane,
+  type LabCommsEmail,
   type LabConfig,
   type LabDesktopBrowser,
   type LabStateStepWhen,
@@ -562,6 +564,28 @@ export function composeLaneInstructions(args: {
     }
   };
 }
+
+/** Runtime-inject the persona inbox instruction into a lane's prompt (#297 slice B). The inbox URL is a
+ *  runtime loopback/getHost address (not secret), so — mirroring the lobby-code runtime injection — this
+ *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
+ *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
+export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string): CuaLaneSpec {
+  return {
+    ...spec,
+    instructions: `${spec.instructions}\n\nEmail inbox: when the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${inboxUrl} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there.`
+  };
+}
+
+/** True when a lane has a declared comms recipient WITH an address, so the drain can actually match the
+ *  mail the persona will be told to read. Gates the inbox instruction to lanes that can receive mail —
+ *  a lane told to check an inbox it can never receive into would just stall. */
+export function laneHasInboxRecipient(commsEmail: LabCommsEmail, laneId: string): boolean {
+  return (commsEmail.recipients ?? []).some((recipient) => recipient.lane === laneId && recipient.address !== undefined);
+}
+
+/** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
+ *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
+const INBOX_SURFACE_CADENCE_MS = 2500;
 
 /**
  * The narrowest browser WINDOW Chrome/Chromium will render on the E2B desktop. Chrome refuses to
@@ -1729,6 +1753,26 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const commsEnv: Record<string, string> = commsEmail && commsPort !== undefined
     ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
     : {};
+  // Persona inbox SURFACE (#297 slice B): the loopback URL the persona opens to read captured mail; the
+  // origin-rewrite map (identity on this same-sandbox route, but covers localhost/0.0.0.0 alias skew + an
+  // operator-declared linkOrigin); and a disposable background loop that renders the surface DURING the
+  // session so the inbox is live when the persona checks. The surface uses its OWN FakeInbox + cursor,
+  // independent of the teardown evidence drain (two readers of the append-only NDJSON — no double-count).
+  const commsInboxUrl = commsEmail && commsPort !== undefined ? `http://127.0.0.1:${commsPort}/inbox` : undefined;
+  const commsOriginMap = commsEmail
+    ? buildOriginMap({
+        ...(config.subject.serve?.url === undefined ? {} : { internalServeUrl: config.subject.serve.url }),
+        reachableBaseUrl: targetUrl,
+        ...(commsEmail.linkOrigin === undefined ? {} : { linkOrigin: commsEmail.linkOrigin })
+      })
+    : [];
+  let surfaceChannel: FakeInbox | undefined;
+  const surfaceInboxes: CommsAddress[] = [];
+  let surfaceCursor = 0;
+  let surfaceDisposed = false;
+  let releaseSurface: () => void = () => {};
+  const surfaceDispose = new Promise<void>((resolve) => { releaseSurface = resolve; });
+  let surfaceLoop: Promise<void> | undefined;
   const warnings: string[] = [];
   const screenshots: string[] = [];
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
@@ -1821,6 +1865,47 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       if (!deployedComms.ready) {
         throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
       }
+      // Stand up the live inbox surface: provision the declared-recipient inboxes on a dedicated surface
+      // channel, then start a background loop that drains-and-renders on a cadence so the persona sees new
+      // mail mid-session. Disposed at the TOP of the finally, before the teardown evidence drain.
+      surfaceChannel = new FakeInbox();
+      for (const recipient of commsEmail.recipients ?? []) {
+        if (recipient.address !== undefined) surfaceInboxes.push(await surfaceChannel.provisionAddress(recipient.lane, recipient.address));
+      }
+      // Write the EMPTY inbox once up front so the persona's /inbox always resolves to the "No messages
+      // yet." page — never a bare 404 — the instant it navigates there, even before any mail arrives OR if
+      // the app sends to an address no declared recipient matches (the loop only re-renders on new mail).
+      await writeInboxSurface(desktop, deployedComms.surfaceDir, [], { originMap: commsOriginMap, requestTimeoutMs: deps.requestTimeoutMs });
+      const deployedRef = deployedComms;
+      const surfaceChannelRef = surfaceChannel;
+      surfaceLoop = (async () => {
+        // Render-first (so even a short session gets a populated inbox), then refresh on a cadence. The
+        // cadence uses a REAL timer, NOT the injected instant clock: this loop is unbounded, so an instant
+        // sleep would busy-spin and starve the session's own timers. The wait is interruptible by
+        // surfaceDispose (and the timer cleared) so teardown never blocks for a full cadence.
+        for (;;) {
+          try {
+            const refreshed = await refreshInboxSurface({
+              desktop,
+              deployed: deployedRef,
+              channel: surfaceChannelRef,
+              inboxes: surfaceInboxes,
+              cursor: surfaceCursor,
+              originMap: commsOriginMap,
+              requestTimeoutMs: deps.requestTimeoutMs
+            });
+            surfaceCursor = refreshed.cursor;
+          } catch {
+            // Never throw into the render loop; the teardown drain + by-id teardown must still run.
+          }
+          if (surfaceDisposed) break;
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, INBOX_SURFACE_CADENCE_MS);
+            void surfaceDispose.then(() => { clearTimeout(timer); resolve(); });
+          });
+          if (surfaceDisposed) break;
+        }
+      })();
     }
 
     // Per-lane geometry assertion (fail-closed) — the device claim is verified in-sandbox.
@@ -1948,7 +2033,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       const capModelId = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
       const maxUsd = config.execution?.caps?.maxUsd;
       const sessionOptions: CuaActorSessionOptions = {
-        instructions: spec.instructions,
+        // Tell the persona where its inbox is — but only when comms is live AND this lane has a declared
+        // recipient it can actually receive mail into (else it would stall on an inbox that stays empty).
+        instructions: commsEmail && commsInboxUrl && deployedComms?.ready && laneHasInboxRecipient(commsEmail, spec.laneId)
+          ? withInboxMission(spec, commsInboxUrl).instructions
+          : spec.instructions,
         persona: spec.persona,
         timeoutMs: deps.timeoutMs,
         openai: {
@@ -1994,6 +2083,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
+    // Stop the mid-run inbox-surface loop FIRST — before the teardown evidence drain below — so the two
+    // `cat`s never overlap and the final surface state is deterministic. A surface failure can never
+    // block teardown (the loop body is fully try/caught and this await is on its already-caught promise).
+    surfaceDisposed = true;
+    releaseSurface();
+    if (surfaceLoop) await surfaceLoop.catch(() => undefined);
     if (!provisioned) {
       signal(false);
     }

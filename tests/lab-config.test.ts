@@ -85,6 +85,12 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     expect(parseLabConfig({ ...base, comms: { email: { kind: "fake" } } }).ok).toBe(false);
     expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "not a var" } } }).ok).toBe(false);
     expect(parseLabConfig({ ...base, comms: { email: { kind: "real", injectEnv: "RESEND_API_URL" } } }).ok).toBe(false);
+
+    // linkOrigin escape hatch: a valid absolute origin parses; a non-URL rejects.
+    const withOrigin = parseLabConfig({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", linkOrigin: "https://app.example.test" } } });
+    expect(withOrigin.ok).toBe(true);
+    if (withOrigin.ok) expect(withOrigin.config.comms?.email?.linkOrigin).toBe("https://app.example.test");
+    expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", linkOrigin: "not a url" } } }).ok).toBe(false);
   });
 
   it("accepts a free-form actor.type on non-app-url routes (registry-resolved only where consumed)", () => {

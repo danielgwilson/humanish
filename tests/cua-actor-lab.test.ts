@@ -1012,6 +1012,80 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].artifacts.find((a: { path: string }) => a.path === "comms/thread.json")).toBeUndefined();
   });
 
+  it("comms:email:fake — tells the persona its inbox URL and renders the LIVE surface mid-run", async () => {
+    const commsPort = 8025;
+    const base = cloneCuaConfig();
+    // Recipient lane must match the N=1 lane id (lane-01) for the inbox instruction to be injected.
+    const config: LabConfig = {
+      ...base,
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "patient@example.test" }] } }
+    };
+    const verificationHtml = '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const capturedNdjson =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+    let t = 0;
+    let seenInstructions = "";
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          seenInstructions = options.instructions;
+          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+        },
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    // The persona actually received the inbox URL in its prompt (loopback, same sandbox as its browser).
+    expect(seenInstructions).toContain(`http://127.0.0.1:${commsPort}/inbox`);
+    // The live inbox surface was rendered into the sandbox DURING the run (the mid-run loop wrote the list).
+    expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
+  });
+
+  it("comms:email:fake — writes an EMPTY inbox up front so /inbox never 404s before mail arrives", async () => {
+    const commsPort = 8025;
+    const base = cloneCuaConfig();
+    const config: LabConfig = {
+      ...base,
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "patient@example.test" }] } }
+    };
+    let t = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: "" }; // NO mail captured
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    // The empty inbox list was written up front, so a persona opening /inbox gets "No messages yet.", not a 404.
+    const write = sandbox.calls.find(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"));
+    expect(write).toBeDefined();
+    expect(String(write![2])).toContain("No messages yet");
+  });
+
   it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {
     const config = cloneCuaConfig();
     const keepConfig: LabConfig = { ...config, subject: { ...config.subject, clone: { ...config.subject.clone, keep: true } } };
