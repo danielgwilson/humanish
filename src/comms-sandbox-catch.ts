@@ -9,6 +9,7 @@
 
 import type { CommsAddress, CommsChannel, CommsMessage } from "./comms-types.js";
 import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./comms-evidence.js";
+import { buildInboxSurface, type InboxRenderOptions } from "./comms-inbox.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./comms-email-catch.js";
 import { startDetachedProcess, type DetachedTimers } from "./e2b-detached.js";
 import type { E2BDesktopSandbox } from "./e2b-desktop-launch.js";
@@ -33,15 +34,31 @@ function shq(value: string): string {
  */
 export const SANDBOX_CATCH_SCRIPT = [
   'import { createServer } from "node:http";',
-  'import { appendFileSync, mkdirSync } from "node:fs";',
+  'import { appendFileSync, mkdirSync, readFileSync } from "node:fs";',
   'import { dirname } from "node:path";',
   'const port = Number(process.argv[2] || 8025);',
   'const outFile = process.argv[3] || "/tmp/humanish-comms/deliveries.ndjson";',
+  // argv[4] is the dir the HOST renders the inbox-surface files into (host-side typed rendering; this
+  // server only serves them statically), defaulting to a `surface` sibling of the deliveries file.
+  'const servedDir = process.argv[4] || (dirname(outFile) + "/surface");',
   'try { mkdirSync(dirname(outFile), { recursive: true }); } catch {}',
   'const MAX = 5 * 1024 * 1024;',
   'createServer((req, res) => {',
   '  const path = (req.url || "/").split("?")[0];',
   '  if (req.method === "GET" && (path === "/" || path === "/health")) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: true, service: "humanish-comms-catch" })); return; }',
+  '  if (req.method === "GET" && (path === "/inbox" || path.indexOf("/inbox/") === 0 || path === "/api/inbox" || path.indexOf("/api/inbox/") === 0)) {',
+  '    let rel; try { rel = decodeURIComponent(path); } catch { res.writeHead(400); res.end(); return; }',
+  '    if (rel.indexOf("..") !== -1 || rel.indexOf("\\0") !== -1) { res.writeHead(400); res.end(); return; }',
+  '    let data = null;',
+  '    try { data = readFileSync(servedDir + rel); } catch { try { data = readFileSync(servedDir + rel + "/index"); } catch { data = null; } }',
+  '    if (data === null) { res.writeHead(404, { "content-type": "text/html; charset=utf-8" }); res.end("<p>message not found</p>"); return; }',
+  '    const isApi = rel.indexOf("/api/") === 0;',
+  '    const headers = { "content-type": isApi ? "application/json; charset=utf-8" : "text/html; charset=utf-8" };',
+  // The load-bearing XSS protection: a browser-enforced CSP forbidding all script on the surface page,
+  // so the app-authored (untrusted) email HTML we render cannot run script or reroot navigation.
+  '    if (!isApi) { headers["content-security-policy"] = "default-src \'self\'; script-src \'none\'; object-src \'none\'; base-uri \'none\'; frame-src \'none\'; img-src * data:; style-src \'unsafe-inline\'; font-src * data:"; }',
+  '    res.writeHead(200, headers); res.end(data); return;',
+  '  }',
   '  if (req.method !== "POST") { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "not found" })); return; }',
   '  let size = 0; const chunks = [];',
   '  req.on("data", (c) => { size += c.length; if (size > MAX) { req.destroy(); } else { chunks.push(c); } });',
@@ -75,6 +92,9 @@ export interface DeployedCommsCatch {
   /** Inject THIS as the app's email-API base URL (e.g. RESEND_API_URL) — the sandbox's own loopback. */
   baseUrl: string;
   deliveriesPath: string;
+  /** In-sandbox dir the HOST renders the persona-facing inbox-surface files into (via writeInboxSurface);
+   *  the catch serves them at /inbox and /api/inbox. */
+  surfaceDir: string;
   /** Whether the catch's /health returned OUR service marker within the readiness budget. Callers MUST
    *  treat `ready === false` as fatal (do not inject baseUrl into a dead catch — the app's sends would
    *  silently fail with nothing captured). */
@@ -127,12 +147,13 @@ export async function deployCommsCatch(
   const requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
   const scriptPath = `${dir}/catch.mjs`;
   const deliveriesPath = `${dir}/deliveries.ndjson`;
+  const surfaceDir = `${dir}/surface`;
 
-  await desktop.commands.run(`mkdir -p ${shq(dir)}`, { requestTimeoutMs });
+  await desktop.commands.run(`mkdir -p ${shq(dir)} ${shq(surfaceDir)}`, { requestTimeoutMs });
   await desktop.files.write(scriptPath, SANDBOX_CATCH_SCRIPT);
   await startDetachedProcess(desktop, {
     name,
-    command: `node ${shq(scriptPath)} ${port} ${shq(deliveriesPath)}`,
+    command: `node ${shq(scriptPath)} ${port} ${shq(deliveriesPath)} ${shq(surfaceDir)}`,
     requestTimeoutMs
   });
   const ready = await catchHealthy(desktop, port, {
@@ -140,7 +161,7 @@ export async function deployCommsCatch(
     requestTimeoutMs,
     ...(options.timers ?? {})
   });
-  return { port, baseUrl: `http://127.0.0.1:${port}`, deliveriesPath, ready };
+  return { port, baseUrl: `http://127.0.0.1:${port}`, deliveriesPath, surfaceDir, ready };
 }
 
 /**
@@ -255,4 +276,31 @@ export async function collectCommsThread(args: {
   if (messages.length === 0) return { captured: sends.length, matched: 0 };
   messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
   return { artifact: buildCommsThreadArtifact(messages), captured: sends.length, matched: messages.length };
+}
+
+/**
+ * Render the persona-facing inbox surface (host-side, typed — see comms-inbox.ts) and write the files
+ * into the sandbox's served dir, so the catch serves a LIVE inbox the persona opens and clicks. Creates
+ * the nested route dirs first; overwrites idempotently, so call it whenever the message set changes
+ * (e.g. after a mid-run drain). Returns the number of files written. Raw content is written INTO the
+ * sandbox only (runtime-only, served to the in-sandbox browser); nothing here persists to the bundle.
+ */
+export async function writeInboxSurface(
+  desktop: E2BDesktopSandbox,
+  surfaceDir: string,
+  messages: CommsMessage[],
+  options: InboxRenderOptions & { requestTimeoutMs?: number } = {}
+): Promise<number> {
+  const files = buildInboxSurface(messages, options);
+  // Create the union of parent dirs (inbox/<id>/synth etc.) in one mkdir before writing.
+  const dirs = new Set<string>([surfaceDir]);
+  for (const file of files) {
+    const slash = file.path.lastIndexOf("/");
+    if (slash > 0) dirs.add(`${surfaceDir}/${file.path.slice(0, slash)}`);
+  }
+  await desktop.commands.run(`mkdir -p ${[...dirs].map(shq).join(" ")}`, { requestTimeoutMs: options.requestTimeoutMs ?? 30_000 });
+  for (const file of files) {
+    await desktop.files.write(`${surfaceDir}/${file.path}`, file.body);
+  }
+  return files.length;
 }

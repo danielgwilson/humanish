@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { FakeInbox } from "../src/comms-fake-inbox.js";
 import { buildCommsThreadArtifact } from "../src/comms-evidence.js";
+import { buildInboxSurface } from "../src/comms-inbox.js";
 import {
   SANDBOX_CATCH_SCRIPT,
   collectCommsThread,
@@ -230,6 +231,76 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     expect(strangerCollected.artifact).toBeUndefined();
     expect(strangerCollected.captured).toBe(1); // captured but unmatched → caller surfaces a warning
     expect(strangerCollected.matched).toBe(0);
+  });
+});
+
+describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script run for real)", () => {
+  let child: ChildProcess | undefined;
+  let dir: string | undefined;
+  afterEach(async () => {
+    child?.kill("SIGKILL");
+    child = undefined;
+    if (dir) await rm(dir, { recursive: true, force: true });
+    dir = undefined;
+  });
+
+  it("GET /inbox, /inbox/latest, /api/inbox/latest serve the rendered files; missing → 404; traversal → 400", async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-"));
+    const scriptPath = path.join(dir, "catch.mjs");
+    const deliveries = path.join(dir, "deliveries.ndjson");
+    const surfaceDir = path.join(dir, "surface");
+    await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
+
+    // Host-render (typed) the surface for one captured verification email with an app-LOOPBACK verify
+    // link, then write the files into surfaceDir exactly as the real host bridge (writeInboxSurface) does.
+    const loopbackEmail = '<p>Hi.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
+    const bus = new FakeInbox();
+    const patient = await bus.provisionAddress("patient", "patient-07@example.test");
+    await bus.deliverRaw({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm your email", body: loopbackEmail });
+    const messages = await bus.poll(patient);
+    const files = buildInboxSurface(messages, { originMap: [["http://127.0.0.1:3000", "https://3000-abc.e2b.app"]] });
+    for (const file of files) {
+      const full = path.join(surfaceDir, file.path);
+      await mkdir(path.dirname(full), { recursive: true });
+      await writeFile(full, file.body, "utf8");
+    }
+
+    const port = 8700 + Math.floor(Math.random() * 200);
+    child = spawn(process.execPath, [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" });
+    const base = `http://127.0.0.1:${port}`;
+    let up = false;
+    for (let i = 0; i < 50 && !up; i += 1) {
+      try { up = (await fetch(`${base}/health`)).ok; } catch { await new Promise((r) => setTimeout(r, 60)); }
+    }
+    expect(up).toBe(true);
+
+    // The persona opens the inbox list…
+    const list = await fetch(`${base}/inbox`);
+    expect(list.status).toBe(200);
+    expect(list.headers.get("content-type")).toContain("text/html");
+    // The surface page carries a browser-enforced, script-forbidding CSP (renders untrusted email HTML).
+    expect(list.headers.get("content-security-policy")).toContain("script-src 'none'");
+    expect(await list.text()).toContain("Confirm your email");
+
+    // …and the latest message: the app's real email, its verify link origin-rewritten to a reachable host.
+    const latest = await fetch(`${base}/inbox/latest`);
+    expect(latest.status).toBe(200);
+    const latestHtml = await latest.text();
+    expect(latestHtml).toContain("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
+    expect(latestHtml).not.toContain("http://127.0.0.1:3000/verify");
+
+    // A programmatic actor hits the JSON twin instead.
+    const apiLatest = await fetch(`${base}/api/inbox/latest`);
+    expect(apiLatest.status).toBe(200);
+    expect(apiLatest.headers.get("content-type")).toContain("application/json");
+    const json = await apiLatest.json() as { verifyUrl: string; otp: string; to: string[] };
+    expect(json.verifyUrl).toBe("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
+    expect(json.otp).toBe("481920");
+    expect(json.to).toEqual(["patient-07@example.test"]);
+
+    // Missing message → 404; a path-traversal attempt is rejected before any read.
+    expect((await fetch(`${base}/inbox/does-not-exist`)).status).toBe(404);
+    expect((await fetch(`${base}/inbox/..%2f..%2f..%2fetc%2fpasswd`)).status).toBe(400);
   });
 });
 
