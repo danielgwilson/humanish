@@ -61,11 +61,11 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
 
   it("captures each POST as an NDJSON line and returns a plausible provider success", async () => {
     dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-"));
-    const scriptPath = path.join(dir, "catch.mjs");
+    const scriptPath = path.join(dir, "catch.py");
     const deliveries = path.join(dir, "deliveries.ndjson");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     const port = 8300 + Math.floor(Math.random() * 400);
-    child = spawn(process.execPath, [scriptPath, String(port), deliveries], { stdio: "ignore" });
+    child = spawn("python3", [scriptPath, String(port), deliveries], { stdio: "ignore" });
 
     // wait for /health
     const base = `http://127.0.0.1:${port}`;
@@ -109,8 +109,8 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     expect(deployed.baseUrl).toBe("http://127.0.0.1:8025"); // inject THIS as the app's email-API base URL
     expect(deployed.ready).toBe(true);
     // The self-contained capture script was written into the sandbox…
-    const written = Object.entries(files).find(([p]) => p.endsWith("catch.mjs"));
-    expect(written?.[1]).toContain('createServer');
+    const written = Object.entries(files).find(([p]) => p.endsWith("catch.py"));
+    expect(written?.[1]).toContain('ThreadingHTTPServer');
     // …and launched detached (setsid) with the fixed port + deliveries path.
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("setsid -f") && c.includes("comms-catch"))).toBe(true);
     // …and probed for readiness on /health.
@@ -277,7 +277,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
 
   it("GET /inbox, /inbox/latest, /api/inbox/latest serve the rendered files; missing → 404; traversal → 400", async () => {
     dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-"));
-    const scriptPath = path.join(dir, "catch.mjs");
+    const scriptPath = path.join(dir, "catch.py");
     const deliveries = path.join(dir, "deliveries.ndjson");
     const surfaceDir = path.join(dir, "surface");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
@@ -297,7 +297,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
     }
 
     const port = 8700 + Math.floor(Math.random() * 200);
-    child = spawn(process.execPath, [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" });
+    child = spawn("python3", [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" });
     const base = `http://127.0.0.1:${port}`;
     let up = false;
     for (let i = 0; i < 50 && !up; i += 1) {

@@ -958,7 +958,7 @@ describe("runCuaActorLab", () => {
     // The adopter-named base-URL env was injected into the subject sandbox at create (the app boots reading it).
     expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
     // And the in-sandbox capture script was written into the subject sandbox (the catch was deployed).
-    expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("catch.mjs"))).toBe(true);
+    expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("catch.py"))).toBe(true);
 
     // The captured mail was drained + routed + written as a digest-only comms-thread artifact, and
     // REGISTERED in the lane's stream artifacts (so the bundle's existence-verify + scan cover it).
