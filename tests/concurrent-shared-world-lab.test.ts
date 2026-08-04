@@ -475,7 +475,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const commsPort = 8025;
     const verificationHtml = '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
     // The base subject handler + comms overrides (health service-marker + the teardown drain `cat`).
     const baseHandler = makeCommandHandler(state);
     const commandHandler = (command: string): { stdout?: string } | undefined => {
@@ -495,7 +495,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     };
     const config: LabConfig = {
       ...concurrentConfig(3, 3),
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "user", address: "user@example.test" }] } }
     };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(result.ok).toBe(true);
@@ -518,7 +518,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(thread.schema).toBe("humanish.comms-thread.v1");
     expect(thread.count).toBe(1);
     // Public-safety: no raw address / link / OTP / subject text in the persisted evidence.
-    expect(threadRaw).not.toContain("patient@example.test");
+    expect(threadRaw).not.toContain("user@example.test");
     expect(threadRaw).not.toContain("app.example.test/verify");
     expect(threadRaw).not.toContain("481920");
     expect(threadRaw).not.toContain("Confirm your email");
@@ -533,7 +533,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const commsPort = 8025;
     const verificationHtml = '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
     const baseHandler = makeCommandHandler(state);
     const commandHandler = (command: string): { stdout?: string } | undefined => {
       if (command.includes("/health")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
@@ -554,7 +554,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const config: LabConfig = {
       ...concurrentConfig(3, 3),
       // Recipient lane matches the FIRST persona's lane id, so only it is told to check the inbox.
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "persona-01", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "persona-01", address: "user@example.test" }] } }
     };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(result.ok).toBe(true);

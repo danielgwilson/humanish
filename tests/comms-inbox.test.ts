@@ -16,15 +16,15 @@ import type { CommsMessage } from "../src/comms-types.js";
 // A realistic captured verification email: an app-LOOPBACK verify link (must be origin-rewritten to be
 // reachable), an OTP, HTML-unsafe header content is exercised separately, plus an active <script> to strip.
 const VERIFICATION_HTML =
-  '<p>Hi patient.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify your email</a></p><p>Or use code <b>481920</b>.</p><script>alert(1)</script>';
+  '<p>Hi user.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify your email</a></p><p>Or use code <b>481920</b>.</p><script>alert(1)</script>';
 
 const MAP: Array<[string, string]> = [["http://127.0.0.1:3000", "https://3000-abc.e2b.app"]];
 
 async function captured(subject = "Confirm your email"): Promise<CommsMessage[]> {
   const bus = new FakeInbox({ now: () => 1_700_000_000_000 });
-  const patient = await bus.provisionAddress("patient", "patient-07@example.test");
-  await bus.deliverRaw({ from: "Example Health <no-reply@example.test>", to: [patient.value], subject, body: VERIFICATION_HTML });
-  return bus.poll(patient);
+  const user = await bus.provisionAddress("user", "user-07@example.test");
+  await bus.deliverRaw({ from: "Example App <no-reply@example.test>", to: [user.value], subject, body: VERIFICATION_HTML });
+  return bus.poll(user);
 }
 
 describe("comms-inbox: rewriteOrigin + pickVerifyUrl", () => {
@@ -84,7 +84,7 @@ describe("comms-inbox: real-email message view (the default)", () => {
     expect(html).toContain("<!doctype html>");
     // header fields
     expect(html).toContain("Confirm your email");
-    expect(html).toContain("patient-07@example.test");
+    expect(html).toContain("user-07@example.test");
     // the REAL email body is shown, with its verify link origin rewritten to the reachable host
     expect(html).toContain("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
     expect(html).not.toContain("http://127.0.0.1:3000/verify");
@@ -108,9 +108,9 @@ describe("comms-inbox: real-email message view (the default)", () => {
       '<base href="http://evil/"> <meta http-equiv="refresh" content="0;url=http://evil/"> <script>alert(3)</script>' +
       '<p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify your account</a></p>';
     const bus = new FakeInbox();
-    const patient = await bus.provisionAddress("patient", "patient-07@example.test");
-    await bus.deliverRaw({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", body: hostile });
-    const [message] = await bus.poll(patient);
+    const user = await bus.provisionAddress("user", "user-07@example.test");
+    await bus.deliverRaw({ from: "no-reply@example.test", to: [user.value], subject: "Confirm", body: hostile });
+    const [message] = await bus.poll(user);
     const html = renderInboxMessage(message!, { originMap: MAP });
     // The load-bearing, browser-enforced protection: a script-forbidding CSP is on the page.
     expect(html).toContain("Content-Security-Policy");
@@ -144,7 +144,7 @@ describe("comms-inbox: JSON twin (programmatic actors + reliability backstop)", 
   it("exposes id/from/to/subject/links/verifyUrl/otp, all origin-rewritten", async () => {
     const [message] = await captured();
     const json = inboxMessageJson(message!, { originMap: MAP });
-    expect(json.to).toEqual(["patient-07@example.test"]);
+    expect(json.to).toEqual(["user-07@example.test"]);
     expect(json.subject).toBe("Confirm your email");
     expect(json.verifyUrl).toBe("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
     expect(json.otp).toBe("481920");

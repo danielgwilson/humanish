@@ -78,7 +78,7 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     // Resend flat shape → 200 { id }
     const flat = await fetch(`${base}/emails`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ from: "no-reply@example.test", to: ["patient-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML })
+      body: JSON.stringify({ from: "no-reply@example.test", to: ["user-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML })
     });
     expect(flat.status).toBe(200);
     expect((await flat.json() as { id: string }).id).toContain("humanish-catch-");
@@ -189,15 +189,15 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
 
   it("routeCapturedSends parses drained raw sends with the profiles and delivers into the inbox", async () => {
     const bus = new FakeInbox();
-    const patient = await bus.provision("patient-07");
+    const user = await bus.provision("user-07");
     const sends: RawCapturedSend[] = [
-      { t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", html: VERIFICATION_HTML }) },
-      { t: 2, path: "/v3/mail/send", body: JSON.stringify({ from: { email: "a@example.test" }, personalizations: [{ to: [{ email: patient.value }] }], content: [{ type: "text/html", value: "Code 903117 <a href=\"https://x.example.test/y\">go</a>" }] }) }
+      { t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [user.value], subject: "Confirm", html: VERIFICATION_HTML }) },
+      { t: 2, path: "/v3/mail/send", body: JSON.stringify({ from: { email: "a@example.test" }, personalizations: [{ to: [{ email: user.value }] }], content: [{ type: "text/html", value: "Code 903117 <a href=\"https://x.example.test/y\">go</a>" }] }) }
     ];
     const delivered = await routeCapturedSends(sends, bus);
     expect(delivered).toBe(2);
 
-    const inbox = await bus.poll(patient);
+    const inbox = await bus.poll(user);
     expect(inbox).toHaveLength(2);
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(inbox[0]!.codes).toEqual(["481920"]);
@@ -206,9 +206,9 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
 
   it("end-to-end (fake sandbox): deploy → app sends captured to NDJSON → drain → route → inbox", async () => {
     const bus = new FakeInbox();
-    const patient = await bus.provision("patient-07");
+    const user = await bus.provision("user-07");
     // The fake sandbox: /health READY, and cat returns the NDJSON the (simulated) app's POST produced.
-    const captured = JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+    const captured = JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [user.value], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
     const { desktop } = makeFakeDesktop((cmd) => {
       if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
       if (cmd.startsWith("cat ")) return { stdout: captured };
@@ -218,7 +218,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     const { sends } = await drainCommsCatch(desktop, deployed);
     await routeCapturedSends(sends, bus);
 
-    const inbox = await bus.poll(patient);
+    const inbox = await bus.poll(user);
     expect(inbox).toHaveLength(1);
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(inbox[0]!.codes).toEqual(["481920"]);
@@ -228,9 +228,9 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
 describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)", () => {
   it("drains → routes to declared recipients → builds the digest-only thread artifact (no raw PII)", async () => {
     const channel = new FakeInbox();
-    const patient = await channel.provisionAddress("patient", "patient@example.test");
+    const user = await channel.provisionAddress("user", "user@example.test");
     const captured =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm your email", html: VERIFICATION_HTML }) }) + "\n";
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [user.value], subject: "Confirm your email", html: VERIFICATION_HTML }) }) + "\n";
     const { desktop } = makeFakeDesktop((cmd) => {
       if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
       if (cmd.startsWith("cat ")) return { stdout: captured };
@@ -238,7 +238,7 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     });
     const deployed = await deployCommsCatch(desktop, { timers: instantTimers });
 
-    const collected = await collectCommsThread({ desktop, deployed, channel, inboxes: [patient] });
+    const collected = await collectCommsThread({ desktop, deployed, channel, inboxes: [user] });
     expect(collected.captured).toBe(1);
     expect(collected.matched).toBe(1);
     const artifact = collected.artifact;
@@ -246,11 +246,11 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     expect(artifact!.schema).toBe("humanish.comms-thread.v1");
     expect(artifact!.count).toBe(1);
     const entry = artifact!.thread[0]!;
-    expect(entry.toDigests[0]).toBe(patient.digest);
+    expect(entry.toDigests[0]).toBe(user.digest);
     expect(entry.linkDigests[0]).toMatch(/^[0-9a-f]{16}$/);
     expect(entry.codeCount).toBe(1);
     const serialized = JSON.stringify(artifact);
-    expect(serialized).not.toContain("patient@example.test");
+    expect(serialized).not.toContain("user@example.test");
     expect(serialized).not.toContain("app.example.test/verify");
     expect(serialized).not.toContain("481920");
     expect(serialized).not.toContain("Confirm your email");
@@ -258,7 +258,7 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
 
   it("returns undefined when nothing was captured, and when captured mail matches no provisioned inbox (no false evidence)", async () => {
     const channel = new FakeInbox();
-    const patient = await channel.provisionAddress("patient", "patient@example.test");
+    const user = await channel.provisionAddress("user", "user@example.test");
 
     const empty = makeFakeDesktop((cmd) => {
       if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
@@ -266,7 +266,7 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
       return undefined;
     });
     const deployedEmpty = await deployCommsCatch(empty.desktop, { timers: instantTimers });
-    const emptyCollected = await collectCommsThread({ desktop: empty.desktop, deployed: deployedEmpty, channel, inboxes: [patient] });
+    const emptyCollected = await collectCommsThread({ desktop: empty.desktop, deployed: deployedEmpty, channel, inboxes: [user] });
     expect(emptyCollected.artifact).toBeUndefined();
     expect(emptyCollected.captured).toBe(0); // nothing captured at all
 
@@ -280,7 +280,7 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
       return undefined;
     });
     const deployedOther = await deployCommsCatch(other.desktop, { timers: instantTimers });
-    const strangerCollected = await collectCommsThread({ desktop: other.desktop, deployed: deployedOther, channel, inboxes: [patient] });
+    const strangerCollected = await collectCommsThread({ desktop: other.desktop, deployed: deployedOther, channel, inboxes: [user] });
     expect(strangerCollected.artifact).toBeUndefined();
     expect(strangerCollected.captured).toBe(1); // captured but unmatched → caller surfaces a warning
     expect(strangerCollected.matched).toBe(0);
@@ -288,9 +288,9 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
 });
 
 describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () => {
-  const recipients = [{ lane: "patient", address: "patient-07@example.test" }];
+  const recipients = [{ lane: "user", address: "user-07@example.test" }];
   const captured =
-    JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+    JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
 
   it("rebuilds from the full NDJSON, renders on new mail, and skips a render when nothing new arrived", async () => {
     const nd = { value: "" };
@@ -365,9 +365,9 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
     // link, then write the files into surfaceDir exactly as the real host bridge (writeInboxSurface) does.
     const loopbackEmail = '<p>Hi.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
     const bus = new FakeInbox();
-    const patient = await bus.provisionAddress("patient", "patient-07@example.test");
-    await bus.deliverRaw({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm your email", body: loopbackEmail });
-    const messages = await bus.poll(patient);
+    const user = await bus.provisionAddress("user", "user-07@example.test");
+    await bus.deliverRaw({ from: "no-reply@example.test", to: [user.value], subject: "Confirm your email", body: loopbackEmail });
+    const messages = await bus.poll(user);
     const files = buildInboxSurface(messages, { originMap: [["http://127.0.0.1:3000", "https://3000-abc.e2b.app"]] });
     for (const file of files) {
       const full = path.join(surfaceDir, file.path);
@@ -406,7 +406,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
     const json = await apiLatest.json() as { verifyUrl: string; otp: string; to: string[] };
     expect(json.verifyUrl).toBe("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
     expect(json.otp).toBe("481920");
-    expect(json.to).toEqual(["patient-07@example.test"]);
+    expect(json.to).toEqual(["user-07@example.test"]);
 
     // Missing message → 404; a path-traversal attempt is rejected before any read.
     expect((await fetch(`${base}/inbox/does-not-exist`)).status).toBe(404);
@@ -417,23 +417,23 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
 describe("comms-evidence: digest-only comms-thread artifact", () => {
   it("digests addresses + links, redacts the subject, and stores the OTP as a COUNT (never a reversible digest)", async () => {
     const bus = new FakeInbox();
-    const patient = await bus.provision("patient-07");
-    await bus.deliverRaw({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm your email", body: VERIFICATION_HTML });
-    const messages = await bus.poll(patient);
+    const user = await bus.provision("user-07");
+    await bus.deliverRaw({ from: "no-reply@example.test", to: [user.value], subject: "Confirm your email", body: VERIFICATION_HTML });
+    const messages = await bus.poll(user);
 
     const artifact = buildCommsThreadArtifact(messages);
     expect(artifact.schema).toBe("humanish.comms-thread.v1");
     expect(artifact.count).toBe(1);
     const entry = artifact.thread[0]!;
     expect(entry.fromDigest).toMatch(/^[0-9a-f]{16}$/);
-    expect(entry.toDigests[0]).toBe(patient.digest);
+    expect(entry.toDigests[0]).toBe(user.digest);
     expect(entry.linkDigests[0]).toMatch(/^[0-9a-f]{16}$/);
     expect(entry.subjectDigest).toMatch(/^[0-9a-f]{16}$/); // subject digested, never stored as text
     expect(entry.codeCount).toBe(1); // count only — the OTP "481920" itself is NOT stored
 
     // Hygiene: the serialized artifact leaks neither the raw address, the raw link, the OTP code, nor the raw subject.
     const serialized = JSON.stringify(artifact);
-    expect(serialized).not.toContain("patient-07@example.test");
+    expect(serialized).not.toContain("user-07@example.test");
     expect(serialized).not.toContain("app.example.test/verify");
     expect(serialized).not.toContain("481920");
     expect(serialized).not.toContain("Confirm your email");
