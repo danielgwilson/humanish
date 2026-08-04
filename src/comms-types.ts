@@ -1,6 +1,6 @@
 // The addressed message bus (#297) — the seam that makes "off-app" comms (email/SMS the persona
 // actually lives in) a first-class, persona-driven testable surface. A single port, addressed by
-// actor; faux (in-process) and real (provider-backed) adapters implement it identically, so the
+// actor; fake (in-process) and real (provider-backed) adapters implement it identically, so the
 // persona surface + evidence writer consume it without knowing which is behind it.
 //
 // PUBLIC-SAFETY: raw address values, message bodies, links, and codes are RUNTIME-ONLY. Only the
@@ -29,7 +29,7 @@ export interface CommsMessage {
   /** Resolved recipient inboxes this message was delivered to. */
   to: CommsAddress[];
   subject?: string;
-  /** Runtime-only for real; local-only for faux (never a share path without redaction — #108). */
+  /** Runtime-only for real; local-only for fake (never a share path without redaction — #108). */
   body: string;
   /** Actionable links extracted from the body (magic-link / invite / reset). Runtime-only. */
   links: string[];
@@ -57,12 +57,12 @@ export interface InboundRaw {
 }
 
 /**
- * The port. Faux (in-process) + real-email + real-sms adapters implement it identically. Async so a
- * real (network) adapter fits without changing callers; the faux adapter just resolves immediately.
+ * The port. Fake (in-process) + real-email + real-sms adapters implement it identically. Async so a
+ * real (network) adapter fits without changing callers; the fake adapter just resolves immediately.
  */
 export interface CommsChannel {
   readonly channel: CommsChannelKind;
-  readonly kind: "faux" | "real";
+  readonly kind: "fake" | "real";
   /** Mint/allocate an inbox for an actor (address auto-generated). Idempotent per actor. */
   provision(actorId: string): Promise<CommsAddress>;
   /** Route a composed message from one actor to addressed inboxes. Returns the delivered record. */

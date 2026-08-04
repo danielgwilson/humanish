@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { FauxInbox, extractLinks, extractOtpCodes } from "../src/comms-faux-inbox.js";
+import { FakeInbox, extractLinks, extractOtpCodes } from "../src/comms-fake-inbox.js";
 import { startEmailCatchServer, type EmailCatchServer } from "../src/comms-email-catch.js";
 
 // A realistic patient-signup verification email (magic link + OTP) — the exact thing the north-star
@@ -41,9 +41,9 @@ describe("comms extraction (magic link + OTP from a verification email)", () => 
   });
 });
 
-describe("FauxInbox (the in-process bus)", () => {
+describe("FakeInbox (the in-process bus)", () => {
   it("provisions a stable, digest-bearing address per actor (raw value stays separate from the digest)", async () => {
-    const bus = new FauxInbox({ now: () => 1000 });
+    const bus = new FakeInbox({ now: () => 1000 });
     const a = await bus.provision("patient-07");
     expect(a.value).toBe("patient-07@example.test");
     expect(a.channel).toBe("email");
@@ -54,7 +54,7 @@ describe("FauxInbox (the in-process bus)", () => {
 
   it("routes an INGRESS delivery to the addressed inbox and extracts link + code; poll is since-scoped", async () => {
     let clock = 100;
-    const bus = new FauxInbox({ now: () => clock });
+    const bus = new FakeInbox({ now: () => clock });
     const patient = await bus.provision("patient-07");
 
     clock = 200;
@@ -77,7 +77,7 @@ describe("FauxInbox (the in-process bus)", () => {
   });
 
   it("drops a delivery to an unprovisioned recipient (no inbox to deliver to); broadcast hits all matched", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const p2 = await bus.provision("player-2");
     const p3 = await bus.provision("player-3");
     expect(await bus.deliverRaw({ from: "app", to: ["nobody@example.test"], body: "hi" })).toEqual([]);
@@ -88,7 +88,7 @@ describe("FauxInbox (the in-process bus)", () => {
   });
 
   it("send() routes an actor->actor message; teardown() clears the world", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const a = await bus.provision("a");
     const b = await bus.provision("b");
     await bus.send({ from: a, to: [b], subject: "hi", body: "see https://x.test/y" });
@@ -99,7 +99,7 @@ describe("FauxInbox (the in-process bus)", () => {
   });
 });
 
-describe("end-to-end: a vendor-neutral email-API catch delivers an app's send into the faux inbox (no external app/repo)", () => {
+describe("end-to-end: a vendor-neutral email-API catch delivers an app's send into the fake inbox (no external app/repo)", () => {
   let server: EmailCatchServer | undefined;
   afterEach(async () => {
     await server?.close();
@@ -107,7 +107,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
   });
 
   it("captures a flat-shape (Resend-compatible) verification email via POST /emails and delivers it", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const patient = await bus.provision("patient-07");
     server = await startEmailCatchServer(bus, { idFor: (n) => `test-${n}` });
 
@@ -137,7 +137,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
   });
 
   it("is genuinely vendor-neutral: the SAME server also captures SendGrid's nested POST /v3/mail/send shape", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const patient = await bus.provision("patient-08");
     server = await startEmailCatchServer(bus);
 
@@ -166,7 +166,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
   });
 
   it("resolves a 'Name <email>' recipient, handles the batch endpoint, and 404s unknown paths", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const patient = await bus.provision("patient-09");
     server = await startEmailCatchServer(bus);
 
@@ -191,7 +191,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
   });
 
   it("returns a bad-request (not a fabricated success id) for an empty/undeliverable send, and tolerates malformed nested payloads", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     await bus.provision("patient-10");
     server = await startEmailCatchServer(bus);
 

@@ -1,5 +1,5 @@
 // A VENDOR-NEUTRAL loopback catch server for email-send APIs (#297). An app hardwired to a hosted
-// email provider is redirected into the faux bus with ONE env var and no code change: point the app's
+// email provider is redirected into the fake bus with ONE env var and no code change: point the app's
 // API base URL at this server. The catch does not depend on, or name itself after, any one vendor —
 // it normalizes each provider's distinct wire shape (Resend's flat body, SendGrid's nested
 // personalizations, Postmark's TitleCase, a custom app's own JSON) to one shape via pluggable

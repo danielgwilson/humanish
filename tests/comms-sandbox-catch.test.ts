@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { FauxInbox } from "../src/comms-faux-inbox.js";
+import { FakeInbox } from "../src/comms-fake-inbox.js";
 import { buildCommsThreadArtifact } from "../src/comms-evidence.js";
 import {
   SANDBOX_CATCH_SCRIPT,
@@ -133,7 +133,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
   });
 
   it("routeCapturedSends parses drained raw sends with the profiles and delivers into the inbox", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const patient = await bus.provision("patient-07");
     const sends: RawCapturedSend[] = [
       { t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", html: VERIFICATION_HTML }) },
@@ -150,7 +150,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
   });
 
   it("end-to-end (fake sandbox): deploy → app sends captured to NDJSON → drain → route → inbox", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const patient = await bus.provision("patient-07");
     // The fake sandbox: /health READY, and cat returns the NDJSON the (simulated) app's POST produced.
     const captured = JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
@@ -172,7 +172,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
 
 describe("comms-evidence: digest-only comms-thread artifact", () => {
   it("digests addresses + links, redacts the subject, and stores the OTP as a COUNT (never a reversible digest)", async () => {
-    const bus = new FauxInbox();
+    const bus = new FakeInbox();
     const patient = await bus.provision("patient-07");
     await bus.deliverRaw({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm your email", body: VERIFICATION_HTML });
     const messages = await bus.poll(patient);

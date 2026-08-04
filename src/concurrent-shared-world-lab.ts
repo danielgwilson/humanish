@@ -1134,7 +1134,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     //
     // TEMPORARY SHIM (tracked by #296): this CDP URL-relay handoff — reading the host's /lobby/CODE off
     // its own browser and threading it into the follower missions — is a temporary coordination shim.
-    // It is to be augmented/replaced by the actor message bus (faux SMS/email invite) in #297: the
+    // It is to be augmented/replaced by the actor message bus (fake SMS/email invite) in #297: the
     // human-realistic version is the HOST SENDING the invite link and followers RECEIVING and tapping
     // it, rather than the orchestrator relaying the code out-of-band.
     const lobbyCodeLatch = deferred<string>();

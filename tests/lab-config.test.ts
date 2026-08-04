@@ -51,7 +51,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("parses a comms:email:faux block (adopter-named injectEnv, port, declared recipients)", () => {
+  it("parses a comms:email:fake block (adopter-named injectEnv, port, declared recipients)", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "comms-lab",
@@ -59,32 +59,32 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       actors: [{ type: "openai-computer-use", count: 1 }],
       execution: { target: "e2b-desktop" },
       scenario: { mode: "live" },
-      comms: { email: { mode: "faux", injectEnv: "RESEND_API_URL", port: 9100, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: 9100, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.comms?.email).toEqual({
-      mode: "faux",
+      kind: "fake",
       injectEnv: "RESEND_API_URL",
       port: 9100,
       recipients: [{ lane: "patient", address: "patient@example.test" }]
     });
   });
 
-  it("defaults comms:email mode to faux and requires a valid injectEnv name", () => {
+  it("defaults comms:email kind to fake and requires a valid injectEnv name", () => {
     const ok = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone", repos: ["e/a"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } },
       actors: [{ type: "openai-computer-use", count: 1 }], execution: { target: "e2b-desktop" }, scenario: { mode: "live" },
       comms: { email: { injectEnv: "RESEND_API_URL" } }
     });
     expect(ok.ok).toBe(true);
-    if (ok.ok) expect(ok.config.comms?.email).toEqual({ mode: "faux", injectEnv: "RESEND_API_URL" });
+    if (ok.ok) expect(ok.config.comms?.email).toEqual({ kind: "fake", injectEnv: "RESEND_API_URL" });
 
     const base = { schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone" as const, repos: ["e/a"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } }, actors: [{ type: "openai-computer-use", count: 1 }], execution: { target: "e2b-desktop" as const }, scenario: { mode: "live" as const } };
-    // Fail-loud (never silently swallowed): missing injectEnv, an invalid env name, and real mode all reject.
-    expect(parseLabConfig({ ...base, comms: { email: { mode: "faux" } } }).ok).toBe(false);
+    // Fail-loud (never silently swallowed): missing injectEnv, an invalid env name, and real kind all reject.
+    expect(parseLabConfig({ ...base, comms: { email: { kind: "fake" } } }).ok).toBe(false);
     expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "not a var" } } }).ok).toBe(false);
-    expect(parseLabConfig({ ...base, comms: { email: { mode: "real", injectEnv: "RESEND_API_URL" } } }).ok).toBe(false);
+    expect(parseLabConfig({ ...base, comms: { email: { kind: "real", injectEnv: "RESEND_API_URL" } } }).ok).toBe(false);
   });
 
   it("accepts a free-form actor.type on non-app-url routes (registry-resolved only where consumed)", () => {
