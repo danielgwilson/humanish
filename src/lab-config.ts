@@ -1418,6 +1418,13 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.subject.exposure !== undefined && !routesToConcurrent && !(routesToScripted && config.subject.source === "clone")) {
     inert.push("subject.exposure (the synthetic-subject attestation for a getHost-exposed plane; needs concurrent shared-world or clone × e2b-desktop × scripted-browser)");
   }
+  // comms.email drives the in-sandbox email/SMS catch, which needs a subject sandbox HUMANISH
+  // provisions (clone or local-tree) so it holds a handle to host the catch. On an app-url /
+  // operator-provided subject there is no such handle, so a declared comms block would silently
+  // collect nothing — a false green. Warn at parse time (fires on inspect + dry-run too).
+  if (config.comms?.email && config.subject.source !== "clone" && config.subject.source !== "local-tree") {
+    inert.push("comms.email (the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle and no comms evidence is collected)");
+  }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
   // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
   // (a hard parse error above), so it can never reach this warning list there.

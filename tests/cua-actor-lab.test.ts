@@ -15,6 +15,7 @@ import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer
 import type {
   CuaAction,
   CuaExecutor,
+  CuaLoopResult,
   CuaObservation,
   CuaProvider,
   CuaTurn
@@ -26,6 +27,7 @@ import {
   chromeCdpPortResolutionScript,
   makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
+  resolveSelfReportedBlocker,
   runCuaActorLab,
   type ChromeCdpEndpoint,
   type CuaActorLabHooks
@@ -684,6 +686,52 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("pass");
     expect(bundle.review.gaps).toEqual([]);
+  });
+
+  const fakeBlockerSession = (
+    reason: string,
+    opts?: { completionReason?: string; stopWhenMatched?: boolean }
+  ): CuaLoopResult =>
+    ({
+      completionReason: opts?.completionReason ?? "goal_satisfied",
+      reason,
+      trace: {
+        items: opts?.stopWhenMatched
+          ? [{ kind: "notice", status: "matched", title: "stopWhen matched: done" }]
+          : []
+      }
+    }) as unknown as CuaLoopResult;
+
+  it("flags a goal_satisfied lane whose OWN narrative reports a real blocker", () => {
+    expect(resolveSelfReportedBlocker(fakeBlockerSession("I could not complete the task; the delete button was disabled")))
+      .toContain("could not complete");
+  });
+
+  it("does NOT flag a lane that merely QUOTES the subject app's copy containing a blocker word (#329)", () => {
+    // The persona faithfully relays the app's banner text; a quoted span is not the actor's own
+    // status and must not trip the blocker scan.
+    expect(resolveSelfReportedBlocker(fakeBlockerSession(
+      'I confirmed the deletion. The banner read "This action cannot be undone." The item is gone.'
+    ))).toBeUndefined();
+  });
+
+  it("does NOT flag a blocker narrative when the run's own stopWhen predicate matched (#329)", () => {
+    // A matched stopWhen is independent, structured completion evidence and overrides the text scan.
+    expect(resolveSelfReportedBlocker(fakeBlockerSession(
+      "the page shows an error but I reached the target state",
+      { stopWhenMatched: true }
+    ))).toBeUndefined();
+  });
+
+  it("does not flag a clean goal_satisfied success", () => {
+    expect(resolveSelfReportedBlocker(fakeBlockerSession("Success: the target state is visible. No blocker encountered.")))
+      .toBeUndefined();
+  });
+
+  it("only inspects goal_satisfied lanes", () => {
+    expect(resolveSelfReportedBlocker(fakeBlockerSession("cannot proceed", { completionReason: "timeout" })))
+      .toBeUndefined();
+    expect(resolveSelfReportedBlocker(undefined)).toBeUndefined();
   });
 
   it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {
