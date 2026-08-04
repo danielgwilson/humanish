@@ -86,6 +86,11 @@ Implemented:
   deterministic proof, while concurrent has deterministic and kept live proof;
 - `subject.source: local-tree`, which packages one selected working tree with a
   content pin before using the same provision-and-serve path as clone subjects;
+- an off-app comms funnel for email/SMS-gated flows: a vendor-neutral in-sandbox
+  catch redirects the app's own send API, a persona reads a minimal inbox surface
+  and clicks through, and a digest-only `humanish.comms-thread.v1` artifact
+  records the thread with no raw address, link, or code — wired into the
+  computer-use and shared-world routes and live-proven on computer-use;
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - an OSS meta-lab dry-run contract and a separate disposable public-repo OSS
@@ -111,9 +116,9 @@ packet without changing its success standard.
 - live OSS meta-lab execution remains disabled until repository-derived
   instructions have an isolated credential boundary; historical headed-lane
   evidence does not make the current entrypoint available;
-- the README hero is a shipped, synthetic four-lane technical sample. It is not
-  proof of a real application study; a legible real-application capture remains open
-  product proof.
+- the README hero is the drawDB real-application study — a legible capture of a
+  studied public subject, not a Humanish adopter; coverage beyond that single
+  studied subject (the stratified breadth panel) remains open.
 
 ## First Commands
 

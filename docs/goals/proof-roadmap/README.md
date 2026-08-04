@@ -1,6 +1,6 @@
 # Proof roadmap current status
 
-Status date: 2026-07-14
+Status date: 2026-08-04
 
 The dated [`goal.md`](goal.md) packet is the immutable 2026-06-10 success
 definition. Its ratification-time implementation labels are historical. This
@@ -27,6 +27,12 @@ file records current implementation truth without rewriting that packet.
   labeling ("estimated (rates as of `<date>`)", never a bare charge). Every
   dollar figure is an estimate; `verify` asserts its labeling, never its
   magnitude.
+- A legible four-persona real-application Observer hero (commit-pinned drawDB
+  study) shipped in `0.16.0`. It is public-application study evidence, not
+  adopter deletion proof.
+- An off-app comms funnel (vendor-neutral in-sandbox email/SMS catch → minimal
+  persona inbox surface → digest-only `humanish.comms-thread.v1` evidence)
+  shipped across `0.20`–`0.31` and is live-proven on the computer-use route.
 
 ## Proof state
 
