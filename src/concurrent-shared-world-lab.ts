@@ -60,6 +60,9 @@ import {
   type LaneRunOutcome,
   type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
+import { FakeInbox } from "./comms-fake-inbox.js";
+import type { CommsAddress } from "./comms-types.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
@@ -763,6 +766,22 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   let liveObserver: (ObserverResult & { ok: true }) | undefined;
   const runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [];
 
+  // Off-app comms (#297): on the provisioned-getHost plane the harness owns the ONE subject sandbox, so
+  // it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated ENTIRELY
+  // on config.comms — no comms declared → zero change. The base-URL env is injected into the subject
+  // sandbox at create (fixed port known up front); the catch is deployed before serve; the drain + digest
+  // evidence run at subject teardown, then register run-level in the bundle. NOT available on the
+  // external-public plane (the app is an operator-owned deployment the harness never provisions).
+  const commsEmail = planeClass === "provisioned-getHost" ? config.comms?.email : undefined;
+  const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
+  const commsEnv: Record<string, string> = commsEmail && commsPort !== undefined
+    ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
+    : {};
+  let commsArtifactPath: string | undefined;
+  if (config.comms?.email && planeClass === "external-public") {
+    warnings.push("comms.email is declared but this is the external-public plane (the shared plane is an operator-owned public deployment the harness does not provision) — the in-sandbox email catch cannot be deployed and no comms evidence is collected.");
+  }
+
   // EXTERNAL-PUBLIC plane state (#164 phase 2). publicAppUrl is the operator-declared shared plane;
   // its ORIGIN is persisted digest-only (publicOriginDigest), never raw (the raw URL + the runtime
   // observed lobby CODE never land — TENSION 3). The latch code is scrubbed from all narration.
@@ -831,6 +850,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     }
     let subjectModule: E2BDesktopModule | undefined;
     let subjectDesktop: E2BDesktopSandbox | undefined;
+    // The in-sandbox email catch on the ONE subject sandbox (#297); drained at teardown. Undefined
+    // unless a comms lab declared it. Hoisted so the finally can drain before the subject is killed.
+    let deployedComms: DeployedCommsCatch | undefined;
     // Background prober dispose signal (FIX-9: cleared in finally).
     let proberDisposed = false;
     let releaseDispose: () => void = () => {};
@@ -875,8 +897,8 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
           role: "subject",
           roleCount: String(roles.length)
         },
-        ...(subjectEnvNames.length > 0
-          ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
+        ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
+          ? { envs: { ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])), ...commsEnv } }
           : {}),
         dpi: 96,
         lifecycle: { onTimeout: "kill" }
@@ -885,6 +907,16 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
 
       if (hooks.prepareDesktop) {
         await hooks.prepareDesktop(subjectDesktop);
+      }
+
+      // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL
+      // (injected into its env at create) resolves the moment it boots. Fail closed if the catch can't
+      // stand up rather than let a comms-declared app silently send real mail to the internet.
+      if (commsEmail && commsPort !== undefined) {
+        deployedComms = await deployCommsCatch(subjectDesktop, { port: commsPort, requestTimeoutMs, timers });
+        if (!deployedComms.ready) {
+          throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
+        }
       }
 
       // Provision the ONE shared plane: clone + install/build + seed + serve on 0.0.0.0 + probe
@@ -1045,6 +1077,36 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       }
       if (subjectDesktop && getHostUrl) {
         await proberSnapshot().catch(() => undefined);
+      }
+      // Off-app comms evidence (#297): drain everything the in-sandbox catch captured, route it into a
+      // host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
+      // artifact — while the subject is STILL alive, before it is killed below. Wrapped so a drain error
+      // never blocks teardown (invariant: all sandboxes torn down by id in this finally).
+      if (commsEmail && deployedComms?.ready && subjectDesktop) {
+        try {
+          const commsChannel = new FakeInbox();
+          const commsInboxes: CommsAddress[] = [];
+          for (const recipient of commsEmail.recipients ?? []) {
+            if (recipient.address !== undefined) {
+              commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
+            }
+          }
+          const collected = await collectCommsThread({
+            desktop: subjectDesktop,
+            deployed: deployedComms,
+            channel: commsChannel,
+            inboxes: commsInboxes,
+            requestTimeoutMs
+          });
+          if (collected.artifact) {
+            await writeContainedOutputFile(runPaths, "comms/thread.json", `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+            commsArtifactPath = "comms/thread.json";
+          } else if (collected.captured > 0) {
+            warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+          }
+        } catch (error) {
+          warnings.push(`Comms evidence collection failed (run continues; subject still torn down): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+        }
       }
       if (subjectDesktop && subjectModule) {
         if (typeof subjectModule.Sandbox.kill === "function") {
@@ -1383,6 +1445,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     ...(publicOriginDigest === undefined ? {} : { publicOriginDigest }),
     ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
     ...(lobbyConvergenceDigest === undefined ? {} : { lobbyConvergenceDigest }),
+    ...(commsArtifactPath === undefined ? {} : { commsArtifactPath }),
     ...(runError === undefined ? {} : { runError })
   });
 
@@ -1550,6 +1613,10 @@ export function buildConcurrentSharedWorldBundle(args: {
   seedDigest: string;
   subjectCommit?: string;
   hostDigest?: string;
+  /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms lab
+   *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
+   *  property of the ONE shared app, not of any single persona). */
+  commsArtifactPath?: string;
   /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
   planeClass?: ConcurrentSharedWorldPlaneClass;
   /** external-public only: sha256-16 of the OBSERVED origin the seats converged on (the convergence
@@ -1708,6 +1775,12 @@ export function buildConcurrentSharedWorldBundle(args: {
         { label: "events", path: "events.ndjson", kind: "events" as const },
         ...(session
           ? [{ label: `persona ${spec.laneId} actor trace`, path: spec.traceArtifactPath, kind: "trace" as const }]
+          : []),
+        // Run-level comms evidence belongs to the ONE shared app, not a persona — register it once, on
+        // the first stream, so the bundle's existence-verify + public-safety scan cover it without
+        // double-counting across seats.
+        ...(index === 0 && args.commsArtifactPath
+          ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
           : []),
         ...screenshots.map((screenshot, screenshotIndex) => ({
           label: `persona ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,

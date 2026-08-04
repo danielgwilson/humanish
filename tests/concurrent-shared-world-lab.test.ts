@@ -470,6 +470,62 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(actorsDir.sort()).toEqual(["stream-001.json", "stream-002.json", "stream-003.json"]);
   });
 
+  it("comms:email:fake — deploys the catch on the SUBJECT sandbox, injects env there ONLY, drains to run-level evidence", async () => {
+    const state = { worldVersion: 0 };
+    const commsPort = 8025;
+    const verificationHtml = '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const capturedNdjson =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+    // The base subject handler + comms overrides (health service-marker + the teardown drain `cat`).
+    const baseHandler = makeCommandHandler(state);
+    const commandHandler = (command: string): { stdout?: string } | undefined => {
+      if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+      if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+      return baseHandler(command);
+    };
+    const { module, created } = makeFakeModule(commandHandler);
+    const hooks: SharedWorldLabHooks = {
+      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+      loadDesktopModule: async () => module,
+      runSession: makeRunSession(state, makeRendezvous(3)),
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      proberCadenceMs: 100_000
+    };
+    const config: LabConfig = {
+      ...concurrentConfig(3, 3),
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
+    };
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+
+    // The catch base-URL env is injected into the SUBJECT sandbox (created[0]) alongside DATABASE_URL —
+    // and NOWHERE else: the actor sandboxes still carry no envs (FIX-10 preserved).
+    expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
+    expect(created[0]?.envs?.DATABASE_URL).toBe("opaque-pw-7f3a9c2e-do-not-leak");
+    for (let i = 1; i < created.length; i += 1) expect((created[i]?.envs as Record<string, string> | undefined)?.RESEND_API_URL).toBeUndefined();
+
+    // The captured mail was drained at subject teardown + written as a run-level digest-only artifact,
+    // registered ONCE on the first stream (a property of the shared app, not any single persona).
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const onStream0 = bundle.streams[0].artifacts.find((a: { path: string; kind: string; label: string }) => a.path === "comms/thread.json");
+    expect(onStream0).toMatchObject({ kind: "log", label: "comms thread" });
+    expect(bundle.streams[1]?.artifacts.find((a: { path: string }) => a.path === "comms/thread.json")).toBeUndefined();
+    const threadRaw = await readFile(path.join(runDir, "comms", "thread.json"), "utf8");
+    const thread = JSON.parse(threadRaw) as { schema: string; count: number };
+    expect(thread.schema).toBe("humanish.comms-thread.v1");
+    expect(thread.count).toBe(1);
+    // Public-safety: no raw address / link / OTP / subject text in the persisted evidence.
+    expect(threadRaw).not.toContain("patient@example.test");
+    expect(threadRaw).not.toContain("app.example.test/verify");
+    expect(threadRaw).not.toContain("481920");
+    expect(threadRaw).not.toContain("Confirm your email");
+
+    // The evidence artifact does not break bundle verification.
+    const verify = await verifyRun(cwd, result.runId);
+    expect(verify.ok).toBe(true);
+  });
+
   it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {
     const state = { worldVersion: 0 };
     const { hooks, phaseEvents } = baseHooks(state, makeRendezvous(3));
