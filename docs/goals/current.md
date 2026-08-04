@@ -16,7 +16,7 @@ Humanish should be the open-source CLI that lets a maintainer ask:
 The answer should be observable, verifiable, public-safe, and easy to turn into
 actionable feedback.
 
-## Current Program Truth (source `0.27.0`)
+## Current Program Truth (source `0.28.0`)
 
 The package source and repository implementation in this tree agree on these
 points:

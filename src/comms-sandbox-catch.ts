@@ -304,3 +304,45 @@ export async function writeInboxSurface(
   }
   return files.length;
 }
+
+/**
+ * One mid-run inbox-surface refresh cycle: drain the catch INCREMENTALLY from `cursor` into the
+ * persistent surface `channel`, poll the provisioned `inboxes`, and (re)render the surface so the
+ * persona sees new mail while the session is live. Returns the advanced cursor + whether it rendered.
+ *
+ * MUST use a channel dedicated to the surface — NOT the teardown evidence channel: the teardown
+ * collectCommsThread drains the same append-only NDJSON from cursor 0 into its OWN fresh channel, so
+ * feeding both an incremental and a cursor-0 drain into one channel would route every send twice
+ * (FakeInbox mints fresh ids each time, so dedup-by-id can't catch it) and double-count the evidence.
+ * Two channels + two cursors are independent readers of the same file — no evidence is lost or altered.
+ * Skips the (N-file) render when no new sends arrived this tick, so idle ticks are cheap.
+ */
+export async function refreshInboxSurface(args: {
+  desktop: E2BDesktopSandbox;
+  deployed: Pick<DeployedCommsCatch, "deliveriesPath" | "surfaceDir">;
+  channel: CommsChannel;
+  inboxes: CommsAddress[];
+  cursor: number;
+  originMap?: InboxRenderOptions["originMap"];
+  requestTimeoutMs?: number;
+}): Promise<{ cursor: number; rendered: boolean }> {
+  const { sends, cursor } = await drainCommsCatch(args.desktop, args.deployed, args.cursor, args.requestTimeoutMs);
+  if (sends.length === 0) return { cursor, rendered: false };
+  await routeCapturedSends(sends, args.channel);
+  const seen = new Set<string>();
+  const messages: CommsMessage[] = [];
+  for (const inbox of args.inboxes) {
+    for (const message of await args.channel.poll(inbox, 0)) {
+      if (seen.has(message.id)) continue;
+      seen.add(message.id);
+      messages.push(message);
+    }
+  }
+  if (messages.length === 0) return { cursor, rendered: false };
+  messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
+  await writeInboxSurface(args.desktop, args.deployed.surfaceDir, messages, {
+    ...(args.originMap === undefined ? {} : { originMap: args.originMap }),
+    ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs })
+  });
+  return { cursor, rendered: true };
+}

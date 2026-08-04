@@ -63,6 +63,46 @@ export function rewriteOrigin(url: string, originMap: OriginMap = []): string {
   return out;
 }
 
+function safeOrigin(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try { return new URL(url).origin; } catch { return undefined; }
+}
+
+function safePort(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try { return new URL(url).port || undefined; } catch { return undefined; }
+}
+
+/**
+ * Build the [internalOrigin → reachableOrigin] rewrite rows for a run. The app-under-test bakes ITS OWN
+ * origin into the verify links it emails (usually its loopback serve origin); the persona reaches the
+ * app at a possibly-different origin — the same loopback on the CUA route (identity, a no-op), the
+ * harness-minted getHost URL on the shared-world route (where the rewrite is REQUIRED). Emits the serve
+ * origin plus its loopback aliases at the serve port (127.0.0.1 / localhost / 0.0.0.0) so an app that
+ * stamps `localhost` still rewrites, and — because the harness cannot infer an absolute PUBLIC base URL
+ * an app was configured with — an operator-declared `linkOrigin` escape hatch, matched first. Origins
+ * only (no trailing slash, no path), so replaceOriginBoundary matches on a URL boundary.
+ */
+export function buildOriginMap(args: { internalServeUrl?: string | undefined; reachableBaseUrl?: string | undefined; linkOrigin?: string | undefined }): OriginMap {
+  const to = safeOrigin(args.reachableBaseUrl);
+  if (to === undefined) return [];
+  const froms: string[] = [];
+  const declared = safeOrigin(args.linkOrigin);
+  if (declared !== undefined) froms.push(declared); // operator-declared origin wins (matched first)
+  const serve = safeOrigin(args.internalServeUrl);
+  if (serve !== undefined) {
+    froms.push(serve);
+    const port = safePort(args.internalServeUrl);
+    if (port !== undefined) for (const host of ["127.0.0.1", "localhost", "0.0.0.0"]) froms.push(`http://${host}:${port}`);
+  }
+  const seen = new Set<string>();
+  const map: OriginMap = [];
+  for (const from of froms) {
+    if (from !== to && !seen.has(from)) { seen.add(from); map.push([from, to]); }
+  }
+  return map;
+}
+
 /** Best-guess primary call-to-action: the first verify/confirm-looking link, else the first link. */
 export function pickVerifyUrl(links: string[]): string | undefined {
   return links.find((link) => VERIFY_HINT.test(link)) ?? links[0];
