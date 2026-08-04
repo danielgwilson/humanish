@@ -91,6 +91,10 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     expect(withOrigin.ok).toBe(true);
     if (withOrigin.ok) expect(withOrigin.config.comms?.email?.linkOrigin).toBe("https://app.example.test");
     expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", linkOrigin: "not a url" } } }).ok).toBe(false);
+
+    // port is capped at 65534 (the catch reserves port+1 for the 0.0.0.0 inbox listener).
+    expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", port: 65534 } } }).ok).toBe(true);
+    expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "RESEND_API_URL", port: 65535 } } }).ok).toBe(false);
   });
 
   it("accepts a free-form actor.type on non-app-url routes (registry-resolved only where consumed)", () => {

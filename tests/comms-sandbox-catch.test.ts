@@ -99,6 +99,40 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     expect(JSON.parse(first.body).subject).toBe("Confirm");
     expect(JSON.parse(lines[1]!).path).toBe("/v3/mail/send");
   });
+
+  it("with an inbox port: a 0.0.0.0 read-only listener serves GET /inbox but rejects POST; capture stays loopback", async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-"));
+    const scriptPath = path.join(dir, "catch.py");
+    const deliveries = path.join(dir, "deliveries.ndjson");
+    const surfaceDir = path.join(dir, "surface");
+    await mkdir(path.join(surfaceDir, "inbox"), { recursive: true });
+    await writeFile(path.join(surfaceDir, "inbox", "index"), "<h1>INBOX OK</h1>", "utf8");
+    await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
+    const port = 8500 + Math.floor(Math.random() * 200);
+    const inboxPort = port + 1;
+    child = spawn("python3", [scriptPath, String(port), deliveries, surfaceDir, String(inboxPort)], { stdio: "ignore" });
+
+    const upBoth = async (): Promise<boolean> => {
+      try { return (await fetch(`http://127.0.0.1:${port}/health`)).ok && (await fetch(`http://127.0.0.1:${inboxPort}/health`)).ok; }
+      catch { return false; }
+    };
+    let up = false;
+    for (let i = 0; i < 50 && !up; i += 1) { up = await upBoth(); if (!up) await new Promise((r) => setTimeout(r, 60)); }
+    expect(up).toBe(true);
+
+    // The 0.0.0.0 inbox listener serves the surface (GET)…
+    const g = await fetch(`http://127.0.0.1:${inboxPort}/inbox`);
+    expect(g.status).toBe(200);
+    expect(await g.text()).toContain("INBOX OK");
+    // …but rejects capture POSTs (read-only — nothing on the internet can inject a fake send).
+    expect((await fetch(`http://127.0.0.1:${inboxPort}/emails`, { method: "POST", body: "x" })).status).toBe(405);
+    // The loopback capture listener still captures.
+    const captured = await fetch(`http://127.0.0.1:${port}/emails`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: ["p@example.test"] })
+    });
+    expect(captured.status).toBe(200);
+    expect((await readFile(deliveries, "utf8")).trim().split("\n")).toHaveLength(1);
+  });
 });
 
 describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fake desktop)", () => {
@@ -115,6 +149,24 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("setsid -f") && c.includes("comms-catch"))).toBe(true);
     // …and probed for readiness on /health.
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("curl") && c.includes("8025/health"))).toBe(true);
+  });
+
+  it("deployCommsCatch with an inboxPort passes it as the 4th arg, probes BOTH listeners, and returns it", async () => {
+    const { desktop, calls, files } = makeFakeDesktop((cmd) => (cmd.includes("curl") ? { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" } : undefined));
+    const deployed = await deployCommsCatch(desktop, { port: 8025, inboxPort: 8026, timers: instantTimers });
+
+    expect(deployed.ready).toBe(true);
+    expect(deployed.inboxPort).toBe(8026);
+    // launched with the inbox port as the 4th arg (the launch command lives in the wrapper run.sh file)…
+    expect(Object.values(files).some((v) => v.includes("catch.py") && v.includes(" 8026"))).toBe(true);
+    // …and BOTH listeners were probed for readiness (a dead inbox listener would 502 via getHost).
+    expect(calls.some(([, c]) => typeof c === "string" && c.includes("8025/health"))).toBe(true);
+    expect(calls.some(([, c]) => typeof c === "string" && c.includes("8026/health"))).toBe(true);
+  });
+
+  it("deployCommsCatch rejects an inboxPort equal to the capture port", async () => {
+    const { desktop } = makeFakeDesktop((cmd) => (cmd.includes("curl") ? { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" } : undefined));
+    await expect(deployCommsCatch(desktop, { port: 8025, inboxPort: 8025, timers: instantTimers })).rejects.toThrow(/invalid inboxPort/);
   });
 
   it("drainCommsCatch reads new NDJSON lines since a cursor (incremental)", async () => {
@@ -235,33 +287,60 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
   });
 });
 
-describe("comms-sandbox-catch: refreshInboxSurface (mid-run render cycle)", () => {
-  it("drains incrementally into the surface channel, renders on new mail, advances the cursor, idles otherwise", async () => {
-    const channel = new FakeInbox();
-    const patient = await channel.provisionAddress("patient", "patient-07@example.test");
-    const captured =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () => {
+  const recipients = [{ lane: "patient", address: "patient-07@example.test" }];
+  const captured =
+    JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+
+  it("rebuilds from the full NDJSON, renders on new mail, and skips a render when nothing new arrived", async () => {
     const nd = { value: "" };
     const { desktop, files } = makeFakeDesktop((cmd) => (cmd.startsWith("cat ") ? { stdout: nd.value } : undefined));
     const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
 
-    // Empty catch → no render, cursor unchanged.
-    let r = await refreshInboxSurface({ desktop, deployed, channel, inboxes: [patient], cursor: 0 });
-    expect(r).toEqual({ cursor: 0, rendered: false });
+    // Empty catch → no render.
+    let r = await refreshInboxSurface({ desktop, deployed, recipients });
+    expect(r).toEqual({ count: 0, rendered: false });
     expect(Object.keys(files)).toHaveLength(0);
 
-    // Mail arrives → render + cursor advances; the served files were written into the surface dir.
+    // Mail arrives → render; the served files were written into the surface dir.
     nd.value = captured;
-    r = await refreshInboxSurface({ desktop, deployed, channel, inboxes: [patient], cursor: 0 });
-    expect(r).toEqual({ cursor: 1, rendered: true });
+    r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 });
+    expect(r).toEqual({ count: 1, rendered: true });
     expect(Object.keys(files)).toContain("/tmp/x/surface/inbox/index");
     expect(Object.keys(files)).toContain("/tmp/x/surface/api/inbox/latest");
 
-    // Next tick from the advanced cursor sees no NEW sends → no render (idle ticks are cheap).
+    // Nothing new since the last successful render (sinceCount === current count) → skip (cheap idle tick).
     const before = Object.keys(files).length;
-    r = await refreshInboxSurface({ desktop, deployed, channel, inboxes: [patient], cursor: r.cursor });
-    expect(r).toEqual({ cursor: 1, rendered: false });
+    r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 1 });
+    expect(r).toEqual({ count: 1, rendered: false });
     expect(Object.keys(files).length).toBe(before);
+  });
+
+  it("is idempotent + retry-safe: a rebuild after a transient render failure does NOT duplicate messages", async () => {
+    const nd = { value: captured };
+    let failNextWrite = true;
+    // A desktop whose FIRST files.write of the message index throws (transient), then succeeds.
+    const calls: Array<[string, ...unknown[]]> = [];
+    const files: Record<string, string> = {};
+    const desktop = {
+      commands: { run: async (cmd: string) => { calls.push(["run", cmd]); return cmd.startsWith("cat ") ? { stdout: nd.value } : { exitCode: 0, stdout: "" }; } },
+      files: {
+        write: async (filePath: string, data: string | ArrayBuffer) => {
+          if (failNextWrite && filePath.endsWith("/inbox/index")) { failNextWrite = false; throw new Error("transient files.write timeout"); }
+          files[filePath] = String(data);
+        }
+      }
+    } as unknown as E2BDesktopSandbox;
+    const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
+
+    // First refresh throws mid-render (surface partially/not written); count is NOT advanced by the caller.
+    await expect(refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 })).rejects.toThrow();
+    // Retry (sinceCount still 0, because the caller only advances on rendered:true) rebuilds cleanly.
+    const r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 });
+    expect(r).toEqual({ count: 1, rendered: true });
+    // Exactly ONE message rendered — the retry rebuilt from a fresh channel, so no duplicate.
+    const list = JSON.parse(files["/tmp/x/surface/api/inbox/index"]!) as unknown[];
+    expect(list).toHaveLength(1);
   });
 });
 

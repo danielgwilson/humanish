@@ -1766,9 +1766,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(commsEmail.linkOrigin === undefined ? {} : { linkOrigin: commsEmail.linkOrigin })
       })
     : [];
-  let surfaceChannel: FakeInbox | undefined;
-  const surfaceInboxes: CommsAddress[] = [];
-  let surfaceCursor = 0;
+  const surfaceRecipients = (commsEmail?.recipients ?? [])
+    .filter((recipient): recipient is { lane: string; address: string } => recipient.address !== undefined)
+    .map((recipient) => ({ lane: recipient.lane, address: recipient.address }));
+  let surfaceRenderedCount = 0;
   let surfaceDisposed = false;
   let releaseSurface: () => void = () => {};
   const surfaceDispose = new Promise<void>((resolve) => { releaseSurface = resolve; });
@@ -1865,36 +1866,29 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       if (!deployedComms.ready) {
         throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
       }
-      // Stand up the live inbox surface: provision the declared-recipient inboxes on a dedicated surface
-      // channel, then start a background loop that drains-and-renders on a cadence so the persona sees new
-      // mail mid-session. Disposed at the TOP of the finally, before the teardown evidence drain.
-      surfaceChannel = new FakeInbox();
-      for (const recipient of commsEmail.recipients ?? []) {
-        if (recipient.address !== undefined) surfaceInboxes.push(await surfaceChannel.provisionAddress(recipient.lane, recipient.address));
-      }
       // Write the EMPTY inbox once up front so the persona's /inbox always resolves to the "No messages
       // yet." page — never a bare 404 — the instant it navigates there, even before any mail arrives OR if
       // the app sends to an address no declared recipient matches (the loop only re-renders on new mail).
       await writeInboxSurface(desktop, deployedComms.surfaceDir, [], { originMap: commsOriginMap, requestTimeoutMs: deps.requestTimeoutMs });
       const deployedRef = deployedComms;
-      const surfaceChannelRef = surfaceChannel;
       surfaceLoop = (async () => {
         // Render-first (so even a short session gets a populated inbox), then refresh on a cadence. The
         // cadence uses a REAL timer, NOT the injected instant clock: this loop is unbounded, so an instant
         // sleep would busy-spin and starve the session's own timers. The wait is interruptible by
-        // surfaceDispose (and the timer cleared) so teardown never blocks for a full cadence.
+        // surfaceDispose (and the timer cleared) so teardown never blocks for a full cadence. Each refresh
+        // is a full, idempotent rebuild; `surfaceRenderedCount` only advances on a SUCCESSFUL render so a
+        // transient failure retries cleanly (no duplicate emails).
         for (;;) {
           try {
             const refreshed = await refreshInboxSurface({
               desktop,
               deployed: deployedRef,
-              channel: surfaceChannelRef,
-              inboxes: surfaceInboxes,
-              cursor: surfaceCursor,
+              recipients: surfaceRecipients,
+              sinceCount: surfaceRenderedCount,
               originMap: commsOriginMap,
               requestTimeoutMs: deps.requestTimeoutMs
             });
-            surfaceCursor = refreshed.cursor;
+            if (refreshed.rendered) surfaceRenderedCount = refreshed.count;
           } catch {
             // Never throw into the render loop; the teardown drain + by-id teardown must still run.
           }

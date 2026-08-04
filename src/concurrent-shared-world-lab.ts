@@ -51,17 +51,20 @@ import {
   provisionCloneSubject,
   provisionLocalTreeSubject,
   declaredScreenForRender,
+  laneHasInboxRecipient,
   resolveLaneDevice,
   resolveSubjectState,
   runCuaLane,
+  withInboxMission,
   type CuaActorLabHooks,
   type CuaLaneDeps,
   type CuaLaneSpec,
   type LaneRunOutcome,
   type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
-import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
 import { FakeInbox } from "./comms-fake-inbox.js";
+import { buildOriginMap, type OriginMap } from "./comms-inbox.js";
 import type { CommsAddress } from "./comms-types.js";
 import {
   createDesktopSandbox,
@@ -761,6 +764,13 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   let subjectSandboxId: string | undefined;
   let subjectKilled = false;
   let getHostUrl: string | undefined;
+  // Persona inbox SURFACE (#297 slice B, shared-world): the getHost-exposed inbox URL a persona (in a
+  // DIFFERENT sandbox) opens, the serve->getHost origin-rewrite map (REQUIRED here so the app's loopback
+  // verify links resolve to a reachable host), and the dedicated surface channel + render loop.
+  let commsInboxUrl: string | undefined;
+  let commsOriginMap: OriginMap = [];
+  let surfaceRenderedCount = 0;
+  let surfaceLoop: Promise<void> | undefined;
   let runError: string | undefined;
   let snapshotIndex = 0;
   let liveObserver: (ObserverResult & { ok: true }) | undefined;
@@ -913,9 +923,11 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       // (injected into its env at create) resolves the moment it boots. Fail closed if the catch can't
       // stand up rather than let a comms-declared app silently send real mail to the internet.
       if (commsEmail && commsPort !== undefined) {
-        deployedComms = await deployCommsCatch(subjectDesktop, { port: commsPort, requestTimeoutMs, timers });
+        // A SECOND (0.0.0.0) read-only inbox listener on commsPort+1 so the persona — which lives in a
+        // DIFFERENT sandbox here — can reach the inbox surface via getHost; capture stays loopback.
+        deployedComms = await deployCommsCatch(subjectDesktop, { port: commsPort, inboxPort: commsPort + 1, requestTimeoutMs, timers });
         if (!deployedComms.ready) {
-          throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
+          throw new Error(`comms email catch did not become ready in the subject sandbox (loopback capture ${commsPort} / inbox ${commsPort + 1})`);
         }
       }
 
@@ -966,6 +978,58 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         throw new Error("getHost returned a non-tokenless URL; refusing to persist a host URL that may carry a credential (invariant 1)");
       }
       getHostUrl = hostUrl;
+
+      // Persona inbox SURFACE (#297 slice B, shared-world): getHost-expose the read-only inbox listener so
+      // a persona in a DIFFERENT sandbox can open it; build the serve->getHost origin map (REQUIRED here —
+      // the app's loopback verify links must be rewritten to a reachable host); provision the surface
+      // channel; write the EMPTY inbox up front (so /inbox never 404s); and start a render loop that drains
+      // + re-renders on a cadence. The loop shares the prober's dispose signal (disposed together, before
+      // the teardown evidence drain), and uses a DEDICATED FakeInbox + cursor (independent of that drain).
+      if (commsEmail && deployedComms?.inboxPort !== undefined) {
+        const rawInboxHost = subjectDesktop.getHost(deployedComms.inboxPort);
+        const inboxHostUrl = /^https?:\/\//i.test(rawInboxHost) ? rawInboxHost : `https://${rawInboxHost}`;
+        if (!isTokenlessHost(inboxHostUrl)) {
+          throw new Error("getHost returned a non-tokenless URL for the comms inbox; refusing to advertise it (invariant 1)");
+        }
+        commsInboxUrl = `${inboxHostUrl}/inbox`;
+        commsOriginMap = buildOriginMap({
+          internalServeUrl: serve.url,
+          reachableBaseUrl: getHostUrl,
+          ...(commsEmail.linkOrigin === undefined ? {} : { linkOrigin: commsEmail.linkOrigin })
+        });
+        const surfaceRecipients = (commsEmail.recipients ?? [])
+          .filter((recipient): recipient is { lane: string; address: string } => recipient.address !== undefined)
+          .map((recipient) => ({ lane: recipient.lane, address: recipient.address }));
+        await writeInboxSurface(subjectDesktop, deployedComms.surfaceDir, [], { originMap: commsOriginMap, requestTimeoutMs });
+        const surfaceDeployed = deployedComms;
+        const surfaceCadenceMs = 2500;
+        surfaceLoop = (async () => {
+          // Full, idempotent rebuild each tick; surfaceRenderedCount advances only on a successful render,
+          // so a transient failure retries cleanly. Real timer (dispose-interruptible + cleared) — an
+          // unbounded loop must not busy-spin on the injected instant clock.
+          for (;;) {
+            try {
+              const refreshed = await refreshInboxSurface({
+                desktop: subjectDesktop!,
+                deployed: surfaceDeployed,
+                recipients: surfaceRecipients,
+                sinceCount: surfaceRenderedCount,
+                originMap: commsOriginMap,
+                requestTimeoutMs
+              });
+              if (refreshed.rendered) surfaceRenderedCount = refreshed.count;
+            } catch {
+              // Never throw into the render loop; the teardown drain + by-id teardown must still run.
+            }
+            if (proberDisposed) break;
+            await new Promise<void>((resolve) => {
+              const timer = setTimeout(resolve, surfaceCadenceMs);
+              void disposeSignal.then(() => { clearTimeout(timer); resolve(); });
+            });
+            if (proberDisposed) break;
+          }
+        })();
+      }
 
       // Baseline state snapshot, then start the background cadence prober.
       await proberSnapshot();
@@ -1059,8 +1123,13 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
 
       actorResults = await mapWithConcurrency(actorSpecs, Math.max(1, concurrency), async (spec, i) => {
         const route = resolveActorSeatUrl(getHostUrl!, roles[i]?.entry);
+        // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
+        // has a declared recipient it can actually receive mail into (else it would stall on an empty inbox).
+        const laneSpec = commsEmail && commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.laneId)
+          ? withInboxMission(spec, commsInboxUrl)
+          : spec;
         const startedAt = now();
-        const outcome = await runCuaLane(spec, { ...baseActorDeps, appUrl: route });
+        const outcome = await runCuaLane(laneSpec, { ...baseActorDeps, appUrl: route });
         const endedAt = now();
         return { spec, outcome, startedAt, endedAt, route };
       });
@@ -1074,6 +1143,11 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       releaseDispose();
       if (proberLoop) {
         await proberLoop.catch(() => undefined);
+      }
+      // Stop the inbox-surface render loop too (shares the prober's dispose signal), before the teardown
+      // evidence drain below — so the two in-sandbox reads never overlap and the surface state is final.
+      if (surfaceLoop) {
+        await surfaceLoop.catch(() => undefined);
       }
       if (subjectDesktop && getHostUrl) {
         await proberSnapshot().catch(() => undefined);

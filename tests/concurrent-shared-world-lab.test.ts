@@ -479,7 +479,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The base subject handler + comms overrides (health service-marker + the teardown drain `cat`).
     const baseHandler = makeCommandHandler(state);
     const commandHandler = (command: string): { stdout?: string } | undefined => {
-      if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+      // Both the loopback capture (commsPort) and the 0.0.0.0 inbox (commsPort+1) listeners are probed on
+      // /health; the serve readiness probe hits `/` (no /health), so this only marks the comms listeners.
+      if (command.includes("/health")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
       if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
       return baseHandler(command);
     };
@@ -524,6 +526,47 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The evidence artifact does not break bundle verification.
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
+  });
+
+  it("comms:email:fake — getHost-exposes the inbox, renders the live surface on the SUBJECT, and tells the matching persona its inbox URL", async () => {
+    const state = { worldVersion: 0 };
+    const commsPort = 8025;
+    const verificationHtml = '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const capturedNdjson =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+    const baseHandler = makeCommandHandler(state);
+    const commandHandler = (command: string): { stdout?: string } | undefined => {
+      if (command.includes("/health")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+      if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+      return baseHandler(command);
+    };
+    const { module, sandboxes } = makeFakeModule(commandHandler);
+    // Capture the instructions each persona actually received.
+    const seenInstructions: string[] = [];
+    const baseRun = makeRunSession(state, makeRendezvous(3));
+    const hooks: SharedWorldLabHooks = {
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+      loadDesktopModule: async () => module,
+      runSession: async (options) => { seenInstructions.push(options.instructions); return baseRun(options); },
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      proberCadenceMs: 100_000
+    };
+    const config: LabConfig = {
+      ...concurrentConfig(3, 3),
+      // Recipient lane matches the FIRST persona's lane id, so only it is told to check the inbox.
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "persona-01", address: "patient@example.test" }] } }
+    };
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
+    expect(result.ok).toBe(true);
+
+    // The read-only inbox listener was getHost-exposed on commsPort+1; the matching persona was told THAT
+    // URL (a getHost host, reachable from its own — different — sandbox), not the loopback capture URL.
+    const inboxHost = `https://${commsPort + 1}-${sandboxes[0]!.sandboxId}.e2b.app/inbox`;
+    expect(seenInstructions.some((text) => text.includes(inboxHost))).toBe(true);
+    expect(seenInstructions.some((text) => text.includes(`127.0.0.1:${commsPort}`))).toBe(false); // never the capture URL
+
+    // The live inbox surface was rendered into the SUBJECT sandbox (created first) during the run.
+    expect(sandboxes[0]!.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
   });
 
   it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {

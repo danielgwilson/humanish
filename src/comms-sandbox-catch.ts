@@ -8,6 +8,7 @@
 // injected base-URL env (`http://127.0.0.1:<port>`) is known before the sandbox is created.
 
 import type { CommsAddress, CommsChannel, CommsMessage } from "./comms-types.js";
+import { FakeInbox } from "./comms-fake-inbox.js";
 import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./comms-evidence.js";
 import { buildInboxSurface, type InboxRenderOptions } from "./comms-inbox.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./comms-email-catch.js";
@@ -34,13 +35,17 @@ function shq(value: string): string {
  * and returns a plausible provider success — all normalization/profile parsing happens host-side on the
  * drained lines, so the typed, tested profiles stay in one place. It also serves the host-rendered inbox
  * surface statically at /inbox + /api/inbox (with a script-forbidding CSP). argv: <port> <deliveriesFile>
- * [servedDir]. Binds 127.0.0.1 only (loopback): the app under test reaches it in-sandbox; nothing is
- * exposed to the internet.
+ * <servedDir> [inboxPort]. The capture listener binds 127.0.0.1 (loopback) — the app under test reaches
+ * it in-sandbox, nothing on the internet can inject a fake send. When an [inboxPort] is given (the
+ * shared-world route, where the persona lives in a DIFFERENT sandbox), it ALSO starts a READ-ONLY inbox
+ * listener on 0.0.0.0:<inboxPort> so getHost can proxy the persona's inbox reads to it; that listener
+ * serves GET only (POST → 405). The CUA same-sandbox route omits it and stays loopback-only.
  */
 export const SANDBOX_CATCH_SCRIPT = `import json
 import os
 import random
 import sys
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
@@ -48,6 +53,7 @@ from urllib.parse import unquote
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8025
 OUT_FILE = sys.argv[2] if len(sys.argv) > 2 else "/tmp/humanish-comms/deliveries.ndjson"
 SERVED_DIR = sys.argv[3] if len(sys.argv) > 3 else (os.path.dirname(OUT_FILE) + "/surface")
+INBOX_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 0
 try:
     os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
 except Exception:
@@ -60,7 +66,7 @@ def message_id():
     return "humanish-catch-" + format(int(time.time() * 1000), "x") + format(random.randrange(16 ** 8), "08x")
 
 
-class Handler(BaseHTTPRequestHandler):
+class BaseHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         return
 
@@ -108,6 +114,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._json(404, {"error": "not found"})
 
+
+class CaptureHandler(BaseHandler):
     def do_POST(self):
         path = self.path.split("?")[0]
         try:
@@ -135,12 +143,29 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"id": mid})
 
 
-ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+class ReadOnlyHandler(BaseHandler):
+    def do_POST(self):
+        self.send_response(405)
+        self.end_headers()
+
+
+# Optional read-only inbox listener on 0.0.0.0 (getHost-reachable from a DIFFERENT sandbox on the
+# shared-world route). Serves GET /inbox + /api/inbox + /health only; POST capture stays on the
+# 127.0.0.1 listener so nothing on the internet can inject a fake captured send. Started only when a
+# distinct inbox port is provided (the CUA same-sandbox route omits it and stays loopback-only).
+if INBOX_PORT and INBOX_PORT != PORT:
+    threading.Thread(target=lambda: ThreadingHTTPServer(("0.0.0.0", INBOX_PORT), ReadOnlyHandler).serve_forever(), daemon=True).start()
+
+ThreadingHTTPServer(("127.0.0.1", PORT), CaptureHandler).serve_forever()
 `;
 
 export interface DeployCommsCatchOptions {
   /** Fixed loopback port the catch listens on (default 8025). Must be free inside the sandbox. */
   port?: number;
+  /** Optional SECOND fixed port for a READ-ONLY inbox listener bound to 0.0.0.0, so a persona in a
+   *  DIFFERENT sandbox can reach the inbox surface via getHost (the shared-world route). Omit on the
+   *  CUA same-sandbox route (loopback is enough). Must differ from `port` and be free in the sandbox. */
+  inboxPort?: number;
   /** In-sandbox working dir for the script + NDJSON (default /tmp/humanish-comms). */
   dir?: string;
   /** Detached-process name ([a-z0-9-]); default "comms-catch". */
@@ -159,6 +184,9 @@ export interface DeployedCommsCatch {
   /** In-sandbox dir the HOST renders the persona-facing inbox-surface files into (via writeInboxSurface);
    *  the catch serves them at /inbox and /api/inbox. */
   surfaceDir: string;
+  /** The 0.0.0.0 read-only inbox port, when one was requested — getHost-expose THIS to give a
+   *  different-sandbox persona a reachable inbox URL. Absent on the loopback-only (CUA) route. */
+  inboxPort?: number;
   /** Whether the catch's /health returned OUR service marker within the readiness budget. Callers MUST
    *  treat `ready === false` as fatal (do not inject baseUrl into a dead catch — the app's sends would
    *  silently fail with nothing captured). */
@@ -206,6 +234,10 @@ export async function deployCommsCatch(
   if (!Number.isInteger(port) || port <= 0 || port > 65_535) {
     throw new Error(`deployCommsCatch: invalid port ${JSON.stringify(options.port)}`);
   }
+  const inboxPort = options.inboxPort === undefined ? undefined : Math.trunc(Number(options.inboxPort));
+  if (inboxPort !== undefined && (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_535 || inboxPort === port)) {
+    throw new Error(`deployCommsCatch: invalid inboxPort ${JSON.stringify(options.inboxPort)}`);
+  }
   const dir = options.dir ?? DEFAULT_CATCH_DIR;
   const name = options.name ?? "comms-catch";
   const requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
@@ -217,15 +249,22 @@ export async function deployCommsCatch(
   await desktop.files.write(scriptPath, SANDBOX_CATCH_SCRIPT);
   await startDetachedProcess(desktop, {
     name,
-    command: `python3 ${shq(scriptPath)} ${port} ${shq(deliveriesPath)} ${shq(surfaceDir)}`,
+    command: `python3 ${shq(scriptPath)} ${port} ${shq(deliveriesPath)} ${shq(surfaceDir)}${inboxPort === undefined ? "" : ` ${inboxPort}`}`,
     requestTimeoutMs
   });
-  const ready = await catchHealthy(desktop, port, {
-    timeoutMs: options.readyTimeoutMs ?? 15_000,
-    requestTimeoutMs,
-    ...(options.timers ?? {})
-  });
-  return { port, baseUrl: `http://127.0.0.1:${port}`, deliveriesPath, surfaceDir, ready };
+  const probe = { timeoutMs: options.readyTimeoutMs ?? 15_000, requestTimeoutMs, ...(options.timers ?? {}) };
+  const ready = await catchHealthy(desktop, port, probe);
+  // Confirm the read-only inbox listener bound too (loopback-reachable at its own port), when requested —
+  // else a getHost-exposed inbox would 502. Fail closed by folding it into `ready`.
+  const inboxReady = inboxPort === undefined ? true : await catchHealthy(desktop, inboxPort, probe);
+  return {
+    port,
+    baseUrl: `http://127.0.0.1:${port}`,
+    deliveriesPath,
+    surfaceDir,
+    ...(inboxPort === undefined ? {} : { inboxPort }),
+    ready: ready && inboxReady
+  };
 }
 
 /**
@@ -369,44 +408,54 @@ export async function writeInboxSurface(
   return files.length;
 }
 
+/** A declared inbox recipient the surface renders for (lane + the literal address the app sends to). */
+export interface InboxSurfaceRecipient {
+  lane: string;
+  address: string;
+}
+
 /**
- * One mid-run inbox-surface refresh cycle: drain the catch INCREMENTALLY from `cursor` into the
- * persistent surface `channel`, poll the provisioned `inboxes`, and (re)render the surface so the
- * persona sees new mail while the session is live. Returns the advanced cursor + whether it rendered.
+ * One mid-run inbox-surface refresh cycle: FULL rebuild from the append-only NDJSON (drain from cursor 0)
+ * into a FRESH FakeInbox each call, provisioning the declared `recipients`, then (re)render the surface
+ * so the persona sees new mail while the session is live. Returns the total captured-send `count` + whether
+ * it rendered.
  *
- * MUST use a channel dedicated to the surface — NOT the teardown evidence channel: the teardown
- * collectCommsThread drains the same append-only NDJSON from cursor 0 into its OWN fresh channel, so
- * feeding both an incremental and a cursor-0 drain into one channel would route every send twice
- * (FakeInbox mints fresh ids each time, so dedup-by-id can't catch it) and double-count the evidence.
- * Two channels + two cursors are independent readers of the same file — no evidence is lost or altered.
- * Skips the (N-file) render when no new sends arrived this tick, so idle ticks are cheap.
+ * The full rebuild is deliberate — it is IDEMPOTENT and RETRY-SAFE: a transient writeInboxSurface failure
+ * PROPAGATES (the caller retries next tick without advancing its `sinceCount`), and because each rebuild
+ * starts from a clean channel, a send is never routed twice, so the persona never sees duplicate emails.
+ * Pass `sinceCount` (the last SUCCESSFULLY-rendered send count) to skip the (N-file) render when nothing
+ * new has arrived. This is independent of the teardown collectCommsThread drain (its own fresh channel,
+ * also cursor 0) — no evidence is lost or altered. The NDJSON is small for a run, so re-reading it is cheap.
  */
 export async function refreshInboxSurface(args: {
   desktop: E2BDesktopSandbox;
   deployed: Pick<DeployedCommsCatch, "deliveriesPath" | "surfaceDir">;
-  channel: CommsChannel;
-  inboxes: CommsAddress[];
-  cursor: number;
+  recipients: InboxSurfaceRecipient[];
+  sinceCount?: number;
   originMap?: InboxRenderOptions["originMap"];
   requestTimeoutMs?: number;
-}): Promise<{ cursor: number; rendered: boolean }> {
-  const { sends, cursor } = await drainCommsCatch(args.desktop, args.deployed, args.cursor, args.requestTimeoutMs);
-  if (sends.length === 0) return { cursor, rendered: false };
-  await routeCapturedSends(sends, args.channel);
+}): Promise<{ count: number; rendered: boolean }> {
+  const { sends } = await drainCommsCatch(args.desktop, args.deployed, 0, args.requestTimeoutMs);
+  if (sends.length === 0) return { count: 0, rendered: false };
+  if (args.sinceCount !== undefined && sends.length <= args.sinceCount) return { count: sends.length, rendered: false };
+  const channel = new FakeInbox();
+  const inboxes: CommsAddress[] = [];
+  for (const recipient of args.recipients) inboxes.push(await channel.provisionAddress(recipient.lane, recipient.address));
+  await routeCapturedSends(sends, channel);
   const seen = new Set<string>();
   const messages: CommsMessage[] = [];
-  for (const inbox of args.inboxes) {
-    for (const message of await args.channel.poll(inbox, 0)) {
+  for (const inbox of inboxes) {
+    for (const message of await channel.poll(inbox, 0)) {
       if (seen.has(message.id)) continue;
       seen.add(message.id);
       messages.push(message);
     }
   }
-  if (messages.length === 0) return { cursor, rendered: false };
+  if (messages.length === 0) return { count: sends.length, rendered: false };
   messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
   await writeInboxSurface(args.desktop, args.deployed.surfaceDir, messages, {
     ...(args.originMap === undefined ? {} : { originMap: args.originMap }),
     ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs })
   });
-  return { cursor, rendered: true };
+  return { count: sends.length, rendered: true };
 }
