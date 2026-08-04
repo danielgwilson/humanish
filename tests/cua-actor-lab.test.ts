@@ -921,16 +921,27 @@ describe("runCuaActorLab", () => {
     expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
   });
 
-  it("comms:email:fake — injects the catch base-URL env at sandbox-create and deploys the in-sandbox catch", async () => {
+  it("comms:email:fake — injects the catch env, deploys the catch, and drains captured mail into a digest-only evidence artifact", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    const config: LabConfig = { ...base, comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } } };
+    const config: LabConfig = {
+      ...base,
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "patient", address: "patient@example.test" }] } }
+    };
+    // What the (simulated) subject app POSTed to its Resend-shaped base URL during the run — a
+    // verification email to the declared recipient, captured by the in-sandbox catch as NDJSON.
+    const verificationHtml = '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const capturedNdjson =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
     let t = 0;
     const sandbox = makeFakeSandbox({
-      commandHandler: cloneCommandHandler((command) =>
+      commandHandler: cloneCommandHandler((command) => {
         // the comms catch readiness probe must see OUR service marker (not the subject's plain READY)
-        command.includes(`${commsPort}/health`) ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined
-      )
+        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        // the teardown drain `cat`s the in-sandbox NDJSON of captured sends
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+        return undefined;
+      })
     });
     const { module, created } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -948,6 +959,57 @@ describe("runCuaActorLab", () => {
     expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
     // And the in-sandbox capture script was written into the subject sandbox (the catch was deployed).
     expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("catch.mjs"))).toBe(true);
+
+    // The captured mail was drained + routed + written as a digest-only comms-thread artifact, and
+    // REGISTERED in the lane's stream artifacts (so the bundle's existence-verify + scan cover it).
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const commsArtifact = bundle.streams[0].artifacts.find((a: { path: string; kind: string }) => a.path === "comms/thread.json");
+    expect(commsArtifact).toMatchObject({ kind: "log", label: "comms thread" });
+    const threadRaw = await readFile(path.join(runDir, "comms", "thread.json"), "utf8");
+    const thread = JSON.parse(threadRaw) as { schema: string; count: number; thread: Array<{ toDigests: string[]; codeCount: number }> };
+    expect(thread.schema).toBe("humanish.comms-thread.v1");
+    expect(thread.count).toBe(1);
+    expect(thread.thread[0]!.codeCount).toBe(1); // the OTP is a count, never stored
+    // Public-safety: NO raw address / link / OTP / subject text in the persisted evidence.
+    expect(threadRaw).not.toContain("patient@example.test");
+    expect(threadRaw).not.toContain("app.example.test/verify");
+    expect(threadRaw).not.toContain("481920");
+    expect(threadRaw).not.toContain("Confirm your email");
+  });
+
+  it("comms:email:fake — warns (never silently loses) when captured mail matches no declared recipient", async () => {
+    const commsPort = 8025;
+    const base = cloneCuaConfig();
+    // comms declared but NO recipients → the app's send is captured but matches no provisioned inbox.
+    const config: LabConfig = { ...base, comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } } };
+    const capturedNdjson =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["patient@example.test"], subject: "Confirm", html: "<p>Code: 481920</p>" }) }) + "\n";
+    let t = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    // Captured-but-unevidenced mail surfaces as a warning (not lost silently); no artifact registered.
+    expect(outcome.result.warnings.some((w) => w.includes("captured") && w.includes("no comms evidence"))).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.streams[0].artifacts.find((a: { path: string }) => a.path === "comms/thread.json")).toBeUndefined();
   });
 
   it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {

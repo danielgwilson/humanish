@@ -55,7 +55,9 @@ import {
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
-import { DEFAULT_SANDBOX_CATCH_PORT, deployCommsCatch } from "./comms-sandbox-catch.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
+import { FakeInbox } from "./comms-fake-inbox.js";
+import type { CommsAddress } from "./comms-types.js";
 import {
   DEFAULT_DEVICE_PRESET,
   isDevicePresetName,
@@ -1026,6 +1028,10 @@ export interface LaneRunOutcome {
   harnessError: boolean;
   failureCode?: CuaActorLabErrorCode;
   entryKind?: "local-app";
+  /** Relative run-dir path of the digest-only comms-thread evidence artifact this lane wrote
+   *  (humanish.comms-thread.v1), when a comms lab captured mail into its in-sandbox catch. Registered
+   *  in the lane's stream artifacts. Absent when no comms lab ran or nothing was captured. */
+  commsArtifactPath?: string;
 }
 
 /** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
@@ -1716,6 +1722,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   // sandbox-create (below, so the app reads it at boot); the catch is started right after create.
   const commsEmail = (cloneRoute || localTreeRoute) ? config.comms?.email : undefined;
   const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
+  // Hoisted so the finally can drain the catch before teardown; `commsArtifactPath` is the written
+  // evidence path folded into the lane outcome.
+  let deployedComms: DeployedCommsCatch | undefined;
+  let commsArtifactPath: string | undefined;
   const commsEnv: Record<string, string> = commsEmail && commsPort !== undefined
     ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
     : {};
@@ -1807,7 +1817,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
     // catch up is a setup failure (fail closed) rather than silently sending real mail.
     if (commsEmail && commsPort !== undefined) {
-      const deployedComms = await deployCommsCatch(desktop, { port: commsPort, requestTimeoutMs: deps.requestTimeoutMs });
+      deployedComms = await deployCommsCatch(desktop, { port: commsPort, requestTimeoutMs: deps.requestTimeoutMs });
       if (!deployedComms.ready) {
         throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
       }
@@ -2021,6 +2031,41 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             : { warnings: [...(desktopGeometry.warnings ?? []), ...geometryWarnings] })
         };
       }
+      // Off-app comms evidence (#297): before this lane's sandbox is torn down, drain everything the
+      // in-sandbox catch captured, route it into a host fake inbox addressed to the declared
+      // recipients, and write the digest-only thread artifact. Wrapped so a drain failure NEVER
+      // breaks teardown — the sandbox must still be killed either way. Runs only for a ready catch.
+      if (commsEmail && deployedComms?.ready) {
+        try {
+          const commsChannel = new FakeInbox();
+          const commsInboxes: CommsAddress[] = [];
+          for (const recipient of commsEmail.recipients ?? []) {
+            if (recipient.address !== undefined) {
+              commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
+            }
+          }
+          const collected = await collectCommsThread({
+            desktop,
+            deployed: deployedComms,
+            channel: commsChannel,
+            inboxes: commsInboxes,
+            requestTimeoutMs: deps.requestTimeoutMs
+          });
+          if (collected.artifact) {
+            const path = deps.laneCount === 1 ? "comms/thread.json" : `comms/${spec.streamId}.thread.json`;
+            await writeContainedOutputFile(deps.artifactRoot, path, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+            commsArtifactPath = path;
+          } else if (collected.captured > 0) {
+            // Captured mail that matched no declared recipient must not vanish silently (invariant 6:
+            // honest signals): tell the operator to declare comms.email.recipients[].address to match
+            // the address the app actually sends to (e.g. the one the persona surface will sign up with).
+            warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+          }
+        } catch (error) {
+          warnings.push(`Comms evidence collection failed (run continues; sandbox still torn down): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+        }
+      }
+
       const failed = sessionError !== undefined || session === undefined;
       // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
       // a local-tree lane's teardown decision, and vice versa.
@@ -2103,7 +2148,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     noEngagement,
     selfReportedBlocker,
     harnessError,
-    ...(failureCode === undefined ? {} : { failureCode })
+    ...(failureCode === undefined ? {} : { failureCode }),
+    ...(commsArtifactPath === undefined ? {} : { commsArtifactPath })
   };
 }
 
@@ -3136,6 +3182,7 @@ function buildSingleLaneBundle(args: {
     }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
+    ...(outcome?.commsArtifactPath === undefined ? {} : { commsArtifactPath: outcome.commsArtifactPath }),
     ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
       ? {}
       : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
@@ -3680,6 +3727,9 @@ export function buildCuaBundle(args: {
   isMobile?: boolean;
   runId: string;
   screenshots: string[];
+  /** Relative run-dir path of the digest-only comms-thread evidence artifact (humanish.comms-thread.v1),
+   *  when a comms lab captured mail; registered as a "log" stream artifact. */
+  commsArtifactPath?: string;
   /**
    * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
    * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
@@ -3810,6 +3860,9 @@ export function buildCuaBundle(args: {
       { label: "events", path: "events.ndjson", kind: "events" as const },
       ...(args.traceArtifactPath
         ? [{ label: "actor trace", path: args.traceArtifactPath, kind: "trace" as const }]
+        : []),
+      ...(args.commsArtifactPath
+        ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
         : []),
       ...args.screenshots.map((screenshot, index) => ({
         label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
@@ -4196,6 +4249,9 @@ export function buildCuaFanoutBundle(args: {
         { label: "events", path: "events.ndjson", kind: "events" as const },
         ...(session
           ? [{ label: `lane ${spec.laneId} actor trace`, path: spec.traceArtifactPath, kind: "trace" as const }]
+          : []),
+        ...(outcome?.commsArtifactPath
+          ? [{ label: `lane ${spec.laneId} comms thread`, path: outcome.commsArtifactPath, kind: "log" as const }]
           : []),
         ...screenshots.map((screenshot, screenshotIndex) => ({
           label: `lane ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,

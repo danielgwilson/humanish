@@ -9,6 +9,7 @@ import { FakeInbox } from "../src/comms-fake-inbox.js";
 import { buildCommsThreadArtifact } from "../src/comms-evidence.js";
 import {
   SANDBOX_CATCH_SCRIPT,
+  collectCommsThread,
   deployCommsCatch,
   drainCommsCatch,
   routeCapturedSends,
@@ -167,6 +168,68 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     expect(inbox).toHaveLength(1);
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(inbox[0]!.codes).toEqual(["481920"]);
+  });
+});
+
+describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)", () => {
+  it("drains → routes to declared recipients → builds the digest-only thread artifact (no raw PII)", async () => {
+    const channel = new FakeInbox();
+    const patient = await channel.provisionAddress("patient", "patient@example.test");
+    const captured =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [patient.value], subject: "Confirm your email", html: VERIFICATION_HTML }) }) + "\n";
+    const { desktop } = makeFakeDesktop((cmd) => {
+      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.startsWith("cat ")) return { stdout: captured };
+      return undefined;
+    });
+    const deployed = await deployCommsCatch(desktop, { timers: instantTimers });
+
+    const collected = await collectCommsThread({ desktop, deployed, channel, inboxes: [patient] });
+    expect(collected.captured).toBe(1);
+    expect(collected.matched).toBe(1);
+    const artifact = collected.artifact;
+    expect(artifact).toBeDefined();
+    expect(artifact!.schema).toBe("humanish.comms-thread.v1");
+    expect(artifact!.count).toBe(1);
+    const entry = artifact!.thread[0]!;
+    expect(entry.toDigests[0]).toBe(patient.digest);
+    expect(entry.linkDigests[0]).toMatch(/^[0-9a-f]{16}$/);
+    expect(entry.codeCount).toBe(1);
+    const serialized = JSON.stringify(artifact);
+    expect(serialized).not.toContain("patient@example.test");
+    expect(serialized).not.toContain("app.example.test/verify");
+    expect(serialized).not.toContain("481920");
+    expect(serialized).not.toContain("Confirm your email");
+  });
+
+  it("returns undefined when nothing was captured, and when captured mail matches no provisioned inbox (no false evidence)", async () => {
+    const channel = new FakeInbox();
+    const patient = await channel.provisionAddress("patient", "patient@example.test");
+
+    const empty = makeFakeDesktop((cmd) => {
+      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.startsWith("cat ")) return { stdout: "" };
+      return undefined;
+    });
+    const deployedEmpty = await deployCommsCatch(empty.desktop, { timers: instantTimers });
+    const emptyCollected = await collectCommsThread({ desktop: empty.desktop, deployed: deployedEmpty, channel, inboxes: [patient] });
+    expect(emptyCollected.artifact).toBeUndefined();
+    expect(emptyCollected.captured).toBe(0); // nothing captured at all
+
+    // Captured mail addressed to an UNPROVISIONED inbox is dropped by deliverRaw → no artifact, but
+    // it WAS captured (matched 0) — the caller warns rather than losing it silently.
+    const stranger =
+      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "x@example.test", to: ["stranger@example.test"], subject: "hi", html: "<p>hi</p>" }) }) + "\n";
+    const other = makeFakeDesktop((cmd) => {
+      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.startsWith("cat ")) return { stdout: stranger };
+      return undefined;
+    });
+    const deployedOther = await deployCommsCatch(other.desktop, { timers: instantTimers });
+    const strangerCollected = await collectCommsThread({ desktop: other.desktop, deployed: deployedOther, channel, inboxes: [patient] });
+    expect(strangerCollected.artifact).toBeUndefined();
+    expect(strangerCollected.captured).toBe(1); // captured but unmatched → caller surfaces a warning
+    expect(strangerCollected.matched).toBe(0);
   });
 });
 
