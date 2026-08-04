@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.28.0` (2026-08-04). The containment boundary introduced in
+Package/source version in this tree: `0.29.0` (2026-08-04). The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority. The bundled OSS meta-lab is dry-run only until

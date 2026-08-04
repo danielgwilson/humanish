@@ -26,53 +26,117 @@ function shq(value: string): string {
 }
 
 /**
- * The self-contained in-sandbox capture server (a plain node ESM string — runs on the sandbox's own
- * node, imports nothing from humanish). It is DELIBERATELY dumb: it records each POST verbatim as an
- * NDJSON line `{t, path, body}` and returns a plausible provider success — all normalization/profile
- * parsing happens host-side on the drained lines, so the typed, tested profiles stay in one place.
- * argv: <port> <deliveriesFile>.
+ * The self-contained in-sandbox capture server — a plain **python3** script (stdlib only), because the
+ * stock E2B desktop template ships python3 but NOT node, and the co-located catcher must run in a
+ * runtime the sandbox guarantees (the precedented choice: LocalStack is a python catcher the app points
+ * at; you pick the runtime the environment has). It runs on the sandbox's own python3, imports nothing
+ * from humanish. DELIBERATELY dumb: it records each POST verbatim as an NDJSON line `{t, path, body}`
+ * and returns a plausible provider success — all normalization/profile parsing happens host-side on the
+ * drained lines, so the typed, tested profiles stay in one place. It also serves the host-rendered inbox
+ * surface statically at /inbox + /api/inbox (with a script-forbidding CSP). argv: <port> <deliveriesFile>
+ * [servedDir]. Binds 127.0.0.1 only (loopback): the app under test reaches it in-sandbox; nothing is
+ * exposed to the internet.
  */
-export const SANDBOX_CATCH_SCRIPT = [
-  'import { createServer } from "node:http";',
-  'import { appendFileSync, mkdirSync, readFileSync } from "node:fs";',
-  'import { dirname } from "node:path";',
-  'const port = Number(process.argv[2] || 8025);',
-  'const outFile = process.argv[3] || "/tmp/humanish-comms/deliveries.ndjson";',
-  // argv[4] is the dir the HOST renders the inbox-surface files into (host-side typed rendering; this
-  // server only serves them statically), defaulting to a `surface` sibling of the deliveries file.
-  'const servedDir = process.argv[4] || (dirname(outFile) + "/surface");',
-  'try { mkdirSync(dirname(outFile), { recursive: true }); } catch {}',
-  'const MAX = 5 * 1024 * 1024;',
-  'createServer((req, res) => {',
-  '  const path = (req.url || "/").split("?")[0];',
-  '  if (req.method === "GET" && (path === "/" || path === "/health")) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: true, service: "humanish-comms-catch" })); return; }',
-  '  if (req.method === "GET" && (path === "/inbox" || path.indexOf("/inbox/") === 0 || path === "/api/inbox" || path.indexOf("/api/inbox/") === 0)) {',
-  '    let rel; try { rel = decodeURIComponent(path); } catch { res.writeHead(400); res.end(); return; }',
-  '    if (rel.indexOf("..") !== -1 || rel.indexOf("\\0") !== -1) { res.writeHead(400); res.end(); return; }',
-  '    let data = null;',
-  '    try { data = readFileSync(servedDir + rel); } catch { try { data = readFileSync(servedDir + rel + "/index"); } catch { data = null; } }',
-  '    if (data === null) { res.writeHead(404, { "content-type": "text/html; charset=utf-8" }); res.end("<p>message not found</p>"); return; }',
-  '    const isApi = rel.indexOf("/api/") === 0;',
-  '    const headers = { "content-type": isApi ? "application/json; charset=utf-8" : "text/html; charset=utf-8" };',
-  // The load-bearing XSS protection: a browser-enforced CSP forbidding all script on the surface page,
-  // so the app-authored (untrusted) email HTML we render cannot run script or reroot navigation.
-  '    if (!isApi) { headers["content-security-policy"] = "default-src \'self\'; script-src \'none\'; object-src \'none\'; base-uri \'none\'; frame-src \'none\'; img-src * data:; style-src \'unsafe-inline\'; font-src * data:"; }',
-  '    res.writeHead(200, headers); res.end(data); return;',
-  '  }',
-  '  if (req.method !== "POST") { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "not found" })); return; }',
-  '  let size = 0; const chunks = [];',
-  '  req.on("data", (c) => { size += c.length; if (size > MAX) { req.destroy(); } else { chunks.push(c); } });',
-  '  req.on("end", () => {',
-  '    const body = Buffer.concat(chunks).toString("utf8");',
-  '    try { appendFileSync(outFile, JSON.stringify({ t: Date.now(), path, body }) + "\\n"); } catch {}',
-  '    const id = "humanish-catch-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);',
-  '    if (path === "/v3/mail/send") { res.writeHead(202, { "x-message-id": id }); res.end(); }',
-  '    else if (path.endsWith("/batch")) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ data: [{ id }] })); }',
-  '    else { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ id })); }',
-  '  });',
-  '  req.on("error", () => { try { res.writeHead(400); res.end(); } catch {} });',
-  '}).listen(port, "127.0.0.1");'
-].join("\n");
+export const SANDBOX_CATCH_SCRIPT = `import json
+import os
+import random
+import sys
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
+
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8025
+OUT_FILE = sys.argv[2] if len(sys.argv) > 2 else "/tmp/humanish-comms/deliveries.ndjson"
+SERVED_DIR = sys.argv[3] if len(sys.argv) > 3 else (os.path.dirname(OUT_FILE) + "/surface")
+try:
+    os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
+except Exception:
+    pass
+MAX_BODY = 5 * 1024 * 1024
+CSP = "default-src 'self'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; img-src * data:; style-src 'unsafe-inline'; font-src * data:"
+
+
+def message_id():
+    return "humanish-catch-" + format(int(time.time() * 1000), "x") + format(random.randrange(16 ** 8), "08x")
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        return
+
+    def _json(self, status, obj, extra_headers=None):
+        payload = json.dumps(obj).encode("utf-8")
+        self.send_response(status)
+        self.send_header("content-type", "application/json; charset=utf-8")
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def do_GET(self):
+        path = self.path.split("?")[0]
+        if path == "/" or path == "/health":
+            self._json(200, {"ok": True, "service": "humanish-comms-catch"})
+            return
+        if path == "/inbox" or path.startswith("/inbox/") or path == "/api/inbox" or path.startswith("/api/inbox/"):
+            rel = unquote(path)
+            if ".." in rel or chr(0) in rel:
+                self.send_response(400)
+                self.end_headers()
+                return
+            data = None
+            for candidate in (SERVED_DIR + rel, SERVED_DIR + rel + "/index"):
+                try:
+                    with open(candidate, "rb") as handle:
+                        data = handle.read()
+                    break
+                except Exception:
+                    data = None
+            if data is None:
+                self.send_response(404)
+                self.send_header("content-type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"<p>message not found</p>")
+                return
+            is_api = rel.startswith("/api/")
+            self.send_response(200)
+            self.send_header("content-type", "application/json; charset=utf-8" if is_api else "text/html; charset=utf-8")
+            if not is_api:
+                self.send_header("content-security-policy", CSP)
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        self._json(404, {"error": "not found"})
+
+    def do_POST(self):
+        path = self.path.split("?")[0]
+        try:
+            length = int(self.headers.get("content-length") or 0)
+        except Exception:
+            length = 0
+        if length > MAX_BODY:
+            self.send_response(413)
+            self.end_headers()
+            return
+        body = self.rfile.read(length).decode("utf-8", "replace") if length > 0 else ""
+        try:
+            with open(OUT_FILE, "a", encoding="utf-8") as handle:
+                print(json.dumps({"t": int(time.time() * 1000), "path": path, "body": body}), file=handle)
+        except Exception:
+            pass
+        mid = message_id()
+        if path == "/v3/mail/send":
+            self.send_response(202)
+            self.send_header("x-message-id", mid)
+            self.end_headers()
+        elif path.endswith("/batch"):
+            self._json(200, {"data": [{"id": mid}]})
+        else:
+            self._json(200, {"id": mid})
+
+
+ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+`;
 
 export interface DeployCommsCatchOptions {
   /** Fixed loopback port the catch listens on (default 8025). Must be free inside the sandbox. */
@@ -145,7 +209,7 @@ export async function deployCommsCatch(
   const dir = options.dir ?? DEFAULT_CATCH_DIR;
   const name = options.name ?? "comms-catch";
   const requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
-  const scriptPath = `${dir}/catch.mjs`;
+  const scriptPath = `${dir}/catch.py`;
   const deliveriesPath = `${dir}/deliveries.ndjson`;
   const surfaceDir = `${dir}/surface`;
 
@@ -153,7 +217,7 @@ export async function deployCommsCatch(
   await desktop.files.write(scriptPath, SANDBOX_CATCH_SCRIPT);
   await startDetachedProcess(desktop, {
     name,
-    command: `node ${shq(scriptPath)} ${port} ${shq(deliveriesPath)} ${shq(surfaceDir)}`,
+    command: `python3 ${shq(scriptPath)} ${port} ${shq(deliveriesPath)} ${shq(surfaceDir)}`,
     requestTimeoutMs
   });
   const ready = await catchHealthy(desktop, port, {
