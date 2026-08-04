@@ -52,6 +52,23 @@ describe("FakeInbox (the in-process bus)", () => {
     expect(await bus.provision("patient-07")).toEqual(a); // idempotent per actor
   });
 
+  it("provisionAddress registers an explicit declared recipient address (idempotent by value) that deliverRaw resolves", async () => {
+    const bus = new FakeInbox();
+    // A declared local part distinct from what provision("patient") would auto-generate — proving an
+    // ARBITRARY declared address is honored (not just the default actor-id-keyed one).
+    const a = await bus.provisionAddress("patient", "patient-07@example.test");
+    expect(a.value).toBe("patient-07@example.test");
+    expect(a.actorId).toBe("patient");
+    expect(a.digest).toMatch(/^[0-9a-f]{16}$/);
+    // Idempotent by value (case-insensitive): re-declaring returns the SAME inbox (never resets its queue).
+    await bus.deliverRaw({ from: "no-reply@example.test", to: ["patient-07@example.test"], subject: "hi", body: "<a href=\"https://app.example.test/verify?t=1\">v</a>" });
+    const again = await bus.provisionAddress("patient", "PATIENT-07@example.test");
+    expect(again.value).toBe("patient-07@example.test");
+    expect(await bus.poll(again)).toHaveLength(1); // queue preserved across the idempotent re-declare
+    // The app's send to a DIFFERENT address is dropped (only the declared literal resolves).
+    expect(await bus.deliverRaw({ from: "no-reply@example.test", to: ["someone-else@example.test"], body: "hi" })).toHaveLength(0);
+  });
+
   it("routes an INGRESS delivery to the addressed inbox and extracts link + code; poll is since-scoped", async () => {
     let clock = 100;
     const bus = new FakeInbox({ now: () => clock });

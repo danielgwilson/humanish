@@ -586,13 +586,18 @@ export interface LabCommsEmail {
   injectEnv: string;
   /** Fixed in-sandbox loopback port the catch listens on (default 8025). Known before sandbox create. */
   port?: number;
-  /** Optionally declare each lane's inbox address up front (so an email-gated allowlist can pre-seed
-   *  it), instead of the harness's deterministic actor-id-keyed default. */
+  /** Declare each lane's inbox address the app-under-test sends to, so the teardown drain can MATCH
+   *  and evidence captured mail (an email-gated allowlist can also pre-seed it). An entry without
+   *  `address` reserves the lane for the persona inbox surface (a later slice, which assigns a
+   *  deterministic actor-id-keyed address the persona signs up with) but is NOT matched by the
+   *  evidence drain — captured mail to an undeclared address is warned, not silently dropped. */
   recipients?: LabCommsRecipient[];
 }
 
 export interface LabCommsRecipient {
   lane: string;
+  /** The literal address the app sends to — what the evidence drain matches. Omit to reserve the lane
+   *  for the persona surface's default address (not drain-matched). */
   address?: string;
 }
 

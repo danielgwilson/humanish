@@ -7,7 +7,8 @@
 // parse them and route into the CommsChannel. A FIXED loopback port is chosen up front so the app's
 // injected base-URL env (`http://127.0.0.1:<port>`) is known before the sandbox is created.
 
-import type { CommsChannel } from "./comms-types.js";
+import type { CommsAddress, CommsChannel, CommsMessage } from "./comms-types.js";
+import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./comms-evidence.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./comms-email-catch.js";
 import { startDetachedProcess, type DetachedTimers } from "./e2b-detached.js";
 import type { E2BDesktopSandbox } from "./e2b-desktop-launch.js";
@@ -205,4 +206,53 @@ export async function routeCapturedSends(
     }
   }
   return delivered;
+}
+
+/** Outcome of a whole-run comms collect. `artifact` is present only when captured mail matched a
+ *  provisioned inbox; `captured > 0 && artifact === undefined` means the app sent mail to an address
+ *  no declared recipient covers (captured but unevidenced) — the caller should surface that, not drop
+ *  it silently. */
+export interface CommsThreadCollection {
+  artifact?: CommsThreadArtifact;
+  /** Raw sends the in-sandbox catch captured this run (all POSTed paths). */
+  captured: number;
+  /** Distinct messages that matched a provisioned recipient inbox (drives whether an artifact exists). */
+  matched: number;
+}
+
+/**
+ * End of a run's comms funnel: drain everything the in-sandbox catch captured, route it into the
+ * host `channel`, poll the provisioned `inboxes`, and build the digest-only thread artifact. The
+ * `artifact` is omitted when nothing was captured OR nothing matched a provisioned inbox (an empty
+ * file would be a false claim of a delivered thread) — but `captured`/`matched` are always reported so
+ * the caller can warn on captured-but-unevidenced mail rather than lose it silently. Composes the
+ * tested drain/route/build pieces so the CUA and shared-world routes collect evidence identically. The
+ * full NDJSON is drained from cursor 0 (a whole-run collect), so it is idempotent to call once at
+ * teardown.
+ */
+export async function collectCommsThread(args: {
+  desktop: E2BDesktopSandbox;
+  deployed: Pick<DeployedCommsCatch, "deliveriesPath">;
+  channel: CommsChannel;
+  /** The inboxes provisioned for this run (declared recipients). Only mail to these is evidenced. */
+  inboxes: CommsAddress[];
+  profiles?: EmailSendProfile[];
+  requestTimeoutMs?: number;
+}): Promise<CommsThreadCollection> {
+  const { sends } = await drainCommsCatch(args.desktop, args.deployed, 0, args.requestTimeoutMs);
+  if (sends.length === 0) return { captured: 0, matched: 0 };
+  await routeCapturedSends(sends, args.channel, args.profiles);
+  const seen = new Set<string>();
+  const messages: CommsMessage[] = [];
+  for (const inbox of args.inboxes) {
+    for (const message of await args.channel.poll(inbox, 0)) {
+      // A single send addressed to several provisioned inboxes must appear once in the thread.
+      if (seen.has(message.id)) continue;
+      seen.add(message.id);
+      messages.push(message);
+    }
+  }
+  if (messages.length === 0) return { captured: sends.length, matched: 0 };
+  messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
+  return { artifact: buildCommsThreadArtifact(messages), captured: sends.length, matched: messages.length };
 }

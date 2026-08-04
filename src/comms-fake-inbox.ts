@@ -130,6 +130,28 @@ export class FakeInbox implements CommsChannel {
     return address;
   }
 
+  /**
+   * Provision an inbox for `actorId` at an EXPLICIT address (a lab-declared recipient), so the
+   * app-under-test's send to that literal address resolves in `deliverRaw` (which drops recipients
+   * with no provisioned inbox). Same value-collision guard as `provision`; if `actorId` already held
+   * a different auto-generated address, the declared address supersedes it (the lab's declaration
+   * wins). Idempotent: re-declaring the same address returns the existing inbox without clearing it.
+   */
+  async provisionAddress(actorId: string, value: string): Promise<CommsAddress> {
+    const normalized = value.trim();
+    const key = normalized.toLowerCase();
+    const prior = this.byValue.get(key);
+    if (prior) {
+      this.byActor.set(actorId, prior);
+      return prior;
+    }
+    const address: CommsAddress = { channel: this.channel, actorId, value: normalized, digest: digestText(normalized, 16) };
+    this.byActor.set(actorId, address);
+    this.byValue.set(key, address);
+    this.queues.set(key, []);
+    return address;
+  }
+
   private route(from: string, to: CommsAddress[], subject: string | undefined, body: string): CommsMessage {
     const at = this.clock();
     const message: CommsMessage = {
