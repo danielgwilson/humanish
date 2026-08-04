@@ -1708,7 +1708,7 @@ async function startDesktopStream(
 }
 
 function completionReasonContradictsGoal(reason: string): boolean {
-  const text = stripNegatedNonBlockerPhrases(reason.toLowerCase());
+  const text = stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase()));
   return /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text)
     || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
     || /\berror[:.]/.test(text)
@@ -1722,11 +1722,39 @@ function stripNegatedNonBlockerPhrases(text: string): string {
     .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "");
 }
 
+/**
+ * Remove double-quoted spans and markdown blockquote lines before the blocker scan, so a persona
+ * that faithfully QUOTES the subject app's own copy (e.g. a banner reading "cannot be undone") is
+ * not misread as the actor reporting its OWN blocker. Only double quotes (straight and smart) and
+ * `>` blockquotes are stripped — never single quotes, which would mangle contractions like `can't`.
+ */
+function stripQuotedSpans(text: string): string {
+  return text
+    .replace(/"[^"]*"/g, " ")
+    .replace(/“[^”]*”/g, " ")
+    .replace(/^\s*>.*$/gm, " ");
+}
+
 function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
   return session.trace.items.some((item) =>
     item.kind === "notice"
       && item.status === "matched"
       && item.title.startsWith("stopWhen matched"));
+}
+
+/**
+ * A goal_satisfied lane counts as a self-reported blocker ONLY when its final narrative contradicts
+ * the goal AND the run's own stop predicate did NOT fire. A matched stopWhen is independent,
+ * structured completion evidence, so it overrides a text scan of the free-form narrative — which can
+ * otherwise trip on the subject app's OWN quoted copy (e.g. a relayed "cannot be undone" banner).
+ * Returns the offending reason, or undefined when the lane is a clean pass. Exported for testing.
+ */
+export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): string | undefined {
+  return session?.completionReason === "goal_satisfied"
+    && completionReasonContradictsGoal(session.reason)
+    && !traceHasStopWhenMatch(session)
+    ? session.reason
+    : undefined;
 }
 
 /**
@@ -2209,9 +2237,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
   }
 
-  const blockerReason = session?.completionReason === "goal_satisfied" && completionReasonContradictsGoal(session.reason)
-    ? session.reason
-    : undefined;
+  const blockerReason = resolveSelfReportedBlocker(session);
   const selfReportedBlocker = blockerReason !== undefined;
   if (selfReportedBlocker) {
     warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`);
@@ -2283,9 +2309,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   if (noEngagement) {
     warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
   }
-  const blockerReason = session?.completionReason === "goal_satisfied" && completionReasonContradictsGoal(session.reason)
-    ? session.reason
-    : undefined;
+  const blockerReason = resolveSelfReportedBlocker(session);
   const selfReportedBlocker = blockerReason !== undefined;
   if (selfReportedBlocker) {
     warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${blockerReason}`);

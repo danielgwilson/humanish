@@ -216,6 +216,31 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings[0]).not.toContain("laneFocus.instruction");
     });
 
+    it("warns that comms.email is inert on an app-url subject — the in-sandbox catch has no sandbox to host (#328)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        comms: { email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const commsWarning = result.warnings.find((warning) => warning.includes("comms.email"));
+      expect(commsWarning).toBeDefined();
+      expect(commsWarning).toContain("clone or local-tree");
+    });
+
+    it("does NOT warn about comms.email on a clone subject, which the catch can host (#328)", () => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "clone-comms",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type: "codex-app-server", mission: "inert here" }],
+        comms: { email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.warnings.some((warning) => warning.includes("comms.email"))).toBe(false);
+    });
+
     it("parses actor-level and lane-level deterministic stopWhen guards", () => {
       const result = parseLabConfig({
         ...validCua,
