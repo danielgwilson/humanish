@@ -567,6 +567,33 @@ export interface LabDefaults {
   open?: boolean;
 }
 
+/** Off-app comms (email/SMS the persona lives in) the harness provides for the run (#297). */
+export interface LabComms {
+  email?: LabCommsEmail;
+}
+
+export interface LabCommsEmail {
+  /** `faux` (default): an in-sandbox catch captures the app's sends; nothing leaves the machine.
+   *  `real` (provider-backed) is not yet supported and is rejected at parse. */
+  mode: "faux";
+  /**
+   * The subject-env var the harness sets to the in-sandbox catch's base URL — ADOPTER-NAMED (an app
+   * calling Resend's API directly reads `RESEND_API_URL`; an app using the SDK reads `RESEND_BASE_URL`).
+   * The value is computed by the harness (a loopback URL), so it is NOT declared in `subject.env`.
+   */
+  injectEnv: string;
+  /** Fixed in-sandbox loopback port the catch listens on (default 8025). Known before sandbox create. */
+  port?: number;
+  /** Optionally declare each lane's inbox address up front (so an email-gated allowlist can pre-seed
+   *  it), instead of the harness's deterministic actor-id-keyed default. */
+  recipients?: LabCommsRecipient[];
+}
+
+export interface LabCommsRecipient {
+  lane: string;
+  address?: string;
+}
+
 export interface LabConfig {
   schema: typeof LAB_CONFIG_SCHEMA;
   id: string;
@@ -581,6 +608,7 @@ export interface LabConfig {
   policies?: LabPolicies;
   review?: LabReview;
   defaults?: LabDefaults;
+  comms?: LabComms;
 }
 
 export interface LabConfigParseSuccess {
@@ -652,6 +680,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (review) config.review = review;
   const defaults = parseDefaults(raw.defaults);
   if (defaults) config.defaults = defaults;
+  const commsResult = parseComms(raw.comms);
+  if (!commsResult.ok) return commsResult;
+  if (commsResult.value) config.comms = commsResult.value;
 
   // this-repo subjects run locally and dry-run only — there is no live execution target for the
   // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
@@ -2418,6 +2449,56 @@ function parseDefaults(raw: unknown): LabDefaults | undefined {
   const defaults: LabDefaults = {};
   if (typeof raw.open === "boolean") defaults.open = raw.open;
   return Object.keys(defaults).length > 0 ? defaults : undefined;
+}
+
+// Fail-loud (never silently swallow a comms setting): a malformed `comms` block returns a parse
+// failure rather than being dropped.
+function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | LabConfigParseFailure {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (!isRecord(raw)) return invalid("`comms` must be a mapping.");
+  const comms: LabComms = {};
+  if (raw.email !== undefined) {
+    const email = parseCommsEmail(raw.email);
+    if (!email.ok) return email;
+    comms.email = email.value;
+  }
+  return { ok: true, value: Object.keys(comms).length > 0 ? comms : undefined };
+}
+
+function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | LabConfigParseFailure {
+  if (!isRecord(raw)) return invalid("`comms.email` must be a mapping.");
+  if (raw.mode === "real") {
+    return invalid("`comms.email.mode: real` (provider-backed inboxes) is not yet supported — use `faux`.");
+  }
+  if (raw.mode !== undefined && raw.mode !== "faux") {
+    return invalid("`comms.email.mode` must be `faux`.");
+  }
+  const injectEnv = str(raw.injectEnv);
+  if (injectEnv === undefined) {
+    return invalid("`comms.email.injectEnv` is required — the subject-env var the harness sets to the catch base URL (e.g. RESEND_API_URL).");
+  }
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
+    return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
+  }
+  const email: LabCommsEmail = { mode: "faux", injectEnv };
+  if (raw.port !== undefined) {
+    const port = posInt(raw.port);
+    if (port === undefined) return invalid("`comms.email.port` must be a positive integer.");
+    email.port = port;
+  }
+  if (raw.recipients !== undefined) {
+    if (!Array.isArray(raw.recipients)) return invalid("`comms.email.recipients` must be a list.");
+    const recipients: LabCommsRecipient[] = [];
+    for (const entry of raw.recipients) {
+      if (!isRecord(entry)) return invalid("each `comms.email.recipients` entry must be a mapping.");
+      const lane = str(entry.lane);
+      if (lane === undefined) return invalid("each `comms.email.recipients` entry needs a `lane`.");
+      const address = str(entry.address);
+      recipients.push({ lane, ...(address === undefined ? {} : { address }) });
+    }
+    email.recipients = recipients;
+  }
+  return { ok: true, value: email };
 }
 
 function invalid(message: string): LabConfigParseFailure {

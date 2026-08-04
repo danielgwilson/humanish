@@ -921,6 +921,35 @@ describe("runCuaActorLab", () => {
     expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
   });
 
+  it("comms:email:faux — injects the catch base-URL env at sandbox-create and deploys the in-sandbox catch", async () => {
+    const commsPort = 8025;
+    const base = cloneCuaConfig();
+    const config: LabConfig = { ...base, comms: { email: { mode: "faux", injectEnv: "RESEND_API_URL", port: commsPort } } };
+    let t = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) =>
+        // the comms catch readiness probe must see OUR service marker (not the subject's plain READY)
+        command.includes(`${commsPort}/health`) ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined
+      )
+    });
+    const { module, created } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    // The adopter-named base-URL env was injected into the subject sandbox at create (the app boots reading it).
+    expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
+    // And the in-sandbox capture script was written into the subject sandbox (the catch was deployed).
+    expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("catch.mjs"))).toBe(true);
+  });
+
   it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {
     const config = cloneCuaConfig();
     const keepConfig: LabConfig = { ...config, subject: { ...config.subject, clone: { ...config.subject.clone, keep: true } } };
