@@ -1,4 +1,7 @@
-// The FAUX in-process email/SMS bus (#297 Stage 2). Deterministic, $0, offline, public-safe: a
+// The FAKE in-process email/SMS bus (#297 Stage 2). "Fake" in the precise test-double sense (Fowler):
+// a working, in-memory implementation of the CommsChannel port that takes a production shortcut — the
+// same slot as Kubernetes' `fake` clientset, distinct from a mock/stub. Deterministic, $0, offline,
+// public-safe: a
 // message an app-under-test "sends" (via an ingress like the vendor-neutral email catch) is routed to the
 // addressed actor inbox and read back through the same CommsChannel port a real provider adapter
 // would implement. Nothing leaves the process. See comms-types.ts for the port + public-safety notes.
@@ -81,7 +84,7 @@ function smsAddressFor(actorId: string): string {
   return `+1555${digits}`;
 }
 
-export interface FauxInboxOptions {
+export interface FakeInboxOptions {
   /** "email" (default) or "sms" — the address shape + surface differ; machinery is identical. */
   channel?: CommsChannelKind;
   /** Email domain for minted addresses. Default example.test (an RFC 6761 reserved, unroutable test
@@ -91,10 +94,10 @@ export interface FauxInboxOptions {
   now?: () => number;
 }
 
-/** The in-process faux adapter. Implements the same CommsChannel port a real provider adapter would. */
-export class FauxInbox implements CommsChannel {
+/** The in-process fake adapter. Implements the same CommsChannel port a real provider adapter would. */
+export class FakeInbox implements CommsChannel {
   readonly channel: CommsChannelKind;
-  readonly kind = "faux" as const;
+  readonly kind = "fake" as const;
   private readonly domain: string;
   private readonly clock: () => number;
   private readonly byActor = new Map<string, CommsAddress>();
@@ -102,7 +105,7 @@ export class FauxInbox implements CommsChannel {
   private readonly queues = new Map<string, CommsMessage[]>();
   private counter = 0;
 
-  constructor(options: FauxInboxOptions = {}) {
+  constructor(options: FakeInboxOptions = {}) {
     this.channel = options.channel ?? "email";
     this.domain = options.domain ?? "example.test";
     this.clock = options.now ?? ((): number => Date.now());
@@ -114,7 +117,7 @@ export class FauxInbox implements CommsChannel {
     const value = this.channel === "sms" ? smsAddressFor(actorId) : `${sanitizeLocalPart(actorId)}@${this.domain}`;
     // Address collision guard: two distinct actor ids can sanitize to the same local part. Reuse the
     // existing inbox rather than resetting its queue (which would drop already-delivered mail). Both
-    // actors then share it — a faux-world edge; declare distinct addresses to avoid it.
+    // actors then share it — a fake-world edge; declare distinct addresses to avoid it.
     const prior = this.byValue.get(value.toLowerCase());
     if (prior) {
       this.byActor.set(actorId, prior);

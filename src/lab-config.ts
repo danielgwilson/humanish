@@ -573,9 +573,11 @@ export interface LabComms {
 }
 
 export interface LabCommsEmail {
-  /** `faux` (default): an in-sandbox catch captures the app's sends; nothing leaves the machine.
-   *  `real` (provider-backed) is not yet supported and is rejected at parse. */
-  mode: "faux";
+  /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
+   *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense — an in-sandbox
+   *  catch captures the app's sends and nothing leaves the machine. `real` (provider-backed) is not yet
+   *  supported and is rejected at parse; when it lands it will carry a `provider` alongside `kind`. */
+  kind: "fake";
   /**
    * The subject-env var the harness sets to the in-sandbox catch's base URL — ADOPTER-NAMED (an app
    * calling Resend's API directly reads `RESEND_API_URL`; an app using the SDK reads `RESEND_BASE_URL`).
@@ -2467,11 +2469,11 @@ function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | L
 
 function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | LabConfigParseFailure {
   if (!isRecord(raw)) return invalid("`comms.email` must be a mapping.");
-  if (raw.mode === "real") {
-    return invalid("`comms.email.mode: real` (provider-backed inboxes) is not yet supported — use `faux`.");
+  if (raw.kind === "real") {
+    return invalid("`comms.email.kind: real` (provider-backed inboxes) is not yet supported — use `fake`.");
   }
-  if (raw.mode !== undefined && raw.mode !== "faux") {
-    return invalid("`comms.email.mode` must be `faux`.");
+  if (raw.kind !== undefined && raw.kind !== "fake") {
+    return invalid("`comms.email.kind` must be `fake`.");
   }
   const injectEnv = str(raw.injectEnv);
   if (injectEnv === undefined) {
@@ -2480,7 +2482,7 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
     return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
   }
-  const email: LabCommsEmail = { mode: "faux", injectEnv };
+  const email: LabCommsEmail = { kind: "fake", injectEnv };
   if (raw.port !== undefined) {
     const port = posInt(raw.port);
     if (port === undefined) return invalid("`comms.email.port` must be a positive integer.");

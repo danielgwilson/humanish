@@ -176,7 +176,7 @@ export async function drainCommsCatch(
 
 /**
  * Parse drained raw sends with the host profiles and route them into the CommsChannel (the host-side
- * FauxInbox). Returns the number of inbox deliveries made. Same profiles as the host catch, so the
+ * FakeInbox). Returns the number of inbox deliveries made. Same profiles as the host catch, so the
  * in-sandbox and in-process routes normalize identically.
  */
 export async function routeCapturedSends(

@@ -921,10 +921,10 @@ describe("runCuaActorLab", () => {
     expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
   });
 
-  it("comms:email:faux — injects the catch base-URL env at sandbox-create and deploys the in-sandbox catch", async () => {
+  it("comms:email:fake — injects the catch base-URL env at sandbox-create and deploys the in-sandbox catch", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
-    const config: LabConfig = { ...base, comms: { email: { mode: "faux", injectEnv: "RESEND_API_URL", port: commsPort } } };
+    const config: LabConfig = { ...base, comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } } };
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) =>
