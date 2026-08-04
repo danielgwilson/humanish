@@ -47,8 +47,8 @@ export interface OutboundMessage {
   body: string;
 }
 
-/** A raw inbound from an INGRESS (the Resend catch, an SMTP sink, …): recipients are raw address
- *  strings the bus resolves against its provisioned inboxes. */
+/** A raw inbound from an INGRESS (the vendor-neutral email catch, an SMTP sink, …): recipients are
+ *  raw address strings the bus resolves against its provisioned inboxes. */
 export interface InboundRaw {
   from: string;
   to: string[];

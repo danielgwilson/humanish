@@ -1,5 +1,5 @@
 // The FAUX in-process email/SMS bus (#297 Stage 2). Deterministic, $0, offline, public-safe: a
-// message an app-under-test "sends" (via an ingress like the Resend catch) is routed to the
+// message an app-under-test "sends" (via an ingress like the vendor-neutral email catch) is routed to the
 // addressed actor inbox and read back through the same CommsChannel port a real provider adapter
 // would implement. Nothing leaves the process. See comms-types.ts for the port + public-safety notes.
 
@@ -59,7 +59,9 @@ export function extractOtpCodes(body: string): string[] {
       list.push(c);
     }
   };
-  const labeledRe = /(?:one[-\s]?time\s+(?:pass)?code|verification\s+code|security\s+code|access\s+code|login\s+code|confirmation\s+code|passcode|\bOTP\b|\bPIN\b|\bcode\b)\D{0,15}\b([0-9]{4,8}|[A-Z0-9]{6,8})\b/gi;
+  // The alphanumeric alternative requires at least one DIGIT (lookahead) so a labeled prose word like
+  // "your code is INVALID" isn't captured as a code; pure-digit codes (4–8) match directly.
+  const labeledRe = /(?:one[-\s]?time\s+(?:pass)?code|verification\s+code|security\s+code|access\s+code|login\s+code|confirmation\s+code|passcode|\bOTP\b|\bPIN\b|\bcode\b)\D{0,15}\b([0-9]{4,8}|(?=[A-Za-z0-9]*[0-9])[A-Z0-9]{6,8})\b/gi;
   let m: RegExpExecArray | null;
   while ((m = labeledRe.exec(text)) !== null) push(labeled, m[1] ?? "");
   if (labeled.length > 0) return labeled.slice(0, 10);
@@ -110,6 +112,14 @@ export class FauxInbox implements CommsChannel {
     const existing = this.byActor.get(actorId);
     if (existing) return existing;
     const value = this.channel === "sms" ? smsAddressFor(actorId) : `${sanitizeLocalPart(actorId)}@${this.domain}`;
+    // Address collision guard: two distinct actor ids can sanitize to the same local part. Reuse the
+    // existing inbox rather than resetting its queue (which would drop already-delivered mail). Both
+    // actors then share it — a faux-world edge; declare distinct addresses to avoid it.
+    const prior = this.byValue.get(value.toLowerCase());
+    if (prior) {
+      this.byActor.set(actorId, prior);
+      return prior;
+    }
     const address: CommsAddress = { channel: this.channel, actorId, value, digest: digestText(value, 16) };
     this.byActor.set(actorId, address);
     this.byValue.set(value.toLowerCase(), address);

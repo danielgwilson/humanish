@@ -63,13 +63,14 @@ export type {
   BrowserLabScoringContext
 } from "./adapter-extension.js";
 export type { RedactionHooks } from "./redaction.js";
-// Addressed comms bus (#297): faux email/SMS inboxes + the Resend-shaped ingress that redirects an
-// API-first app into the faux bus with one env var. Real (provider-backed) adapters implement the
+// Addressed comms bus (#297): faux email/SMS inboxes + a VENDOR-NEUTRAL email-API catch that
+// redirects an API-first app into the faux bus with one env var (Resend-/SendGrid-compatible via
+// pluggable profiles, no named vendor dependency). Real (provider-backed) adapters implement the
 // same CommsChannel port.
 export { FauxInbox, extractLinks, extractOtpCodes } from "./comms-faux-inbox.js";
 export type { FauxInboxOptions } from "./comms-faux-inbox.js";
-export { startResendCatchServer } from "./comms-resend-catch.js";
-export type { ResendCatchOptions, ResendCatchServer, ResendEmailPayload } from "./comms-resend-catch.js";
+export { DEFAULT_EMAIL_PROFILES, genericEmailProfile, sendgridEmailProfile, startEmailCatchServer } from "./comms-email-catch.js";
+export type { EmailCatchOptions, EmailCatchServer, EmailSendProfile, NormalizedSend } from "./comms-email-catch.js";
 export type {
   CommsAddress,
   CommsChannel,

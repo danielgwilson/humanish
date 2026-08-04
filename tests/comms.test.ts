@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FauxInbox, extractLinks, extractOtpCodes } from "../src/comms-faux-inbox.js";
-import { startResendCatchServer, type ResendCatchServer } from "../src/comms-resend-catch.js";
+import { startEmailCatchServer, type EmailCatchServer } from "../src/comms-email-catch.js";
 
 // A realistic patient-signup verification email (magic link + OTP) — the exact thing the north-star
 // use case needs. Used across the extraction + end-to-end tests. No external app/repo involved.
@@ -33,6 +33,11 @@ describe("comms extraction (magic link + OTP from a verification email)", () => 
   it("extractOtpCodes falls back to an isolated digit run only when nothing is labeled", () => {
     expect(extractOtpCodes("Use 552113 to continue.")).toEqual(["552113"]); // bare fallback
     expect(extractOtpCodes("Order #7 total $12 shipped")).toEqual([]); // no 4-8 digit isolated run
+  });
+
+  it("extractOtpCodes does not capture a labeled prose WORD (no digit) as a code", () => {
+    expect(extractOtpCodes("Your code is INVALID.")).toEqual([]); // "INVALID" has no digit → not a code
+    expect(extractOtpCodes("verification code AB12CD")).toEqual(["AB12CD"]); // alphanumeric WITH a digit is fine
   });
 });
 
@@ -94,21 +99,20 @@ describe("FauxInbox (the in-process bus)", () => {
   });
 });
 
-describe("end-to-end: a Resend-shaped app send lands in the faux inbox (no external app/repo)", () => {
-  let server: ResendCatchServer | undefined;
+describe("end-to-end: a vendor-neutral email-API catch delivers an app's send into the faux inbox (no external app/repo)", () => {
+  let server: EmailCatchServer | undefined;
   afterEach(async () => {
     await server?.close();
     server = undefined;
   });
 
-  it("captures the app's verification email via the Resend `POST /emails` wire shape and delivers it", async () => {
+  it("captures a flat-shape (Resend-compatible) verification email via POST /emails and delivers it", async () => {
     const bus = new FauxInbox();
     const patient = await bus.provision("patient-07");
-    server = await startResendCatchServer(bus, { idFor: (n) => `test-${n}` });
+    server = await startEmailCatchServer(bus, { idFor: (n) => `test-${n}` });
 
-    // This is EXACTLY what an app does when its `resend` SDK is pointed at us via
-    // RESEND_BASE_URL=<server.url>: a POST /emails with the Resend body shape. No SDK dep needed —
-    // the request is byte-identical to what the SDK sends.
+    // Exactly what an app does when its email-API base URL is pointed at us via one env var: a
+    // POST /emails with the common flat body shape (which Resend uses). No SDK dep — byte-identical.
     const res = await fetch(`${server.url}/emails`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer dummy-api-key" },
@@ -120,27 +124,57 @@ describe("end-to-end: a Resend-shaped app send lands in the faux inbox (no exter
       })
     });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ id: "test-1" }); // Resend-shaped response
+    expect(await res.json()).toEqual({ id: "test-1" });
 
-    // The persona's inbox now holds the verification email, ready to open + click.
     const inbox = await bus.poll(patient);
     expect(inbox).toHaveLength(1);
     expect(inbox[0]!.from).toContain("example.test");
     expect(inbox[0]!.subject).toBe("Confirm your email");
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(inbox[0]!.codes).toEqual(["481920"]);
-    // The key never leaves the request; the catch server records only the send payload.
     expect(server.received).toHaveLength(1);
     expect(server.received[0]!.to).toEqual([patient.value]);
+  });
+
+  it("is genuinely vendor-neutral: the SAME server also captures SendGrid's nested POST /v3/mail/send shape", async () => {
+    const bus = new FauxInbox();
+    const patient = await bus.provision("patient-08");
+    server = await startEmailCatchServer(bus);
+
+    // A structurally DIFFERENT wire shape (nested personalizations + typed content) — not a rename.
+    const res = await fetch(`${server.url}/v3/mail/send`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        from: { email: "no-reply@example.test", name: "Example Health" },
+        subject: "Confirm your email",
+        personalizations: [{ to: [{ email: patient.value, name: "Patient Eight" }] }],
+        content: [
+          { type: "text/plain", value: "code 903117" },
+          { type: "text/html", value: VERIFICATION_HTML }
+        ]
+      })
+    });
+    expect(res.status).toBe(202); // SendGrid-faithful response
+    expect(res.headers.get("x-message-id")).toBeTruthy();
+
+    const inbox = await bus.poll(patient);
+    expect(inbox).toHaveLength(1);
+    // The HTML content part was chosen over text/plain → the magic link + code come from the HTML.
+    expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
+    expect(inbox[0]!.codes).toEqual(["481920"]);
   });
 
   it("resolves a 'Name <email>' recipient, handles the batch endpoint, and 404s unknown paths", async () => {
     const bus = new FauxInbox();
     const patient = await bus.provision("patient-09");
-    server = await startResendCatchServer(bus);
+    server = await startEmailCatchServer(bus);
 
     const health = await fetch(`${server.url}/health`);
-    expect((await health.json() as { ok: boolean }).ok).toBe(true);
+    const body = await health.json() as { ok: boolean; profiles: string[] };
+    expect(body.ok).toBe(true);
+    expect(body.profiles).toContain("generic");
+    expect(body.profiles).toContain("sendgrid");
 
     const batch = await fetch(`${server.url}/emails/batch`, {
       method: "POST",
@@ -154,5 +188,25 @@ describe("end-to-end: a Resend-shaped app send lands in the faux inbox (no exter
     expect((await bus.poll(patient))[0]!.codes).toEqual(["771002"]);
 
     expect((await fetch(`${server.url}/unknown`)).status).toBe(404);
+  });
+
+  it("returns a bad-request (not a fabricated success id) for an empty/undeliverable send, and tolerates malformed nested payloads", async () => {
+    const bus = new FauxInbox();
+    await bus.provision("patient-10");
+    server = await startEmailCatchServer(bus);
+
+    // Empty body → nothing deliverable → 422, not { id: "...000000" }.
+    const empty = await fetch(`${server.url}/emails`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    expect(empty.status).toBe(422);
+
+    // A null element inside SendGrid's arrays must not 500 the server (contained, clean response).
+    const malformed = await fetch(`${server.url}/v3/mail/send`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ from: { email: "a@example.test" }, subject: "x", personalizations: [null], content: [null] })
+    });
+    expect(malformed.status).toBe(422); // parsed to zero recipients → bad request, not a crash
+    // The server is still healthy afterwards.
+    expect((await fetch(`${server.url}/health`)).status).toBe(200);
   });
 });
