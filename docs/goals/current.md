@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-07-14 (rev 15)
+Status date: 2026-08-04 (rev 16)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -30,9 +30,10 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 | Persona scale | Bounded per-lane-world fan-out, including differentiated lanes and roster expansion; kept deterministic and live receipts | A completed first-party deletion branch that replaces a bespoke generic harness |
 | Shared state | Sequential and concurrent single-origin shared-world execution; sequential has deterministic proof, concurrent has deterministic and kept live proof | Multi-origin shared-world runtime/schema support; real-adopter deletion proof |
 | Subject sources/routes | Six declared sources: `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, and `local-tree`; support is route-specific and `this-repo` remains dry-run-only | One centralized run/resource lifecycle boundary across all routes |
-| Public proof | Version-pinned synthetic Observer sample shipped in the npm payload | A legible Observer hero from one verified real public-application run |
+| Public proof | A legible four-persona Observer hero from a verified real public-application study (commit-pinned drawDB) shipped in the npm payload (`0.16.0`) | Coverage beyond a single studied subject; the stratified breadth panel remains unbuilt |
 | OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
 | Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store; a control plane that can start runs |
+| Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes and live-proven on computer-use | An adopter-hosted / app-url ingress plane; real-provider delivery |
 
 Capability proof and adopter replacement are different gates. A deterministic
 test or kept live receipt proves that a Humanish mechanism works. The depth-axis
@@ -448,17 +449,20 @@ Stop and correct course if:
 
 ## Best Next Work
 
-After the public-truth reset, take one bounded public-proof side task: capture a
-verified, legible four-lane Observer from a commit-pinned public application.
-That run treats the application as a study subject, not a Humanish adopter, and
-must not imply endorsement. Stop and return to this order if the capture would
-require an Observer redesign or broader architecture work.
+The bounded public-proof side task is done: a verified, legible four-persona
+Observer hero from a commit-pinned public application (drawDB) shipped in
+`0.16.0`. That run treats the application as a study subject, not a Humanish
+adopter, and does not imply endorsement; it does not satisfy the depth gate.
 
-The next engineering proof slice remains the first depth-axis deletion branch:
-run an existing first-party consumer web-app study through current Humanish,
-compare the decision outputs, and delete the adopter's bespoke generic harness
-while retaining only a thin product extension. The public-application capture
-does not satisfy this depth gate.
+The active engineering proof slice is the first depth-axis deletion branch: run
+an existing first-party bespoke sim through current Humanish, compare the
+decision outputs, and delete its bespoke generic harness while retaining only a
+thin product extension. The current front is an agent-facing terminal-product
+harness, whose thin-extension budget is being surfaced as engine gaps — a
+config-loadable scoring/feedback seam, terminal-lane fan-out, an opt-in
+product-credential channel, and honest-scoring fixes. Converge on completing one
+such branch to decision-equivalent green before starting the next archetype (a
+multi-actor shared-state harness) or the breadth panel.
 
 After that checkpoint, re-evaluate this order rather than treating it as an
 automatic queue:
@@ -473,6 +477,7 @@ automatic queue:
 4. complete the multi-app adopter deletion branch;
 5. establish the external stratified panel.
 
-The existing version-pinned README hero is a synthetic technical sample. It
-proves package/Observer rendering and public-safe asset delivery, not
-real-application evidence.
+The version-pinned README hero is the drawDB real-application study: a live
+four-persona capture that proves package/Observer rendering, public-safe asset
+delivery, and real-application evidence against a studied subject. It is not
+adopter deletion evidence, which is a separate and higher gate.
