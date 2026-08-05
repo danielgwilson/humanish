@@ -4801,7 +4801,9 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function resolveRunPath(cwd: string, runInput: string): Promise<PreparedRunArtifactPaths | null> {
+/** Resolve "latest" or an explicit run id to its prepared artifact paths. Exported for the
+ *  reclaim command (#358), which must locate a run WITHOUT trusting anything but the managed dir. */
+export async function resolveRunPath(cwd: string, runInput: string): Promise<PreparedRunArtifactPaths | null> {
   if (runInput === "latest") {
     const runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
     if (!runsRoot) {

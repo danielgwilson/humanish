@@ -75,6 +75,7 @@ import {
   runDryRun,
   verifyRun
 } from "./run.js";
+import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import type {
   DoctorResult,
   CleanupResult,
@@ -314,6 +315,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerCleanupCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
+  registerReclaimCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
   registerObserveCommand(program, cliIo);
   registerServeCommand(program, cliIo);
@@ -539,6 +541,32 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
       writeResult(command, io, result, formatRunsHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
+}
+
+function registerReclaimCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("reclaim")
+    .description("Kill an interrupted run's sandboxes by their journaled exact ids (the #358 salvage path — reads the run's sandbox-receipts.ndjson; never enumerates the E2B account). Needs E2B_API_KEY in the environment.")
+    .summary("Reclaim an interrupted run's sandboxes by recorded id.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", "Run id, or 'latest'.", "latest")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; run: string; json?: boolean }, command) => {
+      const result = await reclaimRunSandboxes(options.cwd, options.run);
+      writeResult(command, io, result, formatReclaimHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
+function formatReclaimHuman(result: ReclaimResult): string {
+  const lines: string[] = [];
+  lines.push(`Reclaim ${result.runId}: ${result.ok ? "ok" : "FAILED"} — ${result.receiptCount} sandbox receipt(s).`);
+  for (const outcome of result.outcomes) {
+    lines.push(`  ${outcome.sandboxId} (${outcome.laneId}): ${outcome.state}${outcome.detail ? ` — ${outcome.detail}` : ""}`);
+  }
+  for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
+  if (result.error) lines.push(`  error: ${result.error.message}`);
+  return lines.join("\n");
 }
 
 function registerCodexCommands(parent: Command, io: CliIo): void {

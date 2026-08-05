@@ -195,10 +195,14 @@ function makeRunSession(
   rendezvous: () => Promise<void>,
   override?: (index: number) => { throwMessage?: string; status?: ActorStatus; completionReason?: ActorCompletionReason; reason?: string } | undefined
 ): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
-  let index = -1;
+  let calls = -1;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
-    index += 1;
-    const myIndex = index;
+    calls += 1;
+    // The override targets a LANE (by its persona id), never "the Nth call": concurrent lanes
+    // interleave however the scheduler likes, so call order is an accident — asserting on it made
+    // these tests flake the moment an unrelated await shifted the schedule (#359 CI).
+    const personaMatch = /^persona-(\d+)$/.exec(options.persona.id);
+    const myIndex = personaMatch ? Number(personaMatch[1]) - 1 : calls;
     await rendezvous(); // all actors are in-flight here → their windows overlap on the real clock
     // All lanes were released together; hold them concurrently for a measurable interval so the
     // REAL orchestrator clock records overlapping [start,end] windows (Date.now is ms-resolution —
@@ -693,18 +697,21 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     config.actors[0]!.stopWhen = actorDefault;
     config.actors[0]!.lanes![1]!.stopWhen = laneOverride;
 
-    const seen: Array<CuaActorSessionOptions["stopWhen"]> = [];
+    // Keyed by lane persona, not call order — concurrent completion order is not a contract.
+    const seen = new Map<string, CuaActorSessionOptions["stopWhen"]>();
     const runSession = hooks.runSession!;
     hooks.runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
-      seen.push(options.stopWhen);
+      seen.set(options.persona.id, options.stopWhen);
       return runSession(options);
     };
 
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
 
     expect(result.ok).toBe(true);
-    expect(seen).toHaveLength(3);
-    expect(seen).toEqual([actorDefault, laneOverride, actorDefault]);
+    expect(seen.size).toBe(3);
+    expect(seen.get("persona-1")).toEqual(actorDefault);
+    expect(seen.get("persona-2")).toEqual(laneOverride);
+    expect(seen.get("persona-3")).toEqual(actorDefault);
   });
 
   it("adapter fail score turns a coherent concurrent shared-world run red while keeping evidence verifiable", async () => {

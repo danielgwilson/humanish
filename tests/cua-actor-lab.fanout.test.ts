@@ -14,6 +14,7 @@ import {
   declaredScreenForRender,
   resolveLaneDevice,
   runCuaActorLab,
+  runCuaLanes,
   type CuaActorLabHooks,
   type CuaLaneSpec,
   type CuaLanePlan
@@ -1086,3 +1087,75 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
     expect(resolveLaneDevice(cfg(undefined, [400, 800]), undefined).resolution).toEqual([500, 800]);
   });
 });
+
+// #342: the lane runner is TOTAL — every exit path records an outcome. Before the guard, one
+// lane's late throw (e.g. its post-teardown trace write hitting ENOSPC) rejected the whole
+// mapWithConcurrency while sibling workers kept launching sandboxes nobody would record: spent
+// money, vanished evidence. These drive runCuaLanes directly with an injected lane runner so the
+// THROW path (not the already-guarded in-session error path) is what is under test.
+describe("runCuaLanes total-runner guard (#342)", () => {
+  const spec = (laneId: string, laneIndex: number): CuaLaneSpec => ({
+    laneId,
+    laneIndex,
+    simId: `sim-${laneId}`,
+    streamId: `stream-${laneId}`,
+    persona: { id: "p", traitsApplied: [], promptDigest: `prompt-${laneId}` },
+    instructions: "x",
+    deviceName: "desktop",
+    devicePreset: DEVICE_PRESETS.desktop,
+    resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
+    screenshotDir: laneId,
+    traceArtifactPath: `actors/stream-${laneId}.json`
+  });
+  const okOutcome = (s: CuaLaneSpec) => ({
+    spec: s,
+    killed: true,
+    streamUrlPresent: false,
+    screenshots: [],
+    stateStepRecords: [],
+    phaseRecords: [],
+    warnings: [],
+    noEngagement: false,
+    selfReportedBlocker: false,
+    harnessError: false
+  });
+  const deps = {} as unknown as Parameters<typeof runCuaLanes>[1];
+
+  it("a THROWING lane records a harness_error outcome; siblings and the aggregate stay intact", async () => {
+    const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
+    const { outcomes, failFastReason } = await runCuaLanes(specs, deps, 1, async (s, laneDeps) => {
+      if (s.laneIndex === 0) {
+        (laneDeps as { signalProvisioned?: (ok: boolean) => void }).signalProvisioned?.(true);
+        return okOutcome(s);
+      }
+      if (s.laneId === "lane-02") throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
+      return okOutcome(s);
+    });
+
+    // Every lane appears exactly once with a terminal status — nothing vanished.
+    expect(outcomes.map((o) => o.spec.laneId)).toEqual(["lane-01", "lane-02", "lane-03"]);
+    expect(outcomes[0]!.harnessError).toBe(false);
+    expect(outcomes[1]!.harnessError).toBe(true);
+    expect(outcomes[1]!.sessionError).toContain("lane runner threw outside the session guard");
+    expect(outcomes[1]!.sessionError).toContain("ENOSPC");
+    // fail-fast tripped by the harness error, so the queued lane is blocked with a pinned reason
+    // rather than silently launching after the run already failed.
+    expect(outcomes[2]!.skippedReason).toContain("fail-fast");
+    expect(failFastReason).toContain("lane-02");
+  });
+
+  it("lane 0 throwing BEFORE it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
+    const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
+    const { outcomes } = await runCuaLanes(specs, deps, 3, async (s) => {
+      if (s.laneIndex === 0) throw new Error("world provisioning exploded before signal");
+      return okOutcome(s);
+    });
+    expect(outcomes).toHaveLength(3);
+    expect(outcomes[0]!.harnessError).toBe(true);
+    // Followers were awaiting the gate; the guard rejects it on lane-0 throw so they resolve as
+    // blocked (pipeline gate) — the run ends instead of hanging on a promise nobody will settle.
+    expect(outcomes[1]!.skippedReason ?? "").toContain("pipeline gate");
+    expect(outcomes[2]!.skippedReason ?? "").toContain("pipeline gate");
+  });
+});
+

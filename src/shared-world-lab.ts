@@ -101,6 +101,7 @@ import {
   type SharedWorldEvidence,
   type SharedWorldTimelineEntry
 } from "./run.js";
+import { appendSandboxReceipt } from "./sandbox-receipts.js";
 
 export const SHARED_WORLD_LAB_SCHEMA = "humanish.shared-world-lab-result.v1";
 
@@ -710,6 +711,8 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
         lifecycle: { onTimeout: "kill" }
       }, config.execution?.desktop?.template);
       sandboxId = desktop.sandboxId;
+      // #358 salvage: durable id receipt the moment the plane sandbox exists.
+      await appendSandboxReceipt(runPaths, { at: new Date().toISOString(), laneId: "subject", sandboxId });
 
       if (hooks.prepareDesktop) {
         await hooks.prepareDesktop(desktop);

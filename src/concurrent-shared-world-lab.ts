@@ -44,6 +44,7 @@ import {
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
@@ -925,6 +926,8 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         lifecycle: { onTimeout: "kill" }
       }, config.execution?.desktop?.template);
       subjectSandboxId = subjectDesktop.sandboxId;
+      // #358 salvage: durable id receipt the moment the subject sandbox exists.
+      await appendSandboxReceipt(runPaths, { at: new Date().toISOString(), laneId: "subject", sandboxId: subjectSandboxId });
 
       if (hooks.prepareDesktop) {
         await hooks.prepareDesktop(subjectDesktop);
