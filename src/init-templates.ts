@@ -260,7 +260,7 @@ actors:
 execution:
   target: e2b-desktop
   timeoutMs: 120000 # PER-SEAT session budget; also caps the host-first handoff deadline
-  concurrency: 3 # > 1 selects the CONCURRENT substrate
+  concurrency: 3 # all 3 seats live at once (the default when omitted); lower only to cap paid desktops
 scenario:
   mode: dry-run # default; the live path opens N real mobile-layout seats against the public app
 defaults:

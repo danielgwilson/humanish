@@ -423,6 +423,9 @@ export interface ConcurrentSharedWorldLabResult {
   subjectSandbox?: { sandboxId: string; killed: boolean };
   /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
   overlapProven?: boolean;
+  /** Max lanes observed live at the same instant (live only) — the honest simultaneity number; a
+   *  6-lane run capped at 3 reports 3 here, never 6 (#350). */
+  maxSimultaneousLanes?: number;
   /** Subject provenance (invariant 5): the ONE shared plane. */
   subject?: RunSubjectProvenance;
   roles: ConcurrentSharedWorldRoleResult[];
@@ -663,8 +666,11 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const env = hooks.env ?? process.env;
   const render = hooks.renderObserverFn ?? renderObserver;
   const actorType = config.actors[0]?.type ?? "";
-  const concurrency = config.execution?.concurrency ?? 1;
   const roles = config.actors[0]?.lanes ?? [];
+  // All-parallel default (#350): the parser fills concurrency for multi-seat labs, so this
+  // fallback serves only library callers constructing configs directly — same meaning: every
+  // declared seat runs at once unless the author declared a cap.
+  const concurrency = config.execution?.concurrency ?? Math.max(1, roles.length);
 
   const fail = (code: ConcurrentSharedWorldLabErrorCode, message: string, actorLabel?: string): ConcurrentSharedWorldLabResult => ({
     schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
@@ -1642,12 +1648,29 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     ...(getHostUrl === undefined ? {} : { host: getHostUrl }),
     ...(subjectSandboxId === undefined ? {} : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
     ...(dryRun ? {} : { overlapProven }),
+    ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
     subject,
     roles: roleResults,
     observer,
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult })
   };
+}
+
+/** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
+ *  count: lane COUNT says how many seats existed; this says how many ever ran at once. */
+function maxSimultaneousWindows(windows: Array<{ startedAt: number; endedAt: number }>): number {
+  const points = windows
+    .filter((w) => w.endedAt > w.startedAt)
+    .flatMap((w) => [{ at: w.startedAt, delta: 1 }, { at: w.endedAt, delta: -1 }]);
+  points.sort((a, b) => a.at - b.at || a.delta - b.delta); // end before start at the same instant
+  let live = 0;
+  let max = 0;
+  for (const point of points) {
+    live += point.delta;
+    if (live > max) max = live;
+  }
+  return max;
 }
 
 /** True when ≥2 actor windows overlap in time (the proven-concurrency signal). */
@@ -1725,7 +1748,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.run.created",
-    message: `Created CONCURRENT shared-world run for ${config.id} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${config.execution?.concurrency ?? 1} concurrent).`
+    message: `Created CONCURRENT shared-world run for ${config.id} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${config.execution?.concurrency ?? actorSpecs.length} concurrent).`
   });
   // Human-readable plane label, byte-stable for the clone route (see shared-world-lab.ts's
   // buildSharedWorldBundle for the same pattern). local-tree has no repo slug: it labels the
@@ -2020,12 +2043,16 @@ export function buildConcurrentSharedWorldBundle(args: {
   const convergenceLabel = external
     ? `; lobby convergence ${args.lobbyConvergenceDigest ? "PROVEN (all seats reached one /lobby/CODE)" : "not observed"}`
     : "";
+  // The count that matters is how many lanes were LIVE AT ONCE, not how many lanes exist — a
+  // 6-lane run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
+  const capForReport = config.execution?.concurrency ?? laneWindows.length;
+  const maxLive = maxSimultaneousWindows(laneWindows);
   events.push({
     id: nextEventId("concurrency"),
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.concurrency",
-    message: `Concurrency: ${laneWindows.length} actor window(s)${dryRun ? " (dry-run contract; $0)" : `, overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`
+    message: `Concurrency: ${laneWindows.length} lane(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`
   });
 
   // Concurrent verdict: dryRun → contract; else every actor produced a terminal, engaged PASSED

@@ -252,6 +252,9 @@ function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: stri
     execution: {
       target: "e2b-desktop",
       timeoutMs: 60_000,
+      // Sequential PoC by explicit choice: since #350 an omitted concurrency runs all seats at
+      // once (routing to the CONCURRENT substrate); this suite proves the turn-taking route.
+      concurrency: 1,
       ...(Object.keys(desktop).length === 0 ? {} : { desktop })
     },
     scenario: { mode: "live" }
@@ -784,7 +787,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
           ]
         }
       ],
-      execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60_000 },
+      execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
       scenario: { mode: "live" }
     });
     if (!parsed.ok) throw new Error(parsed.error.message);

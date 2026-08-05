@@ -408,7 +408,11 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           ["viewer", "review-queue", "case-001", "desktop"],
           ["manager", "dashboard", "case-001", "wide"]
         ]);
-        expect(result.warnings).toEqual([]);
+        // The declared cap (2) is below the 4-seat roster: the parser says so out loud (#350) —
+        // a green run in waves must never be mistaken for the all-live run the roster promises.
+        expect(result.warnings).toEqual([
+          expect.stringContaining("execution.concurrency 2 caps a 4-seat roster")
+        ]);
       });
 
       it.each([
@@ -1173,7 +1177,8 @@ function validSharedWorld(overrides?: { subject?: Record<string, unknown>; actor
         ]
       }
     ],
-    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000 }
+    // Sequential PoC fixtures: explicit concurrency 1 (#350 — omitted now means all seats live).
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 }
   };
 }
 
@@ -1205,7 +1210,8 @@ function validSharedWorldLocalTree(overrides?: { subject?: Record<string, unknow
         ]
       }
     ],
-    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000 }
+    // Sequential PoC fixtures: explicit concurrency 1 (#350 — omitted now means all seats live).
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 }
   };
 }
 
@@ -1263,7 +1269,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
 
   it("execution.desktop.browser parses on sequential shared-world with zero warnings", () => {
     const result = parseLabConfig(validSharedWorld({
-      execution: { target: "e2b-desktop", timeoutMs: 60000, desktop: { browser: "chrome" } }
+      execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1, desktop: { browser: "chrome" } }
     }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -1468,7 +1474,7 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     expect(result.warnings).toEqual([]);
   });
 
-  it("the SAME shared-world config with concurrency 1 (or absent) stays SEQUENTIAL", () => {
+  it("explicit concurrency 1 is the SEQUENTIAL choice; an OMITTED concurrency runs all seats (concurrent)", () => {
     const seq1 = parseLabConfig(validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 } }));
     expect(seq1.ok).toBe(true);
     if (seq1.ok) {
@@ -1477,9 +1483,18 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
       // exposure is inert on the sequential route → warns.
       expect(seq1.warnings.join("\n")).toContain("subject.exposure");
     }
-    const seqAbsent = parseLabConfig(validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }));
-    expect(seqAbsent.ok).toBe(true);
-    if (seqAbsent.ok) expect(selectLabBackend(seqAbsent.config)).toBe("shared-world");
+    // All-parallel default (#350): omitting concurrency means every seat lives at once — the
+    // parser fills concurrency = seat count, so a multi-seat shared-world lab routes CONCURRENT
+    // unless the author explicitly chose the sequential PoC with concurrency: 1.
+    const allParallel = parseLabConfig(validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }));
+    expect(allParallel.ok).toBe(true);
+    if (allParallel.ok) {
+      expect(allParallel.config.execution?.concurrency).toBe(allParallel.config.actors[0]?.lanes?.length);
+      expect(routesToConcurrentSharedWorld(allParallel.config)).toBe(true);
+      expect(selectLabBackend(allParallel.config)).toBe("concurrent-shared-world");
+      // No waves warning: the filled default equals the seat count.
+      expect(allParallel.warnings.filter((w) => w.includes("caps a"))).toEqual([]);
+    }
   });
 
   it.each([
