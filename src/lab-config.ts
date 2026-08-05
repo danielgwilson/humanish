@@ -599,11 +599,15 @@ export interface LabCommsEmail {
    *  prepended to the inbox link-origin rewrite so the persona's clicked link resolves to a reachable
    *  host. Omit when the app emits loopback links (the default derivation covers those). */
   linkOrigin?: string;
-  /** Declare each lane's inbox address the app-under-test sends to, so the teardown drain can MATCH
-   *  and evidence captured mail (an email-gated allowlist can also pre-seed it). An entry without
-   *  `address` reserves the lane for the persona inbox surface (a later slice, which assigns a
-   *  deterministic actor-id-keyed address the persona signs up with) but is NOT matched by the
-   *  evidence drain — captured mail to an undeclared address is warned, not silently dropped. */
+  /** Each lane's inbox address: the actor is TOLD to sign up with it (the injected inbox
+   *  instruction carries it) and the teardown drain matches captured mail against it. Omit the
+   *  whole list and the parser fills one deterministic address per lane (`<laneId>@example.test`)
+   *  so every seat can do email out of the box (#351). When declared: a `lane` naming a lane that
+   *  does not exist is a hard parse error (a mismatch silently disables the funnel for that seat),
+   *  zero covered lanes is a hard error, and partial coverage warns with the uncovered lanes. An
+   *  entry without `address` is legal but inert for the funnel — it is NOT matched by the drain
+   *  and its lane gets no inbox instruction; captured mail to an undeclared address is warned,
+   *  never silently dropped. */
   recipients?: LabCommsRecipient[];
 }
 
@@ -716,6 +720,32 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
     if (seats > 1 && config.execution?.concurrency === undefined && routesToComputerUse(config)) {
       config.execution = { ...(config.execution ?? {}), concurrency: seats };
+    }
+  }
+
+  // Email that just works (#351): the funnel's ONLY handoff to an actor is the per-lane inbox
+  // instruction, gated on recipients[]. Guessed lane names broke a field run — recipients copied
+  // from a single-lane example matched nothing, so every actor was left inbox-blind with zero
+  // signal. Omitted recipients are therefore FILLED (one deterministic address per lane); a
+  // recipient naming an unknown lane is a hard error listing the real lane ids; declared
+  // recipients covering zero lanes are a hard error (a guaranteed-dead funnel).
+  if (config.comms?.email && routesToComputerUse(config)) {
+    const laneIds = effectiveComputerUseLaneIds(config);
+    const email = config.comms.email;
+    if (email.recipients === undefined) {
+      email.recipients = laneIds.map((lane) => ({ lane, address: `${lane.toLowerCase()}@example.test` }));
+    } else {
+      const unknown = email.recipients.filter((recipient) => !laneIds.includes(recipient.lane));
+      if (unknown.length > 0) {
+        return invalid(
+          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${r.lane}"`).join(", ")}. This lab's lane ids are: ${laneIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`
+        );
+      }
+      if (!email.recipients.some((recipient) => recipient.address !== undefined)) {
+        return invalid(
+          "comms.email.recipients cover no lane with an address — no actor would be told an inbox exists and no captured mail could match. Give at least one recipient an address, or omit `recipients` entirely (every lane then gets a deterministic address automatically)."
+        );
+      }
     }
   }
 
@@ -1150,6 +1180,21 @@ export function sharedWorldValidationReason(config: LabConfig): string | null {
   return null;
 }
 
+/**
+ * The lane ids the computer-use engine will actually run: declared roster ids, else the generated
+ * `lane-01..lane-NN` names. Mirrors the naming in cua-actor-lab.ts's laneSpecsAndPlan — a test
+ * pins the two together — so comms recipient validation can never drift from the engine (#351).
+ */
+export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
+  const actor = config.actors[0];
+  const roster = actor?.lanes;
+  if (roster && roster.length > 0) {
+    return roster.map((lane, index) => lane.id ?? `lane-${String(index + 1).padStart(2, "0")}`);
+  }
+  const count = Math.max(1, actor?.count ?? 1);
+  return Array.from({ length: count }, (_, index) => `lane-${String(index + 1).padStart(2, "0")}`);
+}
+
 export function routesToComputerUse(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the cua backend exactly like an app-url subject with a computer-use actor.
@@ -1449,6 +1494,13 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.comms?.email && config.subject.source !== "clone" && config.subject.source !== "local-tree") {
     inert.push("comms.email (the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle and no comms evidence is collected)");
   }
+  // The SEQUENTIAL shared-world route has no comms wiring at all (no catch deploy, no inbox
+  // instruction) — a comms block there does nothing, and the actors are never told an inbox
+  // exists. Say so at parse time; the concurrent route (the default since #350: all seats live)
+  // is the one that hosts the email funnel (#351).
+  if (config.comms?.email && config.subject.topology === "shared-world" && (config.execution?.concurrency ?? 1) <= 1) {
+    inert.push("comms.email (the sequential turn-taking shared-world route has no comms wiring — no catch is deployed and no actor is told an inbox exists; remove `execution.concurrency: 1` so all seats run concurrently, which is the route that hosts the email funnel)");
+  }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
   // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
   // (a hard parse error above), so it can never reach this warning list there.
@@ -1520,6 +1572,18 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
     if (routesToCua && cap !== undefined && seats > 1 && cap < seats && !sequentialSelector) {
       warnings.push(
         `execution.concurrency ${cap} caps a ${seats}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${seats} seats simultaneously) or set it to ${seats}; declare a lower cap only to bound simultaneous paid desktops.`
+      );
+    }
+  }
+  // Partial email coverage is legal but loud (#351): a lane without an addressed recipient never
+  // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
+  if (routesToCua && config.comms?.email?.recipients) {
+    const laneIds = effectiveComputerUseLaneIds(config);
+    const covered = new Set(config.comms.email.recipients.filter((r) => r.address !== undefined).map((r) => r.lane));
+    const uncovered = laneIds.filter((id) => !covered.has(id));
+    if (covered.size > 0 && uncovered.length > 0 && laneIds.length > 1) {
+      warnings.push(
+        `comms.email covers ${covered.size} of ${laneIds.length} lanes; the uncovered lane(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`
       );
     }
   }

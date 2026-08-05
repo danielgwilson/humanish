@@ -1097,6 +1097,11 @@ describe("runCuaActorLab", () => {
     expect(outcome.result.ok).toBe(true);
     // The persona actually received the inbox URL in its prompt (loopback, same sandbox as its browser).
     expect(seenInstructions).toContain(`http://127.0.0.1:${commsPort}/inbox`);
+    // The full handoff (#351): the persona is told WHICH address to sign up with (the drain matches
+    // the declared address, so an invented one would leave the inbox empty forever) and that
+    // waiting for an email is a next step, never a give-up state.
+    expect(seenInstructions).toContain("Your email address is user@example.test");
+    expect(seenInstructions).toContain("do not end your session while waiting");
     // The live inbox surface was rendered into the sandbox DURING the run (the mid-run loop wrote the list).
     expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
   });

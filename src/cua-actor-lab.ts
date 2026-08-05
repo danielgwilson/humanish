@@ -73,6 +73,7 @@ import {
   subjectStateInvalidReason,
   type LabActorLane,
   type LabCommsEmail,
+  type LabCommsRecipient,
   type LabConfig,
   type LabDesktopBrowser,
   type LabStateStepWhen,
@@ -575,18 +576,32 @@ export function composeLaneInstructions(args: {
  *  runtime loopback/getHost address (not secret), so — mirroring the lobby-code runtime injection — this
  *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
  *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
-export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string): CuaLaneSpec {
+export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: string): CuaLaneSpec {
+  // The address is half the handoff (#351): the drain matches captured mail against the DECLARED
+  // address, so an actor that invents its own at signup gets an inbox that stays empty forever.
+  // Telling it which address to use is what makes the funnel deterministic end to end. The
+  // wait-steering sentence exists because a mid-flow model treats "we emailed you" as a blocker
+  // and ends its session — the exact give-up class a live run documented — unless told the wait
+  // is expected and the inbox is the next step.
+  const identity = address === undefined ? "" : ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
   return {
     ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox: when the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${inboxUrl} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there.`
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} When the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${inboxUrl} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there. Waiting for an email is normal, not a blocker — do not end your session while waiting; open the inbox and refresh it until the email appears.`
   };
+}
+
+/** The lane's addressed comms recipient, when one exists — the gate AND the address source for the
+ *  inbox instruction (#351). A lane told to check an inbox it can never receive into would stall,
+ *  so no addressed recipient means no instruction. */
+export function inboxRecipientFor(commsEmail: LabCommsEmail, laneId: string): LabCommsRecipient | undefined {
+  return (commsEmail.recipients ?? []).find((recipient) => recipient.lane === laneId && recipient.address !== undefined);
 }
 
 /** True when a lane has a declared comms recipient WITH an address, so the drain can actually match the
  *  mail the persona will be told to read. Gates the inbox instruction to lanes that can receive mail —
  *  a lane told to check an inbox it can never receive into would just stall. */
 export function laneHasInboxRecipient(commsEmail: LabCommsEmail, laneId: string): boolean {
-  return (commsEmail.recipients ?? []).some((recipient) => recipient.lane === laneId && recipient.address !== undefined);
+  return inboxRecipientFor(commsEmail, laneId) !== undefined;
 }
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
@@ -2068,7 +2083,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         // Tell the persona where its inbox is — but only when comms is live AND this lane has a declared
         // recipient it can actually receive mail into (else it would stall on an inbox that stays empty).
         instructions: commsEmail && commsInboxUrl && deployedComms?.ready && laneHasInboxRecipient(commsEmail, spec.laneId)
-          ? withInboxMission(spec, commsInboxUrl).instructions
+          ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsEmail, spec.laneId)?.address).instructions
           : spec.instructions,
         persona: spec.persona,
         timeoutMs: deps.timeoutMs,
@@ -2187,6 +2202,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             // honest signals): tell the operator to declare comms.email.recipients[].address to match
             // the address the app actually sends to (e.g. the one the persona surface will sign up with).
             warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+          } else {
+            // Zero captures is the silent-broken shape (#351): the app never posted to the catch at
+            // all, so the personas stared at an empty inbox. Most common cause: the app does not
+            // actually read the declared injectEnv var for its email API base URL.
+            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`);
           }
         } catch (error) {
           warnings.push(`Comms evidence collection failed (run continues; sandbox still torn down): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
