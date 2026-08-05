@@ -38,8 +38,10 @@ describe("pricing schema constants", () => {
 
   it("keeps the shipped rate table keyed lowercase with the CUA default present", () => {
     // The shipped default resolves to gpt-5.5 (DEFAULT_OPENAI_CU_MODEL); it must be priceable so a
-    // capped run is not refused by default. The classic computer-use-preview is a confirmed rate.
-    expect(MODEL_RATES["gpt-5.5"]?.placeholder).toBe(true);
+    // capped run is not refused by default. Both model rates are confirmed (gpt-5.5 against public
+    // third-party sheets — see #334); the desktop rate stays placeholder until a live run confirms
+    // the desktop template's RAM spec.
+    expect(MODEL_RATES["gpt-5.5"]?.placeholder).toBeUndefined();
     expect(MODEL_RATES["computer-use-preview"]?.placeholder).toBeUndefined();
     expect(DESKTOP_RATE.placeholder).toBe(true);
     for (const key of Object.keys(MODEL_RATES)) {
