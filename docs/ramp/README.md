@@ -91,6 +91,16 @@ Implemented:
   and clicks through, and a digest-only `humanish.comms-thread.v1` artifact
   records the thread with no raw address, link, or code — wired into the
   computer-use and shared-world routes and live-proven on computer-use;
+- resolved-persona directives that actually shape the actor prompt on the
+  terminal-product route (traits are applied and recorded in the actor trace, not
+  decorative), reusing the same `persona.ts` compiler as the computer-use lane;
+- a CLI-loadable adopter scorer seam (`review.scorer.ref` in the lab manifest, or
+  a `--scorer <path>` override): a config-declared `.mjs` supplies
+  `{score, deriveFeedback, deriveArtifacts}`, resolved with the same containment
+  as `scenario.ref` and digest-pinned in the bundle
+  (`humanish.scorer-provenance.v1`); a config-declared scorer that fails to render
+  a pass fails the run on the scorer-capable routes, while library callers keep
+  the additive behavior (`costProbe` stays library-only);
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - an OSS meta-lab dry-run contract and a separate disposable public-repo OSS

@@ -458,10 +458,14 @@ The active engineering proof slice is the first depth-axis deletion branch: run
 an existing first-party bespoke sim through current Humanish, compare the
 decision outputs, and delete its bespoke generic harness while retaining only a
 thin product extension. The current front is an agent-facing terminal-product
-harness, whose thin-extension budget is being surfaced as engine gaps — a
-config-loadable scoring/feedback seam, terminal-lane fan-out, an opt-in
-product-credential channel, and honest-scoring fixes. Converge on completing one
-such branch to decision-equivalent green before starting the next archetype (a
+harness, whose thin-extension budget is being surfaced as engine gaps. Landed so
+far (`0.32.0`–`0.33.0`): the honest-scoring fixes (persona traits now shape the
+terminal agent; a quoted-subject-copy blocker false-positive; a comms false-green
+guard) and a config-loadable adopter scorer seam (`review.scorer.ref` /
+`--scorer`). Remaining before the deletion: terminal-lane fan-out and an opt-in
+product-credential channel — then run that harness's study through current
+Humanish, compare the decision outputs, and delete its bespoke engine. Converge on
+one such branch to decision-equivalent green before starting the next archetype (a
 multi-actor shared-state harness) or the breadth panel.
 
 After that checkpoint, re-evaluate this order rather than treating it as an
