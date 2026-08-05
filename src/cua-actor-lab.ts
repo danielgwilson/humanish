@@ -122,6 +122,7 @@ import {
   type RunProviderResource,
   type RunCostLine,
   type RunCostSummary,
+  type RunScorerProvenance,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "./run.js";
@@ -307,6 +308,9 @@ export interface RunCuaActorLabOptions {
   };
   hooks?: CuaActorLabHooks;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
+  /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
+   *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
+  scorerProvenance?: RunScorerProvenance;
 }
 
 /** A lane's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
@@ -3040,7 +3044,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       });
 
   const adapterWarnings: string[] = [];
-  await applyBrowserAdapterHooks({
+  const scorerResult = await applyBrowserAdapterHooks({
     hooks,
     bundle,
     context: {
@@ -3055,7 +3059,8 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
-    hookLabel: "cuaHooks"
+    hookLabel: "cuaHooks",
+    ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
   });
 
   await writeCuaRunArtifacts(bundle, createdAt, runPaths);
@@ -3069,7 +3074,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
   const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && allLanesOk && adapterFailure === undefined;
+  const ok = observer.ok && allLanesOk && adapterFailure === undefined && scorerResult.declaredVerdictFailure === undefined;
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
   const warnings = [...laneWarnings, ...aggregateWarnings, ...adapterWarnings, ...observer.warnings];

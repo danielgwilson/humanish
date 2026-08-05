@@ -109,6 +109,7 @@ import {
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
+  type RunScorerProvenance,
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream,
@@ -156,6 +157,9 @@ export interface RunConcurrentSharedWorldLabOptions {
   runId?: string;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   hooks?: SharedWorldLabHooks;
+  /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
+   *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
+  scorerProvenance?: RunScorerProvenance;
 }
 
 export type ConcurrentSharedWorldLabErrorCode =
@@ -1524,7 +1528,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   });
 
   const adapterWarnings: string[] = [];
-  await applyBrowserAdapterHooks({
+  const scorerResult = await applyBrowserAdapterHooks({
     hooks,
     bundle,
     context: {
@@ -1539,7 +1543,8 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
-    hookLabel: "sharedWorldHooks"
+    hookLabel: "sharedWorldHooks",
+    ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
   });
 
   await writeConcurrentRunArtifacts(bundle, runPaths);
@@ -1559,7 +1564,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const swarmRan = !dryRun && actorResults.length === roles.length
     && actorResults.every(actorLanePassed);
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && runError === undefined && (dryRun || swarmRan) && adapterFailure === undefined;
+  const ok = observer.ok && runError === undefined && (dryRun || swarmRan) && adapterFailure === undefined && scorerResult.declaredVerdictFailure === undefined;
 
   const overlapProven = !dryRun && actorWindowsOverlap(actorResults);
 

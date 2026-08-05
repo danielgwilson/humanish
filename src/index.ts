@@ -62,6 +62,10 @@ export type {
   BrowserLabAdapterHooks,
   BrowserLabScoringContext
 } from "./adapter-extension.js";
+// #316 CLI-loadable adopter scorer: the adopter-facing module contract + its read-model context union
+// (so an adopter types its `.mjs` scorer against `import("humanish")` alone). The loader itself is
+// CLI-internal (declared via `review.scorer.ref` / `--scorer`), not part of the library surface.
+export type { AdapterScorerModule, AdapterScoringContext } from "./adapter-scorer-loader.js";
 export type { RedactionHooks } from "./redaction.js";
 // Off-app comms (#297) — the LIBRARY extension surface only. The capability is driven CLI-first via a
 // lab `comms:` block (see the humanish skill + lab schema), so the catch, drain, inbox-render, and
@@ -179,6 +183,7 @@ export type {
   RunOptions,
   RunProviderResource,
   RunResult,
+  RunScorerProvenance,
   RunSimulation,
   RunStream,
   RunStreamKind,

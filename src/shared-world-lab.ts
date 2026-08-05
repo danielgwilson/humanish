@@ -91,6 +91,7 @@ import {
   type RunBundle,
   type RunDesktopGeometry,
   type RunEvent,
+  type RunScorerProvenance,
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream,
@@ -194,6 +195,9 @@ export interface RunSharedWorldLabOptions {
   open?: boolean;
   runId?: string;
   hooks?: SharedWorldLabHooks;
+  /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
+   *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
+  scorerProvenance?: RunScorerProvenance;
 }
 
 export type SharedWorldLabErrorCode =
@@ -1037,7 +1041,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   });
 
   const adapterWarnings: string[] = [];
-  await applyBrowserAdapterHooks({
+  const scorerResult = await applyBrowserAdapterHooks({
     hooks,
     bundle,
     context: {
@@ -1052,7 +1056,8 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
-    hookLabel: "sharedWorldHooks"
+    hookLabel: "sharedWorldHooks",
+    ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
   });
 
   await validatePreparedRunArtifactPaths(runPaths);
@@ -1073,7 +1078,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   };
   const allRolesOk = roleSpecs.every((_, index) => roleOk(roleOutcomes[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && allRolesOk && failFastReason === undefined && adapterFailure === undefined;
+  const ok = observer.ok && allRolesOk && failFastReason === undefined && adapterFailure === undefined && scorerResult.declaredVerdictFailure === undefined;
   const allWarnings = [...warnings, ...adapterWarnings, ...observer.warnings];
 
   const roles: SharedWorldRoleResult[] = roleSpecs.map((spec, index) => {
