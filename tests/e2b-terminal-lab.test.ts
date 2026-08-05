@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -9,7 +9,8 @@ import {
   parseLabConfig,
   type LabConfig
 } from "../src/lab-config.js";
-import { runTerminalProductLab, type TerminalProductLabHooks } from "../src/e2b-terminal-lab.js";
+import { resolveTerminalPersona, runTerminalProductLab, type TerminalProductLabHooks } from "../src/e2b-terminal-lab.js";
+import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import { verifyRun } from "../src/run.js";
 
 // SLICE 2 deterministic safety net: drive the REAL live orchestration (dryRun:false) against a
@@ -589,5 +590,89 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     expect(codexRun?.envs).toEqual({ CODEX_API_KEY: "FAKEKEY-codex-wins-0000000000000000" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames).toEqual(["CODEX_API_KEY"]);
+  });
+});
+
+describe("terminal persona traits (#308)", () => {
+  let cwd: string;
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-persona-")); });
+  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+  const projectRootFor = (dir: string) => prepareSelectedOutputDirectory(path.dirname(dir), dir);
+
+  it("applies committed persona traits to the agent prompt AND records them in the actor trace", async () => {
+    await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish", "personas", "autonomous-creative-agent.yaml"),
+      [
+        "id: autonomous-creative-agent",
+        "name: Autonomous Creative Agent",
+        "traits:",
+        "  patience: low",
+        "  technical_confidence: high",
+        "  accessibility_needs: keyboard-only",
+        "constraints:",
+        "  - Only use public surfaces",
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+
+    const runs: RecordedRun[] = [];
+    const hooks: TerminalProductLabHooks = {
+      env: baseEnv(),
+      now: () => 1_000,
+      loadModule: async () => makeFakeModule({
+        creates: [], runs, killed: [], listCalls: [],
+        codexBehavior: (cmd) => ({ exitCode: 0, stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n` })
+      })
+    };
+
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
+    expect(result.ok).toBe(true);
+
+    // The persona's low-patience directive reached the agent's ACTUAL composed prompt.
+    const codexRun = runs.find((r) => r.command.includes("codex"));
+    expect(codexRun?.command).toContain("impatient");
+    expect(codexRun?.command).not.toContain("persona: autonomous-creative-agent");
+
+    // The actor trace records WHICH traits took effect — no longer the hardcoded [].
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const traitsApplied = bundle.streams[0]?.actor?.persona?.traitsApplied ?? [];
+    expect(traitsApplied).toContain("patience:low");
+    expect(traitsApplied).toContain("skill:high");
+    expect(traitsApplied).toContain("accessibility:keyboard-only");
+  });
+
+  it("resolveTerminalPersona resolves a committed persona file into traits", async () => {
+    await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish", "personas", "careful-reviewer.yaml"),
+      "id: careful-reviewer\nname: Careful Reviewer\ntraits:\n  patience: high\n  technical_confidence: low\n",
+      "utf8"
+    );
+    const { persona, warnings } = await resolveTerminalPersona(await projectRootFor(cwd), "careful-reviewer");
+    expect(warnings).toEqual([]);
+    expect(persona?.traits.patience).toBe("high");
+    expect(persona?.traits.skill).toBe("low");
+  });
+
+  it("resolveTerminalPersona returns null (truthful empty traits) when no persona file is committed", async () => {
+    const { persona, warnings } = await resolveTerminalPersona(await projectRootFor(cwd), "autonomous-terminal-agent");
+    expect(persona).toBeNull();
+    expect(warnings).toEqual([]);
+  });
+
+  it("resolveTerminalPersona never builds a path from an unsafe persona id", async () => {
+    const { persona } = await resolveTerminalPersona(await projectRootFor(cwd), "../../etc/passwd");
+    expect(persona).toBeNull();
+  });
+
+  it("resolveTerminalPersona warns and falls back on unparseable persona YAML", async () => {
+    await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "personas", "broken.yaml"), "traits: {patience: low", "utf8");
+    const { persona, warnings } = await resolveTerminalPersona(await projectRootFor(cwd), "broken");
+    expect(persona).toBeNull();
+    expect(warnings.join(" ")).toContain("could not be parsed as YAML");
   });
 });
