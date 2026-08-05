@@ -82,6 +82,7 @@ import {
   type RunSimulationStatus,
   type RunStream
 } from "./run.js";
+import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { applyAdapterScoreFailureToReview, frozenBundleView, recordDeclaredScorerVerdictFailure } from "./adapter-extension.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
 
@@ -1005,6 +1006,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     });
     await validatePreparedRunArtifactPaths(runPaths);
     sandboxId = sandbox.sandboxId;
+    // #358 salvage: durable id receipt the moment the sandbox exists (reclaim by exact id).
+    await appendSandboxReceipt(runPaths, { at: nowIso(), laneId: "terminal", sandboxId, timeoutMs: sandboxTimeoutMs });
     recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env (runtime key is command-scoped).`);
 
     // Readiness: a tiny in-sandbox probe (no key) confirms the shell answers before the keyed run.

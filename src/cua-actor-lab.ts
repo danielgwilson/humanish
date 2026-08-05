@@ -81,6 +81,7 @@ import {
   type LabSubjectState
 } from "./lab-config.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import {
@@ -1904,6 +1905,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       lifecycle: { onTimeout: "kill" }
     }, config.execution?.desktop?.template);
     sandboxId = desktop.sandboxId;
+    // #358 salvage: journal the id to disk before any work — an interrupted run reclaims by
+    // exact recorded id (`humanish reclaim`), never by enumerating the account.
+    await appendSandboxReceipt(deps.artifactRoot, { at: new Date(deps.now()).toISOString(), laneId: spec.laneId, sandboxId, timeoutMs: deps.perLaneSandboxMs });
     // The billed span starts the instant the sandbox exists.
     sandboxCreatedAtMs = deps.now();
 
@@ -2368,10 +2372,14 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
  * pinned reason + a fail-fast event; mission verdicts never trip it). Each lane tears down ITS
  * OWN sandbox by id; nothing here ever enumerates.
  */
-async function runCuaLanes(
+/** Exported for the #342 total-runner tests: the injectable runner lets a test make one lane
+ *  THROW (the exact class the guard exists for) without a live sandbox. Production always uses
+ *  the default. */
+export async function runCuaLanes(
   laneSpecs: CuaLaneSpec[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
-  concurrency: number
+  concurrency: number,
+  runLane: typeof runCuaLane = runCuaLane
 ): Promise<{ outcomes: LaneRunOutcome[]; failFastReason?: string }> {
   const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
   let resolveGate: (() => void) | undefined;
@@ -2395,20 +2403,45 @@ async function runCuaLanes(
     if (failFast.tripped) {
       return blockedLaneOutcome(spec, `skipped: ${failFast.reason}`);
     }
-    const outcome = await runCuaLane(spec, {
-      ...deps,
-      ...(index === 0
-        ? {
-            signalProvisioned: (ok: boolean) => {
-              if (ok) {
-                resolveGate?.();
-              } else {
-                rejectGate?.();
+    // The lane runner is TOTAL (#342): every exit path returns a recorded outcome. Without this
+    // guard, one lane's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
+    // already torn down) rejected the whole map while sibling workers kept launching sandboxes
+    // nobody would ever record — the run spent money and then reported nothing.
+    let outcome: LaneRunOutcome;
+    try {
+      outcome = await runLane(spec, {
+        ...deps,
+        ...(index === 0
+          ? {
+              signalProvisioned: (ok: boolean) => {
+                if (ok) {
+                  resolveGate?.();
+                } else {
+                  rejectGate?.();
+                }
               }
             }
-          }
-        : {})
-    });
+          : {})
+      });
+    } catch (error) {
+      // Lane 0 may have thrown before signaling the provisioning gate — release the followers as
+      // blocked rather than leaving them awaiting a gate that will never settle.
+      if (index === 0) rejectGate?.();
+      const detail = redactText(toErrorMessage(error));
+      outcome = {
+        spec,
+        killed: false,
+        streamUrlPresent: false,
+        screenshots: [],
+        stateStepRecords: [],
+        phaseRecords: [],
+        warnings: [],
+        noEngagement: false,
+        selfReportedBlocker: false,
+        harnessError: true,
+        sessionError: `lane runner threw outside the session guard: ${detail}`
+      };
+    }
     if (outcome.harnessError && !failFast.tripped) {
       failFast.tripped = true;
       failFast.reason = `a prior lane (${outcome.spec.laneId}) ended in a harness error (fail-fast)`;
