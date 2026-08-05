@@ -1107,6 +1107,15 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
           if (liveObserver) {
             attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
           }
+        },
+        onRuntimeStreamEnded: (stream) => {
+          // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
+          for (const entry of runtimeStreamUrls) {
+            if (entry.streamId === stream.streamId) entry.ended = true;
+          }
+          if (liveObserver) {
+            attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
+          }
         }
       };
       const baseActorDeps: Omit<CuaLaneDeps, "signalProvisioned" | "appUrl"> = {
@@ -1227,6 +1236,15 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       ...(hooks.prepareDesktop ? { prepareDesktop: (desktop: E2BDesktopSandbox) => hooks.prepareDesktop!(desktop) } : {}),
       onRuntimeStreamReady: (stream) => {
         runtimeStreamUrls.push({ streamId: stream.streamId, url: stream.url });
+        if (liveObserver) {
+          attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
+        }
+      },
+      onRuntimeStreamEnded: (stream) => {
+        // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
+        for (const entry of runtimeStreamUrls) {
+          if (entry.streamId === stream.streamId) entry.ended = true;
+        }
         if (liveObserver) {
           attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
         }

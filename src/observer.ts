@@ -74,6 +74,10 @@ export interface ObserverServer {
 export interface ObserverRuntimeStreamUrl {
   streamId: string;
   url: string;
+  /** Set when the lane's sandbox is gone (finished or torn down). An ended stream's live URL is a
+   *  dead noVNC page — the overlay stops injecting it so the tile falls back to the recorded
+   *  evidence (keyframe replay/screenshot) instead of rendering "sandbox not found" (#357). */
+  ended?: boolean;
 }
 
 /** internal: consumed by observer-serve */
@@ -493,18 +497,25 @@ async function readObserverData(
   return null;
 }
 
-function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRuntimeStreamUrl[]): ObserverData {
+/** internal: exported for the #357 lifecycle tests (consumed by observer-serve). */
+export function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRuntimeStreamUrl[]): ObserverData {
   if (runtimeStreamUrls.length === 0) {
     return data;
   }
 
-  const urlsByStream = new Map(runtimeStreamUrls.map((stream) => [stream.streamId, stream.url]));
+  const byStream = new Map(runtimeStreamUrls.map((stream) => [stream.streamId, stream]));
   return {
     ...data,
     streams: data.streams.map((stream) => {
-      const runtimeUrl = urlsByStream.get(stream.id);
-      if (!runtimeUrl) {
+      const runtime = byStream.get(stream.id);
+      if (!runtime) {
         return stream;
+      }
+      if (runtime.ended) {
+        // The sandbox is gone: a live iframe here renders the provider's "sandbox not found" page,
+        // which is pixel-identical to a crash. Fall back to the recorded evidence the tile already
+        // renders when no live URL is advertised, and mark WHY the live view ended (#357).
+        return { ...stream, liveEnded: true };
       }
 
       return {
@@ -512,10 +523,10 @@ function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRu
         embed: {
           ...(stream.embed ?? { title: stream.label }),
           kind: "iframe",
-          url: runtimeUrl
+          url: runtime.url
         },
         transport: "sse",
-        url: runtimeUrl
+        url: runtime.url
       };
     })
   };

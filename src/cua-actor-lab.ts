@@ -250,6 +250,10 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
     streamId: string;
     url: string;
   }) => Promise<void> | void;
+  /** Fired when a lane's sandbox is gone (finished or torn down): the live stream URL is now a
+   *  dead noVNC page, so the watch overlay must stop serving it and let the tile fall back to
+   *  recorded evidence (#357). Fired only for lanes whose onRuntimeStreamReady fired. */
+  onRuntimeStreamEnded?: (stream: { laneId: string; simId: string; streamId: string }) => Promise<void> | void;
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /**
@@ -2241,6 +2245,17 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       // Close the billed span for BOTH the killed and kept-for-debug paths (a kept sandbox is
       // still billed until its server-side timeout, so the honest span ends here either way).
       sandboxTornDownAtMs = deps.now();
+      // The lane's live stream is now a dead page whichever teardown path ran (killed, kept, or
+      // kill-failed-awaiting-TTL) — tell the watch overlay so the tile falls back to recorded
+      // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
+      // break teardown.
+      if (streamUrl !== undefined) {
+        try {
+          await deps.hooks.onRuntimeStreamEnded?.({ laneId: spec.laneId, simId: spec.simId, streamId: spec.streamId });
+        } catch {
+          // viewer-side only; nothing to record
+        }
+      }
     }
   }
 
@@ -2625,6 +2640,17 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     onRuntimeStreamReady: async (stream) => {
       await hooks.onRuntimeStreamReady?.(stream);
       runtimeStreamUrls.push({ streamId: stream.streamId, url: stream.url });
+      if (liveObserver) {
+        attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
+      }
+    },
+    onRuntimeStreamEnded: async (stream) => {
+      await hooks.onRuntimeStreamEnded?.(stream);
+      // Mark, never remove: the tile needs to KNOW the live view ended (and say so) rather than
+      // have the stream silently vanish from the overlay (#357).
+      for (const entry of runtimeStreamUrls) {
+        if (entry.streamId === stream.streamId) entry.ended = true;
+      }
       if (liveObserver) {
         attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
       }

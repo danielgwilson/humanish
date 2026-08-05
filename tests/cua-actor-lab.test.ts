@@ -1073,6 +1073,7 @@ describe("runCuaActorLab", () => {
       JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
     let t = 0;
     let seenInstructions = "";
+    const streamLifecycle: string[] = [];
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
         if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
@@ -1085,6 +1086,10 @@ describe("runCuaActorLab", () => {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        // #357 lifecycle: ready must fire while the sandbox lives, ended after its teardown —
+        // the pair is what lets the watch overlay stop serving a dead stream URL.
+        onRuntimeStreamReady: (stream) => { streamLifecycle.push(`ready:${stream.streamId}`); },
+        onRuntimeStreamEnded: (stream) => { streamLifecycle.push(`ended:${stream.streamId}`); },
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions = options.instructions;
@@ -1104,6 +1109,9 @@ describe("runCuaActorLab", () => {
     expect(seenInstructions).toContain("do not end your session while waiting");
     // The live inbox surface was rendered into the sandbox DURING the run (the mid-run loop wrote the list).
     expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
+    // #357 lifecycle: the lane announced its live stream while the sandbox lived, and announced
+    // the END after teardown — ready strictly before ended, one pair, same stream id.
+    expect(streamLifecycle).toEqual(["ready:stream-001", "ended:stream-001"]);
   });
 
   it("comms:email:fake — writes an EMPTY inbox up front so /inbox never 404s before mail arrives", async () => {
@@ -3459,10 +3467,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const observerData = await served.json() as {
       streams: Array<{ transport?: string; url?: string; embed?: { kind: string } }>;
     };
-    // The runtime E2B stream URL was injected into the LIVE bundle (the whole point of watch-live).
-    expect(observerData.streams[0]?.transport).toBe("sse");
-    expect(observerData.streams[0]?.url).toBe("https://stream.invalid/fake-auth-key");
-    // ...but it is NEVER persisted to disk.
+    // #357: the run is OVER (the lane tore down and fired onRuntimeStreamEnded), so the server no
+    // longer injects the now-dead stream URL — the tile falls back to recorded evidence and the
+    // stream says why (liveEnded). Serving the URL here was exactly the "board full of 'sandbox
+    // not found'" failure the field run hit.
+    expect(observerData.streams[0]?.transport).not.toBe("sse");
+    expect(observerData.streams[0]?.url).toBeUndefined();
+    expect((observerData.streams[0] as { liveEnded?: boolean } | undefined)?.liveEnded).toBe(true);
+    // The runtime URL is NEVER persisted to disk in any state.
     const persisted = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8");
     expect(persisted).not.toContain("fake-auth-key");
     expect(persisted).not.toContain("stream.invalid");
