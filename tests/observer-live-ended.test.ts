@@ -25,7 +25,7 @@ describe("withRuntimeStreamUrls lifecycle (#357)", () => {
       { streamId: "stream-b", url: "https://live.example.test/b", ended: true }
     ];
     const merged = withRuntimeStreamUrls(observerData(), runtime);
-    const [a, b, c] = merged.streams as Array<Record<string, unknown>>;
+    const [a, b, c] = merged.streams as unknown as Array<Record<string, unknown>>;
 
     // Active lane: the live iframe rides in.
     expect((a!.embed as Record<string, unknown>).kind).toBe("iframe");
@@ -48,12 +48,12 @@ describe("withRuntimeStreamUrls lifecycle (#357)", () => {
       { streamId: "stream-b", url: "https://live.example.test/b" }
     ];
     const before = withRuntimeStreamUrls(observerData(), runtime);
-    expect((before.streams[1] as Record<string, unknown>).liveEnded).toBeUndefined();
+    expect((before.streams[1] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();
 
     runtime[1]!.ended = true; // the lane's teardown fired onRuntimeStreamEnded
     const after = withRuntimeStreamUrls(observerData(), runtime);
-    expect((after.streams[0] as Record<string, unknown>).liveEnded).toBeUndefined();
-    expect((after.streams[1] as Record<string, unknown>).liveEnded).toBe(true);
-    expect((after.streams[1] as Record<string, unknown>).embed).toBeUndefined();
+    expect((after.streams[0] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();
+    expect((after.streams[1] as unknown as Record<string, unknown>).liveEnded).toBe(true);
+    expect((after.streams[1] as unknown as Record<string, unknown>).embed).toBeUndefined();
   });
 });
