@@ -51,6 +51,7 @@ import {
   provisionCloneSubject,
   provisionLocalTreeSubject,
   declaredScreenForRender,
+  inboxRecipientFor,
   laneHasInboxRecipient,
   resolveLaneDevice,
   resolveSubjectState,
@@ -1136,7 +1137,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
         // has a declared recipient it can actually receive mail into (else it would stall on an empty inbox).
         const laneSpec = commsEmail && commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.laneId)
-          ? withInboxMission(spec, commsInboxUrl)
+          ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsEmail, spec.laneId)?.address)
           : spec;
         const startedAt = now();
         const outcome = await runCuaLane(laneSpec, { ...baseActorDeps, appUrl: route });
@@ -1187,6 +1188,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
             commsArtifactPath = "comms/thread.json";
           } else if (collected.captured > 0) {
             warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+          } else {
+            // Zero captures is the silent-broken shape (#351): the app never posted to the catch.
+            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`);
           }
         } catch (error) {
           warnings.push(`Comms evidence collection failed (run continues; subject still torn down): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);

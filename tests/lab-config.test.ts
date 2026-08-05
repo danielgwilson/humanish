@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   concurrentSharedWorldValidationReason,
+  effectiveComputerUseLaneIds,
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
   resolveSeatUrl,
@@ -59,7 +60,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       actors: [{ type: "openai-computer-use", count: 1 }],
       execution: { target: "e2b-desktop" },
       scenario: { mode: "live" },
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: 9100, recipients: [{ lane: "user", address: "user@example.test" }] } }
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: 9100, recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -67,8 +68,78 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       kind: "fake",
       injectEnv: "RESEND_API_URL",
       port: 9100,
-      recipients: [{ lane: "user", address: "user@example.test" }]
+      recipients: [{ lane: "lane-01", address: "user@example.test" }]
     });
+  });
+
+  it("comms recipients fail loud on unknown lanes, fill per-lane when omitted, and warn on partial coverage (#351)", () => {
+    const multiLane = (comms?: Record<string, unknown>) => ({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "comms-multi",
+      subject: { source: "clone", repos: ["e/a"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } },
+      actors: [{ type: "openai-computer-use", mission: "Sign up.", lanes: [
+        { id: "signup-01", instruction: "Sign up." },
+        { id: "signup-02", instruction: "Sign up." },
+        { id: "signup-03", instruction: "Sign up." }
+      ] }],
+      execution: { target: "e2b-desktop" },
+      scenario: { mode: "live" },
+      ...(comms === undefined ? {} : { comms })
+    });
+
+    // A recipient naming a lane that does not exist is a hard error listing the REAL lane ids —
+    // the single-lane example's `lane-01` copied into a roster lab is the field failure this
+    // guards against (an unmatched lane silently disabled the whole funnel for that seat).
+    const unknownLane = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "lane-01", address: "a@example.test" }] } }));
+    expect(unknownLane.ok).toBe(false);
+    if (!unknownLane.ok) {
+      expect(unknownLane.error.message).toContain('"lane-01"');
+      expect(unknownLane.error.message).toContain("signup-01, signup-02, signup-03");
+    }
+
+    // Declared recipients covering zero lanes with an address = a guaranteed-dead funnel → error.
+    const zeroCoverage = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "signup-01" }] } }));
+    expect(zeroCoverage.ok).toBe(false);
+    if (!zeroCoverage.ok) expect(zeroCoverage.error.message).toContain("no lane with an address");
+
+    // Omitted recipients fill one deterministic address per lane: all seats can do email.
+    const filled = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL" } }));
+    expect(filled.ok).toBe(true);
+    if (filled.ok) {
+      expect(filled.config.comms?.email?.recipients).toEqual([
+        { lane: "signup-01", address: "signup-01@example.test" },
+        { lane: "signup-02", address: "signup-02@example.test" },
+        { lane: "signup-03", address: "signup-03@example.test" }
+      ]);
+      expect(filled.warnings.filter((w) => w.includes("comms.email covers"))).toEqual([]);
+    }
+
+    // Partial coverage is legal but loud: the uncovered lanes are named.
+    const partial = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "signup-01", address: "a@example.test" }] } }));
+    expect(partial.ok).toBe(true);
+    if (partial.ok) {
+      expect(partial.warnings.join("\n")).toContain("covers 1 of 3 lanes");
+      expect(partial.warnings.join("\n")).toContain("signup-02, signup-03");
+    }
+  });
+
+  it("effectiveComputerUseLaneIds mirrors the engine's lane naming (the #351 validation cannot drift)", () => {
+    const base = {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "lanes",
+      subject: { source: "clone", repos: ["e/a"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } },
+      execution: { target: "e2b-desktop" },
+      scenario: { mode: "dry-run" }
+    };
+    const single = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use", count: 1 }] });
+    expect(single.ok).toBe(true);
+    if (single.ok) expect(effectiveComputerUseLaneIds(single.config)).toEqual(["lane-01"]);
+    const counted = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use", count: 3 }] });
+    expect(counted.ok).toBe(true);
+    if (counted.ok) expect(effectiveComputerUseLaneIds(counted.config)).toEqual(["lane-01", "lane-02", "lane-03"]);
+    const rostered = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use", lanes: [{ id: "host" }, { id: "guest" }] }] });
+    expect(rostered.ok).toBe(true);
+    if (rostered.ok) expect(effectiveComputerUseLaneIds(rostered.config)).toEqual(["host", "guest"]);
   });
 
   it("defaults comms:email kind to fake and requires a valid injectEnv name", () => {
@@ -78,7 +149,9 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       comms: { email: { injectEnv: "RESEND_API_URL" } }
     });
     expect(ok.ok).toBe(true);
-    if (ok.ok) expect(ok.config.comms?.email).toEqual({ kind: "fake", injectEnv: "RESEND_API_URL" });
+    // Omitted recipients are FILLED one-per-lane (#351): a single-lane lab gets lane-01@example.test,
+    // so the actor is told its address and the drain can match the mail — email works out of the box.
+    if (ok.ok) expect(ok.config.comms?.email).toEqual({ kind: "fake", injectEnv: "RESEND_API_URL", recipients: [{ lane: "lane-01", address: "lane-01@example.test" }] });
 
     const base = { schema: LAB_CONFIG_SCHEMA, id: "c", subject: { source: "clone" as const, repos: ["e/a"], serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" } }, actors: [{ type: "openai-computer-use", count: 1 }], execution: { target: "e2b-desktop" as const }, scenario: { mode: "live" as const } };
     // Fail-loud (never silently swallowed): missing injectEnv, an invalid env name, and real kind all reject.

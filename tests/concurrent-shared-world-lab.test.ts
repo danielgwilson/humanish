@@ -563,6 +563,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // URL (a getHost host, reachable from its own — different — sandbox), not the loopback capture URL.
     const inboxHost = `https://${commsPort + 1}-${sandboxes[0]!.sandboxId}.e2b.app/inbox`;
     expect(seenInstructions.some((text) => text.includes(inboxHost))).toBe(true);
+    // The full handoff (#351) rides the same injection on this route too: address + wait steering.
+    expect(seenInstructions.some((text) => text.includes("Your email address is user@example.test"))).toBe(true);
+    expect(seenInstructions.some((text) => text.includes("do not end your session while waiting"))).toBe(true);
     expect(seenInstructions.some((text) => text.includes(`127.0.0.1:${commsPort}`))).toBe(false); // never the capture URL
 
     // The live inbox surface was rendered into the SUBJECT sandbox (created first) during the run.
