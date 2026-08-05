@@ -3500,7 +3500,7 @@ describe("runCuaActorLab cost estimates", () => {
     const { module, killed } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
-      config: configWithModel(), // default resolves to gpt-5.5 (a documented PLACEHOLDER rate)
+      config: configWithModel(), // default resolves to gpt-5.5 (confirmed rate; default refresh tracked in #334)
       dryRun: false,
       hooks: {
         env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
@@ -3513,14 +3513,15 @@ describe("runCuaActorLab cost estimates", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = await readBundle(result.runId);
-    // Per-actor estimate on the persisted trace: labeled with provenance, placeholder flagged.
+    // Per-actor estimate on the persisted trace: labeled with provenance; gpt-5.5 is a confirmed
+    // (non-placeholder) rate.
     const est = bundle.streams[0].actor.estimatedCost;
     expect(est.schema).toBe("humanish.actor-estimated-cost.v1");
-    // gpt-5.5 placeholder: 2_000_000*1.25e-6 + 4_000*10e-6 = 2.5 + 0.04 = 2.54.
-    expect(est.estimatedCostUsd).toBeCloseTo(2.54, 6);
-    expect(est.ratesAsOf).toBe("2026-08-01");
-    expect(est.source).toContain("openai.com/api/pricing");
-    expect(est.placeholder).toBe(true);
+    // gpt-5.5: 2_000_000*5e-6 + 4_000*30e-6 = 10 + 0.12 = 10.12.
+    expect(est.estimatedCostUsd).toBeCloseTo(10.12, 6);
+    expect(est.ratesAsOf).toBe("2026-08-05");
+    expect(est.source).toContain("openrouter.ai/openai/gpt-5.5");
+    expect(est.placeholder).toBeUndefined();
     expect(est.modelId).toBe("gpt-5.5");
 
     const cost = bundle.cost;
@@ -3530,14 +3531,15 @@ describe("runCuaActorLab cost estimates", () => {
     expect(cost.tokenUsage).toEqual({ input: 2_000_000, output: 4_000, total: 2_004_000 });
     const modelLine = cost.breakdown.find((l: any) => l.kind === "model-tokens");
     const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
-    expect(modelLine.estimatedCostUsd).toBeCloseTo(2.54, 6);
-    expect(modelLine.ratesAsOf).toBe("2026-08-01");
-    expect(modelLine.source).toContain("openai.com/api/pricing");
-    expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00167, 6);
-    expect(cost.estimatedTotalUsd).toBeCloseTo(2.54167, 6);
+    expect(modelLine.estimatedCostUsd).toBeCloseTo(10.12, 6);
+    expect(modelLine.ratesAsOf).toBe("2026-08-05");
+    expect(modelLine.source).toContain("openrouter.ai/openai/gpt-5.5");
+    expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00276, 6);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(10.12276, 6);
+    // The desktop rate is still placeholder (RAM spec assumed), so the aggregate flag holds.
     expect(cost.placeholder).toBe(true);
     expect(cost.fullyEstimated).toBe(true);
-    expect(cost.ratesAsOf).toBe("2026-08-01");
+    expect(cost.ratesAsOf).toBe("2026-08-05");
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);

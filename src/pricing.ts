@@ -85,23 +85,28 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     asOf: "2026-08-01",
     source: "openai.com/api/pricing (computer-use-preview)"
   },
-  // gpt-5.5 = the shipped CUA default (DEFAULT_OPENAI_CU_MODEL). PLACEHOLDER shaped like a
-  // GPT-5-class rate (~$1.25 / 1M input, ~$10 / 1M output) until confirmed against the live sheet.
+  // gpt-5.5 = the shipped CUA default (DEFAULT_OPENAI_CU_MODEL). $5 / 1M input, $30 / 1M output
+  // ($0.50 / 1M cached input, not modeled here). NOTE: OpenAI's live pricing page no longer lists
+  // gpt-5.5 (superseded by the gpt-5.6 family) — rate confirmed against public third-party sheets
+  // instead; refreshing the default model is tracked in issue #334.
   "gpt-5.5": {
-    inputUsdPerToken: 1.25e-6,
-    outputUsdPerToken: 10e-6,
-    asOf: "2026-08-01",
-    source: "PLACEHOLDER — confirm at openai.com/api/pricing",
-    placeholder: true
+    inputUsdPerToken: 5e-6,
+    outputUsdPerToken: 30e-6,
+    asOf: "2026-08-05",
+    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)"
   }
 };
 
-// E2B desktop sandbox compute, billed per-second by vCPU+RAM. PLACEHOLDER ~ $0.10 / hr for a
-// ~2 vCPU desktop => ~$0.00167 / minute. Confirm at e2b.dev/pricing.
+// E2B desktop sandbox compute, billed per-second by vCPU+RAM. Live sheet: 2 vCPU (default)
+// $0.000028/s + RAM $0.0000045/GiB/s => at an ASSUMED 4 GiB desktop, $0.000046/s ~= $0.00276/min
+// (~$0.17/hr). The per-second rates are confirmed; the desktop template's RAM spec is not
+// published, so the assumption keeps this entry `placeholder` until a live run's sandbox spec
+// confirms it. 4 GiB is the conservative (higher) choice: over-estimating is the safe direction
+// for maxUsd caps.
 export const DESKTOP_RATE: DesktopRate = {
-  usdPerMinute: 0.00167,
-  asOf: "2026-08-01",
-  source: "PLACEHOLDER — confirm at e2b.dev/pricing",
+  usdPerMinute: 0.00276,
+  asOf: "2026-08-05",
+  source: "e2b.dev/pricing (2 vCPU default + assumed 4 GiB RAM; confirm spec from a live run)",
   placeholder: true
 };
 
