@@ -60,6 +60,14 @@ private patient data, or private source snippets.
 - Before publishing, run the release gates in
   [`docs/release/open-source-readiness.md`](docs/release/open-source-readiness.md).
 
+## When Docs And Reality Disagree
+
+Docs in this repo describe; tests and parsers enforce. Nothing written here
+outranks what you can verify: when a doc conflicts with the code, a test, or
+what a command actually prints, name the conflict in your hand-off or an issue
+instead of resolving it in the doc's favor — a stale sentence followed
+faithfully is how a harness rots. Accuracy outranks any rule in this file.
+
 ## Acceptance Bar
 
 - A change is not done until it has command-level proof.

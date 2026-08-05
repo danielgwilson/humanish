@@ -17,7 +17,7 @@ context.
 Read these in order:
 
 1. [`AGENTS.md`](../../AGENTS.md) for public boundary and engineering rules.
-2. [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md) — the constitution: which rules are invariants and which are overridable defaults.
+2. [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md) — which rules are invariants and which are overridable defaults, each with the reason it exists and the check that enforces it. (The enforcement is what makes a rule real here — when a doc sentence and a test disagree, trust the test and say so.)
 3. [`README.md`](../../README.md) for install, commands, and package shape.
 4. [`docs/goals/current.md`](../goals/current.md) for the active product goal.
 5. [`docs/goals/proof-roadmap/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md) for the ratified proof architecture (repo-only; not shipped in the npm package, hence the absolute link).
@@ -113,8 +113,9 @@ Implemented:
 Still not good enough:
 
 The [current proof-roadmap checkpoint](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md)
-supersedes implementation-status phrases in the immutable 2026-06-10 roadmap
-packet without changing its success standard.
+supersedes implementation-status phrases in the 2026-06-10 roadmap packet
+(kept as written — it is a dated record; its README carries current status)
+without changing its success standard.
 
 - capability receipts are not adopter replacement: no first-party deletion
   branch has yet removed a bespoke generic harness while preserving

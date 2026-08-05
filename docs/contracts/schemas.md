@@ -252,22 +252,35 @@ A lab is a composition over code primitives, not a hardcoded kind:
   only command-scoped). The scripted-browser route is loopback-only and rejects
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
-- `comms` (clone/local-tree + shared-world computer-use routes; #297): off-app
+- `comms` (#297; hosted on the clone/local-tree computer-use lanes and the
+  CONCURRENT shared-world getHost plane — warned inert everywhere else,
+  including app-url/operator-provided subjects and the sequential
+  `concurrency: 1` shared world, neither of which has a catch to host): off-app
   email/SMS the app itself SENDS, made a persona-driven testable surface.
   `comms.email` = `{ kind: fake, injectEnv, port?, recipients?, linkOrigin? }`.
   `injectEnv` is the ADOPTER-NAMED env var the app reads for its email-API base
   URL (e.g. `RESEND_API_URL`); the harness sets it to an in-sandbox catch (so it
   is NOT declared in `subject.env`) that captures the app's sends without touching
-  the internet. `kind` must be `fake` (`real`/provider-backed is rejected until
-  implemented); `port` ≤ 65534 (the catch reserves `port+1` for the read-only
-  inbox listener the shared-world route getHost-exposes); `recipients[]` =
-  `{ lane, address? }` declare the literal address each lane's app emails (so the
-  drain can match it, and the persona is told an inbox URL to read + click);
-  `linkOrigin` is an optional operator-declared origin the app bakes into links
-  when it differs from the serve origin. Captured mail is drained into a
+  the internet — verify the app actually reads that variable, because a run whose
+  catch captured zero sends warns at teardown for exactly that. `kind` must be
+  `fake` (`real`/provider-backed is rejected until implemented); `port` ≤ 65534
+  (the catch reserves `port+1` for the read-only inbox listener the shared-world
+  route getHost-exposes). `recipients[]` = `{ lane, address? }`: OMIT the list
+  and the parser fills one deterministic address per lane
+  (`<laneId>@example.test`) so every seat can do email (#351). When declared, a
+  `lane` must be one of the lab's real lane ids (roster ids, or the generated
+  `lane-01..lane-NN` under `count`) — an unknown lane is a hard parse error
+  listing them, zero addressed lanes is a hard error, partial coverage warns
+  with the uncovered lanes. Each addressed lane's actor prompt is extended with
+  the full handoff: its address ("enter exactly that"), the inbox URL, and the
+  wait steering ("waiting for an email is normal, not a blocker"). `linkOrigin`
+  is an optional operator-declared origin the app bakes into links when it
+  differs from the serve origin; the harness rewrites captured links through it
+  so a clicked link resolves to a reachable host. Captured mail is drained into a
   digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link DIGESTS +
-  an OTP COUNT — no raw address/link/code persists). Requires `python3` in the
-  subject sandbox (the stock E2B desktop template has it).
+  an OTP COUNT — no raw address/link/code persists); the READABLE proof a
+  persona saw the email is its screenshots of the inbox page. Requires `python3`
+  in the subject sandbox (the stock E2B desktop template has it).
 
 Lab backends report results in their own schemas (`humanish.run-result.v1`,
 `humanish.oss-lab-result.v1`, `humanish.oss-meta-lab-result.v1`,
