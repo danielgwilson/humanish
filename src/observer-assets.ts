@@ -422,6 +422,18 @@ a { color: inherit; text-decoration: none; }
 .replay { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0b0d10; }
 .replay-stage { position: relative; flex: 1 1 auto; min-height: 0; }
 .replay-badge { position: absolute; top: 6px; right: 8px; z-index: 2; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); background: rgba(0,0,0,.55); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 7px; }
+.live-ended-badge { position: absolute; top: 6px; left: 8px; z-index: 3; font-size: 9px; letter-spacing: .02em; color: #fff; background: rgba(0,0,0,.62); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; }
+.live-ended-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-2); }
+.live-ended-badge[data-tone="complete"]::before { background: var(--green); }
+.live-ended-badge[data-tone="failed"]::before { background: var(--red); }
+.live-ended-badge[data-tone="blocked"]::before { background: var(--amber); }
+.run-verdict-banner { display: flex; align-items: center; gap: 10px; margin: 6px 14px 0; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface-2); font-size: 12px; }
+.run-verdict-banner[data-status="complete"] { border-color: color-mix(in oklab, var(--green) 45%, var(--line-2)); }
+.run-verdict-banner[data-status="failed"] { border-color: color-mix(in oklab, var(--red) 45%, var(--line-2)); }
+.run-verdict-banner .rvb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); flex: none; }
+.run-verdict-banner[data-status="complete"] .rvb-dot { background: var(--green); }
+.run-verdict-banner[data-status="failed"] .rvb-dot { background: var(--red); }
+.run-verdict-banner[data-status="blocked"] .rvb-dot { background: var(--amber); }
 .replay-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--line-2); background: var(--surface-2); }
 .replay-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line-2); background: transparent; color: var(--text-1); cursor: pointer; }
 .replay-btn:hover { background: var(--surface-3); }
@@ -1574,6 +1586,20 @@ export function observerClientJs(): string {
   }
 
   // ---------------------------------------------------------------- overall
+  // When every lane is terminal and the live streams have ended, the board must not end on what
+  // looks like an outage (#357): one line states the verdict and why the tiles changed.
+  function buildRunVerdictBanner() {
+    var ss = currentData.streams;
+    if (!ss.length) return "";
+    if (!ss.some(function (s) { return s.liveEnded; })) return "";
+    if (ss.some(function (s) { return tone(s.status) === "running" || tone(s.status) === "queued"; })) return "";
+    var ok = ss.filter(function (s) { return tone(s.status) === "complete"; }).length;
+    var status = overallStatus();
+    return '<div class="run-verdict-banner" data-status="' + esc(status) + '" role="status">'
+      + '<span class="rvb-dot"></span>'
+      + '<span>Run finished — ' + ok + ' of ' + ss.length + ' lane(s) passed. Live streams have ended; tiles show each lane’s recorded evidence.</span>'
+      + '</div>';
+  }
   function overallStatus() {
     var ss = currentData.streams;
     if (ss.some(function (s) { return tone(s.status) === "running"; })) return "running";
@@ -1766,7 +1792,9 @@ export function observerClientJs(): string {
     var liveUrl = browserLiveUrl(s);
     var shot = browserShot(s);
     var dock = focus ? browserLabDock(s, shot) : "";
-    var showReplay = focus && !(liveUrl && S.media === "live") && replayFrames(s).length >= 2;
+    // Ended lanes replay in the GRID too (#357): a finished tile should show the lane's story,
+    // not a frozen screenshot, without requiring focus.
+    var showReplay = (focus || s.liveEnded) && !(liveUrl && S.media === "live") && replayFrames(s).length >= 2;
     var body;
     if (liveUrl && S.media === "live") body = liveStreamMount(s, liveUrl);
     else if (showReplay) body = replayScrubber(s);
@@ -1774,10 +1802,15 @@ export function observerClientJs(): string {
     else body = '<div class="bw-app-wait"><div class="wait-spinner" style="width:24px;height:24px"></div>'
       + '<div class="mono" style="font-size:9px">' + esc(route) + '</div>'
       + '<div style="font-size:10px">' + esc(laneStep(s)) + '</div></div>';
+    // A lane whose live stream ENDED must never read as a crash: the badge says what happened
+    // (finished + which verdict) and that the tile now shows recorded evidence (#357/#284).
+    var endedBadge = s.liveEnded
+      ? '<span class="live-ended-badge" data-tone="' + esc(tone(s.status)) + '">' + esc(statusLabel(s.status)) + ' — live stream ended; showing recorded evidence</span>'
+      : "";
     return '<div class="bw">'
       + '<div class="bw-chrome"><div class="bw-dots"><i></i><i></i><i></i></div>'
       + '<div class="bw-url">' + icon("lock", 8) + '<span>' + esc(route) + '</span></div></div>'
-      + '<div class="bw-viewport">' + body + (liveUrl && S.media === "live" ? "" : dock) + '</div>'
+      + '<div class="bw-viewport">' + endedBadge + body + (liveUrl && S.media === "live" ? "" : dock) + '</div>'
       + (live ? liveTag() : "")
       + '</div>';
   }
@@ -2673,6 +2706,7 @@ export function observerClientJs(): string {
     if (S.detailsOpen) parts.push(buildPopover());
     if (S.tweaksOpen) parts.push(buildTweaks());
     parts.push(buildToolbar());
+    parts.push(buildRunVerdictBanner());
     parts.push('<main class="stage">' + (S.view === "grid" ? buildGrid() : buildFocus()) + '</main>');
     if (S.consoleOpen) parts.push(buildConsole());
     parts.push(buildStatusBar());
