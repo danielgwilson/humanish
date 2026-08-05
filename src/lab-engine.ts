@@ -30,7 +30,7 @@ import {
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import type { ObserverResult } from "./observer.js";
-import { runDryRun, type RunResult } from "./run.js";
+import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
 import { routesToComputerUse, routesToConcurrentSharedWorld, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
 
 export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "terminal" | "shared-world" | "concurrent-shared-world";
@@ -63,6 +63,13 @@ export interface RunLabOptions {
   terminalHooks?: TerminalProductLabHooks;
   /** Shared-world route hooks: ONE-sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
   sharedWorldHooks?: SharedWorldLabHooks;
+  /**
+   * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the
+   * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a
+   * status:"fail" verdict; the browser routes stamp it as evidence (they already flip). Core-computed
+   * (path + digest), never adopter-supplied; absent for library callers.
+   */
+  scorerProvenance?: RunScorerProvenance;
 }
 
 export type LabOutcome =
@@ -206,7 +213,8 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
-        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks })
+        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
       });
       return { backend, result };
     }
@@ -238,7 +246,8 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         dryRun,
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks })
+        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
+        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
       });
       return { backend, result };
     }
@@ -253,7 +262,8 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         dryRun,
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks })
+        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
       });
       return { backend, result };
     }
@@ -269,7 +279,8 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks })
+        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
       });
       return { backend, result };
     }

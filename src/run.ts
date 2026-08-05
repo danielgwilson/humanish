@@ -307,6 +307,29 @@ export interface RunAdapterArtifact {
   note: string;
 }
 
+/**
+ * Provenance for a CONFIG-DECLARED adopter scorer (#316): the repo-relative entry path and a digest
+ * of its ENTRY-MODULE bytes, recorded so a `review.scorer.ref`/`--scorer` run honestly states which
+ * out-of-tree judgment it attached. Core-computed (path + digest), never adopter-supplied. A LIBRARY
+ * caller (hooks passed directly through RunLabOptions) has implicit provenance — their code IS their
+ * provenance — so this block is ABSENT there and every pre-#316 bundle stays byte-stable + verifiable.
+ *
+ * The digest pins the entry file's IDENTITY, not its behavioral closure: a `export { score } from
+ * "../outside.mjs"` re-export is not captured, and `import()` re-opens the path (a benign same-author
+ * TOCTOU). Treat it as evidence-not-gate, and do NOT extend the loader to less-trusted config.
+ */
+export interface RunScorerProvenance {
+  schema: "humanish.scorer-provenance.v1";
+  /** Repo-relative entry path (e.g. "scorers/example.mjs"), clamped inside the target cwd. */
+  ref: string;
+  /** digestText over the readContainedRegularFile ENTRY bytes — the entry module only, not a lockfile of the executed graph. */
+  digest: string;
+  /** Which door declared it: the committed manifest, or the CLI `--scorer` override. */
+  source: "manifest" | "cli-flag";
+  /** The whitelisted hooks actually wired from the module (costProbe is intentionally never loadable). */
+  exports: ("score" | "deriveFeedback" | "deriveArtifacts")[];
+}
+
 export interface RunSimulation {
   id: string;
   index: number;
@@ -798,6 +821,12 @@ export interface RunBundle {
    */
   adapterScore?: RunAdapterScore;
   /**
+   * OPTIONAL provenance for a CONFIG-DECLARED scorer (#316). Present only when the scorer was loaded
+   * from `review.scorer.ref` / `--scorer`; absent for library callers and every pre-#316 bundle
+   * (tolerated-absent in isRunBundle so those still verify). Evidence, not a gate.
+   */
+  scorerProvenance?: RunScorerProvenance;
+  /**
    * OPTIONAL, ADAPTER-NAMESPACED product/state proof artifacts. Core validates
    * shape and local relative artifact references, then verifies the referenced
    * files exist. The adapter owns the payload schema under `namespace`.
@@ -943,7 +972,13 @@ export interface RunResult {
       | "HUMANISH_INVALID_PORT"
       | "HUMANISH_UNSUPPORTED_ACTOR"
       | "HUMANISH_UNSUPPORTED_RERUN_FLAGS"
-      | "HUMANISH_WATCH_OPTION_CONFLICT";
+      | "HUMANISH_WATCH_OPTION_CONFLICT"
+      // #316 CLI-loadable adopter scorer — fail-closed at load, pre-spend.
+      | "HUMANISH_LAB_SCORER_BAD_REF"
+      | "HUMANISH_LAB_SCORER_NOT_FOUND"
+      | "HUMANISH_LAB_SCORER_LOAD_FAILED"
+      | "HUMANISH_LAB_SCORER_NO_HOOKS"
+      | "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND";
     message: string;
   };
 }
@@ -6399,6 +6434,9 @@ function isRunBundle(value: unknown): value is RunBundle {
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
     // its SHAPE; core never reads the adapter's `data` payload.
     && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore))
+    // Optional + additive scorer provenance (#316). Tolerated-absent so pre-#316 and library-caller
+    // bundles still verify; when present it must be well-shaped.
+    && (value.scorerProvenance === undefined || isRunScorerProvenance(value.scorerProvenance))
     && (value.adapterArtifacts === undefined
       || (Array.isArray(value.adapterArtifacts) && value.adapterArtifacts.every(isRunAdapterArtifact)))
     && (value.providerResources === undefined
@@ -6491,6 +6529,25 @@ function isDesktopBrowserEvidence(value: unknown): value is RunBundle["desktopBr
   return isRecord(value)
     && (value.requested === "default" || value.requested === "chrome" || value.requested === "chromium" || value.requested === "firefox")
     && (value.resolved === undefined || typeof value.resolved === "string");
+}
+
+/** Short lowercase-hex content digest (digestText default is 12 chars; tolerate longer future digests). */
+const SCORER_DIGEST_PATTERN = /^[a-f0-9]{12,64}$/;
+
+/** Shape guard for RunScorerProvenance (#316), mirroring isRunSubjectProvenance: tolerated-absent in
+ *  isRunBundle, well-shaped when present. Semantics (does the digest still match the file) are not a
+ *  verify concern — the block is core-stamped evidence of what was loaded, not a re-execution proof. */
+function isRunScorerProvenance(value: unknown): value is RunScorerProvenance {
+  return isRecord(value)
+    && value.schema === "humanish.scorer-provenance.v1"
+    && typeof value.ref === "string"
+    && value.ref.trim().length > 0
+    && typeof value.digest === "string"
+    && SCORER_DIGEST_PATTERN.test(value.digest)
+    && (value.source === "manifest" || value.source === "cli-flag")
+    && Array.isArray(value.exports)
+    && value.exports.length > 0
+    && value.exports.every((name) => name === "score" || name === "deriveFeedback" || name === "deriveArtifacts");
 }
 
 function isRunAdapterScore(value: unknown): value is RunAdapterScore {

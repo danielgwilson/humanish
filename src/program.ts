@@ -32,10 +32,14 @@ import type {
 } from "./labs.js";
 import { runLabPreflight, type LabPreflightReachabilityMode, type LabPreflightResult } from "./lab-preflight.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
+import { loadAdapterScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
+import type { LabBackend } from "./lab-engine.js";
+import type { RunScorerProvenance } from "./run.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "./cua-actor-lab.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "./cua-actor-lab.js";
 import type { ScriptedBrowserLabResult } from "./scripted-browser-lab.js";
-import type { TerminalProductLabResult } from "./e2b-terminal-lab.js";
+import type { TerminalProductLabResult, TerminalProductLabHooks } from "./e2b-terminal-lab.js";
+import type { BrowserLabAdapterHooks } from "./adapter-extension.js";
 import type { SharedWorldLabResult } from "./shared-world-lab.js";
 import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-lab.js";
 import type { LabConfig } from "./lab-config.js";
@@ -130,6 +134,8 @@ interface LabCommandOptions {
   repos?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
+  /** #316: repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
+  scorer?: string | undefined;
   sims?: string | undefined;
   // watch --expose surface (tunnel-edge auth). Only the CUA backend live-serves a run; other
   // backends refuse exposure. See runCuaBackend + validateExposure.
@@ -665,6 +671,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--redact-repos", "Lab only: redact repo labels in durable artifacts.")
     .option("--no-redact-repos", "Lab only: persist repo labels. Use only for public-safe runs.")
     .option("--keep", "Lab only: keep disposable clone sandbox for debugging.")
+    .option("--scorer <path>", "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this watch without persisting values.")
@@ -720,6 +727,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
       repos?: string;
       run?: string;
       runId?: string;
+      scorer?: string;
       sims?: string;
       expose?: boolean;
       tunnel?: "ngrok";
@@ -792,6 +800,7 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
             repo: options.repo,
             ...(options.repos === undefined ? {} : { repos: options.repos }),
             ...(options.runId === undefined ? {} : { runId: options.runId }),
+            ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
             ...(options.sims === undefined ? {} : { sims: options.sims }),
             ...(options.expose === undefined ? {} : { expose: options.expose }),
             ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
@@ -1543,6 +1552,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--redact-repos", "Meta only: redact repo labels in durable lab artifacts.")
     .option("--no-redact-repos", "Meta only: persist repo labels in durable lab artifacts. Use only for public-safe runs.")
     .option("--keep", "Smoke labs only: keep disposable clone sandbox for debugging.")
+    .option("--scorer <path>", "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
@@ -1552,6 +1562,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "  humanish lab run first-run",
         "  humanish lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
         "  humanish lab run oss --dry-run --json --no-open",
+        "  humanish lab run my-terminal-lab --scorer scorers/product.mjs",
         "  humanish lab run .humanish/labs/private-dogfood.yaml --env-file .humanish/local/provider.env",
         "",
         "Human watch path:",
@@ -1833,6 +1844,54 @@ async function runOssSmokeAction(args: {
   args.io.setExitCode(result.ok ? 0 : 2);
 }
 
+/** A CONFIG-DECLARED scorer that resolved + loaded fail-closed, ready to thread into a backend. */
+interface LoadedAdapterScorer {
+  hooks: AdapterScorerModule;
+  provenance: RunScorerProvenance;
+}
+
+/**
+ * Resolve `review.scorer.ref` (or the `--scorer` override) to a loaded adopter scorer, fail-closed
+ * (typed error) PRE-SPEND. Precedence: CLI `--scorer` overrides the manifest; `source` records which
+ * won. No scorer declared → `{ ok: true }` with no scorer. A declared scorer on an unsupported
+ * backend, or a bad/unreadable/broken ref, → `{ ok: false }` so the caller aborts with exit 2.
+ */
+async function maybeLoadAdapterScorer(args: {
+  cwd: string;
+  config: LabConfig;
+  backend: LabBackend;
+  flag: string | undefined;
+}): Promise<
+  | { ok: true; scorer?: LoadedAdapterScorer }
+  | { ok: false; error: NonNullable<RunResult["error"]> }
+> {
+  const ref = args.flag ?? args.config.review?.scorer?.ref;
+  if (ref === undefined) return { ok: true };
+  const source = args.flag !== undefined ? "cli-flag" : "manifest";
+  const loaded = await loadAdapterScorer({ cwd: args.cwd, ref, backend: args.backend, source });
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+  return { ok: true, scorer: { hooks: loaded.hooks, provenance: loaded.provenance } };
+}
+
+/** Terminal route hooks bag from a loaded scorer (deriveArtifacts is browser-only, dropped here). */
+function terminalScorerHooks(scorer: LoadedAdapterScorer): TerminalProductLabHooks {
+  const { hooks } = scorer;
+  return {
+    ...(hooks.score ? { score: hooks.score } : {}),
+    ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {})
+  };
+}
+
+/** Browser route hooks bag from a loaded scorer (score + deriveFeedback + deriveArtifacts). */
+function browserScorerHooks(scorer: LoadedAdapterScorer): BrowserLabAdapterHooks {
+  const { hooks } = scorer;
+  return {
+    ...(hooks.score ? { score: hooks.score } : {}),
+    ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {}),
+    ...(hooks.deriveArtifacts ? { deriveArtifacts: hooks.deriveArtifacts } : {})
+  };
+}
+
 async function runLabCommand(args: {
   command: Command;
   io: CliIo;
@@ -1876,6 +1935,35 @@ async function runLabCommand(args: {
     args.io.setExitCode(2);
     return;
   }
+
+  // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any spend.
+  // A declared gate that cannot load (bad ref, not found, load failure, no hooks, unsupported backend)
+  // aborts with exit 2 rather than green-passing.
+  const scorerLoad = await maybeLoadAdapterScorer({
+    cwd: args.options.cwd,
+    config,
+    backend,
+    flag: args.options.scorer
+  });
+  if (!scorerLoad.ok) {
+    const result: RunResult = {
+      schema: "humanish.run-result.v1",
+      ok: false,
+      cwd: resolve(args.options.cwd),
+      warnings: [],
+      error: scorerLoad.error
+    };
+    writeResult(args.command, args.io, result, formatRunHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+  const scorer = scorerLoad.scorer;
+  if (scorer) {
+    // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest. Surface it
+    // visibly so the invoker (who may not be the manifest author) knows executable code just ran.
+    args.io.writeErr(`warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`);
+  }
+
   switch (backend) {
     case "synthetic":
       await runSyntheticBackend({ ...args, config });
@@ -1887,19 +1975,19 @@ async function runLabCommand(args: {
       await runSmokeBackend({ ...args, config });
       return;
     case "cua":
-      await runCuaBackend({ ...args, config });
+      await runCuaBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
       return;
     case "scripted":
       await runScriptedBackend({ ...args, config });
       return;
     case "terminal":
-      await runTerminalBackend({ ...args, config });
+      await runTerminalBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
       return;
     case "shared-world":
-      await runSharedWorldBackend({ ...args, config });
+      await runSharedWorldBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
       return;
     case "concurrent-shared-world":
-      await runConcurrentSharedWorldBackend({ ...args, config });
+      await runConcurrentSharedWorldBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
       return;
     default:
       // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
@@ -2013,6 +2101,7 @@ async function runCuaBackend(args: {
   config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
+  scorer?: LoadedAdapterScorer;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
   const shouldOpen = resolveBackendShouldOpen({
@@ -2121,6 +2210,7 @@ async function runCuaBackend(args: {
           }
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+      ...(args.scorer ? { cuaHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {}),
       ...(args.options.rerunFailedFrom === undefined
         ? {}
         : {
@@ -2261,6 +2351,7 @@ async function runTerminalBackend(args: {
   config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
+  scorer?: LoadedAdapterScorer;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
   const shouldOpen = resolveBackendShouldOpen({
@@ -2274,7 +2365,8 @@ async function runTerminalBackend(args: {
     cwd: args.options.cwd,
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+    ...(args.scorer ? { terminalHooks: terminalScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {})
   });
   if (outcome.backend !== "terminal") {
     throw new Error(`Expected terminal backend, got ${outcome.backend}.`);
@@ -2302,6 +2394,7 @@ async function runSharedWorldBackend(args: {
   config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
+  scorer?: LoadedAdapterScorer;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
   const shouldOpen = resolveBackendShouldOpen({
@@ -2315,7 +2408,8 @@ async function runSharedWorldBackend(args: {
     cwd: args.options.cwd,
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+    ...(args.scorer ? { sharedWorldHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {})
   });
   if (outcome.backend !== "shared-world") {
     throw new Error(`Expected shared-world backend, got ${outcome.backend}.`);
@@ -2362,6 +2456,7 @@ async function runConcurrentSharedWorldBackend(args: {
   config: LabConfig;
   mode: "run" | "watch";
   options: LabCommandOptions;
+  scorer?: LoadedAdapterScorer;
 }): Promise<void> {
   const wantsMachine = wantsJson(args.command);
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
@@ -2416,7 +2511,8 @@ async function runConcurrentSharedWorldBackend(args: {
             }
           }
         : {}),
-      ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+      ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+      ...(args.scorer ? { sharedWorldHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {})
     });
   } catch (error) {
     const earlyServer = server as ObserverServer | null;

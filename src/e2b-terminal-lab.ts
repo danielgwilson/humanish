@@ -77,10 +77,12 @@ import {
   type RunBundle,
   type RunEvent,
   type RunFeedbackCandidate,
+  type RunScorerProvenance,
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream
 } from "./run.js";
+import { applyAdapterScoreFailureToReview, frozenBundleView, recordDeclaredScorerVerdictFailure } from "./adapter-extension.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
 
 /** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
@@ -206,6 +208,14 @@ export interface RunTerminalProductLabOptions {
   open?: boolean;
   runId?: string;
   hooks?: TerminalProductLabHooks;
+  /**
+   * Present ONLY when the scorer hooks were CONFIG-DECLARED and loaded by the CLI (#316). Its presence
+   * is the "declared" marker: a config-declared terminal scorer returning status:"fail" FLIPS
+   * bundle.review.verdict (like the browser routes), and one that throws becomes a visible review.gaps
+   * entry. A LIBRARY caller passing `hooks` directly leaves this ABSENT and keeps today's purely
+   * additive terminal behavior (verdict unchanged). Core-computed, never adopter-supplied.
+   */
+  scorerProvenance?: RunScorerProvenance;
 }
 
 export interface TerminalProductLabResult {
@@ -1238,7 +1248,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
   // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
   // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
-  await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, product: product.name, labId: config.id, runId, sanitize, warnings });
+  const declaredScorerFailure = await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, product: product.name, labId: config.id, runId, sanitize, warnings, ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance }) });
   await validatePreparedRunArtifactPaths(runPaths);
 
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -1260,7 +1270,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // remaining===0 is the by-id-confirmed-reclaimed state; remaining===1 (still present) and
   // remaining===-1 (kill(id) itself failed) are both unproven by design.
   const cleanupProven = cleanup.killed && cleanup.remaining === 0;
-  const ok = observer.ok && completionReason !== "harness_error" && cleanupProven;
+  // A CONFIG-DECLARED scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
+  // run RESULT too, not just the persisted verdict — the keystone lane's declared rubric is a gate, so
+  // its fail must drive exit code. Library callers never set this (additive, back-compat).
+  const ok = observer.ok && completionReason !== "harness_error" && cleanupProven && declaredScorerFailure === undefined;
 
   return {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
@@ -1304,7 +1317,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
                 : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<TerminalProductLabResult["error"]>["code"],
             message: !cleanupProven
               ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.`
-              : sessionError ?? observer.error?.message ?? sessionReason
+              : declaredScorerFailure ?? sessionError ?? observer.error?.message ?? sessionReason
           }
         })
   };
@@ -1315,13 +1328,16 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
  * evidence and attach its results to the bundle IN PLACE — without core knowing any product noun.
  *
  *  - `score`: when present, the returned namespaced `RunAdapterScore` lands on `bundle.adapterScore`.
- *    Core's mission-based verdict (`bundle.review`) is UNCHANGED — the adapter score is additive.
+ *    For a LIBRARY caller (no `scorerProvenance`), core's mission-based verdict (`bundle.review`) is
+ *    UNCHANGED — the adapter score is additive. For a CONFIG-DECLARED scorer (#316; `scorerProvenance`
+ *    present), a status:"fail" FLIPS the verdict via `applyAdapterScoreFailureToReview` (the keystone
+ *    lane is the product's own definition of pass/fail), and a scorer that THROWS becomes a visible
+ *    `review.gaps` entry so a crashed declared gate is never a silent green.
  *  - `deriveFeedback`: when present, the returned candidates are appended to
  *    `bundle.feedbackCandidates`; each carries its own namespaced `adapter` product-noun block.
  *
  * Defense in depth: the adapter's namespaced payloads are re-serialized through the run's scrub +
- * redact (the adapter is trusted in-repo code, but the harness never relies on that for secret
- * values), and any candidate / score that does not satisfy core's exported shape is DROPPED with a
+ * redact, and any candidate / score that does not satisfy core's exported shape is DROPPED with a
  * warning (a malformed adapter output never poisons a verifiable bundle). The bundle verifier
  * re-checks the surviving shapes downstream, so the seam stays fail-closed end to end.
  */
@@ -1335,14 +1351,33 @@ async function applyAdapterExtensionSeam(args: {
   runId: string;
   sanitize: (text: string) => string;
   warnings: string[];
-}): Promise<void> {
-  const { hooks, bundle, trace, ledgers, product, labId, runId, sanitize, warnings } = args;
-  if (!hooks.score && !hooks.deriveFeedback) return;
+  /** Present only when the scorer was CONFIG-DECLARED (#316) — the "declared" marker that opts the
+   *  terminal route into flip-on-fail. Absent for library callers (additive, back-compat). */
+  scorerProvenance?: RunScorerProvenance;
+}): Promise<string | undefined> {
+  const { hooks, bundle, trace, ledgers, product, labId, runId, sanitize, warnings, scorerProvenance } = args;
+  if (!hooks.score && !hooks.deriveFeedback) return undefined;
+  const declared = scorerProvenance !== undefined;
+  // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
+  // still loaded and attempted).
+  if (scorerProvenance) bundle.scorerProvenance = scorerProvenance;
 
-  const ctx: TerminalProductScoringContext = { bundle, trace, ledgers, product, labId, runId };
-  // Scrub + redact an arbitrary adapter payload by round-tripping it through the run's sanitizer.
-  // Strings are scrubbed individually so a planted secret in any nested string value is caught.
+  // The scorer sees a READ-ONLY view of the bundle so it cannot mutate noSpend/cost/review in place to
+  // launder a verdict (a tamper attempt throws and is caught as a hook failure below). The seam stamps
+  // the REAL bundle.
+  const ctx: TerminalProductScoringContext = { bundle: frozenBundleView(bundle), trace, ledgers, product, labId, runId };
+  // Best-effort re-scrub of the adapter payload: round-trip the whole JSON through the run's denylist
+  // sanitizer. This is NOT containment — it catches recognizable secret shapes and known local paths,
+  // but not encoded/split/custom secrets, DB passwords, PII, or abs paths outside the denylist. A
+  // payload from config-declared code is acceptable only because the trust boundary (the party who
+  // declares the scorer runs the lab) already permits direct exfiltration; the re-scrub is
+  // defense-in-depth, not a wall.
   const scrubValue = <T>(value: T): T => JSON.parse(sanitize(JSON.stringify(value))) as T;
+
+  // Set for a DECLARED scorer that fails to render a PASS verdict (status:"fail", malformed, or throw).
+  // The caller fails the run RESULT on it — a declared gate that cannot pass is a fail, never a silent
+  // green. Left undefined for a library caller (additive, back-compat) and for a passing scorer.
+  let declaredVerdictFailure: string | undefined;
 
   if (hooks.score) {
     try {
@@ -1350,11 +1385,30 @@ async function applyAdapterExtensionSeam(args: {
       const cleaned = scrubValue(score);
       if (isAdapterScoreShape(cleaned)) {
         bundle.adapterScore = cleaned;
+        // A CONFIG-DECLARED terminal scorer owns the product verdict: a status:"fail" flips
+        // review.verdict (this only ever makes the verdict STRICTER) AND fails the run result. A
+        // library caller keeps the additive no-flip behavior.
+        if (declared) {
+          const message = applyAdapterScoreFailureToReview(bundle);
+          if (message !== undefined) declaredVerdictFailure = message;
+        }
       } else {
         warnings.push("terminalHooks.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.");
+        // A declared gate that returned a MALFORMED value never rendered a verdict — fail closed.
+        if (declared) {
+          declaredVerdictFailure = "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
+          recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
+        }
       }
     } catch (error) {
-      warnings.push(`terminalHooks.score threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+      const detail = sanitize(error instanceof Error ? error.message : String(error));
+      warnings.push(`terminalHooks.score threw (${detail}); dropped so the bundle stays verifiable.`);
+      // A crashed DECLARED gate must be visible, never a silent pass: surface it as a review gap +
+      // verdict downgrade AND fail the run result.
+      if (declared) {
+        declaredVerdictFailure = `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
+        recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
+      }
     }
   }
 
@@ -1374,6 +1428,8 @@ async function applyAdapterExtensionSeam(args: {
       warnings.push(`terminalHooks.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
     }
   }
+
+  return declaredVerdictFailure;
 }
 
 /** Structural guard for an adapter-returned RunAdapterScore (mirrors run.ts isRunAdapterScore, kept

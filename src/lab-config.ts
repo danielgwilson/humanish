@@ -561,6 +561,13 @@ export interface LabReview {
   milestones?: string;
   /** FORWARD-DECLARED (PR #2). */
   vocabulary?: string;
+  /**
+   * #316 code escape hatch: a repo-relative path to an adopter scorer module (.mjs recommended) that
+   * exports any of `{score, deriveFeedback, deriveArtifacts}`. CONSUMED on the scorer-capable routes
+   * (terminal / computer-use / shared-world); loaded fail-closed (typed error, pre-spend). The entry
+   * is executable code — review a PR that adds one as code, not config.
+   */
+  scorer?: { ref: string };
 }
 
 export interface LabDefaults {
@@ -689,8 +696,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (scenarioResult.value) config.scenario = scenarioResult.value;
   const policies = parsePolicies(raw.policies);
   if (policies) config.policies = policies;
-  const review = parseReview(raw.review);
-  if (review) config.review = review;
+  const reviewResult = parseReview(raw.review);
+  if (!reviewResult.ok) return reviewResult;
+  if (reviewResult.value) config.review = reviewResult.value;
   const defaults = parseDefaults(raw.defaults);
   if (defaults) config.defaults = defaults;
   const commsResult = parseComms(raw.comms);
@@ -1470,7 +1478,16 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // everywhere else.
   if (config.scenario?.ref && !routesToScripted) inert.push("scenario.ref");
   if (config.scenario?.inline) inert.push("scenario.inline");
-  if (config.review) inert.push("review");
+  // review.{scoring,milestones,vocabulary} stay forward-declared (reserved for #319) on every route.
+  // review.scorer (#316) IS consumed (loaded + wired, or fail-closed at load) on every scorer-capable
+  // route, so it does not warn there; on the scripted-browser route the actor carries no scorer seam,
+  // so a declared scorer is flagged inert (the run also fails closed at load).
+  if (config.review?.scoring) inert.push("review.scoring (reserved for a later slice; not yet consumed)");
+  if (config.review?.milestones) inert.push("review.milestones (reserved for a later slice; not yet consumed)");
+  if (config.review?.vocabulary) inert.push("review.vocabulary (reserved for a later slice; not yet consumed)");
+  if (config.review?.scorer && routesToScripted) {
+    inert.push("review.scorer (the scripted-browser actor has no adopter-scorer seam; declare it on a terminal / computer-use / shared-world route)");
+  }
   if (config.personas) inert.push("personas");
   return inert.length === 0
     ? []
@@ -2448,9 +2465,15 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
   return Object.keys(policies).length > 0 ? policies : undefined;
 }
 
-function parseReview(raw: unknown): LabReview | undefined {
-  if (!isRecord(raw)) {
-    return undefined;
+// Fail-LOUD: an unrecognized `review.*` key (e.g. a `scorrer:` typo of `scorer`) is rejected rather
+// than silently dropped — a gate you think you declared must not vanish silently (#316).
+function parseReview(raw: unknown): { ok: true; value: LabReview | undefined } | LabConfigParseFailure {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (!isRecord(raw)) return invalid("`review` must be a mapping.");
+  const knownKeys = new Set(["scoring", "milestones", "vocabulary", "scorer"]);
+  const unknownKeys = Object.keys(raw).filter((key) => !knownKeys.has(key));
+  if (unknownKeys.length > 0) {
+    return invalid(`Unknown \`review\` field(s): ${unknownKeys.join(", ")}. A declared gate must not vanish silently — did you mean \`scorer\`? Known review fields: scoring, milestones, vocabulary, scorer.`);
   }
   const review: LabReview = {};
   const scoring = str(raw.scoring);
@@ -2459,7 +2482,23 @@ function parseReview(raw: unknown): LabReview | undefined {
   if (milestones) review.milestones = milestones;
   const vocabulary = str(raw.vocabulary);
   if (vocabulary) review.vocabulary = vocabulary;
-  return Object.keys(review).length > 0 ? review : undefined;
+  if (raw.scorer !== undefined) {
+    const scorer = parseReviewScorer(raw.scorer);
+    if (!scorer.ok) return scorer;
+    review.scorer = scorer.value;
+  }
+  return { ok: true, value: Object.keys(review).length > 0 ? review : undefined };
+}
+
+function parseReviewScorer(raw: unknown): { ok: true; value: { ref: string } } | LabConfigParseFailure {
+  if (!isRecord(raw)) return invalid("`review.scorer` must be a mapping with a `ref` path (e.g. { ref: scorers/product.mjs }).");
+  const unknownKeys = Object.keys(raw).filter((key) => key !== "ref");
+  if (unknownKeys.length > 0) {
+    return invalid(`Unknown \`review.scorer\` field(s): ${unknownKeys.join(", ")}. review.scorer accepts only \`ref\` (a repo-relative scorer-module path).`);
+  }
+  const ref = str(raw.ref);
+  if (!ref) return invalid("`review.scorer.ref` must be a non-empty repo-relative path to a scorer module (.mjs recommended; .js/.cjs accepted).");
+  return { ok: true, value: { ref } };
 }
 
 function parseDefaults(raw: unknown): LabDefaults | undefined {
