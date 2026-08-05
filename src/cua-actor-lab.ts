@@ -133,8 +133,6 @@ export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 // The only fan-out topology this slice ships: N lanes = N independent E2B desktop sandboxes,
 // each its own world (clone/serve + subject.state per lane). Shared-world is layer 7 (#164).
 export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
-// Default in-flight lane bound when the config does not declare execution.concurrency.
-const DEFAULT_CUA_CONCURRENCY = 3;
 // Env override that may only LOWER the effective concurrency (never raise concurrent paid
 // desktops — invariant 3). Read names-only into a local; the value never persists.
 const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
@@ -336,8 +334,12 @@ export interface CuaLanePlanEntry {
 export interface CuaLanePlan {
   strategy: typeof CUA_FANOUT_STRATEGY;
   laneCount: number;
-  /** Effective in-flight bound (config default min(N,3), only LOWERED by the env override). */
+  /** Effective in-flight bound (defaults to laneCount — all seats live; a declared
+   *  execution.concurrency is a cap; the env override may only LOWER it). */
   concurrency: number;
+  /** Present when the env override lowered the bound below the config's value — recorded so the
+   *  plan never silently disagrees with the manifest. */
+  envLoweredConcurrencyFrom?: number;
   /** ceil(laneCount / concurrency). */
   waves: number;
   /** Per-lane session wall-clock budget (execution.timeoutMs); there is no run-level wall clock. */
@@ -668,20 +670,22 @@ function resolvePerLaneSandboxMs(config: LabConfig): number {
 }
 
 /**
- * Effective in-flight lane bound. Default min(laneCount, 3); a declared execution.concurrency
- * clamps to [1, laneCount]; the env override may only LOWER it (never raise concurrent paid
- * desktops — invariant 3). Pure given (config, laneCount, env).
+ * Effective in-flight lane bound. Defaults to laneCount — every declared seat runs at once,
+ * because a throttle nobody asked for silently turns "N actors live" into waves (#350); total
+ * session count and spend are the same either way, only wall-clock and simultaneity differ. A
+ * declared execution.concurrency is a CAP, clamped to [1, laneCount]; the env override may only
+ * LOWER it (never raise concurrent paid desktops — invariant 3), and a lowering is reported via
+ * envLoweredFrom so the plan never silently disagrees with the manifest. Pure given
+ * (config, laneCount, env).
  */
-function resolveCuaConcurrency(config: LabConfig, laneCount: number, env: Record<string, string | undefined>): number {
+function resolveCuaConcurrency(config: LabConfig, laneCount: number, env: Record<string, string | undefined>): { bound: number; envLoweredFrom?: number } {
   const declared = config.execution?.concurrency;
-  const base = declared !== undefined
-    ? Math.min(Math.max(1, declared), laneCount)
-    : Math.min(laneCount, DEFAULT_CUA_CONCURRENCY);
+  const base = Math.max(1, declared !== undefined ? Math.min(Math.max(1, declared), laneCount) : laneCount);
   const envLower = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
-  if (envLower > 0) {
-    return Math.max(1, Math.min(base, envLower, laneCount));
+  if (envLower > 0 && envLower < base) {
+    return { bound: Math.max(1, Math.min(base, envLower, laneCount)), envLoweredFrom: base };
   }
-  return Math.max(1, base);
+  return { bound: base };
 }
 
 interface LaneSpecsAndPlan {
@@ -734,13 +738,15 @@ function laneSpecsAndPlan(
     });
   }
 
-  const concurrency = resolveCuaConcurrency(config, laneCount, env);
+  const resolved = resolveCuaConcurrency(config, laneCount, env);
+  const concurrency = resolved.bound;
   const perLaneSessionBudgetMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const perLaneSandboxMs = resolvePerLaneSandboxMs(config);
   const plan: CuaLanePlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount,
     concurrency,
+    ...(resolved.envLoweredFrom === undefined ? {} : { envLoweredConcurrencyFrom: resolved.envLoweredFrom }),
     waves: Math.ceil(laneCount / concurrency),
     perLaneSessionBudgetMs,
     worstCaseSandboxMinutes: Math.round((laneCount * perLaneSandboxMs) / 60_000),
@@ -898,7 +904,7 @@ export function resolveCuaLanePlan(
 function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
-    `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}, ${plan.waves} wave(s).`
+    `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}${plan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${plan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plan.waves} wave(s).`
   );
   lines.push(
     `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`

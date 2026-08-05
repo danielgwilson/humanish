@@ -267,19 +267,23 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("resolveCuaLanePlan is pure: concurrency default min(N,3), env override only LOWERS", () => {
+  it("resolveCuaLanePlan is pure: concurrency defaults to ALL lanes, env override only LOWERS (and is recorded)", () => {
     const config = fanoutConfig({ concurrency: undefined as unknown as number, lanes: [
       { id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }
     ] });
-    // No declared concurrency on a 5-lane roster → default min(5,3) = 3.
+    // No declared concurrency on a 5-lane roster → every seat runs at once (#350): 5 lanes, 1 wave.
     const planDefault = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } });
-    expect(planDefault.concurrency).toBe(3);
-    // Env override LOWERS to 2.
+    expect(planDefault.concurrency).toBe(5);
+    expect(planDefault.waves).toBe(1);
+    expect(planDefault.envLoweredConcurrencyFrom).toBeUndefined();
+    // Env override LOWERS to 2 — and the lowering is recorded, never silent.
     const planLowered = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } }, { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } });
     expect(planLowered.concurrency).toBe(2);
-    // Env override may NOT raise above the config/default (clamped to laneCount + the base).
+    expect(planLowered.envLoweredConcurrencyFrom).toBe(5);
+    // Env override may NOT raise above the declared cap (clamped to laneCount + the base).
     const planRaiseAttempt = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop", concurrency: 2 } }, { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } });
     expect(planRaiseAttempt.concurrency).toBe(2);
+    expect(planRaiseAttempt.envLoweredConcurrencyFrom).toBeUndefined();
   });
 
   it("direct live fan-out bundle builder fails closed when outcomes are missing", () => {

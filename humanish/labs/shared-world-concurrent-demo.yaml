@@ -79,6 +79,6 @@ actors:
 execution:
   target: e2b-desktop # required: each persona drives a hosted desktop browser
   timeoutMs: 120000 # PER-PERSONA session budget
-  concurrency: 3 # > 1 selects the CONCURRENT substrate (max in-flight paid actor desktops)
+  concurrency: 3 # all 3 seats live at once (also the default when omitted: concurrency = seat count); lower it only to cap simultaneous paid desktops
 scenario:
   mode: dry-run # default; the live path provisions a real subject + N actor sandboxes — gated

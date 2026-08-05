@@ -705,6 +705,20 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (!commsResult.ok) return commsResult;
   if (commsResult.value) config.comms = commsResult.value;
 
+  // All-parallel default (#350): a multi-seat computer-use lab that does not declare
+  // execution.concurrency runs EVERY seat at once — the declared field is a cap the author chose,
+  // never a mode. A throttle default silently turned "N actors live" into waves of 3 in the field;
+  // total sessions and spend are identical either way, only simultaneity differs, so the default
+  // follows the author's roster. Resolved here at parse time so routing (sequential vs concurrent
+  // shared-world), validation, warnings, and both engines all see one explicit number. The
+  // sequential shared-world PoC stays available as an explicit choice: `execution.concurrency: 1`.
+  {
+    const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+    if (seats > 1 && config.execution?.concurrency === undefined && routesToComputerUse(config)) {
+      config.execution = { ...(config.execution ?? {}), concurrency: seats };
+    }
+  }
+
   // this-repo subjects run locally and dry-run only — there is no live execution target for the
   // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
   if (config.subject.source === "this-repo") {
@@ -1192,7 +1206,9 @@ export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
  * config with `execution.concurrency > 1` (N actor seats driving ONE plane AT ONCE). Two plane
  * classes: the getHost provisioned-subject shape (clone/local-tree) AND the external-public shape (a
  * real public deployment used directly as the plane — `source: app-url` + `allowPublicTargets`, no
- * getHost/clone/seed). `concurrency` absent or 1 stays the sequential PoC (getHost only).
+ * getHost/clone/seed). An omitted `concurrency` is filled at parse with the seat count (all seats
+ * live — the all-parallel default, #350), so multi-seat shared-world labs route here unless the
+ * author explicitly declares `concurrency: 1`, which is the sequential PoC (getHost only).
  * selectLabBackend checks this BEFORE routesToSharedWorld.
  */
 export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
@@ -1489,9 +1505,25 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
     inert.push("review.scorer (the scripted-browser actor has no adopter-scorer seam; declare it on a terminal / computer-use / shared-world route)");
   }
   if (config.personas) inert.push("personas");
-  return inert.length === 0
+  const warnings = inert.length === 0
     ? []
     : [`Forward-declared fields are set but not yet consumed by the engine (planned for a later slice): ${inert.join(", ")}.`];
+  // A declared cap below the seat count is legal but loud: the roster promises N live actors and
+  // the cap delivers waves of M. Say so up front (inspect + dry-run + run) — a green run in waves
+  // is otherwise indistinguishable from the all-live run the author meant (#350).
+  {
+    const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+    const cap = config.execution?.concurrency;
+    // concurrency: 1 on a shared-world lab is the SEQUENTIAL selector (turn-taking is that
+    // route's whole design), not a mistaken throttle — no warning there.
+    const sequentialSelector = config.subject.topology === "shared-world" && cap === 1;
+    if (routesToCua && cap !== undefined && seats > 1 && cap < seats && !sequentialSelector) {
+      warnings.push(
+        `execution.concurrency ${cap} caps a ${seats}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${seats} seats simultaneously) or set it to ${seats}; declare a lower cap only to bound simultaneous paid desktops.`
+      );
+    }
+  }
+  return warnings;
 }
 
 function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfigParseFailure {

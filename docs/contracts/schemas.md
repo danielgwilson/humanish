@@ -160,10 +160,19 @@ A lab is a composition over code primitives, not a hardcoded kind:
   deterministic `lanes[]` before the engine runs (`viewer-01`, `viewer-02`,
   ...), so the runtime and run bundle keep one normalized lane shape. `roster`
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
-- `execution.concurrency` (computer-use E2B route): bounds in-flight (paid)
-  fan-out lanes; default `min(laneCount, 3)`. The env override
-  `HUMANISH_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never raise
-  concurrent paid desktops (invariant 3). Inert (warned) on other routes.
+- `execution.concurrency` (computer-use E2B routes, including shared-world): a
+  CAP on lanes in flight at once. When omitted, every declared seat runs
+  simultaneously (the parser fills `concurrency = laneCount` for multi-seat
+  labs) — total sessions and spend are identical either way; only wall-clock
+  and simultaneity differ. Declaring a value below the seat count runs seats in
+  waves and emits a warning saying so, because a green waved run is otherwise
+  indistinguishable from the all-live run the author meant. On shared-world
+  labs this field is also the sequential/concurrent selector: `concurrency: 1`
+  is the sequential turn-taking PoC; anything higher (including the filled
+  default) is the concurrent substrate. The env override
+  `HUMANISH_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never
+  raise concurrent paid desktops (invariant 3), and a lowering is recorded on
+  the plan (`envLoweredConcurrencyFrom`). Inert (warned) on other routes.
   `execution.timeoutMs` is the PER-LANE session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level
   wall clock. `policies.allowPublicTargets` cannot combine with N>1 against one
