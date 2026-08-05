@@ -215,6 +215,62 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(runJson).not.toContain(FAKE_RUNTIME_KEY);
   });
 
+  it("the scorer receives the FULL normalized transcript — evidence beyond the ~2KB tail can flip a dimension (#341)", async () => {
+    // Command-tier evidence emitted EARLY in the session, then >2KB of narration: every tail
+    // projection (trace items' outputTail / message text) misses it; only the full transcript has it.
+    const deepEvidence = "PIXELFORGE_DEEP_EVIDENCE pixelforge generate --prompt 'first-light'";
+    const padding = Array.from({ length: 40 }, (_, i) => `narration line ${i} ${"x".repeat(70)}`).join("\n");
+    let capturedTranscript: string | undefined;
+    const hooks = passingHooks({
+      loadModule: async () => makeFakeModule({
+        killed: [],
+        codexBehavior: (cmd) => ({
+          exitCode: 0,
+          stdout: `${deepEvidence}\n${padding}\ncreated a durable image\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`
+        })
+      }),
+      score: (ctx) => {
+        capturedTranscript = ctx.transcript;
+        // The adopter rubric keys on command-tier evidence ANYWHERE in the session — the exact
+        // #341 shape: with only the tail this dimension cannot fire and the score stays partial.
+        const hasDeepEvidence = ctx.transcript.includes("PIXELFORGE_DEEP_EVIDENCE");
+        return {
+          schema: "humanish.adapter-score.v1",
+          namespace: ADAPTER_NAMESPACE,
+          status: hasDeepEvidence ? "pass" : "partial",
+          score: hasDeepEvidence ? 90 : 45,
+          summary: "Deep-evidence rubric: command-tier proof located beyond the transcript tail."
+        };
+      }
+    });
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+
+    // (1) The dimension FLIPPED: the scorer saw the full session, not the tail.
+    expect(bundle.adapterScore?.status).toBe("pass");
+    expect(bundle.adapterScore?.score).toBe(90);
+
+    // (2) The truncated-window CONTROL: the same evidence is INVISIBLE through every tail
+    // projection the trace carries — proving the window (not rubric drift) is what moved the
+    // verdict. actor.json holds only ~2KB tails; the deep evidence must be absent from it.
+    expect(capturedTranscript).toBeDefined();
+    expect(capturedTranscript!.length).toBeGreaterThan(2000);
+    const traceJson = await readFile(path.join(runDir, "actor.json"), "utf8");
+    expect(traceJson).not.toContain("PIXELFORGE_DEEP_EVIDENCE");
+
+    // (3) Byte-identity: the scorer's transcript is exactly the persisted terminal-transcript.txt
+    // (same scrub, same cap — no new exposure beyond what disk already holds).
+    const persisted = await readFile(path.join(runDir, "terminal-transcript.txt"), "utf8");
+    expect(`${capturedTranscript!}\n`).toBe(persisted);
+
+    // (4) Redaction holds on the scorer-visible surface: the runtime key value never reaches it.
+    expect(capturedTranscript!).not.toContain(FAKE_RUNTIME_KEY);
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
   it("DEFAULT behavior is UNCHANGED when no scorer/feedback hook is given", async () => {
     const hooks = passingHooks({}); // no score, no deriveFeedback
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });

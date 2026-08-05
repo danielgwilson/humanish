@@ -990,7 +990,12 @@ redacted evidence (`TerminalProductScoringContext` or
 `BrowserLabScoringContext`: `bundle`, runtime-only `runDir`, run identifiers,
 actor/backend metadata; all exported public types), scrub+redact returned
 payloads, and DROP any malformed score, candidate, or artifact reference with a
-warning so a bad extension never poisons a verifiable bundle. Default behavior
+warning so a bad extension never poisons a verifiable bundle. On the terminal
+route the context also carries `transcript` — the FULL normalized session
+transcript, source-scrubbed then shape-redacted and byte-identical to the
+persisted `terminal-transcript.txt` (the trace's `transcriptTail` is a ~2KB
+projection of it), so an adopter rubric can find command-tier evidence anywhere
+in the session rather than only in the tail window (#341). Default behavior
 (no hook) is unchanged. `verifyRun` re-checks the surviving shapes fail-closed,
 including existence for referenced adapter artifacts.
 

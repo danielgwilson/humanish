@@ -151,6 +151,14 @@ export interface TerminalProductScoringContext {
   trace: ActorTrace;
   /** The persisted terminal-product ledgers (lifecycle/command/interventions/cleanup/cost/no-spend). */
   ledgers: TerminalLedgers;
+  /**
+   * The FULL normalized transcript of the in-sandbox agent session — scrubbed (literal known
+   * values) then redacted (shape patterns) AT THE SOURCE, capped at MAX_TRANSCRIPT_BYTES, and
+   * byte-identical to the persisted terminal-transcript.txt artifact. The trace's transcriptTail
+   * is a ~2KB projection of this; a scorer needs the whole session so a rubric can find
+   * command-tier evidence anywhere in it, not only in the tail window (#341).
+   */
+  transcript: string;
   /** The studied product name (public-safe). */
   product: string;
   /** The lab id (the run's scenario scope). */
@@ -1248,7 +1256,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
   // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
   // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
-  const declaredScorerFailure = await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, product: product.name, labId: config.id, runId, sanitize, warnings, ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance }) });
+  const declaredScorerFailure = await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, transcript: normalizedTranscript, product: product.name, labId: config.id, runId, sanitize, warnings, ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance }) });
   await validatePreparedRunArtifactPaths(runPaths);
 
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -1346,6 +1354,7 @@ async function applyAdapterExtensionSeam(args: {
   bundle: RunBundle;
   trace: ActorTrace;
   ledgers: TerminalLedgers;
+  transcript: string;
   product: string;
   labId: string;
   runId: string;
@@ -1355,7 +1364,7 @@ async function applyAdapterExtensionSeam(args: {
    *  terminal route into flip-on-fail. Absent for library callers (additive, back-compat). */
   scorerProvenance?: RunScorerProvenance;
 }): Promise<string | undefined> {
-  const { hooks, bundle, trace, ledgers, product, labId, runId, sanitize, warnings, scorerProvenance } = args;
+  const { hooks, bundle, trace, ledgers, transcript, product, labId, runId, sanitize, warnings, scorerProvenance } = args;
   if (!hooks.score && !hooks.deriveFeedback) return undefined;
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
@@ -1364,8 +1373,9 @@ async function applyAdapterExtensionSeam(args: {
 
   // The scorer sees a READ-ONLY view of the bundle so it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws and is caught as a hook failure below). The seam stamps
-  // the REAL bundle.
-  const ctx: TerminalProductScoringContext = { bundle: frozenBundleView(bundle), trace, ledgers, product, labId, runId };
+  // the REAL bundle. The transcript is the SAME normalized, source-scrubbed text the run persists as
+  // terminal-transcript.txt — no new exposure beyond what disk already holds (#341).
+  const ctx: TerminalProductScoringContext = { bundle: frozenBundleView(bundle), trace, ledgers, transcript, product, labId, runId };
   // Best-effort re-scrub of the adapter payload: round-trip the whole JSON through the run's denylist
   // sanitizer. This is NOT containment — it catches recognizable secret shapes and known local paths,
   // but not encoded/split/custom secrets, DB passwords, PII, or abs paths outside the denylist. A
