@@ -265,14 +265,18 @@ only declared subject env names do. `humanish init` scaffolds an example at
 **Off-app email/SMS verification (`comms`).** When a flow is gated behind an email
 or SMS the app itself sends — a signup verification link, a one-time code, a magic
 link — add a `comms:` block to the lab. Humanish redirects the app's email-API sends
-(via one adopter-named env var, e.g. `RESEND_API_URL`) into a catch **inside** the
-sandbox, so nothing leaves the machine; the persona then opens a synthetic inbox to
-read and click through, and the run bundle gets a digest-only
+(via one adopter-named env var, e.g. `RESEND_API_URL` — the app must actually read
+it; a run whose catch captures zero sends warns at teardown) into a catch **inside**
+the sandbox, so nothing leaves the machine. Every lane gets a deterministic inbox
+address automatically, and each persona's prompt carries the full handoff: the
+address to sign up with, the inbox URL to open, and that waiting for an email is a
+next step, not a blocker. The run bundle gets a digest-only
 `humanish.comms-thread.v1` artifact (from/to/subject/link digests + an OTP count —
-no raw address, link, or code persists). It works on the single-lane clone/local-tree
-route and the concurrent shared-world route, and is vendor-neutral (Resend/SendGrid
-shaped, or a custom profile). See `docs/contracts/schemas.md` for the full `comms:`
-shape.
+no raw address, link, or code persists); the readable proof a persona saw the email
+is its inbox-page screenshots. Hosted on the clone/local-tree computer-use lanes and
+the concurrent shared-world route (warned inert elsewhere), vendor-neutral
+(Resend/SendGrid shaped, or a custom profile). See `docs/contracts/schemas.md` for
+the full `comms:` shape.
 
 **Screenshots are full-fidelity by default.** Run bundles live in gitignored
 `.humanish/`, so the Observer shows exactly what the persona saw — the point of

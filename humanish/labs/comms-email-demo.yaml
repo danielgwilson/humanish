@@ -1,0 +1,48 @@
+schema: humanish.lab.v2
+id: comms-email-demo
+title: Email-gated signup with the in-sandbox catch (deterministic dry-run)
+description: >
+  Two personas sign up for an app whose flow is gated behind a verification email
+  (a magic link). The comms block redirects the app's email-API sends into a catch
+  INSIDE the subject sandbox — no mail leaves the machine — and each persona is
+  told its own inbox address, the inbox URL, and that waiting for an email is a
+  next step rather than a blocker. Committed as mode: dry-run, so the checked-in
+  lab builds a contract bundle at $0 (no sandbox, no keys, no network). Flip a
+  gitignored .humanish/labs/ copy to mode: live for the real study.
+subject:
+  source: clone
+  repos:
+    - example-org/user-app # a public app whose signup emails a verification link
+  serve:
+    install: pnpm install --frozen-lockfile
+    start: pnpm start
+    url: http://127.0.0.1:3000/
+comms:
+  email:
+    injectEnv: RESEND_API_URL # adopter-named: the env var YOUR app reads for its email-API
+      # base URL. The harness points it at the in-sandbox catch. VERIFY the app reads it —
+      # a stock email SDK does not honor a base-URL env unless the app passes it through,
+      # and a live run whose catch captured zero sends warns at teardown for exactly this.
+      #
+      # No `recipients` list: every lane below automatically gets its own deterministic
+      # address (signup-a@example.test, signup-b@example.test) and its prompt carries the
+      # full handoff — the address to sign up with, the inbox URL, and the wait steering.
+      # Declare recipients only to customize addresses or limit which lanes do email; a
+      # recipient naming a lane that does not exist is a hard parse error.
+actors:
+  - type: openai-computer-use # REAL dispatch key: resolves in the actor registry
+    mission: Sign up with the email address in your instructions, verify it from your inbox, and reach the dashboard.
+    lanes:
+      - id: signup-a
+        persona: first-time-visitor
+        instruction: Create an account, complete the email verification, and stop at the dashboard.
+      - id: signup-b
+        persona: impatient-skimmer
+        instruction: Create an account; if any step is confusing, note the friction — but complete the email verification before stopping.
+execution:
+  target: e2b-desktop # both lanes run at once (the default: concurrency = seat count)
+  timeoutMs: 180000 # PER-LANE session budget
+scenario:
+  mode: dry-run # committed fixture stays contract-only; live needs OPENAI_API_KEY + E2B_API_KEY
+defaults:
+  open: false

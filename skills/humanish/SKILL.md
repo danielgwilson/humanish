@@ -151,6 +151,24 @@ A lab is a composition (`subject` × `actors` × `execution` × `scenario` ×
 `npx humanish lab inspect <lab>` to see how a manifest parses, including
 warnings for fields the engine does not consume yet.
 
+### Many actors at once (fan-out, shared worlds, concurrency)
+
+- **Every declared seat runs live at once by default.** A 6-lane roster is 6
+  simultaneous actors; total sessions and spend are the same either way, only
+  wall-clock and simultaneity differ. `execution.concurrency` is a CAP, not a
+  mode: declare it only to bound simultaneous paid desktops, and expect a parse
+  warning when the cap makes seats run in waves (a green waved run looks
+  identical to the all-live run you meant, so the harness says so up front).
+- **Per-lane worlds vs one shared world.** A plain multi-lane computer-use lab
+  gives each actor its OWN app instance (independent studies in parallel). Add
+  `subject.topology: shared-world` for N actors in ONE world (a lobby, a shared
+  DB, actors seeing each other's changes). `execution.concurrency: 1` on a
+  shared-world lab is the sequential turn-taking variant — one actor at a time,
+  and note comms/email has no wiring there.
+- **Watching it:** each live lane is its own Observer tile/stream; lanes beyond
+  a declared cap start when a slot frees, which on a capped run looks like idle
+  tiles — another reason to leave the cap out unless you need it.
+
 Use committed `humanish/labs/*.yaml` for public-safe, reproducible labs. Use
 ignored `.humanish/labs/*.yaml` or `.humanish/local/labs/*.yaml` for private repo
 targets, local-only dogfood, or machine-specific settings. Never commit private
@@ -179,19 +197,45 @@ the app sent it to finish a step.
 ```yaml
 comms:
   email:
-    injectEnv: RESEND_API_URL      # adopter-named: whatever env var YOUR app reads for its
-                                   # email-API base URL. The harness sets it to the in-sandbox
-                                   # catch — do NOT also list it in subject.env.
+    injectEnv: RESEND_API_URL # adopter-named: whatever env var YOUR app reads for its
+      # email-API base URL. The harness sets it to the in-sandbox catch — do NOT also
+      # list it in subject.env. VERIFY the app actually reads this variable: a stock
+      # email SDK does not honor a base-URL env unless the app passes it through, and
+      # an app that ignores it sends real mail (or throws) while the inbox stays empty.
+      # A run where the catch captured zero sends warns at teardown for exactly this.
+```
+
+That is the whole block for the common case. Every lane automatically gets a
+deterministic inbox address (`<laneId>@example.test`), and each actor's prompt is
+extended with the full handoff: its address ("when the app asks for an email
+address, enter exactly that"), the inbox URL to open, and the wait steering
+("waiting for an email is normal, not a blocker"). Declare `recipients` only to
+customize addresses or limit which lanes do email:
+
+```yaml
     recipients:
-      - lane: lane-01              # the actor lane that signs up
-        address: user@example.test # the literal address the app emails (what the persona uses)
+      - lane: signup-01 # this lab's REAL lane id — a roster lane's `id`, or the
+        # generated lane-01..lane-NN names when you use `count`. An unknown lane
+        # is a hard parse error listing the lab's actual lane ids (a mismatch
+        # would silently disable the funnel for that seat, which is how a
+        # 6-actor field run lost every inbox at once). Lanes you leave out get
+        # no inbox and are never told one exists — the parser warns which.
+        address: user@example.test # what the actor signs up with; the evidence
+        # drain matches captured mail against it.
 ```
 
 The app keeps calling its email API normally (Resend/SendGrid-shaped, or a custom
-profile); only the base URL is redirected. Works on the clone/local-tree route and
-the concurrent shared-world route. It needs `python3` in the subject sandbox (the
-stock E2B desktop has it). See `docs/contracts/schemas.md` for the full `comms:`
-shape and `humanish <cmd> --help` for run flags — this skill does not restate them.
+profile); only the base URL is redirected. Route support: the clone/local-tree
+computer-use route (inbox on the sandbox's own loopback) and the CONCURRENT
+shared-world route (inbox getHost-exposed from the subject sandbox; the default
+since every seat now runs live at once). Declared anywhere else — app-url /
+operator-provided subjects, or a sequential `concurrency: 1` shared world — it is
+warned inert at parse: no catch exists there and no actor hears about an inbox.
+It needs `python3` in the subject sandbox (the stock E2B desktop has it).
+Evidence is digest-only (`humanish.comms-thread.v1` — counts and digests, never
+raw mail); the *readable* proof a persona saw the email is its screenshots of the
+inbox page. See `docs/contracts/schemas.md` for the full `comms:` shape and
+`humanish <cmd> --help` for run flags — this skill does not restate them.
 
 ## First Proof Run
 
