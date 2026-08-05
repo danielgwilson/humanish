@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.33.0` (2026-08-05). The containment boundary introduced in
+Package/source version in this tree: `0.34.0` (2026-08-05). The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority. The bundled OSS meta-lab is dry-run only until
@@ -100,7 +100,9 @@ Implemented:
   as `scenario.ref` and digest-pinned in the bundle
   (`humanish.scorer-provenance.v1`); a config-declared scorer that fails to render
   a pass fails the run on the scorer-capable routes, while library callers keep
-  the additive behavior (`costProbe` stays library-only);
+  the additive behavior (`costProbe` stays library-only); on the terminal route
+  the scoring context carries the FULL normalized transcript (byte-identical to
+  the persisted `terminal-transcript.txt`), not only the ~2KB tail projection;
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - an OSS meta-lab dry-run contract and a separate disposable public-repo OSS

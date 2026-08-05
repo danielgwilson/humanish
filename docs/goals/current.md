@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-08-04 (rev 16)
+Status date: 2026-08-05 (rev 17)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -16,7 +16,7 @@ Humanish should be the open-source CLI that lets a maintainer ask:
 The answer should be observable, verifiable, public-safe, and easy to turn into
 actionable feedback.
 
-## Current Program Truth (source `0.33.0`)
+## Current Program Truth (source `0.34.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -459,14 +459,26 @@ an existing first-party bespoke sim through current Humanish, compare the
 decision outputs, and delete its bespoke generic harness while retaining only a
 thin product extension. The current front is an agent-facing terminal-product
 harness, whose thin-extension budget is being surfaced as engine gaps. Landed so
-far (`0.32.0`–`0.33.0`): the honest-scoring fixes (persona traits now shape the
+far (`0.32.0`–`0.34.0`): the honest-scoring fixes (persona traits now shape the
 terminal agent; a quoted-subject-copy blocker false-positive; a comms false-green
-guard) and a config-loadable adopter scorer seam (`review.scorer.ref` /
-`--scorer`). Remaining before the deletion: terminal-lane fan-out and an opt-in
-product-credential channel — then run that harness's study through current
-Humanish, compare the decision outputs, and delete its bespoke engine. Converge on
-one such branch to decision-equivalent green before starting the next archetype (a
-multi-actor shared-state harness) or the breadth panel.
+guard), a config-loadable adopter scorer seam (`review.scorer.ref` /
+`--scorer`), and the full-transcript scorer evidence channel (the scoring
+context carries the whole normalized session, not a ~2KB tail — an adopter
+rubric can no longer prove less than the persisted transcript). Remaining
+before the deletion, in order: pin the decision-equivalence comparator (a
+written contract — which decision outputs, compared how, over which study set —
+judged over fixed transcripts, never fresh-runs-vs-historical rate
+comparisons), rescore the reference study's arms over full evidence, then
+terminal-lane fan-out at roster scope (per-lane missions/personas; a written
+roll-up verdict contract that separates harness-verdict from per-lane mission
+verdicts precedes the fan-out code). The product-credential channel's payment
+half is explicitly OFF this deletion's path — the bespoke harness being deleted
+never transacted, so decision-equivalence does not require it; only its
+host-side measured-cost half (costProbe run-context) remains in scope. Then run
+that harness's study through current Humanish, compare the decision outputs,
+and delete its bespoke engine. Converge on one such branch to
+decision-equivalent green before starting the next archetype (a multi-actor
+shared-state harness) or the breadth panel.
 
 After that checkpoint, re-evaluate this order rather than treating it as an
 automatic queue:
