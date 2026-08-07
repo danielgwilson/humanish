@@ -1,0 +1,64 @@
+schema: humanish.lab.v2
+id: persona-contrast-demo
+title: Is the persona axis load-bearing? (two contrasting personas, one app, one mission)
+description: >
+  A CONTROL, not a product study. Two lanes clone and drive the SAME public app with the
+  SAME mission and differ in exactly one variable: the persona. If their traces come back
+  indistinguishable, the persona block is decoration and any finding attributed to
+  "persona behavior" in this harness is unsupported — which is worth knowing before
+  tuning persona prompts further.
+  WHY THIS EXISTS: rule-file and persona-instruction effects have been measured as
+  largely content-independent in other harnesses (random rules tying with curated ones),
+  so a persona axis that LOOKS like it works is a known failure mode. The cheapest honest
+  check is to run the contrast and compare, and the cheapest damning version of it is to
+  swap in a persona that does not fit the mission at all and see whether anything moves.
+  See docs/principles/actor-fidelity.md for the evidence and the scoping of what a
+  persona claim can mean.
+  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
+  launches no sandbox. A live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored
+  .humanish/labs/ copy with mode: live.
+  WHAT TO COMPARE afterwards (per lane, from the run bundle): action count and mix,
+  wall-clock to terminal state, completion reason, how early the lane stopped, whether it
+  reported friction, and the affordance classes it used. Read the two actor traces side by
+  side; a persona axis that works shows up as a DIFFERENCE, and one run proves nothing
+  about scale or repeatability.
+subject:
+  source: clone
+  repos:
+    - drawdb-io/drawdb # public OSS subject with kept receipts (the README hero study)
+  clone:
+    depth: 1
+  serve:
+    # The stock E2B desktop template ships python3 + curl but NO Node runtime, so the
+    # serve pipeline bootstraps one first (the terminal lane does the same). Without this,
+    # install dies at exit 127 with `npm: command not found` AFTER a sandbox has been paid
+    # for — see humanish#371, which asks for a preflight so nobody rediscovers it this way.
+    install: >-
+      curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -n -E bash - &&
+      sudo -n apt-get install -y nodejs &&
+      npm install --no-audit --no-fund
+    build: npm run build
+    start: npx vite preview --host 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    # ONE mission for both lanes: the persona is the only declared difference, so any
+    # behavioral delta is attributable to it (and any absence of delta is the finding).
+    mission: >-
+      Create a small database diagram with at least two related tables, then stop.
+    lanes:
+      - id: impatient-expert
+        persona: skeptical-power-user # patience:low, technical_confidence:high, keyboard_first
+        instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
+      - id: patient-newcomer
+        persona: synthetic-new-user # patience:medium, technical_confidence:medium
+        instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
+execution:
+  target: e2b-desktop # both lanes live at once (the default: concurrency = seat count)
+  timeoutMs: 300000 # PER-LANE session budget
+  caps:
+    maxUsd: 5 # fail-closed per-lane spend abort; the run-level worst case is 2x this
+scenario:
+  mode: dry-run # committed fixture stays contract-only
+defaults:
+  open: false

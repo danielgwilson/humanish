@@ -46,6 +46,7 @@ workflow without leaking private upstream truth into core.
 | Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/pricing.ts`; dated per-model + E2B desktop rates) | see Run Cost Summary And Estimated Actor Cost below |
 | Run cost summary | `humanish.run-cost-summary.v1` (additive `RunBundle.cost`; estimate, never a charge) | see Run Cost Summary And Estimated Actor Cost below |
 | Estimated actor cost | `humanish.actor-estimated-cost.v1` (additive `ActorTrace.estimatedCost`) | see Run Cost Summary And Estimated Actor Cost below |
+| Affordance use | `humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`; per-class counts of the routes an actor took) | see Affordance Use below |
 | Adapter score | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
 | Adapter artifact | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
 | Shared-world evidence | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
@@ -708,6 +709,8 @@ Core-owned fields:
   distinct from `timed_out`, which stays reserved for a zero-progress deadline
   hit and remains a failure)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`
+- optional `affordanceUse` (`humanish.affordance-use.v1`): which KIND of route this
+  actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
   cost ESTIMATE for this lane (see Run Cost Summary And Estimated Actor Cost).
   It is deliberately a DIFFERENT field from `tokenUsage.costUsd`: a bare
@@ -927,6 +930,46 @@ Absent = uncapped (the historical behavior); `maxUsd: 0` = no-spend. A cap on a
 model `src/pricing.ts` cannot price is REFUSED at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before any sandbox rather than run uncapped —
 an unenforceable cap is more dangerous than none.
+
+## Affordance Use
+
+`humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`) records WHICH
+KIND of route an actor took, per dispatched action, as counts by class:
+
+| Class | What it covers |
+| --- | --- |
+| `pointer` | click, double-click, drag, scroll — interaction with what is rendered |
+| `keyboard` | typed text and key presses into the page |
+| `url-navigation` | typing a URL (the `nav` subset) — a HUMAN affordance, see below |
+| `script-execution` | a `javascript:` or `data:` URL — not a human affordance |
+| `devtools` | developer tooling opened by keyboard chord |
+| `browser-internal` | `chrome://`, `about:`, `view-source:`, `file:` — the browser, not the product |
+| `observation` | screenshots, waits, bare pointer moves — the actor looking rather than acting |
+
+`counts` omits classes that never occurred; `total` is the denominator for any
+rate; `shortcutTotal` rolls up `script-execution` + `devtools` +
+`browser-internal`, and a value of `0` is a meaningful result rather than an
+absence.
+
+Direct URL navigation is deliberately its OWN class and is grouped with the
+naturalistic classes, not with script execution: `load(url)` appears in 99.4% of
+2,337 real human web demonstrations, so address-bar use is ordinary human
+behavior and classifying it as a shortcut would make an ordinary human lane look
+unfaithful. See [`docs/principles/actor-fidelity.md`](../principles/actor-fidelity.md)
+for the evidence and the scoping of what a fidelity claim can mean.
+
+The record carries a CLASS and at most a scheme-shaped signal (`javascript:`,
+`https:`, a devtools chord) — never the typed text, which can be a password, a
+session token, or an identifying URL path. Classification runs at dispatch
+because the text exists only there: the trace's own action label deliberately
+renders `type [N chars]`.
+
+The harness states NO verdict about a class. Whether an affordance invalidates a
+study depends on the population that study declares, which is product semantics
+and belongs to the adopter's scorer — which already receives the full trace, so
+`affordanceUse` needs no extra wiring to reach it. Present on computer-use lanes
+that dispatched at least one action; absent elsewhere and on every pre-existing
+bundle, and its absence is tolerated by verify.
 
 ## Product-Adapter Extension Seam
 
