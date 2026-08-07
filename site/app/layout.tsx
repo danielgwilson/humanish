@@ -24,6 +24,9 @@ const geistMono = Geist_Mono({
 });
 
 const SITE = "https://humanish.dev";
+// Baked in at build time; lets CI verify production actually serves a given
+// commit instead of trusting deploy status alone.
+const DEPLOY_SHA = process.env.VERCEL_GIT_COMMIT_SHA ?? "local";
 const TITLE = "humanish — instant feedback from real human(ish) users";
 const DESCRIPTION =
   "Personas drive your app in a real browser on a hosted sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events, estimated cost, a fail-closed verdict.";
@@ -86,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <head>
         <meta name="color-scheme" content="light dark" />
+        <meta name="humanish-deploy-sha" content={DEPLOY_SHA} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         <script
           type="application/ld+json"
