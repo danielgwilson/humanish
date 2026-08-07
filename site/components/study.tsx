@@ -13,7 +13,7 @@ export default function Study() {
         <div><dt>Subject</dt><dd>drawDB · commit-pinned</dd></div>
         <div><dt>Lanes</dt><dd>4/4 passed</dd></div>
         <div><dt>Verify</dt><dd>15/15 checks</dd></div>
-        <div><dt>Status</dt><dd><span className="chip chip-dot">share_ready</span></dd></div>
+        <div><dt>Status</dt><dd><span className="chip chip-dot chip-mute">local_only</span></dd></div>
         <div><dt>Wall-clock</dt><dd>— · not recorded</dd></div>
         <div><dt>Est. cost</dt><dd>—</dd></div>
       </dl>
@@ -22,6 +22,7 @@ export default function Study() {
       <PinnedReplay />
 
       <div className="study-notes rev">
+        <p>Verify passed 15/15, and the bundle still grades <code>local_only</code>: it holds full-fidelity screenshots, which the share-safety gate never marks share-ready as-is. Publishing these crops was a reviewed, deliberate act.</p>
         <p>drawDB is the application studied; it is not a Humanish adopter or endorser.</p>
       </div>
     </section>

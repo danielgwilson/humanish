@@ -193,6 +193,9 @@ code, kbd { font-family: var(--mono) }
 /* ---------- reveals ---------- */
 .js .rev { opacity: 0; transform: translateY(16px); transition: opacity .8s cubic-bezier(.22, 1, .36, 1), transform .8s cubic-bezier(.22, 1, .36, 1); transition-delay: var(--d, 0s) }
 .js .rev.in { opacity: 1; transform: none }
+/* Safety valve: if hydration hasn't cancelled the inline fallback timer
+   (slow/failed chunks), rev-all unhides everything without animation. */
+.js.rev-all .rev { opacity: 1; transform: none; transition: none }
 @media (prefers-reduced-motion: reduce) {
   .js .rev { opacity: 1; transform: none; transition: none }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important }

@@ -51,8 +51,13 @@ export const metadata: Metadata = {
  * progressive enhancement) and restore a persisted explicit theme choice
  * so there is no flash of the wrong theme. System preference needs no JS —
  * the token system handles it via prefers-color-scheme.
+ *
+ * The `.js` gate hides `.rev` content until Reveals hydrates, so the same
+ * script arms a safety timer: if hydration has not cancelled it within
+ * 1.5s (slow network, failed chunk), `rev-all` unhides everything. Content
+ * must never depend on ~140KB of async chunks to reach first paint.
  */
-const THEME_INIT = `(function(){var d=document.documentElement;d.classList.add('js');try{var t=localStorage.getItem('humanish-theme');if(t==='dark'||t==='light')d.setAttribute('data-theme',t)}catch(e){}})();`;
+const THEME_INIT = `(function(){var d=document.documentElement;d.classList.add('js');window.__revFallback=setTimeout(function(){d.classList.add('rev-all')},1500);try{var t=localStorage.getItem('humanish-theme');if(t==='dark'||t==='light')d.setAttribute('data-theme',t)}catch(e){}})();`;
 
 const JSON_LD = {
   "@context": "https://schema.org",

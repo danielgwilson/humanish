@@ -263,12 +263,12 @@ export default function PinnedReplay() {
                 <p className="vln vp">$ humanish verify</p>
                 <p className="vln"><span className="vok">ok</span>  redaction passed</p>
                 <p className="vln"><span className="vok">ok</span>  actor engagement: live actor traces that claim goal_satisfied carry at least one action or message</p>
-                <p className="vln"><span className="vok">ok</span>  cost estimate labeling: estimates never presented as exact</p>
+                <p className="vln"><span className="vok">ok</span>  actor verdict consistency: live pass verdicts do not hide failed, blocked, or timed-out actor traces</p>
                 <p className="vln vdim">… 12 more checks</p>
-                <p className="vln vsum">15/15 passed → status: <span className="vok">share_ready</span></p>
+                <p className="vln vsum">15/15 passed → status: local_only <span className="vdim">(RAW_SCREENSHOTS)</span></p>
               </div>
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">The gate</span><code>humanish verify</code> grades the bundle fail-closed. This run: 15/15.</p><span className="chip chip-dot">share_ready</span></footer>
+            <footer className="pcap"><p className="prep"><span className="plab">The gate</span><code>humanish verify</code> grades the bundle fail-closed. This run: 15/15 checks passed — and the bundle still grades <code>local_only</code>, because it holds full-fidelity screenshots. Publishing these crops was a reviewed, deliberate act.</p></footer>
           </article>
         </div>
       </div>
