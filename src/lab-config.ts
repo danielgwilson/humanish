@@ -1794,7 +1794,7 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
 }
 
 // The publicTarget.owner is a public-safe operator/repo label surfaced in evidence (e.g.
-// "danielgwilson/cineguessr" or a bare org name). Slash allowed for the owner/repo convention.
+// "example-operator/lobby-trivia" or a bare org name). Slash allowed for the owner/repo convention.
 const PUBLIC_TARGET_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
 
 /** Parse the external-public shared-world ownership attestation ({ owner, authorized: true }). The

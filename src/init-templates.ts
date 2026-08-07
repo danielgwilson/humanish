@@ -215,10 +215,10 @@ defaults:
 `
   },
   {
-    path: "humanish/labs/cineguessr-3player.yaml",
+    path: "humanish/labs/lobby-trivia-3player.yaml",
     plane: "source",
     contents: `schema: humanish.lab.v2
-id: cineguessr-3player
+id: lobby-trivia-3player
 title: External-public shared world (N mobile personas share ONE public app at once)
 description: >-
   A worked example of the EXTERNAL-PUBLIC shared-world route (#164 phase 2): N mobile-LAYOUT

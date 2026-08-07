@@ -212,7 +212,7 @@ const HOST_WAIT_IDLE_STEPS = 80;
 const FOLLOWER_WAIT_IDLE_STEPS = 40;
 
 /**
- * The cineguessr (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
+ * The lobby-trivia (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
  * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. RUNTIME-ONLY
  * input (a live location.href); only the extracted CODE is used, and it lands only as a digest.
  */
@@ -285,7 +285,7 @@ export function parseLobbyCodeReply(reply: string | undefined): string | undefin
 }
 
 const LOBBY_CODE_VISION_PROMPT =
-  "This is a screenshot of a CineGuessr multiplayer lobby. If a waiting-room / invite screen is " +
+  "This is a screenshot of a the example multiplayer app multiplayer lobby. If a waiting-room / invite screen is " +
   "shown, read the 6-character lobby code (characters A-Z and 2-9 only) — it appears near a 'lobby " +
   "code'/'room code' label or inside an invite link of the form /lobby/CODE. Your entire reply MUST be " +
   "exactly those 6 characters in uppercase and NOTHING else (no words, no punctuation). If no lobby " +
@@ -811,7 +811,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   // The operator-DECLARED origin (from subject.appUrl) — recorded for evidence/reference ONLY. The
   // operator-OWNERSHIP claim rests on the subject.publicTarget.authorized attestation + this declared
   // appUrl, NOT on digest equality (blocker 2): a normal cross-origin redirect (apex->www, http->https;
-  // cineguessr.com 307-redirects) makes the seats' OBSERVED origin differ from the declared one, which
+  // lobby-trivia.example.test 307-redirects) makes the seats' OBSERVED origin differ from the declared one, which
   // is expected and MUST NOT fail the run. Persisted digest-only (never the raw origin).
   const declaredOriginDigest = planeClass === "external-public" && publicAppUrl
     ? hostOriginDigest(publicAppUrl)

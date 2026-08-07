@@ -46,7 +46,7 @@ raw into the trace).
 The 0.20.0 delta is a single surgical callback: `CuaLoopOptions.onObservedUrl?(url)`, invoked right
 after every `executor.observe()` (the initial observe and each loop observe) with `observation.url`,
 threaded through `CuaActorSessionOptions` → `CuaLaneDeps` → the concurrent orchestrator. No new CDP
-code; no cineguessr change.
+code; no lobby-trivia change.
 
 Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 
@@ -59,7 +59,7 @@ Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 3. **Barrier.** Follower lanes (`host` absent) do NOT compose a mission or open their target until
    `await Promise.race([lobbyCodeLatch.promise, timeout(HANDOFF_DEADLINE_MS)])`. On resolve, CODE is
    threaded into each follower's mission ("…choose Join, enter lobby code {CODE}…") — NOT a raw URL
-   navigation, because a direct `/lobby/CODE` visit does not auto-join a non-member (cineguessr's
+   navigation, because a direct `/lobby/CODE` visit does not auto-join a non-member (lobby-trivia's
    lobby page redirects unknown/non-member sessions home); the follower goes through the real Join
    flow.
 4. **Convergence confirmation.** Each follower's own `onObservedUrl` confirms it reached `/lobby/CODE`;
@@ -84,7 +84,7 @@ Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 The convergence proof is about what the seats OBSERVED, not what was DECLARED. `plane.publicOriginDigest`
 is the sha256-16 of the ONE origin the seats' CDP-observed final URLs converged on; verify requires every
 `laneWindow.routeHostDigest` to agree on it. A normal cross-origin redirect (apex→www, http→https;
-cineguessr.com 307-redirects) makes the OBSERVED origin differ from the declared `subject.appUrl`, which
+lobby-trivia.example.test 307-redirects) makes the OBSERVED origin differ from the declared `subject.appUrl`, which
 is EXPECTED and must never fail the run — so the declared origin is recorded separately as
 `plane.declaredOriginDigest` for reference and is NEVER asserted equal to the observed one. Operator
 OWNERSHIP rests on the `subject.publicTarget.authorized` attestation + the declared `appUrl`, NOT on

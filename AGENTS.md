@@ -20,6 +20,14 @@ private patient data, or private source snippets.
   context, summarize the shape and keep the raw artifact outside this repo.
 - Public usefulness beats private convenience. When in doubt, redact,
   synthesize, or stop and ask.
+- The repository owner's own projects, products, and domains are never named
+  here — in code, labs, templates, docs, tests, or issue/PR text — without
+  their explicit sign-off. A publicly deployed site is still a private
+  project; deployment visibility does not make its name public material.
+  Examples use neutral fictional products, and attestation fields in committed
+  labs use placeholder owners/domains with a "replace with your own" note.
+  (Named public third-party OSS subjects with kept receipts are the one
+  established exception.)
 
 ## Mission
 
