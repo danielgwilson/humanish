@@ -54,6 +54,10 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8025
 OUT_FILE = sys.argv[2] if len(sys.argv) > 2 else "/tmp/humanish-comms/deliveries.ndjson"
 SERVED_DIR = sys.argv[3] if len(sys.argv) > 3 else (os.path.dirname(OUT_FILE) + "/surface")
 INBOX_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 0
+# Optional shared token guarding GET /deliveries (the drain read). Empty = unguarded, which is the
+# in-sandbox default: the capture listener binds loopback there, so nothing external can reach it.
+# An ADOPTER-HOSTED catch is reachable over the network, so it should pass one.
+DELIVERIES_TOKEN = sys.argv[5] if len(sys.argv) > 5 else ""
 try:
     os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
 except Exception:
@@ -83,6 +87,26 @@ class BaseHandler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/" or path == "/health":
             self._json(200, {"ok": True, "service": "humanish-comms-catch"})
+            return
+        if path == "/deliveries":
+            # The drain read. In-sandbox humanish reads the NDJSON file directly; an adopter-hosted
+            # catch is on another machine, so the same bytes are served over HTTP. Capture bodies
+            # can contain a verification link, so this is the one route worth guarding.
+            if DELIVERIES_TOKEN:
+                supplied = self.headers.get("authorization", "")
+                if supplied != ("Bearer " + DELIVERIES_TOKEN):
+                    self._json(401, {"error": "unauthorized"})
+                    return
+            try:
+                with open(OUT_FILE, "rb") as handle:
+                    body = handle.read()
+            except Exception:
+                body = b""
+            self.send_response(200)
+            self.send_header("content-type", "application/x-ndjson; charset=utf-8")
+            self.send_header("cache-control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
             return
         if path == "/inbox" or path.startswith("/inbox/") or path == "/api/inbox" or path.startswith("/api/inbox/"):
             rel = unquote(path)
@@ -371,6 +395,115 @@ export async function collectCommsThread(args: {
   for (const inbox of args.inboxes) {
     for (const message of await args.channel.poll(inbox, 0)) {
       // A single send addressed to several provisioned inboxes must appear once in the thread.
+      if (seen.has(message.id)) continue;
+      seen.add(message.id);
+      messages.push(message);
+    }
+  }
+  if (messages.length === 0) return { captured: sends.length, matched: 0 };
+  messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
+  return { artifact: buildCommsThreadArtifact(messages), captured: sends.length, matched: messages.length };
+}
+
+/** An adopter-hosted catch: humanish never provisioned it, so it is addressed over HTTP (#328). */
+export interface ExternalCommsCatch {
+  /** Base URL of the catch the ADOPTER runs (its POST capture endpoint and GET /deliveries). */
+  catchBaseUrl: string;
+  /** Base URL the persona opens to read mail. Defaults to catchBaseUrl (same server serves /inbox). */
+  inboxBaseUrl?: string;
+  /** Bearer token for the drain read, when the adopter guarded it. Value is used, never persisted. */
+  authToken?: string;
+}
+
+/** Trim one trailing slash so `${base}/deliveries` never becomes a double slash. */
+function baseOf(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+/** The URL a persona is told to open to read its mail on an adopter-hosted plane. */
+export function externalInboxUrl(external: ExternalCommsCatch): string {
+  return `${baseOf(external.inboxBaseUrl ?? external.catchBaseUrl)}/inbox`;
+}
+
+/**
+ * Probe an adopter-hosted catch the way the in-sandbox one is probed: assert OUR service marker in
+ * /health, not merely any 2xx — an adopter's reverse proxy or a captive portal will happily return
+ * 200 for anything, and a comms lab whose catch is not actually there collects nothing while
+ * looking fine. Fail-closed callers treat `false` as a hard stop before spending on a run.
+ */
+export async function externalCatchHealthy(
+  external: ExternalCommsCatch,
+  options: { timeoutMs?: number; fetchFn?: typeof fetch } = {}
+): Promise<boolean> {
+  const fetchFn = options.fetchFn ?? fetch;
+  try {
+    const response = await fetchFn(`${baseOf(external.catchBaseUrl)}/health`, {
+      signal: AbortSignal.timeout(options.timeoutMs ?? 15_000)
+    });
+    if (!response.ok) return false;
+    const body = await response.text();
+    return body.includes("humanish-comms-catch");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Drain an adopter-hosted catch over HTTP. Same NDJSON contract and same partial-line discipline as
+ * the in-sandbox `cat` drain: a body that does not end in a newline may have a torn final append, so
+ * that line is dropped rather than parsed into a half-message.
+ */
+export async function drainExternalCommsCatch(
+  external: ExternalCommsCatch,
+  cursor = 0,
+  options: { timeoutMs?: number; fetchFn?: typeof fetch } = {}
+): Promise<{ sends: RawCapturedSend[]; cursor: number }> {
+  const fetchFn = options.fetchFn ?? fetch;
+  const response = await fetchFn(`${baseOf(external.catchBaseUrl)}/deliveries`, {
+    signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
+    ...(external.authToken ? { headers: { authorization: `Bearer ${external.authToken}` } } : {})
+  });
+  if (!response.ok) {
+    throw new Error(`comms catch GET /deliveries returned ${response.status}`);
+  }
+  const body = await response.text();
+  let lines = body.split("\n").filter((line) => line.trim().length > 0);
+  if (!body.endsWith("\n") && lines.length > 0) lines = lines.slice(0, -1);
+  const sends: RawCapturedSend[] = [];
+  for (const line of lines.slice(cursor)) {
+    try {
+      const parsed = JSON.parse(line) as Record<string, unknown>;
+      if (typeof parsed.path === "string" && typeof parsed.body === "string") {
+        sends.push({ path: parsed.path, body: parsed.body, t: typeof parsed.t === "number" ? parsed.t : 0 });
+      }
+    } catch {
+      // skip a malformed line
+    }
+  }
+  return { sends, cursor: lines.length };
+}
+
+/**
+ * The adopter-hosted analogue of collectCommsThread: drain over HTTP, route into the host inbox bus,
+ * and build the SAME digest-only humanish.comms-thread.v1 artifact. Evidence shape does not depend
+ * on who hosted the catch — only the transport does.
+ */
+export async function collectExternalCommsThread(args: {
+  external: ExternalCommsCatch;
+  channel: CommsChannel;
+  inboxes: CommsAddress[];
+  profiles?: EmailSendProfile[];
+  timeoutMs?: number;
+  fetchFn?: typeof fetch;
+}): Promise<CommsThreadCollection> {
+  const drainOptions = { ...(args.timeoutMs === undefined ? {} : { timeoutMs: args.timeoutMs }), ...(args.fetchFn ? { fetchFn: args.fetchFn } : {}) };
+  const { sends } = await drainExternalCommsCatch(args.external, 0, drainOptions);
+  if (sends.length === 0) return { captured: 0, matched: 0 };
+  await routeCapturedSends(sends, args.channel, args.profiles);
+  const seen = new Set<string>();
+  const messages: CommsMessage[] = [];
+  for (const inbox of args.inboxes) {
+    for (const message of await args.channel.poll(inbox, 0)) {
       if (seen.has(message.id)) continue;
       seen.add(message.id);
       messages.push(message);

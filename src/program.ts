@@ -76,6 +76,8 @@ import {
   verifyRun
 } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
+import { runCommsCatchHost } from "./comms-catch-host.js";
+import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
 import type {
   DoctorResult,
   CleanupResult,
@@ -315,6 +317,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
   registerCleanupCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
+  registerCommsCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
   registerObserveCommand(program, cliIo);
@@ -540,6 +543,30 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
       const result = await listRuns(options.cwd);
       writeResult(command, io, result, formatRunsHuman);
       io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
+function registerCommsCommands(parent: Command, io: CliIo): void {
+  const comms = parent
+    .command("comms")
+    .description("Off-app comms surfaces (email/SMS the app under test sends).")
+    .summary("Off-app comms surfaces.");
+
+  comms
+    .command("catch")
+    .description("Run the email catch on THIS host so humanish can study an app it does not provision (#328). Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.")
+    .summary("Run the adopter-hosted email catch.")
+    .option("--port <port>", "Port for capture + inbox (default 8025).", String(DEFAULT_SANDBOX_CATCH_PORT))
+    .option("--dir <path>", "Directory for the deliveries log and rendered inbox.", ".humanish/comms-catch")
+    .option("--token <value>", "Require this bearer token on GET /deliveries (recommended when reachable off-host).")
+    .action(async (options: { port: string; dir: string; token?: string }) => {
+      const port = Number.parseInt(options.port, 10);
+      if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
+        io.writeErr("--port must be an integer between 1 and 65534.\n");
+        io.setExitCode(2);
+        return;
+      }
+      await runCommsCatchHost({ port, dir: options.dir, ...(options.token ? { token: options.token } : {}) }, io);
     });
 }
 
