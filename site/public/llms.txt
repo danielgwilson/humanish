@@ -1,0 +1,51 @@
+# humanish
+
+> Open-source (MIT) TypeScript CLI. Personas drive your app in a real browser on a hosted
+> sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events,
+> estimated cost, and a fail-closed share-safety verdict.
+
+## Install
+
+```
+npm i -D humanish
+npx humanish init --yes
+npx humanish watch
+```
+
+For coding agents: `npx skills add danielgwilson/humanish`
+
+## Commands
+
+- `humanish init` — scaffold a lab: personas, missions, and target app in YAML; `--yes` takes the defaults.
+- `humanish watch` — run every lane on hosted sandbox desktops; watch live in Observer; replay any lane after.
+- `humanish verify` — grade the evidence bundle against public-safety gates, fail-closed: `share_ready`, `local_only`, or `blocked`.
+- `humanish feedback issue` — render a public-safe GitHub issue draft from the bundle.
+
+No staging URL is required: the sandbox clones your repo, builds it, and serves it.
+
+## Worked example: the drawDB study
+
+Run `drawdb-study-20260801-wide-05` (2026-08-01): four computer-use lanes on hosted
+1920×1080 desktops drove a commit-pinned checkout of drawDB, an open-source database
+diagram editor. 4/4 lanes passed; `humanish verify` ran 15/15 checks.
+
+Lanes and verbatim persona final reports:
+
+- create-customers — "customers + email (TEXT)"
+- add-order-field — "orders + customer_id (INTEGER)"
+- inspect-products-sql — "products SQL generated"
+- add-canvas-note — "note created"
+
+drawDB is the application studied; it is not a Humanish adopter or endorser.
+
+## Guarantees (by construction)
+
+- The actor's API key stays on your machine; the sandbox desktop never holds it.
+- Evidence lands in gitignored `.humanish/`; no command publishes it.
+- `humanish feedback issue` renders a draft; no GitHub API call exists on that path.
+- Verify fails closed: a bundle that cannot pass every gate grades `local_only` or `blocked`, never `share_ready`.
+
+## Links
+
+- GitHub: https://github.com/danielgwilson/humanish
+- npm: https://www.npmjs.com/package/humanish

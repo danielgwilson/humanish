@@ -91,7 +91,14 @@ const allowedEmailDomains = new Set([
 // manually reviewed before its exact bytes were approved for publication.
 const approvedBinaryAssets = new Map([
   ["docs/assets/humanish-observer-hero.png", "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1"],
-  ["docs/assets/humanish-drawdb-hero.png", "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983"]
+  ["docs/assets/humanish-drawdb-hero.png", "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983"],
+  // The humanish.dev landing page's study keyframes: crops from the already-public
+  // drawDB study screenshots, manually reviewed before their exact bytes were
+  // approved for publication.
+  ["site/public/study/lane1.jpg", "3eaaf4c88629b957586c8de47af2751c2237c7621110bb0bcdd0de9e7632ba29"],
+  ["site/public/study/lane2.jpg", "c078842efeacae1c1d1ebc4044a4637d37a364aef5953a36eca654059a36bc9f"],
+  ["site/public/study/lane3.jpg", "777ecf4e912a7e8cefe84489f4e6eed94d84c0340742c84418803406a68c13fa"],
+  ["site/public/study/lane4.jpg", "b9de2a2be75716a97c048360f1dec1185a88611a973f580e6c7f54f05af89661"]
 ]);
 const approvedPublicCommitEmails = new Set([
   "daniel@danielgwilson.com",
