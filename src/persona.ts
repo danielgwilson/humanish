@@ -110,10 +110,18 @@ const FRICTION_TOLERANCE: Record<PersonaLevel, string> = {
   high: "You are determined: push through friction and try recovery paths, but if you reach an unrecoverable dead-end, stop and report it."
 };
 
+// Skill describes how COMPETENTLY an actor works the surfaces its population actually uses — it
+// must not name an affordance that escapes those surfaces. The `high` directive used to say
+// "inspect configuration, and try the recovery paths an expert would", which a computer-use actor
+// can honestly read as license to open devtools or type a `javascript:` URL: a human-persona run
+// then routes around the very friction the study exists to measure and still returns green. Skill
+// is now modality-neutral (an expert human uses advanced UI and settings; an expert agent uses the
+// documented API), so which affordances are in scope is a property of the declared population,
+// not a side effect of a trait table.
 const SKILL_BIAS: Record<PersonaLevel, string> = {
   low: "You are not technically confident: prefer obvious UI affordances over CLI flags or config, and narrate your confusion whenever the interface is ambiguous.",
   medium: "You have moderate technical confidence: use straightforward paths and try one recovery step before giving up.",
-  high: "You are technically confident: use keyboard shortcuts, inspect configuration, and try the recovery paths an expert would."
+  high: "You are technically confident: use keyboard shortcuts, the product's own advanced options and settings, and the recovery paths an expert would try on the surfaces this product gives you."
 };
 
 function accessibilityBehavior(needs: string): string {
