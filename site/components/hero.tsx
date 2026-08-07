@@ -33,9 +33,9 @@ export default function Hero() {
       <div className="hero-art" id="heroArt">
         <HeroCrowd />
         <figure className="hero-tile rev" style={{ "--d": ".3s" } as React.CSSProperties}>
-          <div className="tile-bar"><span className="lane-id"><b>Lane 01 ·</b> create-customers</span><span className="chip chip-pass">Passed</span></div>
-          <div className="tile-shot"><img src="/study/lane1.jpg" alt="Lane 01 screenshot: drawDB editor with a customers table holding an email TEXT field" /><CoverCanvas n="01" resolveAfter={1100} /></div>
-          <figcaption className="tile-foot"><span className="fl">Final report</span><span className="fq">{'"customers + email (TEXT)"'}</span></figcaption>
+          <div className="tile-bar"><span className="lane-id"><b>Lane 01 ·</b> diagram-login-flow</span><span className="chip chip-pass">Passed</span></div>
+          <div className="tile-shot"><img src="/study/excalidraw-lane1.jpg" alt="Lane 01 screenshot: Excalidraw canvas with two rectangles labeled Login and Dashboard connected by an arrow" /><CoverCanvas n="01" resolveAfter={1100} /></div>
+          <figcaption className="tile-foot"><span className="fl">Final report</span><span className="fq">{'"Done"'}</span></figcaption>
         </figure>
       </div>
     </section>

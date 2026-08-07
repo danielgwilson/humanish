@@ -23,7 +23,7 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 - `components/` — server-rendered sections plus client islands: hero crowd canvas,
   resolve covers, pinned replay, theme toggle, copy buttons, scroll reveals
 - `lib/` — theme plumbing shared by the canvas islands, and the cover engine
-- `public/study/` — the four drawDB study keyframes
+- `public/study/` — the four Excalidraw study keyframes
 - `public/llms.txt` — hand-curated agent briefing
 
 ## Rules
