@@ -1,6 +1,6 @@
 # Example: 3 mobile personas share ONE public multiplayer lobby at once
 
-`humanish/labs/cineguessr-3player.yaml` is a worked example of the EXTERNAL-PUBLIC shared-world route
+`humanish/labs/lobby-trivia-3player.yaml` is a worked example of the EXTERNAL-PUBLIC shared-world route
 (#164 phase 2): three mobile-LAYOUT personas play the SAME multiplayer lobby on a REAL public
 deployment simultaneously, watched in ONE Observer. Point `subject.appUrl` + `subject.publicTarget` at
 a public deployment YOU own/operate.
@@ -38,14 +38,14 @@ CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
 Dry-run (the default, $0 — proves the plumbing + the honesty contract, no sandboxes, no tokens):
 
 ```
-humanish lab run cineguessr-3player          # or: humanish watch cineguessr-3player
+humanish lab run lobby-trivia-3player          # or: humanish watch lobby-trivia-3player
 ```
 
 Live (opens 3 real mobile-layout seats against the public app):
 
 ```
 # flip scenario.mode to live in the lab (or override), then:
-humanish watch cineguessr-3player --env-file .env.local   # OPENAI_API_KEY + E2B_API_KEY
+humanish watch lobby-trivia-3player --env-file .env.local   # OPENAI_API_KEY + E2B_API_KEY
 ```
 
 Watch it from a phone (today): serve the run directory's Observer through an authed edge —
@@ -69,7 +69,7 @@ No one run implies adoption, scale, or repeatability.
 
 ## Before a live run against a third-party site
 
-The verified cineguessr lobby mechanics (createLobby/joinLobby → `/lobby/CODE`, the 6-char
+The verified lobby-trivia lobby mechanics (createLobby/joinLobby → `/lobby/CODE`, the 6-char
 `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` alphabet, non-auto-join on a direct visit) are read from current
 source and could change on the next deploy. The two coupling points to re-verify are the lobby-code
 regex (`/\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/`, tolerant of a locale prefix and query/hash) and the

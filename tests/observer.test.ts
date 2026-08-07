@@ -667,7 +667,7 @@ describe("observer rendering", () => {
         {
           id: "stream-001", simId: "sim-01", kind: "browser", kindLabel: "Browser", label: "CUA browser",
           status: "passed", statusLabel: "Passed", transport: "snapshot", updatedAt: "2026-08-03T00:00:05.000Z",
-          ui: { route: "https://cineguessr.com/" },
+          ui: { route: "https://lobby-trivia.example.test/" },
           actor: {
             items: [
               { id: "s0", kind: "screenshot", lifecycle: "completed", title: "turn-00-start", screenshotRef: { path: "screenshots/turn-00-start.png", redaction: "none" } },

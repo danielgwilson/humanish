@@ -1238,7 +1238,7 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
 
 describe("lobby-code handoff relays (CDP-independent: narration + vision-off-frame)", () => {
   it("extractLobbyCodeFromNarration reads a /lobby/CODE or a labeled UPPERCASE code, never lowercase prose", () => {
-    expect(extractLobbyCodeFromNarration("I'm in! The link is https://cineguessr.com/en/lobby/UDYCPH now.")).toBe("UDYCPH");
+    expect(extractLobbyCodeFromNarration("I'm in! The link is https://lobby-trivia.example.test/en/lobby/UDYCPH now.")).toBe("UDYCPH");
     expect(extractLobbyCodeFromNarration("lobby code: MHDTP2")).toBe("MHDTP2");
     expect(extractLobbyCodeFromNarration("LOBBY_CODE=AB8K9Q done")).toBe("AB8K9Q");
     // A wrong latch fails the whole run: ordinary lowercase words after "lobby code" must NOT latch,
@@ -1253,7 +1253,7 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     expect(parseLobbyCodeReply("UDYCPH")).toBe("UDYCPH");
     expect(parseLobbyCodeReply("  mhdtp2 ")).toBe("MHDTP2");
     expect(parseLobbyCodeReply("/lobby/QW3RTY")).toBe("QW3RTY");
-    expect(parseLobbyCodeReply("https://cineguessr.com/en/lobby/QW3RTY?x=1")).toBe("QW3RTY");
+    expect(parseLobbyCodeReply("https://lobby-trivia.example.test/en/lobby/QW3RTY?x=1")).toBe("QW3RTY");
     // A wrong latch fails the whole run, so these must NOT match — a miss just retries next frame.
     expect(parseLobbyCodeReply("The code is ABC234")).toBeUndefined();
     expect(parseLobbyCodeReply("I see a home SCREEN")).toBeUndefined();

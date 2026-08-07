@@ -49,8 +49,8 @@ interface FakeSandbox extends E2BDesktopSandbox {
 
 const FAKE_DESKTOP_SCREEN = { width: 1440, height: 950 } as const;
 const FAKE_DESKTOP_VIEWPORT = { width: 1440, height: 817, deviceScaleFactor: 1 } as const;
-const LOBBY_URL = "https://cineguessr.com/en/lobby/AB2CD9"; // locale-prefixed + a valid 6-char code
-const HOME_URL = "https://cineguessr.com/"; // a follower stuck here never converges
+const LOBBY_URL = "https://lobby-trivia.example.test/en/lobby/AB2CD9"; // locale-prefixed + a valid 6-char code
+const HOME_URL = "https://lobby-trivia.example.test/"; // a follower stuck here never converges
 
 function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdout?: string } | undefined): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
@@ -141,7 +141,7 @@ function makeTrace(args: { persona: CuaActorSessionOptions["persona"]; status: A
 
 const HOST_HOLD_MS = 60; // host keeps its window open past the followers' (overlap)
 const FOLLOWER_HOLD_MS = 10;
-const DEFAULT_OBSERVED_ORIGIN = "https://cineguessr.com"; // matches the declared apex appUrl (no redirect)
+const DEFAULT_OBSERVED_ORIGIN = "https://lobby-trivia.example.test"; // matches the declared apex appUrl (no redirect)
 const lobbyUrlFor = (origin: string): string => `${origin}/en/lobby/AB2CD9`; // locale-prefixed + valid code
 const homeUrlFor = (origin: string): string => `${origin}/`; // a seat stuck here observes no lobby code
 
@@ -209,16 +209,16 @@ function externalPublicConfig(overrides?: {
   if (overrides?.hostCount === 2) lanes[1]!.host = true;
   return {
     schema: LAB_CONFIG_SCHEMA,
-    id: "cineguessr-3player-test",
-    title: "CineGuessr 3-player external-public",
+    id: "lobby-trivia-3player-test",
+    title: "the example multiplayer app 3-player external-public",
     subject: {
       source: "app-url",
       topology: "shared-world",
-      appUrl: overrides?.appUrl ?? "https://cineguessr.com/",
-      ...(overrides?.omitPublicTarget ? {} : { publicTarget: { owner: "danielgwilson/cineguessr", authorized: true } })
+      appUrl: overrides?.appUrl ?? "https://lobby-trivia.example.test/",
+      ...(overrides?.omitPublicTarget ? {} : { publicTarget: { owner: "example-operator/lobby-trivia", authorized: true } })
     },
     policies: { allowPublicTargets: true },
-    actors: [{ type: "openai-computer-use", mission: "Play CineGuessr with your friends.", lanes }],
+    actors: [{ type: "openai-computer-use", mission: "Play the example multiplayer app with your friends.", lanes }],
     execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: overrides?.concurrency ?? 3 },
     scenario: { mode: "live" }
   };
@@ -259,14 +259,14 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
     const pngFrame = PNG.sync.write(new PNG({ width: 4, height: 4 }));
     const desktop = {
       commands: {
-        run: async () => ({ exitCode: 0, stdout: JSON.stringify({ url: LOBBY_URL, title: "CineGuessr", text: "waiting room" }) })
+        run: async () => ({ exitCode: 0, stdout: JSON.stringify({ url: LOBBY_URL, title: "the example multiplayer app", text: "waiting room" }) })
       },
       screenshot: async () => new Uint8Array(pngFrame)
     } as unknown as E2BDesktopSandbox;
-    const observe = makeChromeBrowserStateObserver(desktop, 1000, { targetUrl: "https://cineguessr.com/" });
+    const observe = makeChromeBrowserStateObserver(desktop, 1000, { targetUrl: "https://lobby-trivia.example.test/" });
     const state = await observe();
     expect(state.url).toBe(LOBBY_URL);
-    expect(state.title).toBe("CineGuessr");
+    expect(state.title).toBe("the example multiplayer app");
 
     const executor = createE2BDesktopExecutor(desktop as unknown as E2BDesktopLike, { observeBrowserState: observe });
     const observation = await executor.observe();
@@ -313,7 +313,7 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
     expect(observedUrls[0]).toBe(`${LOBBY_URL}?turn=1`);
     // Hygiene: the raw url never lands in the persisted trace.
     const traceText = JSON.stringify(result.trace);
-    expect(traceText).not.toContain("cineguessr.com");
+    expect(traceText).not.toContain("lobby-trivia.example.test");
     expect(traceText).not.toContain("AB2CD9");
   });
 });
@@ -323,15 +323,15 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
 // ---------------------------------------------------------------------------
 describe("extractLobbyCode regex", () => {
   const cases: Array<[string, string | undefined]> = [
-    ["https://cineguessr.com/lobby/AB2CD9", "AB2CD9"],
-    ["https://cineguessr.com/en/lobby/AB2CD9", "AB2CD9"],
-    ["https://cineguessr.com/lobby/AB2CD9?x=1", "AB2CD9"],
-    ["https://cineguessr.com/lobby/AB2CD9/", "AB2CD9"],
-    ["https://cineguessr.com/lobby/AB2CD9#frag", "AB2CD9"],
-    ["https://cineguessr.com/", undefined],
-    ["https://cineguessr.com/game/AB2CD9", undefined],
-    ["https://cineguessr.com/lobby/toolongcode", undefined],
-    ["https://cineguessr.com/lobby/AB2CD", undefined] // 5 chars, too short
+    ["https://lobby-trivia.example.test/lobby/AB2CD9", "AB2CD9"],
+    ["https://lobby-trivia.example.test/en/lobby/AB2CD9", "AB2CD9"],
+    ["https://lobby-trivia.example.test/lobby/AB2CD9?x=1", "AB2CD9"],
+    ["https://lobby-trivia.example.test/lobby/AB2CD9/", "AB2CD9"],
+    ["https://lobby-trivia.example.test/lobby/AB2CD9#frag", "AB2CD9"],
+    ["https://lobby-trivia.example.test/", undefined],
+    ["https://lobby-trivia.example.test/game/AB2CD9", undefined],
+    ["https://lobby-trivia.example.test/lobby/toolongcode", undefined],
+    ["https://lobby-trivia.example.test/lobby/AB2CD", undefined] // 5 chars, too short
   ];
   it.each(cases)("%s -> %s", (url, expected) => {
     expect(extractLobbyCode(url)).toBe(expected);
@@ -475,7 +475,7 @@ describe("host-first handoff barrier + convergence", () => {
     // HYGIENE: the raw code + the raw origin never land in the bundle.
     const runText = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8");
     expect(runText).not.toContain("AB2CD9");
-    expect(runText).not.toContain("cineguessr.com");
+    expect(runText).not.toContain("lobby-trivia.example.test");
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -572,11 +572,11 @@ describe("host-first scheduling: host runs on a dedicated slot, never starved", 
 // ---------------------------------------------------------------------------
 describe("observed-origin convergence (redirect tolerated)", () => {
   it("seats observed on www while declared apex PASSES; publicOriginDigest = the OBSERVED origin", async () => {
-    // Declared appUrl is the apex https://cineguessr.com/, but every seat's CDP-observed final URL is
-    // on https://www.cineguessr.com (a normal apex->www 307 redirect). This must PASS: the convergence
+    // Declared appUrl is the apex https://lobby-trivia.example.test/, but every seat's CDP-observed final URL is
+    // on https://www.lobby-trivia.example.test (a normal apex->www 307 redirect). This must PASS: the convergence
     // proof is about the OBSERVED origin, and publicOriginDigest is derived from it (not the declared).
     const seen: CuaActorSessionOptions[] = [];
-    const { hooks } = makeExternalHooks(makeExternalRunSession({ seen, observedOrigin: "https://www.cineguessr.com" }));
+    const { hooks } = makeExternalHooks(makeExternalRunSession({ seen, observedOrigin: "https://www.lobby-trivia.example.test" }));
     const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
     expect(result.ok).toBe(true);
 
@@ -601,9 +601,9 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     const seen: CuaActorSessionOptions[] = [];
     const { hooks } = makeExternalHooks(makeExternalRunSession({
       seen,
-      observedOrigin: "https://www.cineguessr.com",
+      observedOrigin: "https://www.lobby-trivia.example.test",
       divergentPersonaId: "casual-friend", // player-3 lands on the apex origin instead
-      divergentOrigin: "https://cineguessr.com"
+      divergentOrigin: "https://lobby-trivia.example.test"
     }));
     const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
 
@@ -745,11 +745,11 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
 });
 
 // ---------------------------------------------------------------------------
-// 10. init template smoke: the committed cineguessr-3player lab.
+// 10. init template smoke: the committed lobby-trivia-3player lab.
 // ---------------------------------------------------------------------------
-describe("cineguessr-3player committed lab", () => {
+describe("lobby-trivia-3player committed lab", () => {
   it("parses, routes to concurrent-shared-world, and dry-runs $0 with a verified bundle", async () => {
-    const raw = parse(readFileSync(path.join(process.cwd(), "humanish", "labs", "cineguessr-3player.yaml"), "utf8")) as Record<string, unknown>;
+    const raw = parse(readFileSync(path.join(process.cwd(), "humanish", "labs", "lobby-trivia-3player.yaml"), "utf8")) as Record<string, unknown>;
     raw.schema = LAB_CONFIG_SCHEMA;
     const parsed = parseLabConfig(raw);
     expect(parsed.ok).toBe(true);
