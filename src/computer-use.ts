@@ -7,6 +7,7 @@ import {
   type ActorTrace,
   type ActorTraceItem
 } from "./actor-contract.js";
+import { classifyCuaAction, summarizeAffordanceUse, type AffordanceObservation } from "./affordance.js";
 import { commandFailureInfo, isCommandExitError } from "./command-failure.js";
 import type { RedactionHooks } from "./redaction.js";
 import {
@@ -494,6 +495,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const startedAtMs = now();
   const remaining = (): number => timeoutMs - (now() - startedAtMs);
   const items: ActorTraceItem[] = [];
+  // Affordance classification (#369): WHICH route the actor took, recorded per dispatched action.
+  // Collected here because the typed text exists only at dispatch — describeCuaAction deliberately
+  // destroys it before it can reach the trace. Only the CLASS (and a scheme-shaped signal) is kept.
+  const affordanceObservations: AffordanceObservation[] = [];
   const counts: Record<string, number> = {
     turns: 0,
     actions: 0,
@@ -752,6 +757,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           counts.materialActions = materialActions;
         }
         bump("actions");
+        // Classify BEFORE execute, mirroring counts.actions: the record is of what the actor
+        // CHOSE, so an action that then fails to actuate is still an honest record of the route
+        // it reached for.
+        affordanceObservations.push(classifyCuaAction(action));
         currentPhase = `executing ${actionTitle}`;
         // Record the action as completed only AFTER execute() resolves: a failed
         // action must not appear as a plainly-completed ui_action (#248). On
@@ -979,6 +988,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ids,
     counts,
     items,
+    ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
     ...(sawUsage ? { tokenUsage: { input: usageInput, output: usageOutput, total: usageInput + usageOutput } } : {}),
     capabilities: provider.capabilities
   };

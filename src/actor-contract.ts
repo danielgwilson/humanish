@@ -1,3 +1,4 @@
+import type { AffordanceUse } from "./affordance.js";
 import type { CodexAppServerRunResult, CodexAppServerStatus, CodexAppServerTrace } from "./codex-app-server.js";
 import type { ActorEstimatedCost } from "./pricing.js";
 import { redactText } from "./redaction.js";
@@ -128,6 +129,17 @@ export interface ActorTrace {
   reason: string;
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
   counts: Record<string, number>;
+  /**
+   * ADDITIVE + OPTIONAL affordance record (humanish.affordance-use.v1, #369): which KIND of route
+   * this actor took — pointer, keyboard, url-navigation, script-execution, devtools,
+   * browser-internal, observation — as per-class counts over the run's dispatched actions.
+   * Present on computer-use lanes that dispatched at least one action; absent elsewhere and on
+   * every pre-existing bundle (its absence is tolerated by verify). The harness records the class
+   * and states NO verdict: whether a class is faithful depends on the population the study
+   * declares, which is product semantics and belongs to the adopter's scorer. See
+   * docs/principles/actor-fidelity.md.
+   */
+  affordanceUse?: AffordanceUse;
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
   /**
