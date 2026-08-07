@@ -14,27 +14,27 @@ import { prefersReducedMotion } from "@/lib/theme";
  * JS — CSS stacks the panels as a readable list and covers resolve via IO.
  */
 
-const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">drawdb-study-20260801-wide-05</span>
-<span class="cy">date:</span> <span class="cv">2026-08-01</span>
+const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07T17-44-48-760Z-87389419</span>
+<span class="cy">date:</span> <span class="cv">2026-08-07</span>
 <span class="cy">subject:</span>
-  <span class="cc"># open-source DB diagram editor</span>
-  <span class="cy">app:</span> <span class="cv">drawDB</span>
-  <span class="cy">checkout:</span> <span class="cv">local · commit-pinned</span>
+  <span class="cc"># open-source virtual whiteboard</span>
+  <span class="cy">app:</span> <span class="cv">Excalidraw</span>
+  <span class="cy">clone:</span> <span class="cv">excalidraw/excalidraw · commit-pinned</span>
 <span class="cy">desktop:</span> <span class="cv">hosted sandbox · 1920×1080</span>
 <span class="cy">lanes:</span>
-  - <span class="ca">01</span> <span class="cv">create-customers</span>
-  - <span class="ca">02</span> <span class="cv">add-order-field</span>
-  - <span class="ca">03</span> <span class="cv">inspect-products-sql</span>
-  - <span class="ca">04</span> <span class="cv">add-canvas-note</span>`;
+  - <span class="ca">01</span> <span class="cv">diagram-login-flow</span>
+  - <span class="ca">02</span> <span class="cv">sticky-notes</span>
+  - <span class="ca">03</span> <span class="cv">export-drawing</span>
+  - <span class="ca">04</span> <span class="cv">sketch-shapes</span>`;
 
-const RAIL_ITEMS: Array<[string, string, string]> = [
+const RAIL_ITEMS: Array<[string, string, string, boolean?]> = [
   ["00", "Brief", "the lab, in YAML"],
-  ["01", "Lane 01", "create-customers"],
-  ["02", "Lane 02", "add-order-field"],
-  ["03", "Lane 03", "inspect-products-sql"],
-  ["04", "Lane 04", "add-canvas-note"],
+  ["01", "Lane 01", "diagram-login-flow"],
+  ["02", "Lane 02", "sticky-notes"],
+  ["03", "Lane 03", "export-drawing"],
+  ["04", "Lane 04", "sketch-shapes · gave up", true],
   ["05", "Bundle", "what landed in .humanish/"],
-  ["06", "Verify", "15/15 checks"]
+  ["06", "Verify", "16/16 checks"]
 ];
 
 const LANES: Array<{
@@ -42,35 +42,45 @@ const LANES: Array<{
   name: string;
   img: string;
   alt: string;
+  reportLabel: string;
   report: string;
+  passed: boolean;
 }> = [
   {
     idx: "01",
-    name: "create-customers",
-    img: "/study/lane1.jpg",
-    alt: "Keyframe from lane 01: the drawDB editor on the sandbox desktop with a customers table holding an email TEXT field",
-    report: "customers + email (TEXT)"
+    name: "diagram-login-flow",
+    img: "/study/excalidraw-lane1.jpg",
+    alt: "Keyframe from lane diagram-login-flow: the Excalidraw canvas on the sandbox desktop with two rectangles labeled Login and Dashboard connected by an arrow",
+    reportLabel: "Final report — verbatim",
+    report: "Done",
+    passed: true
   },
   {
     idx: "02",
-    name: "add-order-field",
-    img: "/study/lane2.jpg",
-    alt: "Keyframe from lane 02: the drawDB editor on the sandbox desktop with an orders table holding a customer_id INTEGER field",
-    report: "orders + customer_id (INTEGER)"
+    name: "sticky-notes",
+    img: "/study/excalidraw-lane2.jpg",
+    alt: "Keyframe from lane sticky-notes: the Excalidraw canvas on the sandbox desktop with three colored to-do notes — Draft plan, Call team, Buy supplies",
+    reportLabel: "Final report — verbatim",
+    report: "Done.",
+    passed: true
   },
   {
     idx: "03",
-    name: "inspect-products-sql",
-    img: "/study/lane3.jpg",
-    alt: "Keyframe from lane 03: drawDB export dialog on the sandbox desktop showing generated CREATE TABLE SQL for products",
-    report: "products SQL generated"
+    name: "export-drawing",
+    img: "/study/excalidraw-lane4.jpg",
+    alt: "Keyframe from lane export-drawing: the Excalidraw canvas on the sandbox desktop with a single large rectangle, deselected after the export flow",
+    reportLabel: "Final report — verbatim",
+    report: "Done",
+    passed: true
   },
   {
     idx: "04",
-    name: "add-canvas-note",
-    img: "/study/lane4.jpg",
-    alt: "Keyframe from lane 04: the drawDB canvas on the sandbox desktop with a newly created note element",
-    report: "note created"
+    name: "sketch-shapes",
+    img: "/study/excalidraw-lane3.jpg",
+    alt: "Keyframe from lane sketch-shapes: the Excalidraw canvas on the sandbox desktop with an ellipse, a rectangle, stray line strokes, and the freehand tool panel open — the lane gave up here",
+    reportLabel: "Recorded reason — verbatim",
+    report: "gave up: 8 consecutive turns with no change to the UI state",
+    passed: false
   }
 ];
 
@@ -206,12 +216,12 @@ export default function PinnedReplay() {
   return (
     <div className="wt-track" id="runtrack" ref={trackRef}>
       <div className="wt-sticky">
-        <p className="runband" aria-hidden="true"><span>Run <b>drawdb-study-20260801-wide-05</b> · 2026-08-01</span><span>4/4 lanes passed · verify 15/15 checks</span></p>
+        <p className="runband" aria-hidden="true"><span>Run <b>cua-2026-08-07T17-44-48-760Z-87389419</b> · 2026-08-07</span><span>3/4 lanes passed · verify 16/16 checks</span></p>
         <nav className="rail" aria-label="Run steps">
           <span className="rail-k">Replay · one real run</span>
           <span className="rtrack" aria-hidden="true"><i id="pf"></i></span>
-          {RAIL_ITEMS.map(([ridx, b, i], k) => (
-            <button className="ritem" data-i={k} key={ridx}>
+          {RAIL_ITEMS.map(([ridx, b, i, fail], k) => (
+            <button className={fail ? "ritem ritem-fail" : "ritem"} data-i={k} key={ridx}>
               <span className="ridx">{ridx}</span>
               <span className="rtx"><b>{b}</b><i>{i}</i></span>
             </button>
@@ -223,21 +233,21 @@ export default function PinnedReplay() {
             <header className="pbar"><span className="pl"><b className="pidx">00</b><span className="pname">brief · the lab</span></span><span className="pr">lab.yaml</span></header>
             <div className="pbody pbody-brief">
               <dl className="brief-facts">
-                <div><dt>Subject</dt><dd>drawDB</dd></div>
+                <div><dt>Subject</dt><dd>Excalidraw</dd></div>
                 <div><dt>Desktop</dt><dd>hosted · 1920×1080</dd></div>
                 <div><dt>Lanes</dt><dd>4 · parallel</dd></div>
-                <div><dt>Date</dt><dd>2026-08-01</dd></div>
+                <div><dt>Date</dt><dd>2026-08-07</dd></div>
               </dl>
               <pre className="code" dangerouslySetInnerHTML={{ __html: BRIEF_YAML }} />
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">The lab</span>One YAML lab declares the personas, their missions, and a commit-pinned drawDB checkout. Each lane gets its own hosted 1920×1080 desktop.</p></footer>
+            <footer className="pcap"><p className="prep"><span className="plab">The lab</span>One YAML lab declares the personas, their missions, and a commit-pinned Excalidraw clone. Each lane gets its own hosted 1920×1080 desktop.</p></footer>
           </article>
 
           {LANES.map((lane, i) => (
             <article className="panel" data-i={i + 1} key={lane.idx} {...(i === 0 ? { "data-sizer": "" } : {})}>
               <header className="pbar"><span className="pl"><b className="pidx">{lane.idx}</b><span className="pname">{lane.name}</span></span><span className="pr">observer · replay</span></header>
               <div className="pmedia"><img src={lane.img} alt={lane.alt} /><CoverCanvas n={lane.idx} /></div>
-              <footer className="pcap"><p className="prep"><span className="plab">Final report — verbatim</span><q>{lane.report}</q></p><span className="chip chip-pass">Passed</span></footer>
+              <footer className="pcap"><p className="prep"><span className="plab">{lane.reportLabel}</span><q>{lane.report}</q></p>{lane.passed ? <span className="chip chip-pass">Passed</span> : <span className="chip chip-dot chip-mute">Gave up</span>}</footer>
             </article>
           ))}
 
@@ -245,12 +255,12 @@ export default function PinnedReplay() {
             <header className="pbar"><span className="pl"><b className="pidx">05</b><span className="pname">bundle · evidence</span></span><span className="pr">.humanish/ · gitignored</span></header>
             <div className="pbody">
               <div className="ledger">
-                <div className="lh">.humanish/drawdb-study-20260801-wide-05<span>4 lanes</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>screenshots</span><span className="ld">every screenshot each persona saw</span></div>
+                <div className="lh">.humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419<span>4 lanes</span></div>
+                <div className="lrow"><span className="ln"><em>├</em>screenshots</span><span className="ld">every screenshot each persona saw · 28 frames</span></div>
                 <div className="lrow"><span className="ln"><em>├</em>action traces</span><span className="ld">ordered, end to end</span></div>
                 <div className="lrow"><span className="ln"><em>├</em>lifecycle events</span><span className="ld">launch to landing</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>estimated cost</span><span className="ld">at dated rates · est —</span></div>
-                <div className="lrow"><span className="ln"><em>└</em>wall-clock</span><span className="ld">— · not recorded</span></div>
+                <div className="lrow"><span className="ln"><em>├</em>estimated cost</span><span className="ld">~$1.54 · estimated (rates as of 2026-08-05)</span></div>
+                <div className="lrow"><span className="ln"><em>└</em>wall-clock</span><span className="ld">6m 06s · run created → last lane landed</span></div>
               </div>
             </div>
             <footer className="pcap"><p className="prep"><span className="plab">Where it lands</span>The run lands in gitignored <code>.humanish/</code>: every screenshot each persona saw, ordered action traces, lifecycle events, and estimated cost at dated rates.</p></footer>
@@ -264,11 +274,11 @@ export default function PinnedReplay() {
                 <p className="vln"><span className="vok">ok</span>  redaction passed</p>
                 <p className="vln"><span className="vok">ok</span>  actor engagement: live actor traces that claim goal_satisfied carry at least one action or message</p>
                 <p className="vln"><span className="vok">ok</span>  actor verdict consistency: live pass verdicts do not hide failed, blocked, or timed-out actor traces</p>
-                <p className="vln vdim">… 12 more checks</p>
-                <p className="vln vsum">15/15 passed → status: local_only <span className="vdim">(RAW_SCREENSHOTS)</span></p>
+                <p className="vln vdim">… 13 more checks</p>
+                <p className="vln vsum">16/16 passed → status: local_only <span className="vdim">(RAW_SCREENSHOTS)</span></p>
               </div>
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">The gate</span><code>humanish verify</code> grades the bundle fail-closed. This run: 15/15 checks passed — and the bundle still grades <code>local_only</code>, because it holds full-fidelity screenshots. Publishing these crops was a reviewed, deliberate act.</p></footer>
+            <footer className="pcap"><p className="prep"><span className="plab">The gate</span><code>humanish verify</code> grades the bundle fail-closed. This run: 16/16 checks passed — and the bundle still grades <code>local_only</code>, because it holds full-fidelity screenshots. Publishing these crops was a reviewed, deliberate act.</p></footer>
           </article>
         </div>
       </div>

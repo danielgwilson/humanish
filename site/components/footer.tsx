@@ -19,7 +19,7 @@ export default function Footer() {
           </nav>
           <nav className="foot-block" aria-label="Evidence">
             <span className="fl">Evidence</span>
-            <a href="#study">drawDB study</a>
+            <a href="#study">Excalidraw study</a>
             <a href="#study">Verify checks</a>
           </nav>
           <nav className="foot-block" aria-label="Source">
@@ -31,7 +31,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="provenance">
-        <p>Run <code>drawdb-study-20260801-wide-05</code> · 2026-08-01 · 4/4 lanes passed · verify 15/15 checks. drawDB is the application studied; it is not a Humanish adopter or endorser.</p>
+        <p>Run <code>cua-2026-08-07T17-44-48-760Z-87389419</code> · 2026-08-07 · 3/4 lanes passed · verify 16/16 checks. Excalidraw is the application studied; it is not a Humanish adopter or endorser.</p>
         <span className="lic">MIT © humanish</span>
       </div>
     </footer>

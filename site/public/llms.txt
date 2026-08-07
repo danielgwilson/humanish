@@ -23,20 +23,22 @@ For coding agents: `npx skills add danielgwilson/humanish`
 
 No staging URL is required: the sandbox clones your repo, builds it, and serves it.
 
-## Worked example: the drawDB study
+## Worked example: the Excalidraw study
 
-Run `drawdb-study-20260801-wide-05` (2026-08-01): four computer-use lanes on hosted
-1920×1080 desktops drove a commit-pinned checkout of drawDB, an open-source database
-diagram editor. 4/4 lanes passed; `humanish verify` ran 15/15 checks.
+Run `cua-2026-08-07T17-44-48-760Z-87389419` (2026-08-07): four computer-use lanes on
+hosted 1920×1080 desktops drove a commit-pinned clone of Excalidraw
+(excalidraw/excalidraw@4872083c), an open-source virtual whiteboard. 3/4 lanes passed;
+one gave up; `humanish verify` ran 16/16 checks. Wall-clock 6m 06s; estimated cost
+~$1.54 (rates as of 2026-08-05).
 
 Lanes and verbatim persona final reports:
 
-- create-customers — "customers + email (TEXT)"
-- add-order-field — "orders + customer_id (INTEGER)"
-- inspect-products-sql — "products SQL generated"
-- add-canvas-note — "note created"
+- diagram-login-flow — "Done"
+- sticky-notes — "Done."
+- export-drawing — "Done"
+- sketch-shapes — "gave up: 8 consecutive turns with no change to the UI state"
 
-drawDB is the application studied; it is not a Humanish adopter or endorser.
+Excalidraw is the application studied; it is not a Humanish adopter or endorser.
 
 ## Guarantees (by construction)
 

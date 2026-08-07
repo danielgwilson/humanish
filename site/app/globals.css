@@ -447,6 +447,9 @@ h2 em { font-style: italic; font-weight: 400 }
 .ritem.on .ridx { color: var(--accent-ink) }
 .ritem.done .ridx { color: var(--accent-ink) }
 .ritem.done .rtx b::after { content: " ✓"; color: var(--accent-ink); font-size: 12px }
+/* The failed lane never earns the visited ✓ — its subtitle carries the state. */
+.ritem.ritem-fail.done .ridx { color: var(--muted) }
+.ritem.ritem-fail.done .rtx b::after { content: "" }
 
 .stage { position: relative }
 @media (min-width: 1024px) { html.js .stage { max-width: min(100%, calc((100vh - 168px) * 1.845)) } }
