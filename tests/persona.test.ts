@@ -88,6 +88,35 @@ describe("personaToDirectives", () => {
     expect(personaToDirectives(patientNovice).accessibilityBehavior).toBeUndefined();
   });
 
+  // A trait describes how competently an actor works the surfaces its population uses; it must not
+  // name an affordance that ESCAPES those surfaces. The `high` skill directive once read "inspect
+  // configuration, and try the recovery paths an expert would", which a computer-use actor could
+  // honestly read as license to open devtools or type a `javascript:` URL — so a human-persona run
+  // could route around the friction the study measured and still come back green. Whether such an
+  // affordance is in scope belongs to the declared population, never to a trait table, so no
+  // directive may name one. See docs/principles/actor-fidelity.md.
+  it("no trait directive names an out-of-band affordance (the trait table must not license escaping the UI)", () => {
+    const outOfBand = [
+      /\bdevtools?\b/i,
+      /\bdeveloper tools\b/i,
+      /\bconsole\b/i,
+      /\bjavascript:/i,
+      /\binject\b/i,
+      /\bexecute\s+(?:js|script)/i,
+      /\bapi\s+(?:call|endpoint)/i,
+      /\binspect\s+(?:the\s+)?(?:config|configuration|dom|element)/i
+    ];
+    const everyDirective = [impatientExpert, patientNovice].flatMap((persona) => {
+      const directives = personaToDirectives(persona);
+      return [directives.frictionTolerance, directives.skillBias, directives.accessibilityBehavior ?? ""];
+    });
+    for (const directive of everyDirective) {
+      for (const pattern of outOfBand) {
+        expect(directive, `directive names an out-of-band affordance: ${directive}`).not.toMatch(pattern);
+      }
+    }
+  });
+
   it("reports the applied trait keys exactly", () => {
     expect(personaToDirectives(impatientExpert).traitsApplied).toEqual([
       "patience:low",
