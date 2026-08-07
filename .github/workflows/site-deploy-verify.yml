@@ -1,0 +1,50 @@
+name: Site deploy verify
+
+# Verifies that production actually serves every site change pushed to main.
+# A deploy status alone is not proof: a missed build event or an over-eager
+# ignore step leaves the domain silently serving stale content. The site
+# stamps its build commit into <meta name="humanish-deploy-sha">; this job
+# polls production until that stamp is the pushed commit (or a descendant),
+# and fails loudly if it never lands.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "site/**"
+      - ".github/workflows/site-deploy-verify.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Wait for production to serve this commit
+        run: |
+          url="https://humanish.dev"
+          deadline=$((SECONDS + 600))
+          while [ $SECONDS -lt $deadline ]; do
+            served=$(curl -fsSL --max-time 20 "$url/?deploycheck=$GITHUB_RUN_ID" \
+              | grep -oE 'humanish-deploy-sha" content="[0-9a-f]{40}"' \
+              | grep -oE '[0-9a-f]{40}' || true)
+            if [ -n "$served" ]; then
+              git fetch origin main --quiet || true
+              if [ "$served" = "$GITHUB_SHA" ] || git merge-base --is-ancestor "$GITHUB_SHA" "$served" 2>/dev/null; then
+                echo "production serves $served (contains $GITHUB_SHA)"
+                exit 0
+              fi
+              echo "production serves $served — waiting for $GITHUB_SHA"
+            else
+              echo "no deploy-sha stamp served yet — waiting"
+            fi
+            sleep 20
+          done
+          echo "::error::production never served $GITHUB_SHA within 10 minutes — the Vercel deploy for this push is missing, canceled, or stale"
+          exit 1
