@@ -84,6 +84,8 @@ import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
+import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
@@ -555,13 +557,26 @@ export function composeLaneInstructions(args: {
   persona?: string;
   instruction?: string;
   device: { name: string; preset: DevicePreset };
+  /** The COMPILED persona for `args.persona`, when its committed file resolved (#381). Supplying it
+   *  makes the persona shape behavior — its traits become directives in the prompt and land in
+   *  traitsApplied — instead of appearing as a bare `Persona: <id>.` label. Absent (unsafe id,
+   *  no committed file, unparseable YAML) keeps the honest fallback: the bare line and an EMPTY
+   *  traitsApplied, never fabricated traits. Resolved by the caller so this stays pure. */
+  resolvedPersona?: ResolvedPersona;
 }): { instructions: string; persona: ActorPersonaRef } {
   const { name, preset } = args.device;
   const deviceLine = preset.isMobile
     ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
     : `You are a desktop user (${name}, ${preset.width}x${preset.height}).`;
+  // A resolved persona contributes its compiled directives (friction tolerance, skill bias,
+  // accessibility behavior, constraints) through the SAME persona.ts compiler the terminal lane
+  // uses, so one persona file means one behavior across every route.
+  const personaLine = args.resolvedPersona
+    ? renderPersonaPromptSection(args.resolvedPersona)
+    : args.persona ? `Persona: ${args.persona}.` : undefined;
+  const traitsApplied = args.resolvedPersona ? personaToDirectives(args.resolvedPersona).traitsApplied : [];
   const parts = [
-    args.persona ? `Persona: ${args.persona}.` : undefined,
+    personaLine,
     deviceLine,
     args.mission,
     args.instruction ? `Lane focus: ${args.instruction}` : undefined
@@ -571,7 +586,7 @@ export function composeLaneInstructions(args: {
     instructions,
     persona: {
       id: args.persona ?? "cua-operator",
-      traitsApplied: [],
+      traitsApplied,
       promptDigest: digestText(instructions, 16)
     }
   };
@@ -717,7 +732,7 @@ interface LaneSpecsAndPlan {
  *  --count for homogeneous fan-out (ignored when a `lanes` roster is declared). */
 function laneSpecsAndPlan(
   config: LabConfig,
-  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean } = {}
+  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean; personas?: Map<string, ResolvedPersona> } = {}
 ): LaneSpecsAndPlan {
   const env = opts.env ?? {};
   const actor = config.actors[0];
@@ -732,9 +747,12 @@ function laneSpecsAndPlan(
     const simId = `sim-${String(i + 1).padStart(3, "0")}`;
     const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
     const device = resolveLaneDevice(config, lane);
+    const personaId = (roster ? lane?.persona : actor?.persona) as string | undefined;
+    const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeLaneInstructions({
       mission,
-      ...(((roster ? lane?.persona : actor?.persona)) === undefined ? {} : { persona: (roster ? lane?.persona : actor?.persona) as string }),
+      ...(personaId === undefined ? {} : { persona: personaId }),
+      ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(((roster ? lane?.instruction : actor?.laneFocus?.instruction)) === undefined ? {} : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
       device: { name: device.name, preset: device.preset }
     });
@@ -914,7 +932,7 @@ function snapshotPriorCuaLane(stream: RunStream): { laneId: string; previous: Ru
  */
 export function resolveCuaLanePlan(
   config: LabConfig,
-  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean } = {}
+  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean; personas?: Map<string, ResolvedPersona> } = {}
 ): CuaLanePlan {
   return laneSpecsAndPlan(config, opts).plan;
 }
@@ -2778,11 +2796,19 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     return fail("HUMANISH_CUA_LAB_FANOUT_INVALID", fanoutReason, descriptor.id);
   }
 
+  // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
+  // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
+  const personaResolution = await resolveCommittedPersonas(projectRoot, labPersonaIds(config));
+  for (const warning of personaResolution.warnings) {
+    process.stderr.write(`humanish: ${warning}\n`);
+  }
+
   // Resolve the lane plan (pure) — the SAME table for dry-run and live.
   let { lanes: laneSpecs, plan } = laneSpecsAndPlan(config, {
     ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
     env,
-    dryRun
+    dryRun,
+    personas: personaResolution.personas
   });
   let laneCount = laneSpecs.length;
 

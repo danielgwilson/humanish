@@ -38,6 +38,8 @@ import {
 } from "./browser-evidence-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
+import type { ResolvedPersona } from "./persona.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
@@ -504,16 +506,22 @@ export function seedRecipeDigest(config: LabConfig): string {
 }
 
 /** Build the resolved role roster from actors[0].lanes (the role roster). */
-function buildRoleSpecs(config: LabConfig, serveUrl: string): RoleSpec[] {
+function buildRoleSpecs(
+  config: LabConfig,
+  serveUrl: string,
+  personas: Map<string, ResolvedPersona>
+): RoleSpec[] {
   const actor = config.actors[0];
   const mission = actor?.mission ?? DEFAULT_MISSION;
   const roster = actor?.lanes ?? [];
   return roster.map((lane: LabActorLane, i): RoleSpec => {
     const roleId = lane.id ?? `role-${String(i + 1).padStart(2, "0")}`;
     const device = resolveLaneDevice(config, lane);
+    const resolvedPersona = lane.persona === undefined ? undefined : personas.get(lane.persona);
     const composed = composeLaneInstructions({
       mission,
       ...(lane.persona === undefined ? {} : { persona: lane.persona }),
+      ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(lane.instruction === undefined ? {} : { instruction: lane.instruction }),
       device: { name: device.name, preset: device.preset }
     });
@@ -577,7 +585,9 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   const subjectRepo = config.subject.repos?.[0] ?? "";
   const subjectEnvNames = config.subject.env ?? [];
   const checkpoints = config.subject.state?.checkpoint ?? [];
-  const roleSpecs = buildRoleSpecs(config, serve.url);
+  // Compile committed personas so each seat's prompt carries real behavioral directives (#381).
+  const personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(config));
+  const roleSpecs = buildRoleSpecs(config, serve.url, personaResolution.personas);
   const roleCount = roleSpecs.length;
   const runSession = hooks.runSession ?? descriptor.runSession;
 

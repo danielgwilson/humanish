@@ -45,6 +45,8 @@ import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./
 import { toErrorMessage } from "./command-failure.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
+import type { ResolvedPersona } from "./persona.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
@@ -548,12 +550,19 @@ function laneTaxonomyLabel(spec: Pick<CuaLaneSpec, "actorType" | "surface" | "ca
 
 /** Build one actor lane's CuaLaneSpec from a roster role (per-actor device IS honored here — each
  *  actor has its OWN desktop, unlike the sequential one-sandbox PoC). */
-function buildActorSpec(config: LabConfig, role: LabActorLane, index: number): CuaLaneSpec {
+function buildActorSpec(
+  config: LabConfig,
+  role: LabActorLane,
+  index: number,
+  personas: Map<string, ResolvedPersona>
+): CuaLaneSpec {
   const mission = config.actors[0]?.mission ?? DEFAULT_MISSION;
   const device = resolveLaneDevice(config, role);
+  const resolvedPersona = role.persona === undefined ? undefined : personas.get(role.persona);
   const composed = composeLaneInstructions({
     mission,
     ...(role.persona === undefined ? {} : { persona: role.persona }),
+    ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
     ...(role.instruction === undefined ? {} : { instruction: role.instruction }),
     device: { name: device.name, preset: device.preset }
   });
@@ -773,7 +782,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const warnings: string[] = [];
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   const stateSnapshots: SharedWorldStateSnapshot[] = [];
-  const actorSpecs = roles.map((role, i) => buildActorSpec(config, role, i));
+  // Compile committed personas so each seat's prompt carries real behavioral directives (#381).
+  const personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(config));
+  const actorSpecs = roles.map((role, i) => buildActorSpec(config, role, i, personaResolution.personas));
   let actorResults: ActorLaneResult[] = [];
   let subjectCommit: string | undefined;
   let subjectSandboxId: string | undefined;
