@@ -62,22 +62,34 @@ actors:
         # The harness already raises this lane's idle backstop (HOST_WAIT_IDLE_STEPS); this stops the
         # MODEL from declaring itself done first.
         instruction: >-
-          Create a lobby. You will be alone in the waiting room at first, which is normal: your
+          Create a lobby. While you wait in the waiting room, open the host settings and pick the
+          shortest round timer so the game moves fast. You will be alone at first, which is normal: your
           friends are still opening the app on their own phones and will appear over the next minute.
           Keep waiting and re-checking the player list. Do NOT end your turn while you are waiting,
           and do NOT treat being alone as being blocked. Once the other players show up, start the
-          game and play your guesses.
+          game and play your guesses. Use only the page itself: never type into the browser address
+          bar for anything except a web address.
       - id: player-2
         device: mobile
         persona: competitive-friend
-        instruction: Join the lobby you're told the code for, then play your guesses.
+        instruction: >-
+          Join the lobby you're told the code for, then play your guesses. Pick a name that is
+          actually yours, not the example shown in the name field. Use only the page itself: never
+          type into the browser address bar for anything except a web address.
       - id: player-3
         device: small-mobile # 360x740 small-phone LAYOUT
         persona: casual-friend
-        instruction: Join the lobby you're told the code for, then play your guesses.
+        instruction: >-
+          Join the lobby you're told the code for, then play your guesses. Pick a name that is
+          actually yours, not the example shown in the name field. Use only the page itself: never
+          type into the browser address bar for anything except a web address.
 execution:
   target: e2b-desktop # required: each persona drives a hosted desktop browser (mobile LAYOUT)
-  timeoutMs: 120000 # PER-PERSONA session budget; also caps the host-first handoff deadline
+  # PER-PERSONA session budget; also caps the host-first handoff deadline. Budget the WHOLE arc:
+  # ~35s seat provisioning + ~45s shared-session assembly + the subject app's own round pacing. A
+  # first live run of this worked example died at 120000 with every seat expiring mid round 1 and
+  # zero guesses submitted. 7 minutes fits a full game once the host picks the fastest timer.
+  timeoutMs: 420000
   concurrency: 3 # all 3 seats live at once (also the default when omitted: concurrency = seat count); lower it only to cap simultaneous paid desktops
 scenario:
   mode: dry-run # default; the live path opens 3 real mobile-layout seats against the public app
