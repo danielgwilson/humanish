@@ -589,8 +589,10 @@ export interface LabCommsEmail {
    * The subject-env var the harness sets to the in-sandbox catch's base URL — ADOPTER-NAMED (an app
    * calling Resend's API directly reads `RESEND_API_URL`; an app using the SDK reads `RESEND_BASE_URL`).
    * The value is computed by the harness (a loopback URL), so it is NOT declared in `subject.env`.
+   * REQUIRED on the provisioned routes; absent (and meaningless) when `external` is declared,
+   * because there the adopter runs the catch and points their own app at it.
    */
-  injectEnv: string;
+  injectEnv?: string;
   /** Fixed in-sandbox loopback port the catch listens on (default 8025). Known before sandbox create. */
   port?: number;
   /** Optional escape hatch: the exact absolute origin the app-under-test bakes into its email verify
@@ -609,6 +611,25 @@ export interface LabCommsEmail {
    *  and its lane gets no inbox instruction; captured mail to an undeclared address is warned,
    *  never silently dropped. */
   recipients?: LabCommsRecipient[];
+  /**
+   * ADOPTER-HOSTED ingress (#328). Declaring this says: the operator runs the catch and the inbox
+   * themselves, so humanish neither provisions the subject nor injects `injectEnv` — it points the
+   * persona at the declared inbox, drains the declared catch over HTTP at teardown, and writes the
+   * same digest-only evidence. This is what makes comms work on the app-url / operator-provisioned
+   * plane, where humanish holds no sandbox handle to host a catch in and the block was previously
+   * warned inert. Run the same implementation with `humanish comms catch`.
+   */
+  external?: LabCommsExternal;
+}
+
+export interface LabCommsExternal {
+  /** Where the adopter's app POSTs its email sends, and where humanish reads GET /deliveries. */
+  catchBaseUrl: string;
+  /** Where the persona opens its inbox. Defaults to catchBaseUrl (one server serves both). */
+  inboxBaseUrl?: string;
+  /** Env var NAME holding the bearer token for the drain read. The NAME is recorded as evidence;
+   *  the value is read at runtime and never persisted (the credential-boundary discipline). */
+  authTokenEnv?: string;
 }
 
 export interface LabCommsRecipient {
@@ -1491,8 +1512,19 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // provisions (clone or local-tree) so it holds a handle to host the catch. On an app-url /
   // operator-provided subject there is no such handle, so a declared comms block would silently
   // collect nothing — a false green. Warn at parse time (fires on inspect + dry-run too).
-  if (config.comms?.email && config.subject.source !== "clone" && config.subject.source !== "local-tree") {
-    inert.push("comms.email (the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle and no comms evidence is collected)");
+  if (
+    config.comms?.email
+    && config.comms.email.external === undefined
+    && config.subject.source !== "clone"
+    && config.subject.source !== "local-tree"
+  ) {
+    inert.push("comms.email (the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle. Declare `comms.email.external` to run the catch yourself: humanish then points the persona at your inbox, drains your catch, and writes the same evidence — see #328)");
+  }
+  // The reverse mis-config: declaring an adopter-hosted catch on a route where humanish provisions
+  // the subject itself. Two catches would exist and the app would point at humanish's, so the
+  // declared external one would silently collect nothing.
+  if (config.comms?.email?.external && (config.subject.source === "clone" || config.subject.source === "local-tree")) {
+    inert.push("comms.email.external (this subject is harness-provisioned, so humanish hosts the catch itself and injects its URL; an adopter-hosted catch would receive nothing. Drop `external` here, or move the study to an app-url/operator-provisioned subject)");
   }
   // The SEQUENTIAL shared-world route has no comms wiring at all (no catch deploy, no inbox
   // instruction) — a comms block there does nothing, and the actors are never told an inbox
@@ -2628,14 +2660,52 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   if (raw.kind !== undefined && raw.kind !== "fake") {
     return invalid("`comms.email.kind` must be `fake`.");
   }
-  const injectEnv = str(raw.injectEnv);
-  if (injectEnv === undefined) {
-    return invalid("`comms.email.injectEnv` is required — the subject-env var the harness sets to the catch base URL (e.g. RESEND_API_URL).");
+  // external ingress (#328): the ADOPTER runs the catch, so there is no subject env for humanish to
+  // inject and `injectEnv` becomes meaningless rather than merely unused — the operator points their
+  // own app at their own catch. Parse it first so the injectEnv requirement can key off it.
+  let external: LabCommsExternal | undefined;
+  if (raw.external !== undefined) {
+    if (!isRecord(raw.external)) return invalid("`comms.email.external` must be a mapping.");
+    const catchBaseUrl = str(raw.external.catchBaseUrl);
+    if (catchBaseUrl === undefined) {
+      return invalid("`comms.email.external.catchBaseUrl` is required — the base URL of the catch YOU run (humanish reads its GET /deliveries and your app POSTs its sends to it).");
+    }
+    for (const [field, value] of [["catchBaseUrl", catchBaseUrl], ["inboxBaseUrl", str(raw.external.inboxBaseUrl)]] as const) {
+      if (value === undefined) continue;
+      let parsed: URL;
+      try {
+        parsed = new URL(value);
+      } catch {
+        return invalid(`\`comms.email.external.${field}\` must be an absolute http(s) URL (got "${value}").`);
+      }
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return invalid(`\`comms.email.external.${field}\` must be an absolute http(s) URL (got "${value}").`);
+      }
+    }
+    const authTokenEnv = str(raw.external.authTokenEnv);
+    if (authTokenEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(authTokenEnv)) {
+      return invalid(`\`comms.email.external.authTokenEnv\` must be a valid env var NAME (got "${authTokenEnv}"); the value is read at runtime and never persisted.`);
+    }
+    const inboxBaseUrl = str(raw.external.inboxBaseUrl);
+    external = {
+      catchBaseUrl,
+      ...(inboxBaseUrl === undefined ? {} : { inboxBaseUrl }),
+      ...(authTokenEnv === undefined ? {} : { authTokenEnv })
+    };
   }
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
+
+  const injectEnv = str(raw.injectEnv);
+  if (injectEnv === undefined && external === undefined) {
+    return invalid("`comms.email.injectEnv` is required — the subject-env var the harness sets to the catch base URL (e.g. RESEND_API_URL). On an adopter-hosted plane declare `comms.email.external` instead: you run the catch and point your own app at it.");
+  }
+  if (injectEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
     return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
   }
-  const email: LabCommsEmail = { kind: "fake", injectEnv };
+  const email: LabCommsEmail = {
+    kind: "fake",
+    ...(injectEnv === undefined ? {} : { injectEnv }),
+    ...(external === undefined ? {} : { external })
+  };
   if (raw.port !== undefined) {
     const port = posInt(raw.port);
     if (port === undefined) return invalid("`comms.email.port` must be a positive integer.");

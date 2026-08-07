@@ -1808,7 +1808,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   // evidence path folded into the lane outcome.
   let deployedComms: DeployedCommsCatch | undefined;
   let commsArtifactPath: string | undefined;
-  const commsEnv: Record<string, string> = commsEmail && commsPort !== undefined
+  // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
+  // because the operator points their own app at their own catch.
+  const commsEnv: Record<string, string> = commsEmail?.injectEnv !== undefined && commsPort !== undefined
     ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
     : {};
   // Persona inbox SURFACE (#297 slice B): the loopback URL the persona opens to read captured mail; the

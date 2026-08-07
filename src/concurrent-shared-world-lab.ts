@@ -64,7 +64,7 @@ import {
   type LaneRunOutcome,
   type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
-import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, collectExternalCommsThread, deployCommsCatch, externalCatchHealthy, externalInboxUrl, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
 import { FakeInbox } from "./comms-fake-inbox.js";
 import { buildOriginMap, type OriginMap } from "./comms-inbox.js";
 import type { CommsAddress } from "./comms-types.js";
@@ -171,7 +171,10 @@ export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT";
+  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
+  /** A declared adopter-hosted comms catch (#328) did not answer as a humanish catch — fail closed
+   *  BEFORE any actor spend, since the funnel would silently collect nothing. */
+  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
 
 /** The two plane classes of the concurrent shared-world route (#164 phase 2). */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
@@ -796,12 +799,34 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   // external-public plane (the app is an operator-owned deployment the harness never provisions).
   const commsEmail = planeClass === "provisioned-getHost" ? config.comms?.email : undefined;
   const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
-  const commsEnv: Record<string, string> = commsEmail && commsPort !== undefined
+  // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
+  // because the operator points their own app at their own catch.
+  const commsEnv: Record<string, string> = commsEmail?.injectEnv !== undefined && commsPort !== undefined
     ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
     : {};
   let commsArtifactPath: string | undefined;
-  if (config.comms?.email && planeClass === "external-public") {
-    warnings.push("comms.email is declared but this is the external-public plane (the shared plane is an operator-owned public deployment the harness does not provision) — the in-sandbox email catch cannot be deployed and no comms evidence is collected.");
+  // ADOPTER-HOSTED ingress (#328): on the external-public plane the harness provisions nothing, so
+  // it cannot host a catch — but the OPERATOR can, and then humanish still does every other part of
+  // the funnel: it tells each persona its address and inbox URL, drains the declared catch over
+  // HTTP at teardown, and writes the same digest-only evidence. Declaring `external` is what turns
+  // the previously-inert block into a working one.
+  const externalComms = planeClass === "external-public" ? config.comms?.email?.external : undefined;
+  const externalCommsEmail = externalComms ? config.comms?.email : undefined;
+  if (config.comms?.email && planeClass === "external-public" && externalComms === undefined) {
+    warnings.push("comms.email is declared but this is the external-public plane (the shared plane is an operator-owned public deployment the harness does not provision) — the in-sandbox email catch cannot be deployed and no comms evidence is collected. Declare `comms.email.external` to host the catch yourself (#328).");
+  }
+
+  if (externalComms) {
+    commsInboxUrl = externalInboxUrl(externalComms);
+    // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable
+    // collects nothing while every lane still spends. The probe asserts OUR service marker in
+    // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
+    if (!dryRun && !(await externalCatchHealthy(externalComms))) {
+      return fail(
+        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+        `comms.email.external.catchBaseUrl is not reachable as a humanish comms catch (GET /health must return the humanish-comms-catch service marker). Start it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`
+      );
+    }
   }
 
   // EXTERNAL-PUBLIC plane state (#164 phase 2). publicAppUrl is the operator-declared shared plane;
@@ -1148,8 +1173,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
         const route = resolveActorSeatUrl(getHostUrl!, roles[i]?.entry);
         // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
         // has a declared recipient it can actually receive mail into (else it would stall on an empty inbox).
-        const laneSpec = commsEmail && commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.laneId)
-          ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsEmail, spec.laneId)?.address)
+        const commsForMission = commsEmail ?? externalCommsEmail;
+        const laneSpec = commsForMission && commsInboxUrl && laneHasInboxRecipient(commsForMission, spec.laneId)
+          ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsForMission, spec.laneId)?.address)
           : spec;
         const startedAt = now();
         const outcome = await runCuaLane(laneSpec, { ...baseActorDeps, appUrl: route });
@@ -1179,6 +1205,36 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       // host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
       // artifact — while the subject is STILL alive, before it is killed below. Wrapped so a drain error
       // never blocks teardown (invariant: all sandboxes torn down by id in this finally).
+      if (externalComms && externalCommsEmail) {
+        // Adopter-hosted drain (#328): same routing, same digest-only artifact — only the transport
+        // differs (HTTP GET /deliveries instead of reading the file inside a sandbox we own).
+        try {
+          const commsChannel = new FakeInbox();
+          const commsInboxes: CommsAddress[] = [];
+          for (const recipient of externalCommsEmail.recipients ?? []) {
+            if (recipient.address !== undefined) {
+              commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
+            }
+          }
+          const authToken = externalComms.authTokenEnv === undefined ? undefined : env[externalComms.authTokenEnv];
+          const collected = await collectExternalCommsThread({
+            external: { ...externalComms, ...(authToken === undefined ? {} : { authToken }) },
+            channel: commsChannel,
+            inboxes: commsInboxes
+          });
+          if (collected.artifact) {
+            const path = "comms/thread.json";
+            await writeContainedOutputFile(runPaths, path, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+            commsArtifactPath = path;
+          } else if (collected.captured > 0) {
+            warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+          } else {
+            warnings.push(`Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalComms.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`);
+          }
+        } catch (error) {
+          warnings.push(`Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(toErrorMessage(error))}`);
+        }
+      }
       if (commsEmail && deployedComms?.ready && subjectDesktop) {
         try {
           const commsChannel = new FakeInbox();
