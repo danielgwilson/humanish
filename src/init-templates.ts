@@ -259,7 +259,10 @@ actors:
         instruction: Join the lobby you're told the code for, then play.
 execution:
   target: e2b-desktop
-  timeoutMs: 120000 # PER-SEAT session budget; also caps the host-first handoff deadline
+  # PER-SEAT session budget; also caps the host-first handoff deadline. Budget for the WHOLE arc:
+  # seat provisioning + shared-session assembly + actual play. A first live run of the worked
+  # example died at 120000 with every seat expiring mid game and zero mission actions taken.
+  timeoutMs: 420000
   concurrency: 3 # all 3 seats live at once (the default when omitted); lower only to cap paid desktops
 scenario:
   mode: dry-run # default; the live path opens N real mobile-layout seats against the public app
