@@ -4,7 +4,7 @@ export default function Study() {
   return (
     <section id="study" className="band band-mineral">
       <p className="lead-claim rev">User testing for the users you can&rsquo;t recruit</p>
-      <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>Four personas drove <em>Excalidraw</em></h2>
+      <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>Four missions drove <em>Excalidraw</em></h2>
       <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use lanes on hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an open-source virtual whiteboard. 3/4 lanes passed; one gave up; verify ran 16/16 checks.</p>
 
       <dl className="manifest rev" style={{ "--d": ".15s" } as React.CSSProperties}>

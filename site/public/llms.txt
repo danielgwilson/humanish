@@ -31,12 +31,12 @@ hosted 1920×1080 desktops drove a commit-pinned clone of Excalidraw
 one gave up; `humanish verify` ran 16/16 checks. Wall-clock 6m 06s; estimated cost
 ~$1.54 (rates as of 2026-08-05).
 
-Lanes and verbatim persona final reports:
+Lanes and verbatim outcomes:
 
-- diagram-login-flow — "Done"
-- sticky-notes — "Done."
-- export-drawing — "Done"
-- sketch-shapes — "gave up: 8 consecutive turns with no change to the UI state"
+- diagram-login-flow — persona final report: "Done"
+- sticky-notes — persona final report: "Done."
+- sketch-shapes — recorded reason (harness; the persona emitted no final message): "gave up: 8 consecutive turns with no change to the UI state"
+- export-drawing — persona final report: "Done"
 
 Excalidraw is the application studied; it is not a Humanish adopter or endorser.
 

@@ -24,15 +24,15 @@ const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07
 <span class="cy">lanes:</span>
   - <span class="ca">01</span> <span class="cv">diagram-login-flow</span>
   - <span class="ca">02</span> <span class="cv">sticky-notes</span>
-  - <span class="ca">03</span> <span class="cv">export-drawing</span>
-  - <span class="ca">04</span> <span class="cv">sketch-shapes</span>`;
+  - <span class="ca">03</span> <span class="cv">sketch-shapes</span>
+  - <span class="ca">04</span> <span class="cv">export-drawing</span>`;
 
 const RAIL_ITEMS: Array<[string, string, string, boolean?]> = [
   ["00", "Brief", "the lab, in YAML"],
   ["01", "Lane 01", "diagram-login-flow"],
   ["02", "Lane 02", "sticky-notes"],
-  ["03", "Lane 03", "export-drawing"],
-  ["04", "Lane 04", "sketch-shapes · gave up", true],
+  ["03", "Lane 03", "sketch-shapes · gave up", true],
+  ["04", "Lane 04", "export-drawing"],
   ["05", "Bundle", "what landed in .humanish/"],
   ["06", "Verify", "16/16 checks"]
 ];
@@ -66,21 +66,21 @@ const LANES: Array<{
   },
   {
     idx: "03",
-    name: "export-drawing",
-    img: "/study/excalidraw-lane4.jpg",
-    alt: "Keyframe from lane export-drawing: the Excalidraw canvas on the sandbox desktop with a single large rectangle, deselected after the export flow",
-    reportLabel: "Final report — verbatim",
-    report: "Done",
-    passed: true
-  },
-  {
-    idx: "04",
     name: "sketch-shapes",
     img: "/study/excalidraw-lane3.jpg",
     alt: "Keyframe from lane sketch-shapes: the Excalidraw canvas on the sandbox desktop with an ellipse, a rectangle, stray line strokes, and the freehand tool panel open — the lane gave up here",
     reportLabel: "Recorded reason — verbatim",
     report: "gave up: 8 consecutive turns with no change to the UI state",
     passed: false
+  },
+  {
+    idx: "04",
+    name: "export-drawing",
+    img: "/study/excalidraw-lane4.jpg",
+    alt: "Keyframe from lane export-drawing: the Excalidraw canvas on the sandbox desktop with a single large rectangle, deselected after the export flow",
+    reportLabel: "Final report — verbatim",
+    report: "Done",
+    passed: true
   }
 ];
 
@@ -240,7 +240,7 @@ export default function PinnedReplay() {
               </dl>
               <pre className="code" dangerouslySetInnerHTML={{ __html: BRIEF_YAML }} />
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">The lab</span>One YAML lab declares the personas, their missions, and a commit-pinned Excalidraw clone. Each lane gets its own hosted 1920×1080 desktop.</p></footer>
+            <footer className="pcap"><p className="prep"><span className="plab">The lab</span>One YAML lab declares the persona, its four missions, and a commit-pinned Excalidraw clone. Each lane gets its own hosted 1920×1080 desktop.</p></footer>
           </article>
 
           {LANES.map((lane, i) => (
@@ -256,14 +256,14 @@ export default function PinnedReplay() {
             <div className="pbody">
               <div className="ledger">
                 <div className="lh">.humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419<span>4 lanes</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>screenshots</span><span className="ld">every screenshot each persona saw · 28 frames</span></div>
+                <div className="lrow"><span className="ln"><em>├</em>screenshots</span><span className="ld">every screenshot each lane saw · 28 frames</span></div>
                 <div className="lrow"><span className="ln"><em>├</em>action traces</span><span className="ld">ordered, end to end</span></div>
                 <div className="lrow"><span className="ln"><em>├</em>lifecycle events</span><span className="ld">launch to landing</span></div>
                 <div className="lrow"><span className="ln"><em>├</em>estimated cost</span><span className="ld">~$1.54 · estimated (rates as of 2026-08-05)</span></div>
                 <div className="lrow"><span className="ln"><em>└</em>wall-clock</span><span className="ld">6m 06s · run created → last lane landed</span></div>
               </div>
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">Where it lands</span>The run lands in gitignored <code>.humanish/</code>: every screenshot each persona saw, ordered action traces, lifecycle events, and estimated cost at dated rates.</p></footer>
+            <footer className="pcap"><p className="prep"><span className="plab">Where it lands</span>The run lands in gitignored <code>.humanish/</code>: every screenshot each lane saw, ordered action traces, lifecycle events, and estimated cost at dated rates.</p></footer>
           </article>
 
           <article className="panel panel-dark" data-i="6">
