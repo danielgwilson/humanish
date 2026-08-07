@@ -258,7 +258,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   including app-url/operator-provided subjects and the sequential
   `concurrency: 1` shared world, neither of which has a catch to host): off-app
   email/SMS the app itself SENDS, made a persona-driven testable surface.
-  `comms.email` = `{ kind: fake, injectEnv, port?, recipients?, linkOrigin? }`.
+  `comms.email` = `{ kind: fake, injectEnv?, port?, recipients?, linkOrigin?, external? }`.
   `injectEnv` is the ADOPTER-NAMED env var the app reads for its email-API base
   URL (e.g. `RESEND_API_URL`); the harness sets it to an in-sandbox catch (so it
   is NOT declared in `subject.env`) that captures the app's sends without touching
@@ -274,7 +274,23 @@ A lab is a composition over code primitives, not a hardcoded kind:
   listing them, zero addressed lanes is a hard error, partial coverage warns
   with the uncovered lanes. Each addressed lane's actor prompt is extended with
   the full handoff: its address ("enter exactly that"), the inbox URL, and the
-  wait steering ("waiting for an email is normal, not a blocker"). `linkOrigin`
+  wait steering ("waiting for an email is normal, not a blocker").
+  `external` (#328) switches the funnel to an ADOPTER-HOSTED catch, which is what
+  makes comms work on planes humanish does not provision (app-url /
+  operator-provisioned): `{ catchBaseUrl, inboxBaseUrl?, authTokenEnv? }`. The
+  operator runs the catch — `humanish comms catch` runs the same implementation
+  humanish deploys in-sandbox, so the capture shape, inbox surface, and drain
+  contract cannot drift between the two planes — and points their own app's
+  email-API base URL at it. `injectEnv` is then absent and meaningless, since
+  there is no subject env for humanish to inject. humanish keeps every other
+  part: per-lane addresses, the injected inbox handoff, a fail-closed readiness
+  probe before any actor spend (GET /health must return the
+  `humanish-comms-catch` marker, so a proxy answering 200 for everything cannot
+  pass for a catch), the teardown drain over `GET /deliveries`, and the same
+  digest-only evidence. `authTokenEnv` names an env var holding a bearer token
+  for the drain read — the NAME is recorded as evidence, the value never
+  persists. Declaring `external` on a harness-provisioned subject warns: two
+  catches would exist and the app would point at humanish's own. `linkOrigin`
   is an optional operator-declared origin the app bakes into links when it
   differs from the serve origin; the harness rewrites captured links through it
   so a clicked link resolves to a reachable host. Captured mail is drained into a
