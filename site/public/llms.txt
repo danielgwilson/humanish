@@ -16,12 +16,13 @@ For coding agents: `npx skills add danielgwilson/humanish`
 
 ## Commands
 
-- `humanish init` — scaffold a lab: personas, missions, and target app in YAML; `--yes` takes the defaults.
-- `humanish watch` — run every lane on hosted sandbox desktops; watch live in Observer; replay any lane after.
+- `humanish init` — scaffold a lab in YAML: personas, missions, and the app under test, either a repo to clone or a URL you own; `--yes` takes the defaults.
+- `humanish watch` — run every lane on hosted sandbox desktops. Your app does not need to be deployed or already running: the sandbox clones your repo, builds it, and serves it. Watch live in Observer; replay any lane after.
 - `humanish verify` — grade the evidence bundle against public-safety gates, fail-closed: `share_ready`, `local_only`, or `blocked`.
 - `humanish feedback issue` — render a public-safe GitHub issue draft from the bundle.
 
-No staging URL is required: the sandbox clones your repo, builds it, and serves it.
+`humanish watch` with no lab argument renders a synthetic evidence bundle and Observer locally,
+without keys or provider spend.
 
 ## Worked example: the Excalidraw study
 
