@@ -84,6 +84,7 @@ import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
+import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import {
@@ -3504,6 +3505,49 @@ async function runSubjectServePipeline(
     }
     emitPhaseCompleted(args.onPhase, now, groupStartedAt, `state.${when}`, true, `subject state seed steps complete (${when})`);
   };
+
+  // Provide the runtime the pipeline needs before running it (#371). The stock desktop template
+  // ships python3 and curl but no Node, so an `npm install` here used to die at exit 127 after the
+  // sandbox was already paid for. Probe-first, so a template that ships its own Node pays nothing.
+  const serveCommands = [args.serve.install, args.serve.build, args.serve.start];
+  if (needsNodeRuntime(serveCommands)) {
+    const runtimeStartedAt = now();
+    emitPhaseStarted(args.onPhase, now, "runtime", "providing the Node runtime the serve pipeline needs");
+    const bootstrap = await runDetachedStep(desktop, {
+      name: "subject-runtime-node",
+      command: nodeBootstrapCommand(),
+      cwd: SUBJECT_DIR,
+      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs,
+      ...timers
+    });
+    let ok = bootstrap.ok;
+    const corepack = ok ? corepackCommandFor(serveCommands) : undefined;
+    if (corepack) {
+      const pm = await runDetachedStep(desktop, {
+        name: "subject-runtime-pm",
+        command: corepack,
+        cwd: SUBJECT_DIR,
+        timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+        requestTimeoutMs: args.requestTimeoutMs,
+        ...timers
+      });
+      ok = pm.ok;
+    }
+    emitPhaseCompleted(
+      args.onPhase,
+      now,
+      runtimeStartedAt,
+      "runtime",
+      ok,
+      ok ? "Node runtime ready" : "could not provide a Node runtime"
+    );
+    if (!ok) {
+      throw new Error(
+        `the subject's serve pipeline needs a Node runtime and this desktop template has none, and bootstrapping one failed: ${tailOf(args.scrub(bootstrap.logTail))}. Use execution.desktop.template with an image that ships Node, or change serve.install to a runtime the template provides.`
+      );
+    }
+  }
 
   if (args.serve.install) {
     const installStartedAt = now();

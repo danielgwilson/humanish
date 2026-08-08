@@ -901,6 +901,8 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
       "cua-lab.subject.upload.completed",
       "cua-lab.subject.extract.started",
       "cua-lab.subject.extract.completed",
+      "cua-lab.subject.runtime.started",
+      "cua-lab.subject.runtime.completed",
       "cua-lab.subject.install.started",
       "cua-lab.subject.install.completed",
       "cua-lab.subject.state.before-start.started",

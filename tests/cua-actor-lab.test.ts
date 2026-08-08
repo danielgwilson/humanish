@@ -1791,6 +1791,8 @@ describe("runCuaActorLab", () => {
     expect(phaseEvents.map((event) => event.type)).toEqual([
       "cua-lab.subject.clone.started",
       "cua-lab.subject.clone.completed",
+      "cua-lab.subject.runtime.started",
+      "cua-lab.subject.runtime.completed",
       "cua-lab.subject.install.started",
       "cua-lab.subject.install.completed",
       "cua-lab.subject.build.started",
@@ -1853,6 +1855,7 @@ describe("runCuaActorLab", () => {
     // subject.serve.started never persists here either (no completed pair, no durationMs).
     expect(phaseRunEvents.map((event) => event.type)).toEqual([
       "cua-lab.subject.clone.completed",
+      "cua-lab.subject.runtime.completed",
       "cua-lab.subject.install.completed",
       "cua-lab.subject.build.completed",
       "cua-lab.subject.ready.completed"
@@ -2613,6 +2616,8 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       "cua-lab.subject.upload.completed",
       "cua-lab.subject.extract.started",
       "cua-lab.subject.extract.completed",
+      "cua-lab.subject.runtime.started",
+      "cua-lab.subject.runtime.completed",
       "cua-lab.subject.install.started",
       "cua-lab.subject.install.completed",
       "cua-lab.subject.build.started",
@@ -2761,6 +2766,8 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       "cua-lab.subject.upload.completed",
       "cua-lab.subject.extract.started",
       "cua-lab.subject.extract.completed",
+      "cua-lab.subject.runtime.started",
+      "cua-lab.subject.runtime.completed",
       "cua-lab.subject.install.started",
       "cua-lab.subject.install.completed",
       "cua-lab.subject.build.started",
