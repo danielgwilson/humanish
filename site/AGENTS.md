@@ -1,7 +1,8 @@
 # site/ — humanish.dev
 
 The humanish.dev landing page: a Next.js 16 (App Router, Turbopack) port of the approved
-single-page design. One route (`/`), statically prerendered, with `robots.txt`,
+single-page design. Two statically prerendered routes — `/` and `/failure-modes` (the
+cited limits page, built from the same band vocabulary) — with `robots.txt`,
 `sitemap.xml`, an OG image route, and `public/llms.txt` alongside.
 
 ## Commands
@@ -23,7 +24,8 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 ## Layout
 
 - `app/` — root layout (fonts via next/font, theme-init inline script, JSON-LD),
-  the single page, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `icon.svg`
+  the homepage, `failure-modes/page.tsx`, `robots.ts`, `sitemap.ts`,
+  `opengraph-image.tsx`, `icon.svg`
 - `components/` — server-rendered sections plus client islands: hero crowd canvas,
   resolve covers, pinned replay, theme toggle, copy buttons, scroll reveals
 - `lib/` — theme plumbing shared by the canvas islands, the cover engine, and `cn()`

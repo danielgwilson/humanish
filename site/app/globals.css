@@ -626,3 +626,39 @@ html:not(.js) .stage { display: grid; gap: 16px }
 .provenance p { font-family: var(--mono); font-size: 10.5px; line-height: 1.7; color: #767268; max-width: 92ch }
 .provenance p code { font-size: inherit; color: #98948b }
 .provenance .lic { font-family: var(--mono); font-size: 10.5px; color: #767268; white-space: nowrap }
+
+/* ---------- known failure modes (/failure-modes) ----------
+   A prose subpage assembled from the existing band / manifest / ledger
+   vocabulary. The new rules cover only what a text page needs and the
+   homepage never did: stacking rhythm for stacked .sec-sub paragraphs,
+   subsection headings, inline citations, and the dark-band mappings for
+   classes the homepage only ever used on light bands. Tokens only; no
+   selector here matches any registry item's include list, so the
+   generated per-item stylesheets are unaffected. */
+#substrate, #simulated, #evidence, #recruit, #caveats { scroll-margin-top: 18px }
+h1 em { font-style: italic; font-weight: 400 }
+.fm-prose { display: grid; gap: 16px; margin-top: 22px }
+.fm-prose-flush { margin-top: 0 }
+.fm-sub {
+  margin: 44px 0 0; max-width: 52ch;
+  font-size: 17px; font-weight: 600; letter-spacing: -.01em; color: var(--ink);
+}
+.fm-idx { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .1em; color: var(--accent-ink); margin-right: 11px }
+.fm-ledger { max-width: 900px; margin-top: 34px }
+.fm-after-ledger { margin-top: 26px }
+.sec-sub b { font-weight: 600; color: var(--ink) }
+.sec-sub a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px }
+.cmd-row > b { font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; color: var(--ink) }
+.cite { font-family: var(--mono); font-size: .8em; color: var(--label) }
+.cite a { color: inherit; text-decoration: underline; text-decoration-color: var(--accent-dim); text-underline-offset: 2px }
+.cite a:hover { color: var(--accent-ink) }
+.band-dark .lead-claim { color: var(--dz-body) }
+.band-dark .fm-sub { color: var(--dz-ink) }
+.band-dark .sec-sub b { color: var(--dz-ink) }
+.band-dark .sec-sub a { color: var(--accent-dz) }
+.band-dark .cmd-ledger, .band-dark .cmd-row { border-color: var(--dz-line) }
+.band-dark .cmd-row > b { color: var(--dz-ink) }
+.band-dark .cmd-row p { color: var(--dz-body) }
+.band-dark .cite { color: var(--dz-label) }
+.band-dark .cite a { text-decoration-color: var(--accent-dz-dim) }
+.band-dark .cite a:hover { color: var(--accent-dz) }

@@ -3,15 +3,20 @@ import { Wordmark } from "./wordmark";
 
 const GITHUB = "https://github.com/danielgwilson/humanish";
 
-export default function Nav() {
+/**
+ * `base` prefixes the homepage section anchors so subpages link back to them
+ * ("/#study") instead of hunting for an id they do not have. Empty on the
+ * homepage itself, where the plain hashes stay in-page.
+ */
+export default function Nav({ base = "" }: { base?: string }) {
   return (
     <header className="nav">
       <div className="nav-in">
-        <Wordmark label="humanish home" />
+        <Wordmark href={base || "#"} label="humanish home" />
         <nav className="nav-links" aria-label="Primary">
-          <a href="#study">Study</a>
-          <a href="#commands">Commands</a>
-          <a href="#trust">Trust</a>
+          <a href={`${base}#study`}>Study</a>
+          <a href={`${base}#commands`}>Commands</a>
+          <a href={`${base}#trust`}>Trust</a>
           <a href={GITHUB}>GitHub</a>
         </nav>
         <ThemeToggle />
