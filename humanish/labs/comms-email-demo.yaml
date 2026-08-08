@@ -19,10 +19,12 @@ subject:
     url: http://127.0.0.1:3000/
 comms:
   email:
-    injectEnv: RESEND_API_URL # adopter-named: the env var YOUR app reads for its email-API
-      # base URL. The harness points it at the in-sandbox catch. VERIFY the app reads it —
-      # a stock email SDK does not honor a base-URL env unless the app passes it through,
-      # and a live run whose catch captured zero sends warns at teardown for exactly this.
+    injectEnv: RESEND_BASE_URL # adopter-named: the env var YOUR app reads for its email-API
+      # base URL. The harness points it at the in-sandbox catch. The official Resend SDK reads
+      # RESEND_BASE_URL itself (resend@6: `process.env.RESEND_BASE_URL || "https://api.resend.com"`),
+      # so an app on stock Resend needs no code change. Other providers are not all like that —
+      # verify the app passes the env through, since a live run whose catch captured zero sends
+      # warns at teardown for exactly this.
       #
       # No `recipients` list: every lane below automatically gets its own deterministic
       # address (signup-a@example.test, signup-b@example.test) and its prompt carries the

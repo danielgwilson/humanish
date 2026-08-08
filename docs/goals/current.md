@@ -33,7 +33,7 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 | Public proof | A legible four-persona Observer hero from a verified real public-application study (commit-pinned drawDB) shipped in the npm payload (`0.16.0`) | Coverage beyond a single studied subject; the stratified breadth panel remains unbuilt |
 | OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
 | Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store; a control plane that can start runs |
-| Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes and live-proven on computer-use | An adopter-hosted / app-url ingress plane; real-provider delivery |
+| Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes; the HTTP surface is covered by tests, but no live rung has been kept in which a persona actually opened the inbox and completed a verification | An adopter-hosted / app-url ingress plane; real-provider delivery |
 
 Capability proof and adopter replacement are different gates. A deterministic
 test or kept live receipt proves that a Humanish mechanism works. The depth-axis
