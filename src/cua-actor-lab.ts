@@ -1815,6 +1815,7 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
  */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
+  const subjectEnvValues = config.subject.envValues ?? {};
   const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
   // Off-app comms (#297): on an in-sandbox subject route, redirect the app's email-API sends into an
@@ -1932,8 +1933,17 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       },
       // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model drives
       // from outside). The SUBJECT's declared env NAMES are provisioned here on the clone route.
-      ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
-        ? { envs: { ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])), ...commsEnv } }
+      // Three sources, in precedence order: committed non-secret config (subject.envValues), then
+      // secret values forwarded from the caller's environment (subject.env), then the harness's own
+      // comms wiring, which must win because only it knows the catch's address.
+      ...(subjectEnvNames.length > 0 || Object.keys(subjectEnvValues).length > 0 || Object.keys(commsEnv).length > 0
+        ? {
+            envs: {
+              ...subjectEnvValues,
+              ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])),
+              ...commsEnv
+            }
+          }
         : {}),
       resolution: spec.resolution,
       dpi: 96,

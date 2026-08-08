@@ -49,6 +49,7 @@
 
 import { normalizeExtraExcludeEntry } from "./source-archive.js";
 import { actorRegistry } from "./actor-registry.js";
+import { containsSensitive } from "./redaction.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 
@@ -265,6 +266,17 @@ export interface LabSubject {
    * on the computer-use clone route.
    */
   env?: string[];
+  /**
+   * LITERAL, NON-SECRET env values committed alongside the lab — the configuration every real app
+   * needs before it will boot: a public base URL, a transport selector, a feature flag. None of that
+   * is secret, and routing it through `subject.env` would force an adopter to carry a private env
+   * file just to reproduce a public study, which is the opposite of a reproducible lab.
+   *
+   * These values ARE recorded in evidence, because they are part of how the subject was configured,
+   * so a value that looks like a secret or a local path is refused at parse rather than committed to
+   * a public repo. Anything genuinely secret belongs in `subject.env`.
+   */
+  envValues?: Record<string, string>;
   /**
    * `clone` (computer-use route): the subject's state story — seed/migration/fixture steps
    * executed in-sandbox around the serve sequence, and/or declared external state. Recorded
@@ -1754,6 +1766,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       }
       subject.env = env;
     }
+    const envValuesResult = parseEnvValues(raw.envValues);
+    if (!envValuesResult.ok) return envValuesResult;
+    if (envValuesResult.value) subject.envValues = envValuesResult.value;
     const stateResult = parseState(raw.state);
     if (!stateResult.ok) {
       return stateResult;
@@ -1791,6 +1806,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       }
       subject.env = env;
     }
+    const envValuesResult = parseEnvValues(raw.envValues);
+    if (!envValuesResult.ok) return envValuesResult;
+    if (envValuesResult.value) subject.envValues = envValuesResult.value;
     const stateResult = parseState(raw.state);
     if (!stateResult.ok) {
       return stateResult;
@@ -1957,6 +1975,40 @@ function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefine
  * them) so subjectStateInvalidReason rejects them — a state declaration that silently does
  * less than it says would violate invariant 6.
  */
+/**
+ * LITERAL non-secret subject env. Real apps need configuration before they will boot — a public base
+ * URL, a transport selector, a feature flag — and none of that is secret. Routing it through
+ * `subject.env` would force an adopter to carry a private env file just to reproduce a public study.
+ *
+ * These values ARE recorded in evidence (they are part of how the subject was configured), so a
+ * value that looks like a credential is refused here rather than committed to a public repo.
+ */
+function parseEnvValues(raw: unknown): { ok: true; value?: Record<string, string> } | LabConfigParseFailure {
+  if (raw === undefined) return { ok: true };
+  if (!isRecord(raw)) {
+    return invalid("`subject.envValues` must be a mapping of env var NAME to a literal non-secret value.");
+  }
+  const envValues: Record<string, string> = {};
+  for (const [name, rawValue] of Object.entries(raw)) {
+    if (!ENV_NAME_PATTERN.test(name)) {
+      return invalid(`subject.envValues keys must be env var NAMES like NEXT_PUBLIC_APP_URL (got "${name}").`);
+    }
+    const value = typeof rawValue === "number" || typeof rawValue === "boolean" ? String(rawValue) : str(rawValue);
+    if (value === undefined) {
+      return invalid(`\`subject.envValues.${name}\` must be a string, number, or boolean.`);
+    }
+    // Reuse the redaction module's own detector rather than inventing a second opinion about what
+    // a secret looks like — the two must never disagree about the same string.
+    if (containsSensitive(value)) {
+      return invalid(
+        `\`subject.envValues.${name}\` looks like a secret or a local path, and these values are committed with the lab and recorded in evidence. Declare the NAME in \`subject.env\` instead — those values come from the caller's environment and never persist.`
+      );
+    }
+    envValues[name] = value;
+  }
+  return { ok: true, value: envValues };
+}
+
 function parseState(raw: unknown): { ok: true; value: LabSubjectState | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
