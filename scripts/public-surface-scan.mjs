@@ -159,9 +159,23 @@ function gitRefExists(ref) {
 }
 
 function reachableCommitEmails() {
-  const ref = (process.env.GITHUB_REF ?? "").startsWith("refs/pull/") && gitRefExists("HEAD^2")
+  // Scope the walk to what is actually being judged, which differs by context:
+  //
+  //   pull request  the PR's own commits (HEAD^2) — the change under review
+  //   tag / publish the history being published (HEAD) — what ships in the tarball
+  //   anything else every ref (--all) — the local sweep, which should be the widest
+  //
+  // The tag case is the one that needed saying. A release publishes main, but `--all` also walks
+  // unmerged feature branches, so someone else's in-flight branch could block a release of code it
+  // is not part of. Nothing escapes by narrowing it: an unapproved author on a feature branch is
+  // still caught by the pull-request scope when that branch is proposed, and by the local sweep
+  // meanwhile — it simply stops holding an unrelated release hostage.
+  const githubRef = process.env.GITHUB_REF ?? "";
+  const ref = githubRef.startsWith("refs/pull/") && gitRefExists("HEAD^2")
     ? "HEAD^2"
-    : "--all";
+    : githubRef.startsWith("refs/tags/") && gitRefExists("HEAD")
+      ? "HEAD"
+      : "--all";
   try {
     const raw = execFileSync("git", ["log", ref, "--format=%ae%n%ce"], { encoding: "utf8" });
     return [...new Set(raw.split("\n").map((line) => line.trim()).filter(Boolean))];
