@@ -135,7 +135,7 @@ export interface CuaTurn {
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
-  usage?: { input?: number; output?: number };
+  usage?: { input?: number; output?: number; cachedInput?: number };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
 }
@@ -232,7 +232,7 @@ export interface CuaLoopOptions {
    * mid-run cannot trip the cap — preflight already guaranteed a rate exists, so a null here is a
    * vanished-rate harness condition, not a silent uncapped pass.
    */
-  estimateTurnCostUsd?: (input: number, output: number) => number | null;
+  estimateTurnCostUsd?: (input: number, output: number, cachedInput?: number) => number | null;
   /**
    * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
    * after EVERY executor.observe() (the initial observe and each post-action observe), so the
@@ -270,8 +270,15 @@ export interface CuaLoopResult {
   trace: ActorTrace;
 }
 
-const DEFAULT_IDLE_STEPS = 6;
-const DEFAULT_NO_PROGRESS_STEPS = 8;
+// Waiting is a legitimate strategy, not idleness. A persona told to sign up and verify by email
+// polls its inbox — screenshot, wait, screenshot, wait — and at 6 steps that ended the session as
+// `gave_up`/`failed` in well under a minute, before the mail could plausibly arrive. The concurrent
+// shared-world route already overrode these to 80/40 for exactly this reason; the knowledge existed
+// in the codebase and never reached the default every other route uses.
+const DEFAULT_IDLE_STEPS = 24;
+// The no-progress signal is much stronger since #383 (a stale frame alone no longer counts — the
+// actor must also be repeating itself), so this needs less headroom than the raw idle count.
+const DEFAULT_NO_PROGRESS_STEPS = 20;
 const IDLE_PROGRESS_FORGIVENESS_STEPS = 2;
 /** How many recent turns the repetition check looks back over (#383). */
 const ACTION_REPEAT_WINDOW = 3;
@@ -557,6 +564,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let materialActions = 0;
   let seq = 0;
   let usageInput = 0;
+  let usageCachedInput = 0;
   let usageOutput = 0;
   let sawUsage = false;
   let lastResponseId: string | undefined;
@@ -696,6 +704,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (turn.usage) {
         sawUsage = true;
         usageInput += turn.usage.input ?? 0;
+        usageCachedInput += turn.usage.cachedInput ?? 0;
         usageOutput += turn.usage.output ?? 0;
       }
       // RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read
@@ -719,7 +728,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // trips here before any action executes) — so it surfaces as "gave_up" (→ failed). Either way
       // the running estimate + the cap are cited so the operator sees WHY the loop stopped.
       if (maxUsd !== undefined && estimateTurnCostUsd) {
-        const running = estimateTurnCostUsd(usageInput, usageOutput);
+        const running = estimateTurnCostUsd(usageInput, usageOutput, usageCachedInput);
         if (running !== null && running > maxUsd) {
           if (materialActions > 0) {
             completionReason = "budget_reached";
@@ -1051,7 +1060,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     counts,
     items,
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
-    ...(sawUsage ? { tokenUsage: { input: usageInput, output: usageOutput, total: usageInput + usageOutput } } : {}),
+    ...(sawUsage
+      ? {
+          tokenUsage: {
+            input: usageInput,
+            output: usageOutput,
+            // Recorded only when the provider actually reported it, so a reader can tell "no cache
+            // hits" from "this provider does not say" (#391).
+            ...(usageCachedInput > 0 ? { cachedInput: usageCachedInput } : {}),
+            total: usageInput + usageOutput
+          }
+        }
+      : {}),
     capabilities: provider.capabilities
   };
 

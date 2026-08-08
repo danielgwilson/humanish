@@ -2123,8 +2123,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           ? {}
           : {
               maxUsd,
-              estimateTurnCostUsd: (input: number, output: number): number | null =>
-                estimateActorCost({ input, output }, capModelId).estimatedCostUsd
+              estimateTurnCostUsd: (input: number, output: number, cachedInput?: number): number | null =>
+                estimateActorCost(
+                  { input, output, ...(cachedInput === undefined ? {} : { cachedInput }) },
+                  capModelId
+                ).estimatedCostUsd
             }),
         desktop: desktop as unknown as E2BDesktopLike,
         ...(launchedBrowserFamily === "chromium"

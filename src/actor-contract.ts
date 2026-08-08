@@ -106,6 +106,10 @@ export interface ActorPersonaRef {
 export interface ActorTokenUsage {
   input?: number;
   output?: number;
+  /** Of `input`, how many tokens were served from the provider's prompt cache. Optional and
+   *  HONESTLY ABSENT: a provider that does not report it leaves this undefined rather than
+   *  reporting 0, because 0 and "unknown" price very differently (#391). */
+  cachedInput?: number;
   total?: number;
   costUsd?: number;
 }

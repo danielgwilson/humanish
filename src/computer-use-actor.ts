@@ -78,7 +78,7 @@ export interface CuaActorSessionOptions {
   /** FAIL-CLOSED spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
-  estimateTurnCostUsd?: (input: number, output: number) => number | null;
+  estimateTurnCostUsd?: (input: number, output: number, cachedInput?: number) => number | null;
   /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;

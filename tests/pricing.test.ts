@@ -103,6 +103,60 @@ describe("estimateActorCost", () => {
   });
 });
 
+describe("estimateActorCost: cached input (#391)", () => {
+  // The bug this pins: every input token was billed at the full rate, and the provider's
+  // cached-token count was not even parsed. The CUA loop threads state through the provider and
+  // re-sends a growing warm prefix every turn, so most input on a long session is a cache hit. A
+  // live two-lane run read $5.14 per lane and aborted itself against its own $5 cap — for spend it
+  // very likely never incurred.
+  const rate = {
+    inputUsdPerToken: 5e-6,
+    outputUsdPerToken: 30e-6,
+    cachedInputUsdPerToken: 0.5e-6,
+    asOf: "2026-08-08",
+    source: "test"
+  };
+  const rates = { "test-model": rate };
+
+  it("bills cached input at the cached rate and the remainder at full rate", () => {
+    const cost = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 900_000 }, "test-model", rates);
+    // 100k full at $5/1M = $0.50, 900k cached at $0.50/1M = $0.45
+    expect(cost.estimatedCostUsd).toBeCloseTo(0.95, 6);
+    expect(cost.breakdown?.cachedInputTokens).toBe(900_000);
+  });
+
+  it("prices exactly as before when the provider reports no cached count", () => {
+    const withCache = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 0 }, "test-model", rates);
+    const silent = estimateActorCost({ input: 1_000_000, output: 0 }, "test-model", rates);
+    expect(silent.estimatedCostUsd).toBe(5);
+    expect(withCache.estimatedCostUsd).toBe(5);
+    // Absent means absent — never reported as an observed zero.
+    expect(silent.breakdown?.cachedInputTokens).toBeUndefined();
+  });
+
+  it("prices as before when the rate sheet models no cached rate", () => {
+    const noCachedRate = { "test-model": { ...rate, cachedInputUsdPerToken: undefined } };
+    const cost = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 900_000 }, "test-model", noCachedRate);
+    expect(cost.estimatedCostUsd).toBe(5);
+  });
+
+  it("never lets a bogus cached count exceed the input it came from", () => {
+    const cost = estimateActorCost({ input: 1000, output: 0, cachedInput: 999_999 }, "test-model", rates);
+    // Clamped to `input`, so the estimate can never go negative or below the cached floor.
+    expect(cost.estimatedCostUsd).toBeCloseTo(1000 * 0.5e-6, 9);
+    expect(cost.estimatedCostUsd).toBeGreaterThan(0);
+  });
+
+  it("reprices the live run that aborted itself against its own cap", () => {
+    // Actual tokenUsage from cua-2026-08-08T07-38-10-148Z-ad382d8b, expert lane.
+    const metered = estimateActorCost({ input: 1_008_579, output: 3_388 }, "gpt-5.5");
+    expect(metered.estimatedCostUsd).toBeCloseTo(5.144535, 6); // what killed the run
+
+    const withCache = estimateActorCost({ input: 1_008_579, output: 3_388, cachedInput: 907_721 }, "gpt-5.5");
+    expect(withCache.estimatedCostUsd).toBeLessThan(1.5); // ~90% cache hits
+  });
+});
+
 describe("estimateDesktopCost", () => {
   it("computes minutes * usdPerMinute rounded, with provenance", () => {
     const est = estimateDesktopCost(3, FAKE_DESKTOP);

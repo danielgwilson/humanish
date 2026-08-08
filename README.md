@@ -525,6 +525,7 @@ preserve historical mechanisms and carry explicit amendments near the top.
 - [OSS lab design record (historical; see its current safety amendment)](docs/architecture/oss-lab-poc.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Open-source install experience](docs/product/open-source-install-experience.md)
+- [Three roles: researcher, stakeholder, participant](docs/principles/three-roles.md)
 - [Self-driving harness principles](docs/principles/self-driving-harness.md)
 - [World-class open-source v0 roadmap](docs/roadmap/world-class-open-source-v0.md)
 - [Open-source release readiness](docs/release/open-source-readiness.md)
