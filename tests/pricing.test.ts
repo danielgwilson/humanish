@@ -135,7 +135,8 @@ describe("estimateActorCost: cached input (#391)", () => {
   });
 
   it("prices as before when the rate sheet models no cached rate", () => {
-    const noCachedRate = { "test-model": { ...rate, cachedInputUsdPerToken: undefined } };
+    const { cachedInputUsdPerToken: _omitted, ...rateWithoutCachedField } = rate;
+    const noCachedRate = { "test-model": rateWithoutCachedField };
     const cost = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 900_000 }, "test-model", noCachedRate);
     expect(cost.estimatedCostUsd).toBe(5);
   });

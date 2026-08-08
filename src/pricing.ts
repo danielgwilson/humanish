@@ -64,7 +64,15 @@ export interface ActorEstimatedCost {
   modelId?: string;
   /** true when the rate is a stand-in, not a live sheet. */
   placeholder?: boolean;
-  breakdown?: { inputUsd: number; outputUsd: number; inputTokens: number; outputTokens: number };
+  breakdown?: {
+    inputUsd: number;
+    outputUsd: number;
+    inputTokens: number;
+    outputTokens: number;
+    /** Of `inputTokens`, how many were billed at the reduced cached rate. Present only when the
+     *  provider reported cache hits AND the rate sheet models a cached rate. */
+    cachedInputTokens?: number;
+  };
 }
 
 /** The desktop-minute cost ESTIMATE (host-side create->teardown span * a per-minute rate). Same
