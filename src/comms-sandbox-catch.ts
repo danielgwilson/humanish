@@ -85,8 +85,18 @@ class BaseHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path == "/" or path == "/health":
+        if path == "/health":
             self._json(200, {"ok": True, "service": "humanish-comms-catch"})
+            return
+        if path == "/":
+            # A persona that trims the /inbox path lands here. It used to get the health JSON and read
+            # it as "wrong place / broken", so send it where it meant to go. /health keeps the machine
+            # marker: both readiness probes assert on /health specifically, never on /.
+            self.send_response(200)
+            self.send_header("content-type", "text/html; charset=utf-8")
+            self.send_header("content-security-policy", CSP)
+            self.end_headers()
+            self.wfile.write(b"<!doctype html><title>Mailbox</title><p><a href='/inbox'>Open the inbox</a></p>")
             return
         if path == "/deliveries":
             # The drain read. In-sandbox humanish reads the NDJSON file directly; an adopter-hosted
@@ -123,10 +133,15 @@ class BaseHandler(BaseHTTPRequestHandler):
                 except Exception:
                     data = None
             if data is None:
+                # A JSON route answers in JSON; only the HTML route answers in HTML.
+                if rel.startswith("/api/"):
+                    self._json(404, {"error": "message not found"})
+                    return
                 self.send_response(404)
                 self.send_header("content-type", "text/html; charset=utf-8")
+                self.send_header("content-security-policy", CSP)
                 self.end_headers()
-                self.wfile.write(b"<p>message not found</p>")
+                self.wfile.write(b"<!doctype html><title>Mailbox</title><p>message not found</p><p><a href='/inbox'>Back to the inbox</a></p>")
                 return
             is_api = rel.startswith("/api/")
             self.send_response(200)
@@ -321,6 +336,88 @@ export async function drainCommsCatch(
     }
   }
   return { sends, cursor: lines.length };
+}
+
+/**
+ * Parse an append-only deliveries NDJSON blob into raw sends. Split out of drainCommsCatch (#380) so
+ * the SAME parsing serves a sandbox we own (read over the E2B command channel) and a catch running on
+ * a plane we do not own (read from the local filesystem by `humanish comms catch`).
+ *
+ * A file that does not end in a newline may have a PARTIAL last line — a reader racing an append of a
+ * large body. Dropping it is never lossy: the script only ever emits valid JSON lines, so an incomplete
+ * line re-reads complete on the next pass.
+ */
+export function parseDeliveriesNdjson(text: string): RawCapturedSend[] {
+  let lines = text.split("\n").filter((line) => line.trim().length > 0);
+  if (!text.endsWith("\n") && lines.length > 0) lines = lines.slice(0, -1);
+  const sends: RawCapturedSend[] = [];
+  for (const line of lines) {
+    try {
+      const parsed = JSON.parse(line) as Record<string, unknown>;
+      if (typeof parsed.path === "string" && typeof parsed.body === "string") {
+        sends.push({ path: parsed.path, body: parsed.body, t: typeof parsed.t === "number" ? parsed.t : 0 });
+      }
+    } catch {
+      // skip a malformed line
+    }
+  }
+  return sends;
+}
+
+/**
+ * The distinct `to` addresses the captured mail was actually sent to, parsed with the SAME profiles
+ * that route it. A lab run knows its recipients from the declared roster; a standalone catch does not,
+ * so it discovers them from the mail itself — otherwise an operator who forgot to name an address gets
+ * a technically-healthy catch rendering an empty inbox forever, which is the false-green class #380 is
+ * about.
+ */
+export function capturedRecipientAddresses(
+  sends: readonly RawCapturedSend[],
+  profiles: EmailSendProfile[] = DEFAULT_EMAIL_PROFILES
+): string[] {
+  const addresses = new Set<string>();
+  for (const send of sends) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(send.body.length > 0 ? send.body : "{}");
+    } catch {
+      continue;
+    }
+    const profile = profiles.find((candidate) => candidate.sendPaths.includes(send.path)) ?? profiles[0];
+    if (profile === undefined) continue;
+    for (const normalized of profile.parse(send.path, parsed)) {
+      for (const address of normalized.to) {
+        if (address.trim().length > 0) addresses.add(address);
+      }
+    }
+  }
+  return [...addresses];
+}
+
+/**
+ * Route raw sends into a FRESH FakeInbox and return the deduped, delivery-ordered messages. Split out
+ * of refreshInboxSurface (#380) so the rendering pipeline is shared by every transport; the freshness
+ * is what makes a full rebuild idempotent (a send is never routed twice, so no duplicate emails).
+ */
+export async function inboxMessagesFrom(
+  sends: readonly RawCapturedSend[],
+  recipients: readonly InboxSurfaceRecipient[]
+): Promise<CommsMessage[]> {
+  const channel = new FakeInbox();
+  const inboxes: CommsAddress[] = [];
+  for (const recipient of recipients) inboxes.push(await channel.provisionAddress(recipient.lane, recipient.address));
+  await routeCapturedSends([...sends], channel);
+  const seen = new Set<string>();
+  const messages: CommsMessage[] = [];
+  for (const inbox of inboxes) {
+    for (const message of await channel.poll(inbox, 0)) {
+      if (seen.has(message.id)) continue;
+      seen.add(message.id);
+      messages.push(message);
+    }
+  }
+  messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
+  return messages;
 }
 
 /**
@@ -571,21 +668,8 @@ export async function refreshInboxSurface(args: {
   const { sends } = await drainCommsCatch(args.desktop, args.deployed, 0, args.requestTimeoutMs);
   if (sends.length === 0) return { count: 0, rendered: false };
   if (args.sinceCount !== undefined && sends.length <= args.sinceCount) return { count: sends.length, rendered: false };
-  const channel = new FakeInbox();
-  const inboxes: CommsAddress[] = [];
-  for (const recipient of args.recipients) inboxes.push(await channel.provisionAddress(recipient.lane, recipient.address));
-  await routeCapturedSends(sends, channel);
-  const seen = new Set<string>();
-  const messages: CommsMessage[] = [];
-  for (const inbox of inboxes) {
-    for (const message of await channel.poll(inbox, 0)) {
-      if (seen.has(message.id)) continue;
-      seen.add(message.id);
-      messages.push(message);
-    }
-  }
+  const messages = await inboxMessagesFrom(sends, args.recipients);
   if (messages.length === 0) return { count: sends.length, rendered: false };
-  messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
   await writeInboxSurface(args.desktop, args.deployed.surfaceDir, messages, {
     ...(args.originMap === undefined ? {} : { originMap: args.originMap }),
     ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs })
