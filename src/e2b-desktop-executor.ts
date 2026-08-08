@@ -393,16 +393,32 @@ export function createE2BDesktopExecutor(
 // failure it returns a stable fallback so two unreadable frames compare equal.
 // ---------------------------------------------------------------------------
 
-const SIGNATURE_GRID = 16;
+const SIGNATURE_GRID = 32;
+const SIGNATURE_LEVELS = 16;
 const SIGNATURE_FALLBACK = "unreadable";
 
 /**
- * A coarse perceptual hash of a PNG frame for no-progress detection. Decodes the
- * PNG, area-averages it to a SIGNATURE_GRID x SIGNATURE_GRID grayscale grid,
- * quantizes each cell to 2 bits (gray >> 6, four levels), and packs the
- * (SIGNATURE_GRID^2) two-bit cells into a compact hex string. Deterministic (no
- * Date, no random). Returns SIGNATURE_FALLBACK on any decode failure so two
- * unreadable frames compare equal.
+ * A perceptual hash of a PNG frame for no-progress detection. Decodes the PNG, area-averages it to
+ * a SIGNATURE_GRID x SIGNATURE_GRID grayscale grid, CONTRAST-NORMALIZES that grid, quantizes each
+ * cell to SIGNATURE_LEVELS, and packs the cells into a hex string. Deterministic (no Date, no
+ * random). Returns SIGNATURE_FALLBACK on any decode failure so two unreadable frames compare equal.
+ *
+ * Why normalization, and why this grid (#383). The original was 16x16 at 2 bits per cell with no
+ * normalization. On a 1440x950 desktop that is one cell per ~90x59 px, and on a light-themed web app
+ * the area-average of nearly every cell lands at the top of the range: a measured run had 93% of the
+ * 256 cells pinned to level 3 and levels 0 and 1 never used at all. The hash was effectively a
+ * constant, so renaming a row in a sidebar, adding a list item, or opening a small panel could not
+ * move it — 22 frames across one run produced 5 distinct values, and 9 visibly different consecutive
+ * frames produced ONE. The no-progress backstop read that as a stuck agent and ended a lane that was
+ * a foreign key away from finishing its mission.
+ *
+ * Stretching each frame's own min..max across the full range before quantizing is what makes a
+ * mostly-white UI use the levels it actually has, and the finer grid shrinks a cell to ~45x30 px so
+ * ordinary widget-sized changes survive the averaging.
+ *
+ * This is still a coarse whole-frame hash and it is still only ONE input to the backstop — see the
+ * corroboration rule in computer-use.ts, which is what keeps a blind frame from ending a run on its
+ * own.
  */
 export function perceptualSignature(pngBytes: Buffer | Uint8Array): string {
   let cells: number[];
@@ -414,15 +430,15 @@ export function perceptualSignature(pngBytes: Buffer | Uint8Array): string {
     const srcH = decoded.height;
     if (!srcW || !srcH) return SIGNATURE_FALLBACK;
     cells = quantizedGrid(decoded.data, srcW, srcH);
+    return `${brightnessAnchor(decoded.data, srcW, srcH)}${packCells(cells)}`;
   } catch {
     return SIGNATURE_FALLBACK;
   }
-  return packCells(cells);
 }
 
-/** Area-average an RGBA buffer to a grid of 2-bit (0..3) grayscale cells. */
+/** Area-average an RGBA buffer to a grid of grayscale cells, contrast-normalized then quantized. */
 function quantizedGrid(data: Buffer, srcW: number, srcH: number): number[] {
-  const cells: number[] = [];
+  const grays: number[] = [];
   const xRatio = srcW / SIGNATURE_GRID;
   const yRatio = srcH / SIGNATURE_GRID;
   for (let gy = 0; gy < SIGNATURE_GRID; gy += 1) {
@@ -443,23 +459,54 @@ function quantizedGrid(data: Buffer, srcW: number, srcH: number): number[] {
           n += 1;
         }
       }
-      const gray = n ? Math.round(sum / n) : 0;
-      // Quantize 0..255 to four levels (0..3). Clamp the 255 edge so it stays in
-      // range (255 >> 6 === 3 already, but Math.min guards any rounding surprise).
-      cells.push(Math.min(3, gray >> 6));
+      grays.push(n ? Math.round(sum / n) : 0);
     }
   }
-  return cells;
+  // Stretch this frame's own range across the full scale before quantizing. Without this a light UI
+  // occupies a sliver at the top of 0..255 and quantizes to a near-constant (#383).
+  //
+  // The endpoints are TRIMMED rather than the raw min/max: a handful of extreme cells must not be
+  // able to rescale the whole frame, or a blinking text cursor would rewrite every cell and read as
+  // progress forever. Trimming K cells from each end clamps that away while still preserving real
+  // structure, which occupies far more cells than K (a row of sidebar text covers dozens).
+  const sorted = [...grays].sort((a, b) => a - b);
+  const trim = Math.max(2, Math.floor(sorted.length / 256));
+  const lo = sorted[Math.min(trim, sorted.length - 1)] ?? 0;
+  const hi = sorted[Math.max(0, sorted.length - 1 - trim)] ?? 255;
+  const span = hi - lo;
+  const top = SIGNATURE_LEVELS - 1;
+  return grays.map((gray) =>
+    span <= 0 ? 0 : Math.min(top, Math.max(0, Math.round(((gray - lo) / span) * top)))
+  );
 }
 
-/** Pack 2-bit cells (4 per hex... actually 2 per byte) into a compact hex string. */
+/**
+ * The frame's overall brightness, coarsely quantized. Normalization deliberately discards absolute
+ * level, so this is prefixed back on for the two cases where absolute level IS the change: a uniform
+ * frame (an all-white blank vs an all-black screen normalize identically), and a whole-page dim such
+ * as a modal overlay, which preserves relative structure while changing the whole frame. Quantized
+ * coarsely so ordinary antialiasing noise cannot move it.
+ */
+function brightnessAnchor(data: Buffer, srcW: number, srcH: number): string {
+  let sum = 0;
+  let n = 0;
+  const stride = Math.max(1, Math.floor((srcW * srcH) / 4096));
+  for (let p = 0; p < srcW * srcH; p += stride) {
+    const si = p * 4;
+    sum += ((data[si] ?? 0) + (data[si + 1] ?? 0) + (data[si + 2] ?? 0)) / 3;
+    n += 1;
+  }
+  const mean = n ? sum / n : 0;
+  return (Math.min(15, Math.floor(mean / 16))).toString(16);
+}
+
+/** Pack 4-bit cells (two per byte) into a compact hex string. */
 function packCells(cells: number[]): string {
-  // Pack four 2-bit cells per byte, then hex-encode. SIGNATURE_GRID^2 cells.
-  const bytes = Buffer.alloc(Math.ceil(cells.length / 4));
+  const bytes = Buffer.alloc(Math.ceil(cells.length / 2));
   for (let i = 0; i < cells.length; i += 1) {
-    const byteIndex = i >> 2;
-    const shift = (i & 3) * 2;
-    const value = (cells[i] ?? 0) & 3;
+    const byteIndex = i >> 1;
+    const shift = (i & 1) * 4;
+    const value = (cells[i] ?? 0) & 0xf;
     bytes[byteIndex] = (bytes[byteIndex] ?? 0) | (value << shift);
   }
   return bytes.toString("hex");

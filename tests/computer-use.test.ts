@@ -611,6 +611,71 @@ describe("runComputerUseLoop", () => {
     ).toBeGreaterThanOrEqual(3);
   });
 
+  // #383: a BLIND frame signature must not be able to end a lane that is working.
+  //
+  // This is the exact live failure, reduced. A constant stateSignature stands in for the old hash on
+  // a light-themed web app, where 9 visibly different consecutive frames produced one identical
+  // value. Under the old rule — stale frame alone means no progress — the lane was ended as
+  // `gave_up` and the run recorded 0/2 passed, while the agent was a foreign key away from finishing
+  // its mission. The backstop now needs the agent to also be repeating itself.
+  it("does NOT give up when the frame signature is blind but the agent is doing varied work", async () => {
+    // Every turn clicks somewhere new — the shape of an agent working through a form.
+    let n = 0;
+    const provider: CuaProvider = {
+      id: "fake-cua",
+      version: "fake-1",
+      capabilities: FAKE_CAPS,
+      async nextTurn(): Promise<CuaTurn> {
+        n += 1;
+        return {
+          actions: [{ kind: "click", x: 100 + n * 60, y: 200 + n * 40, button: "left" }],
+          pendingSafetyChecks: [],
+          done: n >= 12
+        };
+      }
+    };
+    // A signature that never changes: the blind hash.
+    const executor = new SignatureExecutor(["constant"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      noProgressSteps: 3
+    });
+
+    expect(result.completionReason).not.toBe("gave_up");
+    expect(result.trace.counts.materialActions).toBeGreaterThanOrEqual(10);
+  });
+
+  it("still gives up when the agent repeats the same action against a stale frame", async () => {
+    // The genuine stuck shape: re-clicking one dead control forever.
+    const provider = new RepeatProvider({
+      actions: [{ kind: "click", x: 301, y: 486, button: "left" }],
+      pendingSafetyChecks: [],
+      done: false
+    });
+    const executor = new SignatureExecutor(["constant"]);
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      noProgressSteps: 3
+    });
+
+    expect(result.completionReason).toBe("gave_up");
+    expect(result.reason).toContain("no change to the UI state");
+  });
+
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {
     const provider = new RepeatProvider({ actions: [{ kind: "screenshot" }], pendingSafetyChecks: [], done: false });
     const executor = new SignatureExecutor(["same"]);
