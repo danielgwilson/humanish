@@ -6,6 +6,10 @@ import CoverCanvas from "./cover-canvas";
  * "gave up" states, never hidden. The screenshot sits under a resolve-cover
  * veil that dissolves when the lane activates (reduced motion sees the
  * finished screenshot).
+ *
+ * The keyframe loads lazily: lanes live below the fold (in a replay track, or
+ * stacked as a list on narrow screens), and eager keyframes otherwise get
+ * hoisted into <head> as image preloads that compete with the first screen.
  */
 
 export interface PersonaLaneProps {
@@ -49,7 +53,7 @@ export default function PersonaLane({
   return (
     <article className="panel" {...(dataI !== undefined ? { "data-i": dataI } : {})} {...(sizer ? { "data-sizer": "" } : {})}>
       <header className="pbar"><span className="pl"><b className="pidx">{idx}</b><span className="pname">{name}</span></span><span className="pr">{right}</span></header>
-      <div className="pmedia"><img src={img} alt={alt} /><CoverCanvas n={idx} /></div>
+      <div className="pmedia"><img src={img} alt={alt} loading="lazy" /><CoverCanvas n={idx} /></div>
       <footer className="pcap"><p className="prep"><span className="plab">{reportLabel}</span><q>{report}</q></p>{passed ? <span className="chip chip-pass">{passLabel}</span> : <span className="chip chip-dot chip-mute">{failLabel}</span>}</footer>
     </article>
   );
