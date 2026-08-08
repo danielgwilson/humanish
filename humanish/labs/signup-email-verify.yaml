@@ -1,0 +1,96 @@
+schema: humanish.lab.v2
+id: signup-email-verify
+title: Can a persona complete an email-gated signup end to end?
+description: >
+  The flow humanish exists to study and had never once been observed: a persona creates an
+  account, the app emails a verification link, the persona opens its inbox, clicks the link,
+  and reaches the signed-in product. Every step is real — a real public app, a real signup
+  form, real mail over SMTP — except that the mail is captured in-sandbox and never leaves
+  the machine.
+  SUBJECT: documenso, an open-source document-signing app (AGPL-3.0). Chosen because its
+  signup is HARD-GATED on the emailed link: registration returns no session, and sign-in
+  refuses an unverified account, so reaching the product proves the persona actually read
+  the mail. It sends through nodemailer over SMTP, which the in-sandbox catch speaks.
+  READ THE RESULT CAREFULLY. A persona that stops before the dashboard has not failed the
+  harness — it has produced the finding. The interesting outcomes are where it got stuck and
+  what it did next, not a pass mark.
+  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0. A
+  live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored .humanish/labs/ copy with
+  mode: live.
+subject:
+  source: clone
+  repos:
+    - documenso/documenso
+  clone:
+    depth: 1
+  serve:
+    # Node itself is provided by the harness (#371). Postgres is not part of any template, so
+    # it is installed and seeded here; documenso needs a real database before it will boot.
+    install: >-
+      sudo -n apt-get update -qq &&
+      sudo -n apt-get install -y -qq postgresql postgresql-contrib &&
+      sudo -n sed -i 's/^\(host.*127.0.0.1\/32.*\)\w\+$/\1trust/'
+      /etc/postgresql/*/main/pg_hba.conf &&
+      sudo -n service postgresql restart &&
+      sudo -n -u postgres createdb documenso &&
+      npm ci --no-audit --no-fund
+    installTimeoutMs: 900000
+    # `npm run dev` on purpose: the production build runs lingui extract plus a full-monorepo
+    # tsc and rollup, which is minutes of work this study does not need.
+    build: npx prisma migrate deploy --schema packages/prisma/schema.prisma || npm run prisma:migrate-deploy
+    start: npm run dev
+    url: http://localhost:3000/
+    readyTimeoutMs: 300000
+  # Non-secret configuration, committed so this lab is reproducible by anyone (#395). None of
+  # these are credentials — they are how the app is told to behave.
+  envValues:
+    NEXT_PUBLIC_WEBAPP_URL: http://localhost:3000
+    NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://localhost:3000
+    NEXT_PUBLIC_UPLOAD_TRANSPORT: database
+    # No password in the connection string: Postgres is set to trust local connections above, so
+    # there is no credential to commit. The parser refuses secret-shaped values here by design.
+    NEXT_PRIVATE_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/documenso
+    NEXT_PRIVATE_DIRECT_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/documenso
+    NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+    NEXT_PRIVATE_SMTP_FROM_NAME: Documenso
+    NEXT_PRIVATE_SMTP_FROM_ADDRESS: noreply@documenso.local
+    NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS: "true"
+    # A local-only signing key and rate-limit bypass: this instance exists for the length of
+    # one sandbox and is reachable only from inside it.
+    NEXTAUTH_SECRET: humanish-local-study-only
+    NEXT_PRIVATE_ENCRYPTION_KEY: humanish-local-study-only-encryption
+    NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: humanish-local-study-only-secondary
+    DANGEROUS_BYPASS_RATE_LIMITS: "true"
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+comms:
+  email:
+    # documenso sends through nodemailer; the catch opens a loopback SMTP listener and the app
+    # is pointed at it. Nothing leaves the sandbox.
+    smtp:
+      port: 2525
+      hostEnv: NEXT_PRIVATE_SMTP_HOST
+      portEnv: NEXT_PRIVATE_SMTP_PORT
+      userEnv: NEXT_PRIVATE_SMTP_USERNAME
+      passwordEnv: NEXT_PRIVATE_SMTP_PASSWORD
+    # No recipients block: the lane gets a deterministic address automatically, and its prompt
+    # carries the address, the inbox URL, and the wait steering.
+actors:
+  - type: openai-computer-use
+    mission: >-
+      Create an account using the email address in your instructions, complete the email
+      verification, sign in, and stop once you can see the signed-in dashboard.
+    lanes:
+      - id: signup
+        persona: synthetic-new-user
+        instruction: >-
+          Sign up as a new user. If a step is confusing or you get stuck, say exactly what
+          blocked you and what you tried — that is worth more than pushing through.
+execution:
+  target: e2b-desktop
+  timeoutMs: 1800000 # a real signup-and-verify flow is many turns; do not truncate it
+  caps:
+    maxUsd: 30
+scenario:
+  mode: dry-run # committed fixture stays contract-only; live needs keys + a gitignored copy
+defaults:
+  open: false
