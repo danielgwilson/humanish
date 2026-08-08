@@ -602,7 +602,7 @@ describe("runComputerUseLoop", () => {
 
     // The existing no-progress backstop still terminates the run honestly.
     expect(result.completionReason).toBe("gave_up");
-    expect(result.status).toBe("failed");
+    expect(result.status).toBe("abandoned");
     // Not fatal, and every failed action was skipped (no material progress ever counted).
     expect(result.trace.items.some((item) => item.title === "computer-use loop error")).toBe(false);
     expect(result.trace.counts.materialActions).toBe(0);
@@ -692,7 +692,7 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.status).toBe("failed");
+    expect(result.status).toBe("abandoned");
     expect(result.reason).toContain("no material UI action");
     const notice = result.trace.items.find((item) => item.title === "computer-use backstop gave up");
     expect(notice?.text).toContain("recent actions: screenshot -> screenshot -> screenshot");
@@ -806,7 +806,7 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("budget_reached");
-    expect(result.status).toBe("passed");
+    expect(result.status).toBe("incomplete");
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
     expect(result.reason).toContain("time budget after productive activity");
     expect(result.trace.counts.turns).toBe(1);
@@ -1284,7 +1284,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     // Two material clicks executed BEFORE the cap tripped → a productive lane that hit its cost
     // budget → budget_reached (passed), with the estimate + cap cited in the detail.
     expect(result.completionReason).toBe("budget_reached");
-    expect(result.status).toBe("passed");
+    expect(result.status).toBe("incomplete");
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0.35");
     expect(result.reason).toContain("after productive activity");
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
@@ -1313,7 +1313,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.status).toBe("failed");
+    expect(result.status).toBe("abandoned");
     expect(result.trace.counts.materialActions).toBe(0);
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0");
     expect(result.reason).toContain("no material progress");

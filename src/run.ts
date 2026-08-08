@@ -108,6 +108,9 @@ export type RunSimulationStatus =
   | "preparing"
   | "running"
   | "passed"
+  // Participant outcomes, not harness malfunctions (docs/principles/three-roles.md).
+  | "abandoned"
+  | "incomplete"
   | "complete"
   | "blocked"
   | "timed_out"
@@ -7009,6 +7012,10 @@ function isRunSimulationStatus(value: unknown): value is RunSimulationStatus {
     || value === "preparing"
     || value === "running"
     || value === "passed"
+    // Participant outcomes (docs/principles/three-roles.md). This runtime allowlist is the actual
+    // gate — the TS union alone does not validate a bundle read back from disk.
+    || value === "abandoned"
+    || value === "incomplete"
     || value === "complete"
     || value === "blocked"
     || value === "timed_out"

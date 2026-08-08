@@ -84,6 +84,7 @@ import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
+import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import {
@@ -184,6 +185,10 @@ export interface DesktopBrowserLaunchResult {
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+/** E2B refuses a sandbox lifetime over one hour ("400: Timeout cannot be greater than 1 hours").
+ *  The derived per-lane deadline has to stay under it, and saying so at plan time beats discovering
+ *  it from a raw provider 400 after a plan has already printed. */
+const MAX_SANDBOX_MS = 60 * 60_000;
 export const SUBJECT_DIR = "/home/user/subject";
 // Remote path for the once-per-run packed local-tree archive; removed by the extract step
 // after it unpacks into SUBJECT_DIR.
@@ -1814,6 +1819,7 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
  */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
+  const subjectEnvValues = config.subject.envValues ?? {};
   const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
   // Off-app comms (#297): on an in-sandbox subject route, redirect the app's email-API sends into an
@@ -1831,6 +1837,16 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const commsEnv: Record<string, string> = commsEmail?.injectEnv !== undefined && commsPort !== undefined
     ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
     : {};
+  // SMTP transport: the same idea as injectEnv, but an app that speaks SMTP needs a host and a port
+  // rather than a base URL. The catch accepts any credentials (loopback only), yet many apps refuse
+  // to boot unless the user/password vars exist at all, so those are injected when declared.
+  const commsSmtpPort = commsEmail?.smtp?.port;
+  if (commsEmail?.smtp && commsSmtpPort !== undefined) {
+    commsEnv[commsEmail.smtp.hostEnv] = "127.0.0.1";
+    commsEnv[commsEmail.smtp.portEnv] = String(commsSmtpPort);
+    if (commsEmail.smtp.userEnv) commsEnv[commsEmail.smtp.userEnv] = commsEmail.smtp.user ?? "humanish";
+    if (commsEmail.smtp.passwordEnv) commsEnv[commsEmail.smtp.passwordEnv] = commsEmail.smtp.password ?? "humanish";
+  }
   // Persona inbox SURFACE (#297 slice B): the loopback URL the persona opens to read captured mail; the
   // origin-rewrite map (identity on this same-sandbox route, but covers localhost/0.0.0.0 alias skew + an
   // operator-declared linkOrigin); and a disposable background loop that renders the surface DURING the
@@ -1921,8 +1937,17 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       },
       // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model drives
       // from outside). The SUBJECT's declared env NAMES are provisioned here on the clone route.
-      ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
-        ? { envs: { ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])), ...commsEnv } }
+      // Three sources, in precedence order: committed non-secret config (subject.envValues), then
+      // secret values forwarded from the caller's environment (subject.env), then the harness's own
+      // comms wiring, which must win because only it knows the catch's address.
+      ...(subjectEnvNames.length > 0 || Object.keys(subjectEnvValues).length > 0 || Object.keys(commsEnv).length > 0
+        ? {
+            envs: {
+              ...subjectEnvValues,
+              ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])),
+              ...commsEnv
+            }
+          }
         : {}),
       resolution: spec.resolution,
       dpi: 96,
@@ -1943,7 +1968,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
     // catch up is a setup failure (fail closed) rather than silently sending real mail.
     if (commsEmail && commsPort !== undefined) {
-      deployedComms = await deployCommsCatch(desktop, { port: commsPort, requestTimeoutMs: deps.requestTimeoutMs });
+      deployedComms = await deployCommsCatch(desktop, {
+        port: commsPort,
+        ...(commsSmtpPort === undefined ? {} : { smtpPort: commsSmtpPort }),
+        requestTimeoutMs: deps.requestTimeoutMs
+      });
       if (!deployedComms.ready) {
         throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
       }
@@ -2237,7 +2266,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             // Zero captures is the silent-broken shape (#351): the app never posted to the catch at
             // all, so the personas stared at an empty inbox. Most common cause: the app does not
             // actually read the declared injectEnv var for its email API base URL.
-            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`);
+            const transportHint = commsEmail.smtp
+              ? `Verify the app reads ${commsEmail.smtp.hostEnv}/${commsEmail.smtp.portEnv} for its SMTP host and port`
+              : `Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws)`;
+            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. ${transportHint} and that the flow reached an email step.`);
           }
         } catch (error) {
           warnings.push(`Comms evidence collection failed (run continues; sandbox still torn down): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
@@ -2797,6 +2829,21 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const fanoutReason = cuaLaneValidationReason(config);
   if (fanoutReason) {
     return fail("HUMANISH_CUA_LAB_FANOUT_INVALID", fanoutReason, descriptor.id);
+  }
+
+  // The sandbox deadline is DERIVED from the session budget, so a lab can ask for a session that
+  // cannot legally be provisioned. Catch it here, before anything is created, and show the
+  // arithmetic — the provider's own error names a limit but not which knob produced it.
+  const derivedSandboxMs = resolvePerLaneSandboxMs(config);
+  if (derivedSandboxMs > MAX_SANDBOX_MS) {
+    const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+    const sessionMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+    const headroomMs = derivedSandboxMs - sessionMs;
+    return fail(
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
+      descriptor.id
+    );
   }
 
   // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
@@ -3504,6 +3551,49 @@ async function runSubjectServePipeline(
     }
     emitPhaseCompleted(args.onPhase, now, groupStartedAt, `state.${when}`, true, `subject state seed steps complete (${when})`);
   };
+
+  // Provide the runtime the pipeline needs before running it (#371). The stock desktop template
+  // ships python3 and curl but no Node, so an `npm install` here used to die at exit 127 after the
+  // sandbox was already paid for. Probe-first, so a template that ships its own Node pays nothing.
+  const serveCommands = [args.serve.install, args.serve.build, args.serve.start];
+  if (needsNodeRuntime(serveCommands)) {
+    const runtimeStartedAt = now();
+    emitPhaseStarted(args.onPhase, now, "runtime", "providing the Node runtime the serve pipeline needs");
+    const bootstrap = await runDetachedStep(desktop, {
+      name: "subject-runtime-node",
+      command: nodeBootstrapCommand(),
+      cwd: SUBJECT_DIR,
+      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs,
+      ...timers
+    });
+    let ok = bootstrap.ok;
+    const corepack = ok ? corepackCommandFor(serveCommands) : undefined;
+    if (corepack) {
+      const pm = await runDetachedStep(desktop, {
+        name: "subject-runtime-pm",
+        command: corepack,
+        cwd: SUBJECT_DIR,
+        timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+        requestTimeoutMs: args.requestTimeoutMs,
+        ...timers
+      });
+      ok = pm.ok;
+    }
+    emitPhaseCompleted(
+      args.onPhase,
+      now,
+      runtimeStartedAt,
+      "runtime",
+      ok,
+      ok ? "Node runtime ready" : "could not provide a Node runtime"
+    );
+    if (!ok) {
+      throw new Error(
+        `the subject's serve pipeline needs a Node runtime and this desktop template has none, and bootstrapping one failed: ${tailOf(args.scrub(bootstrap.logTail))}. Use execution.desktop.template with an image that ships Node, or change serve.install to a runtime the template provides.`
+      );
+    }
+  }
 
   if (args.serve.install) {
     const installStartedAt = now();
@@ -4808,6 +4898,11 @@ function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] {
       return "blocked";
     case "timed_out":
       return "timed_out";
+    // A participant who abandoned, or a session that ran out before the goal, did not pass — but the
+    // harness did not fail either. The run reports what happened rather than a verdict on the tool.
+    case "abandoned":
+    case "incomplete":
+      return "fail";
   }
 }
 

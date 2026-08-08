@@ -49,6 +49,7 @@
 
 import { normalizeExtraExcludeEntry } from "./source-archive.js";
 import { actorRegistry } from "./actor-registry.js";
+import { containsSensitive } from "./redaction.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 
@@ -265,6 +266,17 @@ export interface LabSubject {
    * on the computer-use clone route.
    */
   env?: string[];
+  /**
+   * LITERAL, NON-SECRET env values committed alongside the lab — the configuration every real app
+   * needs before it will boot: a public base URL, a transport selector, a feature flag. None of that
+   * is secret, and routing it through `subject.env` would force an adopter to carry a private env
+   * file just to reproduce a public study, which is the opposite of a reproducible lab.
+   *
+   * These values ARE recorded in evidence, because they are part of how the subject was configured,
+   * so a value that looks like a secret or a local path is refused at parse rather than committed to
+   * a public repo. Anything genuinely secret belongs in `subject.env`.
+   */
+  envValues?: Record<string, string>;
   /**
    * `clone` (computer-use route): the subject's state story — seed/migration/fixture steps
    * executed in-sandbox around the serve sequence, and/or declared external state. Recorded
@@ -579,6 +591,22 @@ export interface LabComms {
   email?: LabCommsEmail;
 }
 
+export interface LabCommsSmtp {
+  /** Fixed in-sandbox loopback SMTP port (default 2525). Known before sandbox create, like `port`. */
+  port?: number;
+  /** The subject-env var carrying the SMTP host. The harness sets it to 127.0.0.1. */
+  hostEnv: string;
+  /** The subject-env var carrying the SMTP port. The harness sets it to the port above. */
+  portEnv: string;
+  /** Optional subject-env vars for a username/password the app insists on sending. The catch accepts
+   *  any credentials (it is loopback-only), but many apps refuse to start without the vars set. */
+  userEnv?: string;
+  passwordEnv?: string;
+  /** The value written to `userEnv`/`passwordEnv` when those are declared. Never a real secret. */
+  user?: string;
+  password?: string;
+}
+
 export interface LabCommsEmail {
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
    *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense — an in-sandbox
@@ -595,6 +623,16 @@ export interface LabCommsEmail {
   injectEnv?: string;
   /** Fixed in-sandbox loopback port the catch listens on (default 8025). Known before sandbox create. */
   port?: number;
+  /**
+   * SMTP transport, for the many self-hostable apps that send mail through SMTP rather than a
+   * provider's HTTP API. The catch opens a loopback SMTP listener and normalizes what it receives
+   * into the same captured-send shape the HTTP path produces, so the inbox surface, the drain, and
+   * the evidence artifact are identical either way.
+   *
+   * `hostEnv` and `portEnv` are ADOPTER-NAMED, exactly like `injectEnv`: the harness sets them to
+   * its own loopback and the chosen port. Declare the pair your app actually reads.
+   */
+  smtp?: LabCommsSmtp;
   /** Optional escape hatch: the exact absolute origin the app-under-test bakes into its email verify
    *  links, when that differs from the serve origin (e.g. an app configured with an absolute
    *  APP_URL/NEXT_PUBLIC_BASE_URL). The harness cannot infer it, so the operator declares it; it is
@@ -1728,6 +1766,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       }
       subject.env = env;
     }
+    const envValuesResult = parseEnvValues(raw.envValues);
+    if (!envValuesResult.ok) return envValuesResult;
+    if (envValuesResult.value) subject.envValues = envValuesResult.value;
     const stateResult = parseState(raw.state);
     if (!stateResult.ok) {
       return stateResult;
@@ -1765,6 +1806,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       }
       subject.env = env;
     }
+    const envValuesResult = parseEnvValues(raw.envValues);
+    if (!envValuesResult.ok) return envValuesResult;
+    if (envValuesResult.value) subject.envValues = envValuesResult.value;
     const stateResult = parseState(raw.state);
     if (!stateResult.ok) {
       return stateResult;
@@ -1931,6 +1975,40 @@ function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefine
  * them) so subjectStateInvalidReason rejects them — a state declaration that silently does
  * less than it says would violate invariant 6.
  */
+/**
+ * LITERAL non-secret subject env. Real apps need configuration before they will boot — a public base
+ * URL, a transport selector, a feature flag — and none of that is secret. Routing it through
+ * `subject.env` would force an adopter to carry a private env file just to reproduce a public study.
+ *
+ * These values ARE recorded in evidence (they are part of how the subject was configured), so a
+ * value that looks like a credential is refused here rather than committed to a public repo.
+ */
+function parseEnvValues(raw: unknown): { ok: true; value?: Record<string, string> } | LabConfigParseFailure {
+  if (raw === undefined) return { ok: true };
+  if (!isRecord(raw)) {
+    return invalid("`subject.envValues` must be a mapping of env var NAME to a literal non-secret value.");
+  }
+  const envValues: Record<string, string> = {};
+  for (const [name, rawValue] of Object.entries(raw)) {
+    if (!ENV_NAME_PATTERN.test(name)) {
+      return invalid(`subject.envValues keys must be env var NAMES like NEXT_PUBLIC_APP_URL (got "${name}").`);
+    }
+    const value = typeof rawValue === "number" || typeof rawValue === "boolean" ? String(rawValue) : str(rawValue);
+    if (value === undefined) {
+      return invalid(`\`subject.envValues.${name}\` must be a string, number, or boolean.`);
+    }
+    // Reuse the redaction module's own detector rather than inventing a second opinion about what
+    // a secret looks like — the two must never disagree about the same string.
+    if (containsSensitive(value)) {
+      return invalid(
+        `\`subject.envValues.${name}\` looks like a secret or a local path, and these values are committed with the lab and recorded in evidence. Declare the NAME in \`subject.env\` instead — those values come from the caller's environment and never persist.`
+      );
+    }
+    envValues[name] = value;
+  }
+  return { ok: true, value: envValues };
+}
+
 function parseState(raw: unknown): { ok: true; value: LabSubjectState | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
@@ -2694,9 +2772,48 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     };
   }
 
+  // SMTP transport, for apps that send mail through SMTP rather than a provider's HTTP API.
+  let smtp: LabCommsSmtp | undefined;
+  if (raw.smtp !== undefined) {
+    if (!isRecord(raw.smtp)) return invalid("`comms.email.smtp` must be a mapping.");
+    const envName = (value: unknown, field: string): string | undefined => {
+      const name = str(value);
+      if (name === undefined) return undefined;
+      return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : `__invalid__${field}`;
+    };
+    const hostEnv = envName(raw.smtp.hostEnv, "hostEnv");
+    const portEnv = envName(raw.smtp.portEnv, "portEnv");
+    if (hostEnv === undefined || portEnv === undefined) {
+      return invalid("`comms.email.smtp` needs both `hostEnv` and `portEnv` — the subject-env vars your app reads for its SMTP host and port. The harness sets them to its own loopback listener.");
+    }
+    if (hostEnv.startsWith("__invalid__") || portEnv.startsWith("__invalid__")) {
+      return invalid("`comms.email.smtp.hostEnv` and `portEnv` must be valid env var names.");
+    }
+    let smtpPort = 2525;
+    if (raw.smtp.port !== undefined) {
+      const parsed = posInt(raw.smtp.port);
+      if (parsed === undefined || parsed > 65_535) return invalid("`comms.email.smtp.port` must be a positive integer ≤ 65535.");
+      smtpPort = parsed;
+    }
+    const userEnv = envName(raw.smtp.userEnv, "userEnv");
+    const passwordEnv = envName(raw.smtp.passwordEnv, "passwordEnv");
+    if (userEnv?.startsWith("__invalid__") || passwordEnv?.startsWith("__invalid__")) {
+      return invalid("`comms.email.smtp.userEnv` and `passwordEnv` must be valid env var names.");
+    }
+    smtp = {
+      port: smtpPort,
+      hostEnv,
+      portEnv,
+      ...(userEnv === undefined ? {} : { userEnv }),
+      ...(passwordEnv === undefined ? {} : { passwordEnv }),
+      ...(str(raw.smtp.user) === undefined ? {} : { user: str(raw.smtp.user) as string }),
+      ...(str(raw.smtp.password) === undefined ? {} : { password: str(raw.smtp.password) as string })
+    };
+  }
+
   const injectEnv = str(raw.injectEnv);
-  if (injectEnv === undefined && external === undefined) {
-    return invalid("`comms.email.injectEnv` is required — the subject-env var the harness sets to the catch base URL (e.g. RESEND_API_URL). On an adopter-hosted plane declare `comms.email.external` instead: you run the catch and point your own app at it.");
+  if (injectEnv === undefined && external === undefined && smtp === undefined) {
+    return invalid("`comms.email` needs a transport: `injectEnv` (the subject-env var set to the catch's HTTP base URL, e.g. RESEND_BASE_URL), or `smtp` (host/port env vars, for an app that sends over SMTP), or `external` on an adopter-hosted plane where you run the catch yourself.");
   }
   if (injectEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
     return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
@@ -2704,6 +2821,7 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   const email: LabCommsEmail = {
     kind: "fake",
     ...(injectEnv === undefined ? {} : { injectEnv }),
+    ...(smtp === undefined ? {} : { smtp }),
     ...(external === undefined ? {} : { external })
   };
   if (raw.port !== undefined) {

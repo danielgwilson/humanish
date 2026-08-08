@@ -48,6 +48,15 @@ Excalidraw is the application studied; it is not a Humanish adopter or endorser.
 - `humanish feedback issue` renders a draft; no GitHub API call exists on that path.
 - Verify fails closed: a bundle that cannot pass every gate grades `local_only` or `blocked`, never `share_ready`.
 
+## Known failure modes
+
+The limits, cited: what the computer-use substrate cannot do yet, where simulated users
+diverge from real ones, what a passing `humanish verify` grade does not prove, and when to
+recruit real people instead. Includes first-party run ids for our own failed lanes, and
+the published numbers against simulated users.
+
+- https://humanish.dev/failure-modes
+
 ## Component registry
 
 humanish.dev serves a shadcn-compatible component registry at `https://humanish.dev/r/<name>.json`.

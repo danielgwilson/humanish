@@ -6,7 +6,12 @@ const DOCS = `${GITHUB}#docs`;
 // The README's "## Commands" heading — GitHub slugs it to #commands.
 const CLI_REFERENCE = `${GITHUB}#commands`;
 
-export default function Footer() {
+/**
+ * `base` prefixes the homepage section anchors so subpages link back to them
+ * ("/#study") instead of hunting for an id they do not have. Empty on the
+ * homepage itself, where the plain hashes stay in-page.
+ */
+export default function Footer({ base = "" }: { base?: string }) {
   return (
     <footer className="site-foot">
       <div className="foot-grid">
@@ -17,14 +22,15 @@ export default function Footer() {
         <div className="foot-cols">
           <nav className="foot-block" aria-label="Product">
             <span className="fl">Product</span>
-            <a href="#install">Install</a>
+            <a href={`${base}#install`}>Install</a>
             <a href={DOCS}>Docs</a>
             <a href={CLI_REFERENCE}>CLI reference</a>
           </nav>
           <nav className="foot-block" aria-label="Evidence">
             <span className="fl">Evidence</span>
-            <a href="#study">Excalidraw study</a>
-            <a href="#study">Verify checks</a>
+            <a href={`${base}#study`}>Excalidraw study</a>
+            <a href={`${base}#study`}>Verify checks</a>
+            <a href="/failure-modes">Known failure modes</a>
           </nav>
           <nav className="foot-block" aria-label="Source">
             <span className="fl">Source</span>

@@ -29,14 +29,11 @@ subject:
   clone:
     depth: 1
   serve:
-    # The stock E2B desktop template ships python3 + curl but NO Node runtime, so the
-    # serve pipeline bootstraps one first (the terminal lane does the same). Without this,
-    # install dies at exit 127 with `npm: command not found` AFTER a sandbox has been paid
-    # for — see humanish#371, which asks for a preflight so nobody rediscovers it this way.
-    install: >-
-      curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -n -E bash - &&
-      sudo -n apt-get install -y nodejs &&
-      npm install --no-audit --no-fund
+    # Plain npm — the harness provides the Node runtime. The stock desktop template ships
+    # python3 + curl and no Node, so humanish probes for one and bootstraps it before this
+    # step runs (#371). This lab used to carry a hand-written NodeSource pipeline here; it
+    # does not need to, and neither does yours.
+    install: npm install --no-audit --no-fund
     build: npm run build
     start: npx vite preview --host 127.0.0.1 --port 3000
     url: http://127.0.0.1:3000/

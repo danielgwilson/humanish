@@ -435,23 +435,28 @@ export function describeCuaAction(action: CuaAction): string {
   }
 }
 
-function statusForCompletion(reason: ActorCompletionReason): ActorStatus {
+/** Exported so the participant-vs-harness distinction is pinned directly, not inferred from a run. */
+export function statusForCompletionReason(reason: ActorCompletionReason): ActorStatus {
   switch (reason) {
     case "goal_satisfied":
     case "turn_completed": // turn_completed is a Codex-lane reason; this loop emits goal_satisfied
       return "passed";
-    // Productive wall-clock stop: an open-ended watch session that reached the safety cap AFTER
-    // material progress is a non-failure completion (ActorStatus has no "budget_reached" member; the
-    // honest distinction lives in completionReason). This switch is exhaustive with no default, so a
-    // new completion reason forces a compile error here until it is handled — the safety net that
-    // guarantees budget_reached is mapped.
+    // A session that ran out of time or budget did not reach its goal, whatever it achieved along
+    // the way. Calling that `passed` is how a truncated study came to be reported as a green one —
+    // and why "raise the timeout" kept landing on the operator instead of on the tool. This switch
+    // is exhaustive with no default, so a new completion reason forces a compile error here.
     case "budget_reached":
-      return "passed";
+      return "incomplete";
     case "timed_out":
       return "timed_out";
     case "blocked_approval":
       return "blocked";
+    // A participant who stopped trying is the single most valuable thing a usability study
+    // produces. Recording it as `failed` said the instrument broke, which is a different claim and
+    // a false one — see docs/principles/three-roles.md.
     case "gave_up":
+      return "abandoned";
+    // Only the harness failing is a harness failure.
     case "actor_error":
     case "step_failed": // step_failed is the scripted-browser lane's reason; this loop never emits it
     case "harness_error":
@@ -1015,7 +1020,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   }
 
   const completedAtMs = now();
-  const status = statusForCompletion(completionReason);
+  const status = statusForCompletionReason(completionReason);
   const ids: ActorTrace["ids"] = {};
   if (provider.version !== undefined) ids.model = provider.version;
   // responseId is provider-authored and opaque; redact for defense-in-depth.
