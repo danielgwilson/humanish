@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import CoverCanvas from "./cover-canvas";
+import PersonaLane from "./persona-lane";
+import TerminalCast, { type TerminalLine } from "./terminal-cast";
 import { resolveCover } from "@/lib/covers";
 import { prefersReducedMotion } from "@/lib/theme";
 
@@ -14,6 +15,8 @@ import { prefersReducedMotion } from "@/lib/theme";
  * JS — CSS stacks the panels as a readable list and covers resolve via IO.
  */
 
+// Injected as HTML for its token spans — keep it a literal, never
+// interpolate untrusted text into it.
 const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07T17-44-48-760Z-87389419</span>
 <span class="cy">date:</span> <span class="cv">2026-08-07</span>
 <span class="cy">subject:</span>
@@ -35,6 +38,15 @@ const RAIL_ITEMS: Array<[string, string, string, boolean?]> = [
   ["04", "Lane 04", "export-drawing"],
   ["05", "Bundle", "what landed in .humanish/"],
   ["06", "Verify", "16/16 checks"]
+];
+
+const VERIFY_CAST: TerminalLine[] = [
+  { kind: "cmd", text: "$ humanish verify" },
+  { kind: "ok", text: "redaction passed" },
+  { kind: "ok", text: "actor engagement: live actor traces that claim goal_satisfied carry at least one action or message" },
+  { kind: "ok", text: "actor verdict consistency: live pass verdicts do not hide failed, blocked, or timed-out actor traces" },
+  { kind: "dim", text: "… 13 more checks" },
+  { kind: "sum", text: "16/16 passed → status: local_only", note: "(RAW_SCREENSHOTS)" }
 ];
 
 const LANES: Array<{
@@ -90,6 +102,11 @@ export default function PinnedReplay() {
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
+
+    // The pinned desktop layout is CSS-gated on html.js. humanish.dev sets it
+    // pre-paint in the layout; adding it here too makes the block
+    // self-sufficient when installed elsewhere.
+    document.documentElement.classList.add("js");
 
     const rm = prefersReducedMotion();
     const mqDesk = window.matchMedia("(min-width:1024px)");
@@ -244,11 +261,7 @@ export default function PinnedReplay() {
           </article>
 
           {LANES.map((lane, i) => (
-            <article className="panel" data-i={i + 1} key={lane.idx} {...(i === 0 ? { "data-sizer": "" } : {})}>
-              <header className="pbar"><span className="pl"><b className="pidx">{lane.idx}</b><span className="pname">{lane.name}</span></span><span className="pr">observer · replay</span></header>
-              <div className="pmedia"><img src={lane.img} alt={lane.alt} /><CoverCanvas n={lane.idx} /></div>
-              <footer className="pcap"><p className="prep"><span className="plab">{lane.reportLabel}</span><q>{lane.report}</q></p>{lane.passed ? <span className="chip chip-pass">Passed</span> : <span className="chip chip-dot chip-mute">Gave up</span>}</footer>
-            </article>
+            <PersonaLane {...lane} dataI={i + 1} sizer={i === 0} key={lane.idx} />
           ))}
 
           <article className="panel" data-i="5">
@@ -269,14 +282,7 @@ export default function PinnedReplay() {
           <article className="panel panel-dark" data-i="6">
             <header className="pbar"><span className="pl"><b className="pidx">06</b><span className="pname">verify · share-safety</span></span><span className="pr">fail-closed</span></header>
             <div className="pbody">
-              <div className="vterm">
-                <p className="vln vp">$ humanish verify</p>
-                <p className="vln"><span className="vok">ok</span>  redaction passed</p>
-                <p className="vln"><span className="vok">ok</span>  actor engagement: live actor traces that claim goal_satisfied carry at least one action or message</p>
-                <p className="vln"><span className="vok">ok</span>  actor verdict consistency: live pass verdicts do not hide failed, blocked, or timed-out actor traces</p>
-                <p className="vln vdim">… 13 more checks</p>
-                <p className="vln vsum">16/16 passed → status: local_only <span className="vdim">(RAW_SCREENSHOTS)</span></p>
-              </div>
+              <TerminalCast lines={VERIFY_CAST} />
             </div>
             <footer className="pcap"><p className="prep"><span className="plab">The gate</span><code>humanish verify</code> grades the bundle fail-closed. This run: 16/16 checks passed — and the bundle still grades <code>local_only</code>, because it holds full-fidelity screenshots. Publishing these crops was a reviewed, deliberate act.</p></footer>
           </article>

@@ -47,6 +47,30 @@ Excalidraw is the application studied; it is not a Humanish adopter or endorser.
 - `humanish feedback issue` renders a draft; no GitHub API call exists on that path.
 - Verify fails closed: a bundle that cannot pass every gate grades `local_only` or `blocked`, never `share_ready`.
 
+## Component registry
+
+humanish.dev serves a shadcn-compatible component registry at `https://humanish.dev/r/<name>.json`.
+Items: `humanish-tokens` (the site's token system), `terminal-cast` (static terminal
+transcript), `persona-lane` (run lane with screenshot, verbatim report, honest status
+chip), `pinned-replay` (the scroll-pinned run walkthrough, with the Excalidraw study's
+metadata as demo data — screenshots not included).
+
+Install directly:
+
+```
+npx shadcn@latest add https://humanish.dev/r/pinned-replay.json
+```
+
+Or configure the namespace in `components.json` and add by name:
+
+```json
+{ "registries": { "@humanish": "https://humanish.dev/r/{name}.json" } }
+```
+
+```
+npx shadcn@latest add @humanish/terminal-cast
+```
+
 ## Links
 
 - GitHub: https://github.com/danielgwilson/humanish

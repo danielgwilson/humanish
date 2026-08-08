@@ -403,7 +403,7 @@ h2 em { font-style: italic; font-weight: 400 }
 .runband { display: none }
 @media (min-width: 1024px) {
   html.js .runband {
-    position: absolute; top: 0; left: 0; right: 0;
+    margin: 0; position: absolute; top: 0; left: 0; right: 0;
     display: flex; justify-content: space-between; align-items: baseline; gap: 8px 24px; flex-wrap: wrap;
     padding: 20px 0 13px; border-bottom: 1px solid var(--line-soft);
     font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--label);
@@ -435,7 +435,7 @@ h2 em { font-style: italic; font-weight: 400 }
 .ritem {
   display: flex; align-items: baseline; gap: 12px; text-align: left;
   padding: 10px 14px; border-radius: 10px; border: 1px solid transparent;
-  color: var(--muted);
+  color: var(--muted); font: inherit; background: none; cursor: pointer;
   transition: background .18s, color .18s, border-color .18s, box-shadow .18s;
 }
 .ritem .ridx { font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .08em; width: 26px; flex: none; color: var(--muted) }
@@ -468,14 +468,14 @@ h2 em { font-style: italic; font-weight: 400 }
 .pname { font-family: var(--mono); font-size: 11px; color: var(--ink); letter-spacing: .09em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .pr { font-family: var(--mono); font-size: 10.5px; color: var(--label); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap }
 .pmedia { position: relative; flex: 0 0 auto; background: var(--mineral) }
-.pmedia img { width: 100%; aspect-ratio: 598/324; object-fit: cover }
+.pmedia img { display: block; width: 100%; aspect-ratio: 598/324; object-fit: cover }
 .pbody { flex: 1; display: flex; align-items: center; justify-content: center; padding: 26px 20px }
 @media (min-width: 1024px) { .pbody { padding: 30px } }
 .pcap {
   display: flex; justify-content: space-between; align-items: center; gap: 14px;
   min-height: 52px; padding: 12px 16px; border-top: 1px solid var(--line-soft);
 }
-.prep { min-width: 0; font-size: 13px; color: var(--body-c) }
+.prep { margin: 0; min-width: 0; font-size: 13px; color: var(--body-c) }
 .plab { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--label); margin-bottom: 3px }
 .prep q { font-family: var(--mono); font-size: 12.5px; color: var(--ink); quotes: "\201C" "\201D" }
 .prep code { font-size: .92em }
@@ -484,10 +484,10 @@ h2 em { font-style: italic; font-weight: 400 }
 .brief-facts { display: flex; flex-wrap: wrap; row-gap: 10px; border-bottom: 1px solid var(--line-soft); padding-bottom: 12px }
 .brief-facts div { display: grid; gap: 3px; align-content: start; padding-right: 16px; margin-right: 16px; border-right: 1px solid var(--line-soft) }
 .brief-facts div:last-child { border-right: 0; margin-right: 0; padding-right: 0 }
-.brief-facts dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--label) }
-.brief-facts dd { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap }
+.brief-facts dt { margin: 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--label) }
+.brief-facts dd { margin: 0; font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap }
 .pbody-brief .code { margin: auto 0 }
-.code { font-family: var(--mono); font-size: 12.5px; line-height: 1.8; color: var(--ink); white-space: pre; overflow-x: auto; max-width: 100% }
+.code { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.8; color: var(--ink); white-space: pre; overflow-x: auto; max-width: 100% }
 .code .cy { color: var(--muted) }
 .code .cv { color: var(--ink) }
 .code .ca { color: var(--accent-ink) }
@@ -522,7 +522,7 @@ h2 em { font-style: italic; font-weight: 400 }
 .panel-dark .chip-dot::before { background: var(--accent-dz) }
 .panel-dark :focus-visible, .band-dark :focus-visible { outline-color: var(--accent-dz) }
 .vterm { width: 100%; max-width: 560px; font-family: var(--mono); font-size: 12.5px; line-height: 1.95 }
-.vln { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--dz-body) }
+.vln { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--dz-body) }
 .vp { color: var(--dz-ink) }
 .vok { color: var(--accent-dz); font-weight: 500 }
 .vdim { color: var(--dz-label) }
