@@ -47,7 +47,14 @@ subject:
     installTimeoutMs: 900000
     # `npm run dev` on purpose: the production build runs lingui extract plus a full-monorepo
     # tsc and rollup, which is minutes of work this study does not need.
-    build: npx prisma migrate deploy --schema packages/prisma/schema.prisma || npm run prisma:migrate-deploy
+    # Migrate AND generate: documenso imports zod schemas that prisma generate emits, and `npm run
+    # dev` fails at request time without them — the server starts, then every route 500s on a
+    # missing module. translate:compile is what `npm run dev` would do first anyway.
+    build: >-
+      npm run prisma:migrate-deploy &&
+      npm run prisma:generate &&
+      npm run translate:compile
+    buildTimeoutMs: 600000
     start: npm run dev
     url: http://localhost:3000/
     readyTimeoutMs: 300000

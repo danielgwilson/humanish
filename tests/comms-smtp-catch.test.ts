@@ -6,7 +6,7 @@
 // — a captured message is normalized into the SAME NDJSON line an HTTP send produces, so every
 // host-side profile, the inbox surface, and the drain work unchanged.
 import { spawn, type ChildProcess } from "node:child_process";
-import { createConnection } from "node:net";
+import { createConnection, createServer } from "node:net";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -16,6 +16,23 @@ import { afterEach, describe, expect, it } from "vitest";
 import { SANDBOX_CATCH_SCRIPT, parseDeliveriesNdjson } from "../src/comms-sandbox-catch.js";
 import { routeCapturedSends } from "../src/comms-sandbox-catch.js";
 import { FakeInbox } from "../src/comms-fake-inbox.js";
+
+/**
+ * Ask the OS for a free port instead of guessing one. Picking randomly from a fixed range collides
+ * with whatever else is running — including another vitest worker — and produced a flaky failure
+ * that looked like a real bug.
+ */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close(() => (port ? resolve(port) : reject(new Error("no port assigned"))));
+    });
+  });
+}
 
 /** Drive one SMTP conversation to completion and resolve when the server accepts the message. */
 function sendMail(port: number, message: string, envelope: { from: string; to: string }): Promise<string[]> {
@@ -61,8 +78,8 @@ describe("sandbox catch: SMTP transport", () => {
     const scriptPath = path.join(dir, "catch.py");
     const deliveries = path.join(dir, "deliveries.ndjson");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const httpPort = 8800 + Math.floor(Math.random() * 100);
-    const smtpPort = httpPort + 200;
+    const httpPort = await freePort();
+    const smtpPort = await freePort();
     child = spawn("python3", [scriptPath, String(httpPort), deliveries, path.join(dir, "surface"), "0", "", String(smtpPort)], {
       stdio: "ignore"
     });
@@ -117,8 +134,8 @@ describe("sandbox catch: SMTP transport", () => {
     const scriptPath = path.join(dir, "catch.py");
     const deliveries = path.join(dir, "deliveries.ndjson");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const httpPort = 8600 + Math.floor(Math.random() * 100);
-    const smtpPort = httpPort + 150;
+    const httpPort = await freePort();
+    const smtpPort = await freePort();
     // No SMTP argv: routes that do not need it must not gain an extra listener.
     child = spawn("python3", [scriptPath, String(httpPort), deliveries, path.join(dir, "surface")], { stdio: "ignore" });
 
