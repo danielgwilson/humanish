@@ -255,10 +255,19 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   const usageRecord = asRecord(root.usage);
   const usageInput = optionalNumber(usageRecord.input_tokens);
   const usageOutput = optionalNumber(usageRecord.output_tokens);
+  // Of the input tokens, how many the provider served from its prompt cache. This loop threads
+  // state with previous_response_id and re-sends a growing warm prefix every turn, so most input on
+  // a long session is a cache hit billed at a fraction of the full rate. Not reading it made every
+  // cost line materially overstate the bill (#391).
+  const usageCachedInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cached_tokens);
   const usage =
     usageInput === undefined && usageOutput === undefined
       ? undefined
-      : { ...(usageInput === undefined ? {} : { input: usageInput }), ...(usageOutput === undefined ? {} : { output: usageOutput }) };
+      : {
+          ...(usageInput === undefined ? {} : { input: usageInput }),
+          ...(usageOutput === undefined ? {} : { output: usageOutput }),
+          ...(usageCachedInput === undefined ? {} : { cachedInput: usageCachedInput })
+        };
 
   const turn: CuaTurn = {
     actions,

@@ -23,6 +23,11 @@ export interface ModelRate {
   inputUsdPerToken: number;
   /** USD per output token. */
   outputUsdPerToken: number;
+  /** USD per input token served from the provider's prompt cache, when the provider bills those at
+   *  a reduced rate. Optional: absent means we do not model a discount and every input token is
+   *  billed at `inputUsdPerToken` — the previous behavior, kept as the fallback so a rate sheet
+   *  without this field prices exactly as it did before (#391). */
+  cachedInputUsdPerToken?: number;
   /** "YYYY-MM-DD" the entry was last checked against `source`. */
   asOf: string;
   /** Public pricing page the number came from (a comment/URL, never a secret). */
@@ -59,7 +64,15 @@ export interface ActorEstimatedCost {
   modelId?: string;
   /** true when the rate is a stand-in, not a live sheet. */
   placeholder?: boolean;
-  breakdown?: { inputUsd: number; outputUsd: number; inputTokens: number; outputTokens: number };
+  breakdown?: {
+    inputUsd: number;
+    outputUsd: number;
+    inputTokens: number;
+    outputTokens: number;
+    /** Of `inputTokens`, how many were billed at the reduced cached rate. Present only when the
+     *  provider reported cache hits AND the rate sheet models a cached rate. */
+    cachedInputTokens?: number;
+  };
 }
 
 /** The desktop-minute cost ESTIMATE (host-side create->teardown span * a per-minute rate). Same
@@ -85,13 +98,14 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     asOf: "2026-08-01",
     source: "openai.com/api/pricing (computer-use-preview)"
   },
-  // gpt-5.5 = the shipped CUA default (DEFAULT_OPENAI_CU_MODEL). $5 / 1M input, $30 / 1M output
-  // ($0.50 / 1M cached input, not modeled here). NOTE: OpenAI's live pricing page no longer lists
-  // gpt-5.5 (superseded by the gpt-5.6 family) — rate confirmed against public third-party sheets
-  // instead; refreshing the default model is tracked in issue #334.
+  // gpt-5.5 = the shipped CUA default (DEFAULT_OPENAI_CU_MODEL). $5 / 1M input, $30 / 1M output,
+  // $0.50 / 1M cached input. NOTE: OpenAI's live pricing page no longer lists gpt-5.5 (superseded
+  // by the gpt-5.6 family) — rate confirmed against public third-party sheets instead; refreshing
+  // the default model is tracked in issue #334.
   "gpt-5.5": {
     inputUsdPerToken: 5e-6,
     outputUsdPerToken: 30e-6,
+    cachedInputUsdPerToken: 0.5e-6,
     asOf: "2026-08-05",
     source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)"
   }
@@ -142,7 +156,17 @@ export function estimateActorCost(
   }
   const inTok = tokenUsage.input ?? 0;
   const outTok = tokenUsage.output ?? 0;
-  const inputUsd = round6(inTok * rate.inputUsdPerToken);
+  // Cached input is billed at a fraction of the full rate, and on a session that threads state
+  // through the provider it is the MAJORITY of input — a warm prefix is re-sent every turn. Pricing
+  // it at the full rate overstated real spend by up to ~10x on long sessions, which is enough to
+  // abort a run against its own cap for money it never spent (#391).
+  //
+  // Both halves are honestly absent: no reported cachedInput, or a rate sheet without a cached
+  // rate, prices exactly as before. We never assume a discount we cannot evidence.
+  const cachedTok =
+    rate.cachedInputUsdPerToken === undefined ? 0 : Math.min(inTok, Math.max(0, tokenUsage.cachedInput ?? 0));
+  const fullTok = inTok - cachedTok;
+  const inputUsd = round6(fullTok * rate.inputUsdPerToken + cachedTok * (rate.cachedInputUsdPerToken ?? 0));
   const outputUsd = round6(outTok * rate.outputUsdPerToken);
   return {
     schema: ACTOR_ESTIMATED_COST_SCHEMA,
@@ -151,7 +175,13 @@ export function estimateActorCost(
     source: rate.source,
     ...(modelId ? { modelId } : {}),
     ...(rate.placeholder ? { placeholder: true } : {}),
-    breakdown: { inputUsd, outputUsd, inputTokens: inTok, outputTokens: outTok }
+    breakdown: {
+      inputUsd,
+      outputUsd,
+      inputTokens: inTok,
+      outputTokens: outTok,
+      ...(cachedTok > 0 ? { cachedInputTokens: cachedTok } : {})
+    }
   };
 }
 
