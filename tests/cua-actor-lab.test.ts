@@ -3244,7 +3244,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(verified.ok).toBe(false);
   });
 
-  it("a gave_up in-process run is a failed lane, not an engaged pass", async () => {
+  it("a gave_up in-process run is an ABANDONED lane — a participant outcome, still not an engaged pass", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runLab(localAppConfig(), {
       cwd,
@@ -3263,16 +3263,19 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
-    expect(result.session?.status).toBe("failed");
+    // The participant stopped trying. That is a finding about the product, not the harness
+    // malfunctioning — but it is still not a pass, and the lane must not be counted as one.
+    expect(result.session?.status).toBe("abandoned");
     expect(result.session?.completionReason).toBe("gave_up");
     expect(result.ok).toBe(false);
     const lanes = result.lanes ?? [];
     const laneSummary = result.laneSummary;
     if (!laneSummary) throw new Error("expected lane summary");
-    expect(lanes[0]?.status).toBe("failed");
+    expect(lanes[0]?.status).toBe("abandoned");
     expect(lanes[0]?.ok).toBe(false);
     expect(laneSummary.passed).toBe(0);
-    expect(result.error?.message).toContain("failed");
+    // The error names what actually happened to the participant, not a generic failure.
+    expect(result.error?.message).toContain("abandoned");
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("fail");
@@ -3451,7 +3454,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     };
   }
 
-  it("classifies a productive budget stop as a NON-FAILURE pass (budget_reached) and verifies the bundle", async () => {
+  it("classifies a productive budget stop as INCOMPLETE — no pass claimed, and the evidence still verifies", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(cuaConfig(), {
@@ -3475,14 +3478,20 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
+    // The session ran out before reaching its goal. It did real work on the way — that is what
+    // separates it from a zero-progress timeout — but "productive" is not "finished", and calling it
+    // a pass is how a truncated study came to be reported green.
     expect(result.session?.completionReason).toBe("budget_reached");
-    expect(result.session?.status).toBe("passed");
-    expect(result.ok).toBe(true);
+    expect(result.session?.status).toBe("incomplete");
+    expect(result.ok).toBe(false);
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
-    expect(bundle.review.verdict).toBe("pass");
+    expect(bundle.review.verdict).not.toBe("pass");
     expect(bundle.streams[0].actor.completionReason).toBe("budget_reached");
 
+    // The distinction that matters: the STUDY is incomplete, but the EVIDENCE is sound. The harness
+    // did exactly what it said it did, so verify still passes — an unfinished study is a finding
+    // about the session, not a reason to distrust the bundle.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
   });

@@ -83,6 +83,10 @@ export function piStatusToCompletionReason(status: ActorStatus): ActorCompletion
       return "timed_out";
     case "blocked":
       return "blocked_approval";
+    case "abandoned":
+      return "gave_up";
+    case "incomplete":
+      return "budget_reached";
     case "failed":
       return "actor_error";
   }

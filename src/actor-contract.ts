@@ -14,7 +14,27 @@ import { redactText } from "./redaction.js";
 
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 
-export type ActorStatus = "passed" | "failed" | "blocked" | "timed_out";
+/**
+ * How a session ended, from the point of view of the STUDY rather than the harness.
+ *
+ * The distinction matters because two of these are participant outcomes and the rest are not. A
+ * participant who abandons a task is the single most valuable thing a usability study produces, and
+ * recording that as `failed` — as this type used to force — reads as the instrument breaking. See
+ * docs/principles/three-roles.md.
+ *
+ * - `passed`      the participant reached the goal
+ * - `abandoned`   the participant stopped trying. A FINDING, not a malfunction
+ * - `incomplete`  the session ended (time or budget) before the goal was reached
+ * - `blocked`     the participant needed an approval the run could not give
+ * - `timed_out`   the session hit its deadline with no productive activity at all
+ * - `failed`      the HARNESS failed: a dead sandbox, a provider error, a broken artifact
+ */
+export type ActorStatus = "passed" | "abandoned" | "incomplete" | "blocked" | "timed_out" | "failed";
+
+/** Statuses that describe what happened to a PARTICIPANT rather than a harness malfunction. Verify
+ *  treats these as study results, so a run whose evidence is sound is not called untrustworthy just
+ *  because a persona gave up. */
+export const PARTICIPANT_OUTCOME_STATUSES: readonly ActorStatus[] = ["abandoned", "incomplete"];
 
 export type ActorCompletionReason =
   | "goal_satisfied"

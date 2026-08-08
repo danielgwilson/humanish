@@ -24,16 +24,26 @@ subject:
   clone:
     depth: 1
   serve:
-    # Node itself is provided by the harness (#371). Postgres is not part of any template, so
-    # it is installed and seeded here; documenso needs a real database before it will boot.
+    # Node itself is provided by the harness (#371). Postgres is not part of any template, so it
+    # is installed and started here. `service`/systemd is a no-op in a container — the cluster has
+    # to be started with pg_ctlcluster, which is the mistake this lab made first and paid a sandbox
+    # to discover: apt succeeded, the server never came up, and createdb failed on a missing socket.
+    #
+    # `npm install`, not `npm ci`: documenso's committed lockfile is out of sync with its own
+    # package.json upstream, and `npm ci` refuses to run at all in that state.
+    #
+    # The trust rule is PREPENDED, not appended: pg_hba matches the first rule that applies, and the
+    # default file already has a scram rule for 127.0.0.1 above where an appended line would land.
+    # Appending it looked right and cost another sandbox to disprove.
     install: >-
       sudo -n apt-get update -qq &&
-      sudo -n apt-get install -y -qq postgresql postgresql-contrib &&
-      sudo -n sed -i 's/^\(host.*127.0.0.1\/32.*\)\w\+$/\1trust/'
-      /etc/postgresql/*/main/pg_hba.conf &&
-      sudo -n service postgresql restart &&
+      sudo -n apt-get install -y -qq postgresql &&
+      PGVER=$(ls /etc/postgresql | head -1) &&
+      sudo -n sed -i '1i host all all 127.0.0.1/32 trust'
+      /etc/postgresql/$PGVER/main/pg_hba.conf &&
+      sudo -n pg_ctlcluster $PGVER main start &&
       sudo -n -u postgres createdb documenso &&
-      npm ci --no-audit --no-fund
+      npm install --no-audit --no-fund
     installTimeoutMs: 900000
     # `npm run dev` on purpose: the production build runs lingui extract plus a full-monorepo
     # tsc and rollup, which is minutes of work this study does not need.
@@ -53,7 +63,7 @@ subject:
     NEXT_PRIVATE_DIRECT_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/documenso
     NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
     NEXT_PRIVATE_SMTP_FROM_NAME: Documenso
-    NEXT_PRIVATE_SMTP_FROM_ADDRESS: noreply@documenso.local
+    NEXT_PRIVATE_SMTP_FROM_ADDRESS: noreply@example.test
     NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS: "true"
     # A local-only signing key and rate-limit bypass: this instance exists for the length of
     # one sandbox and is reachable only from inside it.

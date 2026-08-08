@@ -4879,6 +4879,11 @@ function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] {
       return "blocked";
     case "timed_out":
       return "timed_out";
+    // A participant who abandoned, or a session that ran out before the goal, did not pass — but the
+    // harness did not fail either. The run reports what happened rather than a verdict on the tool.
+    case "abandoned":
+    case "incomplete":
+      return "fail";
   }
 }
 
