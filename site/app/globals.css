@@ -571,7 +571,8 @@ html:not(.js) .stage { display: grid; gap: 16px }
    the nav jump landed late (then a smooth scroll, now instant) and the .18s
    delay stacked on the .8s fade. So: it arrives with the ledger rather than
    after it (the fade bought nothing on a line that is already at rest below a
-   rule), and it carries annotation weight at full contrast. */
+   rule), and it carries annotation weight at full contrast. Both notes under
+   the ledger share the rule. */
 .cmd-note {
   margin-top: 26px; display: flex; gap: 12px; align-items: baseline;
   font-size: 14.5px; font-weight: 500; color: var(--ink);
