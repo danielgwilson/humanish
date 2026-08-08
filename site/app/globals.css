@@ -166,8 +166,15 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box }
-html { scroll-behavior: smooth }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } }
+/* No global smooth scroll. Three of the four nav targets sit past the study
+   band's 588vh pinned track, so `html { scroll-behavior: smooth }` turned the
+   Commands jump into a 6,860px, ~1.4s animated flight (measured at 1440×900):
+   at +700ms the viewport still showed the study notes with the Commands h2
+   pinned to the bottom edge, and the band's reveal fade only settled ~2.2s
+   after the click. Two persona studies read that as landing "into/near the
+   study area". Anchors now land in one frame, at their scroll-margin offset.
+   The replay's own step-to-step scrolls still animate and still honor reduced
+   motion: pinned-replay.tsx passes `behavior` per call, never inheriting it. */
 body {
   font-family: var(--sans);
   background: var(--paper);
@@ -561,10 +568,10 @@ html:not(.js) .stage { display: grid; gap: 16px }
    page — measured 1.9:1 against the page in shots, vs 12.4:1 for the rows.
    Cause was not the palette: as the last .rev in the band it was still mid-
    fade (computed opacity 0.11) whenever a reader arrived by nav jump, because
-   `html { scroll-behavior: smooth }` lands the scroll late and the .18s delay
-   stacks on the .8s fade. So: it arrives with the ledger rather than after it
-   (the fade bought nothing on a line that is already at rest below a rule),
-   and it carries annotation weight at full contrast. */
+   the nav jump landed late (then a smooth scroll, now instant) and the .18s
+   delay stacked on the .8s fade. So: it arrives with the ledger rather than
+   after it (the fade bought nothing on a line that is already at rest below a
+   rule), and it carries annotation weight at full contrast. */
 .cmd-note {
   margin-top: 26px; display: flex; gap: 12px; align-items: baseline;
   font-size: 14.5px; font-weight: 500; color: var(--ink);
