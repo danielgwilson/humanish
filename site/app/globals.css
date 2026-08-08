@@ -258,6 +258,9 @@ h1 {
   color: var(--hero-head);
 }
 .lede { font-size: 16.5px; color: var(--hero-body); max-width: 56ch; margin-bottom: 28px }
+/* Literal paths and commands in the lede: mono, sized down so it sits on the
+   sans baseline, no wash — the hero already carries one accent surface. */
+.lede code { font-size: .9em; color: var(--ink) }
 .cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 26px }
 .console {
   max-width: 444px; border: 1px solid var(--console-line); border-radius: 14px;

@@ -1,8 +1,9 @@
 # humanish
 
 > Open-source (MIT) TypeScript CLI. Personas drive your app in a real browser on a hosted
-> sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events,
-> estimated cost, and a fail-closed share-safety verdict.
+> sandbox desktop. Every run lands in your repo under `.humanish/`: screenshots, action
+> traces, lifecycle events, estimated cost at dated rates. `humanish verify` grades the
+> bundle fail-closed, so you can check the run before you trust it.
 
 ## Install
 
@@ -29,7 +30,9 @@ Run `cua-2026-08-07T17-44-48-760Z-87389419` (2026-08-07): four computer-use lane
 hosted 1920×1080 desktops drove a commit-pinned clone of Excalidraw
 (excalidraw/excalidraw@4872083c), an open-source virtual whiteboard. 3/4 lanes passed;
 one gave up; `humanish verify` ran 16/16 checks. Wall-clock 6m 06s; estimated cost
-~$1.54 (rates as of 2026-08-05).
+~$1.54 (rates as of 2026-08-05). Every number and quote here comes from that run's
+bundle, which landed in a gitignored `.humanish/`, the same directory your own runs
+write to.
 
 Lanes and verbatim outcomes:
 

@@ -28,8 +28,10 @@ const SITE = "https://humanish.dev";
 // commit instead of trusting deploy status alone.
 const DEPLOY_SHA = process.env.VERCEL_GIT_COMMIT_SHA ?? "local";
 const TITLE = "humanish — instant feedback from real human(ish) users";
+// Mirrors the hero lede verbatim (minus its <code> marks) — same string feeds
+// description, og:description, twitter:description and the JSON-LD.
 const DESCRIPTION =
-  "Personas drive your app in a real browser on a hosted sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events, estimated cost, a fail-closed verdict.";
+  "Personas drive your app in a real browser on a hosted sandbox desktop. Every run lands in your repo under .humanish/: screenshots, action traces, lifecycle events, estimated cost at dated rates. humanish verify grades the bundle fail-closed, so you can check the run before you trust it.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),

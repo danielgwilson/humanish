@@ -5,7 +5,7 @@ export default function Study() {
     <section id="study" className="band band-mineral">
       <p className="lead-claim rev">User testing for the users you can&rsquo;t recruit</p>
       <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>Four missions drove <em>Excalidraw</em></h2>
-      <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use lanes on hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an open-source virtual whiteboard. 3/4 lanes passed; one gave up; verify ran 16/16 checks.</p>
+      <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use lanes on hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an open-source virtual whiteboard. 3/4 lanes passed; one gave up; verify ran 16/16 checks. Every number and quote below comes from that run&rsquo;s bundle, which landed in a gitignored <code>.humanish/</code>, the same directory your own runs write to.</p>
 
       <dl className="manifest rev" style={{ "--d": ".15s" } as React.CSSProperties}>
         <div><dt>Run</dt><dd>cua-2026-08-07T17-44-48-760Z-87389419</dd></div>
