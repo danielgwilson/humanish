@@ -1,6 +1,8 @@
 /* @humanish/persona-lane — generated from app/globals.css by scripts/extract-registry-css.mjs.
    Do not edit by hand; edit globals.css and run `pnpm registry:build`.
-   Assumes a border-box reset. Colors come from the humanish token system
+   Assumes a reset that zeroes margins/padding and sets border-box
+   (e.g. Tailwind Preflight); the spacing these components depend on is also
+   pinned explicitly below. Colors come from the humanish token system
    (@humanish/humanish-tokens); fonts fall back to system stacks unless
    --font-newsreader / --font-geist / --font-geist-mono are provided. */
 
@@ -53,7 +55,7 @@
 .pmedia { position: relative; flex: 0 0 auto; background: var(--mineral)
 }
 
-.pmedia img { width: 100%; aspect-ratio: 598/324; object-fit: cover
+.pmedia img { display: block; width: 100%; aspect-ratio: 598/324; object-fit: cover
 }
 
 .pcap {
@@ -61,7 +63,7 @@
   min-height: 52px; padding: 12px 16px; border-top: 1px solid var(--line-soft);
 }
 
-.prep { min-width: 0; font-size: 13px; color: var(--body-c)
+.prep { margin: 0; min-width: 0; font-size: 13px; color: var(--body-c)
 }
 
 .plab { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--label); margin-bottom: 3px
@@ -79,17 +81,6 @@
   .pname { white-space: normal; overflow: visible; text-overflow: clip
   }
   .pr { white-space: normal
-  }
-}
-
-@media (min-width: 1024px) {
-  html.js .stage .panel { position: absolute; inset: 0; opacity: 0; pointer-events: none; transform: translateY(16px) scale(.99); transition: opacity .28s ease, transform .5s cubic-bezier(.22, 1, .36, 1)
-  }
-  html.js .stage .panel[data-sizer] { position: relative
-  }
-  html.js .stage .panel.on { opacity: 1; pointer-events: auto; transform: none; transition: opacity .4s ease .05s, transform .55s cubic-bezier(.22, 1, .36, 1) .05s
-  }
-  html.js .stage .panel.past { transform: translateY(-14px) scale(.995)
   }
 }
 

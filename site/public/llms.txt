@@ -52,8 +52,8 @@ Excalidraw is the application studied; it is not a Humanish adopter or endorser.
 humanish.dev serves a shadcn-compatible component registry at `https://humanish.dev/r/<name>.json`.
 Items: `humanish-tokens` (the site's token system), `terminal-cast` (static terminal
 transcript), `persona-lane` (run lane with screenshot, verbatim report, honest status
-chip), `pinned-replay` (the scroll-pinned run walkthrough, with the Excalidraw study
-as demo data).
+chip), `pinned-replay` (the scroll-pinned run walkthrough, with the Excalidraw study's
+metadata as demo data — screenshots not included).
 
 Install directly:
 

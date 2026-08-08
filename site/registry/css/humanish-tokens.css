@@ -1,6 +1,8 @@
 /* @humanish/humanish-tokens — generated from app/globals.css by scripts/extract-registry-css.mjs.
    Do not edit by hand; edit globals.css and run `pnpm registry:build`.
-   Assumes a border-box reset. Colors come from the humanish token system
+   Assumes a reset that zeroes margins/padding and sets border-box
+   (e.g. Tailwind Preflight); the spacing these components depend on is also
+   pinned explicitly below. Colors come from the humanish token system
    (@humanish/humanish-tokens); fonts fall back to system stacks unless
    --font-newsreader / --font-geist / --font-geist-mono are provided. */
 

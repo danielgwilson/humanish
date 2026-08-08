@@ -15,6 +15,8 @@ import { prefersReducedMotion } from "@/lib/theme";
  * JS — CSS stacks the panels as a readable list and covers resolve via IO.
  */
 
+// Injected as HTML for its token spans — keep it a literal, never
+// interpolate untrusted text into it.
 const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07T17-44-48-760Z-87389419</span>
 <span class="cy">date:</span> <span class="cv">2026-08-07</span>
 <span class="cy">subject:</span>
@@ -100,6 +102,11 @@ export default function PinnedReplay() {
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
+
+    // The pinned desktop layout is CSS-gated on html.js. humanish.dev sets it
+    // pre-paint in the layout; adding it here too makes the block
+    // self-sufficient when installed elsewhere.
+    document.documentElement.classList.add("js");
 
     const rm = prefersReducedMotion();
     const mqDesk = window.matchMedia("(min-width:1024px)");

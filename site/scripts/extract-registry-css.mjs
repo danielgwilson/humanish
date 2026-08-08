@@ -58,7 +58,7 @@ const ITEMS = {
   },
   "persona-lane": {
     include: ["panel", "pbar", "pl", "pidx", "pname", "pr", "pmedia", "pcap", "prep", "plab", "chip", "chip-pass", "chip-dot", "chip-mute"],
-    exclude: ["panel-dark", "vterm"]
+    exclude: ["panel-dark", "vterm", "stage"]
   },
   "pinned-replay": {
     include: [
@@ -98,7 +98,7 @@ for (const item of Object.keys(ITEMS)) {
   const banner =
     `/* @humanish/${item} — generated from app/globals.css by scripts/extract-registry-css.mjs.\n` +
     `   Do not edit by hand; edit globals.css and run \`pnpm registry:build\`.\n` +
-    `   Assumes a border-box reset. Colors come from the humanish token system\n` +
+    `   Assumes a reset that zeroes margins/padding and sets border-box\n   (e.g. Tailwind Preflight); the spacing these components depend on is also\n   pinned explicitly below. Colors come from the humanish token system\n` +
     `   (@humanish/humanish-tokens); fonts fall back to system stacks unless\n` +
     `   --font-newsreader / --font-geist / --font-geist-mono are provided. */\n\n`;
   const outPath = join(site, "registry", "css", `${item}.css`);
@@ -106,3 +106,41 @@ for (const item of Object.keys(ITEMS)) {
   writeFileSync(outPath, banner + parts.join("\n\n") + "\n");
   console.log(`registry/css/${item}.css — ${parts.length} rule blocks`);
 }
+
+// ---- coverage assertion: every class a component's TSX uses must have a rule
+// in its own stylesheet or in one of its dependencies' stylesheets. Guards the
+// include lists above against silent gaps (reproducible-but-incomplete output).
+const TSX = {
+  "terminal-cast": ["components/terminal-cast.tsx"],
+  "persona-lane": ["components/persona-lane.tsx", "components/cover-canvas.tsx"],
+  "pinned-replay": ["components/pinned-replay.tsx"]
+};
+const CSS_POOL = {
+  "terminal-cast": ["terminal-cast", "humanish-tokens"],
+  "persona-lane": ["persona-lane", "humanish-tokens"],
+  "pinned-replay": ["pinned-replay", "persona-lane", "terminal-cast", "humanish-tokens"]
+};
+const JS_ONLY = new Set(["cover"]); // JS selector hooks with no style rule
+let covFailed = false;
+for (const [item, files] of Object.entries(TSX)) {
+  const pool = CSS_POOL[item]
+    .map((n) => readFileSync(join(site, "registry", "css", `${n}.css`), "utf8"))
+    .join("\n");
+  const used = new Set();
+  for (const f of files) {
+    const code = readFileSync(join(site, f), "utf8");
+    for (const m of code.matchAll(/className=\s*(?:"([^"]+)"|\{([^}]*)\})/g)) {
+      const raw = m[1] ? [m[1]] : [...(m[2] ?? "").matchAll(/"([^"]+)"/g)].map((q) => q[1]);
+      raw.forEach((s) => s.split(/\s+/).forEach((t) => t && used.add(t)));
+    }
+  }
+  for (const t of used) {
+    if (JS_ONLY.has(t)) continue;
+    if (!new RegExp(`\\.${t}(?![\\w-])`).test(pool)) {
+      console.error(`coverage: ${item} uses class "${t}" with no rule in its stylesheet or dependencies`);
+      covFailed = true;
+    }
+  }
+}
+if (covFailed) process.exit(1);
+console.log("coverage: every component class has a matching rule");

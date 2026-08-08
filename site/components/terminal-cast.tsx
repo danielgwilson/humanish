@@ -37,6 +37,10 @@ export default function TerminalCast({ lines }: { lines: TerminalLine[] }) {
             ) : (
               <p className="vln vsum" key={i}>{line.text}</p>
             );
+          default: {
+            const exhausted: never = line;
+            return exhausted;
+          }
         }
       })}
     </div>

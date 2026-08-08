@@ -9,7 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "registry:build": "node scripts/extract-registry-css.mjs && shadcn build registry.json -o public/r",
-    "registry:check": "pnpm registry:build && git diff --exit-code -- registry/css public/r"
+    "registry:check": "pnpm registry:build && git add -N -- registry/css public/r && git diff --exit-code -- registry/css public/r"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

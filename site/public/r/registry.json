@@ -23,7 +23,9 @@
       "title": "Terminal cast",
       "description": "A static terminal transcript rendered as text — command, check lines, and a ruled summary. Copy-pastable, no pixels. The component humanish.dev uses for its verify output.",
       "docs": "Import styles once in your global CSS: @import \"../styles/humanish/terminal-cast.css\";. Renders light-on-dark: place inside a dark surface (e.g. the pinned-replay dark panel, or your own). Example: <TerminalCast lines={[{ kind: \"cmd\", text: \"$ humanish verify\" }, { kind: \"ok\", text: \"redaction passed\" }, { kind: \"sum\", text: \"16/16 passed\" }]} />",
-      "registryDependencies": ["@humanish/humanish-tokens"],
+      "registryDependencies": [
+        "https://humanish.dev/r/humanish-tokens.json"
+      ],
       "files": [
         {
           "path": "components/terminal-cast.tsx",
@@ -42,7 +44,9 @@
       "title": "Persona lane",
       "description": "One lane of a run: the keyframe a persona saw, its verbatim final report, and an honest status chip — failed lanes render muted, never hidden. Ships the resolve-cover canvas veil that dissolves into the screenshot (finished state under reduced motion).",
       "docs": "Import styles once in your global CSS: @import \"../styles/humanish/persona-lane.css\";. Example: <PersonaLane idx=\"01\" name=\"sticky-notes\" img=\"/lane.jpg\" alt=\"…\" reportLabel=\"Final report — verbatim\" report=\"Done.\" passed />",
-      "registryDependencies": ["@humanish/humanish-tokens"],
+      "registryDependencies": [
+        "https://humanish.dev/r/humanish-tokens.json"
+      ],
       "files": [
         {
           "path": "components/persona-lane.tsx",
@@ -54,11 +58,13 @@
         },
         {
           "path": "lib/covers.ts",
-          "type": "registry:lib"
+          "type": "registry:lib",
+          "target": "lib/humanish/covers.ts"
         },
         {
           "path": "lib/theme.ts",
-          "type": "registry:lib"
+          "type": "registry:lib",
+          "target": "lib/humanish/theme.ts"
         },
         {
           "path": "registry/css/persona-lane.css",
@@ -71,9 +77,13 @@
       "name": "pinned-replay",
       "type": "registry:block",
       "title": "Pinned replay",
-      "description": "The scroll-pinned run walkthrough from humanish.dev: a tall track pins a step rail and stage; scroll advances discrete panels (brief, lanes, evidence ledger, verify terminal) with an idle-snap that centers the nearest step. Below 1024px — or without JavaScript — panels stack as a readable list. Ships with the Excalidraw study as demo data; replace the constants at the top with your own run.",
-      "docs": "Import styles once in your global CSS: @import \"../styles/humanish/pinned-replay.css\"; (persona-lane and terminal-cast styles install alongside). The demo data constants (BRIEF_YAML, RAIL_ITEMS, LANES, VERIFY_CAST) are yours to replace; the scroll engine reads panels from the DOM, so add or remove panels freely. Respects prefers-reduced-motion.",
-      "registryDependencies": ["@humanish/humanish-tokens", "@humanish/terminal-cast", "@humanish/persona-lane"],
+      "description": "The scroll-pinned run walkthrough from humanish.dev: a tall track pins a step rail and stage; scroll advances discrete panels (brief, lanes, evidence ledger, verify terminal) with an idle-snap that centers the nearest step. Below 1024px — or without JavaScript — panels stack as a readable list. Ships the Excalidraw study's metadata as demo data; the screenshots are not included, so point LANES[].img at your own captures. Excalidraw is the application studied in the demo data; it is not a Humanish adopter or endorser.",
+      "docs": "Import all three stylesheets in your global CSS: @import \"../styles/humanish/pinned-replay.css\"; @import \"../styles/humanish/persona-lane.css\"; @import \"../styles/humanish/terminal-cast.css\";. The pinned desktop layout is gated on a \"js\" class on <html>; the component adds it on mount, and for a flash-free first paint you can also add it pre-paint: <script>document.documentElement.classList.add(\"js\")</script> in <head>. The demo data constants (BRIEF_YAML, RAIL_ITEMS, LANES, VERIFY_CAST) are yours to replace; the scroll engine reads panels from the DOM, so add or remove panels freely. BRIEF_YAML is injected as HTML for its token spans — keep it a literal, never interpolate untrusted text. Respects prefers-reduced-motion.",
+      "registryDependencies": [
+        "https://humanish.dev/r/humanish-tokens.json",
+        "https://humanish.dev/r/terminal-cast.json",
+        "https://humanish.dev/r/persona-lane.json"
+      ],
       "files": [
         {
           "path": "components/pinned-replay.tsx",
