@@ -28,8 +28,10 @@ const SITE = "https://humanish.dev";
 // commit instead of trusting deploy status alone.
 const DEPLOY_SHA = process.env.VERCEL_GIT_COMMIT_SHA ?? "local";
 const TITLE = "humanish — instant feedback from real human(ish) users";
+// Verbatim hero lede minus its <code> marks. Mirrors: components/hero.tsx
+// (.lede) and public/llms.txt (description block). All three move together.
 const DESCRIPTION =
-  "Personas drive your app in a real browser on a hosted sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events, estimated cost, a fail-closed verdict.";
+  "Personas drive your app in a real browser on a hosted sandbox desktop. Runs land in your repo under .humanish/: screenshots, action traces, lifecycle events, estimated cost at dated rates. humanish verify grades the bundle fail-closed.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),

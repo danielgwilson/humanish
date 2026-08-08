@@ -5,10 +5,14 @@ export default function Study() {
     <section id="study" className="band band-mineral">
       <p className="lead-claim rev">User testing for the users you can&rsquo;t recruit</p>
       <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>Four missions drove <em>Excalidraw</em></h2>
-      <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use lanes on hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an open-source virtual whiteboard. 3/4 lanes passed; one gave up; verify ran 16/16 checks.</p>
+      <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use lanes on hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an open-source virtual whiteboard. 3/4 lanes passed; one gave up; verify ran 16/16 checks. Every number and quote below is read from that run&rsquo;s bundle.</p>
 
+      {/* SOURCE carries the provenance the numbers depend on, in the strip that
+          certifies them: the on-disk bundle path (the run id is in it, so the
+          bare-id cell it replaces is no loss) and the fact that a reader's own
+          runs land in the same gitignored directory. */}
       <dl className="manifest rev" style={{ "--d": ".15s" } as React.CSSProperties}>
-        <div><dt>Run</dt><dd>cua-2026-08-07T17-44-48-760Z-87389419</dd></div>
+        <div><dt>Source</dt><dd>.humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419</dd><dd className="dd-sub">gitignored · the same directory your own runs write to</dd></div>
         <div><dt>Date</dt><dd>2026-08-07</dd></div>
         <div><dt>Subject</dt><dd>excalidraw/excalidraw · commit-pinned</dd></div>
         <div><dt>Lanes</dt><dd>3/4 passed</dd></div>
