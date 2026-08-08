@@ -273,6 +273,45 @@ export interface CuaLoopResult {
 const DEFAULT_IDLE_STEPS = 6;
 const DEFAULT_NO_PROGRESS_STEPS = 8;
 const IDLE_PROGRESS_FORGIVENESS_STEPS = 2;
+/** How many recent turns the repetition check looks back over (#383). */
+const ACTION_REPEAT_WINDOW = 3;
+/** Click/scroll coordinates are bucketed to this many pixels before fingerprinting, so a one-pixel
+ *  jitter between two otherwise identical clicks still reads as the same attempt. */
+const ACTION_FINGERPRINT_BUCKET = 24;
+
+/**
+ * A public-safe fingerprint of ONE turn's actions, used only in memory to tell "trying the same
+ * thing again" from "trying something new" (#383).
+ *
+ * Never includes typed text or key contents — a `type` contributes its LENGTH, exactly as
+ * describeCuaAction does, so this can never become a keylogger. Coordinates are bucketed so that
+ * re-clicking the same control counts as a repeat while moving to a different control does not.
+ */
+export function actionFingerprint(actions: readonly CuaAction[]): string {
+  const bucket = (value: number): number => Math.round(value / ACTION_FINGERPRINT_BUCKET);
+  return actions
+    .map((action) => {
+      switch (action.kind) {
+        case "click":
+        case "double_click":
+        case "move":
+          return `${action.kind}@${bucket(action.x)},${bucket(action.y)}`;
+        case "scroll":
+          return `scroll@${bucket(action.x)},${bucket(action.y)}:${Math.sign(action.dx)},${Math.sign(action.dy)}`;
+        case "type":
+          return `type:${action.text.length}`;
+        case "keypress":
+          return `keypress:${action.keys.join("+")}`;
+        case "drag":
+          return `drag:${action.path.length}`;
+        case "wait":
+          return "wait";
+        case "screenshot":
+          return "screenshot";
+      }
+    })
+    .join("|");
+}
 
 function isIdleAction(action: CuaAction): boolean {
   return action.kind === "screenshot" || action.kind === "wait";
@@ -509,6 +548,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     idleTurns: 0,
     noProgressTurns: 0
   };
+  // The last few turns' action fingerprints, in memory only, for the #383 corroboration rule.
+  const recentFingerprints: string[] = [];
   // Productivity signal for the wall-clock deadline: a session that took at least one material
   // (non-idle) action before the cap reached its BUDGET rather than stalling. A deadline hit with
   // zero material actions is still an honest failure (timed_out). Kept beside counts.materialActions
@@ -842,15 +883,36 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Progress prefers the stable appState projection; a state executor with a constant
       // stateSignature still registers progress when its appState changed (and vice versa).
       const progressKey = progressKeyOf(observation);
-      const progressed = progressKey !== lastSignature;
+      const frameChanged = progressKey !== lastSignature;
       lastSignature = progressKey;
+
+      // CORROBORATION (#383). A stale frame alone is NOT evidence of a stuck agent. The frame hash is
+      // a coarse whole-screen measure, and on a light-themed web app it can miss a renamed row, a new
+      // list item, or an opened panel — a measured run had 9 visibly different consecutive frames hash
+      // identically while the agent was a foreign key away from finishing. Ending a lane on that
+      // signal alone recorded working sessions as `gave_up`, capping every browser run at roughly
+      // noProgressSteps turns and writing harness artifacts into evidence as actor behavior.
+      //
+      // So a no-progress turn now requires BOTH a stale frame AND the agent repeating something it
+      // just tried. An agent doing varied work is never counted stuck, however blind the hash is;
+      // an agent re-clicking the same dead control trips it as fast as it did before — arguably
+      // faster, since that is the actual signature of being stuck.
+      const fingerprint = actionFingerprint(turn.actions);
+      const repeatingRecentAction = fingerprint.length > 0 && recentFingerprints.includes(fingerprint);
+      recentFingerprints.push(fingerprint);
+      if (recentFingerprints.length > ACTION_REPEAT_WINDOW) recentFingerprints.shift();
+      // Corroboration governs the FRAME-STALENESS backstop only. The idle backstop below is a direct
+      // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
+      // reading the frame on its own — a repeated screenshot is exactly what an idle streak IS, and
+      // feeding repetition into it would grant an extra forgiveness step for being idle.
+      const progressed = frameChanged || !repeatingRecentAction;
 
       // A screenshot/wait turn while the UI visibly changes may be patience through loading or a
       // transition, so grant a bounded recovery window. Do not grant infinite immunity: animated
       // pixels or state-executor turn counters can otherwise keep a screenshot/wait loop alive
       // until the wall-clock timeout.
       if (idleThisTurn) {
-        if (progressed && idleProgressForgivenessUsed < IDLE_PROGRESS_FORGIVENESS_STEPS) {
+        if (frameChanged && idleProgressForgivenessUsed < IDLE_PROGRESS_FORGIVENESS_STEPS) {
           idleProgressForgivenessUsed += 1;
           consecutiveIdle = 0;
         } else {
