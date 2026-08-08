@@ -4480,7 +4480,28 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
       name: "runtime ignore",
       ok: await safeCheck(async () => (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ?? false),
       message: ".gitignore safely contains .humanish/"
-    }
+    },
+    // The optional peer dep every live browser and terminal lane needs (#346). `npx -y humanish`
+    // does not pull optional peers, so an adopter's FIRST live run used to fail on it — safely and
+    // at $0, but as a burned first impression on the flagship path. Answering it here means the
+    // readiness command actually answers readiness.
+    await (async () => {
+      const present = await safeCheck(async () => {
+        try {
+          await import("@e2b/desktop");
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      return {
+        name: "e2b desktop sdk",
+        ok: present,
+        message: present
+          ? "optional peer @e2b/desktop is installed; live desktop lanes can launch"
+          : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`."
+      };
+    })()
   ];
 
   return {
