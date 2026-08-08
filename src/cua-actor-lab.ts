@@ -1832,6 +1832,16 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const commsEnv: Record<string, string> = commsEmail?.injectEnv !== undefined && commsPort !== undefined
     ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
     : {};
+  // SMTP transport: the same idea as injectEnv, but an app that speaks SMTP needs a host and a port
+  // rather than a base URL. The catch accepts any credentials (loopback only), yet many apps refuse
+  // to boot unless the user/password vars exist at all, so those are injected when declared.
+  const commsSmtpPort = commsEmail?.smtp?.port;
+  if (commsEmail?.smtp && commsSmtpPort !== undefined) {
+    commsEnv[commsEmail.smtp.hostEnv] = "127.0.0.1";
+    commsEnv[commsEmail.smtp.portEnv] = String(commsSmtpPort);
+    if (commsEmail.smtp.userEnv) commsEnv[commsEmail.smtp.userEnv] = commsEmail.smtp.user ?? "humanish";
+    if (commsEmail.smtp.passwordEnv) commsEnv[commsEmail.smtp.passwordEnv] = commsEmail.smtp.password ?? "humanish";
+  }
   // Persona inbox SURFACE (#297 slice B): the loopback URL the persona opens to read captured mail; the
   // origin-rewrite map (identity on this same-sandbox route, but covers localhost/0.0.0.0 alias skew + an
   // operator-declared linkOrigin); and a disposable background loop that renders the surface DURING the
@@ -1944,7 +1954,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
     // catch up is a setup failure (fail closed) rather than silently sending real mail.
     if (commsEmail && commsPort !== undefined) {
-      deployedComms = await deployCommsCatch(desktop, { port: commsPort, requestTimeoutMs: deps.requestTimeoutMs });
+      deployedComms = await deployCommsCatch(desktop, {
+        port: commsPort,
+        ...(commsSmtpPort === undefined ? {} : { smtpPort: commsSmtpPort }),
+        requestTimeoutMs: deps.requestTimeoutMs
+      });
       if (!deployedComms.ready) {
         throw new Error(`comms email catch did not become ready on 127.0.0.1:${commsPort} in the subject sandbox`);
       }
@@ -2238,7 +2252,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             // Zero captures is the silent-broken shape (#351): the app never posted to the catch at
             // all, so the personas stared at an empty inbox. Most common cause: the app does not
             // actually read the declared injectEnv var for its email API base URL.
-            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`);
+            const transportHint = commsEmail.smtp
+              ? `Verify the app reads ${commsEmail.smtp.hostEnv}/${commsEmail.smtp.portEnv} for its SMTP host and port`
+              : `Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws)`;
+            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. ${transportHint} and that the flow reached an email step.`);
           }
         } catch (error) {
           warnings.push(`Comms evidence collection failed (run continues; sandbox still torn down): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);

@@ -58,6 +58,9 @@ INBOX_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 0
 # in-sandbox default: the capture listener binds loopback there, so nothing external can reach it.
 # An ADOPTER-HOSTED catch is reachable over the network, so it should pass one.
 DELIVERIES_TOKEN = sys.argv[5] if len(sys.argv) > 5 else ""
+# Optional loopback SMTP listener. Most self-hostable apps send mail over SMTP rather than an HTTP
+# provider API, so without this the catch only works for the minority that speak HTTP.
+SMTP_PORT = int(sys.argv[6]) if len(sys.argv) > 6 else 0
 try:
     os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
 except Exception:
@@ -195,6 +198,114 @@ class ReadOnlyHandler(BaseHandler):
 if INBOX_PORT and INBOX_PORT != PORT:
     threading.Thread(target=lambda: ThreadingHTTPServer(("0.0.0.0", INBOX_PORT), ReadOnlyHandler).serve_forever(), daemon=True).start()
 
+
+# Minimal SMTP capture listener. Most self-hostable apps send mail through SMTP, not an HTTP provider
+# API, so an HTTP-only catch could not study them at all. Plain sockets and the stdlib email parser:
+# python 3.12 removed smtpd, and a co-located catcher must not need a dependency.
+#
+# It normalizes each message into the SAME NDJSON line an HTTP send produces, on the /emails path, so
+# every host-side profile, the inbox surface, and the drain work unchanged — SMTP is a transport
+# here, not a second pipeline.
+# Built from chr() rather than a backslash escape: this script lives inside a TS template
+# literal, where JS would consume the escape before python ever saw it.
+CRLF = chr(13) + chr(10)
+
+
+def smtp_reply(conn, text):
+    conn.sendall((text + CRLF).encode("utf-8"))
+
+
+def smtp_session(conn):
+    import email
+    from email import policy
+
+    reader = conn.makefile("rb")
+    smtp_reply(conn, "220 humanish-comms-catch")
+    sender = ""
+    rcpts = []
+    while True:
+        line = reader.readline()
+        if not line:
+            break
+        command = line.decode("utf-8", "replace").strip()
+        upper = command.upper()
+        if upper.startswith("EHLO") or upper.startswith("HELO"):
+            # AUTH is advertised and then accepted unconditionally: the app under test holds
+            # whatever credentials its config carries, and this listener is loopback-only.
+            smtp_reply(conn, "250-humanish-comms-catch")
+            smtp_reply(conn, "250 AUTH PLAIN LOGIN")
+        elif upper.startswith("AUTH"):
+            smtp_reply(conn, "235 2.7.0 accepted")
+        elif upper.startswith("MAIL FROM"):
+            sender = command[command.find(":") + 1 :].strip().strip("<>")
+            smtp_reply(conn, "250 2.1.0 ok")
+        elif upper.startswith("RCPT TO"):
+            rcpts.append(command[command.find(":") + 1 :].strip().strip("<>"))
+            smtp_reply(conn, "250 2.1.5 ok")
+        elif upper == "DATA":
+            smtp_reply(conn, "354 end with <CRLF>.<CRLF>")
+            raw = b""
+            while True:
+                chunk = reader.readline()
+                if not chunk or chunk.strip() == b".":
+                    break
+                # Undo dot-stuffing (RFC 5321): a leading '.' on a body line is doubled on the wire.
+                if chunk.startswith(b".."):
+                    chunk = chunk[1:]
+                raw += chunk
+                if len(raw) > MAX_BODY:
+                    break
+            try:
+                parsed = email.message_from_bytes(raw, policy=policy.default)
+                subject = str(parsed.get("subject") or "")
+                html_part = parsed.get_body(preferencelist=("html", "plain"))
+                body = html_part.get_content() if html_part is not None else ""
+            except Exception:
+                subject = ""
+                body = raw.decode("utf-8", "replace")
+            record = {
+                "t": int(time.time() * 1000),
+                "path": "/emails",
+                "body": json.dumps({"from": sender, "to": rcpts, "subject": subject, "html": body})
+            }
+            # Same append convention as the HTTP capture path: one line, opened in append mode.
+            with open(OUT_FILE, "a", encoding="utf-8") as handle:
+                print(json.dumps(record), file=handle)
+            sender = ""
+            rcpts = []
+            smtp_reply(conn, "250 2.0.0 queued")
+        elif upper == "RSET":
+            sender = ""
+            rcpts = []
+            smtp_reply(conn, "250 2.0.0 ok")
+        elif upper == "QUIT":
+            smtp_reply(conn, "221 2.0.0 bye")
+            break
+        elif upper == "NOOP":
+            smtp_reply(conn, "250 2.0.0 ok")
+        else:
+            smtp_reply(conn, "250 2.0.0 ok")
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
+def smtp_serve(port):
+    import socket
+
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", port))
+    server.listen(16)
+    while True:
+        conn, _ = server.accept()
+        threading.Thread(target=smtp_session, args=(conn,), daemon=True).start()
+
+
+if SMTP_PORT:
+    threading.Thread(target=lambda: smtp_serve(SMTP_PORT), daemon=True).start()
+
 ThreadingHTTPServer(("127.0.0.1", PORT), CaptureHandler).serve_forever()
 `;
 
@@ -209,6 +320,10 @@ export interface DeployCommsCatchOptions {
   dir?: string;
   /** Detached-process name ([a-z0-9-]); default "comms-catch". */
   name?: string;
+  /** Optional loopback SMTP port. Most self-hostable apps send mail over SMTP rather than a
+   *  provider's HTTP API, and an HTTP-only catch cannot study those at all. Captured messages are
+   *  normalized onto the same NDJSON the HTTP path writes, so nothing downstream changes. */
+  smtpPort?: number;
   /** Readiness-probe budget (ms) for the catch's /health (default 15000). */
   readyTimeoutMs?: number;
   requestTimeoutMs?: number;
@@ -226,6 +341,9 @@ export interface DeployedCommsCatch {
   /** The 0.0.0.0 read-only inbox port, when one was requested — getHost-expose THIS to give a
    *  different-sandbox persona a reachable inbox URL. Absent on the loopback-only (CUA) route. */
   inboxPort?: number;
+  /** The loopback SMTP port, when one was requested. Point the app's SMTP host/port env at
+   *  127.0.0.1 and THIS. */
+  smtpPort?: number;
   /** Whether the catch's /health returned OUR service marker within the readiness budget. Callers MUST
    *  treat `ready === false` as fatal (do not inject baseUrl into a dead catch — the app's sends would
    *  silently fail with nothing captured). */
@@ -277,6 +395,13 @@ export async function deployCommsCatch(
   if (inboxPort !== undefined && (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_535 || inboxPort === port)) {
     throw new Error(`deployCommsCatch: invalid inboxPort ${JSON.stringify(options.inboxPort)}`);
   }
+  const smtpPort = options.smtpPort === undefined ? undefined : Math.trunc(Number(options.smtpPort));
+  if (
+    smtpPort !== undefined &&
+    (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_535 || smtpPort === port || smtpPort === inboxPort)
+  ) {
+    throw new Error(`deployCommsCatch: invalid smtpPort ${JSON.stringify(options.smtpPort)}`);
+  }
   const dir = options.dir ?? DEFAULT_CATCH_DIR;
   const name = options.name ?? "comms-catch";
   const requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
@@ -288,7 +413,17 @@ export async function deployCommsCatch(
   await desktop.files.write(scriptPath, SANDBOX_CATCH_SCRIPT);
   await startDetachedProcess(desktop, {
     name,
-    command: `python3 ${shq(scriptPath)} ${port} ${shq(deliveriesPath)} ${shq(surfaceDir)}${inboxPort === undefined ? "" : ` ${inboxPort}`}`,
+    command: [
+      "python3",
+      shq(scriptPath),
+      String(port),
+      shq(deliveriesPath),
+      shq(surfaceDir),
+      ...(inboxPort === undefined && smtpPort === undefined ? [] : [String(inboxPort ?? 0)]),
+      // The token slot is positional: an SMTP port cannot be reached without filling it. In-sandbox
+      // the capture listener is loopback-only, so an empty token is the same posture as before.
+      ...(smtpPort === undefined ? [] : ['""', String(smtpPort)])
+    ].join(" "),
     requestTimeoutMs
   });
   const probe = { timeoutMs: options.readyTimeoutMs ?? 15_000, requestTimeoutMs, ...(options.timers ?? {}) };
@@ -302,6 +437,7 @@ export async function deployCommsCatch(
     deliveriesPath,
     surfaceDir,
     ...(inboxPort === undefined ? {} : { inboxPort }),
+    ...(smtpPort === undefined ? {} : { smtpPort }),
     ready: ready && inboxReady
   };
 }

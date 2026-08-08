@@ -130,10 +130,15 @@ describe("comms.email.external config (#328)", () => {
   it("drops the injectEnv requirement for an external catch (there is no subject env to inject)", () => {
     const withoutInject = parseLabConfig(appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }));
     expect(withoutInject.ok).toBe(true);
-    // ...but still requires it when NOTHING declares where mail should go.
+    // ...but still refuses when NOTHING declares where mail should go, and the message names every
+    // transport that would satisfy it rather than only the HTTP one.
     const neither = parseLabConfig(appUrlLab({ email: {} }));
     expect(neither.ok).toBe(false);
-    if (!neither.ok) expect(neither.error.message).toContain("comms.email.injectEnv");
+    if (!neither.ok) {
+      expect(neither.error.message).toContain("injectEnv");
+      expect(neither.error.message).toContain("smtp");
+      expect(neither.error.message).toContain("external");
+    }
   });
 
   it("rejects a non-absolute URL and a malformed token env NAME", () => {

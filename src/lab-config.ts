@@ -579,6 +579,22 @@ export interface LabComms {
   email?: LabCommsEmail;
 }
 
+export interface LabCommsSmtp {
+  /** Fixed in-sandbox loopback SMTP port (default 2525). Known before sandbox create, like `port`. */
+  port?: number;
+  /** The subject-env var carrying the SMTP host. The harness sets it to 127.0.0.1. */
+  hostEnv: string;
+  /** The subject-env var carrying the SMTP port. The harness sets it to the port above. */
+  portEnv: string;
+  /** Optional subject-env vars for a username/password the app insists on sending. The catch accepts
+   *  any credentials (it is loopback-only), but many apps refuse to start without the vars set. */
+  userEnv?: string;
+  passwordEnv?: string;
+  /** The value written to `userEnv`/`passwordEnv` when those are declared. Never a real secret. */
+  user?: string;
+  password?: string;
+}
+
 export interface LabCommsEmail {
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
    *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense — an in-sandbox
@@ -595,6 +611,16 @@ export interface LabCommsEmail {
   injectEnv?: string;
   /** Fixed in-sandbox loopback port the catch listens on (default 8025). Known before sandbox create. */
   port?: number;
+  /**
+   * SMTP transport, for the many self-hostable apps that send mail through SMTP rather than a
+   * provider's HTTP API. The catch opens a loopback SMTP listener and normalizes what it receives
+   * into the same captured-send shape the HTTP path produces, so the inbox surface, the drain, and
+   * the evidence artifact are identical either way.
+   *
+   * `hostEnv` and `portEnv` are ADOPTER-NAMED, exactly like `injectEnv`: the harness sets them to
+   * its own loopback and the chosen port. Declare the pair your app actually reads.
+   */
+  smtp?: LabCommsSmtp;
   /** Optional escape hatch: the exact absolute origin the app-under-test bakes into its email verify
    *  links, when that differs from the serve origin (e.g. an app configured with an absolute
    *  APP_URL/NEXT_PUBLIC_BASE_URL). The harness cannot infer it, so the operator declares it; it is
@@ -2694,9 +2720,48 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     };
   }
 
+  // SMTP transport, for apps that send mail through SMTP rather than a provider's HTTP API.
+  let smtp: LabCommsSmtp | undefined;
+  if (raw.smtp !== undefined) {
+    if (!isRecord(raw.smtp)) return invalid("`comms.email.smtp` must be a mapping.");
+    const envName = (value: unknown, field: string): string | undefined => {
+      const name = str(value);
+      if (name === undefined) return undefined;
+      return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : `__invalid__${field}`;
+    };
+    const hostEnv = envName(raw.smtp.hostEnv, "hostEnv");
+    const portEnv = envName(raw.smtp.portEnv, "portEnv");
+    if (hostEnv === undefined || portEnv === undefined) {
+      return invalid("`comms.email.smtp` needs both `hostEnv` and `portEnv` — the subject-env vars your app reads for its SMTP host and port. The harness sets them to its own loopback listener.");
+    }
+    if (hostEnv.startsWith("__invalid__") || portEnv.startsWith("__invalid__")) {
+      return invalid("`comms.email.smtp.hostEnv` and `portEnv` must be valid env var names.");
+    }
+    let smtpPort = 2525;
+    if (raw.smtp.port !== undefined) {
+      const parsed = posInt(raw.smtp.port);
+      if (parsed === undefined || parsed > 65_535) return invalid("`comms.email.smtp.port` must be a positive integer ≤ 65535.");
+      smtpPort = parsed;
+    }
+    const userEnv = envName(raw.smtp.userEnv, "userEnv");
+    const passwordEnv = envName(raw.smtp.passwordEnv, "passwordEnv");
+    if (userEnv?.startsWith("__invalid__") || passwordEnv?.startsWith("__invalid__")) {
+      return invalid("`comms.email.smtp.userEnv` and `passwordEnv` must be valid env var names.");
+    }
+    smtp = {
+      port: smtpPort,
+      hostEnv,
+      portEnv,
+      ...(userEnv === undefined ? {} : { userEnv }),
+      ...(passwordEnv === undefined ? {} : { passwordEnv }),
+      ...(str(raw.smtp.user) === undefined ? {} : { user: str(raw.smtp.user) as string }),
+      ...(str(raw.smtp.password) === undefined ? {} : { password: str(raw.smtp.password) as string })
+    };
+  }
+
   const injectEnv = str(raw.injectEnv);
-  if (injectEnv === undefined && external === undefined) {
-    return invalid("`comms.email.injectEnv` is required — the subject-env var the harness sets to the catch base URL (e.g. RESEND_API_URL). On an adopter-hosted plane declare `comms.email.external` instead: you run the catch and point your own app at it.");
+  if (injectEnv === undefined && external === undefined && smtp === undefined) {
+    return invalid("`comms.email` needs a transport: `injectEnv` (the subject-env var set to the catch's HTTP base URL, e.g. RESEND_BASE_URL), or `smtp` (host/port env vars, for an app that sends over SMTP), or `external` on an adopter-hosted plane where you run the catch yourself.");
   }
   if (injectEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
     return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
@@ -2704,6 +2769,7 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
   const email: LabCommsEmail = {
     kind: "fake",
     ...(injectEnv === undefined ? {} : { injectEnv }),
+    ...(smtp === undefined ? {} : { smtp }),
     ...(external === undefined ? {} : { external })
   };
   if (raw.port !== undefined) {
