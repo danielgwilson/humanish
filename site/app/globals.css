@@ -390,6 +390,9 @@ h2 em { font-style: italic; font-weight: 400 }
 .manifest div:last-child { border-right: 0; margin-right: 0 }
 .manifest dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--label) }
 .manifest dd { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap }
+/* Second line of a cell: the qualifier a value needs (SOURCE says where the
+   bundle sits; this says who else writes there). Quieter than the value. */
+.manifest dd.dd-sub { font-size: 10px; color: var(--label); letter-spacing: .01em }
 
 /* ---------- walkthrough ---------- */
 .whint { display: none }
@@ -553,11 +556,21 @@ html:not(.js) .stage { display: grid; gap: 16px }
 .cmd-row > code::before { content: "$ "; color: var(--muted); font-weight: 400 }
 .cmd-row p { font-size: 14.5px; color: var(--body-c); max-width: 64ch }
 .cmd-row p code { font-size: .92em; background: var(--accent-wash); padding: 1px 5px; border-radius: 5px }
+/* The ledger's closing fact (no staging URL required). It declared the same
+   color and size as the row prose, yet rendered as the faintest text on the
+   page — measured 1.9:1 against the page in shots, vs 12.4:1 for the rows.
+   Cause was not the palette: as the last .rev in the band it was still mid-
+   fade (computed opacity 0.11) whenever a reader arrived by nav jump, because
+   `html { scroll-behavior: smooth }` lands the scroll late and the .18s delay
+   stacks on the .8s fade. So: it arrives with the ledger rather than after it
+   (the fade bought nothing on a line that is already at rest below a rule),
+   and it carries annotation weight at full contrast. */
 .cmd-note {
   margin-top: 26px; display: flex; gap: 12px; align-items: baseline;
-  font-size: 14.5px; color: var(--body-c);
+  font-size: 14.5px; font-weight: 500; color: var(--ink);
 }
 .cmd-note::before { content: ""; width: 22px; height: 2px; background: var(--accent-ink); flex: none; transform: translateY(-4px) }
+.js .cmd-note.rev { opacity: 1; transform: none; transition: none }
 @media (max-width: 760px) {
   .cmd-row { grid-template-columns: 1fr; gap: 8px; padding: 18px 0 }
 }

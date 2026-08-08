@@ -10,7 +10,10 @@ export default function Hero() {
     <section className="hero">
       <div className="hero-copy">
         <h1 className="rev">Instant feedback from<br />real human<Ish /> users</h1>
-        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Personas drive your app in a real browser on a hosted sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events, estimated cost, a fail-closed verdict.</p>
+        {/* Mirror obligation: this lede is the site description. Any edit here
+            moves layout.tsx DESCRIPTION (meta + OG + Twitter + JSON-LD) and the
+            llms.txt description block in the same commit. */}
+        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Personas drive your app in a real browser on a hosted sandbox desktop. Runs land in your repo under <code>.humanish/</code>: screenshots, action traces, lifecycle events, estimated cost at dated rates. <code>humanish verify</code> grades the bundle fail-closed.</p>
         <div className="cta-row rev" style={{ "--d": ".12s" } as React.CSSProperties}>
           <a className="btn btn-primary" href={GITHUB}>Get started</a>
           <a className="btn btn-ghost" href={GITHUB}>View on GitHub</a>

@@ -1,8 +1,9 @@
 # humanish
 
 > Open-source (MIT) TypeScript CLI. Personas drive your app in a real browser on a hosted
-> sandbox desktop. Runs land as evidence: screenshots, action traces, lifecycle events,
-> estimated cost, and a fail-closed share-safety verdict.
+> sandbox desktop. Runs land in your repo under `.humanish/`: screenshots, action traces,
+> lifecycle events, estimated cost at dated rates. `humanish verify` grades the bundle
+> fail-closed.
 
 ## Install
 
