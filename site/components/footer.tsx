@@ -1,6 +1,10 @@
 import { Wordmark } from "./wordmark";
 
 const GITHUB = "https://github.com/danielgwilson/humanish";
+// The README's "## Docs" section — a curated index; unique heading, slug #docs.
+const DOCS = `${GITHUB}#docs`;
+// The README's "## Commands" heading — GitHub slugs it to #commands.
+const CLI_REFERENCE = `${GITHUB}#commands`;
 
 export default function Footer() {
   return (
@@ -14,8 +18,8 @@ export default function Footer() {
           <nav className="foot-block" aria-label="Product">
             <span className="fl">Product</span>
             <a href="#install">Install</a>
-            <a href={GITHUB}>Docs</a>
-            <a href={GITHUB}>CLI reference</a>
+            <a href={DOCS}>Docs</a>
+            <a href={CLI_REFERENCE}>CLI reference</a>
           </nav>
           <nav className="foot-block" aria-label="Evidence">
             <span className="fl">Evidence</span>

@@ -3,11 +3,16 @@
 import { useEffect } from "react";
 
 /**
- * Scroll reveals: adds .in to .rev elements as they enter the viewport
- * (same thresholds as the POC). Without IO — or without JS at all — the
- * content is simply visible; reduced motion is handled in CSS. Hydrating
- * in time cancels the inline-script fallback timer that would otherwise
- * force everything visible via `rev-all` (see THEME_INIT in layout.tsx).
+ * Scroll reveals: adds .in to .rev elements as they approach the viewport.
+ * The observer root is grown 25% of the viewport height downward, so a band
+ * starts its fade before it is on screen — the POC's -30px bottom inset
+ * armed the reveal only after a band had already scrolled in, which read as
+ * a blank still-loading section to anyone scrolling quickly. Growing the
+ * root only moves the trigger earlier; the at-rest revealed state is
+ * unchanged. Without IO — or without JS at all — the content is simply
+ * visible; reduced motion is handled in CSS. Hydrating in time cancels the
+ * inline-script fallback timer that would otherwise force everything
+ * visible via `rev-all` (see THEME_INIT in layout.tsx).
  */
 export default function Reveals() {
   useEffect(() => {
@@ -30,7 +35,7 @@ export default function Reveals() {
           }
         });
       },
-      { threshold: 0.15, rootMargin: "0px 0px -30px 0px" }
+      { threshold: 0.15, rootMargin: "0px 0px 25% 0px" }
     );
     els.forEach((el) => rio.observe(el));
     return () => rio.disconnect();
