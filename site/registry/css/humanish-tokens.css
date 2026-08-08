@@ -1,0 +1,162 @@
+/* @humanish/humanish-tokens — generated from app/globals.css by scripts/extract-registry-css.mjs.
+   Do not edit by hand; edit globals.css and run `pnpm registry:build`.
+   Assumes a border-box reset. Colors come from the humanish token system
+   (@humanish/humanish-tokens); fonts fall back to system stacks unless
+   --font-newsreader / --font-geist / --font-geist-mono are provided. */
+
+:root {
+  color-scheme: light;
+  --paper: #fbfaf7;
+  --mineral: #f1efe8;
+  --ink: #1c1a16;
+  --body-c: #45423c;
+  --muted: #6e6a61;
+  --label: #5a564d;
+  --line: rgba(28, 26, 22, .13);
+  --line-soft: rgba(28, 26, 22, .08);
+  --accent: #2b3fd6;
+  --accent-ink: #2b3fd6;
+  --accent-dim: rgba(43, 63, 214, .34);
+  --accent-wash: rgba(43, 63, 214, .07);
+  --accent-dz: #93a2ff;
+  --accent-dz-dim: rgba(147, 162, 255, .4);
+  --panel: #ffffff;
+  --panel-deep: #12100d;
+  --dz: #181613;
+  --dz-ink: #f0ede5;
+  --dz-body: #b2ada2;
+  --dz-label: #948f83;
+  --dz-line: rgba(240, 237, 229, .1);
+  --dz-ghost: rgba(240, 237, 229, .32);
+  --foot: #100f0c;
+  --ghost: rgba(28, 26, 22, .34);
+  --sel: rgba(43, 63, 214, .2);
+  --crowd-ink: 28, 26, 22;
+  --accent-canvas: #2b3fd6;
+  --cover-bg: #ffffff;
+  --sh-tile: 0 34px 80px -38px rgba(24, 22, 18, .5);
+  --sh-panel: 0 34px 80px -48px rgba(24, 22, 18, .45);
+  --sh-rail: 0 12px 28px -20px rgba(24, 22, 18, .4);
+  --rail-on: #ffffff;
+  --rail-hover: rgba(255, 255, 255, .72);
+  --code-faint: #a19c91;
+  --hero-head: var(--ink);
+  --hero-body: var(--body-c);
+  --console-line: var(--line);
+  --console-line-soft: var(--line-soft);
+  --show-sun: none;
+  --show-moon: inline;
+  --serif: var(--font-newsreader), Georgia, 'Times New Roman', serif;
+  --sans: var(--font-geist), 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --pad: clamp(20px, 4vw, 44px);
+  --gutter: max(var(--pad), calc((100vw - 1240px) / 2));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #171512;
+      --mineral: #1e1c18;
+      --ink: #ece8de;
+      --body-c: #b9b3a7;
+      --muted: #8f8a7e;
+      --label: #9b968a;
+      --line: rgba(236, 232, 222, .15);
+      --line-soft: rgba(236, 232, 222, .08);
+      --accent: #93a2ff;
+      --accent-ink: #9dabff;
+      --accent-dim: rgba(147, 162, 255, .36);
+      --accent-wash: rgba(147, 162, 255, .08);
+      --panel: #201e1a;
+      --panel-deep: #0e0d0b;
+      --dz: #0f0e0c;
+      --dz-ink: #f0ede5;
+      --dz-body: #aca79b;
+      --dz-label: #8f8a7e;
+      --dz-line: rgba(240, 237, 229, .09);
+      --dz-ghost: rgba(240, 237, 229, .3);
+      --foot: #0b0a08;
+      --ghost: rgba(236, 232, 222, .34);
+      --sel: rgba(147, 162, 255, .3);
+      --crowd-ink: 235, 231, 221;
+      --accent-canvas: #93a2ff;
+      --cover-bg: #201e1a;
+      --sh-tile: 0 34px 80px -34px rgba(0, 0, 0, .65);
+      --sh-panel: 0 34px 80px -44px rgba(0, 0, 0, .6);
+      --sh-rail: 0 12px 28px -18px rgba(0, 0, 0, .55);
+      --rail-on: #232119;
+      --rail-hover: rgba(35, 33, 25, .6);
+      --code-faint: #6f6b61;
+      --hero-head: #f4f0e7;
+      --hero-body: #c8c2b5;
+      --console-line: rgba(240, 237, 229, .26);
+      --console-line-soft: rgba(240, 237, 229, .13);
+      --show-sun: inline;
+      --show-moon: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #171512;
+  --mineral: #1e1c18;
+  --ink: #ece8de;
+  --body-c: #b9b3a7;
+  --muted: #8f8a7e;
+  --label: #9b968a;
+  --line: rgba(236, 232, 222, .15);
+  --line-soft: rgba(236, 232, 222, .08);
+  --accent: #93a2ff;
+  --accent-ink: #9dabff;
+  --accent-dim: rgba(147, 162, 255, .36);
+  --accent-wash: rgba(147, 162, 255, .08);
+  --panel: #201e1a;
+  --panel-deep: #0e0d0b;
+  --dz: #0f0e0c;
+  --dz-ink: #f0ede5;
+  --dz-body: #aca79b;
+  --dz-label: #8f8a7e;
+  --dz-line: rgba(240, 237, 229, .09);
+  --dz-ghost: rgba(240, 237, 229, .3);
+  --foot: #0b0a08;
+  --ghost: rgba(236, 232, 222, .34);
+  --sel: rgba(147, 162, 255, .3);
+  --crowd-ink: 235, 231, 221;
+  --accent-canvas: #93a2ff;
+  --cover-bg: #201e1a;
+  --sh-tile: 0 34px 80px -34px rgba(0, 0, 0, .65);
+  --sh-panel: 0 34px 80px -44px rgba(0, 0, 0, .6);
+  --sh-rail: 0 12px 28px -18px rgba(0, 0, 0, .55);
+  --rail-on: #232119;
+  --rail-hover: rgba(35, 33, 25, .6);
+  --code-faint: #6f6b61;
+  --hero-head: #f4f0e7;
+  --hero-body: #c8c2b5;
+  --console-line: rgba(240, 237, 229, .26);
+  --console-line-soft: rgba(240, 237, 229, .13);
+  --show-sun: inline;
+  --show-moon: none;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-mineral: var(--mineral);
+  --color-ink: var(--ink);
+  --color-body: var(--body-c);
+  --color-muted: var(--muted);
+  --color-label: var(--label);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-dz: var(--accent-dz);
+  --color-panel: var(--panel);
+  --color-panel-deep: var(--panel-deep);
+  --color-dz: var(--dz);
+  --color-dz-ink: var(--dz-ink);
+  --color-dz-body: var(--dz-body);
+  --color-dz-label: var(--dz-label);
+  --color-foot: var(--foot);
+  --font-serif: var(--serif);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+}

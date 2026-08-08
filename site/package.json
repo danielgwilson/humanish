@@ -7,19 +7,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "registry:build": "node scripts/extract-registry-css.mjs && shadcn build registry.json -o public/r",
+    "registry:check": "pnpm registry:build && git diff --exit-code -- registry/css public/r"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "clsx": "^2.1.1",
     "next": "16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20.19.41",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "shadcn": "^4.16.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   }

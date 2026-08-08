@@ -1,0 +1,316 @@
+/* @humanish/pinned-replay — generated from app/globals.css by scripts/extract-registry-css.mjs.
+   Do not edit by hand; edit globals.css and run `pnpm registry:build`.
+   Assumes a border-box reset. Colors come from the humanish token system
+   (@humanish/humanish-tokens); fonts fall back to system stacks unless
+   --font-newsreader / --font-geist / --font-geist-mono are provided. */
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .14em;
+  color: var(--accent-ink); border: 1px solid var(--accent-dim);
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+
+.chip-pass::before { content: "✓"; font-size: 10px
+}
+
+.chip-dot::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink)
+}
+
+.chip-mute { color: var(--muted); border-color: var(--line)
+}
+
+.chip-mute::before { background: var(--muted)
+}
+
+.whint { display: none
+}
+
+@media (min-width: 1024px) {
+  html.js .whint {
+      display: block; text-align: right; margin: 0 0 12px;
+      font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+      letter-spacing: .15em; text-transform: uppercase; color: var(--label);
+  }
+}
+
+.runband { display: none
+}
+
+@media (min-width: 1024px) {
+  html.js .runband {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: baseline; gap: 8px 24px; flex-wrap: wrap;
+      padding: 20px 0 13px; border-bottom: 1px solid var(--line-soft);
+      font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--label);
+  }
+  html.js .runband b { font-weight: 500; color: var(--ink)
+  }
+}
+
+.wt-track { position: relative
+}
+
+@media (min-width: 1024px) {
+  html.js .wt-track { height: calc(7 * 84vh)
+  }
+}
+
+.wt-sticky { display: grid; gap: 16px
+}
+
+@media (min-width: 1024px) {
+  html.js .wt-sticky {
+      position: sticky; top: 0; height: 100vh;
+      grid-template-columns: 292px minmax(0, 1fr);
+      gap: clamp(28px, 4vw, 60px); align-items: center; padding: 28px 0;
+  }
+  html:not(.js) .wt-sticky { grid-template-columns: minmax(0, 1fr); max-width: 880px; margin: 0 auto
+  }
+}
+
+.rail { display: none
+}
+
+@media (min-width: 1024px) {
+  html.js .rail { display: flex; flex-direction: column; gap: 4px; position: relative; padding-left: 26px
+  }
+}
+
+.rail-k {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--label);
+  padding: 0 14px 10px;
+}
+
+.rtrack { position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; background: var(--line); border-radius: 2px; overflow: hidden
+}
+
+.rtrack i { position: absolute; inset: 0; background: var(--accent-ink); transform: scaleY(0); transform-origin: top
+}
+
+.ritem {
+  display: flex; align-items: baseline; gap: 12px; text-align: left;
+  padding: 10px 14px; border-radius: 10px; border: 1px solid transparent;
+  color: var(--muted);
+  transition: background .18s, color .18s, border-color .18s, box-shadow .18s;
+}
+
+.ritem .ridx { font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .08em; width: 26px; flex: none; color: var(--muted)
+}
+
+.ritem .rtx b { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; color: var(--body-c); transition: color .18s
+}
+
+.ritem .rtx i { display: block; font-style: normal; font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 2px
+}
+
+.ritem:hover { background: var(--rail-hover)
+}
+
+.ritem.on { background: var(--rail-on); border-color: var(--line); box-shadow: var(--sh-rail)
+}
+
+.ritem.on .rtx b { color: var(--ink)
+}
+
+.ritem.on .ridx { color: var(--accent-ink)
+}
+
+.ritem.done .ridx { color: var(--accent-ink)
+}
+
+.ritem.done .rtx b::after { content: " ✓"; color: var(--accent-ink); font-size: 12px
+}
+
+.ritem.ritem-fail.done .ridx { color: var(--muted)
+}
+
+.ritem.ritem-fail.done .rtx b::after { content: ""
+}
+
+.stage { position: relative
+}
+
+@media (min-width: 1024px) {
+  html.js .stage { max-width: min(100%, calc((100vh - 168px) * 1.845))
+  }
+}
+
+.panel {
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+  box-shadow: var(--sh-panel);
+}
+
+.pbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 40px; padding: 8px 16px; border-bottom: 1px solid var(--line-soft);
+  background: var(--accent-wash);
+}
+
+.pl { display: flex; align-items: baseline; gap: 11px; min-width: 0
+}
+
+.pidx { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--accent-ink); letter-spacing: .08em
+}
+
+.pname { font-family: var(--mono); font-size: 11px; color: var(--ink); letter-spacing: .09em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap
+}
+
+.pr { font-family: var(--mono); font-size: 10.5px; color: var(--label); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap
+}
+
+.pbody { flex: 1; display: flex; align-items: center; justify-content: center; padding: 26px 20px
+}
+
+@media (min-width: 1024px) {
+  .pbody { padding: 30px
+  }
+}
+
+.pcap {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  min-height: 52px; padding: 12px 16px; border-top: 1px solid var(--line-soft);
+}
+
+.prep { min-width: 0; font-size: 13px; color: var(--body-c)
+}
+
+.plab { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--label); margin-bottom: 3px
+}
+
+.prep q { font-family: var(--mono); font-size: 12.5px; color: var(--ink); quotes: "\201C" "\201D"
+}
+
+.prep code { font-size: .92em
+}
+
+.pbody-brief { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 22px
+}
+
+.brief-facts { display: flex; flex-wrap: wrap; row-gap: 10px; border-bottom: 1px solid var(--line-soft); padding-bottom: 12px
+}
+
+.brief-facts div { display: grid; gap: 3px; align-content: start; padding-right: 16px; margin-right: 16px; border-right: 1px solid var(--line-soft)
+}
+
+.brief-facts div:last-child { border-right: 0; margin-right: 0; padding-right: 0
+}
+
+.brief-facts dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--label)
+}
+
+.brief-facts dd { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap
+}
+
+.pbody-brief .code { margin: auto 0
+}
+
+.code { font-family: var(--mono); font-size: 12.5px; line-height: 1.8; color: var(--ink); white-space: pre; overflow-x: auto; max-width: 100%
+}
+
+.code .cy { color: var(--muted)
+}
+
+.code .cv { color: var(--ink)
+}
+
+.code .ca { color: var(--accent-ink)
+}
+
+.code .cc { color: var(--code-faint)
+}
+
+.ledger { width: 100%; max-width: 560px; font-family: var(--mono); font-size: 12.5px
+}
+
+.ledger .lh { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); color: var(--ink); flex-wrap: wrap
+}
+
+.ledger .lh span { color: var(--label); font-size: 10px; letter-spacing: .12em; text-transform: uppercase
+}
+
+.lrow { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap
+}
+
+.lrow:last-child { border-bottom: 0
+}
+
+.lrow .ln { color: var(--ink)
+}
+
+.lrow .ln em { font-style: normal; color: var(--muted); margin-right: 8px
+}
+
+.lrow .ld { color: var(--label); text-align: right; flex: 1; min-width: 170px
+}
+
+@media (max-width: 420px) {
+  .pbar { flex-wrap: wrap; row-gap: 2px; padding-top: 10px; padding-bottom: 10px
+  }
+  .pname { white-space: normal; overflow: visible; text-overflow: clip
+  }
+  .pr { white-space: normal
+  }
+  .ledger .lh { flex-direction: column; gap: 2px
+  }
+  .lrow { flex-direction: column; gap: 3px
+  }
+  .lrow .ld { text-align: left; flex: none; min-width: 0; padding-left: 16px
+  }
+}
+
+.panel-dark { background: var(--panel-deep); border-color: var(--dz-line); color: var(--dz-ink)
+}
+
+.panel-dark .pbar { background: rgba(240, 237, 229, .02); border-color: var(--dz-line)
+}
+
+.panel-dark .pname { color: var(--dz-ink)
+}
+
+.panel-dark .pidx { color: var(--accent-dz)
+}
+
+.panel-dark .pr { color: var(--dz-label)
+}
+
+.panel-dark .pcap { border-color: var(--dz-line)
+}
+
+.panel-dark .prep { color: var(--dz-body)
+}
+
+.panel-dark .plab { color: var(--dz-label)
+}
+
+.panel-dark .chip { color: var(--accent-dz); border-color: var(--accent-dz-dim)
+}
+
+.panel-dark .chip-dot::before { background: var(--accent-dz)
+}
+
+.panel-dark :focus-visible, .band-dark :focus-visible { outline-color: var(--accent-dz)
+}
+
+@media (min-width: 1024px) {
+  html.js .stage .panel { position: absolute; inset: 0; opacity: 0; pointer-events: none; transform: translateY(16px) scale(.99); transition: opacity .28s ease, transform .5s cubic-bezier(.22, 1, .36, 1)
+  }
+  html.js .stage .panel[data-sizer] { position: relative
+  }
+  html.js .stage .panel.on { opacity: 1; pointer-events: auto; transform: none; transition: opacity .4s ease .05s, transform .55s cubic-bezier(.22, 1, .36, 1) .05s
+  }
+  html.js .stage .panel.past { transform: translateY(-14px) scale(.995)
+  }
+}
+
+@media (max-width: 1023px) {
+  .stage { display: grid; gap: 16px
+  }
+  .panel { box-shadow: var(--sh-rail)
+  }
+}
+
+html:not(.js) .stage { display: grid; gap: 16px
+}
