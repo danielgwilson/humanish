@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -279,6 +280,18 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
 export function createProgram(io: Partial<CliIo> = {}): Command {
   const cliIo: CliIo = { ...defaultIo, ...io };
   const program = new HumanishCommand(undefined, cliIo);
+
+  // Bare `humanish` orients instead of printing sixteen subcommands (#367). --help is untouched;
+  // this is only what happens when no command was chosen at all.
+  program.action(async (options: { json?: boolean }) => {
+    const state = await readOrientation(".");
+    if (options.json === true) {
+      cliIo.writeOut(`${JSON.stringify(state, null, 2)}\n`);
+    } else {
+      cliIo.writeOut(formatOrientationHuman(state));
+    }
+    cliIo.setExitCode(0);
+  });
 
   program
     .name("humanish")
