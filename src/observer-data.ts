@@ -216,6 +216,11 @@ function statusLabel(status: RunStream["status"]): string {
       return "Running";
     case "passed":
       return "Passed";
+    // Participant outcomes read as what happened to a person, not as an error state.
+    case "abandoned":
+      return "Gave up";
+    case "incomplete":
+      return "Ran out of session";
     case "complete":
       return "Complete";
     case "blocked":

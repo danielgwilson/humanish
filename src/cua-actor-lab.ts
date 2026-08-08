@@ -185,6 +185,10 @@ export interface DesktopBrowserLaunchResult {
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 // Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+/** E2B refuses a sandbox lifetime over one hour ("400: Timeout cannot be greater than 1 hours").
+ *  The derived per-lane deadline has to stay under it, and saying so at plan time beats discovering
+ *  it from a raw provider 400 after a plan has already printed. */
+const MAX_SANDBOX_MS = 60 * 60_000;
 export const SUBJECT_DIR = "/home/user/subject";
 // Remote path for the once-per-run packed local-tree archive; removed by the extract step
 // after it unpacks into SUBJECT_DIR.
@@ -2827,6 +2831,21 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     return fail("HUMANISH_CUA_LAB_FANOUT_INVALID", fanoutReason, descriptor.id);
   }
 
+  // The sandbox deadline is DERIVED from the session budget, so a lab can ask for a session that
+  // cannot legally be provisioned. Catch it here, before anything is created, and show the
+  // arithmetic — the provider's own error names a limit but not which knob produced it.
+  const derivedSandboxMs = resolvePerLaneSandboxMs(config);
+  if (derivedSandboxMs > MAX_SANDBOX_MS) {
+    const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+    const sessionMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+    const headroomMs = derivedSandboxMs - sessionMs;
+    return fail(
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
+      descriptor.id
+    );
+  }
+
   // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
   // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
   const personaResolution = await resolveCommittedPersonas(projectRoot, labPersonaIds(config));
@@ -4879,6 +4898,11 @@ function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] {
       return "blocked";
     case "timed_out":
       return "timed_out";
+    // A participant who abandoned, or a session that ran out before the goal, did not pass — but the
+    // harness did not fail either. The run reports what happened rather than a verdict on the tool.
+    case "abandoned":
+    case "incomplete":
+      return "fail";
   }
 }
 
