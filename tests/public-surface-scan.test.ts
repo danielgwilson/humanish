@@ -33,13 +33,13 @@ async function createGitHistory(commitEmails: string[]): Promise<string> {
   return root;
 }
 
-function runScan(root: string, denylistPattern = "") {
+function runScan(root: string, denylistPattern = "", githubRef = "") {
   return spawnSync(process.execPath, [scanScript], {
     cwd: root,
     encoding: "utf8",
     env: {
       ...process.env,
-      GITHUB_REF: "",
+      GITHUB_REF: githubRef,
       HUMANISH_PUBLIC_COMMIT_EMAIL_ALLOWLIST: "",
       HUMANISH_PUBLIC_DENYLIST_PATTERN: denylistPattern
     },
@@ -59,6 +59,53 @@ describe("public-surface commit email policy", () => {
       const scan = runScan(root);
       expect(scan.status, scan.stderr).toBe(0);
       expect(scan.stdout).toContain("public-surface scan ok");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
+
+  it("scopes a tag publish to the history being published, not every branch in the repo", async () => {
+    // A release publishes main. Walking `--all` also walks unmerged feature branches, so a branch
+    // someone else is still working on could block a release of code it is not part of — which is
+    // exactly what happened: an in-flight branch with an unapproved author held up a tag of clean
+    // main. Narrowing loses nothing, because that branch is still judged when it is proposed.
+    const root = await createGitHistory(["noreply@github.com"]);
+    try {
+      // A side branch carrying an unapproved author, never merged.
+      const branch = spawnSync("git", ["checkout", "--quiet", "-b", "someone-elses-work"], { cwd: root, encoding: "utf8" });
+      expect(branch.status, branch.stderr).toBe(0);
+      await writeFile(join(root, "their-file.txt"), "their work\n");
+      spawnSync("git", ["add", "."], { cwd: root });
+      const theirs = spawnSync(
+        "git",
+        ["-c", "user.name=Someone Else", "-c", "user.email=nope@example.test", "commit", "--quiet", "-m", "their commit"],
+        { cwd: root, encoding: "utf8" }
+      );
+      expect(theirs.status, theirs.stderr).toBe(0);
+      spawnSync("git", ["checkout", "--quiet", "-"], { cwd: root });
+
+      // The local sweep still sees it — nothing is hidden from the person working in the repo.
+      const sweep = runScan(root);
+      expect(sweep.status).toBe(1);
+      expect(sweep.stderr).toContain("nope@example.test");
+
+      // A tag publish judges what it is publishing, and that branch is not part of it.
+      const publish = runScan(root, "", "refs/tags/v1.2.3");
+      expect(publish.status, publish.stderr).toBe(0);
+      expect(publish.stdout).toContain("public-surface scan ok");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
+
+  it("still rejects an unapproved author that IS part of what a tag publishes", async () => {
+    // The narrowing must not become a hole: anything in the published history is still judged.
+    const root = await createGitHistory(["noreply@github.com", "nope@example.test"]);
+    try {
+      const publish = runScan(root, "", "refs/tags/v1.2.3");
+      expect(publish.status).toBe(1);
+      expect(publish.stderr).toContain("unapproved_commit_email");
+      expect(publish.stderr).toContain("nope@example.test");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
