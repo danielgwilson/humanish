@@ -1026,6 +1026,93 @@ describe("runCuaActorLab", () => {
     expect(threadRaw).not.toContain("Confirm your email");
   });
 
+  it("comms:email:fake — TELLS the persona its address and inbox URL, and stays silent for a lane that has neither", async () => {
+    // The half no test covered. Capture and drain were proven; whether the ACTOR is ever told an
+    // inbox exists was not. That is the gap a live run hit: mail landing in a catch nobody opened,
+    // because the persona was never handed the address to sign up with or the URL to read.
+    const commsPort = 8025;
+    const base = cloneCuaConfig();
+    const config: LabConfig = {
+      ...base,
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_BASE_URL",
+          port: commsPort,
+          recipients: [{ lane: "lane-01", address: "signup-a@example.test" }]
+        }
+      }
+    };
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: "" };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    let t = 0;
+    const seenInstructions: string[] = [];
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          seenInstructions.push(options.instructions);
+          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+        },
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+
+    const prompt = seenInstructions[0] ?? "";
+    // The address, because the drain matches captured mail against the DECLARED address — an actor
+    // that invents its own at signup gets an inbox that stays empty forever.
+    expect(prompt).toContain("signup-a@example.test");
+    // The inbox URL, because otherwise there is nowhere to go when the app says "we emailed you".
+    expect(prompt).toContain(`http://127.0.0.1:${commsPort}`);
+    // And the wait steering, because a mid-flow model reads "we emailed you" as a blocker and ends
+    // its session — the exact give-up a live run documented.
+    expect(prompt.toLowerCase()).toContain("waiting for an email is normal");
+  });
+
+  it("comms:email:fake — does NOT tell a lane about an inbox it could never receive into", async () => {
+    // A lane with no addressed recipient must not be sent to an inbox that will stay empty: it
+    // would refresh forever and burn the session on a promise the harness cannot keep.
+    const commsPort = 8025;
+    const base = cloneCuaConfig();
+    const config: LabConfig = {
+      ...base,
+      comms: { email: { kind: "fake", injectEnv: "RESEND_BASE_URL", port: commsPort, recipients: [{ lane: "lane-01" }] } }
+    };
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: "" };
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    let t = 0;
+    const seenInstructions: string[] = [];
+    await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          seenInstructions.push(options.instructions);
+          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+        },
+        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
+      }
+    });
+    expect(seenInstructions[0] ?? "").not.toContain("Email inbox:");
+  });
+
   it("comms:email:fake — warns (never silently loses) when captured mail matches no declared recipient", async () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
