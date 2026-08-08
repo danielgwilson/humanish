@@ -1,7 +1,8 @@
 import { Wordmark } from "./wordmark";
 
 const GITHUB = "https://github.com/danielgwilson/humanish";
-const DOCS = `${GITHUB}/tree/main/docs`;
+// The README's "## Docs" section — a curated index; unique heading, slug #docs.
+const DOCS = `${GITHUB}#docs`;
 // The README's "## Commands" heading — GitHub slugs it to #commands.
 const CLI_REFERENCE = `${GITHUB}#commands`;
 
