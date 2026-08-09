@@ -175,9 +175,20 @@ function reachableCommitEmails() {
     ? "HEAD^2"
     : githubRef.startsWith("refs/tags/") && gitRefExists("HEAD")
       ? "HEAD"
-      : "--all";
+      : null; // the local sweep: every ref WE control, resolved below
   try {
-    const raw = execFileSync("git", ["log", ref, "--format=%ae%n%ce"], { encoding: "utf8" });
+    // The local sweep deliberately does NOT use `--all`. A clone that has fetched GitHub pull
+    // refs carries commits from FORKS, authored by external contributors whose email addresses
+    // are their own business and already public on GitHub. Judging those fails our gate on
+    // somebody else's normal gmail address, every time, for a contribution we should welcome.
+    //
+    // So the sweep walks the history this project controls: local branches, tags, and origin's
+    // branches. Anything a contributor authored is judged when their PR is proposed, by the
+    // pull-request scope above, which is the moment it actually matters to us.
+    const args = ref === null
+      ? ["log", "--branches", "--tags", "--remotes=origin", "--format=%ae%n%ce"]
+      : ["log", ref, "--format=%ae%n%ce"];
+    const raw = execFileSync("git", args, { encoding: "utf8" });
     return [...new Set(raw.split("\n").map((line) => line.trim()).filter(Boolean))];
   } catch {
     return [];
