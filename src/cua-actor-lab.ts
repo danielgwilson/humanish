@@ -4341,7 +4341,7 @@ export function buildCuaBundle(args: {
     scenario: {
       id: `cua-${args.labId}`,
       title: args.labTitle ?? `Computer-use lab: ${args.labId}`,
-      goal: args.mission,
+      goal: redactText(args.mission),
       source: `lab:${args.labId}`,
       sourceDigest: args.persona.promptDigest
     },
@@ -4836,7 +4836,15 @@ export function buildCuaFanoutBundle(args: {
     scenario: {
       id: `cua-${config.id}`,
       title: config.title ?? `Computer-use fan-out: ${config.id}`,
-      goal: specs[0]!.instructions,
+      // Redacted at WRITE time, like every other raw-text surface in the bundle. Lane records are
+      // digest-only by design, but scenario.goal keeps one lane's composed instructions verbatim —
+      // and an adopter whose authored lane text must name a runtime world URL (an inbox on a route
+      // where the harness does not inject one) put an *.e2b.app address in it. That landed raw here
+      // and in observer-data.json, the sensitive-text scanner matched it, and verify failed a bundle
+      // this writer produced. The only adopter-side workaround was scanner evasion (#412).
+      //
+      // The instructions the model actually receives are untouched; only the persisted copy changes.
+      goal: redactText(specs[0]!.instructions),
       source: `lab:${config.id}`,
       sourceDigest: specs[0]!.persona.promptDigest
     },
