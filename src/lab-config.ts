@@ -50,6 +50,7 @@
 import { normalizeExtraExcludeEntry } from "./source-archive.js";
 import { actorRegistry } from "./actor-registry.js";
 import { containsSensitive } from "./redaction.js";
+import type { LabTask } from "./tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 
@@ -395,8 +396,18 @@ export interface LabActor {
   persona?: string;
   /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
   laneFocus?: LabActorLaneFocus;
-  /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. */
+  /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. A mission on
+   *  its own is a complete, valid lab — `tasks` is additive, never required. */
   mission?: string;
+  /**
+   * The researcher's protocol: discrete tasks, each with what the participant is asked to do and
+   * (optionally) how the researcher measures it. Additive to `mission`, which stays the brief.
+   *
+   * The two halves belong to different people. `goal` reaches the participant's prompt; `success`
+   * never does — a moderator does not read the success criterion aloud, because telling someone how
+   * they will be judged changes what they do. See src/tasks.ts.
+   */
+  tasks?: LabTask[];
   /** Provider model override. Consumed on the app-url route. */
   model?: string;
   /**
@@ -2248,6 +2259,9 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${index}].stopWhen`);
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;
+    const tasksResult = parseTasks(entry.tasks, `actors[${index}].tasks`);
+    if (!tasksResult.ok) return tasksResult;
+    if (tasksResult.value !== undefined) actor.tasks = tasksResult.value;
     const laneFocus = parseLaneFocus(entry.laneFocus);
     if (laneFocus) actor.laneFocus = laneFocus;
     actors.push(actor);
@@ -2394,6 +2408,41 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     lanes.push(lane);
   }
   return { ok: true, value: lanes };
+}
+
+/**
+ * The researcher's protocol. Each task carries what the participant is asked to do and, optionally,
+ * the observation that proves it happened — reusing `stopWhen`, so a criterion is exactly as
+ * expressive as a stop condition and an author who knows one knows the other.
+ *
+ * A task with no `success` is allowed on purpose: some things you ask a participant to do (think
+ * aloud, say what confused you) are not observable, and the funnel reports them as unmeasurable
+ * rather than quietly counting them failed.
+ */
+function parseTasks(raw: unknown, field: string): { ok: true; value: LabTask[] | undefined } | LabConfigParseFailure {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return invalid(`\`${field}\` must be a non-empty list of tasks when set.`);
+  }
+  const tasks: LabTask[] = [];
+  const seen = new Set<string>();
+  for (const [index, entry] of raw.entries()) {
+    if (!isRecord(entry)) return invalid(`each \`${field}\` entry must be a mapping.`);
+    const id = str(entry.id);
+    if (id === undefined || !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(id)) {
+      return invalid(`\`${field}[${index}].id\` must be a short id like "sign-up".`);
+    }
+    if (seen.has(id)) return invalid(`\`${field}\` has a duplicate task id "${id}"; ids appear in evidence and must be unique.`);
+    seen.add(id);
+    const goal = str(entry.goal);
+    if (goal === undefined) {
+      return invalid(`\`${field}[${index}].goal\` is required — what the PARTICIPANT is asked to do, in their language.`);
+    }
+    const successResult = parseStopWhen(entry.success, `${field}[${index}].success`);
+    if (!successResult.ok) return successResult;
+    tasks.push({ id, goal, ...(successResult.value === undefined ? {} : { success: successResult.value }) });
+  }
+  return { ok: true, value: tasks };
 }
 
 function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen | undefined } | LabConfigParseFailure {
