@@ -2209,7 +2209,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     scenario: {
       id: `concurrent-shared-world-${config.id}`,
       title: config.title ?? `Concurrent shared-world: ${config.id}`,
-      goal: actorSpecs[0]?.instructions ?? "Concurrent shared-world interaction.",
+      goal: redactText(actorSpecs[0]?.instructions ?? "Concurrent shared-world interaction."),
       source: `lab:${config.id}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest
     },

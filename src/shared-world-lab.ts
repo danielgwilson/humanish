@@ -1516,7 +1516,7 @@ export function buildSharedWorldBundle(args: {
     scenario: {
       id: `shared-world-${config.id}`,
       title: config.title ?? `Shared-world: ${config.id}`,
-      goal: roleSpecs[0]?.instructions ?? "Shared-world sequential interaction.",
+      goal: redactText(roleSpecs[0]?.instructions ?? "Shared-world sequential interaction."),
       source: `lab:${config.id}`,
       sourceDigest: roleSpecs[0]?.persona.promptDigest ?? seedDigest
     },

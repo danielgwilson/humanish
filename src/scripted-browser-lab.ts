@@ -906,7 +906,7 @@ export function buildScriptedLabBundle(args: {
     scenario: {
       id: args.journey.scenarioId,
       title: args.journey.scenarioTitle,
-      goal: args.journey.goal,
+      goal: redactText(args.journey.goal),
       source: args.scenarioSource,
       sourceDigest: args.scenarioSourceDigest
     },
