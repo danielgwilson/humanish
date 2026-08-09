@@ -67,11 +67,33 @@ recorded in the lab's own comments so the next person does not pay again.
 - `prisma migrate deploy` alone is not enough: documenso imports zod schemas that
   `prisma generate` emits, so the dev server starts and then every route 500s.
 
+## It reproduced
+
+A second independent run the next day, same lab and same subject, reached the same outcome:
+`cua-2026-08-09T00-22-54-982Z-dd68261c`, `passed` / `goal_satisfied`, verify green, one
+captured message with the same shape of evidence.
+
+| | run 1 | run 2 |
+|---|---|---|
+| outcome | passed / goal_satisfied | passed / goal_satisfied |
+| turns | 18 | 25 |
+| actions | 34 | 39 |
+| cost | $0.51 | $0.65 |
+| cache hits | 76% | 88% |
+| captured mail | 1 message, 4 links, 6 codes | 1 message, 4 links, 6 codes |
+
+Provisioning reproduced closely too — install 77s then 71s, subject ready 44s then 44s.
+
+The variance is in how the persona worked, not in whether it could: seven more turns and five
+more actions to reach the same place. That is what you would expect from a real participant
+and is the interesting part, not noise to be eliminated.
+
 ## What this does not prove
 
-One run, one persona, one subject. It shows the pipeline works end to end; it says nothing
-about how often it works, how a different persona would behave, or whether the flow is easy
-for a human. The interesting studies start here rather than end here.
+Two runs, one persona, one subject. It shows the pipeline works and that the result is not a
+one-off; it says nothing about how a different persona would behave, how this generalizes to
+another app, or whether the flow is easy for a human. The interesting studies start here
+rather than end here.
 
 The cost figure is also newly trustworthy and worth noting: 223,616 of 293,532 input tokens
 were served from the provider's prompt cache. Before the meter learned to price cached input,
