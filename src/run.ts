@@ -27,7 +27,7 @@ import {
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
-import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "./actor-contract.js";
+import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace } from "./actor-contract.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
 import { mapWithConcurrency } from "./concurrency.js";
@@ -925,11 +925,80 @@ export interface RunRerunLineage {
   }>;
 }
 
+/**
+ * What happened to the PARTICIPANTS in a study, with the denominator attached.
+ *
+ * A stakeholder watching through the glass forms conclusions from vivid moments — that is the
+ * classic failure of the viewing room, and it is why researchers synthesize rather than letting the
+ * room decide. So anything shown to a stakeholder carries its count, or it becomes a machine for
+ * manufacturing certainty from n=1 (docs/principles/three-roles.md).
+ *
+ * These are OUTCOMES, not scores. `abandoned` is the most valuable thing a usability study
+ * produces, and `harnessFailed` is the only member that says the instrument, rather than the
+ * product, is what went wrong.
+ */
+export interface ParticipantOutcomes {
+  /** Participants whose sessions reached a terminal state — the denominator for every count below. */
+  total: number;
+  /** Reached the goal. */
+  reachedGoal: number;
+  /** Stopped trying. A finding about the product. */
+  abandoned: number;
+  /** Ran out of session or budget before reaching the goal. */
+  ranOut: number;
+  /** Needed an approval the run could not give. */
+  blocked: number;
+  /** The harness failed them: a dead sandbox, a provider error, a broken artifact. */
+  harnessFailed: number;
+}
+
 export interface ReviewSummary {
   schema: typeof REVIEW_SCHEMA;
   verdict: "contract_proof_only" | "pass" | "fail" | "blocked" | "timed_out";
   summary: string;
   gaps: string[];
+  /**
+   * The study result, separate from the verdict above.
+   *
+   * `verdict` answers a gate-shaped question and has to collapse a run to one word. This answers
+   * the research question — what happened to the people in the study — and does not collapse: a run
+   * where two of three participants finished is not usefully "fail", and a run where the harness
+   * broke is a different thing from one where a persona gave up. Absent on a dry-run contract
+   * bundle, which has no participants.
+   */
+  participants?: ParticipantOutcomes;
+}
+
+/** Tally participant outcomes from actor statuses. Statuses this does not recognise are counted in
+ *  `total` but nowhere else, so the parts can never exceed the whole. */
+export function tallyParticipantOutcomes(statuses: readonly ActorStatus[]): ParticipantOutcomes {
+  const tally: ParticipantOutcomes = {
+    total: statuses.length,
+    reachedGoal: 0,
+    abandoned: 0,
+    ranOut: 0,
+    blocked: 0,
+    harnessFailed: 0
+  };
+  for (const status of statuses) {
+    if (status === "passed") tally.reachedGoal += 1;
+    else if (status === "abandoned") tally.abandoned += 1;
+    else if (status === "incomplete" || status === "timed_out") tally.ranOut += 1;
+    else if (status === "blocked") tally.blocked += 1;
+    else if (status === "failed") tally.harnessFailed += 1;
+  }
+  return tally;
+}
+
+/** One line a stakeholder can read, with the denominator attached to every number. */
+export function formatParticipantOutcomes(outcomes: ParticipantOutcomes): string {
+  if (outcomes.total === 0) return "no participants reached a terminal state";
+  const parts: string[] = [`${outcomes.reachedGoal}/${outcomes.total} reached the goal`];
+  if (outcomes.abandoned > 0) parts.push(`${outcomes.abandoned} gave up`);
+  if (outcomes.ranOut > 0) parts.push(`${outcomes.ranOut} ran out of session`);
+  if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked on an approval`);
+  if (outcomes.harnessFailed > 0) parts.push(`${outcomes.harnessFailed} lost to a harness failure`);
+  return parts.join(", ");
 }
 
 export async function buildRunSource(args: {
