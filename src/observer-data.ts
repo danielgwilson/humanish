@@ -1,3 +1,4 @@
+import { formatParticipantOutcomes } from "./run.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
@@ -25,6 +26,18 @@ export interface ObserverData {
     redaction: RunBundle["redaction"];
     lifecycle: RunBundle["lifecycle"];
     knownGaps: string[];
+    /**
+     * What happened to the PARTICIPANTS, with the denominator attached. `status` above collapses the
+     * run to one word for a gate; this is the study result, and it is what the person watching
+     * through the glass actually wants to know. Absent on a bundle with no participants.
+     *
+     * A viewing room that shows only vivid moments manufactures certainty from n=1 — so the count
+     * travels with the outcome here, always (docs/principles/three-roles.md).
+     */
+    participants?: RunBundle["review"]["participants"];
+    /** The same thing as one readable line, so a renderer cannot accidentally show a number
+     *  without its denominator. */
+    participantsLine?: string;
   };
   summary: {
     streams: number;
@@ -110,7 +123,13 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       packageName: bundle.source.packageName,
       redaction: bundle.redaction,
       lifecycle: bundle.lifecycle,
-      knownGaps: bundle.review.gaps
+      knownGaps: bundle.review.gaps,
+      ...(bundle.review.participants === undefined
+        ? {}
+        : {
+            participants: bundle.review.participants,
+            participantsLine: formatParticipantOutcomes(bundle.review.participants)
+          })
     },
     summary: {
       streams: streams.length,

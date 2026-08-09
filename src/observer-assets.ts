@@ -1595,9 +1595,16 @@ export function observerClientJs(): string {
     if (ss.some(function (s) { return tone(s.status) === "running" || tone(s.status) === "queued"; })) return "";
     var ok = ss.filter(function (s) { return tone(s.status) === "complete"; }).length;
     var status = overallStatus();
+    // Prefer the PARTICIPANT outcome over the lane count. "2 of 3 lanes passed" is a fact about the
+    // harness; "2/3 reached the goal, 1 gave up" is the study result, which is what the person
+    // watching through the glass came for — and it carries its denominator, so a vivid moment on
+    // one tile cannot be read as the whole picture (docs/principles/three-roles.md).
+    var line = currentData.run.participantsLine
+      ? 'Run finished — ' + currentData.run.participantsLine + '.'
+      : 'Run finished — ' + ok + ' of ' + ss.length + ' lane(s) passed.';
     return '<div class="run-verdict-banner" data-status="' + esc(status) + '" role="status">'
       + '<span class="rvb-dot"></span>'
-      + '<span>Run finished — ' + ok + ' of ' + ss.length + ' lane(s) passed. Live streams have ended; tiles show each lane’s recorded evidence.</span>'
+      + '<span>' + esc(line) + ' Live streams have ended; tiles show each lane’s recorded evidence.</span>'
       + '</div>';
   }
   function overallStatus() {
