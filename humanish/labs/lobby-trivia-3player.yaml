@@ -67,22 +67,19 @@ actors:
           friends are still opening the app on their own phones and will appear over the next minute.
           Keep waiting and re-checking the player list. Do NOT end your turn while you are waiting,
           and do NOT treat being alone as being blocked. Once the other players show up, start the
-          game and play your guesses. Use only the page itself: never type into the browser address
-          bar for anything except a web address.
+          game and play your guesses.
       - id: player-2
         device: mobile
         persona: competitive-friend
         instruction: >-
           Join the lobby you're told the code for, then play your guesses. Pick a name that is
-          actually yours, not the example shown in the name field. Use only the page itself: never
-          type into the browser address bar for anything except a web address.
+          actually yours, not the example shown in the name field.
       - id: player-3
         device: small-mobile # 360x740 small-phone LAYOUT
         persona: casual-friend
         instruction: >-
           Join the lobby you're told the code for, then play your guesses. Pick a name that is
-          actually yours, not the example shown in the name field. Use only the page itself: never
-          type into the browser address bar for anything except a web address.
+          actually yours, not the example shown in the name field.
 execution:
   target: e2b-desktop # required: each persona drives a hosted desktop browser (mobile LAYOUT)
   # PER-PERSONA session budget; also caps the host-first handoff deadline. Budget the WHOLE arc:
