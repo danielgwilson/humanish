@@ -950,6 +950,16 @@ export interface ParticipantOutcomes {
   blocked: number;
   /** The harness failed them: a dead sandbox, a provider error, a broken artifact. */
   harnessFailed: number;
+  /**
+   * Participants who reported friction or a defect on the way, whatever their outcome.
+   *
+   * This is NOT a failure count and it overlaps the others on purpose — someone can reach the goal
+   * and still tell you the road there was broken. A live two-persona run made the case: both
+   * participants signed in, so "2/2 reached the goal" was true, and the keyboard-first one also
+   * reported that the signature step could not be completed without a mouse. Reporting only the
+   * outcome would have buried the single most useful thing that run produced.
+   */
+  reportedFriction: number;
 }
 
 export interface ReviewSummary {
@@ -971,14 +981,19 @@ export interface ReviewSummary {
 
 /** Tally participant outcomes from actor statuses. Statuses this does not recognise are counted in
  *  `total` but nowhere else, so the parts can never exceed the whole. */
-export function tallyParticipantOutcomes(statuses: readonly ActorStatus[]): ParticipantOutcomes {
+export function tallyParticipantOutcomes(
+  statuses: readonly ActorStatus[],
+  /** Per-participant: did this one report friction or a defect? Same order as `statuses`. */
+  reportedFriction: readonly boolean[] = []
+): ParticipantOutcomes {
   const tally: ParticipantOutcomes = {
     total: statuses.length,
     reachedGoal: 0,
     abandoned: 0,
     ranOut: 0,
     blocked: 0,
-    harnessFailed: 0
+    harnessFailed: 0,
+    reportedFriction: reportedFriction.filter(Boolean).length
   };
   for (const status of statuses) {
     if (status === "passed") tally.reachedGoal += 1;
@@ -998,6 +1013,9 @@ export function formatParticipantOutcomes(outcomes: ParticipantOutcomes): string
   if (outcomes.ranOut > 0) parts.push(`${outcomes.ranOut} ran out of session`);
   if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked on an approval`);
   if (outcomes.harnessFailed > 0) parts.push(`${outcomes.harnessFailed} lost to a harness failure`);
+  // Last, and separate, because it cuts across the outcomes rather than partitioning them: someone
+  // can reach the goal and still have found the road there broken.
+  if (outcomes.reportedFriction > 0) parts.push(`${outcomes.reportedFriction} reported friction`);
   return parts.join(", ");
 }
 

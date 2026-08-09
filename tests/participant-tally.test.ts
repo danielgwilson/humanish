@@ -28,7 +28,8 @@ describe("tallyParticipantOutcomes", () => {
       ranOut: 1,
       blocked: 1,
       // The only member that says the instrument, rather than the product, is what went wrong.
-      harnessFailed: 1
+      harnessFailed: 1,
+      reportedFriction: 0
     });
   });
 
@@ -53,8 +54,20 @@ describe("tallyParticipantOutcomes", () => {
       abandoned: 0,
       ranOut: 0,
       blocked: 0,
-      harnessFailed: 0
+      harnessFailed: 0,
+      reportedFriction: 0
     });
+  });
+
+  it("counts friction ACROSS outcomes, because reaching the goal and finding it broken both happened", () => {
+    // From a live two-persona run: both participants signed in, and the keyboard-first one also
+    // reported that the signature step could not be completed without a mouse. "2/2 reached the
+    // goal" was true and would have buried the single most useful thing that run produced.
+    const tally = tallyParticipantOutcomes(["passed", "passed"], [false, true]);
+    expect(tally.reachedGoal).toBe(2);
+    expect(tally.reportedFriction).toBe(1);
+    // It overlaps rather than partitions, so it is not subtracted from any outcome.
+    expect(tally.total).toBe(2);
   });
 });
 
@@ -76,9 +89,15 @@ describe("formatParticipantOutcomes", () => {
     expect(line).toContain("1 lost to a harness failure");
   });
 
+  it("surfaces friction next to a clean-looking outcome", () => {
+    const line = formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed"], [false, true]));
+    expect(line).toBe("2/2 reached the goal, 1 reported friction");
+  });
+
   it("stays quiet about outcomes that did not happen", () => {
     const line = formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed"]));
     expect(line).toBe("2/2 reached the goal");
+    expect(line).not.toContain("friction");
     expect(line).not.toContain("gave up");
     expect(line).not.toContain("harness");
   });
