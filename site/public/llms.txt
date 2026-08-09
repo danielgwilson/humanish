@@ -22,6 +22,9 @@ For coding agents: `npx skills add danielgwilson/humanish`
 - `humanish verify` — grade the evidence bundle against public-safety gates, fail-closed: `share_ready`, `local_only`, or `blocked`.
 - `humanish feedback issue` — render a public-safe GitHub issue draft from the bundle.
 
+All four commands need Node 20 or newer. Hosted desktops also read `OPENAI_API_KEY` and
+`E2B_API_KEY` from your environment.
+
 `humanish watch` with no lab argument renders a synthetic evidence bundle and Observer locally,
 without keys or provider spend.
 
