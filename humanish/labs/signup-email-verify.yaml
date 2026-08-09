@@ -97,18 +97,27 @@ actors:
       Create an account using the email address in your instructions, complete the email
       verification, sign in, and stop once you can see the signed-in dashboard.
     lanes:
-      - id: signup
+      # Two participants, same task, different people. Each gets its own world and its own
+      # deterministic inbox address, so neither can see the other's mail. The comparison is the
+      # point: one result tells you the flow can be completed, two tell you something about who
+      # completes it and how differently.
+      - id: newcomer
         persona: synthetic-new-user
         instruction: >-
           Sign up as a new user. If a step is confusing or you get stuck, say exactly what
           blocked you and what you tried — that is worth more than pushing through.
+      - id: power-user
+        persona: skeptical-power-user
+        instruction: >-
+          Sign up. If a step is confusing or you get stuck, say exactly what blocked you and
+          what you tried — that is worth more than pushing through.
 execution:
   target: e2b-desktop
   # 18 minutes. The sandbox deadline is this plus provisioning and teardown headroom, and a sandbox
   # may not live past an hour — humanish refuses a lab that asks for more, at plan time.
   timeoutMs: 1080000
   caps:
-    maxUsd: 30
+    maxUsd: 15 # PER-LANE; two lanes, so a $30 worst case. Observed runs land under $1.
 scenario:
   mode: dry-run # committed fixture stays contract-only; live needs keys + a gitignored copy
 defaults:

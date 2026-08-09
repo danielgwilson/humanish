@@ -4750,10 +4750,18 @@ export function buildCuaFanoutBundle(args: {
     && !outcome.selfReportedBlocker).length;
   // What happened to the PARTICIPANTS, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
-  const participantStatuses = (outcomes ?? [])
-    .map((outcome) => outcome?.session?.status)
-    .filter((status): status is ActorStatus => status !== undefined);
-  const participants = participantStatuses.length > 0 ? tallyParticipantOutcomes(participantStatuses) : undefined;
+  const terminalOutcomes = (outcomes ?? []).filter(
+    (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
+      outcome?.session?.status !== undefined
+  );
+  const participants = terminalOutcomes.length > 0
+    ? tallyParticipantOutcomes(
+        terminalOutcomes.map((outcome) => outcome.session.status),
+        // A participant who reached the goal AND told you the road there was broken is the most
+        // useful result a study produces; reporting only the outcome would bury it.
+        terminalOutcomes.map((outcome) => outcome.selfReportedBlocker === true)
+      )
+    : undefined;
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
