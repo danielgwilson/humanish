@@ -116,6 +116,8 @@ import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
+  formatParticipantOutcomes,
+  tallyParticipantOutcomes,
   type ReviewSummary,
   type RunBundle,
   type RunDesktopGeometry,
@@ -4308,6 +4310,11 @@ export function buildCuaBundle(args: {
         : args.sessionError
           ? "fail"
           : "contract_proof_only",
+    // One lane is still a study with a denominator of one, and saying so keeps a single-lane
+    // result from being read as though it generalized.
+    ...(args.session && args.inProgress !== true
+      ? { participants: tallyParticipantOutcomes([args.session.status]) }
+      : {}),
     summary: reason,
     gaps: args.session || args.sessionError
       ? []
@@ -4741,14 +4748,21 @@ export function buildCuaFanoutBundle(args: {
     && outcome.sessionError === undefined
     && !outcome.noEngagement
     && !outcome.selfReportedBlocker).length;
+  // What happened to the PARTICIPANTS, with the denominator attached. The verdict above has to
+  // collapse the run to one word; this does not (docs/principles/three-roles.md).
+  const participantStatuses = (outcomes ?? [])
+    .map((outcome) => outcome?.session?.status)
+    .filter((status): status is ActorStatus => status !== undefined);
+  const participants = participantStatuses.length > 0 ? tallyParticipantOutcomes(participantStatuses) : undefined;
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
+    ...(participants === undefined ? {} : { participants }),
     summary: args.inProgress === true
       ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
       : args.dryRun
       ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict.`,
+      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants)}` : ""}.`,
     gaps: args.inProgress === true
       ? ["Live fan-out session is still running."]
       : args.dryRun

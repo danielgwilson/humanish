@@ -3488,6 +3488,9 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).not.toBe("pass");
     expect(bundle.streams[0].actor.completionReason).toBe("budget_reached");
+    // The verdict collapses the run to one word; the participant tally does not. A reader can see
+    // that nobody reached the goal AND that the denominator was one (three-roles.md).
+    expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, ranOut: 1, harnessFailed: 0 });
 
     // The distinction that matters: the STUDY is incomplete, but the EVIDENCE is sound. The harness
     // did exactly what it said it did, so verify still passes — an unfinished study is a finding
