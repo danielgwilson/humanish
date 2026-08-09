@@ -64,6 +64,42 @@ describe("public-surface commit email policy", () => {
     }
   }, 45_000);
 
+  it("does not judge fork commits fetched from GitHub pull refs", async () => {
+    // A clone that has fetched pull refs carries commits from FORKS. Those are authored by
+    // external contributors whose addresses are their own business and already public on GitHub,
+    // and judging them failed our gate on somebody's normal gmail — for a contribution we should
+    // welcome. Their commits are judged when the PR is proposed, which is when it matters to us.
+    const root = await createGitHistory(["noreply@github.com"]);
+    try {
+      const branched = spawnSync("git", ["checkout", "--quiet", "-b", "fork-work"], { cwd: root, encoding: "utf8" });
+      expect(branched.status, branched.stderr).toBe(0);
+      await writeFile(join(root, "contribution.txt"), "a welcome contribution\n");
+      spawnSync("git", ["add", "."], { cwd: root });
+      const authored = spawnSync(
+        "git",
+        [
+          "-c", "user.name=External Contributor",
+          "-c", "user.email=contributor@example.test",
+          "commit", "--quiet", "-m", "their contribution"
+        ],
+        { cwd: root, encoding: "utf8" }
+      );
+      expect(authored.status, authored.stderr).toBe(0);
+
+      // Park it exactly where a fetched pull ref lives, then take the branch away.
+      const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+      spawnSync("git", ["checkout", "--quiet", "-"], { cwd: root });
+      spawnSync("git", ["update-ref", "refs/remotes/origin-all/pull/7/head", sha], { cwd: root });
+      spawnSync("git", ["branch", "--quiet", "-D", "fork-work"], { cwd: root });
+
+      const sweep = runScan(root);
+      expect(sweep.status, sweep.stderr).toBe(0);
+      expect(sweep.stderr).not.toContain("contributor@example.test");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
+
   it("scopes a tag publish to the history being published, not every branch in the repo", async () => {
     // A release publishes main. Walking `--all` also walks unmerged feature branches, so a branch
     // someone else is still working on could block a release of code it is not part of — which is
