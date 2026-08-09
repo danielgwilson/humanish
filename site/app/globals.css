@@ -512,6 +512,9 @@ h2 em { font-style: italic; font-weight: 400 }
 .lrow .ld { color: var(--label); text-align: right; flex: 1; min-width: 170px }
 
 @media (max-width: 420px) {
+  /* The Source cell carries a full bundle path; unbreakable mono overflows
+     narrow viewports, so it wraps here (the other manifest cells fit). */
+  .manifest dd { white-space: normal; overflow-wrap: anywhere }
   .pbar { flex-wrap: wrap; row-gap: 2px; padding-top: 10px; padding-bottom: 10px }
   .pname { white-space: normal; overflow: visible; text-overflow: clip }
   .pr { white-space: normal }
