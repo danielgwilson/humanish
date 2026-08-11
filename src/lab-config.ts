@@ -495,7 +495,8 @@ export interface LabExecution {
    * it (the runaway-retry guard), and a cap on a model src/pricing.ts cannot price is REFUSED at
    * preflight rather than run uncapped. It is a PER-LANE cap: enforced inside each lane's loop, so
    * an N-lane fan-out can spend up to N × maxUsd before any lane aborts (the run warns with the
-   * true ~N × cap ceiling; a shared run-level budget is future work). Absent = UNCAPPED (the
+   * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared STUDY budget (#299): one ledger
+   * across every lane, the knob a researcher actually reasons with. Absent = UNCAPPED (the
    * historical CUA behavior); maxUsd: 0 = no-spend (any measurable estimate > 0 aborts). Inert
    * (warned) on non-CUA routes. Reuses the same LabScenarioCaps shape as the terminal lane's
    * `scenario.caps` (not a fork).
@@ -520,6 +521,18 @@ export type LabScenarioMode = "dry-run" | "live";
 export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
   maxUsd?: number;
+  /**
+   * STUDY-LEVEL model-spend budget (#299), the number a researcher actually reasons with: "this
+   * study is N participants, roughly $X" — decided once, up front, where recruiting decisions are
+   * made. Consumed on the CUA route: every lane's running ESTIMATED model spend feeds one shared
+   * ledger, and the moment the run total crosses this, each lane stops at its next turn with an
+   * honest `budget_reached` (status `incomplete` — the participant ran out of budget; never
+   * `gave_up`, because a study-level stop is not the participant's doing). Estimated MODEL spend
+   * only — desktop-minutes ride the cost summary but not this ledger. Independent of the per-lane
+   * `maxUsd` backstop; either, both, or neither may be set. Inert (warned) on the terminal route,
+   * where the single agent's maxUsd already caps the whole run.
+   */
+  maxTotalUsd?: number;
   /** Max billable product jobs the agent may trigger. 0 = none. */
   maxJobs?: number;
   /** Max wall-clock minutes for the agent session. */
@@ -1599,6 +1612,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
   if (config.subject.product && !routesToTerminal) inert.push("subject.product (needs subject.source: terminal-product + a registered terminal actor)");
   if (config.scenario?.caps && !routesToTerminal) inert.push("scenario.caps (needs subject.source: terminal-product + a registered terminal actor)");
+  // The study-level budget is a CUA-route capability; the terminal route is a single agent whose
+  // maxUsd already caps the whole run, so a maxTotalUsd there would be trusted and unenforced.
+  if (config.scenario?.caps?.maxTotalUsd !== undefined && routesToTerminal) inert.push("scenario.caps.maxTotalUsd (the study-level budget is a computer-use route capability; the terminal route's maxUsd already caps the whole run)");
   if (config.execution?.terminal && !routesToTerminal) inert.push("execution.terminal (needs subject.source: terminal-product + a registered terminal actor)");
   if (config.execution?.runtimeAuth !== undefined && !routesToTerminal) inert.push("execution.runtimeAuth (needs subject.source: terminal-product + a registered terminal actor)");
   // execution.desktop.* stays inert on the scripted route by design: device presets belong to
@@ -2691,10 +2707,10 @@ function parseCaps(raw: unknown): { ok: true; value: LabScenarioCaps | undefined
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid("`scenario.caps` must be an object ({ maxUsd?, maxJobs?, maxMinutes? }).");
+    return invalid("`scenario.caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).");
   }
   const caps: LabScenarioCaps = {};
-  for (const key of ["maxUsd", "maxJobs", "maxMinutes"] as const) {
+  for (const key of ["maxUsd", "maxTotalUsd", "maxJobs", "maxMinutes"] as const) {
     if (raw[key] === undefined) continue;
     const value = nonNegNumber(raw[key]);
     if (value === undefined) {

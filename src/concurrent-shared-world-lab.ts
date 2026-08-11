@@ -143,7 +143,25 @@ export const CONCURRENT_ATTRIBUTION_LIMITS = [
   "state-change-not-isolated-to-actors"
 ] as const;
 
-const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
+// The DEFAULT per-seat session budget is DERIVED, not flat. On a provisioned route the binding
+// constraint is the SUBJECT sandbox (it must outlive every seat: timeoutMs + provisioning +
+// seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the derivation hands
+// each seat the most that cap allows — capped at 15 minutes, floored at the historical 300s so a
+// seed-heavy lab never gets LESS room than it always had. App-url seats have no subject sandbox
+// and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
+// explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
+const MAX_SANDBOX_MS = 60 * 60_000;
+const MAX_DERIVED_SEAT_SESSION_MS = 15 * 60_000;
+const MIN_DERIVED_SEAT_SESSION_MS = 300_000;
+const DEFAULT_APP_URL_SEAT_SESSION_MS = 30 * 60_000;
+function defaultSeatSessionTimeoutMs(config: LabConfig): number {
+  const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+  if (!provisionedRoute) return DEFAULT_APP_URL_SEAT_SESSION_MS;
+  const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0);
+  const room = MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  return Math.max(MIN_DERIVED_SEAT_SESSION_MS, Math.min(MAX_DERIVED_SEAT_SESSION_MS, room));
+}
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
 const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
@@ -769,7 +787,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
-  const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const timeoutMs = config.execution?.timeoutMs ?? defaultSeatSessionTimeoutMs(config);
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};

@@ -141,7 +141,11 @@ execution:
   # may not live past an hour — humanish refuses a lab that asks for more, at plan time.
   timeoutMs: 1080000
   caps:
-    maxUsd: 15 # PER-LANE; two lanes, so a $30 worst case. Observed runs land under $1.
+    # The STUDY budget is the number a researcher reasons with — decided once, up front, like a
+    # recruiting decision. Observed two-participant runs land near $1.50 total, so $25 is deep
+    # headroom, and the per-lane cap stays as the single-runaway backstop.
+    maxTotalUsd: 25
+    maxUsd: 15 # PER-LANE backstop; the shared maxTotalUsd above caps the run as a whole.
 scenario:
   mode: dry-run # committed fixture stays contract-only; live needs keys + a gitignored copy
 defaults:
