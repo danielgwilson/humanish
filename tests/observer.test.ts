@@ -11,11 +11,9 @@ import { createProgram } from "../src/program.js";
 import { attachObserverRuntimeStreamUrls, renderObserver, serveObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../src/observer-data.js";
 import { runDryRun, type RunBundle, type RunCostSummary } from "../src/run.js";
+import { syntheticPng1x1 } from "./image-fixtures.js";
 
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
-  "base64"
-);
+const PNG_1X1 = syntheticPng1x1();
 
 async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-fixture-"));
@@ -1029,7 +1027,8 @@ describe("observer rendering", () => {
         const screenshotResponse = await fetch(screenshotUrl);
         expect(screenshotResponse.status).toBe(200);
         expect(screenshotResponse.headers.get("content-type")).toBe("image/png");
-        expect(Buffer.from(await screenshotResponse.arrayBuffer()).subarray(0, 8)).toEqual(PNG_1X1.subarray(0, 8));
+        expect(Buffer.from(await screenshotResponse.arrayBuffer()).subarray(0, 8))
+          .toEqual(PNG_1X1.subarray(0, 8));
       } finally {
         await server.close();
       }
