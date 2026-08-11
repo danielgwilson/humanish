@@ -186,10 +186,18 @@ function reachableCommitEmails() {
     // branches. Anything a contributor authored is judged when their PR is proposed, by the
     // pull-request scope above, which is the moment it actually matters to us.
     const args = ref === null
-      ? ["log", "--branches", "--tags", "--remotes=origin", "--format=%ae%n%ce"]
-      : ["log", ref, "--format=%ae%n%ce"];
+      ? ["log", "--branches", "--tags", "--remotes=origin", "--format=%ae%x09%ce"]
+      : ["log", ref, "--format=%ae%x09%ce"];
     const raw = execFileSync("git", args, { encoding: "utf8" });
-    return [...new Set(raw.split("\n").map((line) => line.trim()).filter(Boolean))];
+    const pairs = [];
+    const seen = new Set();
+    for (const line of raw.split("\n")) {
+      const [author, committer] = line.split("\t").map((value) => (value ?? "").trim());
+      if (!author || !committer || seen.has(`${author}\t${committer}`)) continue;
+      seen.add(`${author}\t${committer}`);
+      pairs.push({ author, committer });
+    }
+    return pairs;
   } catch {
     return [];
   }
@@ -222,14 +230,34 @@ const githubUsername = String.raw`[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,
 const githubNoreplyEmail = new RegExp(
   String.raw`^(?:noreply@github\.com|github-actions\[bot\]@users\.noreply\.github\.com|(?:\d+\+)?${githubUsername}@users\.noreply\.github\.com)$`
 );
-for (const email of reachableCommitEmails()) {
-  if (!githubNoreplyEmail.test(email) && !approvedPublicCommitEmails.has(email)) {
-    findings.push({
-      file: "<git-history>",
-      line: 0,
-      name: "unapproved_commit_email",
-      value: email
-    });
+// GitHub's own merge machinery commits as exactly this address when a PR is merged through the
+// web/API. A squash merge writes the CONTRIBUTOR as the author of the commit it mints on main —
+// so an accepted external contribution puts a personal address into published history through no
+// act of ours or theirs. That change already passed the pull-request scope above (the moment the
+// sweep note says judging actually matters), and a contributor's address is their own business.
+// So: a commit COMMITTED by GitHub's merge machinery is exempt from the author-identity rule;
+// every commit our own tooling writes (committer = a personal machine) is judged on both fields.
+// The #402 class stays caught — an agent committing locally with a wrong identity has that
+// identity in the committer field.
+const GITHUB_MERGE_COMMITTER = "noreply@github.com";
+const flaggedIdentityEmails = new Set();
+const flagIdentity = (email) => {
+  if (flaggedIdentityEmails.has(email)) return;
+  flaggedIdentityEmails.add(email);
+  findings.push({
+    file: "<git-history>",
+    line: 0,
+    name: "unapproved_commit_email",
+    value: email
+  });
+};
+for (const { author, committer } of reachableCommitEmails()) {
+  if (!githubNoreplyEmail.test(committer) && !approvedPublicCommitEmails.has(committer)) {
+    flagIdentity(committer);
+  }
+  const authorExempt = committer === GITHUB_MERGE_COMMITTER;
+  if (!authorExempt && !githubNoreplyEmail.test(author) && !approvedPublicCommitEmails.has(author)) {
+    flagIdentity(author);
   }
 }
 
