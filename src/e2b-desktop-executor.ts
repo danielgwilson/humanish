@@ -99,7 +99,7 @@ export interface E2BDesktopExecutorOptions {
    * Optional runtime-only browser state probe. Used for deterministic stopWhen guards. The loop
    * never persists raw URL/title/text; it only uses them in memory to decide whether to stop.
    */
-  observeBrowserState?: () => Promise<Pick<CuaObservation, "url" | "title" | "text">>;
+  observeBrowserState?: () => Promise<Pick<CuaObservation, "url" | "title" | "text" | "scrollY">>;
 }
 
 const DEFAULT_WAIT_MS = 500;
@@ -302,7 +302,8 @@ export function createE2BDesktopExecutor(
         stateSignature: perceptualSignature(screenshot),
         ...(browserState?.url === undefined ? {} : { url: browserState.url }),
         ...(browserState?.title === undefined ? {} : { title: browserState.title }),
-        ...(browserState?.text === undefined ? {} : { text: browserState.text })
+        ...(browserState?.text === undefined ? {} : { text: browserState.text }),
+        ...(browserState?.scrollY === undefined ? {} : { scrollY: browserState.scrollY })
       };
     },
 
