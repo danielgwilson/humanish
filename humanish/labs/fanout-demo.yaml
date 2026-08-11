@@ -36,7 +36,7 @@ actors:
         instruction: Compare plans and locate the pricing details.
 execution:
   target: e2b-desktop # required: each lane drives a hosted desktop browser
-  timeoutMs: 120000 # PER-LANE session budget (no run-level wall clock)
+  timeoutMs: 900000 # PER-LANE session budget (no run-level wall clock); a real journey needs room to finish
   concurrency: 2 # a deliberate CAP for the demo: lanes run in waves of 2. Omit it and all lanes run at once (the default); the env override may only LOWER this
   # scenario:
   #   mode: live # uncomment to spend: needs OPENAI_API_KEY + E2B_API_KEY

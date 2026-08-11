@@ -197,7 +197,9 @@ actors:
       confusing. Stop when the flow completes or you are stuck.
 execution:
   target: e2b-desktop
-  timeoutMs: 300000
+  # 30 minutes: a session should end because the participant finished, not because a timer fired.
+  # Spend protection belongs to the dollar caps, not the clock.
+  timeoutMs: 1800000
   desktop:
     device: desktop             # mobile | small-mobile | narrow-mobile | tablet | desktop | wide
     # browser: chrome            # default | chrome | chromium | firefox; concrete values fail closed

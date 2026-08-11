@@ -18,4 +18,4 @@ scenario:
   #            # the gate is for real browser actuation, not cost
 execution:
   target: local # optional; absent defaults to local on this route
-  timeoutMs: 60000 # journey wall-clock budget per surface
+  timeoutMs: 300000 # journey wall-clock budget per surface (zero model cost; sandbox-seconds are pennies)

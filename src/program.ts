@@ -396,7 +396,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
     .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec", "codex-app-server"]))
     .option("--sims <count>", "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.")
-    .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(240_000))
+    .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(900_000))
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this run without persisting values.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
@@ -478,7 +478,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
           warnings: [],
           error: {
             code: "HUMANISH_INVALID_TIMEOUT",
-            message: "--timeout-ms must be an integer between 1 and 600000."
+            message: "--timeout-ms must be an integer between 1 and 3600000."
           }
         };
         writeResult(command, io, result, formatRunHuman);
@@ -655,7 +655,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
     .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
     .option("--run-root <path>", "Artifact directory for redacted app-server evidence.")
     .option("--state-file <path>", "State JSON file for external observers.")
-    .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(240_000))
+    .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(900_000))
     .option("--port <port>", "Local browser UI port.", "0")
     .option("--model <model>", "Optional Codex model override.")
     .addOption(new Option("--sandbox <mode>", "Turn sandbox policy.").choices(["read-only", "workspace-write", "danger-full-access"]).default("read-only"))
@@ -679,7 +679,7 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
       const timeoutMs = parseTimeoutMs(options.timeoutMs);
       const port = parseObserverPort(options.port);
       if (timeoutMs === null) {
-        const result = codexAppServerUiError(options.cwd, "HUMANISH_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 600000.");
+        const result = codexAppServerUiError(options.cwd, "HUMANISH_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 3600000.");
         writeResult(command, io, result, formatCodexAppServerUiHuman);
         io.setExitCode(2);
         return;
@@ -3279,7 +3279,7 @@ function parseTimeoutMs(value: string): number | null {
   }
 
   const parsed = Number.parseInt(value, 10);
-  return parsed >= 1 && parsed <= 600_000 ? parsed : null;
+  return parsed >= 1 && parsed <= 3_600_000 ? parsed : null;
 }
 
 function parseObserverPort(value: string): number | null {

@@ -43,7 +43,10 @@ actors:
         instruction: Create an account; if any step is confusing, note the friction — but complete the email verification before stopping.
 execution:
   target: e2b-desktop # both lanes run at once (the default: concurrency = seat count)
-  timeoutMs: 180000 # PER-LANE session budget
+  # 20 minutes. A signup-plus-wait-for-email flow is the LONGEST thing this harness runs, and this
+  # lab used to ship 180s — every adopter copying it started in a hole. 20m + the clone route's 30m
+  # provisioning + 10m teardown headroom exactly fits the 1-hour sandbox cap.
+  timeoutMs: 1200000 # PER-LANE session budget
 scenario:
   mode: dry-run # committed fixture stays contract-only; live needs OPENAI_API_KEY + E2B_API_KEY
 defaults:

@@ -78,7 +78,9 @@ actors:
         instruction: Skim the feed on a phone and react to the newest note.
 execution:
   target: e2b-desktop # required: each persona drives a hosted desktop browser
-  timeoutMs: 120000 # PER-PERSONA session budget
+  # PER-PERSONA budget. The subject sandbox must outlive every seat (timeoutMs + 30m provisioning
+  # + 10m seeding + 10m buffer, capped at E2B's hour), so 10 minutes is this seeded lab's fit.
+  timeoutMs: 600000
   concurrency: 3 # all 3 seats live at once (also the default when omitted: concurrency = seat count); lower it only to cap simultaneous paid desktops
 scenario:
   mode: dry-run # default; the live path provisions a real subject + N actor sandboxes — gated

@@ -61,7 +61,10 @@ actors:
         instruction: Open the most recent published note and leave one review comment.
 execution:
   target: e2b-desktop # required: the role seats drive a hosted desktop browser
-  timeoutMs: 120000 # PER-ROLE session budget (sequential turns; no run-level wall clock)
+  # PER-ROLE budget. All roles share ONE sandbox on this route (sandbox = roles x timeoutMs +
+  # 30m provisioning + 10m seeding + 10m buffer, capped at E2B's hour), so 5 minutes per role is
+  # the most this two-role seeded lab can ask for. Raising it past the fit fails at create.
+  timeoutMs: 300000
   concurrency: 1 # SEQUENTIAL by explicit choice — this demo proves the turn-taking PoC. Omit
   # this line and all seats run at once (the default), which routes to the CONCURRENT substrate.
 scenario:

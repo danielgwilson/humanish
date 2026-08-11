@@ -245,6 +245,14 @@ export interface CuaLoopOptions {
    */
   estimateTurnCostUsd?: (input: number, output: number, cachedInput?: number) => number | null;
   /**
+   * RUN-LEVEL spend guard (#299): called with this lane's running usage each turn, at the same
+   * point the per-lane cap is checked. Returns a human-readable reason when the STUDY's shared
+   * budget is exhausted, else null. On a non-null return the loop stops with `budget_reached`
+   * regardless of material progress — a study-level stop is a recruiting decision hitting its
+   * limit, not this participant's runaway, so it never reads as `gave_up`.
+   */
+  overRunBudget?: (usage: { input: number; output: number; cachedInput: number }) => string | null;
+  /**
    * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
    * after EVERY executor.observe() (the initial observe and each post-action observe), so the
    * orchestrator can watch a seat's live `location.href` mid-run WITHOUT the loop ever persisting it.
@@ -543,6 +551,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     stopWhen,
     tasks,
     maxUsd,
+    overRunBudget,
     estimateTurnCostUsd,
     onObservedUrl,
     onMessage,
@@ -784,6 +793,15 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           break;
         }
       }
+      // The STUDY budget (#299), beside the per-lane cap above and before any further model turn.
+      if (overRunBudget) {
+        const runStop = overRunBudget({ input: usageInput, output: usageOutput, cachedInput: usageCachedInput });
+        if (runStop !== null) {
+          completionReason = "budget_reached";
+          reason = runStop;
+          break;
+        }
+      }
       if (turn.reasoning) {
         items.push({
           id: nextId("reasoning"),
@@ -832,6 +850,20 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         reason = summary
           ? redactNarration(summary)
           : "model reported a natural endpoint with no further action";
+        // A done turn takes no actions, so the cadence above never observes the participant's
+        // FINAL state — and a task completed by that state read as incomplete. The first live
+        // study caught it: both participants reached the dashboard, said so, and the funnel
+        // reported 0/2. One guarded closing observation feeds the tracker; a failed observe
+        // changes nothing (the funnel stays honest about what it saw), and no screenshot or
+        // stop evaluation rides it — the session is already over.
+        if (taskTracker !== undefined) {
+          try {
+            const closing = await raceSettle(executor.observe(), remaining(), signal);
+            observeTasks(closing, turnNumber);
+          } catch {
+            // Best-effort by design.
+          }
+        }
         break;
       }
 

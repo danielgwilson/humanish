@@ -112,7 +112,24 @@ export const SHARED_WORLD_LAB_PROVIDER_METADATA = {
   tool: "humanish"
 } as const;
 
-const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
+// The DEFAULT per-role session budget is DERIVED, not flat: every role's turn shares ONE sandbox
+// on this route, so the sandbox deadline is timeoutMs x roleCount plus provisioning, seeding, and
+// the teardown buffer — and E2B refuses a sandbox over one hour. A flat raise here would make the
+// derived deadline overflow the cap and fail at create. The derivation hands each role the most
+// the cap allows (capped at 15 minutes; floored at the historical 300s so a seed-heavy lab never
+// gets LESS room than it always had). An explicit execution.timeoutMs is never adjusted.
+const MAX_SANDBOX_MS = 60 * 60_000;
+const MAX_DERIVED_ROLE_SESSION_MS = 15 * 60_000;
+const MIN_DERIVED_ROLE_SESSION_MS = 300_000;
+function defaultRoleSessionTimeoutMs(config: LabConfig, roleCount: number): number {
+  const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0);
+  const room = Math.floor(
+    (MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS)
+      / Math.max(1, roleCount)
+  );
+  return Math.max(MIN_DERIVED_ROLE_SESSION_MS, Math.min(MAX_DERIVED_ROLE_SESSION_MS, room));
+}
 // Settle after opening a seat's browser, before the session's first screenshot.
 const BROWSER_SETTLE_MS = 8_000;
 // In-sandbox budget for ending one seat's browser at turn end (TERM, short wait, KILL).
@@ -636,7 +653,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   const runPaths = await prepareRunArtifactPaths(cwd, runId);
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
-  const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const timeoutMs = config.execution?.timeoutMs ?? defaultRoleSessionTimeoutMs(config, roleCount);
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};

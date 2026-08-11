@@ -153,7 +153,28 @@ export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
   tool: "humanish"
 } as const;
 
-const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
+// The DEFAULT session budget, sized so a study can FINISH (docs/principles/three-roles.md: a
+// session ends because the participant is done, not because a timer fired — the time-box is a
+// session-level cap a researcher sets generously; spend protection is the dollar caps' job).
+// The old 300s default ended real signup studies mid-flow: observed studies run 16-40 turns at
+// ~5-6s per turn BEFORE any email wait, so five minutes was the biggest single source of
+// budget_reached endings that read as participant failures.
+//
+// App-url and in-process routes default to 30 minutes. Provisioned routes (clone/local-tree)
+// default to whatever the 1-hour sandbox cap leaves after provisioning, declared state seeding,
+// and the teardown buffer — 20 minutes on a stateless clone — floored at the old five minutes so
+// a state-heavy lab still gets a session at all. An EXPLICIT execution.timeoutMs is never
+// adjusted: when it cannot be provisioned, the plan-time cap refusal shows the arithmetic.
+const DEFAULT_APP_URL_SESSION_TIMEOUT_MS = 30 * 60_000;
+const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
+function defaultSessionTimeoutMs(config: LabConfig): number {
+  const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+  if (!provisionedRoute) return DEFAULT_APP_URL_SESSION_TIMEOUT_MS;
+  const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0);
+  const room = MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  return Math.max(MIN_DERIVED_SESSION_TIMEOUT_MS, Math.min(DEFAULT_APP_URL_SESSION_TIMEOUT_MS, room));
+}
 // Settle after opening the browser, before the first screenshot — long enough for a cold
 // browser + page load to paint (2s captured a blank desktop; the render empirically needs ~6-9s).
 const BROWSER_SETTLE_MS = 8_000;
@@ -719,7 +740,7 @@ export function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefi
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
  *  costs the same wall-clock room either way. */
 function resolvePerLaneSandboxMs(config: LabConfig): number {
-  const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
   const stateBudgetMs = provisionedRoute
     ? (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
@@ -805,7 +826,7 @@ function laneSpecsAndPlan(
 
   const resolved = resolveCuaConcurrency(config, laneCount, env);
   const concurrency = resolved.bound;
-  const perLaneSessionBudgetMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const perLaneSessionBudgetMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const perLaneSandboxMs = resolvePerLaneSandboxMs(config);
   const plan: CuaLanePlan = {
     strategy: CUA_FANOUT_STRATEGY,
@@ -1043,6 +1064,32 @@ function phaseEventIdSuffix(type: string): string {
 }
 
 /** Shared deps every lane runner needs (resolved once in the engine). */
+/**
+ * The STUDY's shared spend ledger (#299): one counter across every lane. Each lane notes its own
+ * latest running MODEL-spend estimate (monotone per lane — an estimate can only grow) and reads
+ * back the run total; the loop stops the lane the moment the total crosses the study budget.
+ * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
+ */
+export interface CuaRunBudget {
+  maxTotalUsd: number;
+  /** Record this lane's latest running estimate (null = unpriceable, ignored) and return the
+   *  run's current total across all lanes. */
+  note(laneId: string, estimateUsd: number | null): number;
+}
+
+export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
+  const laneEstimates = new Map<string, number>();
+  return {
+    maxTotalUsd,
+    note(laneId, estimateUsd) {
+      if (estimateUsd !== null) laneEstimates.set(laneId, estimateUsd);
+      let total = 0;
+      for (const value of laneEstimates.values()) total += value;
+      return total;
+    }
+  };
+}
+
 export interface CuaLaneDeps {
   config: LabConfig;
   descriptor: CuaActorDescriptor;
@@ -1069,6 +1116,9 @@ export interface CuaLaneDeps {
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
   runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
+  /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
+   *  live run (#299). Preflight already refused the cap on an unpriced model. */
+  runBudget?: CuaRunBudget;
   /** Injected clock (ms). Used to measure the host-side E2B desktop create->teardown span so the
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
   now: () => number;
@@ -2204,6 +2254,26 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(spec.noProgressSteps === undefined ? {} : { noProgressSteps: spec.noProgressSteps }),
         ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
         ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
+        // The STUDY budget (#299): this lane notes its own running estimate on the shared ledger
+        // and stops when the RUN total crosses the cap — independent of the per-lane maxUsd above.
+        ...(deps.runBudget === undefined
+          ? {}
+          : {
+              overRunBudget: (usage: { input: number; output: number; cachedInput: number }): string | null => {
+                const estimate = estimateActorCost(
+                  {
+                    input: usage.input,
+                    output: usage.output,
+                    ...(usage.cachedInput > 0 ? { cachedInput: usage.cachedInput } : {})
+                  },
+                  capModelId
+                ).estimatedCostUsd;
+                const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
+                return totalUsd > deps.runBudget!.maxTotalUsd
+                  ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
+                  : null;
+              }
+            }),
         ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
         ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
         ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot })
@@ -2861,7 +2931,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const derivedSandboxMs = resolvePerLaneSandboxMs(config);
   if (derivedSandboxMs > MAX_SANDBOX_MS) {
     const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
-    const sessionMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+    const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
     const headroomMs = derivedSandboxMs - sessionMs;
     return fail(
       "HUMANISH_CUA_LAB_SUBJECT_INVALID",
@@ -2973,12 +3043,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     // runaway-retry protection. Refuse at PREFLIGHT (before any sandbox/spend) rather than run
     // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
     // src/pricing.ts (the honest place) or removes the cap.
-    if (config.execution?.caps?.maxUsd !== undefined) {
+    if (config.execution?.caps?.maxUsd !== undefined || config.execution?.caps?.maxTotalUsd !== undefined) {
       const capModelId = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
       if (!MODEL_RATES[capModelId]) {
         return fail(
           "HUMANISH_CUA_LAB_UNPRICED_CAP",
-          `execution.caps.maxUsd is set but src/pricing.ts has no rate for model "${config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
+          `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/pricing.ts has no rate for model "${config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
           descriptor.id
         );
       }
@@ -2990,7 +3060,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
-  const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
 
@@ -3056,6 +3126,11 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     redactScreenshots,
     scrubKnownValues,
     runSession,
+    // The study-level ledger exists once per RUN, shared by every lane (#299). Dry runs never
+    // spend, so they carry none.
+    ...(dryRun || config.execution?.caps?.maxTotalUsd === undefined
+      ? {}
+      : { runBudget: makeCuaRunBudget(config.execution.caps.maxTotalUsd) }),
     now: hooks.now ?? Date.now,
     hooks: liveHooks
   };
@@ -3163,12 +3238,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const aggregateWarnings: string[] = [];
   // execution.caps.maxUsd is a PER-LANE cap: it is enforced INSIDE each lane's loop independently,
   // so an N-lane fan-out can spend up to N × maxUsd before any lane aborts, while the run cost
-  // summary reports the (larger) aggregate. Warn at run level so the operator sees the true ceiling.
-  // A shared, run-level budget is future work — there is no cross-lane counter today.
+  // summary reports the (larger) aggregate. Warn at run level so the operator sees the true
+  // ceiling — unless the study declared the shared budget (#299), which caps the run as a whole.
   const perLaneCapUsd = config.execution?.caps?.maxUsd;
-  if (perLaneCapUsd !== undefined && laneCount > 1) {
+  if (perLaneCapUsd !== undefined && laneCount > 1 && config.execution?.caps?.maxTotalUsd === undefined) {
     aggregateWarnings.push(
-      `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. A shared run-level budget is future work.`
+      `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`
     );
   }
   const aggregateSubject = ((): CuaSubjectProjection => {

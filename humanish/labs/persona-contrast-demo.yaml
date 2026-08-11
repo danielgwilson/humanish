@@ -52,9 +52,9 @@ actors:
         instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
 execution:
   target: e2b-desktop # both lanes live at once (the default: concurrency = seat count)
-  timeoutMs: 300000 # PER-LANE session budget
+  timeoutMs: 1200000 # PER-LANE session budget; contrast effects GROW with horizon (#383) — a short cap suppresses the axis under study
   caps:
-    maxUsd: 5 # fail-closed per-lane spend abort; the run-level worst case is 2x this
+    maxUsd: 15 # fail-closed per-lane spend abort; the run-level worst case is 2x this. Observed cache-priced lanes land under $1.50
 scenario:
   mode: dry-run # committed fixture stays contract-only
 defaults:

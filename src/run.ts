@@ -1257,11 +1257,13 @@ interface RunPointer {
 
 const CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA = "humanish.codex-app-server-trace.projected.v1";
 
-const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 240_000;
-const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 600_000;
+// 15 minutes (was 240s): a four-minute default refuses real coding-agent work.
+const LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS = 900_000;
+// A 60-minute guard still guards (was 600s, which capped legitimate long sessions).
+const LOCAL_CODEX_TUI_MAX_TIMEOUT_MS = 3_600_000;
 const LOCAL_ACTOR_TRANSCRIPT_MAX_CHARS = 80_000;
 const LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY = 4;
-const BROWSER_APP_DEFAULT_TIMEOUT_MS = 60_000;
+const BROWSER_APP_DEFAULT_TIMEOUT_MS = 300_000;
 
 type LocalCodexActor = "codex-tui" | "codex-exec" | "codex-app-server";
 

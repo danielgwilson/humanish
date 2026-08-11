@@ -2722,10 +2722,11 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
 
     const capWarning = result.warnings.find((w) => w.includes("PER-LANE cap"));
     expect(capWarning).toBeDefined();
-    // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3.
+    // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3 — and the warning
+    // points at the shared study budget (#299) as the fix, since it exists now.
     expect(capWarning).toContain("2 × $3");
     expect(capWarning).toContain("~$6");
-    expect(capWarning).toContain("future work");
+    expect(capWarning).toContain("maxTotalUsd");
   });
 
   it("live fan-out (2 lanes): onPhase captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {

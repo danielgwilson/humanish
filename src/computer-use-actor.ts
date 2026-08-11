@@ -84,6 +84,8 @@ export interface CuaActorSessionOptions {
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
   estimateTurnCostUsd?: (input: number, output: number, cachedInput?: number) => number | null;
+  /** RUN-LEVEL spend guard threaded to the loop (#299). See CuaLoopOptions.overRunBudget. */
+  overRunBudget?: (usage: { input: number; output: number; cachedInput: number }) => string | null;
   /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;
@@ -116,6 +118,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.tasks === undefined ? {} : { tasks: options.tasks }),
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
     ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
+    ...(options.overRunBudget === undefined ? {} : { overRunBudget: options.overRunBudget }),
     ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl }),
     ...(options.onMessage === undefined ? {} : { onMessage: options.onMessage }),
     ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot })

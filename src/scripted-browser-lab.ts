@@ -87,7 +87,9 @@ import {
 export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 
 // Journey wall-clock budget per surface — same default as `run --app-url`.
-const DEFAULT_SESSION_TIMEOUT_MS = 60_000;
+// 5 minutes (was 60s): a scripted surface has zero model cost and sandbox-seconds are pennies;
+// a short default only truncated slow-loading subjects.
+const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
 const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
