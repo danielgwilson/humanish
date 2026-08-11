@@ -1516,6 +1516,7 @@ function isAdapterFeedbackActor(value: unknown): value is RunFeedbackCandidate["
   return value === "codex-tui"
     || value === "codex-exec"
     || value === "codex-app-server"
+    || value === "computer-use"
     || value === "synthetic-dry-run"
     || value === "unknown";
 }
