@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { symlinkSync, unlinkSync } from "node:fs";
 import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
@@ -38,6 +38,7 @@ import type {
   E2BDesktopSandbox
 } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms-sandbox-catch.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
@@ -3803,4 +3804,100 @@ describe("runCuaActorLab cost estimates", () => {
     // honest signal that a stand-in rate contributed to the total.
     expect(bundle.cost.placeholder).toBe(true);
   });
+});
+
+describe("adopter-hosted comms on the app-url route (#380)", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-cwd-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { force: true, recursive: true });
+  });
+
+  it("tells each persona its inbox, drains the adopter catch once, and writes digest-only evidence", async () => {
+    // The REAL python catch as a subprocess — the same bytes an adopter runs via `humanish comms
+    // catch` — so the health probe, the token guard, and the drain contract are proven against the
+    // actual implementation.
+    const TOKEN = "test-token-not-a-secret";
+    const dir = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-"));
+    const scriptPath = path.join(dir, "catch.py");
+    const surface = path.join(dir, "surface");
+    await mkdir(surface, { recursive: true });
+    await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
+    const port = 20000 + Math.floor(Math.random() * 2000);
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const child = spawn("python3", [scriptPath, String(port), path.join(dir, "deliveries.ndjson"), surface, "0", TOKEN], { stdio: "ignore" });
+    try {
+      let healthy = false;
+      for (let i = 0; i < 100 && !healthy; i += 1) {
+        healthy = await externalCatchHealthy({ catchBaseUrl: baseUrl }, { timeoutMs: 1000 });
+        if (!healthy) await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(healthy).toBe(true);
+
+      // The app's send, captured by the adopter's catch, addressed to lane-01's FILLED
+      // deterministic address (recipients omitted in the lab on purpose — the parser fills one
+      // per lane, and this proves the filled address is what the funnel matches).
+      const posted = await fetch(`${baseUrl}/emails`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: ["lane-01@example.test"],
+          subject: "Confirm your email",
+          html: "<a href=\"https://app.example.test/verify?token=xyz789\">Verify</a>"
+        })
+      });
+      expect(posted.ok).toBe(true);
+
+      const parsed = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "cua-external-comms",
+        title: "CUA adopter-hosted comms",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+        comms: { email: { external: { catchBaseUrl: baseUrl, authTokenEnv: "CATCH_TOKEN" } } },
+        actors: [{ type: "openai-computer-use", mission: "Sign up using the email address in your instructions.", count: 2 }],
+        execution: { target: "e2b-desktop", desktop: { resolution: [1280, 800] } },
+        scenario: { mode: "live" }
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module } = makeFakeModule(sandbox);
+      const seenInstructions: string[] = [];
+      const outcome = await runLab(parsed.config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", CATCH_TOKEN: TOKEN },
+          loadDesktopModule: async () => module,
+          runSession: async (options) => {
+            seenInstructions.push(options.instructions);
+            return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+          }
+        }
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      const result = outcome.result;
+
+      // Every persona was told ITS OWN filled address and the adopter's inbox URL (#380: this
+      // route previously ignored the whole block).
+      expect(seenInstructions).toHaveLength(2);
+      expect(seenInstructions.some((text) => text.includes(`${baseUrl}/inbox`) && text.includes("lane-01@example.test"))).toBe(true);
+      expect(seenInstructions.some((text) => text.includes(`${baseUrl}/inbox`) && text.includes("lane-02@example.test"))).toBe(true);
+
+      // The drain ran once at run level, matched the captured send, and wrote the digest-only
+      // artifact — no raw address, subject, or link may appear in it.
+      const threadPath = path.join(cwd, ".humanish", "runs", result.runId, "comms", "thread.json");
+      const thread = await readFile(threadPath, "utf8");
+      expect(thread).toContain("humanish.comms-thread.v1");
+      expect(thread).not.toContain("lane-01@example.test");
+      expect(thread).not.toContain("Confirm your email");
+      expect(thread).not.toContain("xyz789");
+      expect(result.warnings.some((w) => w.includes("captured ZERO email sends"))).toBe(false);
+    } finally {
+      child.kill();
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
 });
