@@ -1564,7 +1564,19 @@ export function chromeCdpPortResolutionScript(endpoint: ChromeCdpEndpoint): stri
 
 /** Shared CDP page-selection preamble: pinned target id first, then this lane's target URL,
  *  then a single-page fallback; never an arbitrary page from a multi-page endpoint. */
-function chromeCdpPageSelectionScript(endpoint: ChromeCdpEndpoint, targetId: string | undefined): string[] {
+function chromeCdpPageSelectionScript(
+  endpoint: ChromeCdpEndpoint,
+  targetId: string | undefined,
+  /**
+   * "pinned" (default): the launch-time target, for measurements about the ORIGINAL window
+   * (geometry). "active": the tab the participant is driving NOW — Chrome's /json lists page
+   * targets most-recently-focused first. The state observer must follow the participant: a
+   * verification link that opens in a NEW tab left the pinned observer reading the old tab
+   * forever, so the observed URL never changed again and stopWhen/task criteria went blind
+   * (a live run's funnel read reach-dashboard 0/2 under a screenshot OF the dashboard).
+   */
+  prefer: "pinned" | "active" = "pinned"
+): string[] {
   return [
     ...chromeCdpPortResolutionScript(endpoint),
     "const pages = await fetch('http://127.0.0.1:' + cdpPort + '/json').then((r) => r.json()).catch(() => []);",
@@ -1572,7 +1584,9 @@ function chromeCdpPageSelectionScript(endpoint: ChromeCdpEndpoint, targetId: str
     `const expectedTargetUrl = ${JSON.stringify(endpoint.targetUrl)};`,
     "const normalizeUrl = (value) => String(value || '').replace(/\\/$/, '');",
     "const httpPages = Array.isArray(pages) ? pages.filter((entry) => entry && entry.type === 'page' && /^https?:/.test(String(entry.url || ''))) : [];",
-    "const page = expectedTargetId ? httpPages.find((entry) => entry.id === expectedTargetId) : (httpPages.find((entry) => normalizeUrl(entry.url) === normalizeUrl(expectedTargetUrl)) || (httpPages.length === 1 ? httpPages[0] : undefined));"
+    prefer === "active"
+      ? "const page = httpPages[0] || (expectedTargetId ? httpPages.find((entry) => entry.id === expectedTargetId) : undefined);"
+      : "const page = expectedTargetId ? httpPages.find((entry) => entry.id === expectedTargetId) : (httpPages.find((entry) => normalizeUrl(entry.url) === normalizeUrl(expectedTargetUrl)) || (httpPages.length === 1 ? httpPages[0] : undefined));"
   ];
 }
 
@@ -1581,19 +1595,22 @@ export function makeChromeBrowserStateObserver(
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
   targetId?: string
-): () => Promise<{ url?: string; title?: string; text?: string }> {
+): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
   return async () => {
     const script = [
-      ...chromeCdpPageSelectionScript(endpoint, targetId),
+      // "active": follow the participant to whatever tab they are driving now — never pin the
+      // state observer to the launch tab (see chromeCdpPageSelectionScript).
+      ...chromeCdpPageSelectionScript(endpoint, targetId, "active"),
       "if (!page) { console.log('{}'); process.exit(0); }",
       "let text = '';",
+      "let scrollY = undefined;",
       "let url = String(page.url || '');",
       "let title = String(page.title || '');",
       "if (typeof WebSocket === 'function' && page.webSocketDebuggerUrl) {",
       "  const ws = new WebSocket(page.webSocketDebuggerUrl);",
       "  const result = await new Promise((resolve) => {",
       "    const timer = setTimeout(() => resolve(undefined), 1500);",
-      "    ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: '({ url: location.href, title: document.title, text: (document.body && document.body.innerText || \"\").slice(0, 20000) })' } }));",
+      "    ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: '({ url: location.href, title: document.title, text: (document.body && document.body.innerText || \"\").slice(0, 20000), scrollY: (window.scrollY || 0) })' } }));",
       "    ws.onmessage = (event) => {",
       "      try {",
       "        const payload = JSON.parse(String(event.data));",
@@ -1608,9 +1625,10 @@ export function makeChromeBrowserStateObserver(
       "    url = typeof result.url === 'string' ? result.url : url;",
       "    title = typeof result.title === 'string' ? result.title : title;",
       "    text = typeof result.text === 'string' ? result.text : '';",
+      "    scrollY = typeof result.scrollY === 'number' ? result.scrollY : undefined;",
       "  }",
       "}",
-      "console.log(JSON.stringify({ url, title, text }));"
+      "console.log(JSON.stringify({ url, title, text, scrollY }));"
     ].join("\n");
     const result = await desktop.commands.run(`node --input-type=module -e ${shellSingleQuote(script)}`, {
       requestTimeoutMs,
@@ -1628,7 +1646,8 @@ export function makeChromeBrowserStateObserver(
       return {
         ...(typeof record.url === "string" && record.url.length > 0 ? { url: record.url } : {}),
         ...(typeof record.title === "string" && record.title.length > 0 ? { title: record.title } : {}),
-        ...(typeof record.text === "string" && record.text.length > 0 ? { text: record.text } : {})
+        ...(typeof record.text === "string" && record.text.length > 0 ? { text: record.text } : {}),
+        ...(typeof record.scrollY === "number" && Number.isFinite(record.scrollY) ? { scrollY: record.scrollY } : {})
       };
     } catch {
       return {};

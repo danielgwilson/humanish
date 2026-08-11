@@ -94,6 +94,14 @@ export interface CuaObservation {
    * into the trace. Persisting arbitrary DOM text would make private-data leakage too easy.
    */
   url?: string;
+  /**
+   * The page's vertical scroll offset (window.scrollY), when the executor can read it. Scroll
+   * position IS state (#393): inside a scroll-pinned (scrollytelling) section the viewport stays
+   * visually fixed while the participant advances, so the frame hash reads "no change" and the
+   * no-progress backstop ended working reading sessions as gave_up. Runtime-only, like url/text —
+   * it feeds the progress key (bucketed) and is never persisted.
+   */
+  scrollY?: number;
   title?: string;
   text?: string;
 }
@@ -426,8 +434,18 @@ export function stableProgressKey(appState: Record<string, unknown>): string {
 }
 
 /** The friction progress key: a stable projection of appState when present, else stateSignature. */
+/** Pixels of vertical scroll per progress bucket (#393): a real scroll step (typically >=100px)
+ *  crosses a bucket and counts as progress; sub-bucket jiggle does not, so an actor nudging the
+ *  same dead panel cannot stay "progressing" forever. */
+const SCROLL_PROGRESS_BUCKET_PX = 200;
+
 function progressKeyOf(observation: CuaObservation): string {
-  return observation.appState !== undefined ? stableProgressKey(observation.appState) : observation.stateSignature;
+  const base = observation.appState !== undefined ? stableProgressKey(observation.appState) : observation.stateSignature;
+  // Scroll position is state (#393): a scroll-pinned section keeps the frame hash constant while
+  // the participant genuinely advances, so the offset rides the key — bucketed, never raw.
+  return observation.scrollY === undefined
+    ? base
+    : `${base}#s${Math.round(observation.scrollY / SCROLL_PROGRESS_BUCKET_PX)}`;
 }
 
 /** A public-safe one-line action label. Never includes raw typed text. */
