@@ -254,6 +254,12 @@ describe("dry-run bundles", () => {
     await withFixtureCopy(async (cwd) => {
       await execFileAsync("mkfifo", [path.join(cwd, ".git")]);
 
+      // The hang under test is INDEFINITE (a FIFO read blocks forever), so the bound only needs
+      // to be an order of magnitude above a slow legitimate dry-run, not a stopwatch. This raced
+      // at a fixed 1s and flaked in the PUBLISH gate on a busy runner (#416): the tag was live
+      // while npm served the old version, and the failure signal meant "the runner was busy",
+      // not "the behavior regressed". 10s cannot be reached by a working dry-run and is still
+      // reached instantly-in-CI-terms by the actual regression.
       const run = await Promise.race([
         runDryRun({
           cwd,
@@ -261,7 +267,8 @@ describe("dry-run bundles", () => {
           runId: "dryrun-special-git"
         }),
         new Promise<never>((_resolve, reject) => {
-          setTimeout(() => reject(new Error("generic dry-run hung on special .git metadata")), 1_000);
+          const timer = setTimeout(() => reject(new Error("generic dry-run hung on special .git metadata")), 10_000);
+          timer.unref?.();
         })
       ]);
 
