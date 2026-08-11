@@ -124,6 +124,7 @@ import {
   type ReviewSummary,
   type RunBundle,
   type RunDesktopGeometry,
+  type RunFeedbackCandidate,
   type RunEvent,
   type RunRerunLineage,
   type RunSimulation,
@@ -4051,6 +4052,95 @@ function desktopSpanToMinutes(desktopDurationMs: number | undefined): number | u
   return desktopDurationMs === undefined ? undefined : desktopDurationMs / 60_000;
 }
 
+/**
+ * Feedback candidates derived from what LIVE participants actually reported (#392).
+ *
+ * A live run's feedback draft used to fall through to a dry-run template, because no browser route
+ * ever built a candidate. The candidate worth filing is the one the study produced: a participant
+ * who reported friction on the way (the most valuable thing a run captures), or one who stopped
+ * trying. A clean pass files nothing here — feedback exists to carry findings, and a run without
+ * any falls back to an honest live summary in the draft layer instead of a template.
+ *
+ * Everything quoted is already scrub+redacted — `session.reason` passes through redactNarration in
+ * the loop before it ever lands on a trace — and passes redactText again here as defense-in-depth.
+ */
+export function participantFeedbackCandidates(args: {
+  runId: string;
+  scenarioId: string;
+  adapterId: string;
+  /** The already-redacted study goal (what bundle.scenario.goal carries). */
+  goal: string;
+  substrate: RunFeedbackCandidate["substrate"];
+  lanes: Array<{
+    laneId: string;
+    streamId: string;
+    personaId: string;
+    session?: CuaLoopResult;
+    traceArtifactPath?: string;
+    screenshots: string[];
+    commsArtifactPath?: string;
+  }>;
+}): RunFeedbackCandidate[] {
+  const candidates: RunFeedbackCandidate[] = [];
+  for (const lane of args.lanes) {
+    const session = lane.session;
+    if (session === undefined) continue;
+    const friction = resolveSelfReportedBlocker(session);
+    const abandoned = session.status === "abandoned";
+    if (friction === undefined && !abandoned) continue;
+    const summary = friction !== undefined
+      ? `Participant ${lane.personaId} (${lane.laneId}) reported friction on the way through the study goal`
+      : `Participant ${lane.personaId} (${lane.laneId}) stopped before completing the study goal`;
+    const lastScreenshot = lane.screenshots[lane.screenshots.length - 1];
+    candidates.push({
+      schema: "humanish.feedback-candidate.v1",
+      id: `participant-report-${lane.laneId}`,
+      run_id: args.runId,
+      stream_id: lane.streamId,
+      adapter_id: args.adapterId,
+      scenario_id: args.scenarioId,
+      persona_id: lane.personaId,
+      actor: "computer-use",
+      substrate: args.substrate,
+      // The participant is reporting on the PRODUCT: friction and abandonment are target-app
+      // findings by the three-roles rule. A harness failure never reaches this builder — it is
+      // not a participant report.
+      failure_owner: "target-app",
+      summary,
+      expected: args.goal,
+      actual: redactText(friction ?? session.reason),
+      evidence: [
+        ...(lane.traceArtifactPath === undefined ? [] : [{
+          path: lane.traceArtifactPath,
+          kind: "trace" as const,
+          note: "Full actor trace: turns, actions, and the participant's own report."
+        }]),
+        ...(lastScreenshot === undefined ? [] : [{
+          path: lastScreenshot,
+          kind: "screenshot" as const,
+          note: "Final screenshot at the moment the session ended."
+        }]),
+        ...(lane.commsArtifactPath === undefined ? [] : [{
+          path: lane.commsArtifactPath,
+          kind: "log" as const,
+          note: "Digest-only comms thread captured in-sandbox."
+        }])
+      ],
+      redaction: {
+        status: "passed",
+        notes: "Quoted participant text passed the loop's known-value scrub and pattern redaction before persisting, and redactText again here."
+      },
+      idempotency_key: `humanish:${args.runId}:${lane.laneId}:participant-report`,
+      proposed_next_state: "study-quality-review",
+      acceptance_proof: [
+        `pnpm humanish -- verify --run ${args.runId} --json`,
+        `pnpm humanish -- watch --run ${args.runId} --no-open`
+      ]
+    });
+  }
+  return candidates;
+}
+
 export function buildCuaBundle(args: {
   actorId: string;
   appUrl: string;
@@ -4400,7 +4490,26 @@ export function buildCuaBundle(args: {
       events: "events.ndjson"
     },
     review,
-    feedbackCandidates: [],
+    // What the participant reported, when it reported anything (#392). Dry-run and in-progress
+    // bundles carry none — there is no participant yet to quote.
+    feedbackCandidates: args.dryRun || args.inProgress === true
+      ? []
+      : participantFeedbackCandidates({
+          runId: args.runId,
+          scenarioId: `cua-${args.labId}`,
+          adapterId: args.labId,
+          goal: redactText(args.mission),
+          substrate: args.desktopRoute === false ? "local-filesystem" : "e2b-desktop",
+          lanes: [{
+            laneId: args.laneId ?? "lane-01",
+            streamId: "stream-001",
+            personaId: args.persona.id,
+            ...(args.session === undefined ? {} : { session: args.session }),
+            ...(args.traceArtifactPath === undefined ? {} : { traceArtifactPath: args.traceArtifactPath }),
+            screenshots: args.screenshots,
+            ...(args.commsArtifactPath === undefined ? {} : { commsArtifactPath: args.commsArtifactPath })
+          }]
+        }),
     // Custom desktop image provenance (omitted on the stock-template default → byte-stable).
     ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
     ...(args.desktopBrowser === undefined ? {} : { desktopBrowser: args.desktopBrowser }),
@@ -4909,7 +5018,29 @@ export function buildCuaFanoutBundle(args: {
       events: "events.ndjson"
     },
     review,
-    feedbackCandidates: [],
+    // What the participants reported, when any reported anything (#392). Dry-run and in-progress
+    // bundles carry none — there is no participant yet to quote.
+    feedbackCandidates: args.dryRun || args.inProgress === true
+      ? []
+      : participantFeedbackCandidates({
+          runId: args.runId,
+          scenarioId: `cua-${config.id}`,
+          adapterId: config.id,
+          goal: redactText(specs[0]!.instructions),
+          substrate: "e2b-desktop",
+          lanes: specs.map((spec, index) => {
+            const outcome = outcomes?.[index];
+            return {
+              laneId: spec.laneId,
+              streamId: spec.streamId,
+              personaId: spec.persona.id,
+              ...(outcome?.session === undefined ? {} : { session: outcome.session }),
+              ...(outcome?.session === undefined ? {} : { traceArtifactPath: spec.traceArtifactPath }),
+              screenshots: outcome?.screenshots ?? [],
+              ...(outcome?.commsArtifactPath === undefined ? {} : { commsArtifactPath: outcome.commsArtifactPath })
+            };
+          })
+        }),
     // Custom desktop image provenance (every lane launched on it); omitted on the stock default.
     ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
     ...(configuredBrowser === undefined

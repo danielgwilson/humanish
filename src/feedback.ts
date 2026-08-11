@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
+import { formatParticipantOutcomes, formatStudyTaskFunnel, loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
 import {
   bindExistingRunArtifactPaths,
@@ -341,6 +341,61 @@ function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
       idempotency_key: candidate.idempotency_key,
       proposed_next_state: candidate.proposed_next_state,
       acceptance_proof: candidate.acceptance_proof
+    };
+  }
+
+  // #392: the fallback below is DRY-RUN-shaped, and it used to be the fallback for every bundle
+  // without a candidate — so a live run whose route filed no participant report got a draft
+  // claiming "no browser behavior was exercised" over 15 screenshots of browser behavior. A live
+  // bundle now gets a draft that describes the run that happened, built from the same review lines
+  // the stakeholder surfaces show (participants and tasks keep their denominators).
+  if (bundle.mode === "live") {
+    const actualLines = [
+      bundle.review.summary,
+      ...(bundle.review.participants === undefined
+        ? []
+        : [`Participants: ${formatParticipantOutcomes(bundle.review.participants)}.`]),
+      ...(bundle.review.tasks === undefined
+        ? []
+        : [`Tasks: ${formatStudyTaskFunnel(bundle.review.tasks)}.`])
+    ];
+    return {
+      schema: FEEDBACK_SCHEMA,
+      run_id: bundle.runId,
+      adapter_id: bundle.source.packageName ?? bundle.scenario.id,
+      scenario_id: bundle.scenario.id,
+      persona_id: bundle.persona.id,
+      actor: (bundle.streams ?? []).some((stream) => stream.actor?.lane === "computer-use")
+        ? "computer-use"
+        : "unknown",
+      substrate: "unknown",
+      failure_owner: "unknown",
+      summary: "Live study completed without a participant-reported finding",
+      expected: bundle.scenario.goal,
+      actual: actualLines.join(" "),
+      source_bundle: bundlePath,
+      evidence: [
+        {
+          path: bundlePath,
+          kind: "state",
+          note: "Source run bundle."
+        },
+        {
+          path: path.join(path.dirname(bundlePath), "review.md"),
+          kind: "review",
+          note: "The run's review: verdict, participants, and gaps."
+        }
+      ],
+      redaction: {
+        status: "passed",
+        notes: bundle.redaction.notes
+      },
+      idempotency_key: `humanish:${bundle.runId}:live-run-summary`,
+      proposed_next_state: "study-quality-review",
+      acceptance_proof: [
+        `pnpm humanish -- verify --run ${bundle.runId} --json`,
+        `pnpm humanish -- watch --run ${bundle.runId} --no-open`
+      ]
     };
   }
 

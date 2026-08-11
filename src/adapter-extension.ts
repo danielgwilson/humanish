@@ -300,6 +300,7 @@ function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"]
   return value === "codex-tui"
     || value === "codex-exec"
     || value === "codex-app-server"
+    || value === "computer-use"
     || value === "synthetic-dry-run"
     || value === "unknown";
 }
