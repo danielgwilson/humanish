@@ -1,13 +1,17 @@
 # humanish
 
-Open-source-safe persona simulation for apps, CLIs, and agent-facing product
-flows.
+Synthetic user research for apps, CLIs, and agent-facing product flows —
+open-source and public-safe.
 
-Humanish gives a project a repeatable way to ask: what happens when realistic
-synthetic users, with different goals and tolerances, try to use this thing?
-It creates committed simulation source under `humanish/`, ignored run evidence
-under `.humanish/`, a watchable Observer UI, verification gates, and public-safe
-feedback drafts.
+Humanish runs studies. Realistic synthetic participants — each with its own
+goals, patience, and skill — actually use your product on hosted desktops while
+you watch. A study leaves verifiable evidence: screenshots, action traces,
+per-task completion funnels, participant outcomes with the denominator
+attached, and estimated cost lines. A fail-closed share-safety gate stands
+between that evidence and anything public, and the end of the pipeline is a
+public-safe feedback draft you can turn into a real issue. Committed study
+source lives under `humanish/`; run evidence lands under gitignored
+`.humanish/`.
 
 ![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
 
@@ -16,6 +20,30 @@ public open-source database diagram editor, driven against a commit-pinned
 local checkout. Every lane is a real computer-use session on a hosted desktop;
 the captions are each persona's own final report. drawDB is the application
 studied; it is not a Humanish adopter or endorser.
+
+## Three Roles
+
+Every design decision in humanish is checked against the three people a study
+actually involves ([docs/principles/three-roles.md](docs/principles/three-roles.md)):
+
+- **The researcher** — usually a coding agent driving the CLI — declares the
+  protocol: personas, discrete tasks with success criteria the participant
+  never sees, and a budget set once at the study level, the way recruiting
+  decisions are made.
+- **The stakeholder** watches through Observer and reads results that carry
+  their denominator: `2/2 reached the goal, 1 reported friction; tasks:
+  reach-signup 2/2 · read-verification-mail 2/2`.
+- **The participant** is the persona: the subject of the study, never its
+  instrument. A participant abandoning a task is a finding about the product,
+  not a harness failure.
+
+What that produces in practice: a two-participant study of an email-gated
+signup on a public open-source document app completed end to end — signup,
+verification mail read in a captured inbox, signed-in dashboard — and the
+keyboard-first participant reported, unprompted, that the signature step could
+not be completed without a mouse. The panel cost about $1.50 and the receipts
+are committed under
+[docs/goals/email-gated-signup/receipts/](docs/goals/email-gated-signup/receipts/).
 
 ## Install
 

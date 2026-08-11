@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-08-05 (rev 17)
+Status date: 2026-08-11 (rev 18)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -15,6 +15,19 @@ Humanish should be the open-source CLI that lets a maintainer ask:
 
 The answer should be observable, verifiable, public-safe, and easy to turn into
 actionable feedback.
+
+What humanish runs is synthetic user research, and every surface is checked
+against the three people a study involves — researcher, stakeholder,
+participant ([docs/principles/three-roles.md](../principles/three-roles.md)).
+The operational consequences: a study declares `tasks` with success criteria
+the participant never sees and gets a per-task completion funnel back; budgets
+are study-level recruiting decisions (`execution.caps.maxTotalUsd`) with
+per-lane caps as backstops; sessions end because the participant finished, not
+because a timer fired; abandonment and reported friction are findings that
+become feedback candidates, not failures. Receipts: the email-gated signup
+study completed, reproduced, and produced a real accessibility finding via a
+keyboard-first participant
+([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
 ## Current Program Truth (source `0.41.0`)
 
@@ -33,7 +46,7 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 | Public proof | A legible four-persona Observer hero from a verified real public-application study (commit-pinned drawDB) shipped in the npm payload (`0.16.0`) | Coverage beyond a single studied subject; the stratified breadth panel remains unbuilt |
 | OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
 | Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store; a control plane that can start runs |
-| Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes over both HTTP and SMTP; live-proven end to end on 2026-08-08 — a persona signed up for a public app, read the emailed link in its inbox, and reached the signed-in product (`docs/goals/email-gated-signup/receipts/signup-verify-live-2026-08-08.md`) | An adopter-hosted / app-url ingress plane; real-provider delivery |
+| Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes over both HTTP and SMTP; live-proven end to end on 2026-08-08 — a persona signed up for a public app, read the emailed link in its inbox, and reached the signed-in product (`docs/goals/email-gated-signup/receipts/signup-verify-live-2026-08-08.md`); the adopter-hosted / app-url ingress plane is wired on the CUA and concurrent external-public routes (#387/#380, 2026-08-11) | Real-provider delivery; a live adopter-hosted receipt |
 
 Capability proof and adopter replacement are different gates. A deterministic
 test or kept live receipt proves that a Humanish mechanism works. The depth-axis
