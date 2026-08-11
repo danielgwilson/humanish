@@ -1201,10 +1201,11 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       actorResults = await mapWithConcurrency(actorSpecs, Math.max(1, concurrency), async (spec, i) => {
         const route = resolveActorSeatUrl(getHostUrl!, roles[i]?.entry);
         // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
-        // has a declared recipient it can actually receive mail into (else it would stall on an empty inbox).
-        const commsForMission = commsEmail ?? externalCommsEmail;
-        const laneSpec = commsForMission && commsInboxUrl && laneHasInboxRecipient(commsForMission, spec.laneId)
-          ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsForMission, spec.laneId)?.address)
+        // has a declared recipient it can actually receive mail into (else it would stall on an empty
+        // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
+        // external-public plane's, wired in ITS execution block below (#387).
+        const laneSpec = commsEmail && commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.laneId)
+          ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsEmail, spec.laneId)?.address)
           : spec;
         const startedAt = now();
         const outcome = await runCuaLane(laneSpec, { ...baseActorDeps, appUrl: route });
@@ -1234,36 +1235,6 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       // host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
       // artifact — while the subject is STILL alive, before it is killed below. Wrapped so a drain error
       // never blocks teardown (invariant: all sandboxes torn down by id in this finally).
-      if (externalComms && externalCommsEmail) {
-        // Adopter-hosted drain (#328): same routing, same digest-only artifact — only the transport
-        // differs (HTTP GET /deliveries instead of reading the file inside a sandbox we own).
-        try {
-          const commsChannel = new FakeInbox();
-          const commsInboxes: CommsAddress[] = [];
-          for (const recipient of externalCommsEmail.recipients ?? []) {
-            if (recipient.address !== undefined) {
-              commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
-            }
-          }
-          const authToken = externalComms.authTokenEnv === undefined ? undefined : env[externalComms.authTokenEnv];
-          const collected = await collectExternalCommsThread({
-            external: { ...externalComms, ...(authToken === undefined ? {} : { authToken }) },
-            channel: commsChannel,
-            inboxes: commsInboxes
-          });
-          if (collected.artifact) {
-            const path = "comms/thread.json";
-            await writeContainedOutputFile(runPaths, path, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
-            commsArtifactPath = path;
-          } else if (collected.captured > 0) {
-            warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
-          } else {
-            warnings.push(`Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalComms.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`);
-          }
-        } catch (error) {
-          warnings.push(`Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(toErrorMessage(error))}`);
-        }
-      }
       if (commsEmail && deployedComms?.ready && subjectDesktop) {
         try {
           const commsChannel = new FakeInbox();
@@ -1483,8 +1454,14 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       // unchanging "waiting for players" screen). At the default idle backstop (6) the host would give up
       // before anyone arrives, orphaning the lobby (exactly the earlier failure). Raise the host's idle /
       // no-progress tolerance so it waits patiently; the per-seat timeout still bounds a truly stuck host.
+      // Adopter-hosted inbox (#387): the persona is told its address and inbox URL on THIS plane —
+      // previously only the provisioned plane's seats ever got the instruction, so external comms
+      // ran on no route at all.
+      const hostInboxSpec = externalCommsEmail && commsInboxUrl && laneHasInboxRecipient(externalCommsEmail, spec.laneId)
+        ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(externalCommsEmail, spec.laneId)?.address)
+        : spec;
       const hostSpec: CuaLaneSpec = {
-        ...spec,
+        ...hostInboxSpec,
         idleSteps: spec.idleSteps ?? HOST_WAIT_IDLE_STEPS,
         noProgressSteps: spec.noProgressSteps ?? HOST_WAIT_IDLE_STEPS
       };
@@ -1515,8 +1492,11 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       // Followers also idle-wait — in the waiting room until the host starts, and between rounds. Raise
       // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
       // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
+      const followerInboxSpec = externalCommsEmail && commsInboxUrl && laneHasInboxRecipient(externalCommsEmail, spec.laneId)
+        ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(externalCommsEmail, spec.laneId)?.address)
+        : spec;
       const followerSpec: CuaLaneSpec = {
-        ...withLobbyCodeMission(spec, code),
+        ...withLobbyCodeMission(followerInboxSpec, code),
         idleSteps: spec.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
         noProgressSteps: spec.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS
       };
@@ -1564,6 +1544,38 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       warnings.push(`External-public concurrent shared-world run failed before completion: ${runError}`);
     } finally {
       if (deadlineTimer) { clearTimeout(deadlineTimer); deadlineTimer = undefined; }
+      // Adopter-hosted drain (#328/#387): same routing and digest-only artifact as the in-sandbox
+      // catch — only the transport differs (HTTP GET /deliveries against the catch the operator
+      // runs). In the finally so the evidence survives a failed run; a drain error never masks
+      // the run's own outcome.
+      if (externalComms && externalCommsEmail) {
+        try {
+          const commsChannel = new FakeInbox();
+          const commsInboxes: CommsAddress[] = [];
+          for (const recipient of externalCommsEmail.recipients ?? []) {
+            if (recipient.address !== undefined) {
+              commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
+            }
+          }
+          const authToken = externalComms.authTokenEnv === undefined ? undefined : env[externalComms.authTokenEnv];
+          const collected = await collectExternalCommsThread({
+            external: { ...externalComms, ...(authToken === undefined ? {} : { authToken }) },
+            channel: commsChannel,
+            inboxes: commsInboxes
+          });
+          if (collected.artifact) {
+            const path = "comms/thread.json";
+            await writeContainedOutputFile(runPaths, path, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+            commsArtifactPath = path;
+          } else if (collected.captured > 0) {
+            warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+          } else {
+            warnings.push(`Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalComms.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`);
+          }
+        } catch (error) {
+          warnings.push(`Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(toErrorMessage(error))}`);
+        }
+      }
     }
 
     // Observed-origin convergence proof (blocker 2): the convergence claim is about what the seats

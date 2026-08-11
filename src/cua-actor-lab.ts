@@ -55,7 +55,7 @@ import {
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
-import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, deployCommsCatch, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
+import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, collectExternalCommsThread, deployCommsCatch, externalCatchHealthy, externalInboxUrl, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
 import { FakeInbox } from "./comms-fake-inbox.js";
 import { buildOriginMap } from "./comms-inbox.js";
 import type { CommsAddress } from "./comms-types.js";
@@ -455,6 +455,10 @@ export type CuaActorLabErrorCode =
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped — an unenforceable cap is more dangerous than none.
   | "HUMANISH_CUA_LAB_UNPRICED_CAP"
+  // comms.email.external was declared but its catch did not answer as a humanish comms catch.
+  // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
+  // nothing while every lane still spends (#380).
+  | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by runCuaBackend
   // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
   // render through the same formatter as any other CUA lab failure.
@@ -1119,6 +1123,10 @@ export interface CuaLaneDeps {
   /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
    *  live run (#299). Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
+  /** Adopter-hosted comms plane (#380): present on the app-url route when comms.email.external is
+   *  declared. Carries the parsed comms block (recipients drive the per-lane inbox instruction)
+   *  and the inbox URL the persona opens. The drain runs once at run level, not per lane. */
+  externalComms?: { email: LabCommsEmail; inboxUrl: string };
   /** Injected clock (ms). Used to measure the host-side E2B desktop create->teardown span so the
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
   now: () => number;
@@ -2210,10 +2218,14 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       const maxUsd = config.execution?.caps?.maxUsd;
       const sessionOptions: CuaActorSessionOptions = {
         // Tell the persona where its inbox is — but only when comms is live AND this lane has a declared
-        // recipient it can actually receive mail into (else it would stall on an inbox that stays empty).
+        // recipient it can actually receive mail into (else it would stall on an inbox that stays
+        // empty). Two comms planes, mutually exclusive by parse: the in-sandbox catch humanish
+        // deployed, or the adopter-hosted one (#380).
         instructions: commsEmail && commsInboxUrl && deployedComms?.ready && laneHasInboxRecipient(commsEmail, spec.laneId)
           ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsEmail, spec.laneId)?.address).instructions
-          : spec.instructions,
+          : deps.externalComms && laneHasInboxRecipient(deps.externalComms.email, spec.laneId)
+            ? withInboxMission(spec, deps.externalComms.inboxUrl, inboxRecipientFor(deps.externalComms.email, spec.laneId)?.address).instructions
+            : spec.instructions,
         persona: spec.persona,
         timeoutMs: deps.timeoutMs,
         openai: {
@@ -2845,6 +2857,15 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const runSession = hooks.runSession ?? descriptor.runSession;
   const inProcessRoute = hooks.buildExecutor !== undefined;
   const localAppSubject = config.subject.source === "local-app";
+  // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
+  // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
+  // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
+  // the lanes, and writes the same digest-only evidence. Declaring `external` previously did
+  // nothing on this route (and, per #387, on every other) while its docs said otherwise.
+  const externalCommsConfig = !cloneRoute && !localTreeRoute && !inProcessRoute
+    ? config.comms?.email?.external
+    : undefined;
+  const externalCommsEmail = externalCommsConfig ? config.comms?.email : undefined;
 
   // Engine re-enforcement of the clone-route structure (library API surface).
   if (cloneRoute && (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))) {
@@ -3053,6 +3074,17 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         );
       }
     }
+    // Adopter-hosted comms catch (#380): fail closed BEFORE any sandbox is created — a comms lab
+    // whose catch is unreachable collects nothing while every lane still spends. The probe asserts
+    // OUR service marker in /health, so an adopter's proxy answering 200 for everything cannot
+    // pass for a catch.
+    if (externalCommsConfig && !(await externalCatchHealthy(externalCommsConfig))) {
+      return fail(
+        "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",
+        "comms.email.external.catchBaseUrl is not reachable as a humanish comms catch (GET /health must return the humanish-comms-catch service marker). Start it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
+        descriptor.id
+      );
+    }
   }
 
   const runId = options.runId ?? makeCuaRunId();
@@ -3131,6 +3163,9 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     ...(dryRun || config.execution?.caps?.maxTotalUsd === undefined
       ? {}
       : { runBudget: makeCuaRunBudget(config.execution.caps.maxTotalUsd) }),
+    ...(externalCommsConfig === undefined || externalCommsEmail === undefined
+      ? {}
+      : { externalComms: { email: externalCommsEmail, inboxUrl: externalInboxUrl(externalCommsConfig) } }),
     now: hooks.now ?? Date.now,
     hooks: liveHooks
   };
@@ -3211,6 +3246,45 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     }
   }
 
+  const externalCommsWarnings: string[] = [];
+  // Adopter-hosted drain (#380): once per RUN, after every lane finished — the catch is one
+  // shared external endpoint, not a per-sandbox file. Same routing and digest-only artifact as
+  // the in-sandbox drain; the artifact is registered on every lane that declared a recipient
+  // address, since the thread carries each inbox's mail. A drain failure never fails the run.
+  if (!dryRun && externalCommsConfig && externalCommsEmail && outcomes !== undefined) {
+    try {
+      const commsChannel = new FakeInbox();
+      const commsInboxes: CommsAddress[] = [];
+      for (const recipient of externalCommsEmail.recipients ?? []) {
+        if (recipient.address !== undefined) {
+          commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
+        }
+      }
+      const authToken = externalCommsConfig.authTokenEnv === undefined ? undefined : env[externalCommsConfig.authTokenEnv];
+      const collected = await collectExternalCommsThread({
+        external: { ...externalCommsConfig, ...(authToken === undefined ? {} : { authToken }) },
+        channel: commsChannel,
+        inboxes: commsInboxes
+      });
+      if (collected.artifact) {
+        const commsPath = "comms/thread.json";
+        await writeContainedOutputFile(runPaths, commsPath, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+        for (const [index, outcome] of outcomes.entries()) {
+          const laneId = laneSpecs[index]?.laneId;
+          if (laneId !== undefined && outcome.commsArtifactPath === undefined && laneHasInboxRecipient(externalCommsEmail, laneId)) {
+            outcome.commsArtifactPath = commsPath;
+          }
+        }
+      } else if (collected.captured > 0) {
+        externalCommsWarnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+      } else {
+        externalCommsWarnings.push(`Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalCommsConfig.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`);
+      }
+    } catch (error) {
+      externalCommsWarnings.push(`Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+    }
+  }
+
   // Per-lane subject projections (invariant 5).
   const laneSubjects = laneSpecs.map((_spec, index) => {
     const outcome = outcomes?.[index];
@@ -3235,7 +3309,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // lane's projection already carries the identical archiveSha256/commit/dirty: the
   // `first.source !== "clone"` branch below returns it directly, with no unanimity math needed
   // (there is nothing that could diverge).
-  const aggregateWarnings: string[] = [];
+  const aggregateWarnings: string[] = [...externalCommsWarnings];
   // execution.caps.maxUsd is a PER-LANE cap: it is enforced INSIDE each lane's loop independently,
   // so an N-lane fan-out can spend up to N × maxUsd before any lane aborts, while the run cost
   // summary reports the (larger) aggregate. Warn at run level so the operator sees the true
