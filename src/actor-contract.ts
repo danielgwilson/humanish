@@ -1,6 +1,7 @@
 import type { AffordanceUse } from "./affordance.js";
 import type { CodexAppServerRunResult, CodexAppServerStatus, CodexAppServerTrace } from "./codex-app-server.js";
 import type { ActorEstimatedCost } from "./pricing.js";
+import type { TaskFunnel } from "./tasks.js";
 import { redactText } from "./redaction.js";
 
 // The provider-neutral evidence schema. Codex item/* events, Claude
@@ -164,6 +165,14 @@ export interface ActorTrace {
    * docs/principles/actor-fidelity.md.
    */
   affordanceUse?: AffordanceUse;
+  /**
+   * ADDITIVE + OPTIONAL task funnel (humanish.task-funnel.v1, #414): how far this participant got
+   * through the lab's declared protocol, corroborated per task by observations rather than by the
+   * actor's own narration. Present only when the lab declared `tasks` and the session ran; absent
+   * on every pre-existing bundle and on dry-run contract bundles (honest absence — a funnel that
+   * was never measured is not an empty funnel). Its absence is tolerated by verify.
+   */
+  taskFunnel?: TaskFunnel;
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
   /**

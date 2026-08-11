@@ -87,6 +87,7 @@ import { buildObserverData } from "./observer-data.js";
 import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
+import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
@@ -116,7 +117,9 @@ import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
+  aggregateTaskFunnels,
   formatParticipantOutcomes,
+  formatStudyTaskFunnel,
   tallyParticipantOutcomes,
   type ReviewSummary,
   type RunBundle,
@@ -542,6 +545,11 @@ export interface CuaLaneSpec {
   targetUrl?: string;
   /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
   stopWhen?: StopWhen;
+  /** The lab's declared protocol (#414). Every lane runs the SAME protocol — that is what makes the
+   *  per-task rates comparable across participants. Goals are already composed into `instructions`;
+   *  this carries the full tasks so the loop can corroborate completion, and the criteria never
+   *  reach the prompt. */
+  tasks?: readonly LabTask[];
   /** Per-lane override of the CUA idle backstop (consecutive screenshot/wait turns before gave_up).
    *  Absent falls back to the loop default. Raised for a lane whose job includes a long LEGITIMATE
    *  wait (e.g. a shared-world HOST idling in the waiting room while followers provision + join). */
@@ -563,6 +571,9 @@ export function composeLaneInstructions(args: {
   mission: string;
   persona?: string;
   instruction?: string;
+  /** The lab's declared protocol (#414). Only the participant-facing `goal` halves are rendered
+   *  into the prompt; the `success` criteria never appear here. */
+  tasks?: readonly LabTask[];
   device: { name: string; preset: DevicePreset };
   /** The COMPILED persona for `args.persona`, when its committed file resolved (#381). Supplying it
    *  makes the persona shape behavior — its traits become directives in the prompt and land in
@@ -575,6 +586,10 @@ export function composeLaneInstructions(args: {
   const deviceLine = preset.isMobile
     ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
     : `You are a desktop user (${name}, ${preset.width}x${preset.height}).`;
+  // The protocol as the PARTICIPANT reads it: numbered goals, nothing else. The success criteria
+  // are the researcher's instrument and must never reach this prompt — a persona told how it will
+  // be measured optimizes for the measurement instead of using the product (src/tasks.ts).
+  const taskLines = renderTaskPrompt(args.tasks ?? []);
   // A resolved persona contributes its compiled directives (friction tolerance, skill bias,
   // accessibility behavior, constraints) through the SAME persona.ts compiler the terminal lane
   // uses, so one persona file means one behavior across every route.
@@ -586,6 +601,7 @@ export function composeLaneInstructions(args: {
     personaLine,
     deviceLine,
     args.mission,
+    taskLines,
     args.instruction ? `Lane focus: ${args.instruction}` : undefined
   ].filter((part): part is string => Boolean(part));
   const instructions = parts.join("\n\n");
@@ -744,6 +760,7 @@ function laneSpecsAndPlan(
   const env = opts.env ?? {};
   const actor = config.actors[0];
   const mission = actor?.mission ?? DEFAULT_MISSION;
+  const tasks = actor?.tasks;
   const roster = actor?.lanes;
   const laneCount = roster ? roster.length : Math.max(1, opts.countOverride ?? actor?.count ?? 1);
 
@@ -758,6 +775,7 @@ function laneSpecsAndPlan(
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeLaneInstructions({
       mission,
+      ...(tasks === undefined ? {} : { tasks }),
       ...(personaId === undefined ? {} : { persona: personaId }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(((roster ? lane?.instruction : actor?.laneFocus?.instruction)) === undefined ? {} : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
@@ -775,6 +793,7 @@ function laneSpecsAndPlan(
       instructions: composed.instructions,
       ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
       ...((lane?.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
+      ...(tasks === undefined ? {} : { tasks }),
       deviceName: device.name,
       devicePreset: device.preset,
       resolution: device.resolution,
@@ -2183,6 +2202,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(spec.idleSteps === undefined ? {} : { idleSteps: spec.idleSteps }),
         ...(spec.noProgressSteps === undefined ? {} : { noProgressSteps: spec.noProgressSteps }),
         ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
+        ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
         ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
         ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
         ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot })
@@ -2393,7 +2413,8 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
       redactScreenshots: deps.redactScreenshots,
       scrubText: deps.scrubKnownValues,
       writeScreenshot,
-      ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen })
+      ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
+      ...(spec.tasks === undefined ? {} : { tasks: spec.tasks })
     };
     session = await deps.runSession(sessionOptions);
   } catch (error) {
@@ -4301,6 +4322,11 @@ export function buildCuaBundle(args: {
     });
   }
 
+  // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
+  // declared protocol (or a dry run) means no `tasks` field, never an empty one.
+  const singleStudyTasks = args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
+    ? aggregateTaskFunnels([args.session.trace.taskFunnel])
+    : undefined;
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict: args.inProgress === true
@@ -4315,6 +4341,7 @@ export function buildCuaBundle(args: {
     ...(args.session && args.inProgress !== true
       ? { participants: tallyParticipantOutcomes([args.session.status]) }
       : {}),
+    ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
     summary: reason,
     gaps: args.session || args.sessionError
       ? []
@@ -4762,15 +4789,22 @@ export function buildCuaFanoutBundle(args: {
         terminalOutcomes.map((outcome) => outcome.selfReportedBlocker === true)
       )
     : undefined;
+  // The study funnel: per-task completion rates across every session that measured one. This is
+  // "where did people get stuck" as data, next to WHO got stuck (participants) above.
+  const participantFunnels = (outcomes ?? [])
+    .map((outcome) => outcome?.session?.trace.taskFunnel)
+    .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
+  const studyTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
     ...(participants === undefined ? {} : { participants }),
+    ...(studyTasks === undefined ? {} : { tasks: studyTasks }),
     summary: args.inProgress === true
       ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
       : args.dryRun
       ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants)}` : ""}.`,
+      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
     gaps: args.inProgress === true
       ? ["Live fan-out session is still running."]
       : args.dryRun
