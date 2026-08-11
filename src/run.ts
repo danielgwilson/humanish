@@ -28,6 +28,7 @@ import {
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
 import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace } from "./actor-contract.js";
+import type { TaskFunnel } from "./tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
 import { mapWithConcurrency } from "./concurrency.js";
@@ -977,6 +978,12 @@ export interface ReviewSummary {
    * bundle, which has no participants.
    */
   participants?: ParticipantOutcomes;
+  /**
+   * The study's per-task completion rates (#414) — present only when the lab declared a protocol
+   * and at least one session produced a funnel. Absent means no protocol was measured, never that
+   * everyone finished.
+   */
+  tasks?: StudyTaskFunnel;
 }
 
 /** Tally participant outcomes from actor statuses. Statuses this does not recognise are counted in
@@ -1003,6 +1010,66 @@ export function tallyParticipantOutcomes(
     else if (status === "failed") tally.harnessFailed += 1;
   }
   return tally;
+}
+
+/**
+ * The study's task funnel: for each declared task, how many participants completed it, out of how
+ * many sessions produced a funnel. This is "where did people get stuck" as data — the number a
+ * researcher reads first — where the per-participant funnels answer it one journey at a time.
+ *
+ * Aggregated by task id in declaration order. Every lane in a run shares the actor's protocol, so
+ * ids line up across participants; a funnel missing a task id (a future mixed-protocol route)
+ * simply does not count toward that task's denominator.
+ */
+export interface StudyTaskFunnel {
+  /** Sessions that produced a funnel — the denominator for every count below. */
+  sessions: number;
+  tasks: Array<{
+    id: string;
+    /** Participants whose sessions corroborated this task complete. */
+    completed: number;
+    /** Sessions whose protocol declared this task — its denominator. */
+    sessions: number;
+    /** False when the task declared no success criterion: asked for, never measurable. */
+    observable: boolean;
+  }>;
+}
+
+/** Roll per-participant funnels up into the study funnel. Undefined when nothing measured one. */
+export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): StudyTaskFunnel | undefined {
+  if (funnels.length === 0) return undefined;
+  const order: string[] = [];
+  const byId = new Map<string, { completed: number; sessions: number; observable: boolean }>();
+  for (const funnel of funnels) {
+    for (const task of funnel.tasks) {
+      let entry = byId.get(task.id);
+      if (entry === undefined) {
+        entry = { completed: 0, sessions: 0, observable: false };
+        byId.set(task.id, entry);
+        order.push(task.id);
+      }
+      entry.sessions += 1;
+      if (task.completed) entry.completed += 1;
+      if (task.observable) entry.observable = true;
+    }
+  }
+  return {
+    sessions: funnels.length,
+    tasks: order.map((id) => {
+      const entry = byId.get(id)!;
+      return { id, completed: entry.completed, sessions: entry.sessions, observable: entry.observable };
+    })
+  };
+}
+
+/** The funnel as one line, denominator on every number: `signup 2/2 · verify-email 1/2`. */
+export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
+  if (funnel.tasks.length === 0) return "no tasks declared";
+  return funnel.tasks
+    .map((task) => task.observable
+      ? `${task.id} ${task.completed}/${task.sessions}`
+      : `${task.id} (no completion criterion)`)
+    .join(" · ");
 }
 
 /** One line a stakeholder can read, with the denominator attached to every number. */

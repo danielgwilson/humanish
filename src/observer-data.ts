@@ -1,4 +1,4 @@
-import { formatParticipantOutcomes } from "./run.js";
+import { formatParticipantOutcomes, formatStudyTaskFunnel } from "./run.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
@@ -38,6 +38,10 @@ export interface ObserverData {
     /** The same thing as one readable line, so a renderer cannot accidentally show a number
      *  without its denominator. */
     participantsLine?: string;
+    /** The study's per-task completion rates (#414), when the lab declared a protocol. */
+    tasks?: RunBundle["review"]["tasks"];
+    /** Pre-formatted like participantsLine, denominator on every number. */
+    tasksLine?: string;
   };
   summary: {
     streams: number;
@@ -129,6 +133,12 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
         : {
             participants: bundle.review.participants,
             participantsLine: formatParticipantOutcomes(bundle.review.participants)
+          }),
+      ...(bundle.review.tasks === undefined
+        ? {}
+        : {
+            tasks: bundle.review.tasks,
+            tasksLine: formatStudyTaskFunnel(bundle.review.tasks)
           })
     },
     summary: {

@@ -96,6 +96,30 @@ actors:
     mission: >-
       Create an account using the email address in your instructions, complete the email
       verification, sign in, and stop once you can see the signed-in dashboard.
+    # The researcher's protocol (#414): each task has a participant-facing goal and a
+    # researcher-facing success criterion. Only the goals reach the persona's prompt — telling a
+    # participant how they will be measured changes what they do. Completion is corroborated from
+    # observed URLs (all three confirmed in the kept receipts), never from the actor saying so.
+    # The funnel over these tasks is the study result: where participants stop is the finding.
+    tasks:
+      - id: reach-signup
+        goal: Find where to create an account and open the signup form.
+        success:
+          any:
+            - id: on-signup
+              urlIncludes: /signup
+      - id: read-verification-mail
+        goal: When the app tells you it has emailed you, open your inbox and read that email.
+        success:
+          any:
+            - id: inbox-open
+              urlIncludes: "127.0.0.1:8025"
+      - id: reach-dashboard
+        goal: Finish signing in, and stop once you can see your account's documents area.
+        success:
+          any:
+            - id: signed-in
+              urlIncludes: /documents
     lanes:
       # Two participants, same task, different people. Each gets its own world and its own
       # deterministic inbox address, so neither can see the other's mail. The comparison is the

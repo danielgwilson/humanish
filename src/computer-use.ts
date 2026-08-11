@@ -13,8 +13,10 @@ import type { RedactionHooks } from "./redaction.js";
 import {
   evaluateStopWhen,
   type StopConditionMatch,
+  type StopConditionObservation,
   type StopWhen
 } from "./stop-conditions.js";
+import { TaskTracker, type LabTask } from "./tasks.js";
 
 // The computer-use (CUA) loop engine.
 //
@@ -217,6 +219,15 @@ export interface CuaLoopOptions {
    * wandering after the product already reached an app-visible endpoint.
    */
   stopWhen?: StopWhen;
+  /**
+   * The lab's declared protocol (#414): discrete tasks whose completion is corroborated by the
+   * same observations stopWhen reads, on the same cadence. The tracker never influences the loop's
+   * control flow — a completed task list does not stop a session (that is stopWhen's job); it only
+   * records the funnel that lands on the trace. The participant-facing halves of these tasks are
+   * already IN `instructions` (composed upstream); the loop reads only the `success` criteria,
+   * which never reach the prompt.
+   */
+  tasks?: readonly LabTask[];
   /**
    * FAIL-CLOSED spend cap (USD). When set, the loop aborts (completionReason "budget_reached")
    * the moment the running ESTIMATED spend crosses it, BEFORE the next provider turn — the
@@ -530,6 +541,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     scrubText = (text) => text,
     writeScreenshot = async (name) => `screenshots/${name}`,
     stopWhen,
+    tasks,
     maxUsd,
     estimateTurnCostUsd,
     onObservedUrl,
@@ -614,12 +626,38 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     bump("screenshots");
   };
 
+  // One projection feeds BOTH the stop guard and the task tracker, so a criterion that would stop
+  // the run and a criterion that completes a task can never see different evidence for one turn.
+  const stopObservationOf = (observation: CuaObservation): StopConditionObservation => ({
+    ...(observation.url === undefined ? {} : { url: observation.url }),
+    ...(observation.text === undefined ? {} : { text: observation.text }),
+    ...(observation.appState === undefined ? {} : { appState: observation.appState })
+  });
+
   const matchedStopWhen = (observation: CuaObservation): StopConditionMatch | undefined =>
-    evaluateStopWhen(stopWhen, {
-      ...(observation.url === undefined ? {} : { url: observation.url }),
-      ...(observation.text === undefined ? {} : { text: observation.text }),
-      ...(observation.appState === undefined ? {} : { appState: observation.appState })
-    });
+    evaluateStopWhen(stopWhen, stopObservationOf(observation));
+
+  // The funnel is recorded, never consulted: task completion does not steer the loop. Evaluated
+  // BEFORE the stopWhen check each turn so a final task whose criterion coincides with the stop
+  // condition still lands in the funnel of the very turn that ends the session.
+  const taskTracker = tasks !== undefined && tasks.length > 0 ? new TaskTracker(tasks) : undefined;
+  const observeTasks = (observation: CuaObservation, turn: number): void => {
+    if (taskTracker === undefined) return;
+    for (const completion of taskTracker.observe(stopObservationOf(observation), turn)) {
+      // The id is researcher-authored config and the kinds are rule-type names; the matched VALUES
+      // (a URL, page text) never appear here — the same discipline as stopWhenTraceItem.
+      items.push({
+        id: nextId("notice"),
+        kind: "notice",
+        lifecycle: "completed",
+        status: "matched",
+        title: `task completed: ${redactNarration(completion.id)}`,
+        text: redactNarration(
+          `turn ${turn}; matched rule ${completion.matchedRuleIndex} (${completion.matchedKinds.join("+")})`
+        )
+      });
+    }
+  };
 
   let completionReason: ActorCompletionReason = "goal_satisfied";
   let reason = "computer-use loop completed";
@@ -663,6 +701,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
     await maybeRecordScreenshot(observation, "turn-00-start");
+    observeTasks(observation, 0);
     stopConditionMatch = matchedStopWhen(observation);
     if (stopConditionMatch) {
       completionReason = "goal_satisfied";
@@ -886,6 +925,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;
       await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
+      observeTasks(observation, turnNumber);
       stopConditionMatch = matchedStopWhen(observation);
       if (stopConditionMatch) {
         completionReason = "goal_satisfied";
@@ -1065,6 +1105,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     counts,
     items,
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
+    // The funnel is present exactly when a protocol was declared — including a session that ended
+    // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
+    ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),
     ...(sawUsage
       ? {
           tokenUsage: {

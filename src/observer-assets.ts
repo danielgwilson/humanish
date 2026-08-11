@@ -1602,6 +1602,9 @@ export function observerClientJs(): string {
     var line = currentData.run.participantsLine
       ? 'Run finished — ' + currentData.run.participantsLine + '.'
       : 'Run finished — ' + ok + ' of ' + ss.length + ' lane(s) passed.';
+    // The study funnel rides the same banner (pre-formatted server-side, like participantsLine,
+    // so a display tweak can never strip a denominator): where people got stuck, per task.
+    if (currentData.run.tasksLine) line += ' Tasks: ' + currentData.run.tasksLine + '.';
     return '<div class="run-verdict-banner" data-status="' + esc(status) + '" role="status">'
       + '<span class="rvb-dot"></span>'
       + '<span>' + esc(line) + ' Live streams have ended; tiles show each lane’s recorded evidence.</span>'
