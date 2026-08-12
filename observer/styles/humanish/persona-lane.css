@@ -1,0 +1,90 @@
+/* @humanish/persona-lane — generated from app/globals.css by scripts/extract-registry-css.mjs.
+   Do not edit by hand; edit globals.css and run `pnpm registry:build`.
+   Assumes a reset that zeroes margins/padding and sets border-box
+   (e.g. Tailwind Preflight); the spacing these components depend on is also
+   pinned explicitly below. Colors come from the humanish token system
+   (@humanish/humanish-tokens); fonts fall back to system stacks unless
+   --font-newsreader / --font-geist / --font-geist-mono are provided. */
+
+.tile-shot canvas, .pmedia canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none
+}
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .14em;
+  color: var(--accent-ink); border: 1px solid var(--accent-dim);
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+
+.chip-pass::before { content: "✓"; font-size: 10px
+}
+
+.chip-dot::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink)
+}
+
+.chip-mute { color: var(--muted); border-color: var(--line)
+}
+
+.chip-mute::before { background: var(--muted)
+}
+
+.panel {
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+  box-shadow: var(--sh-panel);
+}
+
+.pbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 40px; padding: 8px 16px; border-bottom: 1px solid var(--line-soft);
+  background: var(--accent-wash);
+}
+
+.pl { display: flex; align-items: baseline; gap: 11px; min-width: 0
+}
+
+.pidx { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--accent-ink); letter-spacing: .08em
+}
+
+.pname { font-family: var(--mono); font-size: 11px; color: var(--ink); letter-spacing: .09em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap
+}
+
+.pr { font-family: var(--mono); font-size: 10.5px; color: var(--label); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap
+}
+
+.pmedia { position: relative; flex: 0 0 auto; background: var(--mineral)
+}
+
+.pmedia img { display: block; width: 100%; aspect-ratio: 598/324; object-fit: cover
+}
+
+.pcap {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  min-height: 52px; padding: 12px 16px; border-top: 1px solid var(--line-soft);
+}
+
+.prep { margin: 0; min-width: 0; font-size: 13px; color: var(--body-c)
+}
+
+.plab { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--label); margin-bottom: 3px
+}
+
+.prep q { font-family: var(--mono); font-size: 12.5px; color: var(--ink); quotes: "\201C" "\201D"
+}
+
+.prep code { font-size: .92em
+}
+
+@media (max-width: 420px) {
+  .pbar { flex-wrap: wrap; row-gap: 2px; padding-top: 10px; padding-bottom: 10px
+  }
+  .pname { white-space: normal; overflow: visible; text-overflow: clip
+  }
+  .pr { white-space: normal
+  }
+}
+
+@media (max-width: 1023px) {
+  .panel { box-shadow: var(--sh-rail)
+  }
+}
