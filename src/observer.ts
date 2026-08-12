@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
-import { constants as fsConstants } from "node:fs";
+import { constants as fsConstants, readFileSync } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildObserverData } from "./observer-data.js";
 import type { ObserverData } from "./observer-data.js";
@@ -390,7 +390,57 @@ export async function serveObserver(
   };
 }
 
+// ---- Observer v2 (#426): the prebuilt workspace artifact behind HUMANISH_OBSERVER=next ----
+// The rebuilt Observer is a self-contained single-file app (observer/ workspace) carrying one
+// JSON slot; rendering a run = injecting its snapshot (observer/scripts/inject.ts is the
+// reference implementation this mirrors). The seam lives here because every surface —
+// observe, watch, serve, and the lab call sites — funnels through renderObserverHtml, so one
+// switch covers them all. Until the parity sign-off, the legacy renderer below stays the
+// default and must remain byte-identical when the env var is unset.
+
+const OBSERVER_NEXT_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
+const OBSERVER_NEXT_SLOT = `<script id="observer-data" type="application/json">${OBSERVER_NEXT_PLACEHOLDER}</script>`;
+
+let cachedObserverNextArtifact: string | null = null;
+
+function loadObserverNextArtifact(): string {
+  if (cachedObserverNextArtifact !== null) return cachedObserverNextArtifact;
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    // Published package: the root build copies the workspace artifact beside this module.
+    path.join(moduleDir, "observer-app.html"),
+    // Repo checkout (src/ or dist/ both sit one level under the root): the workspace build.
+    path.join(moduleDir, "..", "observer", "dist", "index.html")
+  ];
+  for (const candidate of candidates) {
+    let html: string;
+    try {
+      html = readFileSync(candidate, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    if (!html.includes(OBSERVER_NEXT_SLOT)) {
+      throw new Error(`Observer artifact at ${candidate} has no observer-data slot.`);
+    }
+    cachedObserverNextArtifact = html;
+    return html;
+  }
+  throw new Error(
+    "HUMANISH_OBSERVER=next needs the prebuilt observer artifact; run `pnpm --filter humanish-observer build` in the repo, or reinstall the package."
+  );
+}
+
+function renderObserverNextHtml(data: ObserverData): string {
+  return loadObserverNextArtifact()
+    .replace(OBSERVER_NEXT_SLOT, `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
+    .replace(/<title>[^<]*<\/title>/, `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
+}
+
 function renderObserverHtml(data: ObserverData): string {
+  if (process.env.HUMANISH_OBSERVER === "next") {
+    return renderObserverNextHtml(data);
+  }
   return `<!doctype html>
 <html lang="en" data-theme="dark">
 <head>

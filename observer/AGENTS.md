@@ -48,6 +48,9 @@ From the repo root (pnpm workspace):
 - Register behavior is the site's three-state contract: system scheme by
   default, `data-theme` override on `<html>`, `humanish-theme` storage key.
   No new colors — every color reads a humanish token.
-- This workspace publishes nothing to npm. The built artifact gets stamped
-  into run bundles by the CLI at cutover (#426 stage 5); until then the
-  shipping renderer remains `src/observer-assets.ts`.
+- The CLI consumes the built artifact behind `HUMANISH_OBSERVER=next`
+  (stage 3): the root build copies `observer/dist/index.html` to
+  `dist/observer-app.html`, and `src/observer.ts` injects each run's snapshot
+  into the slot (mirroring `scripts/inject.ts`). Default behavior stays the
+  legacy renderer (`src/observer-assets.ts`) until the parity sign-off flips
+  the default at cutover (#426 stage 5).

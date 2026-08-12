@@ -1,3 +1,4 @@
+import { formatDuration, keyframeHref } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
@@ -19,12 +20,21 @@ function evidenceLines(plain: string): TerminalLine[] {
 // pretending. The full player — stage, click pins, scrubber, filmstrip, tabs — is
 // the stage-3 parity build (#426).
 export function ParticipantStub({ data, stream }: { data: ObserverData; stream: ObserverStream }) {
+  const keyframe = keyframeHref(stream);
+  const actor = stream.actor;
+  const affordance = actor?.affordanceUse;
   return (
     <div className="stub">
       <p className="stub-note o-mono">
         Review player (stage · pins · filmstrip · tabs) lands in stage 3 of #426 — below is the recorded
         evidence this lane already carries.
       </p>
+      {keyframe !== null ? (
+        <div className="blk">
+          <span className="o-label">Keyframe — last recorded screenshot</span>
+          <img className="stub-keyframe" src={keyframe} alt={`Keyframe from lane ${stream.label}`} />
+        </div>
+      ) : null}
       <div className="kv">
         <span className="k">Persona</span>
         <span className="v">{data.run.persona.name}</span>
@@ -50,6 +60,36 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
         ) : null}
         <span className="k">Updated</span>
         <span className="v">{stream.updatedAt}</span>
+        {actor ? (
+          <>
+            <span className="k">Actor</span>
+            <span className="v">
+              {actor.provider}
+              {actor.ids.model !== undefined ? ` · ${actor.ids.model}` : ""}
+            </span>
+            <span className="k">Duration</span>
+            <span className="v">{formatDuration(actor.durationMs)}</span>
+          </>
+        ) : null}
+        {affordance ? (
+          <>
+            <span className="k">Affordances</span>
+            <span className="v">
+              {Object.entries(affordance.counts)
+                .map(([kind, count]) => `${kind} ${count}`)
+                .join(" · ")}
+              {` · shortcuts ${affordance.shortcutTotal}`}
+            </span>
+          </>
+        ) : null}
+        {actor?.estimatedCost && typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
+          <>
+            <span className="k">Est. lane cost</span>
+            <span className="v">
+              ~${actor.estimatedCost.estimatedCostUsd.toFixed(2)} (rates as of {actor.estimatedCost.ratesAsOf})
+            </span>
+          </>
+        ) : null}
       </div>
       {stream.terminalPlain !== "" ? (
         <div className="blk">
