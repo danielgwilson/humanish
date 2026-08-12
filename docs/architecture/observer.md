@@ -159,3 +159,15 @@ Intentionally still adapter work:
 - Codex TUI live follow after workspace trust bootstrap;
 - richer screenshot/trace galleries across multi-step product journeys;
 - reviewer acceptance gates over real product behavior.
+
+## Rebuild in progress (#426)
+
+The rendering layer is being rebuilt as the `observer/` workspace (Vite
+single-file build on shadcn/Base UI + `@humanish` registry tokens): stage 1
+froze `humanish.observer-data.v1` against goldens
+(`tests/observer-data-contract.test.ts`), stage 2 scaffolded the workspace
+(`observer/AGENTS.md`). Until cutover (stage 5), the shipping renderer remains
+`src/observer-assets.ts` and everything above describes it; the workspace's own
+tests pin the rebuilt artifact's durability constraints (self-contained single
+file, no network references — note today's renderer still links Google Fonts,
+which the rebuild removes).

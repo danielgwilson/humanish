@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Humanish Observer</title>
+    <script>
+      // Pre-paint register restore — the same three-state contract as humanish.dev:
+      // system scheme by default (no JS needed), a persisted explicit choice wins.
+      (function () {
+        try {
+          var t = localStorage.getItem("humanish-theme");
+          if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>This Observer renders local run evidence with JavaScript. Inspect the run bundle directly at <code>../run.json</code>.</noscript>
+    <script id="observer-data" type="application/json">__HUMANISH_OBSERVER_DATA__</script>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>
