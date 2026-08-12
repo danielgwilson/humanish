@@ -264,6 +264,8 @@ h1 {
   font-optical-sizing: auto;
   color: var(--hero-head);
 }
+.wm-h1 { font-family: var(--sans); font-weight: 600; letter-spacing: -.01em }
+.wm-h1 .ish { font-family: var(--serif); font-weight: 400; font-size: 1.1em; line-height: 1 }
 .lede { font-size: 16.5px; color: var(--hero-body); max-width: 56ch; margin-bottom: 28px }
 .cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 26px }
 .console {
