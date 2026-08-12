@@ -363,6 +363,13 @@ a:hover {
   background: var(--mineral);
   overflow: hidden;
 }
+.thumb .keyframe {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
 .thumb-term {
   background: var(--dz);
   padding: 14px 18px;
@@ -460,6 +467,13 @@ a:hover {
   background: var(--dz);
   border-radius: 10px;
   padding: 16px 18px;
+}
+.stub-keyframe {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-panel);
 }
 .verbatim {
   font-family: var(--mono);

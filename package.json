@@ -49,7 +49,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node --eval \"import('node:fs').then(({ chmodSync }) => chmodSync('dist/cli.js', 0o755))\"",
+    "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && node --eval \"import('node:fs').then(({ chmodSync, copyFileSync }) => { chmodSync('dist/cli.js', 0o755); copyFileSync('observer/dist/index.html', 'dist/observer-app.html'); })\"",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "humanish": "tsx src/cli.ts",
     "pack:dry-run": "npm pack --dry-run",

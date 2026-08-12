@@ -94,3 +94,57 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(container.textContent).toContain("opened without run data");
   });
 });
+
+// A live-shaped stream, grafted onto the frozen golden IN THE TEST (the committed
+// goldens stay dry-run; a live-shaped golden lands with the contract-addition PR).
+// Shapes mirror humanish.actor-trace.v1 as produced by the computer-use route.
+function liveShapedData(): ObserverData {
+  const clone = structuredClone(firstRun) as unknown as { streams: Array<Record<string, unknown>> };
+  const stream = clone.streams[0];
+  if (!stream) throw new Error("fixture has no stream");
+  stream.timeline = []; // dry-run warn events would outrank the notable completion below
+  stream.actor = {
+    provider: "computer-use-loop",
+    durationMs: 191_864,
+    status: "passed",
+    completionReason: "budget_reached",
+    reason: "estimated spend $5.14 crossed execution.caps.maxUsd=$5 after productive activity",
+    ids: { model: "synthetic-model" },
+    items: [
+      {
+        id: "screenshot-001",
+        kind: "screenshot",
+        lifecycle: "completed",
+        title: "turn-00-start",
+        screenshotRef: { path: "screenshots/lane/turn-00-start.png", redaction: "none" }
+      },
+      { id: "ui_action-001", kind: "ui_action", lifecycle: "completed", title: "keypress TAB" },
+      {
+        id: "screenshot-002",
+        kind: "screenshot",
+        lifecycle: "completed",
+        title: "turn-01",
+        screenshotRef: { path: "screenshots/lane/turn-01.png", redaction: "none" }
+      }
+    ],
+    affordanceUse: {
+      schema: "humanish.affordance-use.v1",
+      counts: { keyboard: 2, pointer: 1 },
+      total: 3,
+      shortcutTotal: 0
+    }
+  };
+  return clone as unknown as ObserverData;
+}
+
+describe("observer scaffold rendering a live-shaped lane", () => {
+  it("shows the keyframe thumb (last screenshot) and the ⚑ notable reason verbatim", async () => {
+    await mount(<App data={liveShapedData()} />);
+    const img = container.querySelector(".card .keyframe");
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
+    const card = container.querySelector(".card");
+    expect(card?.textContent).toContain("budget cap");
+    expect(card?.textContent).toContain("crossed execution.caps.maxUsd=$5");
+  });
+});

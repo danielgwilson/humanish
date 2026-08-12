@@ -166,8 +166,13 @@ The rendering layer is being rebuilt as the `observer/` workspace (Vite
 single-file build on shadcn/Base UI + `@humanish` registry tokens): stage 1
 froze `humanish.observer-data.v1` against goldens
 (`tests/observer-data-contract.test.ts`), stage 2 scaffolded the workspace
-(`observer/AGENTS.md`). Until cutover (stage 5), the shipping renderer remains
-`src/observer-assets.ts` and everything above describes it; the workspace's own
-tests pin the rebuilt artifact's durability constraints (self-contained single
-file, no network references — note today's renderer still links Google Fonts,
-which the rebuild removes).
+(`observer/AGENTS.md`), and stage 3 is wiring it up behind
+`HUMANISH_OBSERVER=next`: the root build copies the workspace artifact to
+`dist/observer-app.html`, and `renderObserverHtml` — the one choke point every
+surface (observe, watch, serve, labs) funnels through — injects the run's
+snapshot into it when the env var is set (`tests/observer-next.test.ts` pins
+both sides of the switch). Until cutover (stage 5), the shipping renderer
+remains `src/observer-assets.ts` by default and everything above describes it;
+the workspace's own tests pin the rebuilt artifact's durability constraints
+(self-contained single file, no network references — note today's renderer
+still links Google Fonts, which the rebuild removes).

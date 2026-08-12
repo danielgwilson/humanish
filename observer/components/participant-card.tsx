@@ -1,9 +1,11 @@
+import { formatDuration, keyframeHref } from "@/lib/artifact-href";
 import type { ObserverStream } from "@/lib/observer-data";
+import { signalFor } from "@/lib/signal";
 
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
 
 const PASS = new Set<string>(["passed", "complete"]);
-const NOTABLE = new Set<string>(["abandoned", "incomplete", "blocked", "timed_out", "failed"]);
+const MUTED = new Set<string>(["abandoned", "incomplete", "blocked", "timed_out", "failed"]);
 
 function terminalLines(plain: string): TerminalLine[] {
   return plain
@@ -19,25 +21,28 @@ function terminalLines(plain: string): TerminalLine[] {
 
 function statusChip(stream: ObserverStream) {
   if (PASS.has(stream.status)) return <span className="chip chip-pass">{stream.statusLabel}</span>;
-  if (NOTABLE.has(stream.status)) return <span className="chip chip-dot chip-mute">{stream.statusLabel}</span>;
+  if (MUTED.has(stream.status)) return <span className="chip chip-dot chip-mute">{stream.statusLabel}</span>;
   return <span className="chip chip-dot">{stream.statusLabel}</span>;
 }
 
 // One card answers one question — "open this participant?" (#426): header bar
-// (idx + lane + status chip), evidence thumb, meta line, then ONE signal line —
-// a flagged event verbatim when something is notable, the lane summary otherwise.
+// (idx + lane + status chip), evidence thumb (keyframe when the lane recorded
+// screenshots), meta line, then ONE signal line — a ⚑ typed badge with the recorded
+// reason verbatim when something is notable, the closest report line otherwise.
 export function ParticipantCard({ stream, onOpen }: { stream: ObserverStream; onOpen: (id: string) => void }) {
   const idx = String(stream.sim.index).padStart(2, "0");
-  const warn = stream.timeline.find((event) => event.level === "warn");
+  const keyframe = keyframeHref(stream);
+  const signal = signalFor(stream);
   const meta = [
     stream.kindLabel,
     stream.sim.mode,
-    stream.viewport ? `${stream.viewport.width}×${stream.viewport.height}` : stream.transport
+    stream.viewport ? `${stream.viewport.width}×${stream.viewport.height}` : stream.transport,
+    ...(stream.actor ? [formatDuration(stream.actor.durationMs)] : [])
   ].join(" · ");
   const showTerminal = (stream.kind === "terminal" || stream.kind === "tui") && stream.terminalPlain !== "";
 
   return (
-    <article className={NOTABLE.has(stream.status) ? "panel card gaveup" : "panel card"}>
+    <article className={MUTED.has(stream.status) ? "panel card gaveup" : "panel card"}>
       <button
         type="button"
         className="open-overlay"
@@ -51,7 +56,11 @@ export function ParticipantCard({ stream, onOpen }: { stream: ObserverStream; on
         </span>
         {statusChip(stream)}
       </header>
-      {showTerminal ? (
+      {keyframe !== null ? (
+        <div className="thumb">
+          <img className="keyframe" src={keyframe} alt={`Keyframe from lane ${stream.label}`} loading="lazy" />
+        </div>
+      ) : showTerminal ? (
         <div className="thumb thumb-term">
           <TerminalCast lines={terminalLines(stream.terminalPlain)} />
         </div>
@@ -65,8 +74,8 @@ export function ParticipantCard({ stream, onOpen }: { stream: ObserverStream; on
       <p className="pmeta">{meta}</p>
       <footer className="pcap">
         <p className="prep">
-          <span className="plab">{warn ? <><span className="flag">⚑</span> {warn.type}</> : "summary"}</span>
-          <q>{warn ? warn.message : stream.sim.summary}</q>
+          <span className="plab">{signal.flagged ? <><span className="flag">⚑</span> {signal.label}</> : signal.label}</span>
+          <q>{signal.text}</q>
         </p>
       </footer>
     </article>
