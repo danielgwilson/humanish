@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "./components/empty-state";
 import { IconRail } from "./components/icon-rail";
 import { ParticipantStub } from "./components/participant-stub";
+import { Player } from "./components/player";
 import { Sidebar } from "./components/sidebar";
 import { StudyGrid } from "./components/study-grid";
 import { Topbar, type GridFilters } from "./components/topbar";
 import type { ObserverData } from "./lib/observer-data";
+import { buildPlayerModel } from "./lib/player-model";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 
@@ -16,6 +18,7 @@ export function App({ data }: { data: ObserverData | null }) {
 
   const streams = data?.streams ?? [];
   const selected = selectedId !== null ? streams.find((s) => s.id === selectedId) ?? null : null;
+  const playerModel = selected ? buildPlayerModel(selected) : null;
 
   const step = (delta: number) => {
     if (streams.length === 0) return;
@@ -24,12 +27,12 @@ export function App({ data }: { data: ObserverData | null }) {
     if (nextStream) setSelectedId(nextStream.id);
   };
 
+  // Escape returns to the grid. Arrow keys belong to the player (frame stepping,
+  // per the review-player spec); participants page via the topbar pager.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
       if (event.key === "Escape") setSelectedId(null);
-      if (selectedId !== null && event.key === "ArrowLeft") step(-1);
-      if (selectedId !== null && event.key === "ArrowRight") step(1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -60,9 +63,13 @@ export function App({ data }: { data: ObserverData | null }) {
           onRuns={() => setSelectedId(null)}
           onStep={step}
         />
-        <div className="content">
+        <div className={selected && playerModel ? "content player-host" : "content"}>
           {selected ? (
-            <ParticipantStub data={data} stream={selected} />
+            playerModel ? (
+              <Player data={data} stream={selected} model={playerModel} />
+            ) : (
+              <ParticipantStub data={data} stream={selected} />
+            )
           ) : (
             <StudyGrid data={data} streams={visible} onOpen={setSelectedId} />
           )}
