@@ -1,0 +1,521 @@
+{
+  "schema": "humanish.observer-data.v1",
+  "schemaVersion": 1,
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "run": {
+    "runId": "golden-first-run",
+    "mode": "dry-run",
+    "status": "contract_proof_only",
+    "title": "Humanish CLI first-run smoke - Open-Source Maintainer Trial User",
+    "createdAt": "2026-07-12T22:49:41.760Z",
+    "simCount": 4,
+    "persona": {
+      "id": "synthetic-new-user",
+      "name": "Open-Source Maintainer Trial User",
+      "source": "humanish/personas/synthetic-new-user.yaml",
+      "sourceDigest": "2e25c4252594"
+    },
+    "scenario": {
+      "id": "first-run-smoke",
+      "title": "Humanish CLI first-run smoke",
+      "goal": "Prove that Humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
+      "source": "humanish/scenarios/first-run-smoke.yaml",
+      "sourceDigest": "e22daa0dc353"
+    },
+    "packageName": "humanish",
+    "redaction": {
+      "status": "passed",
+      "notes": "Dry-run bundle contains synthetic contract proof only."
+    },
+    "lifecycle": [
+      {
+        "at": "2026-07-12T22:49:41.760Z",
+        "event": "run.created",
+        "message": "Synthetic dry-run contract bundle created with 4 sims."
+      },
+      {
+        "at": "2026-07-12T22:49:41.760Z",
+        "event": "persona.selected",
+        "message": "Selected public-safe synthetic persona."
+      },
+      {
+        "at": "2026-07-12T22:49:41.760Z",
+        "event": "scenario.selected",
+        "message": "Selected public-safe first-run scenario."
+      },
+      {
+        "at": "2026-07-12T22:49:41.760Z",
+        "event": "review.skeleton.created",
+        "message": "Created review skeleton without claiming product proof."
+      }
+    ],
+    "knownGaps": [
+      "No browser was launched.",
+      "No product state was verified.",
+      "No model, provider, or E2B substrate was used."
+    ]
+  },
+  "summary": {
+    "streams": 4,
+    "byKind": {
+      "ui": 1,
+      "browser": 0,
+      "terminal": 1,
+      "tui": 1,
+      "codex-ui": 1,
+      "artifact": 0,
+      "summary": 0
+    },
+    "active": 0,
+    "blocked": 0,
+    "warnings": 4
+  },
+  "laneGroups": [],
+  "streams": [
+    {
+      "id": "sim-01-ui",
+      "simId": "sim-01",
+      "kind": "ui",
+      "label": "UI journey",
+      "status": "contract_proof_only",
+      "transport": "polling",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "UI journey"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "UI journey",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace"
+      },
+      "ui": {
+        "route": "/first-run",
+        "intent": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "state": "contract-only"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ],
+      "sim": {
+        "id": "sim-01",
+        "index": 1,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "first-run-smoke",
+        "status": "contract_proof_only",
+        "streamKind": "ui",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Route and viewport contract captured",
+        "summary": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "streamIds": [
+          "sim-01-ui"
+        ],
+        "startedAt": "2026-07-12T22:49:41.760Z",
+        "updatedAt": "2026-07-12T22:49:41.760Z"
+      },
+      "kindLabel": "UI",
+      "statusLabel": "Contract proof",
+      "terminalPlain": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
+      "timeline": [
+        {
+          "id": "event-001-a",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "info",
+          "type": "sim.contract.ready",
+          "message": "UI journey stream contract ready.",
+          "simId": "sim-01",
+          "streamId": "sim-01-ui"
+        },
+        {
+          "id": "event-001-b",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "warn",
+          "type": "sim.live-substrate.missing",
+          "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+          "simId": "sim-01",
+          "streamId": "sim-01-ui"
+        }
+      ]
+    },
+    {
+      "id": "sim-02-terminal",
+      "simId": "sim-02",
+      "kind": "terminal",
+      "label": "CLI actor",
+      "status": "contract_proof_only",
+      "transport": "snapshot",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
+      "embed": {
+        "kind": "terminal",
+        "title": "CLI actor"
+      },
+      "terminal": {
+        "title": "CLI actor",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ],
+      "sim": {
+        "id": "sim-02",
+        "index": 2,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "first-run-smoke",
+        "status": "contract_proof_only",
+        "streamKind": "terminal",
+        "mode": "cli-sim",
+        "progress": 100,
+        "currentStep": "Command transcript contract captured",
+        "summary": "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
+        "streamIds": [
+          "sim-02-terminal"
+        ],
+        "startedAt": "2026-07-12T22:49:41.760Z",
+        "updatedAt": "2026-07-12T22:49:41.760Z"
+      },
+      "kindLabel": "CLI",
+      "statusLabel": "Contract proof",
+      "terminalPlain": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted",
+      "timeline": [
+        {
+          "id": "event-002-a",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "info",
+          "type": "sim.contract.ready",
+          "message": "CLI actor stream contract ready.",
+          "simId": "sim-02",
+          "streamId": "sim-02-terminal"
+        },
+        {
+          "id": "event-002-b",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "warn",
+          "type": "sim.live-substrate.missing",
+          "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+          "simId": "sim-02",
+          "streamId": "sim-02-terminal"
+        }
+      ]
+    },
+    {
+      "id": "sim-03-tui",
+      "simId": "sim-03",
+      "kind": "tui",
+      "label": "TUI actor",
+      "status": "contract_proof_only",
+      "transport": "pty",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
+      "embed": {
+        "kind": "terminal",
+        "title": "TUI actor"
+      },
+      "terminal": {
+        "title": "TUI actor",
+        "format": "ansi",
+        "stdin": "disabled",
+        "tail": "\u001b[2mHumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ],
+      "sim": {
+        "id": "sim-03",
+        "index": 3,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "first-run-smoke",
+        "status": "contract_proof_only",
+        "streamKind": "tui",
+        "mode": "tui-sim",
+        "progress": 100,
+        "currentStep": "Terminal UI frame contract captured",
+        "summary": "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
+        "streamIds": [
+          "sim-03-tui"
+        ],
+        "startedAt": "2026-07-12T22:49:41.760Z",
+        "updatedAt": "2026-07-12T22:49:41.760Z"
+      },
+      "kindLabel": "TUI",
+      "statusLabel": "Contract proof",
+      "terminalPlain": "Humanish TUI frame\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
+      "timeline": [
+        {
+          "id": "event-003-a",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "info",
+          "type": "sim.contract.ready",
+          "message": "TUI actor stream contract ready.",
+          "simId": "sim-03",
+          "streamId": "sim-03-tui"
+        },
+        {
+          "id": "event-003-b",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "warn",
+          "type": "sim.live-substrate.missing",
+          "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+          "simId": "sim-03",
+          "streamId": "sim-03-tui"
+        }
+      ]
+    },
+    {
+      "id": "sim-04-codex-ui",
+      "simId": "sim-04",
+      "kind": "codex-ui",
+      "label": "Codex UI",
+      "status": "contract_proof_only",
+      "transport": "app-server",
+      "updatedAt": "2026-07-12T22:49:41.760Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "Codex UI"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "Codex UI",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned"
+      },
+      "ui": {
+        "route": "/codex/session",
+        "intent": "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+        "state": "contract-only"
+      },
+      "codex": {
+        "provider": "codex-app-server",
+        "state": "not_connected",
+        "contract": "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links."
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ],
+      "sim": {
+        "id": "sim-04",
+        "index": 4,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "first-run-smoke",
+        "status": "contract_proof_only",
+        "streamKind": "codex-ui",
+        "mode": "codex-app-sim",
+        "progress": 100,
+        "currentStep": "App-server embed contract captured",
+        "summary": "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+        "streamIds": [
+          "sim-04-codex-ui"
+        ],
+        "startedAt": "2026-07-12T22:49:41.760Z",
+        "updatedAt": "2026-07-12T22:49:41.760Z"
+      },
+      "kindLabel": "Codex UI",
+      "statusLabel": "Contract proof",
+      "terminalPlain": "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
+      "timeline": [
+        {
+          "id": "event-004-a",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "info",
+          "type": "sim.contract.ready",
+          "message": "Codex UI stream contract ready.",
+          "simId": "sim-04",
+          "streamId": "sim-04-codex-ui"
+        },
+        {
+          "id": "event-004-b",
+          "at": "2026-07-12T22:49:41.760Z",
+          "level": "warn",
+          "type": "sim.live-substrate.missing",
+          "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+          "simId": "sim-04",
+          "streamId": "sim-04-codex-ui"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "info",
+      "type": "observer.contract.created",
+      "message": "Created public-safe observer stream contract."
+    },
+    {
+      "id": "event-001-a",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "UI journey stream contract ready.",
+      "simId": "sim-01",
+      "streamId": "sim-01-ui"
+    },
+    {
+      "id": "event-001-b",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-01",
+      "streamId": "sim-01-ui"
+    },
+    {
+      "id": "event-002-a",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "CLI actor stream contract ready.",
+      "simId": "sim-02",
+      "streamId": "sim-02-terminal"
+    },
+    {
+      "id": "event-002-b",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-02",
+      "streamId": "sim-02-terminal"
+    },
+    {
+      "id": "event-003-a",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "TUI actor stream contract ready.",
+      "simId": "sim-03",
+      "streamId": "sim-03-tui"
+    },
+    {
+      "id": "event-003-b",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-03",
+      "streamId": "sim-03-tui"
+    },
+    {
+      "id": "event-004-a",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "Codex UI stream contract ready.",
+      "simId": "sim-04",
+      "streamId": "sim-04-codex-ui"
+    },
+    {
+      "id": "event-004-b",
+      "at": "2026-07-12T22:49:41.760Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "simId": "sim-04",
+      "streamId": "sim-04-codex-ui"
+    }
+  ],
+  "artifactLinks": [
+    {
+      "label": "run bundle",
+      "href": "../run.json",
+      "kind": "bundle"
+    },
+    {
+      "label": "review JSON",
+      "href": "../review.json",
+      "kind": "review"
+    },
+    {
+      "label": "review Markdown",
+      "href": "../review.md",
+      "kind": "review"
+    },
+    {
+      "label": "event log",
+      "href": "../events.ndjson",
+      "kind": "events"
+    },
+    {
+      "label": "observer data",
+      "href": "observer-data.json",
+      "kind": "observer"
+    }
+  ],
+  "publicSafety": {
+    "publishable": false,
+    "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+  },
+  "raw": {
+    "bundleSchema": "humanish.run-bundle.v1",
+    "artifactRoot": ".humanish/runs/golden-first-run"
+  }
+}
