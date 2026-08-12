@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { formatDuration, runArtifactHref } from "../lib/artifact-href";
+import type { ObserverStream } from "../lib/observer-data";
+import { buildPlayerModel, parseClickCoord } from "../lib/player-model";
 import { NOTABLE_COMPLETION } from "../lib/signal";
 
 describe("runArtifactHref containment", () => {
@@ -31,6 +33,40 @@ describe("notable completions", () => {
     ]);
     expect(NOTABLE_COMPLETION["goal_satisfied"]).toBeUndefined();
     expect(NOTABLE_COMPLETION["turn_completed"]).toBeUndefined();
+  });
+});
+
+describe("player model", () => {
+  function streamWith(items: unknown[], durationMs = 20_000): ObserverStream {
+    return { actor: { items, durationMs } } as unknown as ObserverStream;
+  }
+
+  it("parses recorded click coordinates from action titles, nothing else", () => {
+    expect(parseClickCoord("click (700, 420)")).toEqual({ x: 700, y: 420 });
+    expect(parseClickCoord("double-click (10, 20)")).toEqual({ x: 10, y: 20 });
+    expect(parseClickCoord("keypress TAB")).toBeNull();
+    expect(parseClickCoord("click somewhere")).toBeNull();
+  });
+
+  it("associates each row with the most recent frame, clamping pre-frame actions to 0", () => {
+    const model = buildPlayerModel(
+      streamWith([
+        { id: "a0", kind: "ui_action", lifecycle: "completed", title: "wait" },
+        { id: "s0", kind: "screenshot", lifecycle: "completed", title: "turn-00", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
+        { id: "a1", kind: "ui_action", lifecycle: "completed", title: "click (5, 6)" },
+        { id: "s1", kind: "screenshot", lifecycle: "completed", title: "turn-01", screenshotRef: { path: "shots/t1.png", redaction: "none" } }
+      ])
+    );
+    expect(model).not.toBeNull();
+    expect(model?.frames.map((f) => f.href)).toEqual(["../shots/t0.png", "../shots/t1.png"]);
+    expect(model?.rows.map((r) => r.frameIndex)).toEqual([0, 0, 0, 1]);
+    expect(model?.rows[2]?.coord).toEqual({ x: 5, y: 6 });
+    expect(model?.avgFrameMs).toBe(10_000);
+  });
+
+  it("returns null for a lane with no frames", () => {
+    expect(buildPlayerModel(streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]))).toBeNull();
+    expect(buildPlayerModel({} as unknown as ObserverStream)).toBeNull();
   });
 });
 

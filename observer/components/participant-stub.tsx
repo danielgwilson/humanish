@@ -26,8 +26,8 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
   return (
     <div className="stub">
       <p className="stub-note o-mono">
-        Review player (stage · pins · filmstrip · tabs) lands in stage 3 of #426 — below is the recorded
-        evidence this lane already carries.
+        This lane recorded no screenshot frames, so the review player has no timeline to run — below is
+        the recorded evidence it does carry.
       </p>
       {keyframe !== null ? (
         <div className="blk">

@@ -16,6 +16,8 @@ let root: Root;
 
 beforeAll(() => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+  // jsdom implements neither; the player's feed auto-follow calls scrollIntoView.
+  Element.prototype.scrollIntoView = () => undefined;
   // jsdom has no matchMedia; the register contract (lib/humanish/theme.ts) reads it.
   window.matchMedia = ((query: string) => ({
     matches: false,
@@ -76,12 +78,12 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
-  it("opens a participant from its card and returns on Escape", async () => {
+  it("opens a frameless participant into the evidence stub and returns on Escape", async () => {
     await mount(<App data={data} />);
     const overlay = container.querySelector(".open-overlay");
     expect(overlay).not.toBeNull();
     await click(overlay as Element);
-    expect(container.textContent).toContain("Review player");
+    expect(container.textContent).toContain("no screenshot frames");
     expect(container.querySelector(".pager")).not.toBeNull();
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -110,6 +112,7 @@ function liveShapedData(): ObserverData {
     completionReason: "budget_reached",
     reason: "estimated spend $5.14 crossed execution.caps.maxUsd=$5 after productive activity",
     ids: { model: "synthetic-model" },
+    redaction: { status: "passed", screenshots: "raw", notes: "synthetic" },
     items: [
       {
         id: "screenshot-001",
@@ -125,7 +128,8 @@ function liveShapedData(): ObserverData {
         lifecycle: "completed",
         title: "turn-01",
         screenshotRef: { path: "screenshots/lane/turn-01.png", redaction: "none" }
-      }
+      },
+      { id: "ui_action-002", kind: "ui_action", lifecycle: "completed", title: "click (700, 420)" }
     ],
     affordanceUse: {
       schema: "humanish.affordance-use.v1",
@@ -146,5 +150,29 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     const card = container.querySelector(".card");
     expect(card?.textContent).toContain("budget cap");
     expect(card?.textContent).toContain("crossed execution.caps.maxUsd=$5");
+  });
+
+  it("opens into the review player: stage, filmstrip seek, pins, tabs", async () => {
+    await mount(<App data={liveShapedData()} />);
+    await click(container.querySelector(".open-overlay") as Element);
+
+    // Player mounted at frame 0 with the full feed in the Actions tab.
+    expect(container.querySelector(".player")).not.toBeNull();
+    const stageImg = () => container.querySelector(".stage-box img")?.getAttribute("src");
+    expect(stageImg()).toBe("../screenshots/lane/turn-00-start.png");
+    expect(container.querySelectorAll(".filmstrip .fs")).toHaveLength(2);
+    expect(container.querySelectorAll(".arow")).toHaveLength(4);
+
+    // Filmstrip seek advances the stage; the click action's parsed pin renders on frame 1.
+    const thumbs = container.querySelectorAll(".filmstrip .fs");
+    await click(thumbs[1] as Element);
+    expect(stageImg()).toBe("../screenshots/lane/turn-01.png");
+    expect(container.querySelectorAll(".pins .spin")).toHaveLength(1);
+
+    // Report tab carries the recorded reason verbatim and the RAW chip shows in transport.
+    const reportTab = [...container.querySelectorAll(".itabs button")].find((b) => b.textContent === "report");
+    await click(reportTab as Element);
+    expect(container.textContent).toContain("crossed execution.caps.maxUsd=$5 after productive activity");
+    expect(container.querySelector(".rawchip")).not.toBeNull();
   });
 });
