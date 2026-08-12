@@ -9,7 +9,7 @@ export default function Hero() {
   return (
     <section className="hero">
       <div className="hero-copy">
-        <h1 className="rev">Instant feedback from<br />real human<Ish /> users</h1>
+        <h1 className="rev">Instant feedback from<br />real <span className="wm-h1">human<Ish /></span> users</h1>
         {/* Mirror obligation: this lede is the site description. Any edit here
             moves layout.tsx DESCRIPTION (meta + OG + Twitter + JSON-LD) and the
             llms.txt description block in the same commit. */}
