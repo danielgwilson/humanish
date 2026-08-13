@@ -1,4 +1,5 @@
 import { formatDuration, keyframeHref } from "@/lib/artifact-href";
+import { liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
 import { signalFor } from "@/lib/signal";
 
@@ -20,6 +21,7 @@ function terminalLines(plain: string): TerminalLine[] {
 }
 
 function statusChip(stream: ObserverStream) {
+  if (liveEmbedUrl(stream) !== null) return <span className="chip chip-dot">Live</span>;
   if (PASS.has(stream.status)) return <span className="chip chip-pass">{stream.statusLabel}</span>;
   if (MUTED.has(stream.status)) return <span className="chip chip-dot chip-mute">{stream.statusLabel}</span>;
   return <span className="chip chip-dot">{stream.statusLabel}</span>;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { formatDuration, runArtifactHref } from "../lib/artifact-href";
+import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
 import type { ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel, parseClickCoord } from "../lib/player-model";
 import { NOTABLE_COMPLETION } from "../lib/signal";
@@ -67,6 +68,56 @@ describe("player model", () => {
   it("returns null for a lane with no frames", () => {
     expect(buildPlayerModel(streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]))).toBeNull();
     expect(buildPlayerModel({} as unknown as ObserverStream)).toBeNull();
+  });
+});
+
+describe("live helpers", () => {
+  const stream = (over: object): ObserverStream => over as unknown as ObserverStream;
+
+  it("followTarget follows the live edge only from the newest frame", () => {
+    expect(followTarget(4, 5, 8)).toBe(7); // viewer at last frame → follow growth
+    expect(followTarget(2, 5, 8)).toBe(2); // scrubbed back → instant replay stays
+    expect(followTarget(4, 5, 5)).toBe(4); // no growth → no move
+    expect(followTarget(9, 10, 3)).toBe(2); // shrink clamps into range
+  });
+
+  it("liveEmbedUrl honors the injected URL and the #357 ended flag", () => {
+    expect(liveEmbedUrl(stream({ embed: { kind: "iframe", url: "https://live.example/d" } }))).toBe("https://live.example/d");
+    expect(liveEmbedUrl(stream({ embed: { kind: "iframe", url: "https://live.example/d" }, liveEnded: true }))).toBeNull();
+    expect(liveEmbedUrl(stream({ embed: { kind: "screenshot", url: "shot.png" } }))).toBeNull();
+    expect(liveEmbedUrl(stream({}))).toBeNull();
+  });
+
+  it("fetchObserverData accepts only ok responses carrying the schema", async () => {
+    const ok = (body: unknown) =>
+      (async () => ({ ok: true, json: async () => body })) as unknown as typeof fetch;
+    expect(await fetchObserverData(ok({ schema: "humanish.observer-data.v1", streams: [] }))).not.toBeNull();
+    expect(await fetchObserverData(ok({ schema: "something.else" }))).toBeNull();
+    expect(await fetchObserverData((async () => ({ ok: false })) as unknown as typeof fetch)).toBeNull();
+    expect(
+      await fetchObserverData((async () => {
+        throw new Error("network");
+      }) as unknown as typeof fetch)
+    ).toBeNull();
+  });
+
+  it("fetchHistoryIndex parses valid rows and skips malformed ones", async () => {
+    const impl = (async () => ({
+      ok: true,
+      json: async () => ({
+        latestRunId: "a",
+        runs: [
+          { runId: "a", href: "/_humanish/runs/a/observer/index.html", status: "pass", mode: "live", streamCount: 2 },
+          { nope: true },
+          { runId: "b", href: "/_humanish/runs/b/observer/index.html" }
+        ]
+      })
+    })) as unknown as typeof fetch;
+    const index = await fetchHistoryIndex(impl);
+    expect(index?.latestRunId).toBe("a");
+    expect(index?.runs.map((run) => run.runId)).toEqual(["a", "b"]);
+    expect(index?.runs[1]?.status).toBe("unknown");
+    expect(await fetchHistoryIndex((async () => ({ ok: false })) as unknown as typeof fetch)).toBeNull();
   });
 });
 
