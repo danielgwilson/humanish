@@ -1,29 +1,21 @@
-import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { renderObserver } from "../src/observer.js";
+import { observerNextArtifactNeedsBuild, renderObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
 import { runDryRun } from "../src/run.js";
 
 // The HUMANISH_OBSERVER=next seam (#426 stage 3): renderObserverHtml is the one choke
-// point every surface funnels through, so these two tests pin both sides of the switch —
+// point every surface funnels through, so these tests pin both sides of the switch —
 // the flag renders the prebuilt workspace artifact with the snapshot injected, and the
 // default path keeps producing the legacy renderer untouched until parity sign-off.
-
-const ARTIFACT = path.resolve("observer/dist/index.html");
-
-beforeAll(() => {
-  // Root `pnpm check` runs tests before the root build; make the workspace artifact
-  // self-sufficiently present the same way CI's observer job builds it.
-  if (!existsSync(ARTIFACT)) {
-    execSync("pnpm --filter humanish-observer build", { cwd: path.resolve("."), stdio: "pipe" });
-  }
-});
+//
+// No pre-build here on purpose: in a repo checkout the flag AUTO-BUILDS a missing or
+// stale workspace artifact (the fresh-pull failure mode), so running this suite cold —
+// exactly what CI's root test job does — exercises that path for real every run.
 
 async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-next-"));
@@ -66,6 +58,46 @@ describe("HUMANISH_OBSERVER=next", () => {
       // and the string-concat client. The artifact's placeholder never appears on this path.
       expect(html).toContain("fonts.googleapis");
       expect(html).not.toContain("__HUMANISH_OBSERVER_DATA__");
+    });
+  });
+});
+
+describe("observerNextArtifactNeedsBuild", () => {
+  async function withWorkspace<T>(callback: (workspaceDir: string, artifactPath: string) => Promise<T>): Promise<T> {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-stale-"));
+    const workspaceDir = path.join(tempRoot, "observer");
+    const artifactPath = path.join(workspaceDir, "dist", "index.html");
+    try {
+      await mkdir(path.join(workspaceDir, "lib"), { recursive: true });
+      await mkdir(path.join(workspaceDir, "dist"), { recursive: true });
+      await writeFile(path.join(workspaceDir, "lib", "data.ts"), "export {};\n", "utf8");
+      return await callback(workspaceDir, artifactPath);
+    } finally {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  }
+
+  it("wants a build when the artifact is missing (the fresh-pull failure mode)", async () => {
+    await withWorkspace(async (workspaceDir, artifactPath) => {
+      expect(observerNextArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(true);
+    });
+  });
+
+  it("is satisfied by an artifact newer than every source", async () => {
+    await withWorkspace(async (workspaceDir, artifactPath) => {
+      await writeFile(artifactPath, "<!doctype html>", "utf8");
+      const future = new Date(Date.now() + 60_000);
+      await utimes(artifactPath, future, future);
+      expect(observerNextArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(false);
+    });
+  });
+
+  it("wants a rebuild when a source outdates the artifact (the stale-pull failure mode)", async () => {
+    await withWorkspace(async (workspaceDir, artifactPath) => {
+      await writeFile(artifactPath, "<!doctype html>", "utf8");
+      const past = new Date(Date.now() - 60_000);
+      await utimes(artifactPath, past, past);
+      expect(observerNextArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(true);
     });
   });
 });
