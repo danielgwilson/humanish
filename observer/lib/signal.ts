@@ -37,7 +37,7 @@ export function signalFor(stream: ObserverStream): SignalLine {
   for (let i = items.length - 1; i >= 0; i -= 1) {
     const item = items[i];
     if (item && item.kind === "message" && item.text !== undefined && item.text !== "") {
-      return { flagged: false, label: "final message — verbatim", text: item.text };
+      return { flagged: false, label: "final message", text: item.text };
     }
   }
   return { flagged: false, label: "summary", text: stream.sim.summary };

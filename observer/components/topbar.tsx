@@ -28,12 +28,17 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep }: T
     <div className="topbar">
       <Wordmark label="humanish Observer" />
       <nav className="crumbs" aria-label="Breadcrumbs">
+        {selected ? (
+          <button type="button" className="crumb-back" aria-label="Back to participants" onClick={onRuns}>
+            ‹
+          </button>
+        ) : null}
         <button type="button" className="crumb-link" onClick={onRuns}>runs</button>
         <span className="sep">/</span>
         <span className="trunc">{data.run.runId}</span>
         <span className="sep">/</span>
         {selected ? (
-          <span className="here">{selected.label} ⌄</span>
+          <span className="here">{selected.laneId ?? selected.label} ⌄</span>
         ) : (
           <span className="here">participants ⌄</span>
         )}
