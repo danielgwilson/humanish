@@ -408,6 +408,11 @@ export interface RunStream {
     url?: string;
     title?: string;
   };
+  /** Set by the attached watch server when the lane's sandbox is gone (#357): the injected
+   *  live URL would render a provider error page, so viewers fall back to recorded evidence.
+   *  Runtime-only — never persisted into bundles; declared here because the served
+   *  observer-data carries it and the client is typed against this contract. */
+  liveEnded?: boolean;
   /**
    * Browser CSS layout viewport. Deterministic browser adapters may declare and render this
    * exactly; hosted-desktop CUA producers set it only from a runtime measurement. Historical

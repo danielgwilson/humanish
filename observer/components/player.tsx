@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDuration } from "@/lib/artifact-href";
+import { followTarget, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import type { PlayerModel } from "@/lib/player-model";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
@@ -13,13 +14,27 @@ const SPEEDS = [1, 4, 16] as const;
 // click-to-seek, following the transport. Playback is avg-paced (see player-model.ts)
 // and says so in the transport; it never pretends to be real timing.
 export function Player({ data, stream, model }: { data: ObserverData; stream: ObserverStream; model: PlayerModel }) {
-  const [frame, setFrame] = useState(0);
+  const live = liveEmbedUrl(stream);
+  const watching = live !== null || stream.status === "running";
+  // A live lane opens following the live edge; a finished one opens at frame 0 for review.
+  const [frame, setFrame] = useState(watching ? model.frames.length - 1 : 0);
+  const [following, setFollowing] = useState(watching);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [tab, setTab] = useState<Tab>("actions");
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   const frames = model.frames;
+
+  // A poll grew the timeline: a viewer on the newest frame follows the live edge;
+  // one who scrubbed back is doing instant replay and stays put.
+  const prevCount = useRef(frames.length);
+  useEffect(() => {
+    if (frames.length !== prevCount.current) {
+      setFrame((value) => followTarget(value, prevCount.current, frames.length));
+      prevCount.current = frames.length;
+    }
+  }, [frames.length]);
   const current = frames[Math.min(frame, frames.length - 1)];
   const currentPins = useMemo(
     () => model.rows.filter((row) => row.frameIndex === frame && row.coord !== undefined),
@@ -58,7 +73,14 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
 
   const seek = (index: number) => {
     setPlaying(false);
+    setFollowing(false);
     setFrame(Math.max(0, Math.min(frames.length - 1, index)));
+  };
+
+  const jumpToLive = () => {
+    setPlaying(false);
+    setFollowing(true);
+    setFrame(frames.length - 1);
   };
 
   const actor = stream.actor;
@@ -69,6 +91,19 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
     <div className="player">
       <div className="viewer">
         <div className="stage">
+          {following && live !== null ? (
+            <div className="stage-live">
+              {/* Read-only by construction (round-3 decision): pointer events never reach
+                  the live desktop; intervention is a later, explicit feature. */}
+              <iframe
+                src={live}
+                title={`Live view — ${stream.label}`}
+                allow="clipboard-read; clipboard-write; fullscreen"
+                referrerPolicy="no-referrer"
+              />
+              <span className="live-badge">● live — read-only</span>
+            </div>
+          ) : (
           <div className="stage-box">
             {current ? <img src={current.href} alt={`Frame ${frame + 1} of ${frames.length} — ${current.title}`} /> : null}
             {viewport ? (
@@ -88,6 +123,7 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
               </div>
             ) : null}
           </div>
+          )}
         </div>
         <div className="transport">
           <button type="button" className="tbtn" aria-label={playing ? "Pause" : "Play"} onClick={() => setPlaying((value) => !value)}>
@@ -117,6 +153,12 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
           >
             {speed}×
           </button>
+          {!following && watching ? (
+            <button type="button" className="tbtn live-jump" aria-label="Jump to live" onClick={jumpToLive}>
+              ● live
+            </button>
+          ) : null}
+          {stream.liveEnded === true ? <span className="t-meta">stream ended — recorded evidence</span> : null}
           {raw ? <span className="rawchip" title="Raw local screenshots — redact before publishing">RAW</span> : null}
         </div>
         <div className="filmstrip">

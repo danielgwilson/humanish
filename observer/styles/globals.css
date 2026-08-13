@@ -562,6 +562,44 @@ a:hover {
   inset: 0;
   pointer-events: none;
 }
+.stage-live {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.stage-live iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: var(--dz);
+  /* Read-only viewing: pointer events never reach the live desktop. */
+  pointer-events: none;
+}
+.live-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.tbtn.live-jump {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid var(--accent-dim);
+  padding: 0 9px;
+}
 .spin {
   position: absolute;
   width: 20px;

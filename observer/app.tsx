@@ -7,14 +7,42 @@ import { Player } from "./components/player";
 import { Sidebar } from "./components/sidebar";
 import { StudyGrid } from "./components/study-grid";
 import { Topbar, type GridFilters } from "./components/topbar";
+import { HISTORY_POLL_MS, OBSERVER_POLL_MS, fetchHistoryIndex, fetchObserverData, isServedOrigin, type HistoryIndex } from "./lib/live";
 import type { ObserverData } from "./lib/observer-data";
 import { buildPlayerModel } from "./lib/player-model";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 
-export function App({ data }: { data: ObserverData | null }) {
+export function App({ data: initialData }: { data: ObserverData | null }) {
+  const [data, setData] = useState<ObserverData | null>(initialData);
+  const [history, setHistory] = useState<HistoryIndex | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<GridFilters>(NO_FILTERS);
+
+  // Served mode (watch/serve) polls the sibling snapshot the server refreshes per
+  // request and the run-library index — same cadence and silences as the legacy
+  // client. A file:// artifact never touches the network.
+  useEffect(() => {
+    if (initialData === null || !isServedOrigin(window.location.protocol)) return;
+    let cancelled = false;
+    const fetchImpl: typeof fetch = (input, init) => window.fetch(input, init);
+    const pollData = async () => {
+      const next = await fetchObserverData(fetchImpl);
+      if (!cancelled && next !== null) setData(next);
+    };
+    const pollHistory = async () => {
+      const next = await fetchHistoryIndex(fetchImpl);
+      if (!cancelled) setHistory(next);
+    };
+    void pollHistory();
+    const dataTimer = setInterval(() => void pollData(), OBSERVER_POLL_MS);
+    const historyTimer = setInterval(() => void pollHistory(), HISTORY_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(dataTimer);
+      clearInterval(historyTimer);
+    };
+  }, [initialData]);
 
   const streams = data?.streams ?? [];
   const selected = selectedId !== null ? streams.find((s) => s.id === selectedId) ?? null : null;
@@ -53,7 +81,7 @@ export function App({ data }: { data: ObserverData | null }) {
   return (
     <div className="frame">
       <IconRail runsActive={selected === null} onRuns={() => setSelectedId(null)} />
-      {selected === null ? <Sidebar data={data} onRuns={() => setSelectedId(null)} /> : null}
+      {selected === null ? <Sidebar data={data} history={history} onRuns={() => setSelectedId(null)} /> : null}
       <div className="main">
         <Topbar
           data={data}
@@ -66,9 +94,9 @@ export function App({ data }: { data: ObserverData | null }) {
         <div className={selected && playerModel ? "content player-host" : "content"}>
           {selected ? (
             playerModel ? (
-              <Player data={data} stream={selected} model={playerModel} />
+              <Player key={selected.id} data={data} stream={selected} model={playerModel} />
             ) : (
-              <ParticipantStub data={data} stream={selected} />
+              <ParticipantStub key={selected.id} data={data} stream={selected} />
             )
           ) : (
             <StudyGrid data={data} streams={visible} onOpen={setSelectedId} />

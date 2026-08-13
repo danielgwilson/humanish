@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { App } from "../app";
@@ -100,11 +100,18 @@ describe("observer scaffold rendering the first-run golden", () => {
 // A live-shaped stream, grafted onto the frozen golden IN THE TEST (the committed
 // goldens stay dry-run; a live-shaped golden lands with the contract-addition PR).
 // Shapes mirror humanish.actor-trace.v1 as produced by the computer-use route.
-function liveShapedData(): ObserverData {
+function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): ObserverData {
   const clone = structuredClone(firstRun) as unknown as { streams: Array<Record<string, unknown>> };
   const stream = clone.streams[0];
   if (!stream) throw new Error("fixture has no stream");
   stream.timeline = []; // dry-run warn events would outrank the notable completion below
+  if (options.live) {
+    stream.status = "running";
+    stream.statusLabel = "Running";
+    // The shape the attached watch server injects (withRuntimeStreamUrls, #357).
+    stream.embed = { kind: "iframe", url: "https://live.example/desktop", title: "Live desktop" };
+    if (options.ended) stream.liveEnded = true;
+  }
   stream.actor = {
     provider: "computer-use-loop",
     durationMs: 191_864,
@@ -174,5 +181,63 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     await click(reportTab as Element);
     expect(container.textContent).toContain("crossed execution.caps.maxUsd=$5 after productive activity");
     expect(container.querySelector(".rawchip")).not.toBeNull();
+  });
+
+  it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {
+    await mount(<App data={liveShapedData({ live: true })} />);
+    expect(container.querySelector(".card .chip")?.textContent).toBe("Live");
+    await click(container.querySelector(".open-overlay") as Element);
+
+    const iframe = () => container.querySelector(".stage-live iframe");
+    expect(iframe()?.getAttribute("src")).toBe("https://live.example/desktop");
+
+    // Scrubbing back swaps the stage to recorded frames (instant replay)…
+    const thumbs = container.querySelectorAll(".filmstrip .fs");
+    await click(thumbs[0] as Element);
+    expect(iframe()).toBeNull();
+    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-00-start.png");
+
+    // …and jump-to-live returns to the stream.
+    const jump = container.querySelector(".live-jump");
+    expect(jump).not.toBeNull();
+    await click(jump as Element);
+    expect(iframe()).not.toBeNull();
+  });
+
+  it("a lane whose sandbox ended falls back to recorded evidence (#357)", async () => {
+    await mount(<App data={liveShapedData({ live: true, ended: true })} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".stage-live")).toBeNull();
+    expect(container.querySelector(".stage-box img")).not.toBeNull();
+    expect(container.textContent).toContain("stream ended — recorded evidence");
+  });
+
+  it("served mode lists the run library in the sidebar", async () => {
+    const history = {
+      latestRunId: "golden-first-run",
+      runs: [
+        { runId: "golden-first-run", href: "/_humanish/runs/golden-first-run/observer/index.html", status: "pass", mode: "dry-run", streamCount: 4 },
+        { runId: "other-run", href: "/_humanish/runs/other-run/observer/index.html", status: "failed", mode: "live", streamCount: 2 }
+      ]
+    };
+    vi.stubGlobal("fetch", (input: RequestInfo | URL) =>
+      Promise.resolve(
+        String(input).includes("history")
+          ? ({ ok: true, json: async () => history } as unknown as Response)
+          : ({ ok: false } as unknown as Response)
+      )
+    );
+    try {
+      await mount(<App data={data} />);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const link = container.querySelector('a[href="/_humanish/runs/other-run/observer/index.html"]');
+      expect(link).not.toBeNull();
+      expect(container.querySelector(".side [data-on] .mono-id")?.textContent).toBe("golden-first-run");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
