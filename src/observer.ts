@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
-import { constants as fsConstants, readFileSync } from "node:fs";
+import { execSync, spawn } from "node:child_process";
+import { constants as fsConstants, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -403,32 +403,109 @@ const OBSERVER_NEXT_SLOT = `<script id="observer-data" type="application/json">$
 
 let cachedObserverNextArtifact: string | null = null;
 
+/**
+ * Preflight for the next renderer: when the env flag selects it, resolve — and in a
+ * repo checkout, build — the artifact BEFORE any run or lab work starts. A missing
+ * artifact must cost seconds at startup, never a completed session (a live lane
+ * spends real money before the render step would have noticed).
+ */
+export function preflightObserverNext(): void {
+  if (process.env.HUMANISH_OBSERVER === "next") {
+    loadObserverNextArtifact();
+  }
+}
+
 function loadObserverNextArtifact(): string {
   if (cachedObserverNextArtifact !== null) return cachedObserverNextArtifact;
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    // Published package: the root build copies the workspace artifact beside this module.
-    path.join(moduleDir, "observer-app.html"),
-    // Repo checkout (src/ or dist/ both sit one level under the root): the workspace build.
-    path.join(moduleDir, "..", "observer", "dist", "index.html")
-  ];
-  for (const candidate of candidates) {
-    let html: string;
-    try {
-      html = readFileSync(candidate, "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
-      throw error;
-    }
-    if (!html.includes(OBSERVER_NEXT_SLOT)) {
-      throw new Error(`Observer artifact at ${candidate} has no observer-data slot.`);
-    }
-    cachedObserverNextArtifact = html;
-    return html;
+
+  // Published package: the root build ships the artifact beside this module. Never
+  // auto-built — an installed package either carries it or is broken; reinstall.
+  const packagedHtml = readObserverNextArtifact(path.join(moduleDir, "observer-app.html"));
+  if (packagedHtml !== null) {
+    cachedObserverNextArtifact = packagedHtml;
+    return packagedHtml;
   }
+
+  // Repo checkout (src/ and dist/ both sit one level under the root): build the
+  // workspace on demand — missing after a fresh pull, stale after edits — so the
+  // flag just works in the dev loop instead of demanding a manual build step.
+  const repoRoot = path.join(moduleDir, "..");
+  const workspaceDir = path.join(repoRoot, "observer");
+  const artifactPath = path.join(workspaceDir, "dist", "index.html");
+  if (existsSync(path.join(workspaceDir, "package.json"))) {
+    if (observerNextArtifactNeedsBuild(workspaceDir, artifactPath)) {
+      process.stderr.write("observer: building the rebuilt Observer artifact (observer/ workspace)…\n");
+      try {
+        execSync("pnpm --filter humanish-observer build", {
+          cwd: repoRoot,
+          stdio: ["ignore", "pipe", "inherit"]
+        });
+      } catch {
+        throw new Error(
+          "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output."
+        );
+      }
+    }
+    const html = readObserverNextArtifact(artifactPath);
+    if (html !== null) {
+      cachedObserverNextArtifact = html;
+      return html;
+    }
+  }
+
   throw new Error(
     "HUMANISH_OBSERVER=next needs the prebuilt observer artifact; run `pnpm --filter humanish-observer build` in the repo, or reinstall the package."
   );
+}
+
+function readObserverNextArtifact(candidate: string): string | null {
+  let html: string;
+  try {
+    html = readFileSync(candidate, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+  if (!html.includes(OBSERVER_NEXT_SLOT)) {
+    throw new Error(`Observer artifact at ${candidate} has no observer-data slot.`);
+  }
+  return html;
+}
+
+/** internal: exported for tests. Missing artifact, or any workspace source newer than it. */
+export function observerNextArtifactNeedsBuild(workspaceDir: string, artifactPath: string): boolean {
+  let artifactMtime: number;
+  try {
+    artifactMtime = statSync(artifactPath).mtimeMs;
+  } catch {
+    return true;
+  }
+  return newestSourceMtime(workspaceDir) > artifactMtime;
+}
+
+function newestSourceMtime(dir: string): number {
+  let newest = 0;
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return newest;
+  }
+  for (const entry of entries) {
+    if (entry.name === "node_modules" || entry.name === "dist") continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      newest = Math.max(newest, newestSourceMtime(full));
+    } else if (entry.isFile()) {
+      try {
+        newest = Math.max(newest, statSync(full).mtimeMs);
+      } catch {
+        // A file vanishing mid-scan (editor save) just doesn't advance the clock.
+      }
+    }
+  }
+  return newest;
 }
 
 function renderObserverNextHtml(data: ObserverData): string {
