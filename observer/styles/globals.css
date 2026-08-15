@@ -289,8 +289,8 @@ a:hover {
   appearance: none;
   background: transparent;
   border: 0;
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--body-c);
   cursor: pointer;
 }
@@ -309,8 +309,8 @@ a:hover {
   background: transparent;
   border: 0;
   outline: none;
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--ink);
   width: 100%;
 }
@@ -348,8 +348,8 @@ a:hover {
 /* ---------- study grid ---------- */
 .countline {
   padding: 16px 24px 2px;
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--muted);
 }
 .countline b {
@@ -490,8 +490,8 @@ a:hover {
   color: var(--accent-ink);
 }
 .csig q {
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--ink);
   quotes: "\201C" "\201D";
 }
@@ -529,8 +529,9 @@ a:hover {
   padding-top: 2px;
 }
 .kv .v {
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--body-c);
   overflow-wrap: anywhere;
 }
@@ -554,8 +555,8 @@ a:hover {
   box-shadow: var(--sh-panel);
 }
 .verbatim {
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--sans);
+  font-size: 13px;
   line-height: 1.6;
   color: var(--ink);
 }
