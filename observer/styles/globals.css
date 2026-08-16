@@ -1143,3 +1143,96 @@ button.arow:hover {
   pointer-events: none;
   background: var(--dz);
 }
+
+/* ---------- filter popover (Base UI, Frame.io grammar: icon button + panel/sheet) ---------- */
+.filter-btn {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.filter-btn:hover,
+.filter-btn[data-popup-open] {
+  color: var(--ink);
+  background: var(--accent-wash);
+}
+.filter-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--rail-on);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+.pop-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 240px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--sh-panel);
+  outline: none;
+}
+.pop-panel .tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pop-panel .searchbox {
+  min-width: 0;
+  height: 36px;
+  flex: none; /* the phone block's .searchbox flex-basis would become HEIGHT in this column parent */
+  align-self: stretch;
+}
+.pop-panel .searchbox input {
+  width: 100%;
+}
+.pop-grabber {
+  display: none;
+}
+.filter-clear {
+  align-self: flex-end;
+  font-size: 12.5px;
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.filter-clear:hover {
+  background: var(--accent-wash);
+}
+@media (max-width: 880px) {
+  /* the same popup presents as a bottom sheet: fixed to the viewport bottom with a
+     grabber, per the Frame.io iOS grammar for secondary controls */
+  .pop-panel {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    transform: none !important;
+    border-radius: 14px 14px 0 0;
+    border-bottom: 0;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .pop-grabber {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line);
+    margin: 0 auto 2px;
+  }
+}

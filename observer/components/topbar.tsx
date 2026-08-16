@@ -1,5 +1,6 @@
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 
+import { Popover } from "./ui/popover";
 import { Wordmark } from "./wordmark";
 
 export interface GridFilters {
@@ -24,6 +25,7 @@ export interface TopbarProps {
 export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onLibrary, sideOpen }: TopbarProps) {
   const statuses = [...new Set(data.streams.map((s) => s.statusLabel))];
   const kinds = [...new Set(data.streams.map((s) => s.kindLabel))];
+  const activeFilters = (filters.status === "" ? 0 : 1) + (filters.kind === "" ? 0 : 1) + (filters.query === "" ? 0 : 1);
   const index = selected ? data.streams.findIndex((s) => s.id === selected.id) : -1;
 
   return (
@@ -65,7 +67,18 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
             <button type="button" aria-label="Next participant" onClick={() => onStep(1)}>›</button>
           </span>
         ) : (
-          <>
+          <Popover
+            triggerClassName="filter-btn"
+            label="Filter participants"
+            trigger={
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z" />
+                </svg>
+                {activeFilters > 0 ? <span className="filter-count">{activeFilters}</span> : null}
+              </>
+            }
+          >
             <label className="tool">
               <span className="o-label">Status</span>
               <select value={filters.status} onChange={(e) => onFilters({ ...filters, status: e.target.value })}>
@@ -94,7 +107,12 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
                 onChange={(e) => onFilters({ ...filters, query: e.target.value })}
               />
             </span>
-          </>
+            {activeFilters > 0 ? (
+              <button type="button" className="filter-clear" onClick={() => onFilters({ status: "", kind: "", query: "" })}>
+                Clear filters
+              </button>
+            ) : null}
+          </Popover>
         )}
         {data.publicSafety.publishable === false ? (
           <span className="chip chip-dot chip-mute" title={data.publicSafety.note}>local_only</span>
