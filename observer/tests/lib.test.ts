@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { formatDuration, runArtifactHref } from "../lib/artifact-href";
 import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
-import type { ObserverStream } from "../lib/observer-data";
+import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel, parseClickCoord } from "../lib/player-model";
 import { NOTABLE_COMPLETION } from "../lib/signal";
+import { buildTally } from "../components/study-grid";
 
 describe("runArtifactHref containment", () => {
   it("prefixes run-root-relative paths for the observer/ vantage point", () => {
@@ -126,5 +127,24 @@ describe("formatDuration", () => {
     expect(formatDuration(191_864)).toBe("3m 12s");
     expect(formatDuration(61_000)).toBe("1m 01s");
     expect(formatDuration(9_400)).toBe("9s");
+  });
+});
+
+describe("buildTally cost line", () => {
+  const base = {
+    run: { mode: "live" },
+    summary: { streams: 2, active: 0, blocked: 0, warnings: 0 }
+  };
+
+  it("a declared-null run cost reads 'cost not estimated', never silence (legacy intent, migrated at cutover)", () => {
+    const withNull = {
+      ...base,
+      cost: { estimatedTotalUsd: null, ratesAsOf: "2026-08-01", placeholder: true }
+    } as unknown as ObserverData;
+    expect(buildTally(withNull)).toContain("cost not estimated");
+  });
+
+  it("an absent cost block stays silent (dry-run: nothing was spent, nothing is claimed)", () => {
+    expect(buildTally(base as unknown as ObserverData)).not.toContain("cost");
   });
 });

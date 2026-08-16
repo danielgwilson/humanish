@@ -160,19 +160,19 @@ Intentionally still adapter work:
 - richer screenshot/trace galleries across multi-step product journeys;
 - reviewer acceptance gates over real product behavior.
 
-## Rebuild in progress (#426)
+## The rendering layer (#426, cut over 2026-08-16)
 
-The rendering layer is being rebuilt as the `observer/` workspace (Vite
-single-file build on shadcn/Base UI + `@humanish` registry tokens): stage 1
-froze `humanish.observer-data.v1` against goldens
-(`tests/observer-data-contract.test.ts`), stage 2 scaffolded the workspace
-(`observer/AGENTS.md`), and stage 3 is wiring it up behind
-`HUMANISH_OBSERVER=next`: the root build copies the workspace artifact to
-`dist/observer-app.html`, and `renderObserverHtml` — the one choke point every
-surface (observe, watch, serve, labs) funnels through — injects the run's
-snapshot into it when the env var is set (`tests/observer-next.test.ts` pins
-both sides of the switch). Until cutover (stage 5), the shipping renderer
-remains `src/observer-assets.ts` by default and everything above describes it;
-the workspace's own tests pin the rebuilt artifact's durability constraints
-(self-contained single file, no network references — note today's renderer
-still links Google Fonts, which the rebuild removes).
+The renderer is the `observer/` workspace: a Vite single-file build on the
+`@humanish` registry tokens, frozen against `humanish.observer-data.v1`
+(`tests/observer-data-contract.test.ts`). The root build copies the workspace
+artifact to `dist/observer-app.html`; in a repo checkout a missing or stale
+artifact auto-builds, and an unconditional preflight at CLI startup makes a
+broken artifact cost seconds, never a completed session. `renderObserverHtml`
+— the one choke point every surface (observe, watch, serve, labs) funnels
+through — injects the run's snapshot into the artifact
+(`tests/observer-artifact.test.ts` pins the path, cold, so CI exercises the
+auto-build every run). The legacy string-concat renderer
+(`src/observer-assets.ts`) was deleted at cutover; there is no flag and no
+fallback — rollback is a version pin. The workspace's own tests pin the
+durability constraints (self-contained single file, fonts inlined, no network
+references).
