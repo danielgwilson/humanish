@@ -257,6 +257,28 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelector(".stub")).toBeNull();
   });
 
+  it("a live lane's grid thumb IS the stream (#331), read-only and capped", async () => {
+    const data = liveShapedData({ live: true });
+    await mount(<App data={data} />);
+    const frame = container.querySelector(".thumb-live") as HTMLIFrameElement | null;
+    expect(frame?.getAttribute("src")).toBe("https://live.example/desktop");
+    expect(frame?.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("live thumbs autoconnect for at most four lanes; deeper live lanes keep the placeholder", async () => {
+    const data = liveShapedData({ live: true });
+    const holder = data as unknown as { streams: Array<Record<string, unknown>> };
+    const first = holder.streams[0]!;
+    holder.streams = [0, 1, 2, 3, 4].map((index) => ({
+      ...structuredClone(first),
+      id: `lane-${index}`,
+      sim: { ...(first.sim as Record<string, unknown>), index: index + 1 }
+    }));
+    await mount(<App data={data} />);
+    expect(container.querySelectorAll(".thumb-live")).toHaveLength(4);
+    expect(container.querySelectorAll(".chip-dot").length).toBeGreaterThanOrEqual(5);
+  });
+
   it("a lane whose sandbox ended falls back to recorded evidence (#357)", async () => {
     await mount(<App data={liveShapedData({ live: true, ended: true })} />);
     await click(container.querySelector(".open-overlay") as Element);

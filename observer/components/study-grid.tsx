@@ -1,3 +1,4 @@
+import { liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 
 import { ParticipantCard } from "./participant-card";
@@ -38,6 +39,13 @@ export function StudyGrid({
   streams: ObserverStream[];
   onOpen: (id: string) => void;
 }) {
+  // Live thumbs autoconnect for the first few live lanes only (#331): every live
+  // thumb is a real socket to a real desktop, so a wide fan-out must not open one
+  // per card. Deeper lanes keep the placeholder and their Live chip; the player
+  // always streams on open.
+  const liveThumbIds = new Set(
+    streams.filter((stream) => liveEmbedUrl(stream) !== null).slice(0, 4).map((stream) => stream.id)
+  );
   return (
     <section aria-label="Study grid">
       <p className="countline">{buildTally(data)}</p>
@@ -46,7 +54,12 @@ export function StudyGrid({
       ) : (
         <div className="gallery">
           {streams.map((stream) => (
-            <ParticipantCard key={stream.id} stream={stream} onOpen={onOpen} />
+            <ParticipantCard
+              key={stream.id}
+              stream={stream}
+              onOpen={onOpen}
+              liveThumb={liveThumbIds.has(stream.id)}
+            />
           ))}
         </div>
       )}

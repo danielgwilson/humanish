@@ -32,11 +32,22 @@ function statusChip(stream: ObserverStream) {
 // and a play affordance. One row names the lane and its status. One line carries the
 // signal: a flag with the recorded reason, or the lane's closest report line. Kind,
 // mode, viewport, and the study name live in the player and the breadcrumb, not here.
-export function ParticipantCard({ stream, onOpen }: { stream: ObserverStream; onOpen: (id: string) => void }) {
+export function ParticipantCard({
+  stream,
+  onOpen,
+  liveThumb = false
+}: {
+  stream: ObserverStream;
+  onOpen: (id: string) => void;
+  /** Mount the live stream as the thumb (#331). The grid caps how many cards get
+   *  this at once — every live socket is a real connection to a real desktop. */
+  liveThumb?: boolean;
+}) {
   const idx = String(stream.sim.index).padStart(2, "0");
   const keyframe = keyframeHref(stream);
   const signal = signalFor(stream);
-  const live = liveEmbedUrl(stream) !== null;
+  const liveUrl = liveEmbedUrl(stream);
+  const live = liveUrl !== null;
   const showTerminal = (stream.kind === "terminal" || stream.kind === "tui") && stream.terminalPlain !== "";
 
   return (
@@ -48,7 +59,19 @@ export function ParticipantCard({ stream, onOpen }: { stream: ObserverStream; on
         onClick={() => onOpen(stream.id)}
       />
       <div className="thumb">
-        {keyframe !== null ? (
+        {liveThumb && liveUrl !== null ? (
+          /* The mini viewport is the doctrine; during a live run the truest thumb is
+             the stream itself. pointer-events never reach it — the card's overlay
+             button owns the click, and read-only stays by construction. */
+          <iframe
+            className="thumb-live"
+            src={liveUrl}
+            title={`Live thumb — ${stream.laneId ?? stream.label}`}
+            referrerPolicy="no-referrer"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        ) : keyframe !== null ? (
           <img className="keyframe" src={keyframe} alt={`Keyframe from lane ${stream.laneId ?? stream.label}`} loading="lazy" />
         ) : showTerminal ? (
           <div className="thumb-term">

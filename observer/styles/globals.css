@@ -1132,3 +1132,14 @@ button.arow:hover {
     display: none;
   }
 }
+
+/* live grid thumbs (#331): the stream itself is the mini viewport while a lane runs */
+.thumb-live {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+  background: var(--dz);
+}
