@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.44.0`)
+## Current Program Truth (source `0.45.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
