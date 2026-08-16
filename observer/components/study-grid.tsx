@@ -6,7 +6,10 @@ import { ParticipantCard } from "./participant-card";
 // Every number renders with its denominator or not at all; the pre-formatted
 // participantsLine/tasksLine from the contract already guarantee that.
 export function buildTally(data: ObserverData): string {
-  const parts: string[] = [data.run.participantsLine ?? `${data.summary.streams} lanes`];
+  const parts: string[] = [
+    data.run.participantsLine ??
+      `${data.summary.streams} participant${data.summary.streams === 1 ? "" : "s"}`,
+  ];
   if (data.run.tasksLine !== undefined) parts.push(data.run.tasksLine);
   if (data.summary.active > 0) parts.push(`${data.summary.active} active`);
   if (data.summary.blocked > 0) parts.push(`${data.summary.blocked} blocked`);

@@ -60,7 +60,7 @@ describe("observer scaffold rendering the first-run golden", () => {
     await mount(<App data={data} />);
     expect(container.querySelectorAll(".card")).toHaveLength(4);
     const tally = container.querySelector(".countline")?.textContent ?? "";
-    expect(tally).toContain("4 lanes");
+    expect(tally).toContain("4 participants");
     expect(tally).toContain("4 warnings");
     expect(tally).toContain("dry-run");
     // every card carries exactly one signal line
