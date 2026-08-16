@@ -1,5 +1,5 @@
 import { execSync, spawn } from "node:child_process";
-import { constants as fsConstants, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { constants as fsConstants, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -431,20 +431,51 @@ function loadObserverArtifact(): string {
   const artifactPath = path.join(workspaceDir, "dist", "index.html");
   if (existsSync(path.join(workspaceDir, "package.json"))) {
     if (observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
-      process.stderr.write("observer: building the Observer artifact (observer/ workspace)…\n");
+      // Concurrent cold starts (parallel test workers, two watch processes launched
+      // together) must not race one `vite build` output: a reader can catch the
+      // artifact half-written. A mkdir lock serializes builders across processes;
+      // whoever loses the race re-checks staleness and usually just reads.
+      // The lock lives OUTSIDE dist/ (vite empties dist mid-build) and inside an
+      // ignored path so a crashed builder cannot dirty the tree.
+      const lockDir = path.join(workspaceDir, "node_modules", ".observer-build-lock");
+      mkdirSync(path.dirname(lockDir), { recursive: true });
+      const deadline = Date.now() + 120_000;
+      for (;;) {
+        try {
+          mkdirSync(lockDir);
+          break; // lock acquired — this process builds
+        } catch {
+          if (Date.now() > deadline) break; // stale lock: build anyway, last writer wins
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+          if (!observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
+            const built = readObserverArtifact(artifactPath);
+            if (built !== null) {
+              cachedObserverArtifact = built;
+              return built;
+            }
+          }
+        }
+      }
       try {
-        // NODE_ENV is forced: Vite respects a preset NODE_ENV (test, development),
-        // and a dev-flavored artifact embeds jsxDEV plus the builder's absolute
-        // filesystem paths — which the run's public-safety scan then rightly rejects.
-        execSync("pnpm --filter humanish-observer build", {
-          cwd: repoRoot,
-          stdio: ["ignore", "pipe", "inherit"],
-          env: { ...process.env, NODE_ENV: "production" }
-        });
-      } catch {
-        throw new Error(
-          "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output."
-        );
+        if (observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
+          process.stderr.write("observer: building the Observer artifact (observer/ workspace)…\n");
+          try {
+            // NODE_ENV is forced: Vite respects a preset NODE_ENV (test, development),
+            // and a dev-flavored artifact embeds jsxDEV plus the builder's absolute
+            // filesystem paths — which the run's public-safety scan then rightly rejects.
+            execSync("pnpm --filter humanish-observer build", {
+              cwd: repoRoot,
+              stdio: ["ignore", "pipe", "inherit"],
+              env: { ...process.env, NODE_ENV: "production" }
+            });
+          } catch {
+            throw new Error(
+              "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output."
+            );
+          }
+        }
+      } finally {
+        rmSync(lockDir, { force: true, recursive: true });
       }
     }
     const html = readObserverArtifact(artifactPath);
