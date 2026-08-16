@@ -254,6 +254,21 @@ a:hover {
 .crumb-link:hover {
   color: var(--ink);
 }
+.crumb-back {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--body-c);
+  font-size: 14px;
+  line-height: 1;
+}
+.crumb-back:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
 .topbar .right {
   margin-left: auto;
   display: flex;
@@ -274,8 +289,8 @@ a:hover {
   appearance: none;
   background: transparent;
   border: 0;
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--body-c);
   cursor: pointer;
 }
@@ -294,8 +309,8 @@ a:hover {
   background: transparent;
   border: 0;
   outline: none;
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--ink);
   width: 100%;
 }
@@ -333,8 +348,8 @@ a:hover {
 /* ---------- study grid ---------- */
 .countline {
   padding: 16px 24px 2px;
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--muted);
 }
 .countline b {
@@ -347,8 +362,8 @@ a:hover {
   gap: 16px;
   padding: 14px 24px 22px;
 }
-/* Cards ride the @humanish/persona-lane anatomy (.panel/.pbar/.pcap/.chip);
-   these rules only add the grid-specific pieces. */
+/* The card is a mini viewport plus one decide-line: thumb with duration/live/play
+   overlays, a name row, one signal line. It rides .panel/.chip from persona-lane. */
 .card {
   position: relative;
 }
@@ -359,7 +374,8 @@ a:hover {
   border-radius: inherit;
 }
 .thumb {
-  aspect-ratio: 598 / 324;
+  position: relative;
+  aspect-ratio: 16 / 10;
   background: var(--mineral);
   overflow: hidden;
 }
@@ -371,6 +387,7 @@ a:hover {
   display: block;
 }
 .thumb-term {
+  height: 100%;
   background: var(--dz);
   padding: 14px 18px;
 }
@@ -379,6 +396,7 @@ a:hover {
   font-size: 11.5px;
 }
 .thumb-ph {
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -396,26 +414,86 @@ a:hover {
   letter-spacing: 0.06em;
   color: var(--muted);
 }
-.pmeta {
+.th-pill {
+  position: absolute;
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  padding: 9px 16px 0;
+  color: #f0ede5;
+  background: rgba(14, 13, 11, 0.62);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
-.card .pcap {
-  border-top: 0;
-  min-height: 0;
-  padding: 8px 16px 12px;
+.th-dur {
+  right: 8px;
+  bottom: 8px;
 }
-.card .prep q {
+.th-live {
+  left: 8px;
+  top: 8px;
+  color: #b9c3ff;
+}
+.th-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #f0ede5;
+  background: rgba(14, 13, 11, 0.55);
+  border-radius: 999px;
+  opacity: 0;
+}
+.card:hover .th-play,
+.open-overlay:focus-visible ~ .thumb .th-play {
+  opacity: 1;
+}
+.cbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px 0;
+  min-width: 0;
+}
+.cbar .pidx {
+  flex: none;
+}
+.cname {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cbar .chip {
+  margin-left: auto;
+  flex: none;
+}
+.csig {
+  margin: 5px 13px 12px;
+  font-size: 12.5px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.plab .flag {
+.sig-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.sig-label.sig-flag {
   color: var(--accent-ink);
+}
+.csig q {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--ink);
+  quotes: "\201C" "\201D";
 }
 .card.gaveup .thumb {
   opacity: 0.62;
@@ -451,8 +529,9 @@ a:hover {
   padding-top: 2px;
 }
 .kv .v {
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--body-c);
   overflow-wrap: anywhere;
 }
@@ -476,8 +555,8 @@ a:hover {
   box-shadow: var(--sh-panel);
 }
 .verbatim {
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--sans);
+  font-size: 13px;
   line-height: 1.6;
   color: var(--ink);
 }
@@ -663,10 +742,77 @@ a:hover {
   border: 1px solid var(--line);
   padding: 0 8px;
 }
-.scrub {
+.scrubwrap {
+  position: relative;
   flex: 1;
   min-width: 120px;
-  accent-color: var(--accent);
+  height: 26px;
+}
+.scrub-track {
+  position: absolute;
+  inset: 12px 0 auto 0;
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+}
+.scrub-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.scrub-tick {
+  position: absolute;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  transform: translateX(-50%);
+}
+.scrub-flag {
+  position: absolute;
+  right: -2px;
+  top: -14px;
+  font-size: 10px;
+  color: var(--accent-ink);
+}
+.scrub {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.scrub::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 26px;
+}
+.scrub::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 0;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+.scrub::-moz-range-track {
+  background: transparent;
+  height: 26px;
+}
+.scrub::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 0;
+  box-shadow: 0 0 0 3px var(--accent-wash);
 }
 .counter {
   font-family: var(--mono);

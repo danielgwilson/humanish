@@ -26,8 +26,8 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
   return (
     <div className="stub">
       <p className="stub-note o-mono">
-        This lane recorded no screenshot frames, so the review player has no timeline to run — below is
-        the recorded evidence it does carry.
+        This lane recorded no screenshot frames, so the review player has no timeline to run. Below is
+        the recorded evidence it carries.
       </p>
       {keyframe !== null ? (
         <div className="blk">

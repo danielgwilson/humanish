@@ -23,8 +23,15 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [tab, setTab] = useState<Tab>("actions");
   const feedRef = useRef<HTMLDivElement | null>(null);
+  const viewerRef = useRef<HTMLDivElement | null>(null);
 
   const frames = model.frames;
+  // Scrubber markers: frames where the persona clicked (recorded coordinates), plus a
+  // flag at the end when the lane completed notably. Both derived from the trace.
+  const clickFrames = useMemo(
+    () => [...new Set(model.rows.filter((row) => row.coord !== undefined).map((row) => row.frameIndex))],
+    [model]
+  );
 
   // A poll grew the timeline: a viewer on the newest frame follows the live edge;
   // one who scrubbed back is doing instant replay and stays put.
@@ -86,10 +93,20 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
   const actor = stream.actor;
   const raw = actor?.redaction.screenshots === "raw";
   const viewport = stream.viewport;
+  const notableEnd = actor !== undefined && NOTABLE_COMPLETION[actor.completionReason] !== undefined;
+  const markerLeft = (index: number) => (frames.length > 1 ? `${(100 * index) / (frames.length - 1)}%` : "0%");
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void viewerRef.current?.requestFullscreen();
+    }
+  };
 
   return (
     <div className="player">
-      <div className="viewer">
+      <div className="viewer" ref={viewerRef}>
         <div className="stage">
           {following && live !== null ? (
             <div className="stage-live">
@@ -131,15 +148,24 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
           </button>
           <button type="button" className="tbtn" aria-label="Previous frame" onClick={() => seek(frame - 1)}>‹</button>
           <button type="button" className="tbtn" aria-label="Next frame" onClick={() => seek(frame + 1)}>›</button>
-          <input
-            className="scrub"
-            type="range"
-            min={0}
-            max={frames.length - 1}
-            value={frame}
-            aria-label="Seek frame"
-            onChange={(event) => seek(Number(event.target.value))}
-          />
+          <div className="scrubwrap">
+            <div className="scrub-track" aria-hidden="true">
+              <div className="scrub-played" style={{ width: markerLeft(frame) }} />
+              {clickFrames.map((index) => (
+                <span key={index} className="scrub-tick" style={{ left: markerLeft(index) }} />
+              ))}
+              {notableEnd ? <span className="scrub-flag">⚑</span> : null}
+            </div>
+            <input
+              className="scrub"
+              type="range"
+              min={0}
+              max={frames.length - 1}
+              value={frame}
+              aria-label="Seek frame"
+              onChange={(event) => seek(Number(event.target.value))}
+            />
+          </div>
           <span className="counter">{frame + 1} / {frames.length}</span>
           <span className="t-meta">
             {actor ? `${formatDuration(actor.durationMs)} · ` : ""}
@@ -158,8 +184,9 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
               ● live
             </button>
           ) : null}
-          {stream.liveEnded === true ? <span className="t-meta">stream ended — recorded evidence</span> : null}
-          {raw ? <span className="rawchip" title="Raw local screenshots — redact before publishing">RAW</span> : null}
+          {stream.liveEnded === true ? <span className="t-meta">stream ended · recorded evidence</span> : null}
+          <button type="button" className="tbtn" aria-label="Fullscreen" onClick={toggleFullscreen}>⛶</button>
+          {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : null}
         </div>
         <div className="filmstrip">
           {frames.map((f) => (
@@ -252,13 +279,13 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
               <p className="verbatim">
                 {stream.statusLabel}
                 {actor && NOTABLE_COMPLETION[actor.completionReason] !== undefined
-                  ? ` — ⚑ ${NOTABLE_COMPLETION[actor.completionReason]}`
+                  ? ` · ⚑ ${NOTABLE_COMPLETION[actor.completionReason]}`
                   : ""}
               </p>
             </div>
             {actor ? (
               <div className="blk">
-                <span className="o-label">Recorded reason — verbatim</span>
+                <span className="o-label">Recorded reason, verbatim</span>
                 <p className="verbatim">“{actor.reason}”</p>
               </div>
             ) : null}

@@ -60,11 +60,11 @@ describe("observer scaffold rendering the first-run golden", () => {
     await mount(<App data={data} />);
     expect(container.querySelectorAll(".card")).toHaveLength(4);
     const tally = container.querySelector(".countline")?.textContent ?? "";
-    expect(tally).toContain("4 lanes");
+    expect(tally).toContain("4 participants");
     expect(tally).toContain("4 warnings");
     expect(tally).toContain("dry-run");
     // every card carries exactly one signal line
-    expect(container.querySelectorAll(".card .plab")).toHaveLength(4);
+    expect(container.querySelectorAll(".card .sig-label")).toHaveLength(4);
   });
 
   it("register toggle writes data-theme and persists the explicit choice", async () => {
@@ -85,6 +85,9 @@ describe("observer scaffold rendering the first-run golden", () => {
     await click(overlay as Element);
     expect(container.textContent).toContain("no screenshot frames");
     expect(container.querySelector(".pager")).not.toBeNull();
+    // The player breadcrumbs carry an explicit back affordance.
+    const back = container.querySelector(".crumb-back");
+    expect(back).not.toBeNull();
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
@@ -157,6 +160,8 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     const card = container.querySelector(".card");
     expect(card?.textContent).toContain("budget cap");
     expect(card?.textContent).toContain("crossed execution.caps.maxUsd=$5");
+    // Duration rides the thumb as an overlay pill, not a meta line.
+    expect(card?.querySelector(".th-dur")?.textContent).toBe("3m 12s");
   });
 
   it("opens into the review player: stage, filmstrip seek, pins, tabs", async () => {
@@ -169,6 +174,10 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(stageImg()).toBe("../screenshots/lane/turn-00-start.png");
     expect(container.querySelectorAll(".filmstrip .fs")).toHaveLength(2);
     expect(container.querySelectorAll(".arow")).toHaveLength(4);
+    // Scrubber markers: one tick for the frame with a recorded click, and the
+    // end flag because the lane completed on a notable reason (budget cap).
+    expect(container.querySelectorAll(".scrub-tick")).toHaveLength(1);
+    expect(container.querySelector(".scrub-flag")).not.toBeNull();
 
     // Filmstrip seek advances the stage; the click action's parsed pin renders on frame 1.
     const thumbs = container.querySelectorAll(".filmstrip .fs");
@@ -209,7 +218,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector(".stage-live")).toBeNull();
     expect(container.querySelector(".stage-box img")).not.toBeNull();
-    expect(container.textContent).toContain("stream ended — recorded evidence");
+    expect(container.textContent).toContain("stream ended · recorded evidence");
   });
 
   it("served mode lists the run library in the sidebar", async () => {
