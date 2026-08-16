@@ -5,6 +5,7 @@ import { IconRail } from "./components/icon-rail";
 import { ParticipantStub } from "./components/participant-stub";
 import { Player } from "./components/player";
 import { Sidebar } from "./components/sidebar";
+import { Drawer } from "./components/ui/drawer";
 import { StudyGrid } from "./components/study-grid";
 import { Topbar, type GridFilters } from "./components/topbar";
 import { HISTORY_POLL_MS, OBSERVER_POLL_MS, fetchHistoryIndex, fetchObserverData, isServedOrigin, liveEmbedUrl, type HistoryIndex } from "./lib/live";
@@ -18,6 +19,34 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   const [history, setHistory] = useState<HistoryIndex | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<GridFilters>(NO_FILTERS);
+  // One library control, two behaviors: on desktop it collapses the static sidebar
+  // (persisted); on a phone-width viewport the sidebar is CSS-hidden, so the same
+  // button opens the library as a Base UI drawer instead. The width check runs at
+  // click time only — render never branches on viewport, so file:// and jsdom stay
+  // deterministic.
+  const [sideOpen, setSideOpen] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem("humanish-sidebar") !== "closed";
+    } catch {
+      return true;
+    }
+  });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const toggleLibrary = () => {
+    const phone = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 880px)").matches;
+    if (phone) {
+      setDrawerOpen((value) => !value);
+      return;
+    }
+    setSideOpen((value) => {
+      try {
+        window.localStorage.setItem("humanish-sidebar", value ? "closed" : "open");
+      } catch {
+        // storage unavailable (some file:// contexts): the toggle still works for the session
+      }
+      return !value;
+    });
+  };
 
   // Served mode (watch/serve) polls the sibling snapshot the server refreshes per
   // request and the run-library index — same cadence and silences as the legacy
@@ -87,7 +116,17 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   return (
     <div className="frame">
       <IconRail runsActive={selected === null} onRuns={() => setSelectedId(null)} />
-      {selected === null ? <Sidebar data={data} history={history} onRuns={() => setSelectedId(null)} /> : null}
+      {selected === null && sideOpen ? <Sidebar data={data} history={history} onRuns={() => setSelectedId(null)} /> : null}
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} label="Run library">
+        <Sidebar
+          data={data}
+          history={history}
+          onRuns={() => {
+            setSelectedId(null);
+            setDrawerOpen(false);
+          }}
+        />
+      </Drawer>
       <div className="main">
         <Topbar
           data={data}
@@ -96,6 +135,8 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
           onFilters={setFilters}
           onRuns={() => setSelectedId(null)}
           onStep={step}
+          onLibrary={toggleLibrary}
+          sideOpen={sideOpen}
         />
         <div className={selected && playerModel ? "content player-host" : "content"}>
           {selected ? (
