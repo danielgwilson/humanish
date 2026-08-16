@@ -39,6 +39,11 @@ describe("the Observer artifact render path", () => {
       expect(html).toContain("<title>Humanish Observer — observer-proof</title>");
       // The durability property the rebuild exists for: no network references.
       expect(html).not.toContain("fonts.googleapis");
+      // The auto-build must produce a production artifact even under a preset
+      // NODE_ENV (vitest sets test): a dev-flavored build embeds jsxDEV and the
+      // builder's absolute paths, which the public-safety scan rightly rejects.
+      expect(html).not.toContain("jsxDEV");
+      expect(html).not.toContain(process.cwd());
     });
   });
 

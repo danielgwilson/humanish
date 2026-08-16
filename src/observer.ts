@@ -433,9 +433,13 @@ function loadObserverArtifact(): string {
     if (observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
       process.stderr.write("observer: building the Observer artifact (observer/ workspace)…\n");
       try {
+        // NODE_ENV is forced: Vite respects a preset NODE_ENV (test, development),
+        // and a dev-flavored artifact embeds jsxDEV plus the builder's absolute
+        // filesystem paths — which the run's public-safety scan then rightly rejects.
         execSync("pnpm --filter humanish-observer build", {
           cwd: repoRoot,
-          stdio: ["ignore", "pipe", "inherit"]
+          stdio: ["ignore", "pipe", "inherit"],
+          env: { ...process.env, NODE_ENV: "production" }
         });
       } catch {
         throw new Error(
