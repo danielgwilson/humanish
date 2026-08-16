@@ -74,8 +74,20 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
   }, [frames.length]);
 
   useEffect(() => {
-    const row = feedRef.current?.querySelector(`[data-frame-row="${frame}"]`);
-    row?.scrollIntoView({ block: "nearest" });
+    // Auto-follow scrolls the feed pane ONLY — never scrollIntoView, which also
+    // scrolls every scrollable ancestor: in the stacked phone layout the page owns
+    // scrolling, and playback would drag the stage out of the viewport on every
+    // frame advance (reported from the first real phone session, 2026-08-16).
+    const pane = feedRef.current;
+    const row = pane?.querySelector(`[data-frame-row="${frame}"]`);
+    if (!pane || !(row instanceof HTMLElement)) return;
+    const paneRect = pane.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    if (rowRect.top < paneRect.top) {
+      pane.scrollTop += rowRect.top - paneRect.top;
+    } else if (rowRect.bottom > paneRect.bottom) {
+      pane.scrollTop += rowRect.bottom - paneRect.bottom;
+    }
   }, [frame]);
 
   const seek = (index: number) => {
