@@ -55,6 +55,24 @@ afterEach(async () => {
   localStorage.clear();
 });
 
+describe("the filter funnel (second Base UI adoption: popover/sheet)", () => {
+  it("filters live behind the funnel; the badge counts active filters", async () => {
+    await mount(<App data={data} />);
+    expect(container.querySelector(".pop-panel")).toBeNull();
+    await click(container.querySelector('[aria-label="Filter participants"]') as Element);
+    const panel = document.querySelector(".pop-panel");
+    expect(panel).not.toBeNull();
+    const search = panel?.querySelector('input[type="search"]') as HTMLInputElement;
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      set.call(search, "nomatch-xyz");
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(container.textContent).toContain("No participants match");
+    expect(container.querySelector(".filter-count")?.textContent).toBe("1");
+  });
+});
+
 describe("the run library control (D6: first Base UI adoption)", () => {
   it("desktop: collapses and restores the static sidebar, persisted", async () => {
     window.localStorage.removeItem("humanish-sidebar");
