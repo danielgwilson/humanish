@@ -17,7 +17,7 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
   const live = liveEmbedUrl(stream);
   const watching = live !== null || stream.status === "running";
   // A live lane opens following the live edge; a finished one opens at frame 0 for review.
-  const [frame, setFrame] = useState(watching ? model.frames.length - 1 : 0);
+  const [frame, setFrame] = useState(watching ? Math.max(0, model.frames.length - 1) : 0);
   const [following, setFollowing] = useState(watching);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
@@ -143,6 +143,12 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
           )}
         </div>
         <div className="transport">
+          {frames.length === 0 ? (
+            // Live before the first screenshot lands: the stage streams, the timeline
+            // doesn't exist yet, and the transport says so instead of faking a scrubber.
+            <span className="t-meta">live — awaiting the first recorded frame</span>
+          ) : (
+          <>
           <button type="button" className="tbtn" aria-label={playing ? "Pause" : "Play"} onClick={() => setPlaying((value) => !value)}>
             {playing ? "❚❚" : "▶"}
           </button>
@@ -187,6 +193,8 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
           {stream.liveEnded === true ? <span className="t-meta">stream ended · recorded evidence</span> : null}
           <button type="button" className="tbtn" aria-label="Fullscreen" onClick={toggleFullscreen}>⛶</button>
           {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : null}
+          </>
+          )}
         </div>
         <div className="filmstrip">
           {frames.map((f) => (

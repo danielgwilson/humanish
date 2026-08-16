@@ -213,6 +213,16 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(iframe()).not.toBeNull();
   });
 
+  it("a live lane streams before its first frame: the player's live stage, not the stub (#426)", async () => {
+    const data = liveShapedData({ live: true });
+    (data as unknown as { streams: Array<{ actor: { items: unknown[] } }> }).streams[0]!.actor.items = [];
+    await mount(<App data={data} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".stage-live iframe")?.getAttribute("src")).toBe("https://live.example/desktop");
+    expect(container.textContent).toContain("awaiting the first recorded frame");
+    expect(container.querySelector(".stub")).toBeNull();
+  });
+
   it("a lane whose sandbox ended falls back to recorded evidence (#357)", async () => {
     await mount(<App data={liveShapedData({ live: true, ended: true })} />);
     await click(container.querySelector(".open-overlay") as Element);

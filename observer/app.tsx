@@ -7,7 +7,7 @@ import { Player } from "./components/player";
 import { Sidebar } from "./components/sidebar";
 import { StudyGrid } from "./components/study-grid";
 import { Topbar, type GridFilters } from "./components/topbar";
-import { HISTORY_POLL_MS, OBSERVER_POLL_MS, fetchHistoryIndex, fetchObserverData, isServedOrigin, type HistoryIndex } from "./lib/live";
+import { HISTORY_POLL_MS, OBSERVER_POLL_MS, fetchHistoryIndex, fetchObserverData, isServedOrigin, liveEmbedUrl, type HistoryIndex } from "./lib/live";
 import type { ObserverData } from "./lib/observer-data";
 import { buildPlayerModel } from "./lib/player-model";
 
@@ -46,7 +46,13 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
 
   const streams = data?.streams ?? [];
   const selected = selectedId !== null ? streams.find((s) => s.id === selectedId) ?? null : null;
-  const playerModel = selected ? buildPlayerModel(selected) : null;
+  // A live lane can stream before its first screenshot lands (the run's opening
+  // minutes). The stage IS the stream then, so an injected embed URL routes to the
+  // player with an empty timeline instead of the frameless evidence stub.
+  const playerModel = selected
+    ? (buildPlayerModel(selected) ??
+      (liveEmbedUrl(selected) !== null ? { frames: [], rows: [], avgFrameMs: 1500 } : null))
+    : null;
 
   const step = (delta: number) => {
     if (streams.length === 0) return;
