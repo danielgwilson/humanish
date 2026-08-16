@@ -21,6 +21,10 @@ export function buildTally(data: ObserverData): string {
         data.cost.placeholder ? ", placeholder" : ""
       })`
     );
+  } else if (data.cost && data.cost.estimatedTotalUsd === null) {
+    // Declared-absent cost stays visible (legacy intent, migrated at cutover):
+    // a missing line reads as free; "not estimated" reads as what it is.
+    parts.push("cost not estimated");
   }
   return parts.join(" · ");
 }

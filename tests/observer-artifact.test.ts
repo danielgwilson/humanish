@@ -4,21 +4,20 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { observerNextArtifactNeedsBuild, renderObserver } from "../src/observer.js";
+import { observerArtifactNeedsBuild, renderObserver } from "../src/observer.js";
 import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
 import { runDryRun } from "../src/run.js";
 
-// The HUMANISH_OBSERVER=next seam (#426 stage 3): renderObserverHtml is the one choke
-// point every surface funnels through, so these tests pin both sides of the switch —
-// the flag renders the prebuilt workspace artifact with the snapshot injected, and the
-// default path keeps producing the legacy renderer untouched until parity sign-off.
+// The Observer render path post-cutover (#426): renderObserverHtml is the one choke
+// point every surface funnels through, and the prebuilt workspace artifact is the only
+// renderer — no flag, no legacy fallback; rollback is a version pin.
 //
-// No pre-build here on purpose: in a repo checkout the flag AUTO-BUILDS a missing or
-// stale workspace artifact (the fresh-pull failure mode), so running this suite cold —
+// No pre-build here on purpose: in a repo checkout a missing or stale workspace
+// artifact AUTO-BUILDS (the fresh-pull failure mode), so running this suite cold —
 // exactly what CI's root test job does — exercises that path for real every run.
 
 async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-next-"));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-artifact-"));
   const tempApp = path.join(tempRoot, "minimal-app");
   try {
     await cp(path.resolve("fixtures/minimal-app"), tempApp, { recursive: true });
@@ -29,40 +28,42 @@ async function withRunBundle<T>(callback: (cwd: string) => Promise<T>): Promise<
   }
 }
 
-describe("HUMANISH_OBSERVER=next", () => {
-  it("renders the prebuilt workspace artifact with the snapshot inlined", async () => {
+describe("the Observer artifact render path", () => {
+  it("renders the prebuilt workspace artifact with the snapshot inlined, by default", async () => {
     await withRunBundle(async (cwd) => {
-      process.env.HUMANISH_OBSERVER = "next";
-      let html: string;
-      try {
-        const result = await renderObserver(cwd, "latest");
-        expect(result.ok).toBe(true);
-        html = await readFile(path.join(cwd, result.observerPath ?? ""), "utf8");
-      } finally {
-        delete process.env.HUMANISH_OBSERVER;
-      }
+      const result = await renderObserver(cwd, "latest");
+      expect(result.ok).toBe(true);
+      const html = await readFile(path.join(cwd, result.observerPath ?? ""), "utf8");
       expect(html).not.toContain("__HUMANISH_OBSERVER_DATA__");
       expect(html).toContain(`"schema":"${OBSERVER_DATA_SCHEMA}"`);
       expect(html).toContain("<title>Humanish Observer — observer-proof</title>");
       // The durability property the rebuild exists for: no network references.
       expect(html).not.toContain("fonts.googleapis");
+      // The auto-build must produce a production artifact even under a preset
+      // NODE_ENV (vitest sets test): a dev-flavored build embeds jsxDEV and the
+      // builder's absolute paths, which the public-safety scan rightly rejects.
+      expect(html).not.toContain("jsxDEV");
+      expect(html).not.toContain(process.cwd());
     });
   });
 
-  it("keeps the legacy renderer byte-for-byte the default", async () => {
+  it("ignores the retired HUMANISH_OBSERVER env var entirely", async () => {
     await withRunBundle(async (cwd) => {
-      const result = await renderObserver(cwd, "latest");
-      expect(result.ok).toBe(true);
-      const html = await readFile(path.join(cwd, result.observerPath ?? ""), "utf8");
-      // Legacy markers: the network font link (the known durability gap the flag fixes)
-      // and the string-concat client. The artifact's placeholder never appears on this path.
-      expect(html).toContain("fonts.googleapis");
-      expect(html).not.toContain("__HUMANISH_OBSERVER_DATA__");
+      process.env.HUMANISH_OBSERVER = "legacy";
+      try {
+        const result = await renderObserver(cwd, "latest");
+        expect(result.ok).toBe(true);
+        const html = await readFile(path.join(cwd, result.observerPath ?? ""), "utf8");
+        expect(html).not.toContain("fonts.googleapis");
+        expect(html).toContain(`"schema":"${OBSERVER_DATA_SCHEMA}"`);
+      } finally {
+        delete process.env.HUMANISH_OBSERVER;
+      }
     });
   });
 });
 
-describe("observerNextArtifactNeedsBuild", () => {
+describe("observerArtifactNeedsBuild", () => {
   async function withWorkspace<T>(callback: (workspaceDir: string, artifactPath: string) => Promise<T>): Promise<T> {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-stale-"));
     const workspaceDir = path.join(tempRoot, "observer");
@@ -79,7 +80,7 @@ describe("observerNextArtifactNeedsBuild", () => {
 
   it("wants a build when the artifact is missing (the fresh-pull failure mode)", async () => {
     await withWorkspace(async (workspaceDir, artifactPath) => {
-      expect(observerNextArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(true);
+      expect(observerArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(true);
     });
   });
 
@@ -88,7 +89,7 @@ describe("observerNextArtifactNeedsBuild", () => {
       await writeFile(artifactPath, "<!doctype html>", "utf8");
       const future = new Date(Date.now() + 60_000);
       await utimes(artifactPath, future, future);
-      expect(observerNextArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(false);
+      expect(observerArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(false);
     });
   });
 
@@ -97,7 +98,7 @@ describe("observerNextArtifactNeedsBuild", () => {
       await writeFile(artifactPath, "<!doctype html>", "utf8");
       const past = new Date(Date.now() - 60_000);
       await utimes(artifactPath, past, past);
-      expect(observerNextArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(true);
+      expect(observerArtifactNeedsBuild(workspaceDir, artifactPath)).toBe(true);
     });
   });
 });

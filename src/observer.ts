@@ -1,5 +1,5 @@
 import { execSync, spawn } from "node:child_process";
-import { constants as fsConstants, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { constants as fsConstants, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -7,7 +7,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildObserverData } from "./observer-data.js";
 import type { ObserverData } from "./observer-data.js";
-import { observerClientJs, observerCss } from "./observer-assets.js";
 import { listRuns, loadRunBundle, verifyRun } from "./run.js";
 import {
   bindExistingRunArtifactPaths,
@@ -390,40 +389,37 @@ export async function serveObserver(
   };
 }
 
-// ---- Observer v2 (#426): the prebuilt workspace artifact behind HUMANISH_OBSERVER=next ----
-// The rebuilt Observer is a self-contained single-file app (observer/ workspace) carrying one
-// JSON slot; rendering a run = injecting its snapshot (observer/scripts/inject.ts is the
-// reference implementation this mirrors). The seam lives here because every surface —
-// observe, watch, serve, and the lab call sites — funnels through renderObserverHtml, so one
-// switch covers them all. Until the parity sign-off, the legacy renderer below stays the
-// default and must remain byte-identical when the env var is unset.
+// ---- The Observer (#426): a prebuilt self-contained single-file app (observer/ workspace) ----
+// carrying one JSON slot; rendering a run = injecting its snapshot (observer/scripts/inject.ts
+// is the reference implementation this mirrors). The seam lives here because every surface —
+// observe, watch, serve, and the lab call sites — funnels through renderObserverHtml. The
+// legacy string-concat renderer was deleted at cutover (2026-08-16); rollback is a version pin.
 
-const OBSERVER_NEXT_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
-const OBSERVER_NEXT_SLOT = `<script id="observer-data" type="application/json">${OBSERVER_NEXT_PLACEHOLDER}</script>`;
+const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
+const OBSERVER_DATA_SLOT = `<script id="observer-data" type="application/json">${OBSERVER_DATA_PLACEHOLDER}</script>`;
 
-let cachedObserverNextArtifact: string | null = null;
+let cachedObserverArtifact: string | null = null;
 
 /**
- * Preflight for the next renderer: when the env flag selects it, resolve — and in a
- * repo checkout, build — the artifact BEFORE any run or lab work starts. A missing
- * artifact must cost seconds at startup, never a completed session (a live lane
- * spends real money before the render step would have noticed).
+ * Resolve — and in a repo checkout, build — the Observer artifact BEFORE any run or
+ * lab work starts. A missing artifact must cost seconds at startup, never a completed
+ * session (a live lane spends real money before the render step would have noticed).
+ * Unconditional on purpose: the artifact is the only renderer now, so the fail-before-
+ * spend property this preflight bought under the flag matters more, not less.
  */
-export function preflightObserverNext(): void {
-  if (process.env.HUMANISH_OBSERVER === "next") {
-    loadObserverNextArtifact();
-  }
+export function preflightObserverArtifact(): void {
+  loadObserverArtifact();
 }
 
-function loadObserverNextArtifact(): string {
-  if (cachedObserverNextArtifact !== null) return cachedObserverNextArtifact;
+function loadObserverArtifact(): string {
+  if (cachedObserverArtifact !== null) return cachedObserverArtifact;
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
   // Published package: the root build ships the artifact beside this module. Never
   // auto-built — an installed package either carries it or is broken; reinstall.
-  const packagedHtml = readObserverNextArtifact(path.join(moduleDir, "observer-app.html"));
+  const packagedHtml = readObserverArtifact(path.join(moduleDir, "observer-app.html"));
   if (packagedHtml !== null) {
-    cachedObserverNextArtifact = packagedHtml;
+    cachedObserverArtifact = packagedHtml;
     return packagedHtml;
   }
 
@@ -434,32 +430,67 @@ function loadObserverNextArtifact(): string {
   const workspaceDir = path.join(repoRoot, "observer");
   const artifactPath = path.join(workspaceDir, "dist", "index.html");
   if (existsSync(path.join(workspaceDir, "package.json"))) {
-    if (observerNextArtifactNeedsBuild(workspaceDir, artifactPath)) {
-      process.stderr.write("observer: building the rebuilt Observer artifact (observer/ workspace)…\n");
+    if (observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
+      // Concurrent cold starts (parallel test workers, two watch processes launched
+      // together) must not race one `vite build` output: a reader can catch the
+      // artifact half-written. A mkdir lock serializes builders across processes;
+      // whoever loses the race re-checks staleness and usually just reads.
+      // The lock lives OUTSIDE dist/ (vite empties dist mid-build) and inside an
+      // ignored path so a crashed builder cannot dirty the tree.
+      const lockDir = path.join(workspaceDir, "node_modules", ".observer-build-lock");
+      mkdirSync(path.dirname(lockDir), { recursive: true });
+      const deadline = Date.now() + 120_000;
+      for (;;) {
+        try {
+          mkdirSync(lockDir);
+          break; // lock acquired — this process builds
+        } catch {
+          if (Date.now() > deadline) break; // stale lock: build anyway, last writer wins
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+          if (!observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
+            const built = readObserverArtifact(artifactPath);
+            if (built !== null) {
+              cachedObserverArtifact = built;
+              return built;
+            }
+          }
+        }
+      }
       try {
-        execSync("pnpm --filter humanish-observer build", {
-          cwd: repoRoot,
-          stdio: ["ignore", "pipe", "inherit"]
-        });
-      } catch {
-        throw new Error(
-          "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output."
-        );
+        if (observerArtifactNeedsBuild(workspaceDir, artifactPath)) {
+          process.stderr.write("observer: building the Observer artifact (observer/ workspace)…\n");
+          try {
+            // NODE_ENV is forced: Vite respects a preset NODE_ENV (test, development),
+            // and a dev-flavored artifact embeds jsxDEV plus the builder's absolute
+            // filesystem paths — which the run's public-safety scan then rightly rejects.
+            execSync("pnpm --filter humanish-observer build", {
+              cwd: repoRoot,
+              stdio: ["ignore", "pipe", "inherit"],
+              env: { ...process.env, NODE_ENV: "production" }
+            });
+          } catch {
+            throw new Error(
+              "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output."
+            );
+          }
+        }
+      } finally {
+        rmSync(lockDir, { force: true, recursive: true });
       }
     }
-    const html = readObserverNextArtifact(artifactPath);
+    const html = readObserverArtifact(artifactPath);
     if (html !== null) {
-      cachedObserverNextArtifact = html;
+      cachedObserverArtifact = html;
       return html;
     }
   }
 
   throw new Error(
-    "HUMANISH_OBSERVER=next needs the prebuilt observer artifact; run `pnpm --filter humanish-observer build` in the repo, or reinstall the package."
+    "the Observer needs its prebuilt artifact (dist/observer-app.html in the package, observer/dist/index.html in a repo checkout); run `pnpm --filter humanish-observer build`, or reinstall the package."
   );
 }
 
-function readObserverNextArtifact(candidate: string): string | null {
+function readObserverArtifact(candidate: string): string | null {
   let html: string;
   try {
     html = readFileSync(candidate, "utf8");
@@ -467,14 +498,14 @@ function readObserverNextArtifact(candidate: string): string | null {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
-  if (!html.includes(OBSERVER_NEXT_SLOT)) {
+  if (!html.includes(OBSERVER_DATA_SLOT)) {
     throw new Error(`Observer artifact at ${candidate} has no observer-data slot.`);
   }
   return html;
 }
 
 /** internal: exported for tests. Missing artifact, or any workspace source newer than it. */
-export function observerNextArtifactNeedsBuild(workspaceDir: string, artifactPath: string): boolean {
+export function observerArtifactNeedsBuild(workspaceDir: string, artifactPath: string): boolean {
   let artifactMtime: number;
   try {
     artifactMtime = statSync(artifactPath).mtimeMs;
@@ -508,37 +539,14 @@ function newestSourceMtime(dir: string): number {
   return newest;
 }
 
-function renderObserverNextHtml(data: ObserverData): string {
-  return loadObserverNextArtifact()
-    .replace(OBSERVER_NEXT_SLOT, `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
+function renderObserverAppHtml(data: ObserverData): string {
+  return loadObserverArtifact()
+    .replace(OBSERVER_DATA_SLOT, `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
     .replace(/<title>[^<]*<\/title>/, `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
 }
 
 function renderObserverHtml(data: ObserverData): string {
-  if (process.env.HUMANISH_OBSERVER === "next") {
-    return renderObserverNextHtml(data);
-  }
-  return `<!doctype html>
-<html lang="en" data-theme="dark">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Humanish Observer - ${escapeHtml(data.run.runId)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>${observerCss()}</style>
-</head>
-<body>
-<div class="app" id="app" aria-label="Humanish Observer mission control">
-  <div class="boot" id="boot" aria-hidden="true"></div>
-</div>
-<noscript>This Observer renders local run evidence with JavaScript. Inspect the run bundle directly at <code>../run.json</code>.</noscript>
-<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>
-<script>${observerClientJs()}</script>
-</body>
-</html>
-`;
+  return renderObserverAppHtml(data);
 }
 
 /** internal: consumed by observer-serve */
