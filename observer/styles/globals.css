@@ -999,3 +999,136 @@ button.arow:hover {
     transition: background 0.12s, color 0.12s, opacity 0.12s, box-shadow 0.12s;
   }
 }
+
+/* ---------- library toggle + drawer (Base UI Dialog, tokens-styled) ---------- */
+.side-toggle {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.side-toggle:hover {
+  color: var(--ink);
+  background: var(--accent-wash);
+}
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(16, 15, 12, 0.55);
+}
+.drawer-pop {
+  position: fixed;
+  z-index: 61;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(82vw, 300px);
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  box-shadow: var(--sh-panel);
+  outline: none;
+  display: flex;
+}
+.drawer-pop .side {
+  width: 100%;
+  height: 100%;
+  border-right: 0;
+}
+
+/* ---------- phone layout (mobile is a first-class requirement, 2026-08-16) ----------
+   One breakpoint. The static sidebar disappears (the drawer replaces it), the player
+   stacks stage-over-inspector and hands scrolling to the page, and the chrome sheds
+   what a phone has no room for. Wide content scrolls inside its own container; the
+   page never scrolls sideways. */
+@media (max-width: 880px) {
+  .side {
+    display: none;
+  }
+  .drawer-pop .side {
+    display: flex;
+  }
+  .topbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 8px 10px;
+  }
+  .topbar .right {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .crumbs .trunc {
+    max-width: 72px;
+  }
+  .searchbox {
+    min-width: 0;
+    flex: 1 1 120px;
+  }
+  .countline {
+    padding: 12px 14px 2px;
+  }
+  .gallery {
+    padding: 12px 14px;
+    grid-template-columns: 1fr;
+  }
+
+  /* player: stage first, inspector below, page scroll owns the vertical axis */
+  .content.player-host {
+    display: block;
+    overflow-y: auto;
+  }
+  .player {
+    flex-direction: column;
+    height: auto;
+  }
+  .viewer {
+    flex: none;
+  }
+  .stage {
+    flex: none;
+    padding: 10px 10px 6px;
+    overflow: visible;
+  }
+  .stage-box img {
+    max-height: 52vh;
+  }
+  .stage-live {
+    height: 52vh;
+  }
+  .transport {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding: 8px 10px;
+  }
+  .scrubwrap {
+    flex: 1 1 160px;
+  }
+  .inspector {
+    width: 100%;
+    border-left: 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  /* the feed keeps its own bounded scroller so click-to-seek auto-follow never
+     yanks the page (the page owns overall scrolling in the stacked layout) */
+  .ipanel {
+    max-height: 56vh;
+    overflow-y: auto;
+  }
+  .statusbar {
+    height: auto;
+    min-height: 38px;
+    flex-wrap: wrap;
+    padding: 6px 12px;
+    gap: 8px 12px;
+  }
+  .statusbar .links {
+    display: none;
+  }
+}

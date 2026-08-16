@@ -48,9 +48,21 @@ From the repo root (pnpm workspace):
 - Register behavior is the site's three-state contract: system scheme by
   default, `data-theme` override on `<html>`, `humanish-theme` storage key.
   No new colors — every color reads a humanish token.
-- The CLI consumes the built artifact behind `HUMANISH_OBSERVER=next`
-  (stage 3): the root build copies `observer/dist/index.html` to
+- The CLI consumes the built artifact as its only renderer (cutover 2026-08-16,
+  #439): the root build copies `observer/dist/index.html` to
   `dist/observer-app.html`, and `src/observer.ts` injects each run's snapshot
-  into the slot (mirroring `scripts/inject.ts`). Default behavior stays the
-  legacy renderer (`src/observer-assets.ts`) until the parity sign-off flips
-  the default at cutover (#426 stage 5).
+  into the slot (mirroring `scripts/inject.ts`). In a repo checkout the
+  artifact auto-builds (production-forced, cross-process locked). There is no
+  flag and no legacy fallback; rollback is a version pin.
+- Mobile is a first-class requirement (2026-08-16): every surface must be
+  usable at phone width. The pattern: one breakpoint (880px), the static
+  sidebar yields to the Base UI drawer, the player stacks stage-over-inspector
+  with the page owning scroll and the feed keeping its own bounded scroller,
+  and wide content scrolls inside its own container — the page never scrolls
+  sideways. Verify changes at 390px with real bundle data, not just desktop.
+- Interactive primitives start from Base UI (D6): anything needing focus
+  management, dismissal, or overlay behavior wraps a `@base-ui-components/react`
+  primitive (vendored under `components/ui/`, styled only by humanish tokens),
+  never a hand-rolled portal. Static idioms (cards, chips, labels) stay
+  token-styled CSS. Wrapped primitives are registry-promotion candidates once a
+  second surface consumes them.

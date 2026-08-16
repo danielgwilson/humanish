@@ -15,17 +15,31 @@ export interface TopbarProps {
   onFilters: (next: GridFilters) => void;
   onRuns: () => void;
   onStep: (delta: number) => void;
+  onLibrary: () => void;
+  sideOpen: boolean;
 }
 
 // Frame.io-style chrome: wordmark first, then breadcrumbs with a caret on the leaf.
 // Grid view carries the working filters; the participant view swaps them for a pager.
-export function Topbar({ data, selected, filters, onFilters, onRuns, onStep }: TopbarProps) {
+export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onLibrary, sideOpen }: TopbarProps) {
   const statuses = [...new Set(data.streams.map((s) => s.statusLabel))];
   const kinds = [...new Set(data.streams.map((s) => s.kindLabel))];
   const index = selected ? data.streams.findIndex((s) => s.id === selected.id) : -1;
 
   return (
     <div className="topbar">
+      <button
+        type="button"
+        className="side-toggle"
+        aria-label="Toggle run library"
+        aria-expanded={sideOpen}
+        onClick={onLibrary}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="1" y="1.5" width="12" height="11" rx="2" stroke="currentColor" />
+          <line x1="5.2" y1="1.5" x2="5.2" y2="12.5" stroke="currentColor" />
+        </svg>
+      </button>
       <Wordmark label="humanish Observer" />
       <nav className="crumbs" aria-label="Breadcrumbs">
         {selected ? (

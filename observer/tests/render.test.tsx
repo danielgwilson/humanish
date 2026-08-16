@@ -55,6 +55,40 @@ afterEach(async () => {
   localStorage.clear();
 });
 
+describe("the run library control (D6: first Base UI adoption)", () => {
+  it("desktop: collapses and restores the static sidebar, persisted", async () => {
+    window.localStorage.removeItem("humanish-sidebar");
+    await mount(<App data={data} />);
+    expect(container.querySelector(".side")).not.toBeNull();
+    const toggle = container.querySelector('[aria-label="Toggle run library"]') as Element;
+    await click(toggle);
+    expect(container.querySelector(".side")).toBeNull();
+    expect(window.localStorage.getItem("humanish-sidebar")).toBe("closed");
+    await click(toggle);
+    expect(container.querySelector(".side")).not.toBeNull();
+  });
+
+  it("phone: the same control opens the library as a Base UI drawer instead", async () => {
+    window.localStorage.removeItem("humanish-sidebar");
+    const original = window.matchMedia;
+    // jsdom has no layout; the click-time width check is the only viewport branch.
+    window.matchMedia = ((query: string) =>
+      ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+    try {
+      await mount(<App data={data} />);
+      const toggle = container.querySelector('[aria-label="Toggle run library"]') as Element;
+      await click(toggle);
+      const pop = document.querySelector(".drawer-pop");
+      expect(pop).not.toBeNull();
+      expect(pop?.querySelector(".side")).not.toBeNull();
+      // the static sidebar state is untouched by the drawer path
+      expect(window.localStorage.getItem("humanish-sidebar")).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
 describe("observer scaffold rendering the first-run golden", () => {
   it("renders the study grid: tally line + one card per participant", async () => {
     await mount(<App data={data} />);
