@@ -159,6 +159,7 @@ function makeExternalRunSession(args: {
   observedOrigin?: string;
   divergentPersonaId?: string;
   divergentOrigin?: string;
+  sessionOutcome?: { status: ActorStatus; completionReason: ActorCompletionReason };
 }): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
   const baseOrigin = args.observedOrigin ?? DEFAULT_OBSERVED_ORIGIN;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
@@ -170,16 +171,18 @@ function makeExternalRunSession(args: {
         options.onObservedUrl?.(lobbyUrlFor(baseOrigin)); // then the host lands on /lobby/CODE -> resolves the latch
       }
       await new Promise<void>((resolve) => { setTimeout(resolve, HOST_HOLD_MS); });
-      const trace = makeTrace({ persona: options.persona, status: "passed", completionReason: "goal_satisfied" });
-      return { status: "passed", completionReason: "goal_satisfied", reason: trace.reason, trace };
+      const status = args.sessionOutcome?.status ?? "passed";
+      const completionReason = args.sessionOutcome?.completionReason ?? "goal_satisfied";
+      const trace = makeTrace({ persona: options.persona, status, completionReason });
+      return { status, completionReason, reason: trace.reason, trace };
     }
     const stuck = args.stuckPersonaId !== undefined && options.persona.id === args.stuckPersonaId;
     const divergent = args.divergentPersonaId !== undefined && options.persona.id === args.divergentPersonaId;
     const followerOrigin = divergent ? (args.divergentOrigin ?? baseOrigin) : baseOrigin;
     options.onObservedUrl?.(stuck ? homeUrlFor(followerOrigin) : lobbyUrlFor(followerOrigin));
     await new Promise<void>((resolve) => { setTimeout(resolve, FOLLOWER_HOLD_MS); });
-    const status: ActorStatus = stuck ? "failed" : "passed";
-    const completionReason: ActorCompletionReason = stuck ? "gave_up" : "goal_satisfied";
+    const status: ActorStatus = stuck ? "failed" : args.sessionOutcome?.status ?? "passed";
+    const completionReason: ActorCompletionReason = stuck ? "gave_up" : args.sessionOutcome?.completionReason ?? "goal_satisfied";
     const trace = makeTrace({ persona: options.persona, status, completionReason, ...(stuck ? { reason: "could not find the lobby" } : {}) });
     return { status, completionReason, reason: trace.reason, trace };
   };
@@ -644,6 +647,30 @@ describe("review.summary is external-public plane-aware", () => {
     const summary = bundle.review.summary;
     expect(summary).not.toContain("state delta(s) under load");
     expect(summary).toContain("seats converged on one lobby");
+  });
+
+  it("separates lobby convergence from unfinished participant sessions (#364)", async () => {
+    const seen: CuaActorSessionOptions[] = [];
+    const { hooks } = makeExternalHooks(makeExternalRunSession({
+      seen,
+      sessionOutcome: { status: "incomplete", completionReason: "budget_reached" }
+    }));
+    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
+    expect(result.ok).toBe(false);
+
+    const runRoot = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
+    const reviewMarkdown = await readFile(path.join(runRoot, "review.md"), "utf8");
+
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).toContain("0/3 actor session(s) passed credibility checks");
+    expect(bundle.review.summary).toContain("mission endpoint: 0/3 ended goal_satisfied");
+    expect(bundle.review.summary).toContain("completion reasons: budget_reached 3/3");
+    expect(bundle.review.summary).toContain("3 seats converged on one lobby");
+    expect(bundle.review.summary).not.toContain("reached their goal");
+    expect(reviewMarkdown).toContain("mission endpoint: 0/3 ended goal_satisfied");
+    expect(reviewMarkdown).toContain("completion reasons: budget_reached 3/3");
+    expect(reviewMarkdown).toContain("3 seats converged on one lobby");
   });
 });
 

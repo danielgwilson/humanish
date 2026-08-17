@@ -1820,6 +1820,39 @@ function actorLanePassed(result: ActorLaneResult | undefined): boolean {
     && !result.outcome.selfReportedBlocker;
 }
 
+/**
+ * Keep three different claims separate in the stakeholder roll-up:
+ *
+ * - `outcome.ok` says the actor session passed the harness's credibility checks;
+ * - `completionReason` says how the participant session ended;
+ * - shared-world convergence is reported by the plane-specific summary alongside this line.
+ *
+ * None of those is adopter-scored proof that the mission text was completed. In particular, a
+ * productive `budget_reached` session can coexist with lobby convergence without becoming a
+ * `goal_satisfied` result (#364).
+ */
+function formatSharedWorldActorOutcomes(outcomes: SharedWorldOutcome[], expectedCount: number): string {
+  const passedSessions = outcomes.filter((outcome) => outcome.ok).length;
+  const goalSatisfiedSessions = outcomes.filter(
+    (outcome) => outcome.ok && outcome.completionReason === "goal_satisfied"
+  ).length;
+  const completionReasonCounts = new Map<string, number>();
+  for (const outcome of outcomes) {
+    const reason = outcome.completionReason ?? "not_recorded";
+    completionReasonCounts.set(reason, (completionReasonCounts.get(reason) ?? 0) + 1);
+  }
+  for (let missing = outcomes.length; missing < expectedCount; missing += 1) {
+    completionReasonCounts.set("not_recorded", (completionReasonCounts.get("not_recorded") ?? 0) + 1);
+  }
+  const completionReasons = [...completionReasonCounts.entries()]
+    // ASCII contract tokens: compare directly so bundle text is byte-stable across host locales.
+    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+    .map(([reason, count]) => `${reason} ${count}/${expectedCount}`)
+    .join(", ");
+
+  return `${passedSessions}/${expectedCount} actor session(s) passed credibility checks; mission endpoint: ${goalSatisfiedSessions}/${expectedCount} ended goal_satisfied; completion reasons: ${completionReasons}`;
+}
+
 /** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
 export function buildConcurrentSharedWorldBundle(args: {
   config: LabConfig;
@@ -2187,7 +2220,7 @@ export function buildConcurrentSharedWorldBundle(args: {
         && actorResults.every(actorLanePassed)
         ? "pass"
         : "fail");
-  const passedMissions = outcomes.filter((outcome) => outcome.ok).length;
+  const actorOutcomeSummary = formatSharedWorldActorOutcomes(outcomes, actorSpecs.length);
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
@@ -2202,8 +2235,8 @@ export function buildConcurrentSharedWorldBundle(args: {
       : inProgress
         ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against ONE shared plane; final verification is pending.`
       : external
-        ? `Concurrent shared-world (ONE external-public plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${passedMissions}/${actorSpecs.length} reached their goal; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} seats converged on one lobby` : "lobby convergence not observed"}.`
-        : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${passedMissions}/${actorSpecs.length} reached their goal; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
+        ? `Concurrent shared-world (ONE external-public plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} seats converged on one lobby` : "lobby convergence not observed"}.`
+        : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
     gaps: dryRun
       ? ["This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."]
       : inProgress

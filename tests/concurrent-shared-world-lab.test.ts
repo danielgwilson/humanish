@@ -770,7 +770,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.summary).toContain("2/3 reached their goal");
+    expect(bundle.review.summary).toContain("2/3 actor session(s) passed credibility checks");
+    expect(bundle.review.summary).toContain("mission endpoint: 2/3 ended goal_satisfied");
+    expect(bundle.review.summary).toContain("completion reasons: actor_error 1/3, goal_satisfied 2/3");
+    expect(bundle.review.summary).not.toContain("reached their goal");
     expect(bundle.review.gaps.some((gap) => gap.includes("persona-02"))).toBe(true);
     expect(bundle.sharedWorld?.outcomes).toEqual(
       expect.arrayContaining([
@@ -829,7 +832,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(bundle.sharedWorld.outcomes).toHaveLength(3);
     const windows = bundle.sharedWorld.laneWindows as Array<{ startedAt: number; endedAt: number }>;
     expect(windows.some((a, i) => windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt))).toBe(true);
-    // 2 of 3 reached their goal; the failed one is recorded as data, not a swarm-blocker.
+    // 2 of 3 sessions passed the credibility checks; the failed one is recorded as data, not a
+    // swarm-blocker. Mission and convergence claims remain separate in the review summary (#364).
     const okCount = (bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).filter((o) => o.ok).length;
     expect(okCount).toBe(2);
   });
