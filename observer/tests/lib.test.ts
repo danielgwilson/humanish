@@ -4,6 +4,7 @@ import { formatDuration, runArtifactHref } from "../lib/artifact-href";
 import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel, frameHoldMs, parseClickCoord } from "../lib/player-model";
+import { formatHash, parseHash } from "../lib/route";
 import { NOTABLE_COMPLETION } from "../lib/signal";
 import { buildTally } from "../components/study-grid";
 
@@ -35,6 +36,30 @@ describe("notable completions", () => {
     ]);
     expect(NOTABLE_COMPLETION["goal_satisfied"]).toBeUndefined();
     expect(NOTABLE_COMPLETION["turn_completed"]).toBeUndefined();
+  });
+});
+
+describe("hash routes (#441 deep links)", () => {
+  it("round-trips lane and frame addresses, 1-based in the hash", () => {
+    expect(parseHash(formatHash("stream-001", null))).toEqual({ laneId: "stream-001", frame: null });
+    expect(parseHash(formatHash("stream-001", 0))).toEqual({ laneId: "stream-001", frame: 0 });
+    expect(formatHash("stream-001", 2)).toBe("#/lane/stream-001/f/3");
+    expect(parseHash("#/lane/stream-001/f/3")).toEqual({ laneId: "stream-001", frame: 2 });
+  });
+
+  it("resolves anything unaddressable to the grid, never an error", () => {
+    expect(parseHash("")).toEqual({ laneId: null, frame: null });
+    expect(parseHash("#")).toEqual({ laneId: null, frame: null });
+    expect(parseHash("#/lane/")).toEqual({ laneId: null, frame: null });
+    expect(parseHash("#/lane/x/f/0")).toEqual({ laneId: "x", frame: null });
+    expect(parseHash("#/lane/x/f/junk")).toEqual({ laneId: null, frame: null });
+    expect(parseHash("#focus=legacy")).toEqual({ laneId: null, frame: null });
+    expect(formatHash(null, 5)).toBe("");
+  });
+
+  it("escapes lane ids that need it", () => {
+    const round = parseHash(formatHash("lane/with slash", 0));
+    expect(round.laneId).toBe("lane/with slash");
   });
 });
 

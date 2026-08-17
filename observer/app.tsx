@@ -11,13 +11,17 @@ import { Topbar, type GridFilters } from "./components/topbar";
 import { HISTORY_POLL_MS, OBSERVER_POLL_MS, fetchHistoryIndex, fetchObserverData, isServedOrigin, liveEmbedUrl, type HistoryIndex } from "./lib/live";
 import type { ObserverData } from "./lib/observer-data";
 import { buildPlayerModel } from "./lib/player-model";
+import { formatHash, parseHash, pushHash } from "./lib/route";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 
 export function App({ data: initialData }: { data: ObserverData | null }) {
   const [data, setData] = useState<ObserverData | null>(initialData);
   const [history, setHistory] = useState<HistoryIndex | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Deep links (#441): the hash is the address of the current view. Selection
+  // initializes from it, browser Back/Forward drive it, and UI selection writes it.
+  const [selectedId, setSelectedId] = useState<string | null>(() => parseHash(window.location.hash).laneId);
+  const [initialFrame, setInitialFrame] = useState<number | null>(() => parseHash(window.location.hash).frame);
   const [filters, setFilters] = useState<GridFilters>(NO_FILTERS);
   // One library control, two behaviors: on desktop it collapses the static sidebar
   // (persisted); on a phone-width viewport the sidebar is CSS-hidden, so the same
@@ -90,6 +94,32 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
     if (nextStream) setSelectedId(nextStream.id);
   };
 
+  // Back/Forward restore the addressed view (pushState never fires hashchange,
+  // so our own writes cannot echo here; popstate covers pushState navigation).
+  useEffect(() => {
+    const onRoute = () => {
+      const route = parseHash(window.location.hash);
+      setSelectedId(route.laneId);
+      setInitialFrame(route.frame);
+    };
+    window.addEventListener("popstate", onRoute);
+    window.addEventListener("hashchange", onRoute);
+    return () => {
+      window.removeEventListener("popstate", onRoute);
+      window.removeEventListener("hashchange", onRoute);
+    };
+  }, []);
+
+  // UI selection writes the address. Guarded on the parsed hash so restoring FROM
+  // the hash (initial load, Back) never clobbers a frame address the player has
+  // not consumed yet.
+  useEffect(() => {
+    if (parseHash(window.location.hash).laneId !== selectedId) {
+      pushHash(formatHash(selectedId, null));
+      setInitialFrame(null);
+    }
+  }, [selectedId]);
+
   // Escape returns to the grid. Arrow keys belong to the player (frame stepping,
   // per the review-player spec); participants page via the topbar pager.
   useEffect(() => {
@@ -141,7 +171,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
         <div className={selected && playerModel ? "content player-host" : "content"}>
           {selected ? (
             playerModel ? (
-              <Player key={selected.id} data={data} stream={selected} model={playerModel} />
+              <Player key={selected.id} data={data} stream={selected} model={playerModel} initialFrame={initialFrame} />
             ) : (
               <ParticipantStub key={selected.id} data={data} stream={selected} />
             )
