@@ -53,6 +53,9 @@ afterEach(async () => {
   container.remove();
   document.documentElement.removeAttribute("data-theme");
   localStorage.clear();
+  // The player writes frame addresses into the hash (#441); a leaked address would
+  // deep-link the next test's mount straight past the grid.
+  window.history.replaceState(null, "", window.location.pathname);
 });
 
 describe("the filter funnel (second Base UI adoption: popover/sheet)", () => {
@@ -257,6 +260,29 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     await click(reportTab as Element);
     expect(container.textContent).toContain("crossed execution.caps.maxUsd=$5 after productive activity");
     expect(container.querySelector(".rawchip")).not.toBeNull();
+  });
+
+  it("deep links (#441): a frame address opens the player on that exact frame", async () => {
+    const data = liveShapedData();
+    const streamId = (data as unknown as { streams: Array<{ id: string }> }).streams[0]!.id;
+    window.history.replaceState(null, "", `#/lane/${streamId}/f/2`);
+    await mount(<App data={data} />);
+    // Straight into the player, at the addressed frame (1-based hash → second frame).
+    expect(container.querySelector(".player")).not.toBeNull();
+    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
+    expect(container.querySelector(".counter")?.textContent).toBe("2 / 2");
+  });
+
+  it("deep links (#441): opening a participant writes the address; Escape clears it", async () => {
+    await mount(<App data={liveShapedData()} />);
+    expect(window.location.hash).toBe("");
+    await click(container.querySelector(".open-overlay") as Element);
+    // Paused at frame 0 → the address carries the lane and the 1-based frame.
+    expect(window.location.hash).toMatch(/^#\/lane\/.+\/f\/1$/);
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(window.location.hash).toBe("");
   });
 
   it("thought rows (#427): reported thinking in its own register, anchored to the prior frame", async () => {

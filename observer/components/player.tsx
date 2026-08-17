@@ -4,6 +4,7 @@ import { formatDuration } from "@/lib/artifact-href";
 import { followTarget, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { frameHoldMs, type PlayerModel } from "@/lib/player-model";
+import { formatHash, replaceHash } from "@/lib/route";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
 
 type Tab = "actions" | "details" | "report";
@@ -29,12 +30,16 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
 // and the inspector tabs. Actions are the comments analog — every recorded row,
 // click-to-seek, following the transport. Playback is avg-paced (see player-model.ts)
 // and says so in the transport; it never pretends to be real timing.
-export function Player({ data, stream, model }: { data: ObserverData; stream: ObserverStream; model: PlayerModel }) {
+export function Player({ data, stream, model, initialFrame = null }: { data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null }) {
   const live = liveEmbedUrl(stream);
   const watching = live !== null || stream.status === "running";
-  // A live lane opens following the live edge; a finished one opens at frame 0 for review.
-  const [frame, setFrame] = useState(watching ? Math.max(0, model.frames.length - 1) : 0);
-  const [following, setFollowing] = useState(watching);
+  // A live lane opens following the live edge; a finished one opens at frame 0 for
+  // review — unless a deep link addressed a frame (#441), which wins in both cases.
+  const addressed = initialFrame !== null && model.frames.length > 0
+    ? Math.min(Math.max(0, initialFrame), model.frames.length - 1)
+    : null;
+  const [frame, setFrame] = useState(addressed ?? (watching ? Math.max(0, model.frames.length - 1) : 0));
+  const [following, setFollowing] = useState(watching && addressed === null);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [tab, setTab] = useState<Tab>("actions");
@@ -49,6 +54,14 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
     [model]
   );
   const thoughtCount = useMemo(() => model.rows.filter((row) => row.kind === "reasoning").length, [model]);
+
+  // The paused frame is the address (#441): seeks and pauses write "#/lane/<id>/f/<n>"
+  // (replace, never a history entry per scrub), so a reload or a shared link lands on
+  // this exact moment. Playback ticks skip the write; the lane address stays.
+  useEffect(() => {
+    if (playing || model.frames.length === 0) return;
+    replaceHash(formatHash(stream.id, frame));
+  }, [playing, frame, stream.id, model.frames.length]);
 
   // A poll grew the timeline: a viewer on the newest frame follows the live edge;
   // one who scrubbed back is doing instant replay and stays put.
