@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.45.0`)
+## Current Program Truth (source `0.46.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -467,13 +467,19 @@ Observer hero from a commit-pinned public application (drawDB) shipped in
 `0.16.0`. That run treats the application as a study subject, not a Humanish
 adopter, and does not imply endorsement; it does not satisfy the depth gate.
 
-The first work item, by operator directive (2026-08-17): the participant
-train-of-thought capture (#427, pinned). The participant's reported thinking is
-the research signal the three-roles model exists to surface, the Observer
-already reserves its surfaces (feed thought rows, card ticker), and the
-redaction path already declares handling for it; only the capture side is
-missing. Stage 1 (bundle + feed on finished runs) does not wait for stage 2
-(the live ticker, which rides the #441 incremental-flush work).
+The operator-pinned train-of-thought capture (#427) landed its stage 1 in
+`0.46.0`: the computer-use path requests provider-sanctioned reasoning
+summaries every turn (with a session latch that degrades to the old wire
+shape if the account rejects them), the trace records them as ordered
+redacted `reasoning` items, and the player feed renders them as thought rows
+(`N actions · M thoughts`). Live-proven on a real run whose first recorded
+thought immediately exposed a persona defect (#452, fixed same release):
+both flagship personas had been opening every study prompt with a
+dogfood-era "evaluating Humanish" summary. Stage 2 — the card live ticker —
+rides the #441 incremental-flush work and stays with #427. The same run
+also surfaced #453: the credible-pass guard reads a post-success defect
+report as a self-reported blocker, an incentive inversion against the
+richest participant behavior.
 
 The standing queue behind it, in rough order:
 
