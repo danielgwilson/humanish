@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.46.0`)
+## Current Program Truth (source `0.47.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -467,34 +467,37 @@ Observer hero from a commit-pinned public application (drawDB) shipped in
 `0.16.0`. That run treats the application as a study subject, not a Humanish
 adopter, and does not imply endorsement; it does not satisfy the depth gate.
 
-The operator-pinned train-of-thought capture (#427) landed its stage 1 in
-`0.46.0`: the computer-use path requests provider-sanctioned reasoning
-summaries every turn (with a session latch that degrades to the old wire
-shape if the account rejects them), the trace records them as ordered
-redacted `reasoning` items, and the player feed renders them as thought rows
-(`N actions · M thoughts`). Live-proven on a real run whose first recorded
-thought immediately exposed a persona defect (#452, fixed same release):
-both flagship personas had been opening every study prompt with a
-dogfood-era "evaluating Humanish" summary. Stage 2 — the card live ticker —
-rides the #441 incremental-flush work and stays with #427. The same run
-also surfaced #453: the credible-pass guard reads a post-success defect
-report as a self-reported blocker, an incentive inversion against the
-richest participant behavior.
+The operator-pinned train-of-thought thread (#427, both stages) and the
+#441 queue head are done as of `0.47.0`, live-proven the same day they
+shipped: trace items carry recording stamps and structured click
+coordinates; the live path flushes `liveActor` partials mid-run so the
+attached Observer's timeline grows while a study runs; playback runs at
+the participant's recorded pace when stamps exist (and the transport says
+which clock it is on); the participant card's decide-line ticks the
+newest reported thought during a live lane; and a live-shaped golden cut
+from a kept receipt run pins the whole shape (`?fixture=live`). On the way
+the capture exposed and closed two evidence-quality defects: the persona
+identity leak (#452) and the credible-pass guard's incentive inversion
+against post-success defect reports (#453 — the verdict scan and the
+friction tally are now separate reads of the same narrative). Shared-world
+roll-up honesty (#364) closed via an external contribution that separates
+credibility, mission endpoint, and convergence into three explicit claims.
 
-The standing queue behind it, in rough order:
+The standing queue, in rough order:
 
-1. the #441 capture-side set: per-action timestamps, structured coordinates,
-   incremental item flush during live runs, a live-shaped golden, then deep
-   links (a declared parity regression from the renderer cutover);
+1. Observer deep links (#441's last item): hash routing for run/lane/frame —
+   the declared parity regression from the renderer cutover and the
+   prerequisite for #428's cite-turns flags;
 2. registry promotions: the wordmark (#431), the participant card, and the two
    vendored Base UI wrappers (drawer, popover) once a second surface consumes
    them;
 3. the adoption cluster: vendor-native key resolution (#436) and the optional
    desktop peer-dep gap (#346) — the two biggest remaining "npx works
    first-try" violations;
-4. shared-world honesty: per-action evidence (#365), roll-up truthfulness
-   (#364), exposure-flag coverage (#446), and the pre-barrier "stream ended"
-   mislabel found during the 2026-08-16 live games.
+4. shared-world honesty, remaining half: per-action evidence (#365) and
+   exposure-flag coverage (#446);
+5. the stakeholder TUI (#455): research + token-translated mocks on the
+   operator review surface, design sign-off gated before any code.
 
 The depth-axis deletion front (an adopter's bespoke terminal-product sim,
 comparator contract posted on the adopter's tracker) is paused awaiting the
