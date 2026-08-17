@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.47.0`)
+## Current Program Truth (source `0.48.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -483,20 +483,21 @@ friction tally are now separate reads of the same narrative). Shared-world
 roll-up honesty (#364) closed via an external contribution that separates
 credibility, mission endpoint, and convergence into three explicit claims.
 
+Deep links landed in `0.48.0` (#464): every participant and frame is
+addressable (`#/lane/<id>/f/<n>`), Back/Forward restore the view, and a
+reload or shared link lands on the exact moment — #441 closed entirely.
+
 The standing queue, in rough order:
 
-1. Observer deep links (#441's last item): hash routing for run/lane/frame —
-   the declared parity regression from the renderer cutover and the
-   prerequisite for #428's cite-turns flags;
-2. registry promotions: the wordmark (#431), the participant card, and the two
+1. registry promotions: the wordmark (#431), the participant card, and the two
    vendored Base UI wrappers (drawer, popover) once a second surface consumes
    them;
-3. the adoption cluster: vendor-native key resolution (#436) and the optional
+2. the adoption cluster: vendor-native key resolution (#436) and the optional
    desktop peer-dep gap (#346) — the two biggest remaining "npx works
    first-try" violations;
-4. shared-world honesty, remaining half: per-action evidence (#365) and
+3. shared-world honesty, remaining half: per-action evidence (#365) and
    exposure-flag coverage (#446);
-5. the stakeholder TUI (#455): research + token-translated mocks on the
+4. the stakeholder TUI (#455): research + token-translated mocks on the
    operator review surface, design sign-off gated before any code.
 
 The depth-axis deletion front (an adopter's bespoke terminal-product sim,
