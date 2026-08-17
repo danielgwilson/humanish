@@ -585,6 +585,12 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const startedAtMs = now();
   const remaining = (): number => timeoutMs - (now() - startedAtMs);
   const items: ActorTraceItem[] = [];
+  // The ONE recording choke point (#441): every trace item is stamped `at` from the
+  // loop's injected clock as it is recorded, so timed playback reads recorded facts
+  // (deterministic in tests via the injected `now`).
+  const record = (item: ActorTraceItem): void => {
+    items.push({ ...item, at: new Date(now()).toISOString() });
+  };
   // Affordance classification (#369): WHICH route the actor took, recorded per dispatched action.
   // Collected here because the typed text exists only at dispatch — describeCuaAction deliberately
   // destroys it before it can reach the trace. Only the CLASS (and a scheme-shaped signal) is kept.
@@ -643,7 +649,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     const path = await writeScreenshot(`${label}.png`, bytes);
     const screenshotRef: ActorTraceItem["screenshotRef"] = { path, redaction: method };
     lastScreenshotRef = screenshotRef;
-    items.push({
+    record({
       id: nextId("screenshot"),
       kind: "screenshot",
       lifecycle: "completed",
@@ -673,7 +679,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     for (const completion of taskTracker.observe(stopObservationOf(observation), turn)) {
       // The id is researcher-authored config and the kinds are rule-type names; the matched VALUES
       // (a URL, page text) never appear here — the same discipline as stopWhenTraceItem.
-      items.push({
+      record({
         id: nextId("notice"),
         kind: "notice",
         lifecycle: "completed",
@@ -733,7 +739,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     if (stopConditionMatch) {
       completionReason = "goal_satisfied";
       reason = stopWhenReason(stopConditionMatch);
-      items.push(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
+      record(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
       throw new CuaStopWhenStop();
     }
     // The progress key prefers a stable appState projection (route/turn/modal deltas drive
@@ -821,7 +827,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         }
       }
       if (turn.reasoning) {
-        items.push({
+        record({
           id: nextId("reasoning"),
           kind: "reasoning",
           lifecycle: "completed",
@@ -831,7 +837,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         bump("reasonings");
       }
       if (turn.message) {
-        items.push({
+        record({
           id: nextId("message"),
           kind: "message",
           lifecycle: "completed",
@@ -848,7 +854,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           // "malicious_instructions"), not free text; record them (redacted for
           // defense-in-depth) so the evidence shows WHY the run paused.
           const checks = redaction.redactText(turn.pendingSafetyChecks.map((check) => check.code).join(", "));
-          items.push({
+          record({
             id: nextId("approval"),
             kind: "approval",
             lifecycle: "completed",
@@ -937,7 +943,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             lastMaterialActionTitle = priorMaterialActionTitle;
           }
           const { exitCode, stderrTail } = commandFailureInfo(error);
-          items.push({
+          record({
             id: nextId("notice"),
             kind: "notice",
             lifecycle: "completed",
@@ -957,11 +963,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           });
           continue;
         }
-        items.push({
+        record({
           id: nextId("ui_action"),
           kind: "ui_action",
           lifecycle: "completed",
-          title: actionTitle
+          title: actionTitle,
+          // Structured pin coordinates (#441), exactly the click classes the Observer
+          // pins render — recorded fact instead of a title re-parse downstream.
+          ...(action.kind === "click" || action.kind === "double_click"
+            ? { coord: { x: action.x, y: action.y } }
+            : {})
         });
       }
 
@@ -980,7 +991,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (stopConditionMatch) {
         completionReason = "goal_satisfied";
         reason = stopWhenReason(stopConditionMatch);
-        items.push(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
+        record(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
         break;
       }
 
@@ -1049,7 +1060,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (consecutiveIdle >= idleSteps) {
         completionReason = "gave_up";
         reason = `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`;
-        items.push(backstopTraceItem({
+        record(backstopTraceItem({
           id: nextId("notice"),
           reason,
           lastMaterialActionTitle,
@@ -1062,7 +1073,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (consecutiveNoProgress >= noProgressSteps) {
         completionReason = "gave_up";
         reason = `gave up: ${consecutiveNoProgress} consecutive turns with no change to the UI state`;
-        items.push(backstopTraceItem({
+        record(backstopTraceItem({
           id: nextId("notice"),
           reason,
           lastMaterialActionTitle,
@@ -1092,7 +1103,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       const rawMessage = error instanceof Error ? error.message : String(error);
       const message = redactNarration(rawMessage);
       reason = redactNarration(`computer-use loop error: ${rawMessage}`);
-      items.push({
+      record({
         id: nextId("notice"),
         kind: "notice",
         lifecycle: "completed",

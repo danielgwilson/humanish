@@ -188,6 +188,20 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.counts.actions).toBe(2);
     // initial + 2 executed turns
     expect(result.trace.counts.screenshots).toBe(3);
+
+    // #441: every item is stamped from the injected clock as it is recorded, so
+    // stamps are ISO strings and non-decreasing in recording order.
+    const stamps = result.trace.items.map((item) => item.at);
+    expect(stamps.every((at): at is string => typeof at === "string")).toBe(true);
+    const millis = stamps.map((at) => Date.parse(at as string));
+    expect(millis.every((ms) => Number.isFinite(ms))).toBe(true);
+    expect([...millis].sort((a, b) => a - b)).toEqual(millis);
+
+    // #441: click-like actions carry structured pin coordinates; a type action does not.
+    const click = result.trace.items.find((item) => item.kind === "ui_action" && item.title.startsWith("click"));
+    expect(click?.coord).toEqual({ x: 10, y: 20 });
+    const typed = result.trace.items.find((item) => item.kind === "ui_action" && item.title.startsWith("type"));
+    expect(typed?.coord).toBeUndefined();
   });
 
   it("stops deterministically when post-action browser text matches stopWhen", async () => {
