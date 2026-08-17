@@ -250,6 +250,13 @@ describe("request builders", () => {
     expect(body.safety_identifier).toBe("persona-dana");
   });
 
+  it("buildInitialRequest asks for reasoning summaries only when the context sets it (#427)", () => {
+    const body = buildInitialRequest({ ...ctx, reasoningSummary: "auto" });
+    expect(body.reasoning).toEqual({ effort: "medium", summary: "auto" });
+    // The bare ctx (no reasoningSummary) keeps the pre-#427 wire shape.
+    expect(buildInitialRequest(ctx).reasoning).toEqual({ effort: "medium" });
+  });
+
   it("buildCallOutput produces a computer_call_output with a png data url", () => {
     const out = buildCallOutput("call_42", SCREENSHOT) as {
       type: string;
@@ -388,6 +395,63 @@ describe("createOpenAiResponsesProvider", () => {
     // The retried body re-sends the prior output items (the computer_call) inline.
     const firstItem = retried.input[0] as { type: string };
     expect(firstItem.type).toBe("computer_call");
+  });
+
+  it("asks for reasoning summaries by default and honors 'off' (#427)", async () => {
+    const done = { id: "resp_1", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] };
+    const asking = scriptedFetch([done]);
+    await createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn: asking.fetchFn }).nextTurn(request(), neverAbort);
+    expect((JSON.parse(asking.bodies[0] ?? "{}") as { reasoning?: unknown }).reasoning).toEqual({
+      effort: "medium",
+      summary: "auto"
+    });
+
+    const off = scriptedFetch([done]);
+    await createOpenAiResponsesProvider({ apiKey: "test-key", reasoningSummary: "off", fetchFn: off.fetchFn }).nextTurn(
+      request(),
+      neverAbort
+    );
+    expect((JSON.parse(off.bodies[0] ?? "{}") as { reasoning?: unknown }).reasoning).toEqual({ effort: "medium" });
+  });
+
+  it("latches summaries off for the session when the account rejects reasoning.summary (#427)", async () => {
+    let call = 0;
+    const bodies: string[] = [];
+    const fetchFn: FetchLike = async (_url, init) => {
+      bodies.push(init.body);
+      call += 1;
+      if (call === 1) {
+        // The org-not-verified shape observed live; the run must not fail after spend.
+        return {
+          ok: false,
+          status: 400,
+          text: async () => "Your organization must be verified to generate reasoning summaries.",
+          json: async () => ({})
+        };
+      }
+      const value = {
+        id: `resp_${call}`,
+        output:
+          call === 2
+            ? [{ type: "computer_call", call_id: "call_1", actions: [{ type: "click", x: 1, y: 1 }] }]
+            : [{ type: "message", content: [{ type: "output_text", text: "Done." }] }]
+      };
+      return { ok: true, status: 200, text: async () => "", json: async () => value };
+    };
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: noDelay });
+
+    const turn1 = await provider.nextTurn(request(), neverAbort);
+    expect(turn1.actions).toHaveLength(1);
+    const turn2 = await provider.nextTurn(request(), neverAbort);
+    expect(turn2.done).toBe(true);
+
+    // Three POSTs: rejected initial (asked), retried initial (latched off), continuation.
+    expect(call).toBe(3);
+    const reasoningOf = (body: string | undefined): unknown => (JSON.parse(body ?? "{}") as { reasoning?: unknown }).reasoning;
+    expect(reasoningOf(bodies[0])).toEqual({ effort: "medium", summary: "auto" });
+    expect(reasoningOf(bodies[1])).toEqual({ effort: "medium" });
+    // The latch holds across turns: the continuation never asks again.
+    expect(reasoningOf(bodies[2])).toEqual({ effort: "medium" });
   });
 
   it("retries a transient 429 and then succeeds", async () => {
