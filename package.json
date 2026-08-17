@@ -58,7 +58,7 @@
     "release:check": "pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
     "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter humanish-observer typecheck",
     "humanish:doctor": "pnpm humanish -- doctor",
     "humanish:run": "pnpm humanish -- run --dry-run",
     "humanish:watch": "pnpm humanish -- watch",
