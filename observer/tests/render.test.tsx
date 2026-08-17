@@ -189,7 +189,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         kind: "reasoning",
         lifecycle: "completed",
         title: "reasoning turn 1",
-        text: "The form is empty; I will tab to the first field."
+        text: "**Scanning the form** The form is empty; I will tab to the first field."
       },
       { id: "ui_action-001", kind: "ui_action", lifecycle: "completed", title: "keypress TAB" },
       {
@@ -270,6 +270,9 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(thoughts[0]?.textContent).toContain("The form is empty");
     expect(thoughts[0]?.textContent).not.toContain("reasoning turn");
     expect(thoughts[0]?.getAttribute("title")).toContain("Reported thinking");
+    // The provider's markdown **lead** renders as a bold span, never literal asterisks.
+    expect(thoughts[0]?.querySelector("strong")?.textContent).toBe("Scanning the form");
+    expect(thoughts[0]?.textContent).not.toContain("**");
     // Each thought anchors to the frame the participant was looking at when it thought it.
     await click(thoughts[1] as Element);
     expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");

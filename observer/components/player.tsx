@@ -9,6 +9,22 @@ import { NOTABLE_COMPLETION } from "@/lib/signal";
 type Tab = "actions" | "details" | "report";
 const SPEEDS = [1, 4, 16] as const;
 
+// Provider reasoning summaries arrive with markdown **bold** section leads. This is the
+// ONLY markdown the thought rows render — display-side, pairs only; the trace text stays
+// verbatim evidence. An unpaired ** renders literally rather than guessing.
+export function renderThoughtText(text: string): (string | { bold: string })[] {
+  const parts: (string | { bold: string })[] = [];
+  const pattern = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    parts.push({ bold: match[1] ?? "" });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 // The review player (#426): big stage, recorded click pins, transport, filmstrip,
 // and the inspector tabs. Actions are the comments analog — every recorded row,
 // click-to-seek, following the transport. Playback is avg-paced (see player-model.ts)
@@ -247,7 +263,13 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
                 {row.kind === "reasoning" ? (
                   // A thought row shows the summary itself (the title is only "reasoning
                   // turn N" chrome); narrative text takes the sans register, not mono.
-                  <span className="atext">{row.text !== undefined && row.text !== "" ? row.text : row.title}</span>
+                  <span className="atext">
+                    {row.text !== undefined && row.text !== ""
+                      ? renderThoughtText(row.text).map((part, index) =>
+                          typeof part === "string" ? part : <strong key={index}>{part.bold}</strong>
+                        )
+                      : row.title}
+                  </span>
                 ) : (
                   <span className="atext">{row.title}{row.text !== undefined && row.text !== "" ? ` — ${row.text}` : ""}</span>
                 )}
