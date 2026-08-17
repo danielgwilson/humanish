@@ -80,7 +80,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   // player with an empty timeline instead of the frameless evidence stub.
   const playerModel = selected
     ? (buildPlayerModel(selected) ??
-      (liveEmbedUrl(selected) !== null ? { frames: [], rows: [], avgFrameMs: 1500 } : null))
+      (liveEmbedUrl(selected) !== null ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null))
     : null;
 
   const step = (delta: number) => {

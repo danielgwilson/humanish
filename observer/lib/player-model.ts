@@ -15,6 +15,8 @@ import type { ObserverStream } from "./observer-data";
 // timestamps land.
 
 export interface PlayerFrame {
+  /** Recording stamp in epoch ms, when the capture stamped this frame (#441). */
+  atMs?: number;
   index: number;
   itemId: string;
   title: string;
@@ -37,6 +39,9 @@ export interface PlayerModel {
   rows: PlayerRow[];
   /** Average ms per frame at 1× — durationMs spread over the frame count. */
   avgFrameMs: number;
+  /** "recorded" when every frame carries an `at` stamp (#441) so playback can run at the
+   *  participant's real pace; "avg" for older bundles, and the transport says which. */
+  paced: "recorded" | "avg";
 }
 
 const CLICK_COORD = /^(?:double[- ])?click \((\d+),\s*(\d+)\)/;
@@ -56,7 +61,14 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
     if (item.kind === "screenshot" && item.screenshotRef) {
       const href = runArtifactHref(item.screenshotRef.path);
       if (href !== null) {
-        frames.push({ index: frames.length, itemId: item.id, title: item.title, href });
+        const atMs = item.at === undefined ? Number.NaN : Date.parse(item.at);
+        frames.push({
+          index: frames.length,
+          itemId: item.id,
+          title: item.title,
+          href,
+          ...(Number.isFinite(atMs) ? { atMs } : {})
+        });
         rows.push({ id: item.id, kind: item.kind, title: item.title, frameIndex: frames.length - 1, isFrame: true });
         continue;
       }
@@ -77,9 +89,25 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
 
   if (frames.length === 0) return null;
   const durationMs = stream.actor?.durationMs ?? 0;
+  // Recorded pace needs every frame stamped and the stamps non-decreasing; anything
+  // else (older bundle, mixed producers, clock skew) falls back to honest averaging.
+  const recorded =
+    frames.length > 1
+    && frames.every((frame) => frame.atMs !== undefined)
+    && frames.every((frame, index) => index === 0 || (frame.atMs ?? 0) >= (frames[index - 1]?.atMs ?? 0));
   return {
     frames,
     rows,
-    avgFrameMs: durationMs > 0 ? durationMs / frames.length : 1500
+    avgFrameMs: durationMs > 0 ? durationMs / frames.length : 1500,
+    paced: recorded ? "recorded" : "avg"
   };
+}
+
+/** Time this frame holds on screen at 1× under recorded pacing (until the next stamp). */
+export function frameHoldMs(model: PlayerModel, index: number): number {
+  if (model.paced !== "recorded") return model.avgFrameMs;
+  const current = model.frames[index]?.atMs;
+  const next = model.frames[index + 1]?.atMs;
+  if (current === undefined || next === undefined) return model.avgFrameMs;
+  return Math.max(0, next - current);
 }

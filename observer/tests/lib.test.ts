@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { formatDuration, runArtifactHref } from "../lib/artifact-href";
 import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
-import { buildPlayerModel, parseClickCoord } from "../lib/player-model";
+import { buildPlayerModel, frameHoldMs, parseClickCoord } from "../lib/player-model";
 import { NOTABLE_COMPLETION } from "../lib/signal";
 import { buildTally } from "../components/study-grid";
 
@@ -81,6 +81,28 @@ describe("player model", () => {
     expect(model).not.toBeNull();
     expect(model?.frames).toHaveLength(1);
     expect(model?.rows[1]?.coord).toEqual({ x: 5, y: 6 });
+  });
+
+  it("recorded pacing (#441): stamped frames play at real intervals, unstamped fall back to avg", () => {
+    const stamped = buildPlayerModel(
+      streamWith([
+        { id: "s0", kind: "screenshot", lifecycle: "completed", title: "t0", at: "2026-08-17T00:00:00.000Z", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
+        { id: "s1", kind: "screenshot", lifecycle: "completed", title: "t1", at: "2026-08-17T00:00:03.500Z", screenshotRef: { path: "shots/t1.png", redaction: "none" } },
+        { id: "s2", kind: "screenshot", lifecycle: "completed", title: "t2", at: "2026-08-17T00:00:04.000Z", screenshotRef: { path: "shots/t2.png", redaction: "none" } }
+      ])
+    );
+    expect(stamped?.paced).toBe("recorded");
+    expect(frameHoldMs(stamped!, 0)).toBe(3500);
+    expect(frameHoldMs(stamped!, 1)).toBe(500);
+
+    const unstamped = buildPlayerModel(
+      streamWith([
+        { id: "s0", kind: "screenshot", lifecycle: "completed", title: "t0", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
+        { id: "s1", kind: "screenshot", lifecycle: "completed", title: "t1", at: "2026-08-17T00:00:01.000Z", screenshotRef: { path: "shots/t1.png", redaction: "none" } }
+      ], 10_000)
+    );
+    expect(unstamped?.paced).toBe("avg");
+    expect(frameHoldMs(unstamped!, 0)).toBe(5000);
   });
 
   it("returns null for a lane with no frames", () => {

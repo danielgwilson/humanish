@@ -1,4 +1,4 @@
-import { formatDuration, keyframeHref } from "@/lib/artifact-href";
+import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
 import { liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
 import { signalFor } from "@/lib/signal";
@@ -48,6 +48,15 @@ export function ParticipantCard({
   const signal = signalFor(stream);
   const liveUrl = liveEmbedUrl(stream);
   const live = liveUrl !== null;
+  // The live ticker (#427 stage 2): while the lane runs, the decide-line is the
+  // participant's newest reported thought, updated by the poll as the incremental
+  // flush (#441) lands new items. Reported thinking, not ground truth — same
+  // register discipline as the player's thought rows; markdown bold leads flatten
+  // to plain text on this one-line surface. Finished lanes keep the signal line.
+  const latestThought = live
+    ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text !== undefined && item.text !== "")
+    : undefined;
+  const tickerText = latestThought?.text?.replace(/\*\*([^*]+)\*\*/g, "$1");
   const showTerminal = (stream.kind === "terminal" || stream.kind === "tui") && stream.terminalPlain !== "";
 
   return (
@@ -96,13 +105,19 @@ export function ParticipantCard({
         <span className="cname">{stream.laneId ?? stream.label}</span>
         {statusChip(stream)}
       </div>
-      <p className="csig">
-        <span className={signal.flagged ? "sig-label sig-flag" : "sig-label"}>
-          {signal.flagged ? "⚑ " : ""}
-          {signal.label}
-        </span>{" "}
-        <q>{signal.text}</q>
-      </p>
+      {tickerText !== undefined ? (
+        <p className="csig ticker" title="Reported thinking — the participant's own narration, not ground truth">
+          <span className="sig-label">thinking</span> <q>{tickerText}</q>
+        </p>
+      ) : (
+        <p className="csig">
+          <span className={signal.flagged ? "sig-label sig-flag" : "sig-label"}>
+            {signal.flagged ? "⚑ " : ""}
+            {signal.label}
+          </span>{" "}
+          <q>{signal.text}</q>
+        </p>
+      )}
     </article>
   );
 }
