@@ -22,7 +22,11 @@ import type { RunBundle } from "../src/run.js";
 const ROOT = process.cwd();
 const GOLDEN_DIR = path.join(ROOT, "tests", "golden", "observer-data");
 const FIXED_GENERATED_AT = "2026-01-01T00:00:00.000Z";
-const GOLDENS = ["first-run", "oss"] as const;
+// "live" is a pinned REAL-run snapshot (kept receipt cua-2026-08-17T18-17-25-392Z-9b6aa972,
+// sandbox id synthesized): frames with `at` stamps, structured click coords, and reasoning
+// items — the player's committed fixture (#441). capture-lab-goldens.mjs regenerates only the
+// dry-run goldens; refresh `live` from a new kept live receipt, never from a dry-run.
+const GOLDENS = ["first-run", "oss", "live"] as const;
 
 // Same ambient-value masking as tests/lab-golden.test.ts: ISO timestamps and the
 // environment-dependent git-state subtree are masked by value, keeping structure asserted.
