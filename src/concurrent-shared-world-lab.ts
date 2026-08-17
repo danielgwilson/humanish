@@ -1686,9 +1686,9 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
     if (dryRun) return true;
     return actorLanePassed(result);
   };
-  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session. Per-persona
-  // mission success is still the "M of N" headline, but a failed actor trace cannot make the
-  // route green just because the harness got a terminal.
+  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session. This is a
+  // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
+  // make the route green just because the harness got a terminal.
   const swarmRan = !dryRun && actorResults.length === roles.length
     && actorResults.every(actorLanePassed);
   const adapterFailure = adapterScoreFailureMessage(bundle);
@@ -2211,7 +2211,8 @@ export function buildConcurrentSharedWorldBundle(args: {
   });
 
   // Concurrent verdict: dryRun → contract; else every actor produced a terminal, engaged PASSED
-  // session → pass; otherwise fail. Per-persona mission success is the M-of-N in outcomes[].
+  // session → pass; otherwise fail. Mission endpoint and completion reasons are reported
+  // separately below; `outcomes[].ok` is not renamed into mission success (#364).
   const verdict: ReviewSummary["verdict"] = dryRun
     ? "contract_proof_only"
     : inProgress

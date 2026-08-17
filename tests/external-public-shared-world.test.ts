@@ -653,24 +653,24 @@ describe("review.summary is external-public plane-aware", () => {
     const seen: CuaActorSessionOptions[] = [];
     const { hooks } = makeExternalHooks(makeExternalRunSession({
       seen,
-      sessionOutcome: { status: "incomplete", completionReason: "budget_reached" }
+      // Exact captured live shape from #364 (humanish 0.36.0): all three traces were `passed`
+      // even though every completionReason was `budget_reached`. Current actors normalize that
+      // pairing to `incomplete`, but the durable summary must remain honest for either producer.
+      sessionOutcome: { status: "passed", completionReason: "budget_reached" }
     }));
     const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: false, hooks });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
 
     const runRoot = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
     const reviewMarkdown = await readFile(path.join(runRoot, "review.md"), "utf8");
 
-    expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.summary).toContain("0/3 actor session(s) passed credibility checks");
-    expect(bundle.review.summary).toContain("mission endpoint: 0/3 ended goal_satisfied");
-    expect(bundle.review.summary).toContain("completion reasons: budget_reached 3/3");
-    expect(bundle.review.summary).toContain("3 seats converged on one lobby");
+    expect(bundle.review.verdict).toBe("pass");
+    const expectedSummary = "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 seats converged on one lobby.";
+    expect(bundle.review.summary).toBe(expectedSummary);
     expect(bundle.review.summary).not.toContain("reached their goal");
-    expect(reviewMarkdown).toContain("mission endpoint: 0/3 ended goal_satisfied");
-    expect(reviewMarkdown).toContain("completion reasons: budget_reached 3/3");
-    expect(reviewMarkdown).toContain("3 seats converged on one lobby");
+    expect(reviewMarkdown).toContain("- verdict: pass");
+    expect(reviewMarkdown).toContain(`- summary: ${expectedSummary}`);
   });
 });
 
