@@ -66,6 +66,23 @@ describe("player model", () => {
     expect(model?.avgFrameMs).toBe(10_000);
   });
 
+  it("builds from the mid-run liveActor partial when no finished actor exists (#441)", () => {
+    const stream = {
+      liveActor: {
+        schema: "humanish.live-actor.v1",
+        updatedAt: "2026-08-17T00:00:00.000Z",
+        items: [
+          { id: "s0", kind: "screenshot", lifecycle: "completed", title: "turn-00", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
+          { id: "a1", kind: "ui_action", lifecycle: "completed", title: "click (5, 6)", coord: { x: 5, y: 6 } }
+        ]
+      }
+    } as unknown as ObserverStream;
+    const model = buildPlayerModel(stream);
+    expect(model).not.toBeNull();
+    expect(model?.frames).toHaveLength(1);
+    expect(model?.rows[1]?.coord).toEqual({ x: 5, y: 6 });
+  });
+
   it("returns null for a lane with no frames", () => {
     expect(buildPlayerModel(streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]))).toBeNull();
     expect(buildPlayerModel({} as unknown as ObserverStream)).toBeNull();

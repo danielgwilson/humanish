@@ -8,7 +8,7 @@
 // The loop already returns a fully-formed ActorTrace at result.trace, so there is no separate
 // toActorTrace mapper — runCuaActorSession returns the CuaLoopResult unchanged.
 
-import type { ActorPersonaRef } from "./actor-contract.js";
+import type { ActorPersonaRef, ActorTraceItem } from "./actor-contract.js";
 import {
   runComputerUseLoop,
   type CuaExecutor,
@@ -93,6 +93,8 @@ export interface CuaActorSessionOptions {
   onMessage?: (text: string) => void;
   /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
+  /** Per-turn trace snapshot callback threaded to the loop (#441); see CuaLoopOptions.onTrace. */
+  onTrace?: (items: readonly ActorTraceItem[]) => void;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
@@ -121,7 +123,8 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.overRunBudget === undefined ? {} : { overRunBudget: options.overRunBudget }),
     ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl }),
     ...(options.onMessage === undefined ? {} : { onMessage: options.onMessage }),
-    ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot })
+    ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot }),
+    ...(options.onTrace === undefined ? {} : { onTrace: options.onTrace })
   };
 
   return runComputerUseLoop(loopOptions);

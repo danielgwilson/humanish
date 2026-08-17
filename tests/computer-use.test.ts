@@ -204,6 +204,39 @@ describe("runComputerUseLoop", () => {
     expect(typed?.coord).toBeUndefined();
   });
 
+  it("onTrace (#441) streams growing snapshots: initial observation, then once per turn, frame included", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false, responseId: "r1" },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "Done.", responseId: "r2" }
+    ]);
+    const executor = new SignatureExecutor(["s0", "s1", "s2"]);
+    const sink = recorder();
+    const snapshots: Array<{ count: number; lastKind: string | undefined }> = [];
+
+    const result = await runComputerUseLoop({
+      instructions: "Act.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      writeScreenshot: sink.writeScreenshot,
+      onTrace: (items) => snapshots.push({ count: items.length, lastKind: items[items.length - 1]?.kind })
+    });
+
+    expect(result.status).toBe("passed");
+    // One snapshot after the initial observation, one after the acted turn (the done turn
+    // takes no actions and records no frame, so it emits no snapshot).
+    expect(snapshots.length).toBe(2);
+    // Each snapshot ends on that point's screenshot: a flush never shows an action without
+    // the frame that preceded it.
+    expect(snapshots.map((snapshot) => snapshot.lastKind)).toEqual(["screenshot", "screenshot"]);
+    // Snapshots grow monotonically and the final trace extends the last snapshot.
+    expect(snapshots[0]!.count).toBeLessThan(snapshots[1]!.count);
+    expect(result.trace.items.length).toBeGreaterThanOrEqual(snapshots[1]!.count);
+  });
+
   it("stops deterministically when post-action browser text matches stopWhen", async () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "click", x: 10, y: 20 }],

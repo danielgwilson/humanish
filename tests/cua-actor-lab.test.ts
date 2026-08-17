@@ -3530,6 +3530,88 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("flushes liveActor items into the in-progress bundle mid-run, and the final write replaces them (#441)", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    type MidRunBundle = { streams: Array<{ status: string; liveActor?: { schema: string; items: Array<{ kind: string; at?: string }> } }> };
+    let midRunBundle: MidRunBundle | undefined;
+
+    // Two material turns then done. Turn 2's nextTurn polls the persisted run.json for the
+    // flush of turn 1's items — the flush is fire-and-forget, so a bounded poll (real fs,
+    // fake substrate, $0) is the honest way to observe it without a test-only seam.
+    const runJsonPath = (): string => path.join(cwd, ".humanish", "runs", "run-flush", "run.json");
+    function flushProvider(clock: { t: number }): CuaProvider {
+      let turn = 0;
+      return {
+        id: "flush-brain",
+        version: "0.1.0",
+        requiresFrame: false,
+        capabilities: STATE_CAPS,
+        async nextTurn(): Promise<CuaTurn> {
+          clock.t += 10;
+          turn += 1;
+          if (turn === 2) {
+            for (let attempt = 0; attempt < 100 && midRunBundle === undefined; attempt += 1) {
+              try {
+                const parsed = JSON.parse(await readFile(runJsonPath(), "utf8")) as MidRunBundle;
+                const flushed = parsed.streams.some((stream) =>
+                  stream.liveActor?.items.some((item) => item.kind === "ui_action") === true
+                );
+                if (flushed) midRunBundle = parsed;
+              } catch {
+                // Bundle mid-write or not yet flushed; keep polling.
+              }
+              if (midRunBundle === undefined) await new Promise((resolve) => setTimeout(resolve, 10));
+            }
+          }
+          if (turn >= 3) return { actions: [], pendingSafetyChecks: [], done: true, message: "Done." };
+          return { actions: [{ kind: "type", text: `t${turn}` }], pendingSafetyChecks: [], done: false };
+        }
+      };
+    }
+
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      runId: "run-flush",
+      onObserverReady: async () => {},
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          const clock = { t: 0 };
+          return runCuaActorSession({
+            ...options,
+            provider: flushProvider(clock),
+            executor: clockExecutor(clock),
+            now: () => clock.t,
+            timeoutMs: 10_000
+          });
+        }
+      }
+    });
+
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+
+    // Mid-run: the persisted in-progress bundle carried the partial — schema'd, stamped items,
+    // on a stream still honestly marked running (no completion claims anywhere).
+    expect(midRunBundle).toBeTruthy();
+    const liveStream = midRunBundle?.streams.find((stream) => stream.liveActor !== undefined);
+    expect(liveStream?.status).toBe("running");
+    const live = liveStream?.liveActor;
+    expect(live?.schema).toBe("humanish.live-actor.v1");
+    expect(live?.items.some((item) => item.kind === "ui_action")).toBe(true);
+    expect(live?.items.every((item) => typeof item.at === "string")).toBe(true);
+
+    // Final: the real actor replaces the partial; liveActor never survives completion.
+    const finalBundle = JSON.parse(await readFile(runJsonPath(), "utf8")) as {
+      streams: Array<{ status: string; actor?: { items: unknown[] }; liveActor?: unknown }>;
+    };
+    expect(finalBundle.streams.every((stream) => stream.status !== "running")).toBe(true);
+    expect(finalBundle.streams.every((stream) => stream.liveActor === undefined)).toBe(true);
+    expect(finalBundle.streams.some((stream) => (stream.actor?.items.length ?? 0) > 0)).toBe(true);
+  });
+
   it("fires onObserverReady for a single lane and serves the LIVE in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
