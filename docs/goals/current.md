@@ -467,44 +467,35 @@ Observer hero from a commit-pinned public application (drawDB) shipped in
 `0.16.0`. That run treats the application as a study subject, not a Humanish
 adopter, and does not imply endorsement; it does not satisfy the depth gate.
 
-The active engineering proof slice is the first depth-axis deletion branch: run
-an existing first-party bespoke sim through current Humanish, compare the
-decision outputs, and delete its bespoke generic harness while retaining only a
-thin product extension. The current front is an agent-facing terminal-product
-harness, whose thin-extension budget is being surfaced as engine gaps. Landed so
-far (`0.32.0`–`0.34.0`): the honest-scoring fixes (persona traits now shape the
-terminal agent; a quoted-subject-copy blocker false-positive; a comms false-green
-guard), a config-loadable adopter scorer seam (`review.scorer.ref` /
-`--scorer`), and the full-transcript scorer evidence channel (the scoring
-context carries the whole normalized session, not a ~2KB tail — an adopter
-rubric can no longer prove less than the persisted transcript). Remaining
-before the deletion, in order: pin the decision-equivalence comparator (a
-written contract — which decision outputs, compared how, over which study set —
-judged over fixed transcripts, never fresh-runs-vs-historical rate
-comparisons), rescore the reference study's arms over full evidence, then
-terminal-lane fan-out at roster scope (per-lane missions/personas; a written
-roll-up verdict contract that separates harness-verdict from per-lane mission
-verdicts precedes the fan-out code). The product-credential channel's payment
-half is explicitly OFF this deletion's path — the bespoke harness being deleted
-never transacted, so decision-equivalence does not require it; only its
-host-side measured-cost half (costProbe run-context) remains in scope. Then run
-that harness's study through current Humanish, compare the decision outputs,
-and delete its bespoke engine. Converge on one such branch to
-decision-equivalent green before starting the next archetype (a multi-actor
-shared-state harness) or the breadth panel.
+The first work item, by operator directive (2026-08-17): the participant
+train-of-thought capture (#427, pinned). The participant's reported thinking is
+the research signal the three-roles model exists to surface, the Observer
+already reserves its surfaces (feed thought rows, card ticker), and the
+redaction path already declares handling for it; only the capture side is
+missing. Stage 1 (bundle + feed on finished runs) does not wait for stage 2
+(the live ticker, which rides the #441 incremental-flush work).
 
-After that checkpoint, re-evaluate this order rather than treating it as an
-automatic queue:
+The standing queue behind it, in rough order:
 
-1. centralize run identity, history, and provider ownership behind tested
-   `RunStore` and `ResourceLease` interfaces, and make generated first-run
-   source load-bearing or explicitly optional;
-2. complete the agent-skill deletion branch and use it to force the real
-   external extension budget;
-3. implement multi-origin shared-world only if its adopter gate opens and the
-   ratified packet passes maintainer review;
-4. complete the multi-app adopter deletion branch;
-5. establish the external stratified panel.
+1. the #441 capture-side set: per-action timestamps, structured coordinates,
+   incremental item flush during live runs, a live-shaped golden, then deep
+   links (a declared parity regression from the renderer cutover);
+2. registry promotions: the wordmark (#431), the participant card, and the two
+   vendored Base UI wrappers (drawer, popover) once a second surface consumes
+   them;
+3. the adoption cluster: vendor-native key resolution (#436) and the optional
+   desktop peer-dep gap (#346) — the two biggest remaining "npx works
+   first-try" violations;
+4. shared-world honesty: per-action evidence (#365), roll-up truthfulness
+   (#364), exposure-flag coverage (#446), and the pre-barrier "stream ended"
+   mislabel found during the 2026-08-16 live games.
+
+The depth-axis deletion front (an adopter's bespoke terminal-product sim,
+comparator contract posted on the adopter's tracker) is paused awaiting the
+operator's decision-ledger sign-off, deliberately: it resumes on that
+sign-off, not by default. The multi-actor shared-state adopter gate (#166)
+needs one live rerun of its replacement-critical family on current humanish;
+the recon (family, runner pin) is recorded and it runs as its own arc.
 
 The version-pinned README hero is the drawDB real-application study: a live
 four-persona capture that proves package/Observer rendering, public-safe asset
