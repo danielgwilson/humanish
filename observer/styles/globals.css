@@ -592,6 +592,16 @@ a:hover {
   color: var(--accent-ink);
   border-color: var(--accent-dim);
 }
+/* Thought rows (#427): the participant's reported thinking. Sentence-length
+   narrative takes the sans register (mono stays for labels/ids/action data);
+   the dashed turn chip separates a thought from a recorded action at a glance. */
+.arow.thought .atext {
+  font-family: var(--sans);
+  font-size: 11.5px;
+}
+.arow.thought .tc {
+  border-style: dashed;
+}
 
 /* ---------- review player ---------- */
 .content.player-host {

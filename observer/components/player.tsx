@@ -9,6 +9,22 @@ import { NOTABLE_COMPLETION } from "@/lib/signal";
 type Tab = "actions" | "details" | "report";
 const SPEEDS = [1, 4, 16] as const;
 
+// Provider reasoning summaries arrive with markdown **bold** section leads. This is the
+// ONLY markdown the thought rows render — display-side, pairs only; the trace text stays
+// verbatim evidence. An unpaired ** renders literally rather than guessing.
+export function renderThoughtText(text: string): (string | { bold: string })[] {
+  const parts: (string | { bold: string })[] = [];
+  const pattern = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    parts.push({ bold: match[1] ?? "" });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 // The review player (#426): big stage, recorded click pins, transport, filmstrip,
 // and the inspector tabs. Actions are the comments analog — every recorded row,
 // click-to-seek, following the transport. Playback is avg-paced (see player-model.ts)
@@ -32,6 +48,7 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
     () => [...new Set(model.rows.filter((row) => row.coord !== undefined).map((row) => row.frameIndex))],
     [model]
   );
+  const thoughtCount = useMemo(() => model.rows.filter((row) => row.kind === "reasoning").length, [model]);
 
   // A poll grew the timeline: a viewer on the newest frame follows the live edge;
   // one who scrubbed back is doing instant replay and stays put.
@@ -187,7 +204,8 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
           <span className="counter">{frame + 1} / {frames.length}</span>
           <span className="t-meta">
             {actor ? `${formatDuration(actor.durationMs)} · ` : ""}
-            {model.rows.filter((row) => !row.isFrame).length} actions · avg-paced
+            {model.rows.filter((row) => !row.isFrame && row.kind !== "reasoning").length} actions
+            {thoughtCount > 0 ? ` · ${thoughtCount} thoughts` : ""} · avg-paced
           </span>
           <button
             type="button"
@@ -233,13 +251,28 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
               <button
                 key={row.id}
                 type="button"
-                className={row.isFrame ? "arow shot" : "arow"}
+                className={row.isFrame ? "arow shot" : row.kind === "reasoning" ? "arow thought" : "arow"}
                 {...(row.isFrame ? { "data-frame-row": row.frameIndex } : {})}
                 {...(row.frameIndex === frame ? { "data-on": "" } : {})}
+                {...(row.kind === "reasoning"
+                  ? { title: "Reported thinking — the participant's own narration, not ground truth" }
+                  : {})}
                 onClick={() => seek(row.frameIndex)}
               >
                 <span className="tc">T{String(row.frameIndex).padStart(2, "0")}</span>
-                <span className="atext">{row.title}{row.text !== undefined && row.text !== "" ? ` — ${row.text}` : ""}</span>
+                {row.kind === "reasoning" ? (
+                  // A thought row shows the summary itself (the title is only "reasoning
+                  // turn N" chrome); narrative text takes the sans register, not mono.
+                  <span className="atext">
+                    {row.text !== undefined && row.text !== ""
+                      ? renderThoughtText(row.text).map((part, index) =>
+                          typeof part === "string" ? part : <strong key={index}>{part.bold}</strong>
+                        )
+                      : row.title}
+                  </span>
+                ) : (
+                  <span className="atext">{row.title}{row.text !== undefined && row.text !== "" ? ` — ${row.text}` : ""}</span>
+                )}
               </button>
             ))}
           </div>

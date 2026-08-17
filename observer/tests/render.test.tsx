@@ -183,6 +183,14 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         title: "turn-00-start",
         screenshotRef: { path: "screenshots/lane/turn-00-start.png", redaction: "none" }
       },
+      // Reasoning precedes the actions it motivated, exactly as capture orders a turn (#427).
+      {
+        id: "reasoning-001",
+        kind: "reasoning",
+        lifecycle: "completed",
+        title: "reasoning turn 1",
+        text: "**Scanning the form** The form is empty; I will tab to the first field."
+      },
       { id: "ui_action-001", kind: "ui_action", lifecycle: "completed", title: "keypress TAB" },
       {
         id: "screenshot-002",
@@ -190,6 +198,13 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         lifecycle: "completed",
         title: "turn-01",
         screenshotRef: { path: "screenshots/lane/turn-01.png", redaction: "none" }
+      },
+      {
+        id: "reasoning-002",
+        kind: "reasoning",
+        lifecycle: "completed",
+        title: "reasoning turn 2",
+        text: "A confirm dialog appeared, so I will click its primary button."
       },
       { id: "ui_action-002", kind: "ui_action", lifecycle: "completed", title: "click (700, 420)" }
     ],
@@ -225,7 +240,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     const stageImg = () => container.querySelector(".stage-box img")?.getAttribute("src");
     expect(stageImg()).toBe("../screenshots/lane/turn-00-start.png");
     expect(container.querySelectorAll(".filmstrip .fs")).toHaveLength(2);
-    expect(container.querySelectorAll(".arow")).toHaveLength(4);
+    expect(container.querySelectorAll(".arow")).toHaveLength(6);
     // Scrubber markers: one tick for the frame with a recorded click, and the
     // end flag because the lane completed on a notable reason (budget cap).
     expect(container.querySelectorAll(".scrub-tick")).toHaveLength(1);
@@ -242,6 +257,28 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     await click(reportTab as Element);
     expect(container.textContent).toContain("crossed execution.caps.maxUsd=$5 after productive activity");
     expect(container.querySelector(".rawchip")).not.toBeNull();
+  });
+
+  it("thought rows (#427): reported thinking in its own register, anchored to the prior frame", async () => {
+    await mount(<App data={liveShapedData()} />);
+    await click(container.querySelector(".open-overlay") as Element);
+
+    const thoughts = container.querySelectorAll(".arow.thought");
+    expect(thoughts).toHaveLength(2);
+    // The row shows the summary itself, not the "reasoning turn N" chrome, and is
+    // labeled as the participant's REPORTED thinking (self-narration, not ground truth).
+    expect(thoughts[0]?.textContent).toContain("The form is empty");
+    expect(thoughts[0]?.textContent).not.toContain("reasoning turn");
+    expect(thoughts[0]?.getAttribute("title")).toContain("Reported thinking");
+    // The provider's markdown **lead** renders as a bold span, never literal asterisks.
+    expect(thoughts[0]?.querySelector("strong")?.textContent).toBe("Scanning the form");
+    expect(thoughts[0]?.textContent).not.toContain("**");
+    // Each thought anchors to the frame the participant was looking at when it thought it.
+    await click(thoughts[1] as Element);
+    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
+    // The transport tally separates thoughts from recorded actions.
+    expect(container.querySelector(".t-meta")?.textContent).toContain("2 actions");
+    expect(container.querySelector(".t-meta")?.textContent).toContain("2 thoughts");
   });
 
   it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {

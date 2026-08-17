@@ -287,10 +287,14 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 // POST body. They never carry the apiKey (that lives only in the header).
 // ---------------------------------------------------------------------------
 
+export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
+
 export interface OpenAiCuContext {
   model: string;
   instructions: string;
   reasoningEffort: "low" | "medium" | "high";
+  /** When set, request provider-sanctioned reasoning summaries (#427). Absent = do not ask. */
+  reasoningSummary?: OpenAiReasoningSummary;
   safetyIdentifier?: string;
 }
 
@@ -309,7 +313,14 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
     tools: [{ type: "computer" }],
     truncation: "auto",
-    reasoning: { effort: ctx.reasoningEffort },
+    // `summary` asks for the provider-SANCTIONED reasoning summary items (#427) — the
+    // capture side never scrapes or reconstructs raw chain-of-thought. Parsed by
+    // parseOpenAiResponse into turn.reasoning; the loop records them as redacted
+    // `kind: "reasoning"` trace items.
+    reasoning: {
+      effort: ctx.reasoningEffort,
+      ...(ctx.reasoningSummary === undefined ? {} : { summary: ctx.reasoningSummary })
+    },
     ...(ctx.safetyIdentifier === undefined ? {} : { safety_identifier: ctx.safetyIdentifier })
   };
 }
@@ -432,6 +443,15 @@ export interface OpenAiResponsesProviderOptions {
   apiKey: string;
   model?: string;
   reasoningEffort?: "low" | "medium" | "high";
+  /**
+   * Reasoning-summary capture (#427). Defaults to "auto" (the provider picks the best
+   * summarizer the model supports); "off" never asks. If the account/model rejects the
+   * request (e.g. an org not verified for reasoning summaries), the provider latches
+   * summaries off for the session and retries the same turn — the run degrades to
+   * exactly the pre-#427 behavior instead of failing after spend. Absence stays honest:
+   * no summary means no `reasoning` trace items and `counts.reasonings` stays 0.
+   */
+  reasoningSummary?: OpenAiReasoningSummary | "off";
   safetyIdentifier?: string;
   endpoint?: string;
   fetchFn?: FetchLike;
@@ -466,6 +486,23 @@ function isZdrRejection(bodyText: string): boolean {
     bodyText.includes("zero data retention") ||
     bodyText.includes("previous_response_id")
   );
+}
+
+// A typed error so nextTurn can latch reasoning summaries off and retry the turn
+// (an org not verified for summaries, or a model without a summarizer, 400s the
+// whole request). Like ZdrError it never carries the response body.
+class SummaryRejectionError extends Error {
+  constructor() {
+    super("OpenAI Responses rejected the reasoning.summary request");
+    this.name = "SummaryRejectionError";
+  }
+}
+
+// A 400 whose body names the reasoning-summary feature. Observed live shapes:
+// "Unsupported parameter: 'reasoning.summary' ..." and "Your organization must
+// be verified to generate reasoning summaries."
+function isSummaryRejection(bodyText: string): boolean {
+  return bodyText.includes("reasoning.summary") || bodyText.includes("reasoning summaries");
 }
 
 function defaultFetch(): FetchLike {
@@ -542,11 +579,16 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   let pendingCallIds: string[] = [];
   let lastOutputItems: unknown[] = [];
   let mode: "previous_response_id" | "explicit_context" = options.zeroDataRetention ? "explicit_context" : "previous_response_id";
+  // Latches to undefined (stop asking) for the rest of the session when the
+  // account/model rejects the summary request — see OpenAiResponsesProviderOptions.
+  let reasoningSummary: OpenAiReasoningSummary | undefined =
+    options.reasoningSummary === "off" ? undefined : (options.reasoningSummary ?? "auto");
 
   const buildContext = (instructions: string): OpenAiCuContext => ({
     model,
     instructions,
     reasoningEffort,
+    ...(reasoningSummary === undefined ? {} : { reasoningSummary }),
     ...(options.safetyIdentifier === undefined ? {} : { safetyIdentifier: options.safetyIdentifier })
   });
 
@@ -598,6 +640,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
         if (isZdrRejection(bodyText)) {
           throw new ZdrError();
         }
+        if (isSummaryRejection(bodyText)) {
+          throw new SummaryRejectionError();
+        }
         throw new Error("OpenAI Responses 400");
       }
       const retryable = res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
@@ -623,34 +668,46 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     requiresFrame: true,
     async nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn> {
       await prepareNextCapture();
-      const ctx = buildContext(req.instructions);
       const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
+
+      // POST with the recoverable-policy latches: a ZDR rejection switches to
+      // explicit-context mode; a reasoning-summary rejection latches summaries off.
+      // Each latch can flip only once, so the loop is bounded; anything else
+      // rethrows. The body is rebuilt per attempt so a flipped latch is reflected.
+      const attempt = async (build: (ctx: OpenAiCuContext) => Record<string, unknown>): Promise<unknown> => {
+        for (;;) {
+          try {
+            return await post(build(buildContext(req.instructions)), signal);
+          } catch (error) {
+            if (error instanceof SummaryRejectionError && reasoningSummary !== undefined) {
+              reasoningSummary = undefined;
+              continue;
+            }
+            if (error instanceof ZdrError && mode !== "explicit_context") {
+              mode = "explicit_context";
+              continue;
+            }
+            throw error;
+          }
+        }
+      };
 
       let raw: unknown;
       if (isFirstTurn) {
-        raw = await post(buildInitialRequest(ctx), signal);
+        raw = await attempt((ctx) => buildInitialRequest(ctx));
       } else {
         const callOutputs = pendingCallIds.map((id) =>
           buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks)
         );
-        const buildBody = (explicitContextItems: unknown[] | undefined): Record<string, unknown> =>
+        raw = await attempt((ctx) =>
           buildContinuationRequest({
             ctx,
             previousResponseId: lastResponseId,
             callOutputs,
             ...(req.contextHint === undefined ? {} : { contextHint: req.contextHint }),
-            ...(explicitContextItems === undefined ? {} : { explicitContextItems })
-          });
-        try {
-          raw = await post(buildBody(mode === "explicit_context" ? lastOutputItems : undefined), signal);
-        } catch (error) {
-          if (error instanceof ZdrError) {
-            mode = "explicit_context";
-            raw = await post(buildBody(lastOutputItems), signal);
-          } else {
-            throw error;
-          }
-        }
+            ...(mode === "explicit_context" ? { explicitContextItems: lastOutputItems } : {})
+          })
+        );
       }
 
       const parsed = parseOpenAiResponse(raw);
