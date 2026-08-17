@@ -1,4 +1,4 @@
-import { runArtifactHref } from "./artifact-href";
+import { runArtifactHref, traceItems } from "./artifact-href";
 import type { ObserverStream } from "./observer-data";
 
 // The player's view of a lane: the recorded screenshots as an ordered frame timeline,
@@ -48,7 +48,7 @@ export function parseClickCoord(title: string): { x: number; y: number } | null 
 }
 
 export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
-  const items = stream.actor?.items ?? [];
+  const items = traceItems(stream);
   const frames: PlayerFrame[] = [];
   const rows: PlayerRow[] = [];
 
@@ -61,7 +61,9 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
         continue;
       }
     }
-    const coord = item.kind === "ui_action" ? parseClickCoord(item.title) : null;
+    // Recorded structured coordinates (#441) are the source of truth; the title
+    // re-parse stays as the fallback for bundles captured before they existed.
+    const coord = item.coord ?? (item.kind === "ui_action" ? parseClickCoord(item.title) : null);
     rows.push({
       id: item.id,
       kind: item.kind,

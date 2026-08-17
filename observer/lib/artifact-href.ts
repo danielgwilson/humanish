@@ -16,9 +16,15 @@ export function runArtifactHref(artifactPath: string): string | null {
   return `../${artifactPath}`;
 }
 
+/** A lane's recorded trace items: the finished actor's, else the mid-run `liveActor`
+ *  partial's (#441 incremental flush) — one accessor so every reader grows live. */
+export function traceItems(stream: ObserverStream): NonNullable<NonNullable<ObserverStream["actor"]>["items"]> {
+  return stream.actor?.items ?? stream.liveActor?.items ?? [];
+}
+
 /** The lane's keyframe: its last recorded screenshot (the state the persona left behind). */
 export function keyframeHref(stream: ObserverStream): string | null {
-  const items = stream.actor?.items ?? [];
+  const items = traceItems(stream);
   for (let i = items.length - 1; i >= 0; i -= 1) {
     const ref = items[i]?.screenshotRef;
     if (ref) return runArtifactHref(ref.path);

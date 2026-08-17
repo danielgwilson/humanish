@@ -27,7 +27,7 @@ import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace } from "./actor-contract.js";
+import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -1154,6 +1154,9 @@ export interface CuaLaneDeps {
   /** RUNTIME-ONLY per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
    * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
   onScreenshot?: (frame: Buffer) => void;
+  /** Per-turn trace snapshot from a lane's loop (#441), keyed by lane. The live path wires the
+   * incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
+  onTrace?: (laneId: string, items: readonly ActorTraceItem[]) => void;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -2307,7 +2310,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             }),
         ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
         ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
-        ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot })
+        ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot }),
+        ...(deps.onTrace === undefined
+          ? {}
+          : { onTrace: (items: readonly ActorTraceItem[]): void => deps.onTrace?.(spec.laneId, items) })
       };
       session = await deps.runSession(sessionOptions);
     }
@@ -3155,7 +3161,14 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     }
   }
 
+  // Live-trace flush seam (#441): assigned by the attached-Observer block below when a live
+  // run has an in-progress bundle to grow; lanes call it through deps.onTrace. Declared here
+  // (before deps) so deps can reference it as a stable indirection.
+  let flushLiveTrace: ((laneId: string, items: readonly ActorTraceItem[]) => void) | undefined;
+  let stopLiveFlush: (() => Promise<void>) | undefined;
+
   const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
+    onTrace: (laneId, items) => flushLiveTrace?.(laneId, items),
     config,
     descriptor,
     appUrl,
@@ -3248,6 +3261,76 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted."
     ]);
     await options.onObserverReady(liveObserver);
+
+    // Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
+    // rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
+    // Observer's 5s poll sees the timeline grow. Throttled (one write per interval, trailing
+    // write guaranteed), serialized (never two writers), and CLOSED before the final artifact
+    // write so a stale flush can never resurrect the in-progress bundle. A flush failure is
+    // swallowed: mid-run observability must never break the run itself.
+    const streamIdByLane = new Map(laneSpecs.map((spec) => [spec.laneId, spec.streamId]));
+    const liveItemsByStream = new Map<string, ActorTraceItem[]>();
+    let flushWriting: Promise<void> | undefined;
+    let flushDirty = false;
+    let flushClosed = false;
+    let flushTimer: ReturnType<typeof setTimeout> | undefined;
+    let lastFlushAtMs = 0;
+    const FLUSH_MIN_INTERVAL_MS = 2_000;
+    const flushNow = async (): Promise<void> => {
+      while (flushDirty && !flushClosed) {
+        flushDirty = false;
+        lastFlushAtMs = Date.now();
+        const updatedAt = new Date(lastFlushAtMs).toISOString();
+        const patched: RunBundle = {
+          ...inProgressBundle,
+          streams: inProgressBundle.streams.map((stream) => {
+            const liveItems = liveItemsByStream.get(stream.id);
+            return liveItems === undefined
+              ? stream
+              : { ...stream, liveActor: { schema: "humanish.live-actor.v1" as const, updatedAt, items: [...liveItems] } };
+          })
+        };
+        try {
+          await writeCuaRunArtifacts(patched, createdAt, runPaths);
+        } catch {
+          // Swallowed by design; the final write is the evidence of record.
+        }
+      }
+      flushWriting = undefined;
+    };
+    const scheduleFlush = (): void => {
+      if (flushClosed || flushWriting !== undefined) return;
+      const sinceMs = Date.now() - lastFlushAtMs;
+      if (sinceMs >= FLUSH_MIN_INTERVAL_MS) {
+        flushWriting = flushNow();
+        return;
+      }
+      if (flushTimer === undefined) {
+        flushTimer = setTimeout(() => {
+          flushTimer = undefined;
+          scheduleFlush();
+        }, FLUSH_MIN_INTERVAL_MS - sinceMs);
+        flushTimer.unref?.();
+      }
+    };
+    flushLiveTrace = (laneId, items) => {
+      // An empty snapshot (the initial observation on a frameless route) carries no
+      // evidence worth a disk write; the first real item triggers the first flush.
+      if (items.length === 0) return;
+      const streamId = streamIdByLane.get(laneId);
+      if (streamId === undefined) return;
+      liveItemsByStream.set(streamId, items.slice());
+      flushDirty = true;
+      scheduleFlush();
+    };
+    stopLiveFlush = async () => {
+      flushClosed = true;
+      if (flushTimer !== undefined) {
+        clearTimeout(flushTimer);
+        flushTimer = undefined;
+      }
+      await flushWriting;
+    };
   }
 
   // Run lanes (dry-run runs none). In-process is always one lane.
@@ -3264,6 +3347,10 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
       failFastReason = ran.failFastReason;
     }
   }
+  // Close the live flush BEFORE any final artifact work: no new flush may start, and an
+  // in-flight one is awaited, so the final bundle write can never race a stale in-progress
+  // rewrite (which would resurrect `liveActor` after completion).
+  await stopLiveFlush?.();
 
   const externalCommsWarnings: string[] = [];
   // Adopter-hosted drain (#380): once per RUN, after every lane finished — the catch is one

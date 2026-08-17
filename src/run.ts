@@ -27,7 +27,7 @@ import {
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
-import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace } from "./actor-contract.js";
+import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace, type ActorTraceItem } from "./actor-contract.js";
 import type { TaskFunnel } from "./tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
@@ -460,6 +460,20 @@ export interface RunStream {
   // Provider-neutral projection of the actor's evidence (humanish.actor-trace.v1).
   // Populated alongside the raw `codex` evidence; carries persona.traitsApplied.
   actor?: ActorTrace;
+  /**
+   * Mid-run partial actor evidence (#441): the redacted trace items recorded SO FAR,
+   * flushed while a live lane is still running so the attached Observer's timeline can
+   * grow. Deliberately NOT an ActorTrace — a running lane has no honest status,
+   * completionReason, or completedAt, and this shape cannot claim them. Present ONLY on
+   * `inProgress` bundles; the final write replaces it with the real `actor` and never
+   * carries it.
+   */
+  liveActor?: {
+    schema: "humanish.live-actor.v1";
+    /** When this flush was written (ISO-8601). */
+    updatedAt: string;
+    items: ActorTraceItem[];
+  };
   completion?: RunStreamCompletion;
   artifacts: Array<{
     label: string;

@@ -288,6 +288,15 @@ export interface CuaLoopOptions {
    * governed by redactScreenshots). Fire-and-forget (never awaited by the loop). Default: no-op.
    */
   onScreenshot?: (frame: Buffer) => void;
+  /**
+   * Per-turn trace snapshot callback (#441): invoked with the redacted trace items recorded so
+   * far — once after the initial observation and once at the end of every turn (after that
+   * turn's screenshot lands, so a flush never shows an action without the frame that preceded
+   * it). The array is a fresh copy each call; items are already redaction-clean (they are the
+   * same objects the final trace persists). Fire-and-forget: the loop never awaits the
+   * receiver, so a slow disk flush can never stall a turn. Default: no-op.
+   */
+  onTrace?: (items: readonly ActorTraceItem[]) => void;
 }
 
 export interface CuaLoopResult {
@@ -573,7 +582,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     estimateTurnCostUsd,
     onObservedUrl,
     onMessage,
-    onScreenshot
+    onScreenshot,
+    onTrace
   } = options;
   const noProgressRecoverySteps = Math.min(Math.max(1, noProgressSteps - 1), 3);
   const idleRecoverySteps = Math.min(Math.max(1, idleSteps - 1), 3);
@@ -734,6 +744,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
     await maybeRecordScreenshot(observation, "turn-00-start");
+    onTrace?.(items.slice());
     observeTasks(observation, 0);
     stopConditionMatch = matchedStopWhen(observation);
     if (stopConditionMatch) {
@@ -986,6 +997,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;
       await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
+      onTrace?.(items.slice());
       observeTasks(observation, turnNumber);
       stopConditionMatch = matchedStopWhen(observation);
       if (stopConditionMatch) {
