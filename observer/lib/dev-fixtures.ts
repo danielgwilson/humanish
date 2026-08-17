@@ -6,7 +6,8 @@ import type { ObserverData } from "./observer-data";
 // neither this code nor the fixture data (the smoke test asserts the absence).
 const fixtures: Record<string, () => Promise<{ default: unknown }>> = {
   "first-run": () => import("../../tests/golden/observer-data/first-run.json"),
-  oss: () => import("../../tests/golden/observer-data/oss.json")
+  oss: () => import("../../tests/golden/observer-data/oss.json"),
+  live: () => import("../../tests/golden/observer-data/live.json")
 };
 
 export async function loadDevFixture(name: string | null): Promise<ObserverData> {

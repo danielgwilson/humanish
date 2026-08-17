@@ -1,0 +1,2296 @@
+{
+  "schema": "humanish.observer-data.v1",
+  "schemaVersion": 1,
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "run": {
+    "runId": "cua-2026-08-17T18-17-25-392Z-9b6aa972",
+    "mode": "live",
+    "status": "pass",
+    "title": "One participant, one small diagram — the rebuilt Observer's live path on a real desktop - Computer-use operator (synthetic-new-user)",
+    "createdAt": "2026-08-17T18:17:25.394Z",
+    "simCount": 1,
+    "persona": {
+      "id": "synthetic-new-user",
+      "name": "Computer-use operator (synthetic-new-user)",
+      "source": "lab:observer-live-check",
+      "sourceDigest": "68ae92b72fc82919"
+    },
+    "scenario": {
+      "id": "cua-observer-live-check",
+      "title": "One participant, one small diagram — the rebuilt Observer's live path on a real desktop",
+      "goal": "Persona: First-Time Trial User. A newcomer meeting an unfamiliar product for the first time: reads what the screen says before reaching for docs, follows the obvious path, and reports first impressions honestly. You have moderate patience: work through some friction, but if you repeatedly fail to make progress toward your goal, stop and report what blocked you. You have moderate technical confidence: use straightforward paths and try one recovery step before giving up. You rely on clear terminal output; flag noisy, unreadable, or ambiguous output as a defect. Honor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..\n\nYou are a desktop user (desktop, 1440x950).\n\nCreate three tables with a relationship connecting two of them, then stop and report.\n\nLane focus: Work the way you normally would, and stop when you are done or blocked.",
+      "source": "lab:observer-live-check",
+      "sourceDigest": "68ae92b72fc82919"
+    },
+    "packageName": "humanish",
+    "redaction": {
+      "status": "passed",
+      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+    },
+    "lifecycle": [
+      {
+        "at": "2026-08-17T18:17:25.394Z",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+      }
+    ],
+    "knownGaps": [],
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 0
+    },
+    "participantsLine": "1/1 reached the goal"
+  },
+  "summary": {
+    "streams": 1,
+    "byKind": {
+      "ui": 0,
+      "browser": 1,
+      "terminal": 0,
+      "tui": 0,
+      "codex-ui": 0,
+      "artifact": 0,
+      "summary": 0
+    },
+    "active": 0,
+    "blocked": 0,
+    "warnings": 0
+  },
+  "laneGroups": [],
+  "cost": {
+    "schema": "humanish.run-cost-summary.v1",
+    "currency": "usd",
+    "estimatedTotalUsd": 1.865604,
+    "ratesAsOf": "2026-08-05",
+    "fullyEstimated": true,
+    "placeholder": true,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "live-check",
+        "modelId": "gpt-5.5",
+        "estimatedCostUsd": 1.844791,
+        "ratesAsOf": "2026-08-05",
+        "source": "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)"
+      },
+      {
+        "kind": "desktop-minutes",
+        "estimatedCostUsd": 0.020813,
+        "ratesAsOf": "2026-08-05",
+        "source": "e2b.dev/pricing (2 vCPU default + assumed 4 GiB RAM; confirm spec from a live run)",
+        "placeholder": true
+      }
+    ],
+    "tokenUsage": {
+      "input": 2171237,
+      "output": 5169,
+      "total": 2176406
+    },
+    "desktopMinutes": 7.541083333333333,
+    "note": "Estimated 1.865604 USD total; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude. Every figure is an ESTIMATE (rates as of 2026-08-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge."
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "simId": "sim-001",
+      "laneId": "live-check",
+      "kind": "browser",
+      "label": "CUA browser — observer-live-check",
+      "status": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-08-17T18:17:25.394Z",
+      "embed": {
+        "kind": "screenshot",
+        "url": "screenshots/turn-49.png",
+        "title": "CUA desktop (raw)"
+      },
+      "viewport": {
+        "width": 1432,
+        "height": 859,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        },
+        "browserWindow": {
+          "x": 0,
+          "y": 27,
+          "width": 1440,
+          "height": 950,
+          "source": "cdp"
+        },
+        "viewport": {
+          "width": 1432,
+          "height": 859,
+          "deviceScaleFactor": 1,
+          "source": "cdp"
+        }
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+        "state": "Done.\n\nCreated three tables:\n- `users`\n- `orders`\n- `products`\n\nCreated one relationship:\n- `orders.user_id` references `users.id`\n\nFirst impressions / friction:\n- Adding tables manually was straightforward, but the relationship creation by dragging fields was not obvious and didn’t work reliably for me.\n- I recovered by using **File → Import from SQL**, which successfully created the tables and relationship.\n- The SQL import error output was quite noisy and hard to read when my first paste had leftover text; clearer import validation would help.",
+        "actorStatus": "passed",
+        "screenshotUrl": "screenshots/turn-49.png"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "openai-responses-cu",
+        "providerVersion": "gpt-5.5",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:clear_terminal_output",
+            "constraints:3"
+          ],
+          "promptDigest": "68ae92b72fc82919"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "50 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "2026-08-17T18:18:29.021Z",
+        "completedAt": "2026-08-17T18:25:00.444Z",
+        "durationMs": 391423,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Done.\n\nCreated three tables:\n- `users`\n- `orders`\n- `products`\n\nCreated one relationship:\n- `orders.user_id` references `users.id`\n\nFirst impressions / friction:\n- Adding tables manually was straightforward, but the relationship creation by dragging fields was not obvious and didn’t work reliably for me.\n- I recovered by using **File → Import from SQL**, which successfully created the tables and relationship.\n- The SQL import error output was quite noisy and hard to read when my first paste had leftover text; clearer import validation would help.",
+        "ids": {
+          "model": "gpt-5.5",
+          "turnId": "resp_0f349e8715cd5580006a8351f6136887d19f940567ca895f3f"
+        },
+        "counts": {
+          "turns": 50,
+          "actions": 81,
+          "materialActions": 79,
+          "screenshots": 50,
+          "reasonings": 31,
+          "messages": 1,
+          "idleTurns": 2,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:18:29.583Z"
+          },
+          {
+            "id": "reasoning-002",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "**Inspecting the app**\n\nI see that I need to operate the computer and take a closer look at the app. It's important to ensure everything is functioning properly. I'll focus on checking for any issues or improvements that might be necessary. My goal is to make sure the user has a smooth experience. Let's see what specific details I can uncover!",
+            "at": "2026-08-17T18:18:33.719Z"
+          },
+          {
+            "id": "ui_action-003",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "screenshot",
+            "at": "2026-08-17T18:18:33.719Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:18:34.338Z"
+          },
+          {
+            "id": "reasoning-005",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "**Organizing database tables**\n\nI need to create three tables that connect two of them, and I'm thinking about using the App drawDB. It seems like I'll need to use the editor for this task, which is a bit daunting since it’s my first time doing something like this. I guess I should start by clicking \"Try it\" to see how everything works. I'm curious if the process is user-friendly.",
+            "at": "2026-08-17T18:18:37.701Z"
+          },
+          {
+            "id": "ui_action-006",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (389, 637)",
+            "coord": {
+              "x": 389,
+              "y": 637
+            },
+            "at": "2026-08-17T18:18:37.957Z"
+          },
+          {
+            "id": "screenshot-007",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:18:38.479Z"
+          },
+          {
+            "id": "reasoning-008",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "**Deciding on a database**\n\nI need to choose a database, something generic and simple. I’m thinking about how to confirm that it’s disabled until I make a selection. It feels a little daunting, but with a clear plan, I can figure out the right option. There’s definitely a lot to consider, so I’ll take my time with the choice to make sure it fits what I need. Let's keep it straightforward!",
+            "at": "2026-08-17T18:18:42.182Z"
+          },
+          {
+            "id": "ui_action-009",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (511, 660)",
+            "coord": {
+              "x": 511,
+              "y": 660
+            },
+            "at": "2026-08-17T18:18:42.437Z"
+          },
+          {
+            "id": "ui_action-010",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (997, 755)",
+            "coord": {
+              "x": 997,
+              "y": 755
+            },
+            "at": "2026-08-17T18:18:42.692Z"
+          },
+          {
+            "id": "screenshot-011",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-03",
+            "screenshotRef": {
+              "path": "screenshots/turn-03.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:18:43.196Z"
+          },
+          {
+            "id": "reasoning-012",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "**Adding tables**\n\nI need to incorporate tables into whatever I'm working on now. It seems straightforward; I just have to click on the \"add table\" option. I'm wondering what kind of data I'll need to include in the tables and how many I should add. Tables can be pretty useful for organizing information, so I want to make sure I get this right. Let’s see what options I have!",
+            "at": "2026-08-17T18:18:46.484Z"
+          },
+          {
+            "id": "ui_action-013",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (314, 264)",
+            "coord": {
+              "x": 314,
+              "y": 264
+            },
+            "at": "2026-08-17T18:18:46.739Z"
+          },
+          {
+            "id": "screenshot-014",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-04",
+            "screenshotRef": {
+              "path": "screenshots/turn-04.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:18:47.191Z"
+          },
+          {
+            "id": "reasoning-015",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "**Evaluating table requirements**\n\nI’ve got a default random table set up, but now I’m wondering if I need to rename or add columns. The requirement seems to be just tables with relationships connecting two. I think I need three tables total, each with a relationship. Using default names is an option, but better to choose clearer names. I also need to understand the UI a bit better before adding the table again.",
+            "at": "2026-08-17T18:18:50.908Z"
+          },
+          {
+            "id": "ui_action-016",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (313, 264)",
+            "coord": {
+              "x": 313,
+              "y": 264
+            },
+            "at": "2026-08-17T18:18:51.167Z"
+          },
+          {
+            "id": "ui_action-017",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (313, 264)",
+            "coord": {
+              "x": 313,
+              "y": 264
+            },
+            "at": "2026-08-17T18:19:06.641Z"
+          },
+          {
+            "id": "screenshot-018",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-05",
+            "screenshotRef": {
+              "path": "screenshots/turn-05.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:07.161Z"
+          },
+          {
+            "id": "reasoning-019",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "**Exploring table relationships**\n\nI'm considering whether only one relationship is visible and if it's been created in the same spot. I might need to arrange or list the visibility. The bottom toolbar seems to have a node related to my current task. Perhaps I should click on the table to edit it and create a relationship. There are three tables that might be stacked. I wonder if I could use an auto-layout feature to help. It might be useful to connect two tables and maybe add a foreign key column. Time to inspect the table interactions!",
+            "at": "2026-08-17T18:19:12.836Z"
+          },
+          {
+            "id": "ui_action-020",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (346, 307)",
+            "coord": {
+              "x": 346,
+              "y": 307
+            },
+            "at": "2026-08-17T18:19:13.089Z"
+          },
+          {
+            "id": "screenshot-021",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-06",
+            "screenshotRef": {
+              "path": "screenshots/turn-06.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:13.603Z"
+          },
+          {
+            "id": "reasoning-022",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "**Renaming tables**\n\nI'm looking at the edit panel, and I see a key icon at the top that might indicate creating a relationship. I think it could be useful to rename all the tables. To do this efficiently, I could type the new names directly, and I’ll want to select the current name input first using Ctrl+A. This way, I can easily replace everything at once without missing anything. It feels like a straightforward task!",
+            "at": "2026-08-17T18:19:17.772Z"
+          },
+          {
+            "id": "ui_action-023",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (219, 352)",
+            "coord": {
+              "x": 219,
+              "y": 352
+            },
+            "at": "2026-08-17T18:19:18.032Z"
+          },
+          {
+            "id": "ui_action-024",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-08-17T18:19:18.138Z"
+          },
+          {
+            "id": "ui_action-025",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [5 chars]",
+            "at": "2026-08-17T18:19:18.411Z"
+          },
+          {
+            "id": "screenshot-026",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-07",
+            "screenshotRef": {
+              "path": "screenshots/turn-07.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:18.869Z"
+          },
+          {
+            "id": "ui_action-027",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (345, 505)",
+            "coord": {
+              "x": 345,
+              "y": 505
+            },
+            "at": "2026-08-17T18:19:22.925Z"
+          },
+          {
+            "id": "ui_action-028",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (204, 505)",
+            "coord": {
+              "x": 204,
+              "y": 505
+            },
+            "at": "2026-08-17T18:19:23.176Z"
+          },
+          {
+            "id": "screenshot-029",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-08",
+            "screenshotRef": {
+              "path": "screenshots/turn-08.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:23.699Z"
+          },
+          {
+            "id": "ui_action-030",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (202, 405)",
+            "coord": {
+              "x": 202,
+              "y": 405
+            },
+            "at": "2026-08-17T18:19:27.014Z"
+          },
+          {
+            "id": "ui_action-031",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-08-17T18:19:27.114Z"
+          },
+          {
+            "id": "ui_action-032",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [6 chars]",
+            "at": "2026-08-17T18:19:27.424Z"
+          },
+          {
+            "id": "screenshot-033",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-09",
+            "screenshotRef": {
+              "path": "screenshots/turn-09.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:27.882Z"
+          },
+          {
+            "id": "ui_action-034",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (345, 557)",
+            "coord": {
+              "x": 345,
+              "y": 557
+            },
+            "at": "2026-08-17T18:19:31.022Z"
+          },
+          {
+            "id": "ui_action-035",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (190, 557)",
+            "coord": {
+              "x": 190,
+              "y": 557
+            },
+            "at": "2026-08-17T18:19:31.277Z"
+          },
+          {
+            "id": "ui_action-036",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (203, 557)",
+            "coord": {
+              "x": 203,
+              "y": 557
+            },
+            "at": "2026-08-17T18:19:31.533Z"
+          },
+          {
+            "id": "screenshot-037",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-10",
+            "screenshotRef": {
+              "path": "screenshots/turn-10.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:32.056Z"
+          },
+          {
+            "id": "ui_action-038",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (210, 457)",
+            "coord": {
+              "x": 210,
+              "y": 457
+            },
+            "at": "2026-08-17T18:19:35.279Z"
+          },
+          {
+            "id": "ui_action-039",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-08-17T18:19:35.382Z"
+          },
+          {
+            "id": "ui_action-040",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [8 chars]",
+            "at": "2026-08-17T18:19:35.781Z"
+          },
+          {
+            "id": "screenshot-041",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-11",
+            "screenshotRef": {
+              "path": "screenshots/turn-11.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:36.227Z"
+          },
+          {
+            "id": "reasoning-042",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 12",
+            "text": "**Considering user interface arrangement**\n\nI need to think about how to make the product visible since it's currently stacked. If users want to manage their orders, maybe they can click an eye icon to reveal a list of users. Then, I could suggest dragging items from a visible table to the right and selecting others from the list to move. It seems like there’s some hidden information, so using that eye icon might help with visibility. I wonder if clicking the users’ list will update the table?",
+            "at": "2026-08-17T18:19:41.370Z"
+          },
+          {
+            "id": "ui_action-043",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (78, 307)",
+            "coord": {
+              "x": 78,
+              "y": 307
+            },
+            "at": "2026-08-17T18:19:41.618Z"
+          },
+          {
+            "id": "screenshot-044",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-12",
+            "screenshotRef": {
+              "path": "screenshots/turn-12.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:42.083Z"
+          },
+          {
+            "id": "reasoning-045",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 13",
+            "text": "**Exploring table visibility issues**\n\nI need to think about the products table. Maybe the products are hidden somewhere. It looks like I should make the table visible, especially for top products. If users are selected in a list, but products aren't showing, that seems like a bug. The header indicates it should show products. I wonder if I can use auto layout for better visibility. It's all about ensuring users can click or drag the table effectively.",
+            "at": "2026-08-17T18:19:47.317Z"
+          },
+          {
+            "id": "ui_action-046",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 3 points",
+            "at": "2026-08-17T18:19:47.621Z"
+          },
+          {
+            "id": "screenshot-047",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-13",
+            "screenshotRef": {
+              "path": "screenshots/turn-13.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:48.057Z"
+          },
+          {
+            "id": "reasoning-048",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 14",
+            "text": "**Considering field movement**\n\nI’m wondering if something didn’t move and whether it might have been dragged inside a field row instead of the header. It could be an issue with how headers are placed or recognized in the layout. Maybe I should double-check the header at the top to see if that solves the problem. It’s important to get this right! Let’s explore that option further.",
+            "at": "2026-08-17T18:19:52.483Z"
+          },
+          {
+            "id": "ui_action-049",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 3 points",
+            "at": "2026-08-17T18:19:52.782Z"
+          },
+          {
+            "id": "screenshot-050",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-14",
+            "screenshotRef": {
+              "path": "screenshots/turn-14.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:53.262Z"
+          },
+          {
+            "id": "reasoning-051",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 15",
+            "text": "**Exploring drag functionality**\n\nI’m thinking that maybe the drag feature didn’t work because the pointer location changed. I wonder if I should try pressing and holding longer to see if that helps? Perhaps using the top border of the card might make a difference too. It feels like there are a few different approaches I could take, and I want to make sure I find the right one! Let me think this through carefully.",
+            "at": "2026-08-17T18:19:57.680Z"
+          },
+          {
+            "id": "ui_action-052",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 7 points",
+            "at": "2026-08-17T18:19:57.983Z"
+          },
+          {
+            "id": "screenshot-053",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-15",
+            "screenshotRef": {
+              "path": "screenshots/turn-15.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:19:58.427Z"
+          },
+          {
+            "id": "reasoning-054",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 16",
+            "text": "**Exploring UI functionality**\n\nI’m thinking about the issue with dragging, maybe it’s related to a global lock. I could consider using a table from local storage, but there’s something about persona that I need to figure out. I know I can use devtools, but this doesn’t feel like a normal product scenario. I really want to complete the task, especially since there’s a relationship button in the UI that might help me create a relationship modal.",
+            "at": "2026-08-17T18:20:04.006Z"
+          },
+          {
+            "id": "ui_action-055",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1167, 929)",
+            "coord": {
+              "x": 1167,
+              "y": 929
+            },
+            "at": "2026-08-17T18:20:04.261Z"
+          },
+          {
+            "id": "screenshot-056",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-16",
+            "screenshotRef": {
+              "path": "screenshots/turn-16.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:04.724Z"
+          },
+          {
+            "id": "reasoning-057",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 17",
+            "text": "**Identifying toolbar options**\n\nI'm trying to figure out the right version of icons. I think I need the relationship button, which might be next to the left. Let me see the bottom toolbar; I see some icons stacked there, with various numbers — like x596, x916 for tables, x959, and x1002 for poly, among others. Okay, maybe the top tab is labeled \"Relationships.\" I should click on that to explore further!",
+            "at": "2026-08-17T18:20:08.765Z"
+          },
+          {
+            "id": "ui_action-058",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1399, 150)",
+            "coord": {
+              "x": 1399,
+              "y": 150
+            },
+            "at": "2026-08-17T18:20:09.021Z"
+          },
+          {
+            "id": "ui_action-059",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (203, 217)",
+            "coord": {
+              "x": 203,
+              "y": 217
+            },
+            "at": "2026-08-17T18:20:09.273Z"
+          },
+          {
+            "id": "screenshot-060",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-17",
+            "screenshotRef": {
+              "path": "screenshots/turn-17.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:09.718Z"
+          },
+          {
+            "id": "reasoning-061",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 18",
+            "text": "**Exploring visibility settings**\n\nI’m figuring out how to drag to connect fields, but I need both fields to be visible at once. Right now, only one is showing, stacking under the other. I need to find a way to \"unstack\" that view. Maybe if I hide the top product, it will show the next one? I wonder if clicking the “eye” icon will toggle visibility to hide that product and reveal the orders. Let’s try that out!",
+            "at": "2026-08-17T18:20:14.936Z"
+          },
+          {
+            "id": "ui_action-062",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (72, 218)",
+            "coord": {
+              "x": 72,
+              "y": 218
+            },
+            "at": "2026-08-17T18:20:15.189Z"
+          },
+          {
+            "id": "ui_action-063",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (318, 557)",
+            "coord": {
+              "x": 318,
+              "y": 557
+            },
+            "at": "2026-08-17T18:20:15.443Z"
+          },
+          {
+            "id": "screenshot-064",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-18",
+            "screenshotRef": {
+              "path": "screenshots/turn-18.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:15.915Z"
+          },
+          {
+            "id": "reasoning-065",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 19",
+            "text": "**Troubleshooting interface issues**\n\nI seem to be having some trouble with visibility—maybe I clicked a row instead of the eye icon? It collapsed, and now I’m thinking about how to manage visibility. I need to check if the selection is still visible when it’s collapsed. Should I try using \"View\" or \"Settings\" to adjust the auto layout? I'm also considering clicking the wand feature to see if that helps! There's a bit of confusion here, but I’ll figure it out.",
+            "at": "2026-08-17T18:20:21.958Z"
+          },
+          {
+            "id": "ui_action-066",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1058, 930)",
+            "coord": {
+              "x": 1058,
+              "y": 930
+            },
+            "at": "2026-08-17T18:20:22.212Z"
+          },
+          {
+            "id": "screenshot-067",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-19",
+            "screenshotRef": {
+              "path": "screenshots/turn-19.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:22.670Z"
+          },
+          {
+            "id": "reasoning-068",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 20",
+            "text": "**Clarifying relationships in data**\n\nI’m working on establishing the relationship in the data. I need to drag fields, likely from the user ID to the orders ID. But, I'm wondering if the orders table should have a user_id column. It seems better to add a user_id field to the orders table and connect it to the users.id. I’ll expand the orders structure, and it might be easier to just click on the orders row to add that field.",
+            "at": "2026-08-17T18:20:28.157Z"
+          },
+          {
+            "id": "ui_action-069",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (74, 359)",
+            "coord": {
+              "x": 74,
+              "y": 359
+            },
+            "at": "2026-08-17T18:20:28.414Z"
+          },
+          {
+            "id": "screenshot-070",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-20",
+            "screenshotRef": {
+              "path": "screenshots/turn-20.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:28.898Z"
+          },
+          {
+            "id": "ui_action-071",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (275, 497)",
+            "coord": {
+              "x": 275,
+              "y": 497
+            },
+            "at": "2026-08-17T18:20:32.169Z"
+          },
+          {
+            "id": "screenshot-072",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-21",
+            "screenshotRef": {
+              "path": "screenshots/turn-21.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:32.649Z"
+          },
+          {
+            "id": "ui_action-073",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (89, 486)",
+            "coord": {
+              "x": 89,
+              "y": 486
+            },
+            "at": "2026-08-17T18:20:36.523Z"
+          },
+          {
+            "id": "ui_action-074",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [7 chars]",
+            "at": "2026-08-17T18:20:36.872Z"
+          },
+          {
+            "id": "ui_action-075",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (186, 486)",
+            "coord": {
+              "x": 186,
+              "y": 486
+            },
+            "at": "2026-08-17T18:20:37.128Z"
+          },
+          {
+            "id": "screenshot-076",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-22",
+            "screenshotRef": {
+              "path": "screenshots/turn-22.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:37.630Z"
+          },
+          {
+            "id": "reasoning-077",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 23",
+            "text": "**Selecting an option**\n\nI need to choose \"INT\" from the dropdown menu. It's pretty straightforward, but I just want to make sure I'm doing this right. I’m curious if there are any other steps I might be missing or if I should consider any specific aspects related to the selection. It's important to stay focused and ensure I’m following the correct procedure! Let’s confirm this is the right choice.",
+            "at": "2026-08-17T18:20:41.698Z"
+          },
+          {
+            "id": "ui_action-078",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (182, 528)",
+            "coord": {
+              "x": 182,
+              "y": 528
+            },
+            "at": "2026-08-17T18:20:41.950Z"
+          },
+          {
+            "id": "screenshot-079",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-23",
+            "screenshotRef": {
+              "path": "screenshots/turn-23.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:42.466Z"
+          },
+          {
+            "id": "reasoning-080",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 24",
+            "text": "**Connecting user data**\n\nI need to connect the user ID to the orders by dragging from the user ID dot to the orders user ID dot. The coordinates for the user ID dot are 420,613, and the orders user ID dot are 786,662. I’m focused on making this connection properly since it’s essential for the process, so let’s just drag and see if it links correctly! I want to ensure everything flows smoothly.",
+            "at": "2026-08-17T18:20:49.725Z"
+          },
+          {
+            "id": "ui_action-081",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 5 points",
+            "at": "2026-08-17T18:20:50.041Z"
+          },
+          {
+            "id": "screenshot-082",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-24",
+            "screenshotRef": {
+              "path": "screenshots/turn-24.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:50.569Z"
+          },
+          {
+            "id": "reasoning-083",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 25",
+            "text": "**Troubleshooting drag options**\n\nI’m working with a system, and it seems I opened information instead of dragging. Maybe I should try dragging from the key icon rather than the dot? The relationship tab mentions dragging to connect fields, so perhaps dragging from the key is the way to go. I’m thinking of connecting the user ID key at coordinates x622,613 to the user_id dot. Also, I’ll try closing the pop-up by clicking on it.",
+            "at": "2026-08-17T18:20:57.338Z"
+          },
+          {
+            "id": "ui_action-084",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1087, 808)",
+            "coord": {
+              "x": 1087,
+              "y": 808
+            },
+            "at": "2026-08-17T18:20:57.593Z"
+          },
+          {
+            "id": "ui_action-085",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 4 points",
+            "at": "2026-08-17T18:20:57.885Z"
+          },
+          {
+            "id": "screenshot-086",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-25",
+            "screenshotRef": {
+              "path": "screenshots/turn-25.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:20:58.572Z"
+          },
+          {
+            "id": "reasoning-087",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 26",
+            "text": "**Exploring user_id options**\n\nI'm wondering if I really dragged the selected user_id successfully. It seems like it didn't create as expected. Maybe I stopped at x986 without selecting the right key for the user_id? Hm, I should probably check the relation icon next to the orders user_id, which is grey instead of showing the key. I think clicking on that might open a relationship editing modal, so let's go ahead and do that!",
+            "at": "2026-08-17T18:21:03.949Z"
+          },
+          {
+            "id": "ui_action-088",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (301, 486)",
+            "coord": {
+              "x": 301,
+              "y": 486
+            },
+            "at": "2026-08-17T18:21:04.211Z"
+          },
+          {
+            "id": "screenshot-089",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-26",
+            "screenshotRef": {
+              "path": "screenshots/turn-26.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:04.681Z"
+          },
+          {
+            "id": "reasoning-090",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 27",
+            "text": "**Considering relationships and references**\n\nI'm noticing that there might be a confusion because it’s marked as FK, but the relationship count is 0. This might suggest that I need to click something? I see a key icon next to the user_id. To create a relationship, I think I should try dragging from the FK key icon to the referenced key icon. I might attempt to link from order user_id key x969,661 to user_id key x621,613.",
+            "at": "2026-08-17T18:21:09.898Z"
+          },
+          {
+            "id": "ui_action-091",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 5 points",
+            "at": "2026-08-17T18:21:10.205Z"
+          },
+          {
+            "id": "screenshot-092",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-27",
+            "screenshotRef": {
+              "path": "screenshots/turn-27.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:10.665Z"
+          },
+          {
+            "id": "reasoning-093",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 28",
+            "text": "**Exploring the relationship tab**\n\nI’m considering whether I need to enter the relationships tab while dragging the handle to move a row. It’s possible it might say there are no relationships unless I'm in the right tab. So, let’s click on the Relationship tab and see if that helps. I wonder if that will allow me to count or manage the relationships better. There’s definitely something to think about here!",
+            "at": "2026-08-17T18:21:17.333Z"
+          },
+          {
+            "id": "ui_action-094",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (198, 218)",
+            "coord": {
+              "x": 198,
+              "y": 218
+            },
+            "at": "2026-08-17T18:21:17.590Z"
+          },
+          {
+            "id": "screenshot-095",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-28",
+            "screenshotRef": {
+              "path": "screenshots/turn-28.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:18.036Z"
+          },
+          {
+            "id": "reasoning-096",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 29",
+            "text": "**Connecting fields smoothly**\n\nI need to make sure I'm connecting the fields correctly, specifically from the blue dot of the user's ID to the blue dot of the order's user ID. Earlier, I started from the dot but hit a hiccup because I was looking at the wrong tab. Now that I'm on the relationship tab, I should try connecting from dot to dot for a more direct and stable hold. I'm focused on getting this right!",
+            "at": "2026-08-17T18:21:23.154Z"
+          },
+          {
+            "id": "ui_action-097",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 5 points",
+            "at": "2026-08-17T18:21:23.465Z"
+          },
+          {
+            "id": "screenshot-098",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-29",
+            "screenshotRef": {
+              "path": "screenshots/turn-29.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:23.915Z"
+          },
+          {
+            "id": "reasoning-099",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 30",
+            "text": "**Considering user interface options**\n\nI’m thinking about the user interface and the popover that appears after clicking. Maybe it would make sense to use a larger plus sign on the relationship side? That could suggest the idea of having no relationships while also indicating that there's a big plus for creating something new. Clicking the plus could initiate the process, but I want to make sure it’s clear to users what that action means.",
+            "at": "2026-08-17T18:21:30.084Z"
+          },
+          {
+            "id": "ui_action-100",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (147, 321)",
+            "coord": {
+              "x": 147,
+              "y": 321
+            },
+            "at": "2026-08-17T18:21:30.336Z"
+          },
+          {
+            "id": "screenshot-101",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-30",
+            "screenshotRef": {
+              "path": "screenshots/turn-30.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:30.798Z"
+          },
+          {
+            "id": "ui_action-102",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (341, 486)",
+            "coord": {
+              "x": 341,
+              "y": 486
+            },
+            "at": "2026-08-17T18:21:37.940Z"
+          },
+          {
+            "id": "screenshot-103",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-31",
+            "screenshotRef": {
+              "path": "screenshots/turn-31.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:38.402Z"
+          },
+          {
+            "id": "ui_action-104",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "drag 5 points",
+            "at": "2026-08-17T18:21:45.746Z"
+          },
+          {
+            "id": "screenshot-105",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-32",
+            "screenshotRef": {
+              "path": "screenshots/turn-32.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:46.218Z"
+          },
+          {
+            "id": "ui_action-106",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (114, 165)",
+            "coord": {
+              "x": 114,
+              "y": 165
+            },
+            "at": "2026-08-17T18:21:55.521Z"
+          },
+          {
+            "id": "screenshot-107",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-33",
+            "screenshotRef": {
+              "path": "screenshots/turn-33.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:21:56.014Z"
+          },
+          {
+            "id": "reasoning-108",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 34",
+            "text": "**Considering data import options**\n\nI’m thinking about importing from SQL, and I wonder if it would reset the current work I have. It might actually be simpler to import the entire SQL database, including the three tables and their foreign keys. But since I'm already in the editor, maybe I should just use the file import function for SQL. Alright, let’s click that option! I’ll see how that goes.",
+            "at": "2026-08-17T18:22:01.739Z"
+          },
+          {
+            "id": "ui_action-109",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "move (298, 568)",
+            "at": "2026-08-17T18:22:01.811Z"
+          },
+          {
+            "id": "ui_action-110",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (298, 568)",
+            "coord": {
+              "x": 298,
+              "y": 568
+            },
+            "at": "2026-08-17T18:22:17.216Z"
+          },
+          {
+            "id": "screenshot-111",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-34",
+            "screenshotRef": {
+              "path": "screenshots/turn-34.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:22:17.696Z"
+          },
+          {
+            "id": "ui_action-112",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (367, 572)",
+            "coord": {
+              "x": 367,
+              "y": 572
+            },
+            "at": "2026-08-17T18:22:21.745Z"
+          },
+          {
+            "id": "screenshot-113",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-35",
+            "screenshotRef": {
+              "path": "screenshots/turn-35.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:22:22.336Z"
+          },
+          {
+            "id": "ui_action-114",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (566, 446)",
+            "coord": {
+              "x": 566,
+              "y": 446
+            },
+            "at": "2026-08-17T18:22:28.595Z"
+          },
+          {
+            "id": "ui_action-115",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [201 chars]",
+            "at": "2026-08-17T18:22:37.154Z"
+          },
+          {
+            "id": "screenshot-116",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-36",
+            "screenshotRef": {
+              "path": "screenshots/turn-36.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:22:37.617Z"
+          },
+          {
+            "id": "reasoning-117",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 37",
+            "text": "**Considering import options**\n\nI need to keep the current diagram unchanged while thinking about how to handle imports. If I import without overwriting duplicates, that could create issues. But maybe it's okay if some duplicates remain? I want to ensure I'm not creating chaos in my files. So, I think I should consider options for overwriting when I click to import, making sure I handle this carefully. It’s all about finding the right balance!",
+            "at": "2026-08-17T18:22:49.623Z"
+          },
+          {
+            "id": "ui_action-118",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (453, 683)",
+            "coord": {
+              "x": 453,
+              "y": 683
+            },
+            "at": "2026-08-17T18:22:49.876Z"
+          },
+          {
+            "id": "ui_action-119",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (960, 742)",
+            "coord": {
+              "x": 960,
+              "y": 742
+            },
+            "at": "2026-08-17T18:22:50.136Z"
+          },
+          {
+            "id": "screenshot-120",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-37",
+            "screenshotRef": {
+              "path": "screenshots/turn-37.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:22:50.602Z"
+          },
+          {
+            "id": "ui_action-121",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (710, 454)",
+            "coord": {
+              "x": 710,
+              "y": 454
+            },
+            "at": "2026-08-17T18:22:58.309Z"
+          },
+          {
+            "id": "ui_action-122",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-08-17T18:22:58.415Z"
+          },
+          {
+            "id": "ui_action-123",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [210 chars]",
+            "at": "2026-08-17T18:23:07.269Z"
+          },
+          {
+            "id": "screenshot-124",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-38",
+            "screenshotRef": {
+              "path": "screenshots/turn-38.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:07.728Z"
+          },
+          {
+            "id": "ui_action-125",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (622, 446)",
+            "coord": {
+              "x": 622,
+              "y": 446
+            },
+            "at": "2026-08-17T18:23:16.115Z"
+          },
+          {
+            "id": "ui_action-126",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-08-17T18:23:16.222Z"
+          },
+          {
+            "id": "ui_action-127",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-08-17T18:23:16.319Z"
+          },
+          {
+            "id": "ui_action-128",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [226 chars]",
+            "at": "2026-08-17T18:23:25.891Z"
+          },
+          {
+            "id": "screenshot-129",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-39",
+            "screenshotRef": {
+              "path": "screenshots/turn-39.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:26.351Z"
+          },
+          {
+            "id": "ui_action-130",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (960, 742)",
+            "coord": {
+              "x": 960,
+              "y": 742
+            },
+            "at": "2026-08-17T18:23:31.357Z"
+          },
+          {
+            "id": "screenshot-131",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-40",
+            "screenshotRef": {
+              "path": "screenshots/turn-40.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:31.835Z"
+          },
+          {
+            "id": "reasoning-132",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 41",
+            "text": "**Evaluating code editing options**\n\nI’m looking at an error in my code, possibly caused by a trailing parenthesis at line 11. It seems like an old error from a previous paste. I might need to clear the editor properly or use keyboard shortcuts for better navigation. I could consider opening a new diagram, selecting the database first, and importing fresh SQL. While this might create more steps, it could help resolve the issue.",
+            "at": "2026-08-17T18:23:39.324Z"
+          },
+          {
+            "id": "ui_action-133",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (880, 824)",
+            "coord": {
+              "x": 880,
+              "y": 824
+            },
+            "at": "2026-08-17T18:23:39.576Z"
+          },
+          {
+            "id": "ui_action-134",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (114, 165)",
+            "coord": {
+              "x": 114,
+              "y": 165
+            },
+            "at": "2026-08-17T18:23:39.831Z"
+          },
+          {
+            "id": "ui_action-135",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (120, 207)",
+            "coord": {
+              "x": 120,
+              "y": 207
+            },
+            "at": "2026-08-17T18:23:40.083Z"
+          },
+          {
+            "id": "screenshot-136",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-41",
+            "screenshotRef": {
+              "path": "screenshots/turn-41.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:40.641Z"
+          },
+          {
+            "id": "ui_action-137",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (492, 342)",
+            "coord": {
+              "x": 492,
+              "y": 342
+            },
+            "at": "2026-08-17T18:23:45.221Z"
+          },
+          {
+            "id": "ui_action-138",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1033, 870)",
+            "coord": {
+              "x": 1033,
+              "y": 870
+            },
+            "at": "2026-08-17T18:23:45.475Z"
+          },
+          {
+            "id": "screenshot-139",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-42",
+            "screenshotRef": {
+              "path": "screenshots/turn-42.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:45.931Z"
+          },
+          {
+            "id": "ui_action-140",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "wait",
+            "at": "2026-08-17T18:23:50.854Z"
+          },
+          {
+            "id": "screenshot-141",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-43",
+            "screenshotRef": {
+              "path": "screenshots/turn-43.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:51.365Z"
+          },
+          {
+            "id": "reasoning-142",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 44",
+            "text": "**Choosing MySQL**\n\nI’m thinking about whether to choose MySQL for importing data instead of adding it manually. It seems like a more efficient option, which could be better overall and save time. I wonder if the import process will be straightforward and if I’ll face any complications. I’ll need to ensure everything goes smoothly during the selection and import process. Let's proceed with MySQL and see how it turns out!",
+            "at": "2026-08-17T18:23:56.932Z"
+          },
+          {
+            "id": "ui_action-143",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (502, 391)",
+            "coord": {
+              "x": 502,
+              "y": 391
+            },
+            "at": "2026-08-17T18:23:57.183Z"
+          },
+          {
+            "id": "ui_action-144",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (997, 755)",
+            "coord": {
+              "x": 997,
+              "y": 755
+            },
+            "at": "2026-08-17T18:23:57.438Z"
+          },
+          {
+            "id": "screenshot-145",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-44",
+            "screenshotRef": {
+              "path": "screenshots/turn-44.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:23:57.922Z"
+          },
+          {
+            "id": "reasoning-146",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 45",
+            "text": "**Considering SQL import process**\n\nI think it might be a good idea to import from SQL first to ensure everything is set up correctly. I should start with a fresh editor, which should be empty. Then I can use the file import function for MySQL. I want to make sure I’m on track, as getting this step right is crucial for the following processes! Let's keep things straightforward.",
+            "at": "2026-08-17T18:24:06.014Z"
+          },
+          {
+            "id": "ui_action-147",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (114, 165)",
+            "coord": {
+              "x": 114,
+              "y": 165
+            },
+            "at": "2026-08-17T18:24:06.258Z"
+          },
+          {
+            "id": "ui_action-148",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "move (296, 568)",
+            "at": "2026-08-17T18:24:06.335Z"
+          },
+          {
+            "id": "ui_action-149",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (296, 568)",
+            "coord": {
+              "x": 296,
+              "y": 568
+            },
+            "at": "2026-08-17T18:24:21.749Z"
+          },
+          {
+            "id": "ui_action-150",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (367, 572)",
+            "coord": {
+              "x": 367,
+              "y": 572
+            },
+            "at": "2026-08-17T18:24:21.999Z"
+          },
+          {
+            "id": "screenshot-151",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-45",
+            "screenshotRef": {
+              "path": "screenshots/turn-45.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:24:22.445Z"
+          },
+          {
+            "id": "reasoning-152",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 46",
+            "text": "**Troubleshooting actions**\n\nI’m thinking that maybe the actions didn't open because I clicked too fast or possibly there wasn’t a menu appearing. It seems like I might need to slow down and do a specific step to see if that resolves the issue. I wonder if taking my time will make a difference. I’ll make sure to try it again with a more deliberate approach to see if it works properly this time!",
+            "at": "2026-08-17T18:24:27.208Z"
+          },
+          {
+            "id": "ui_action-153",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (114, 165)",
+            "coord": {
+              "x": 114,
+              "y": 165
+            },
+            "at": "2026-08-17T18:24:27.464Z"
+          },
+          {
+            "id": "screenshot-154",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-46",
+            "screenshotRef": {
+              "path": "screenshots/turn-46.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:24:27.913Z"
+          },
+          {
+            "id": "ui_action-155",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (157, 568)",
+            "coord": {
+              "x": 157,
+              "y": 568
+            },
+            "at": "2026-08-17T18:24:33.840Z"
+          },
+          {
+            "id": "screenshot-156",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-47",
+            "screenshotRef": {
+              "path": "screenshots/turn-47.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:24:34.288Z"
+          },
+          {
+            "id": "ui_action-157",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (556, 446)",
+            "coord": {
+              "x": 556,
+              "y": 446
+            },
+            "at": "2026-08-17T18:24:39.940Z"
+          },
+          {
+            "id": "ui_action-158",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [183 chars]",
+            "at": "2026-08-17T18:24:47.700Z"
+          },
+          {
+            "id": "screenshot-159",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-48",
+            "screenshotRef": {
+              "path": "screenshots/turn-48.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:24:48.155Z"
+          },
+          {
+            "id": "ui_action-160",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (961, 742)",
+            "coord": {
+              "x": 961,
+              "y": 742
+            },
+            "at": "2026-08-17T18:24:53.483Z"
+          },
+          {
+            "id": "screenshot-161",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-49",
+            "screenshotRef": {
+              "path": "screenshots/turn-49.png",
+              "redaction": "none"
+            },
+            "at": "2026-08-17T18:24:53.947Z"
+          },
+          {
+            "id": "reasoning-162",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 50",
+            "text": "**Finalizing report creation**\n\nI'm finishing up the final report and need to mention that I created three tables and established relationships between them. I remember there was some initial friction in the process, but the user asked me to stop and report back, so I want to keep this concise. I’ll focus on summarizing the key points without any unnecessary details, making sure it’s clear and to the point for the user.",
+            "at": "2026-08-17T18:25:00.444Z"
+          },
+          {
+            "id": "message-163",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 50",
+            "text": "Done.\n\nCreated three tables:\n- `users`\n- `orders`\n- `products`\n\nCreated one relationship:\n- `orders.user_id` references `users.id`\n\nFirst impressions / friction:\n- Adding tables manually was straightforward, but the relationship creation by dragging fields was not obvious and didn’t work reliably for me.\n- I recovered by using **File → Import from SQL**, which successfully created the tables and relationship.\n- The SQL import error output was quite noisy and hard to read when my first paste had leftover text; clearer import validation would help.",
+            "at": "2026-08-17T18:25:00.444Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "observation": 4,
+            "pointer": 63,
+            "keyboard": 14
+          },
+          "total": 81,
+          "shortcutTotal": 0
+        },
+        "tokenUsage": {
+          "input": 2171237,
+          "output": 5169,
+          "cachedInput": 2036992,
+          "total": 2176406
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": 1.844791,
+          "ratesAsOf": "2026-08-05",
+          "source": "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)",
+          "modelId": "gpt-5.5",
+          "breakdown": {
+            "inputUsd": 1.689721,
+            "outputUsd": 0.15507,
+            "inputTokens": 2171237,
+            "outputTokens": 5169,
+            "cachedInputTokens": 2036992
+          }
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "actor trace",
+          "path": "actor.json",
+          "kind": "trace"
+        },
+        {
+          "label": "screenshot 01 (raw)",
+          "path": "screenshots/turn-00-start.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 02 (raw)",
+          "path": "screenshots/turn-01.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 03 (raw)",
+          "path": "screenshots/turn-02.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 04 (raw)",
+          "path": "screenshots/turn-03.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 05 (raw)",
+          "path": "screenshots/turn-04.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 06 (raw)",
+          "path": "screenshots/turn-05.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 07 (raw)",
+          "path": "screenshots/turn-06.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 08 (raw)",
+          "path": "screenshots/turn-07.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 09 (raw)",
+          "path": "screenshots/turn-08.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 10 (raw)",
+          "path": "screenshots/turn-09.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 11 (raw)",
+          "path": "screenshots/turn-10.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 12 (raw)",
+          "path": "screenshots/turn-11.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 13 (raw)",
+          "path": "screenshots/turn-12.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 14 (raw)",
+          "path": "screenshots/turn-13.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 15 (raw)",
+          "path": "screenshots/turn-14.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 16 (raw)",
+          "path": "screenshots/turn-15.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 17 (raw)",
+          "path": "screenshots/turn-16.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 18 (raw)",
+          "path": "screenshots/turn-17.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 19 (raw)",
+          "path": "screenshots/turn-18.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 20 (raw)",
+          "path": "screenshots/turn-19.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 21 (raw)",
+          "path": "screenshots/turn-20.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 22 (raw)",
+          "path": "screenshots/turn-21.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 23 (raw)",
+          "path": "screenshots/turn-22.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 24 (raw)",
+          "path": "screenshots/turn-23.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 25 (raw)",
+          "path": "screenshots/turn-24.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 26 (raw)",
+          "path": "screenshots/turn-25.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 27 (raw)",
+          "path": "screenshots/turn-26.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 28 (raw)",
+          "path": "screenshots/turn-27.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 29 (raw)",
+          "path": "screenshots/turn-28.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 30 (raw)",
+          "path": "screenshots/turn-29.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 31 (raw)",
+          "path": "screenshots/turn-30.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 32 (raw)",
+          "path": "screenshots/turn-31.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 33 (raw)",
+          "path": "screenshots/turn-32.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 34 (raw)",
+          "path": "screenshots/turn-33.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 35 (raw)",
+          "path": "screenshots/turn-34.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 36 (raw)",
+          "path": "screenshots/turn-35.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 37 (raw)",
+          "path": "screenshots/turn-36.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 38 (raw)",
+          "path": "screenshots/turn-37.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 39 (raw)",
+          "path": "screenshots/turn-38.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 40 (raw)",
+          "path": "screenshots/turn-39.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 41 (raw)",
+          "path": "screenshots/turn-40.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 42 (raw)",
+          "path": "screenshots/turn-41.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 43 (raw)",
+          "path": "screenshots/turn-42.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 44 (raw)",
+          "path": "screenshots/turn-43.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 45 (raw)",
+          "path": "screenshots/turn-44.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 46 (raw)",
+          "path": "screenshots/turn-45.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 47 (raw)",
+          "path": "screenshots/turn-46.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 48 (raw)",
+          "path": "screenshots/turn-47.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 49 (raw)",
+          "path": "screenshots/turn-48.png",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 50 (raw)",
+          "path": "screenshots/turn-49.png",
+          "kind": "screenshot"
+        }
+      ],
+      "sim": {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "cua-observer-live-check",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Done.\n\nCreated three tables:\n- `users`\n- `orders`\n- `products`\n\nCreated one relationship:\n- `orders.user_id` references `users.id`\n\nFirst impressions / friction:\n- Adding tables manually was straightforward, but the relationship creation by dragging fields was not obvious and didn’t work reliably for me.\n- I recovered by using **File → Import from SQL**, which successfully created the tables and relationship.\n- The SQL import error output was quite noisy and hard to read when my first paste had leftover text; clearer import validation would help.",
+        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "2026-08-17T18:17:25.394Z",
+        "updatedAt": "2026-08-17T18:17:25.394Z"
+      },
+      "kindLabel": "Browser",
+      "statusLabel": "Passed",
+      "terminalPlain": "",
+      "timeline": [
+        {
+          "id": "event-001-subject",
+          "at": "2026-08-17T18:17:25.394Z",
+          "level": "info",
+          "type": "cua-lab.subject.provenance",
+          "message": "Subject cloned from drawdb-io/drawdb@5c46fb8b7943a2399fff14a7b1fa230c552f3314 and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-002-session",
+          "at": "2026-08-17T18:17:25.394Z",
+          "level": "info",
+          "type": "cua-lab.session.goal_satisfied",
+          "message": "passed: Done.\n\nCreated three tables:\n- `users`\n- `orders`\n- `products`\n\nCreated one relationship:\n- `orders.user_id` references `users.id`\n\nFirst impressions / friction:\n- Adding tables manually was straightforward, but the relationship creation by dragging fields was not obvious and didn’t work reliably for me.\n- I recovered by using **File → Import from SQL**, which successfully created the tables and relationship.\n- The SQL import error output was quite noisy and hard to read when my first paste had leftover text; clearer import validation would help.",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-003-phase-clone",
+          "at": "2026-08-17T18:17:31.907Z",
+          "level": "info",
+          "type": "cua-lab.subject.clone.completed",
+          "message": "subject repository cloned (3520ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-004-phase-runtime",
+          "at": "2026-08-17T18:17:50.854Z",
+          "level": "info",
+          "type": "cua-lab.subject.runtime.completed",
+          "message": "Node runtime ready (18867ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-005-phase-install",
+          "at": "2026-08-17T18:18:06.681Z",
+          "level": "info",
+          "type": "cua-lab.subject.install.completed",
+          "message": "subject dependencies installed (15827ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-006-phase-build",
+          "at": "2026-08-17T18:18:13.368Z",
+          "level": "info",
+          "type": "cua-lab.subject.build.completed",
+          "message": "subject build complete (6533ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-007-phase-ready",
+          "at": "2026-08-17T18:18:15.421Z",
+          "level": "info",
+          "type": "cua-lab.subject.ready.completed",
+          "message": "subject is ready (1674ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000-created",
+      "at": "2026-08-17T18:17:25.394Z",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use lab run for observer-live-check (actor openai-computer-use)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "2026-08-17T18:17:25.394Z",
+      "level": "info",
+      "type": "cua-lab.subject.provenance",
+      "message": "Subject cloned from drawdb-io/drawdb@5c46fb8b7943a2399fff14a7b1fa230c552f3314 and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-session",
+      "at": "2026-08-17T18:17:25.394Z",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "passed: Done.\n\nCreated three tables:\n- `users`\n- `orders`\n- `products`\n\nCreated one relationship:\n- `orders.user_id` references `users.id`\n\nFirst impressions / friction:\n- Adding tables manually was straightforward, but the relationship creation by dragging fields was not obvious and didn’t work reliably for me.\n- I recovered by using **File → Import from SQL**, which successfully created the tables and relationship.\n- The SQL import error output was quite noisy and hard to read when my first paste had leftover text; clearer import validation would help.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-phase-clone",
+      "at": "2026-08-17T18:17:31.907Z",
+      "level": "info",
+      "type": "cua-lab.subject.clone.completed",
+      "message": "subject repository cloned (3520ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-phase-runtime",
+      "at": "2026-08-17T18:17:50.854Z",
+      "level": "info",
+      "type": "cua-lab.subject.runtime.completed",
+      "message": "Node runtime ready (18867ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-005-phase-install",
+      "at": "2026-08-17T18:18:06.681Z",
+      "level": "info",
+      "type": "cua-lab.subject.install.completed",
+      "message": "subject dependencies installed (15827ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-006-phase-build",
+      "at": "2026-08-17T18:18:13.368Z",
+      "level": "info",
+      "type": "cua-lab.subject.build.completed",
+      "message": "subject build complete (6533ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-007-phase-ready",
+      "at": "2026-08-17T18:18:15.421Z",
+      "level": "info",
+      "type": "cua-lab.subject.ready.completed",
+      "message": "subject is ready (1674ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "artifactLinks": [
+    {
+      "label": "run bundle",
+      "href": "../run.json",
+      "kind": "bundle"
+    },
+    {
+      "label": "review JSON",
+      "href": "../review.json",
+      "kind": "review"
+    },
+    {
+      "label": "review Markdown",
+      "href": "../review.md",
+      "kind": "review"
+    },
+    {
+      "label": "event log",
+      "href": "../events.ndjson",
+      "kind": "events"
+    },
+    {
+      "label": "observer data",
+      "href": "observer-data.json",
+      "kind": "observer"
+    }
+  ],
+  "publicSafety": {
+    "publishable": false,
+    "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+  },
+  "raw": {
+    "bundleSchema": "humanish.run-bundle.v1",
+    "artifactRoot": ".humanish/runs/cua-2026-08-17T18-17-25-392Z-9b6aa972"
+  }
+}
