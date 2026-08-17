@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDuration } from "@/lib/artifact-href";
 import { followTarget, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
-import type { PlayerModel } from "@/lib/player-model";
+import { frameHoldMs, type PlayerModel } from "@/lib/player-model";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
 
 type Tab = "actions" | "details" | "report";
@@ -71,10 +71,13 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
       setPlaying(false);
       return;
     }
-    const delay = Math.max(120, model.avgFrameMs / speed);
+    // Recorded pacing (#441): each frame holds for its real recorded interval, scaled by
+    // the speed control; older bundles keep the honest average. The 120ms floor keeps a
+    // burst of same-second frames legible.
+    const delay = Math.max(120, frameHoldMs(model, frame) / speed);
     const timer = setTimeout(() => setFrame((value) => Math.min(value + 1, frames.length - 1)), delay);
     return () => clearTimeout(timer);
-  }, [playing, frame, speed, frames.length, model.avgFrameMs]);
+  }, [playing, frame, speed, frames.length, model]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -205,7 +208,7 @@ export function Player({ data, stream, model }: { data: ObserverData; stream: Ob
           <span className="t-meta">
             {actor ? `${formatDuration(actor.durationMs)} · ` : ""}
             {model.rows.filter((row) => !row.isFrame && row.kind !== "reasoning").length} actions
-            {thoughtCount > 0 ? ` · ${thoughtCount} thoughts` : ""} · avg-paced
+            {thoughtCount > 0 ? ` · ${thoughtCount} thoughts` : ""} · {model.paced === "recorded" ? "recorded pace" : "avg-paced"}
           </span>
           <button
             type="button"

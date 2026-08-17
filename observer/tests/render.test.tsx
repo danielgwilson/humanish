@@ -204,7 +204,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         kind: "reasoning",
         lifecycle: "completed",
         title: "reasoning turn 2",
-        text: "A confirm dialog appeared, so I will click its primary button."
+        text: "**Confirming** A confirm dialog appeared, so I will click its primary button."
       },
       { id: "ui_action-002", kind: "ui_action", lifecycle: "completed", title: "click (700, 420)" }
     ],
@@ -279,6 +279,22 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     // The transport tally separates thoughts from recorded actions.
     expect(container.querySelector(".t-meta")?.textContent).toContain("2 actions");
     expect(container.querySelector(".t-meta")?.textContent).toContain("2 thoughts");
+  });
+
+  it("live card ticker (#427 stage 2): the decide-line is the newest thought while the lane runs", async () => {
+    const data = liveShapedData({ live: true });
+    await mount(<App data={data} />);
+    const ticker = container.querySelector(".csig.ticker");
+    expect(ticker).not.toBeNull();
+    // Newest thought wins, markdown bold leads flatten, and the line is labeled as thinking.
+    expect(ticker?.textContent).toContain("thinking");
+    expect(ticker?.textContent).toContain("A confirm dialog appeared");
+    expect(ticker?.textContent).not.toContain("**");
+    expect(ticker?.getAttribute("title")).toContain("Reported thinking");
+
+    // A finished lane keeps the signal line — the ticker is a live-only surface.
+    await mount(<App data={liveShapedData()} />);
+    expect(container.querySelector(".csig.ticker")).toBeNull();
   });
 
   it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {
