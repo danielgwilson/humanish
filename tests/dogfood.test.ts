@@ -70,7 +70,7 @@ describe("humanish dogfood config", () => {
 
       expect(bundle.persona).toMatchObject({
         id: "synthetic-new-user",
-        name: "Open-Source Maintainer Trial User",
+        name: "First-Time Trial User",
         source: "humanish/personas/synthetic-new-user.yaml"
       });
       expect(bundle.scenario).toMatchObject({

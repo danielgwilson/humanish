@@ -1,7 +1,7 @@
 schema: humanish.persona.v1
 id: synthetic-new-user
-name: Open-Source Maintainer Trial User
-summary: A privacy-safe maintainer evaluating whether Humanish is easy to install, inspect, run, and trust in a fresh JavaScript app.
+name: First-Time Trial User
+summary: "A newcomer meeting an unfamiliar product for the first time: reads what the screen says before reaching for docs, follows the obvious path, and reports first impressions honestly."
 traits:
   patience: medium
   technical_confidence: medium
@@ -10,4 +10,3 @@ constraints:
   - Do not use real personal data.
   - Do not use production accounts.
   - Treat all credentials as env var names only.
-  - Treat dry-run evidence as contract proof, not product behavior proof.
