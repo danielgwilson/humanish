@@ -28,6 +28,7 @@ import {
   makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
   resolveSelfReportedBlocker,
+  resolveSelfReportedFriction,
   runCuaActorLab,
   type ChromeCdpEndpoint,
   type CuaActorLabHooks
@@ -733,6 +734,29 @@ describe("runCuaActorLab", () => {
     expect(resolveSelfReportedBlocker(fakeBlockerSession("cannot proceed", { completionReason: "timeout" })))
       .toBeUndefined();
     expect(resolveSelfReportedBlocker(undefined)).toBeUndefined();
+  });
+
+  it("a defect report after demonstrated success keeps the pass AND counts as friction (#453)", () => {
+    // The live run-1 report shape, verbatim in structure: mission done, then a defect-notes
+    // section whose failure narration reports its OWN recovery in the same segment.
+    const report = [
+      "Done. Created three tables and one relationship. Final state shows Tables (3) and Relationships (1), which matches the requested task.",
+      "Notes / defects observed:",
+      "- The SQL import editor output was somewhat ambiguous; my first import failed with a parser error that was hard to interpret. A simpler SQL import succeeded.",
+      "- Dragging tables around the canvas did not work reliably for me."
+    ].join("\n");
+    // Strict (verdict): the resolved arc never blocks the pass.
+    expect(resolveSelfReportedBlocker(fakeBlockerSession(report))).toBeUndefined();
+    // Inclusive (tally/candidates): the friction is still reported evidence.
+    expect(resolveSelfReportedFriction(fakeBlockerSession(report))).toContain("parser error");
+  });
+
+  it("an UNRESOLVED failure still blocks the verdict — the strip needs the recovery in the segment (#453)", () => {
+    expect(resolveSelfReportedBlocker(fakeBlockerSession("The import failed with a parser error, so I gave up on that path and stopped.")))
+      .toContain("failed");
+    // And a recovery in a DIFFERENT segment does not launder an unresolved failure.
+    expect(resolveSelfReportedBlocker(fakeBlockerSession("Login failed and I could not get in. Separately, the search box worked.")))
+      .toContain("Login failed");
   });
 
   it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {
