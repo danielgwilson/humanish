@@ -1185,6 +1185,10 @@ export interface LaneRunOutcome {
   skippedReason?: string;
   noEngagement: boolean;
   selfReportedBlocker: boolean;
+  /** The inclusive friction read (#453): blocker-shaped narration incl. self-resolved arcs.
+   *  Feeds the participants tally and feedback candidates; never the lane verdict. Optional so
+   *  external outcome constructors (shared-world, test fakes) stay valid; absent counts as false. */
+  reportedFriction?: boolean;
   harnessError: boolean;
   failureCode?: CuaActorLabErrorCode;
   entryKind?: "local-app";
@@ -1270,6 +1274,7 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
     skippedReason: reason,
     noEngagement: false,
     selfReportedBlocker: false,
+    reportedFriction: false,
     harnessError: false
   };
 }
@@ -1862,12 +1867,52 @@ async function startDesktopStream(
   }
 }
 
-function completionReasonContradictsGoal(reason: string): boolean {
-  const text = stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase()));
+function hasBlockerLanguage(text: string): boolean {
   return /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text)
     || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
     || /\berror[:.]/.test(text)
     || /what would you like me to do|please tell me|need (the )?(task|credentials|instructions)/.test(text);
+}
+
+/** The friction scan (inclusive): does the narrative report ANY blocker-shaped language,
+ *  resolved or not? Feeds the participants `reportedFriction` tally and feedback candidates. */
+function completionReasonContradictsGoal(reason: string): boolean {
+  return hasBlockerLanguage(stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase())));
+}
+
+/** The verdict scan (strict): like the friction scan, but resolved-arc segments are stripped
+ *  first — failure narration the participant itself reports as overcome is friction on the
+ *  road, not a blocker at the destination (#453). */
+function completionReasonBlocksVerdict(reason: string): boolean {
+  return hasBlockerLanguage(
+    stripResolvedArcSegments(stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase())))
+  );
+}
+
+// A failure segment counts as a resolved arc when the recovery is self-reported either in the
+// SAME segment ("the import failed but then went through") or — the common report shape — in the
+// immediately FOLLOWING segment as a retry/alternative that succeeded ("my first import failed
+// with a parser error. A simpler SQL import succeeded."). The lookahead demands the retry flavor
+// on purpose: unrelated praise ("Separately, the search box worked") must never launder an
+// unresolved failure. "Login failed so I gave up" has no recovery anywhere and stays a blocker.
+// (#453 — the run-1 false negative: a defect report after demonstrated success failed the lane,
+// an incentive inversion against exactly the participant behavior a study wants most.)
+const RESOLUTION_TERMS =
+  /\b(succeed(?:ed|s)?|success(?:ful|fully)?|worked|works around|then worked|now works?|resolved|fixed|recovered|got it working|went through)\b/;
+const RETRY_RESOLUTION =
+  /\b(simpler|simplified|retry(?:ing)?|retried|second (?:attempt|try)|another (?:attempt|try|approach)|different (?:approach|way|route)|instead|then|eventually|after that)\b[^.!?\n]{0,80}\b(succeed(?:ed|s)?|success(?:ful|fully)?|worked|went through|completed|passed)\b/;
+
+/** Drop sentence/bullet segments whose failure language is part of a self-reported RESOLVED arc. */
+function stripResolvedArcSegments(text: string): string {
+  const segments = text.split(/(?<=[.!?])\s+|\n+/);
+  return segments
+    .filter((segment, index) => {
+      if (!hasBlockerLanguage(segment)) return true;
+      if (RESOLUTION_TERMS.test(segment)) return false;
+      const next = segments[index + 1];
+      return !(next !== undefined && RETRY_RESOLUTION.test(next));
+    })
+    .join(" ");
 }
 
 function stripNegatedNonBlockerPhrases(text: string): string {
@@ -1902,9 +1947,24 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
  * the goal AND the run's own stop predicate did NOT fire. A matched stopWhen is independent,
  * structured completion evidence, so it overrides a text scan of the free-form narrative — which can
  * otherwise trip on the subject app's OWN quoted copy (e.g. a relayed "cannot be undone" banner).
- * Returns the offending reason, or undefined when the lane is a clean pass. Exported for testing.
+ * Resolved-arc segments never block the verdict (#453). Returns the offending reason, or undefined
+ * when the lane is a clean pass. Exported for testing.
  */
 export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): string | undefined {
+  return session?.completionReason === "goal_satisfied"
+    && completionReasonBlocksVerdict(session.reason)
+    && !traceHasStopWhenMatch(session)
+    ? session.reason
+    : undefined;
+}
+
+/**
+ * The friction read of the same narrative (#453): everything the verdict scan counts PLUS
+ * resolved arcs — a participant who hit a wall, got past it, and said so has reported friction
+ * worth a tally count and a feedback candidate, without costing the lane its pass. Same
+ * quoted-copy and stopWhen discipline as the verdict resolver. Exported for testing.
+ */
+export function resolveSelfReportedFriction(session: CuaLoopResult | undefined): string | undefined {
   return session?.completionReason === "goal_satisfied"
     && completionReasonContradictsGoal(session.reason)
     && !traceHasStopWhenMatch(session)
@@ -2473,6 +2533,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 
   const blockerReason = resolveSelfReportedBlocker(session);
   const selfReportedBlocker = blockerReason !== undefined;
+  const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
   if (selfReportedBlocker) {
     warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`);
   }
@@ -2496,6 +2557,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     warnings,
     noEngagement,
     selfReportedBlocker,
+    reportedFriction,
     harnessError,
     ...(failureCode === undefined ? {} : { failureCode }),
     ...(commsArtifactPath === undefined ? {} : { commsArtifactPath })
@@ -2546,6 +2608,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   }
   const blockerReason = resolveSelfReportedBlocker(session);
   const selfReportedBlocker = blockerReason !== undefined;
+  const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
   if (selfReportedBlocker) {
     warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${blockerReason}`);
   }
@@ -2562,6 +2625,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     warnings,
     noEngagement,
     selfReportedBlocker,
+    reportedFriction,
     harnessError: sessionError !== undefined || session?.completionReason === "harness_error",
     entryKind: "local-app"
   };
@@ -2639,6 +2703,7 @@ export async function runCuaLanes(
         warnings: [],
         noEngagement: false,
         selfReportedBlocker: false,
+        reportedFriction: false,
         harnessError: true,
         sessionError: `lane runner threw outside the session guard: ${detail}`
       };
@@ -4340,7 +4405,7 @@ export function participantFeedbackCandidates(args: {
   for (const lane of args.lanes) {
     const session = lane.session;
     if (session === undefined) continue;
-    const friction = resolveSelfReportedBlocker(session);
+    const friction = resolveSelfReportedFriction(session);
     const abandoned = session.status === "abandoned";
     if (friction === undefined && !abandoned) continue;
     const summary = friction !== undefined
@@ -5150,7 +5215,7 @@ export function buildCuaFanoutBundle(args: {
         terminalOutcomes.map((outcome) => outcome.session.status),
         // A participant who reached the goal AND told you the road there was broken is the most
         // useful result a study produces; reporting only the outcome would bury it.
-        terminalOutcomes.map((outcome) => outcome.selfReportedBlocker === true)
+        terminalOutcomes.map((outcome) => outcome.reportedFriction === true)
       )
     : undefined;
   // The study funnel: per-task completion rates across every session that measured one. This is
