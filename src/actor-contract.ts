@@ -91,6 +91,13 @@ export interface ActorTraceItem {
   command?: { text?: string; cwd?: string; exitCode?: number; outputTail?: string };
   screenshotRef?: { path: string; redaction: "blurred" | "ocr_scrubbed" | "none" };
   text?: string;
+  /** When the item was recorded (ISO-8601), from the loop's injected clock. Additive
+   *  (#441): items from older bundles and non-stamping producers lack it, so every
+   *  consumer must treat absence as "timing unknown", never as t=0. */
+  at?: string;
+  /** Structured pointer coordinates for click-like `ui_action` items (#441) — the
+   *  recorded fact the Observer's pins previously re-parsed out of the title text. */
+  coord?: { x: number; y: number };
 }
 
 export interface ActorCapabilities {

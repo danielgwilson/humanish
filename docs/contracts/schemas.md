@@ -724,7 +724,11 @@ Core-owned fields:
   budget AFTER productive activity — status `passed`, a NON-FAILURE completion,
   distinct from `timed_out`, which stays reserved for a zero-progress deadline
   hit and remains a failure)
-- `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`
+- `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`. Items may
+  carry `at` (ISO-8601 recording stamp from the loop's clock) and, on
+  click-like `ui_action` items, structured `coord` (`x`/`y`) — both additive
+  (#441): absent on older bundles and non-stamping producers, and absence means
+  "timing/position unrecorded", never zero
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which KIND of route this
   actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
