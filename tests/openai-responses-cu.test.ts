@@ -222,6 +222,15 @@ describe("parseOpenAiResponse", () => {
     expect(parsed.turn.done).toBe(true);
   });
 
+  it("parses cache_write_tokens into usage.cacheWriteInput (#334, GPT-5.6+ write billing)", () => {
+    const parsed = parseOpenAiResponse({
+      id: "resp_w",
+      output: [],
+      usage: { input_tokens: 2600, output_tokens: 40, input_tokens_details: { cached_tokens: 2000, cache_write_tokens: 400 } }
+    });
+    expect(parsed.turn.usage).toEqual({ input: 2600, output: 40, cachedInput: 2000, cacheWriteInput: 400 });
+  });
+
   it("omits optional fields when absent", () => {
     const parsed = parseOpenAiResponse({ output: [] });
     expect(parsed.turn.responseId).toBeUndefined();

@@ -3731,7 +3731,7 @@ describe("runCuaActorLab cost estimates", () => {
     const { module, killed } = makeFakeModule(makeFakeSandbox());
     const result = await runCuaActorLab({
       cwd,
-      config: configWithModel(), // default resolves to gpt-5.5 (confirmed rate; default refresh tracked in #334)
+      config: configWithModel(), // default resolves to gpt-5.6-sol (#334: the 5.6-generation flagship)
       dryRun: false,
       hooks: {
         env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
@@ -3744,16 +3744,21 @@ describe("runCuaActorLab cost estimates", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = await readBundle(result.runId);
-    // Per-actor estimate on the persisted trace: labeled with provenance; gpt-5.5 is a confirmed
-    // (non-placeholder) rate.
+    // Per-actor estimate on the persisted trace: labeled with provenance; gpt-5.6-sol is a
+    // confirmed (non-placeholder) rate. The single 2M-input request crosses the 272K
+    // long-context threshold, so the WHOLE request re-tiers (2x input-side, 1.5x output) —
+    // exact because the trace now records per-request turns (#334).
     const est = bundle.streams[0].actor.estimatedCost;
     expect(est.schema).toBe("humanish.actor-estimated-cost.v1");
-    // gpt-5.5: 2_000_000*5e-6 + 4_000*30e-6 = 10 + 0.12 = 10.12.
-    expect(est.estimatedCostUsd).toBeCloseTo(10.12, 6);
-    expect(est.ratesAsOf).toBe("2026-08-05");
-    expect(est.source).toContain("openrouter.ai/openai/gpt-5.5");
+    // gpt-5.6-sol long tier: 2_000_000*5e-6*2 + 4_000*30e-6*1.5 = 20 + 0.18 = 20.18.
+    expect(est.estimatedCostUsd).toBeCloseTo(20.18, 6);
+    expect(est.ratesAsOf).toBe("2026-08-18");
+    expect(est.source).toContain("developers.openai.com/api/docs/pricing");
     expect(est.placeholder).toBeUndefined();
-    expect(est.modelId).toBe("gpt-5.5");
+    expect(est.modelId).toBe("gpt-5.6-sol");
+    expect(est.breakdown.longContextTurns).toBe(1);
+    // The trace records the per-request usage ledger the tiering priced from.
+    expect(bundle.streams[0].actor.tokenUsage.turns).toHaveLength(2);
 
     const cost = bundle.cost;
     expect(cost.schema).toBe("humanish.run-cost-summary.v1");
@@ -3762,11 +3767,11 @@ describe("runCuaActorLab cost estimates", () => {
     expect(cost.tokenUsage).toEqual({ input: 2_000_000, output: 4_000, total: 2_004_000 });
     const modelLine = cost.breakdown.find((l: any) => l.kind === "model-tokens");
     const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
-    expect(modelLine.estimatedCostUsd).toBeCloseTo(10.12, 6);
-    expect(modelLine.ratesAsOf).toBe("2026-08-05");
-    expect(modelLine.source).toContain("openrouter.ai/openai/gpt-5.5");
+    expect(modelLine.estimatedCostUsd).toBeCloseTo(20.18, 6);
+    expect(modelLine.ratesAsOf).toBe("2026-08-18");
+    expect(modelLine.source).toContain("developers.openai.com/api/docs/pricing");
     expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00276, 6);
-    expect(cost.estimatedTotalUsd).toBeCloseTo(10.12276, 6);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(20.18276, 6);
     // The desktop rate is still placeholder (RAM spec assumed), so the aggregate flag holds.
     expect(cost.placeholder).toBe(true);
     expect(cost.fullyEstimated).toBe(true);

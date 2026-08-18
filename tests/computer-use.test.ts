@@ -1309,7 +1309,29 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     usage: { input: 100, output: 50 }
   };
   // An injected PURE estimator with a fake rate (no live pricing table): $0.001 per token.
-  const estimateTurnCostUsd = (input: number, output: number): number => (input + output) * 0.001;
+  const estimateTurnCostUsd = (usage: { input?: number; output?: number }): number => ((usage.input ?? 0) + (usage.output ?? 0)) * 0.001;
+
+  it("fails CLOSED and LOUD when a stale positional estimator NaNs the running estimate (red-team)", async () => {
+    const provider = new RepeatProvider(usageTurn);
+    const executor = new SignatureExecutor(["a", "b", "c", "d"]);
+    // The pre-#334 positional shape: arithmetic on the usage OBJECT yields NaN.
+    const staleEstimator = ((input: number, output: number): number =>
+      (input + output) * 0.001) as unknown as (usage: { input?: number }) => number;
+    const result = await runComputerUseLoop({
+      instructions: "Act.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+      maxUsd: 0.35,
+      estimateTurnCostUsd: staleEstimator
+    });
+    expect(result.status).toBe("failed");
+    expect(result.completionReason).toBe("harness_error");
+    expect(result.reason).toContain("non-finite estimate");
+  });
 
   it("aborts fail-closed the moment the running estimate crosses maxUsd, BEFORE the next model turn", async () => {
     const provider = new RepeatProvider(usageTurn);
@@ -1337,7 +1359,13 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
     // The cap fires BEFORE the next provider.nextTurn: exactly 3 turns were requested, no 4th.
     expect(provider.seen).toHaveLength(3);
-    expect(result.trace.tokenUsage).toEqual({ input: 300, output: 150, total: 450 });
+    expect(result.trace.tokenUsage).toMatchObject({ input: 300, output: 150, total: 450 });
+    // The per-request usage ledger (#334): one record per provider turn, in order.
+    expect(result.trace.tokenUsage?.turns).toEqual([
+      { input: 100, output: 50 },
+      { input: 100, output: 50 },
+      { input: 100, output: 50 }
+    ]);
   });
 
   it("classifies a ZERO-action runaway that crosses the cap as FAILED (gave_up), not a passed budget stop", async () => {
@@ -1389,7 +1417,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(result.reason).toBe("Done.");
-    expect(result.trace.tokenUsage).toEqual({ input: 200, output: 100, total: 300 });
+    expect(result.trace.tokenUsage).toMatchObject({ input: 200, output: 100, total: 300 });
   });
 
   it("cannot trip on a null (unpriceable) estimate mid-run — it runs to natural completion", async () => {

@@ -59,7 +59,10 @@ export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
   license: "proprietary"
 };
 
-export const DEFAULT_OPENAI_CU_MODEL = "gpt-5.5";
+// The flagship 5.6-generation tier ("gpt-5.6" is OpenAI's alias for this exact id; the
+// computer-use guide's own examples run on it). Explicit tier id so trace provenance and the
+// rate-table key stay stable if OpenAI repoints the alias (#334).
+export const DEFAULT_OPENAI_CU_MODEL = "gpt-5.6-sol";
 
 // ---------------------------------------------------------------------------
 // Defensive readers. The Responses wire shape is loosely typed (unknown), so we
@@ -260,13 +263,16 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   // a long session is a cache hit billed at a fraction of the full rate. Not reading it made every
   // cost line materially overstate the bill (#391).
   const usageCachedInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cached_tokens);
+  // GPT-5.6+ bills cache WRITES (1.25x input) and reports them here; older models omit the field.
+  const usageCacheWriteInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cache_write_tokens);
   const usage =
     usageInput === undefined && usageOutput === undefined
       ? undefined
       : {
           ...(usageInput === undefined ? {} : { input: usageInput }),
           ...(usageOutput === undefined ? {} : { output: usageOutput }),
-          ...(usageCachedInput === undefined ? {} : { cachedInput: usageCachedInput })
+          ...(usageCachedInput === undefined ? {} : { cachedInput: usageCachedInput }),
+          ...(usageCacheWriteInput === undefined ? {} : { cacheWriteInput: usageCacheWriteInput })
         };
 
   const turn: CuaTurn = {

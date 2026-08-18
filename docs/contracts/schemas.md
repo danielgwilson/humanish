@@ -724,7 +724,11 @@ Core-owned fields:
   budget AFTER productive activity — status `passed`, a NON-FAILURE completion,
   distinct from `timed_out`, which stays reserved for a zero-progress deadline
   hit and remains a failure)
-- `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`. Items may
+- `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`. `tokenUsage`
+  may carry `cacheWriteInput` (tokens billed at the provider's cache-write rate,
+  OpenAI 5.6+) and `turns[]` (per provider-request usage, the recorded fact
+  long-context tier pricing needs) — both additive and honestly absent on
+  producers that do not report them (#334). Items may
   carry `at` (ISO-8601 recording stamp from the loop's clock) and, on
   click-like `ui_action` items, structured `coord` (`x`/`y`) — both additive
   (#441): absent on older bundles and non-stamping producers, and absence means
@@ -887,11 +891,16 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   dated per-model input/output USD-per-token rates and an E2B desktop
   USD-per-minute rate, each with a public pricing-page `source` and an `asOf`
   date. A prominent banner says these are estimates to update when providers
-  change pricing. Some entries are `placeholder: true` stand-ins (the shipped
-  `gpt-5.5` model rate and the E2B desktop rate) — an operator MUST confirm them
-  before trusting the magnitude; the flag propagates into every estimate so a
-  stand-in is never mistaken for a live rate. An UNKNOWN model/desktop rate is
-  DECLARED ABSENT (`estimatedCostUsd: null` + a `reason`), never guessed.
+  change pricing. Model rates may carry a `cacheWriteUsdPerToken` (OpenAI 5.6+
+  bills cache writes at 1.25x input as the total rate for written tokens) and a
+  `longContext` tier (a per-request input threshold that re-prices the whole
+  request; priced exactly only from the trace's per-request `turns` ledger —
+  totals alone never re-tier, which is the under-estimate direction). Some
+  entries are `placeholder: true` stand-ins (the E2B desktop rate, pending a
+  live RAM-spec confirmation) — an operator MUST confirm them before trusting
+  the magnitude; the flag propagates into every estimate so a stand-in is never
+  mistaken for a live rate. An UNKNOWN model/desktop rate is DECLARED ABSENT
+  (`estimatedCostUsd: null` + a `reason`), never guessed.
 - `humanish.actor-estimated-cost.v1` — `ActorTrace.estimatedCost`: one lane's
   token-derived model cost, with `estimatedCostUsd` (or `null` + `reason`
   `no_rate_for_model`/`no_token_usage`), `ratesAsOf`, `source`, `modelId`,

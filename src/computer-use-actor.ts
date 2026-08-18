@@ -8,7 +8,7 @@
 // The loop already returns a fully-formed ActorTrace at result.trace, so there is no separate
 // toActorTrace mapper — runCuaActorSession returns the CuaLoopResult unchanged.
 
-import type { ActorPersonaRef, ActorTraceItem } from "./actor-contract.js";
+import type { ActorPersonaRef, ActorTokenUsage, ActorTraceItem } from "./actor-contract.js";
 import {
   runComputerUseLoop,
   type CuaExecutor,
@@ -83,9 +83,9 @@ export interface CuaActorSessionOptions {
   /** FAIL-CLOSED spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
-  estimateTurnCostUsd?: (input: number, output: number, cachedInput?: number) => number | null;
+  estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /** RUN-LEVEL spend guard threaded to the loop (#299). See CuaLoopOptions.overRunBudget. */
-  overRunBudget?: (usage: { input: number; output: number; cachedInput: number }) => string | null;
+  overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;

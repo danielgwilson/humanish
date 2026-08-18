@@ -380,9 +380,19 @@ surfaced as "~$X estimated (rates as of `<date>`)" in the Observer and the run l
 carries the pricing date + source so a token-derived number is never mistaken for an
 authoritative bill. Unknown model/rate is declared absent (`null` + a reason), never guessed or
 silently zeroed; dry-runs invent no spend. The rates live in
-[`src/pricing.ts`](src/pricing.ts) as **operator-editable, dated estimates** — some are
-`placeholder` stand-ins (the `gpt-5.5` model rate and the E2B desktop rate); update the numbers
-AND the `asOf` date when providers change pricing.
+[`src/pricing.ts`](src/pricing.ts) as **operator-editable, dated estimates** — the E2B desktop
+rate is still a `placeholder` stand-in; update the numbers AND the `asOf` date when providers
+change pricing. On models that bill prompt-cache writes and long-context requests at their own
+rates (OpenAI's 5.6 family), the estimate prices both exactly from the trace's per-request
+usage ledger.
+
+**Choosing the model.** Computer-use lanes default to `gpt-5.6-sol` (the 5.6-generation
+flagship; `gpt-5.6` is OpenAI's alias for the same model). Configure it per lab with
+`actors[0].model` — any id in the rate table prices cleanly (`gpt-5.6-terra` and
+`gpt-5.6-luna` are the cheaper tiers; `gpt-5.5` stays priced for pinned labs). A run with a
+spend cap (`execution.caps`) refuses an unpriced model at preflight rather than running
+uncapped, so add a dated rate to `src/pricing.ts` before capping a model the table does not
+know.
 
 **Fail-closed spend cap.** Set `execution.caps.maxUsd` on a computer-use lab to abort a session
 the moment its running estimated spend crosses the cap — the runaway-retry guard (mirrors the
