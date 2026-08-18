@@ -34,6 +34,7 @@
 // gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
 
 import { randomBytes } from "node:crypto";
+import { describeMissingKeys } from "./key-resolution.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -774,7 +775,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
       ...(e2bApiKey ? [] : ["E2B_API_KEY"])
     ];
     if (missingKeys.length > 0) {
-      return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING", `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (pass via --env-file; values are never persisted).`, descriptor.id);
+      return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING", `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`, descriptor.id);
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
