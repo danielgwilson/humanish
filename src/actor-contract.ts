@@ -138,6 +138,20 @@ export interface ActorTokenUsage {
    *  HONESTLY ABSENT: a provider that does not report it leaves this undefined rather than
    *  reporting 0, because 0 and "unknown" price very differently (#391). */
   cachedInput?: number;
+  /** Of `input`, how many tokens were newly WRITTEN to the provider's prompt cache
+   *  (OpenAI 5.6+ bills these at a surcharge and reports `cache_write_tokens`). Same
+   *  honestly-absent discipline as `cachedInput` (#334). */
+  cacheWriteInput?: number;
+  /** Per provider-REQUEST usage, in request order. Recorded fact, not pricing: a provider
+   *  that re-prices whole requests past an input-size threshold (long-context tiers) can
+   *  only be priced exactly from per-request sizes; totals cannot say which requests
+   *  crossed. Additive and honestly absent on producers that do not record it (#334). */
+  turns?: Array<{
+    input?: number;
+    cachedInput?: number;
+    cacheWriteInput?: number;
+    output?: number;
+  }>;
   total?: number;
   costUsd?: number;
 }

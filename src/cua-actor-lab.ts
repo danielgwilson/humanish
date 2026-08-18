@@ -27,7 +27,7 @@ import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
+import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTokenUsage, ActorTrace, ActorTraceItem } from "./actor-contract.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -2318,11 +2318,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           ? {}
           : {
               maxUsd,
-              estimateTurnCostUsd: (input: number, output: number, cachedInput?: number): number | null =>
-                estimateActorCost(
-                  { input, output, ...(cachedInput === undefined ? {} : { cachedInput }) },
-                  capModelId
-                ).estimatedCostUsd
+              estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
+                estimateActorCost(usage, capModelId).estimatedCostUsd
             }),
         desktop: desktop as unknown as E2BDesktopLike,
         ...(launchedBrowserFamily === "chromium"
@@ -2353,15 +2350,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(deps.runBudget === undefined
           ? {}
           : {
-              overRunBudget: (usage: { input: number; output: number; cachedInput: number }): string | null => {
-                const estimate = estimateActorCost(
-                  {
-                    input: usage.input,
-                    output: usage.output,
-                    ...(usage.cachedInput > 0 ? { cachedInput: usage.cachedInput } : {})
-                  },
-                  capModelId
-                ).estimatedCostUsd;
+              overRunBudget: (usage: ActorTokenUsage): string | null => {
+                const estimate = estimateActorCost(usage, capModelId).estimatedCostUsd;
                 const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
                 return totalUsd > deps.runBudget!.maxTotalUsd
                   ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`

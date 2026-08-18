@@ -37,10 +37,15 @@ describe("pricing schema constants", () => {
   });
 
   it("keeps the shipped rate table keyed lowercase with the CUA default present", () => {
-    // The shipped default resolves to gpt-5.5 (DEFAULT_OPENAI_CU_MODEL); it must be priceable so a
-    // capped run is not refused by default. Both model rates are confirmed (gpt-5.5 against public
-    // third-party sheets — see #334); the desktop rate stays placeholder until a live run confirms
-    // the desktop template's RAM spec.
+    // The shipped default resolves to gpt-5.6-sol (DEFAULT_OPENAI_CU_MODEL); it must be priceable
+    // so a capped run is not refused by default. The 5.6-family rates are confirmed against
+    // OpenAI's live sheet (#334); the previous-generation gpt-5.5 entry stays for pinned labs;
+    // the desktop rate stays placeholder until a live run confirms the template's RAM spec.
+    expect(MODEL_RATES["gpt-5.6-sol"]?.placeholder).toBeUndefined();
+    // OpenAI's own alias for sol must price identically so an alias-configured lab is never unpriced.
+    expect(MODEL_RATES["gpt-5.6"]).toEqual(MODEL_RATES["gpt-5.6-sol"]);
+    expect(MODEL_RATES["gpt-5.6-terra"]?.placeholder).toBeUndefined();
+    expect(MODEL_RATES["gpt-5.6-luna"]?.placeholder).toBeUndefined();
     expect(MODEL_RATES["gpt-5.5"]?.placeholder).toBeUndefined();
     expect(MODEL_RATES["computer-use-preview"]?.placeholder).toBeUndefined();
     expect(DESKTOP_RATE.placeholder).toBe(true);
@@ -188,5 +193,94 @@ describe("round6", () => {
     // 0.1 + 0.2 = 0.30000000000000004; the ledger must not carry that spurious tail.
     expect(round6(0.1 + 0.2)).toBe(0.3);
     expect(round6(11.535069 + 0.070428)).toBe(11.605497);
+  });
+});
+
+describe("estimateActorCost: cache writes + long-context tiering (#334)", () => {
+  // The two billing mechanics gpt-5.6 introduced, pinned with a fake sheet mirroring its shape:
+  // writes bill at their own (1.25x) rate as the TOTAL rate for written tokens, and a request
+  // whose input crosses the threshold re-tiers the WHOLE request (2x input-side, 1.5x output).
+  const rate: ModelRate = {
+    inputUsdPerToken: 4e-6,
+    cachedInputUsdPerToken: 0.4e-6,
+    cacheWriteUsdPerToken: 5e-6,
+    outputUsdPerToken: 10e-6,
+    longContext: { thresholdInputTokens: 1000, inputMultiplier: 2, outputMultiplier: 1.5 },
+    asOf: "2026-08-18",
+    source: "fake-sheet://tiered"
+  };
+  const rates = { "tiered-model": rate };
+
+  it("bills cache writes at the write rate, as the total rate for those tokens", () => {
+    const cost = estimateActorCost({ input: 1000, output: 0, cacheWriteInput: 400 }, "tiered-model", rates);
+    // 600 full at 4e-6 + 400 written at 5e-6 = 0.0024 + 0.0020 = 0.0044.
+    expect(cost.estimatedCostUsd).toBeCloseTo(0.0044, 6);
+    expect(cost.breakdown?.cacheWriteInputTokens).toBe(400);
+  });
+
+  it("prices writes as plain input when the sheet has no write rate (pre-5.6 models)", () => {
+    const { cacheWriteUsdPerToken: _omitted, longContext: _lc, ...plain } = rate;
+    const cost = estimateActorCost({ input: 1000, output: 0, cacheWriteInput: 400 }, "tiered-model", { "tiered-model": plain });
+    expect(cost.estimatedCostUsd).toBeCloseTo(0.004, 6);
+  });
+
+  it("re-tiers only the requests that crossed the threshold, from the per-request turns ledger", () => {
+    const cost = estimateActorCost(
+      {
+        input: 1500,
+        output: 30,
+        cachedInput: 500,
+        turns: [
+          { input: 300, output: 10 }, // short: 300*4e-6 + 10*10e-6 = 0.0013
+          { input: 1200, cachedInput: 500, output: 20 } // long: (700*4e-6 + 500*0.4e-6)*2 + 20*10e-6*1.5 = 0.0063
+        ]
+      },
+      "tiered-model",
+      rates
+    );
+    expect(cost.estimatedCostUsd).toBeCloseTo(0.0013 + 0.0063, 6);
+    expect(cost.breakdown?.longContextTurns).toBe(1);
+  });
+
+  it("refuses to tier when the ledger omits the cache splits the totals declare (red-team)", () => {
+    // input/output sums match but the ledger carries no cachedInput — trusting it would price
+    // 400k cache hits at the full rate (3.5x overstatement, the #391 false-cap-trip direction).
+    const cost = estimateActorCost(
+      { input: 1500, output: 30, cachedInput: 1000, turns: [{ input: 700, output: 10 }, { input: 800, output: 20 }] },
+      "tiered-model",
+      rates
+    );
+    // Totals path, base tier, split honored: 500 full + 1000 cached.
+    expect(cost.estimatedCostUsd).toBeCloseTo(500 * 4e-6 + 1000 * 0.4e-6 + 30 * 10e-6, 6);
+    expect(cost.breakdown?.cachedInputTokens).toBe(1000);
+    expect(cost.breakdown?.longContextTurns).toBeUndefined();
+  });
+
+  it("refuses to tier when the ledger omits the cache WRITES the totals declare (red-team)", () => {
+    const cost = estimateActorCost(
+      { input: 1500, output: 0, cacheWriteInput: 400, turns: [{ input: 700 }, { input: 800 }] },
+      "tiered-model",
+      rates
+    );
+    expect(cost.estimatedCostUsd).toBeCloseTo(1100 * 4e-6 + 400 * 5e-6, 6);
+    expect(cost.breakdown?.cacheWriteInputTokens).toBe(400);
+  });
+
+  it("refuses to tier from a partial turns ledger — totals price on the base rate instead", () => {
+    // The ledger claims less input than the totals report: tiering from it would price the
+    // missing remainder at a guessed tier. The estimate falls back to the base-rate totals path.
+    const cost = estimateActorCost(
+      { input: 2000, output: 0, turns: [{ input: 300, output: 0 }] },
+      "tiered-model",
+      rates
+    );
+    expect(cost.estimatedCostUsd).toBeCloseTo(2000 * 4e-6, 6);
+    expect(cost.breakdown?.longContextTurns).toBeUndefined();
+  });
+
+  it("never re-tiers on totals alone, even past the threshold (under-estimate direction)", () => {
+    const cost = estimateActorCost({ input: 5000, output: 100 }, "tiered-model", rates);
+    expect(cost.estimatedCostUsd).toBeCloseTo(5000 * 4e-6 + 100 * 10e-6, 6);
+    expect(cost.breakdown?.longContextTurns).toBeUndefined();
   });
 });

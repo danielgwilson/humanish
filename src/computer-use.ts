@@ -4,6 +4,7 @@ import {
   type ActorCompletionReason,
   type ActorPersonaRef,
   type ActorStatus,
+  type ActorTokenUsage,
   type ActorTrace,
   type ActorTraceItem
 } from "./actor-contract.js";
@@ -145,7 +146,7 @@ export interface CuaTurn {
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
-  usage?: { input?: number; output?: number; cachedInput?: number };
+  usage?: { input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
 }
@@ -251,7 +252,7 @@ export interface CuaLoopOptions {
    * mid-run cannot trip the cap — preflight already guaranteed a rate exists, so a null here is a
    * vanished-rate harness condition, not a silent uncapped pass.
    */
-  estimateTurnCostUsd?: (input: number, output: number, cachedInput?: number) => number | null;
+  estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /**
    * RUN-LEVEL spend guard (#299): called with this lane's running usage each turn, at the same
    * point the per-lane cap is checked. Returns a human-readable reason when the STUDY's shared
@@ -259,7 +260,7 @@ export interface CuaLoopOptions {
    * regardless of material progress — a study-level stop is a recruiting decision hitting its
    * limit, not this participant's runaway, so it never reads as `gave_up`.
    */
-  overRunBudget?: (usage: { input: number; output: number; cachedInput: number }) => string | null;
+  overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /**
    * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
    * after EVERY executor.observe() (the initial observe and each post-action observe), so the
@@ -625,6 +626,24 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let seq = 0;
   let usageInput = 0;
   let usageCachedInput = 0;
+  let usageCacheWriteInput = 0;
+  // Per provider-REQUEST usage, in order (#334): the recorded fact long-context pricing tiers
+  // need — totals alone cannot say which requests crossed the provider's threshold.
+  const usageTurns: NonNullable<ActorTokenUsage["turns"]> = [];
+  // The running usage snapshot both spend guards consume: totals plus the per-request ledger,
+  // shaped exactly like the trace's final tokenUsage so one estimator prices both identically.
+  // Unlike the persisted trace (where absent means "unreported"), this runtime callback arg
+  // ALWAYS carries numeric cache fields: pre-#334 guards received an object whose cachedInput
+  // was always a number (0 included), and arithmetic on a suddenly-undefined field yields NaN —
+  // which comparison operators swallow silently (red-team finding: a stale study-budget guard
+  // would run uncapped without a sound).
+  const runningUsage = (): ActorTokenUsage => ({
+    input: usageInput,
+    output: usageOutput,
+    cachedInput: usageCachedInput,
+    cacheWriteInput: usageCacheWriteInput,
+    ...(usageTurns.length > 0 ? { turns: usageTurns } : {})
+  });
   let usageOutput = 0;
   let sawUsage = false;
   let lastResponseId: string | undefined;
@@ -793,7 +812,14 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         sawUsage = true;
         usageInput += turn.usage.input ?? 0;
         usageCachedInput += turn.usage.cachedInput ?? 0;
+        usageCacheWriteInput += turn.usage.cacheWriteInput ?? 0;
         usageOutput += turn.usage.output ?? 0;
+        usageTurns.push({
+          ...(turn.usage.input === undefined ? {} : { input: turn.usage.input }),
+          ...(turn.usage.cachedInput === undefined ? {} : { cachedInput: turn.usage.cachedInput }),
+          ...(turn.usage.cacheWriteInput === undefined ? {} : { cacheWriteInput: turn.usage.cacheWriteInput }),
+          ...(turn.usage.output === undefined ? {} : { output: turn.usage.output })
+        });
       }
       // RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read
       // the lobby code the host states after creating the lobby (CDP url-read is unreliable). Raw
@@ -816,7 +842,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // trips here before any action executes) — so it surfaces as "gave_up" (→ failed). Either way
       // the running estimate + the cap are cited so the operator sees WHY the loop stopped.
       if (maxUsd !== undefined && estimateTurnCostUsd) {
-        const running = estimateTurnCostUsd(usageInput, usageOutput, usageCachedInput);
+        const running = estimateTurnCostUsd(runningUsage());
+        // Fail CLOSED and LOUD on a non-finite estimate: a stale positional estimator (the
+        // pre-#334 (input, output, cachedInput) signature) arithmetics the usage OBJECT into
+        // NaN, and NaN > maxUsd is false forever — a spend cap that silently never trips is
+        // the one failure mode this guard exists to prevent (red-team finding).
+        if (running !== null && !Number.isFinite(running)) {
+          completionReason = "harness_error";
+          reason = "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set — likely a stale pre-#334 positional (input, output, cachedInput) callback; it now receives one ActorTokenUsage object. Failing closed instead of running uncapped.";
+          break;
+        }
         if (running !== null && running > maxUsd) {
           if (materialActions > 0) {
             completionReason = "budget_reached";
@@ -830,7 +865,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
       // The STUDY budget (#299), beside the per-lane cap above and before any further model turn.
       if (overRunBudget) {
-        const runStop = overRunBudget({ input: usageInput, output: usageOutput, cachedInput: usageCachedInput });
+        const runStop = overRunBudget(runningUsage());
         if (runStop !== null) {
           completionReason = "budget_reached";
           reason = runStop;
@@ -1187,8 +1222,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             input: usageInput,
             output: usageOutput,
             // Recorded only when the provider actually reported it, so a reader can tell "no cache
-            // hits" from "this provider does not say" (#391).
+            // hits" from "this provider does not say" (#391); same for cache writes (#334).
             ...(usageCachedInput > 0 ? { cachedInput: usageCachedInput } : {}),
+            ...(usageCacheWriteInput > 0 ? { cacheWriteInput: usageCacheWriteInput } : {}),
+            ...(usageTurns.length > 0 ? { turns: usageTurns.map((turn) => ({ ...turn })) } : {}),
             total: usageInput + usageOutput
           }
         }
