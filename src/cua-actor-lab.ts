@@ -22,6 +22,7 @@
 //   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
 import { randomBytes } from "node:crypto";
+import { describeMissingKeys } from "./key-resolution.js";
 import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
@@ -3126,7 +3127,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     if (missingKeys.length > 0) {
       return fail(
         "HUMANISH_CUA_LAB_KEYS_MISSING",
-        `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`,
+        `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
         descriptor.id
       );
     }

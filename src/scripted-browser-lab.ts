@@ -21,6 +21,7 @@
 // plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
 import { randomBytes } from "node:crypto";
+import { describeMissingKeys } from "./key-resolution.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -276,7 +277,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
       if (!e2bApiKey) {
       return failed(
         "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
-        "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject).",
+        `Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
         { actor: descriptor.id, appUrl: evidenceAppUrl }
       );
     }

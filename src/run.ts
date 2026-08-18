@@ -49,6 +49,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths
 } from "./run-paths.js";
+import { probeKeySources } from "./key-resolution.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -4676,6 +4677,29 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
           ? "optional peer @e2b/desktop is installed; live desktop lanes can launch"
           : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`."
       };
+    })(),
+    // Provider-key discovery (#436): which source supplies each live-run key, through the same
+    // chain a live command resolves (env/--env-file, project overlay, vendor stores, the
+    // humanish user store). Values never appear; sources and fill commands do.
+    ...await (async () => {
+      const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN"], {
+        cwd,
+        env: process.env
+      });
+      return probes.map((probe) => {
+        const present = probe.source !== null;
+        // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
+        const required = probe.name !== "GH_TOKEN";
+        return {
+          name: `key ${probe.name}`,
+          ok: present || !required,
+          message: present
+            ? `supplied by ${probe.source}`
+            : required
+              ? `missing from every source — ${probe.hint}`
+              : `missing (needed only for private clone subjects) — ${probe.hint}`
+        };
+      });
     })()
   ];
 

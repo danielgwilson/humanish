@@ -1267,3 +1267,39 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
     });
   }, 20_000);
 });
+
+describe("provider-key discovery at the CLI seam (#436)", () => {
+  it("runs discovery on env-taking commands and announces fills on stderr", async () => {
+    const calls: Array<{ cwd: string }> = [];
+    const stderr: string[] = [];
+    const program = createProgram({
+      writeOut: () => {},
+      writeErr: (text) => stderr.push(text),
+      setExitCode: () => {},
+      keyDiscovery: async (args) => {
+        calls.push({ cwd: args.cwd });
+        args.announce("humanish keys: FAKE_KEY from fake-source");
+        return [{ name: "FAKE_KEY", source: "fake-source" }];
+      }
+    });
+    program.exitOverride();
+    // `lab preflight` goes through the same applyEnvFileOption seam as watch/run/lab run.
+    try {
+      await program.parseAsync(["node", "humanish", "lab", "preflight", "missing-lab", "--cwd", "/nonexistent", "--json"], { from: "node" });
+    } catch {
+      // The command itself may fail on the bogus cwd; the seam runs first.
+    }
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(stderr.join("")).toContain("humanish keys: FAKE_KEY from fake-source");
+    expect(stderr.join("")).not.toContain("fake-value");
+  });
+
+  it("`humanish keys list` reports an empty store without ever printing values", async () => {
+    const result = await runCli(["keys", "list", "--json"]);
+    const envelope = JSON.parse(result.stdout) as { schema: string; ok: boolean; action: string; names: string[] };
+    expect(envelope.schema).toBe("humanish.keys-result.v1");
+    expect(envelope.ok).toBe(true);
+    expect(envelope.action).toBe("list");
+    expect(Array.isArray(envelope.names)).toBe(true);
+  });
+});

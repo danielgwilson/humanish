@@ -9,6 +9,7 @@ import { Command, Option } from "commander";
 import { startCodexAppServerUi } from "./codex-app-server-ui.js";
 import type { CodexAppServerUiState } from "./codex-app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
+import { discoverProviderKeys, listUserKeys, resolveKeyName, setUserKey, unsetUserKey, userKeyStorePath } from "./key-resolution.js";
 import type { EnvFileLoadResult } from "./env-file.js";
 import { redactText } from "./redaction.js";
 import {
@@ -277,8 +278,9 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
   io.setExitCode(2);
 }
 
-export function createProgram(io: Partial<CliIo> = {}): Command {
+export function createProgram(io: Partial<CliIo> & { keyDiscovery?: typeof discoverProviderKeys } = {}): Command {
   const cliIo: CliIo = { ...defaultIo, ...io };
+  keyDiscoveryFn = io.keyDiscovery ?? discoverProviderKeys;
   const program = new HumanishCommand(undefined, cliIo);
 
   // Bare `humanish` orients instead of printing sixteen subcommands (#367). --help is untouched;
@@ -325,6 +327,7 @@ export function createProgram(io: Partial<CliIo> = {}): Command {
 
   registerInitCommand(program, cliIo);
   registerDoctorCommand(program, cliIo);
+  registerKeysCommand(program, cliIo);
   registerRunCommand(program, cliIo);
   registerVerifyCommand(program, cliIo);
   registerCleanupCommand(program, cliIo);
@@ -383,6 +386,162 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
       writeResult(command, io, result, formatDoctorHuman);
       // Behavioral change: was exit 1, every other structured command uses 2.
       io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
+// The discovery fn the env seam calls; injectable via createProgram for hermetic CLI tests.
+let keyDiscoveryFn: typeof discoverProviderKeys = discoverProviderKeys;
+
+const KEYS_RESULT_SCHEMA = "humanish.keys-result.v1";
+
+interface KeysResult {
+  schema: typeof KEYS_RESULT_SCHEMA;
+  ok: boolean;
+  action: "set" | "unset" | "list";
+  /** The user store path (with values never included anywhere in this envelope). */
+  store: string;
+  /** `list`: the names present in the store. `set`/`unset`: the affected name. */
+  names: string[];
+  message: string;
+}
+
+function formatKeysHuman(result: KeysResult): string {
+  const lines = [`humanish keys ${result.ok ? "ok" : "failed"}`, `store: ${result.store}`, result.message];
+  if (result.action === "list" && result.names.length > 0) {
+    for (const name of result.names) lines.push(`- ${name}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+/** Read one secret line: from a piped stdin when --stdin, else a hidden TTY prompt. */
+async function readSecretValue(useStdin: boolean, promptLabel: string, io: CliIo): Promise<string | null> {
+  if (useStdin || !process.stdin.isTTY) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    const text = Buffer.concat(chunks).toString("utf8").trim();
+    return text.length > 0 ? text : null;
+  }
+  io.writeErr(`${promptLabel} (input hidden): `);
+  return await new Promise((resolve) => {
+    const stdin = process.stdin;
+    let value = "";
+    stdin.setRawMode?.(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    const onData = (key: string): void => {
+      if (key === "\u0003") {
+        cleanup();
+        resolve(null);
+        return;
+      }
+      if (key === "\r" || key === "\n") {
+        cleanup();
+        io.writeErr("\n");
+        resolve(value.trim().length > 0 ? value.trim() : null);
+        return;
+      }
+      if (key === "\u007f" || key === "\b") {
+        value = value.slice(0, -1);
+        return;
+      }
+      value += key;
+    };
+    const cleanup = (): void => {
+      stdin.off("data", onData);
+      stdin.setRawMode?.(false);
+      stdin.pause();
+    };
+    stdin.on("data", onData);
+  });
+}
+
+function registerKeysCommand(parent: Command, io: CliIo): void {
+  const keys = parent
+    .command("keys")
+    .description("Manage the humanish user-level key store used by provider-key discovery (#436).")
+    .summary("Manage the user-level provider key store.");
+
+  keys
+    .command("set")
+    .argument("<vendor-or-name>", "A vendor alias (openai, e2b, anthropic, github) or a raw ENV_NAME.")
+    .description("Store one provider key in the user store (0600), prompted with hidden input.")
+    .option("--stdin", "Read the value from stdin instead of prompting (for agents/pipes).")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (vendorOrName: string, options: { stdin?: boolean; json?: boolean }, command) => {
+      const name = resolveKeyName(vendorOrName);
+      const storePath = userKeyStorePath(process.env);
+      if (name === null) {
+        const result: KeysResult = {
+          schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [],
+          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github.`
+        };
+        writeResult(command, io, result, formatKeysHuman);
+        io.setExitCode(2);
+        return;
+      }
+      const value = await readSecretValue(options.stdin === true, `Value for ${name}`, io);
+      if (value === null) {
+        const result: KeysResult = {
+          schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [name],
+          message: "No value provided; nothing written."
+        };
+        writeResult(command, io, result, formatKeysHuman);
+        io.setExitCode(2);
+        return;
+      }
+      try {
+        const written = setUserKey(name, value, process.env);
+        const result: KeysResult = {
+          schema: KEYS_RESULT_SCHEMA, ok: true, action: "set", store: written.path, names: [name],
+          message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`
+        };
+        writeResult(command, io, result, formatKeysHuman);
+        io.setExitCode(0);
+      } catch (error) {
+        const result: KeysResult = {
+          schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [name],
+          message: error instanceof Error ? error.message : "Failed to write the key store."
+        };
+        writeResult(command, io, result, formatKeysHuman);
+        io.setExitCode(2);
+      }
+    });
+
+  keys
+    .command("unset")
+    .argument("<vendor-or-name>", "A vendor alias or raw ENV_NAME to remove from the store.")
+    .description("Remove one key from the user store.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (vendorOrName: string, _options: { json?: boolean }, command) => {
+      const name = resolveKeyName(vendorOrName);
+      const storePath = userKeyStorePath(process.env);
+      const had = name !== null && unsetUserKey(name, process.env);
+      const result: KeysResult = {
+        schema: KEYS_RESULT_SCHEMA, ok: name !== null, action: "unset", store: storePath,
+        names: name === null ? [] : [name],
+        message: name === null
+          ? `Not a vendor alias or valid env name: ${vendorOrName}.`
+          : had ? `${name} removed from the store.` : `${name} was not in the store; nothing changed.`
+      };
+      writeResult(command, io, result, formatKeysHuman);
+      io.setExitCode(name === null ? 2 : 0);
+    });
+
+  keys
+    .command("list")
+    .description("List the NAMES stored in the user store. Values are never printed.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (_options: { json?: boolean }, command) => {
+      const storePath = userKeyStorePath(process.env);
+      const names = listUserKeys(process.env);
+      const result: KeysResult = {
+        schema: KEYS_RESULT_SCHEMA, ok: true, action: "list", store: storePath, names,
+        message: names.length === 0
+          ? "The store is empty. Add a key with `humanish keys set <vendor>`."
+          : `${names.length} key name(s) stored. Values are never printed.`
+      };
+      writeResult(command, io, result, formatKeysHuman);
+      io.setExitCode(0);
     });
 }
 
@@ -2959,18 +3118,29 @@ async function applyEnvFileOption(args: {
   envFile?: string | undefined;
   io: CliIo;
 }): Promise<boolean> {
-  if (!args.envFile) {
-    return true;
+  if (args.envFile) {
+    const result = await loadEnvFile(args.cwd, args.envFile);
+    if (!result.ok) {
+      writeResult(args.command, args.io, result, formatEnvFileHuman);
+      args.io.setExitCode(2);
+      return false;
+    }
   }
 
-  const result = await loadEnvFile(args.cwd, args.envFile);
-  if (result.ok) {
-    return true;
+  // Provider-key discovery (#436): fill still-missing keys from the documented project
+  // overlay, the owning vendors' native stores, and the humanish user store — fill-only
+  // (an explicit --env-file or process env always wins), each fill announced by name and
+  // source on stderr, never by value. HUMANISH_STRICT_KEYS=1 restores env-only behavior.
+  try {
+    await keyDiscoveryFn({
+      cwd: args.cwd,
+      env: process.env,
+      announce: (line) => args.io.writeErr(`${line}\n`)
+    });
+  } catch {
+    // Discovery must never break a command; a rung that fails to read is a miss, not an error.
   }
-
-  writeResult(args.command, args.io, result, formatEnvFileHuman);
-  args.io.setExitCode(2);
-  return false;
+  return true;
 }
 
 function labReposOverride(options: LabCommandOptions): string[] | undefined {

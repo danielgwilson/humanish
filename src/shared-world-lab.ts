@@ -22,6 +22,7 @@
 // topology's job. Each role records its measured browser viewport separately from that screen.
 
 import { randomBytes } from "node:crypto";
+import { describeMissingKeys } from "./key-resolution.js";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 
@@ -635,7 +636,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
     if (missingKeys.length > 0) {
       return fail(
         "HUMANISH_SHARED_WORLD_LAB_KEYS_MISSING",
-        `Live shared-world labs need ${missingKeys.join(" and ")} in the environment (pass them via --env-file; values are never persisted).`,
+        `Live shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
         descriptor.id
       );
     }
