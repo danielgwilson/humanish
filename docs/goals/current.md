@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.48.0`)
+## Current Program Truth (source `0.49.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -487,17 +487,25 @@ Deep links landed in `0.48.0` (#464): every participant and frame is
 addressable (`#/lane/<id>/f/<n>`), Back/Forward restore the view, and a
 reload or shared link lands on the exact moment — #441 closed entirely.
 
+The npx-first-try adoption cluster closed in `0.49.0`, operator-prompted and
+adversarially red-teamed before merge (both arcs): provider keys now resolve
+through each vendor's native chain (#436 — the documented project overlay,
+`e2b auth login`'s store, `gh auth token`, and a `humanish keys set` user
+store; fills announced by name and source, never value; `HUMANISH_STRICT_KEYS=1`
+opts out) and #346 closed on its receipts. The computer-use default moved to
+`gpt-5.6-sol` with the whole 5.6 family priced, and the cost estimate now
+models the two billing mechanics 5.6 introduced — cache writes at 1.25x and
+long-context re-tiering — exactly, from a new per-request usage ledger on the
+trace (#334). Both spend caps price through the same tier-aware estimator.
+
 The standing queue, in rough order:
 
 1. registry promotions: the wordmark (#431), the participant card, and the two
    vendored Base UI wrappers (drawer, popover) once a second surface consumes
    them;
-2. the adoption cluster: vendor-native key resolution (#436) and the optional
-   desktop peer-dep gap (#346) — the two biggest remaining "npx works
-   first-try" violations;
-3. shared-world honesty, remaining half: per-action evidence (#365) and
+2. shared-world honesty, remaining half: per-action evidence (#365) and
    exposure-flag coverage (#446);
-4. the stakeholder TUI (#455): research + token-translated mocks on the
+3. the stakeholder TUI (#455): research + token-translated mocks on the
    operator review surface, design sign-off gated before any code.
 
 The depth-axis deletion front (an adopter's bespoke terminal-product sim,
