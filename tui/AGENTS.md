@@ -45,6 +45,14 @@ answer the question.
    phone-width screen) with no terminal, no subprocess, and no sleeps. They
    wait on frame PREDICATES, never timers — a fixed sleep captures whichever
    frame the scheduler happened to reach, which is how TUI suites become flaky.
+   Run them at least once as `CI=true pnpm --filter humanish-tui test` before
+   pushing. Ink asks `is-in-ci` whether the environment is interactive and, when
+   it decides not, writes ONLY THE FINAL FRAME AT UNMOUNT — no erase sequences,
+   no intermediate renders. A suite that waits for frames then passes locally
+   and fails every render test in CI. Both the harness and `entry.tsx` pass
+   `interactive: true` to stop an environment variable deciding this, and a test
+   pins it, but the habit is cheap and catches the next divergence of this kind.
+
 2. **Bundle smoke** (`pnpm tui:smoke`) — loads the built artifact with fake TTY
    streams. This is the only thing that catches load-time failures, and
    load-time failures are the characteristic way a bundled Ink app breaks: it

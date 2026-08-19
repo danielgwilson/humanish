@@ -19,7 +19,13 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number> =
     // and its results to stdout through CliIo, so there is nothing to patch and patching would
     // only add a way for a stray write to corrupt the frame.
     patchConsole: false,
-    exitOnCtrlC: true
+    exitOnCtrlC: true,
+    // The CLI has already refused unless BOTH streams are real TTYs, so by the time this runs an
+    // interactive terminal is established fact. Ink would otherwise consult `is-in-ci` and drop to
+    // writing one frame at unmount — turning a human's session on a CI runner into a dead screen
+    // because of an environment variable that says nothing about whether THIS invocation has a
+    // terminal.
+    interactive: true
   });
 
   if (options.exitAfterFirstFrame === true) {

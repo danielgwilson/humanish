@@ -141,3 +141,26 @@ describe("the labs screen, rendered", () => {
     expect(rendered.last).toContain("EACCES");
   });
 });
+
+describe("the harness renders the way a terminal does, not the way a build log does", () => {
+  it("still produces frames while CI is set", async () => {
+    // Ink consults `is-in-ci` and, when it decides non-interactive, writes only the final frame at
+    // unmount — no intermediate renders at all. Every render test above then waits forever for a
+    // frame that never arrives, which is exactly how this suite failed in CI while passing locally.
+    // Pinned here so the guard cannot be removed without a local failure.
+    const previous = process.env.CI;
+    process.env.CI = "true";
+    try {
+      const rendered = await renderToText(<App options={options()} now={NOW} />, {
+        columns: 80,
+        until: (frame) => frame.includes("Signup flow")
+      });
+      rendered.unmount();
+      // A frame arrived BEFORE unmount, which is the whole property.
+      expect(rendered.last).toContain("Signup flow");
+    } finally {
+      if (previous === undefined) delete process.env.CI;
+      else process.env.CI = previous;
+    }
+  });
+});

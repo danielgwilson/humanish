@@ -103,7 +103,14 @@ export async function renderToText(
     stdin,
     stdout,
     patchConsole: false,
-    exitOnCtrlC: false
+    exitOnCtrlC: false,
+    // Ink decides interactivity from `is-in-ci` AND stdout.isTTY, and when it decides
+    // non-interactive it writes ONLY THE FINAL FRAME AT UNMOUNT — no erase sequences, no
+    // intermediate renders. This harness exists to observe frames as they change and to send keys
+    // between them, so under CI every render test would wait forever for a frame that never comes.
+    // The environment variable describes the machine, not this stream: we built a TTY above, so we
+    // say so rather than letting an unrelated env var decide.
+    interactive: true
   });
 
   const wanted = options.until ?? ((frame: string) => frame.trim().length > 0);
