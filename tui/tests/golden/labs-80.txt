@@ -2,8 +2,8 @@ labs                                                             humanish v9.9.9
 /projects/acme-app
 
 › Signup flow                                                          1 running
-  diagram-editor                                          4m · 1 run, 1 unpriced
-  diagram-editor-live                                     4m · 1 run, 1 unpriced
+  diagram-editor                                         4m · 1 run, none priced
+  diagram-editor-live                                    4m · 1 run, none priced
   never-run-lab                                                        never run
 
 1 run with no lab

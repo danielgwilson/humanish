@@ -15,6 +15,7 @@
 
 import type { LabListResult } from "./labs.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
+import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
 export interface TuiVersionInfo {
@@ -35,6 +36,14 @@ export interface TuiCapabilities {
    * manifests since renamed or deleted.
    */
   listLabs(cwd: string): Promise<LabListResult>;
+  /**
+   * Start a run and return once it is running. The run is DETACHED: it outlives this surface, so
+   * quitting the TUI — or losing the connection it runs over — does not kill a study that costs
+   * real money. The surface then follows it through `status.json` like any other reader.
+   */
+  startRun(options: Omit<LaunchRunOptions, "spawn" | "cliPath" | "now">): Promise<LaunchRunResult>;
+  /** The tail of a launch log: the only account of a run that died before writing evidence. */
+  readLaunchLog(logPath: string): Promise<string>;
 }
 
 export interface TuiOptions {

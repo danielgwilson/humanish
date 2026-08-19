@@ -34,11 +34,33 @@ const options = (): TuiOptions =>
     version: { cli: "9.9.9" },
     capabilities: {
       readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] })
+      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
+      startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
+      readLaunchLog: async () => ""
     },
     stdin: process.stdin,
     stdout: process.stdout
-  }) as unknown as TuiOptions;
+  });
+
+/**
+ * Press a key until the screen shows what the test is after.
+ *
+ * Tests navigate by INTENT, not by counting keystrokes: encoding "Down twice" bakes the current row
+ * layout into every test, so adding a row to a screen breaks tests that have nothing to do with it.
+ */
+async function pressUntil(
+  surface: Awaited<ReturnType<typeof openSurface>>,
+  key: string,
+  predicate: (frame: string) => boolean,
+  limit = 8
+): Promise<string> {
+  let frame = "";
+  for (let index = 0; index < limit; index += 1) {
+    frame = await surface.press(key);
+    if (predicate(frame)) return frame;
+  }
+  throw new Error(`pressUntil: never reached the wanted row after ${limit} presses. Last frame:\n${frame}`);
+}
 
 async function openSurface(columns = 80) {
   return renderToText(<App options={options()} now={NOW} />, {
@@ -93,7 +115,7 @@ describe("moving through the surface", () => {
     await surface.press(KEY.enter, (frame) => frame.includes("cua-"));
     // The FINISHED run, deliberately: it is the one carrying a participants line long enough to
     // run off a phone-width screen.
-    await surface.press(KEY.down, (frame) => /\u203a[^\n]*cc33dd44/.test(frame));
+    await pressUntil(surface, KEY.down, (frame) => /\u203a[^\n]*cc33dd44/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("participants"));
     surface.unmount();
     const frame = normalizeFrame(run);
@@ -106,7 +128,7 @@ describe("moving through the surface", () => {
   it("renders one run, in place, with only the facts that were recorded", async () => {
     const surface = await openSurface();
     await surface.press(KEY.enter, (frame) => frame.includes("cua-"));
-    await surface.press(KEY.down, (frame) => /›[^\n]*cc33dd44/.test(frame));
+    await pressUntil(surface, KEY.down, (frame) => /›[^\n]*cc33dd44/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("participants"));
     surface.unmount();
     await expectGolden("run-80", normalizeFrame(run));
@@ -126,6 +148,7 @@ describe("moving through the surface", () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => frame.includes("› diagram-editor"));
     await surface.press(KEY.enter, (frame) => frame.includes("ee55ff66"));
+    await pressUntil(surface, KEY.down, (frame) => /›[^\n]*ee55ff66/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("cost"));
     surface.unmount();
 
@@ -139,7 +162,7 @@ describe("moving through the surface", () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => frame.includes("› diagram-editor"));
     await surface.press(KEY.enter, (frame) => frame.includes("99887766"));
-    await surface.press(KEY.down, (frame) => /›[^\n]*99887766/.test(frame));
+    await pressUntil(surface, KEY.down, (frame) => /›[^\n]*99887766/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
     surface.unmount();
 

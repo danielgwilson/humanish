@@ -4,7 +4,10 @@ Signup flow                   humanish v9.9.9
 humanish lab run signup-flow
 2m · ~$1.20 median · 1 run
 
-› cua-2026-08-…0Z-aa11bb22   running just now
+› Start a dry run                    no spend
+  Start a live run 2m · ~$1.20 median · 1 run
+
+  cua-2026-08-…0Z-aa11bb22   running just now
   cua-2026-0…-cc33dd44   pass 1h 58m ago · 2m
 
-↑↓ move · ↵ open run · esc back · q quit
+↑↓ move · ↵ start dry run · esc back · q quit

@@ -93,9 +93,18 @@ export interface LabExpectation {
  * Derive what to expect from a lab's own history. Only FINISHED runs count: an interrupted run's
  * duration is the length of an accident, not of a study, and including it would quietly bias the
  * estimate the operator uses to decide whether to press Start.
+ *
+ * MODE MATTERS, and mixing modes is a lie rather than an imprecision. A dry run spends nothing and
+ * takes no time, so a median over nine dry runs and one live one reports that a live run is free —
+ * next to a control that spends money. Pass the mode the figure is about; omit it only for a
+ * summary that is not attached to an action.
  */
-export function expectationFor(entries: readonly RunIndexEntry[]): LabExpectation {
-  const finished = entries.filter((entry) => entry.liveness === "finished");
+export function expectationFor(
+  entries: readonly RunIndexEntry[],
+  mode?: "dry-run" | "live"
+): LabExpectation {
+  const scoped = mode === undefined ? entries : entries.filter((entry) => entry.mode === mode);
+  const finished = scoped.filter((entry) => entry.liveness === "finished");
   const durations = finished
     .map((entry) => entry.durationMs)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0)
@@ -104,7 +113,13 @@ export function expectationFor(entries: readonly RunIndexEntry[]): LabExpectatio
     .map((entry) => entry.estimatedCostUsd)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
     .sort((a, b) => a - b);
-  const costUnknown = finished.filter((entry) => entry.estimatedCostUsd === null).length;
+  // A cost is unknown whether it was DECLARED absent (`null`) or never recorded at all
+  // (`undefined` — every fail-closed exit finalized with no outcome). Counting only the first
+  // reports "~$1.20 median · 3 runs" for a sample where two runs were never priced, which claims a
+  // denominator the figure does not have.
+  const costUnknown = finished.filter(
+    (entry) => entry.estimatedCostUsd === null || entry.estimatedCostUsd === undefined
+  ).length;
   return {
     sample: finished.length,
     ...(durations.length === 0
@@ -140,8 +155,28 @@ export function expectationLine(expectation: LabExpectation): string {
     parts.push(`~$${expectation.medianCostUsd.toFixed(2)} median`);
   }
   const sample = `${expectation.sample} run${expectation.sample === 1 ? "" : "s"}`;
-  const unknown = expectation.costUnknown > 0 ? `, ${expectation.costUnknown} unpriced` : "";
-  return parts.length === 0 ? `${sample}${unknown}, nothing timed` : `${parts.join(" · ")} · ${sample}${unknown}`;
+  // "2 of 3 unpriced" and "none of them priced" are different facts, and a line that reports the
+  // second as the first reads as though a median existed for the rest.
+  const allUnpriced = expectation.sample > 0 && expectation.costUnknown === expectation.sample;
+  const unknown = expectation.costUnknown === 0 ? "" : allUnpriced ? ", none priced" : `, ${expectation.costUnknown} unpriced`;
+  if (parts.length === 0) {
+    return allUnpriced ? `${sample}, nothing recorded` : `${sample}${unknown}, nothing timed`;
+  }
+  return `${parts.join(" · ")} · ${sample}${unknown}`;
+}
+
+/**
+ * The one line a lab may say about itself, wherever it is shown.
+ *
+ * Prefers LIVE figures: cost and duration are what someone reads before spending, and a median
+ * diluted by dry runs reports a live study as cheaper and faster than it has ever been. With no
+ * live history it reports the count and claims nothing about time or money — which is why this is
+ * shared rather than reimplemented per surface, since the two disagreeing is the whole failure.
+ */
+export function labSummaryLine(row: Pick<LabRow, "runs" | "declared" | "expectation" | "liveExpectation">): string {
+  if (row.runs === 0) return row.declared ? "never run" : "no runs";
+  if (row.liveExpectation.sample > 0) return expectationLine(row.liveExpectation);
+  return `${row.runs} ${row.runs === 1 ? "run" : "runs"}, none live`;
 }
 
 /** Compact duration: seconds under a minute, then m/s, then h/m. */
@@ -290,7 +325,10 @@ export interface LabRow {
   live: number;
   latest?: RunIndexEntry;
   liveRuns: RunIndexEntry[];
+  /** Across every finished run, whatever its mode. A summary, never attached to a spend decision. */
   expectation: LabExpectation;
+  /** Live runs only — the figure that belongs beside anything that spends money. */
+  liveExpectation: LabExpectation;
 }
 
 /** The addressable handle for a manifest: its filename without directory or extension. */
@@ -361,7 +399,8 @@ export function labRows(
       live: rollup?.live ?? 0,
       ...(rollup?.latest === undefined ? {} : { latest: rollup.latest }),
       liveRuns: rollup?.liveRuns ?? [],
-      expectation: expectationFor(runsOf.get(labId) ?? [])
+      expectation: expectationFor(runsOf.get(labId) ?? []),
+      liveExpectation: expectationFor(runsOf.get(labId) ?? [], "live")
     };
   };
 

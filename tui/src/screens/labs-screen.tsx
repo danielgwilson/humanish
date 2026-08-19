@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { LabRow } from "../../../src/run-projection.js";
-import { expectationLine, listWindow } from "../../../src/run-projection.js";
+import { labSummaryLine, listWindow } from "../../../src/run-projection.js";
 import { fitPathToWidth } from "../fit-text.js";
 import { color } from "../text-props.js";
 
@@ -90,8 +90,7 @@ function LabRowView({ row, columns, active }: { row: LabRow; columns: number; ac
  */
 function statusFor(row: LabRow, budget: number): string {
   if (row.live > 0) return `${row.live} running`;
-  if (row.runs === 0) return row.declared ? "never run" : "no runs";
-  const full = expectationLine(row.expectation);
+  const full = labSummaryLine(row);
   if (full.length <= budget) return full;
   return `${row.runs} ${row.runs === 1 ? "run" : "runs"}`;
 }
