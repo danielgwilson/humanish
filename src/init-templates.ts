@@ -197,9 +197,14 @@ actors:
       confusing. Stop when the flow completes or you are stuck.
 execution:
   target: e2b-desktop
-  # 30 minutes: a session should end because the participant finished, not because a timer fired.
+  # 20 minutes: a session should end because the participant finished, not because a timer fired,
+  # so this is as long as the substrate allows rather than as long as seems reasonable. This route
+  # clones, installs, builds and serves the subject before the actor starts, so the sandbox deadline
+  # is this budget PLUS 40 minutes of provisioning and teardown headroom — and a sandbox may not
+  # live longer than 60. Raising this above 20 minutes fails the run closed before it starts; raise
+  # execution.desktop.sandboxTimeoutMs deliberately if you need more.
   # Spend protection belongs to the dollar caps, not the clock.
-  timeoutMs: 1800000
+  timeoutMs: 1200000
   desktop:
     device: desktop             # mobile | small-mobile | narrow-mobile | tablet | desktop | wide
     # browser: chrome            # default | chrome | chromium | firefox; concrete values fail closed
