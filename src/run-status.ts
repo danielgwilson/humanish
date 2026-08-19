@@ -97,9 +97,15 @@ export interface RunStatusHandle {
   /** Finalize: state `finished`, `completedAt`, and the derived outcome. Stops the cadence.
    *  Idempotent — a second call is a no-op, so a backend with several exit paths is safe. */
   finish(outcome?: RunStatusOutcome): Promise<void>;
-  /** Stop the cadence WITHOUT claiming an outcome. For a path that is abandoning the run: the
-   *  record stays `running` and goes stale, which is the honest reading. */
-  stop(): void;
+  /**
+   * Stop the cadence WITHOUT claiming an outcome. For a path that is abandoning the run: the record
+   * stays `running` and goes stale, which is the honest reading.
+   *
+   * Resolves when any IN-FLIGHT write has settled, so a caller that is about to delete the run
+   * directory can be sure nothing is still writing into it. Clearing the interval alone is not
+   * enough — a write started microseconds earlier is still on its way to disk.
+   */
+  stop(): Promise<void>;
 }
 
 export interface BeginRunStatusOptions {
@@ -116,7 +122,7 @@ export interface BeginRunStatusOptions {
 
 /** A no-op handle, so a caller that cannot write status still has a uniform interface. */
 export function inertRunStatus(): RunStatusHandle {
-  return { started: Promise.resolve(), touch: async () => {}, finish: async () => {}, stop: () => {} };
+  return { started: Promise.resolve(), touch: async () => {}, finish: async () => {}, stop: async () => {} };
 }
 
 /**
@@ -199,11 +205,13 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
     }, touchMs);
     timer.unref?.();
   }
-  const stop = (): void => {
+  const stop = (): Promise<void> => {
     if (timer !== undefined) {
       clearInterval(timer);
       timer = undefined;
     }
+    // `writing` is the tail of the serialized write chain, so awaiting it awaits everything queued.
+    return writing.catch(() => undefined);
   };
 
   const scope = runStatusScope.getStore();
@@ -216,7 +224,7 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
     async finish(outcome?: RunStatusOutcome) {
       if (finished) return;
       finished = true;
-      stop();
+      void stop();
       scope?.delete(handle);
       const completedAt = iso();
       await write({
@@ -228,8 +236,8 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
       });
     },
     stop() {
-      stop();
       scope?.delete(handle);
+      return stop();
     }
   };
   // The enclosing run now owns this record's lifetime; see `withRunStatusScope`. A caller outside a

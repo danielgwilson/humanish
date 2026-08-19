@@ -505,7 +505,7 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
       const exitCode = await loaded.startTui({
         cwd: resolve(options.cwd),
         version: { cli: CLI_VERSION },
-        capabilities: { readRunIndex },
+        capabilities: { readRunIndex, listLabs: listLabManifests },
         stdin,
         stdout
       });

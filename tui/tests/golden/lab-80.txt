@@ -1,0 +1,10 @@
+Signup flow                                                      humanish v9.9.9
+/projects/acme-app
+
+humanish lab run signup-flow
+2m · ~$1.20 median · 1 run
+
+› cua-2026-08-19T11-30-00-000Z-aa11bb22                         running just now
+  cua-2026-08-19T10-00-00-000Z-cc33dd44                     pass 1h 58m ago · 2m
+
+↑↓ move · ↵ open run · esc back · q quit

@@ -1,3 +1,4 @@
+import { useStdout } from "ink";
 import { useEffect, useState } from "react";
 
 export interface TerminalSize {
@@ -16,8 +17,13 @@ export interface TerminalSize {
  *
  * So: fall back explicitly, re-read on `resize`, and re-read once on the next tick to catch the
  * post-attach correction that arrives without a resize event.
+ *
+ * The stream comes from Ink's own `useStdout` rather than from a prop, so the size measured is
+ * always the size of the stream being RENDERED INTO. Passing it separately allows the two to be
+ * different objects, and then every box is laid out to one width and drawn into another.
  */
-export function useTerminalSize(stdout: NodeJS.WriteStream): TerminalSize {
+export function useTerminalSize(): TerminalSize {
+  const { stdout } = useStdout();
   const read = (): TerminalSize => ({
     columns: Math.max(20, stdout.columns || 80),
     rows: Math.max(6, stdout.rows || 24)

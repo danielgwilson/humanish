@@ -84,6 +84,28 @@ jobs:
       - run: pnpm --filter humanish-observer build
       - run: pnpm --filter humanish-observer test
 
+  tui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.14.0"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter humanish-tui typecheck
+      # Text goldens render through real yoga layout at fixed widths; no build step needed, the
+      # bundle's own load-time smoke runs inside `release:check` on both Node versions.
+      - run: pnpm --filter humanish-tui test
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

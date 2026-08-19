@@ -48,7 +48,8 @@ try {
     version: { cli: "0.0.0-smoke" },
     capabilities: {
       // An empty project: the surface must render its ordinary empty state, not an error.
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd, runs: [], unreadable: [] })
+      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd, runs: [], unreadable: [] }),
+      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd, labs: [], warnings: [] })
     },
     stdin,
     stdout,
@@ -58,7 +59,9 @@ try {
   const output = frames.join("");
   const expectations = [
     ["the product name", "humanish"],
-    ["the empty state", "no runs yet"],
+    ["the empty state", "no labs in this project"],
+    // The empty state has to say what to do next, not just that there is nothing.
+    ["the next step", "humanish init"],
     ["the key hints", "q quit"]
   ];
   for (const [what, needle] of expectations) {

@@ -213,7 +213,7 @@ describe("run status: identity + liveness on disk (#455)", () => {
       });
       expect(second).not.toBe(first);
 
-      status.stop();
+      await status.stop();
       const afterStop = (await read("run-c")).updatedAt;
       clock.t += 60_000;
       // The negative half stays a fixed wait: there is nothing to poll for, and the assertion is
@@ -221,9 +221,10 @@ describe("run status: identity + liveness on disk (#455)", () => {
       await new Promise((resolve) => setTimeout(resolve, 60));
       expect((await read("run-c")).updatedAt).toBe(afterStop);
     } finally {
-      // Always, even when an assertion above throws: a cadence left running writes into the run
-      // directory while afterEach is deleting it, which surfaces as an unrelated ENOTEMPTY.
-      status.stop();
+      // Always, even when an assertion above throws, and AWAITED: a cadence left running — or a
+      // single write still in flight — writes into the run directory while afterEach is deleting
+      // it, which surfaces as an unrelated ENOTEMPTY.
+      await status.stop();
     }
   });
 
