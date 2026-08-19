@@ -245,3 +245,172 @@ export function livenessLabel(entry: Pick<RunIndexEntry, "liveness" | "verdict">
       return entry.verdict ?? "finished";
   }
 }
+
+/** A lab as the labs list shows it: what is declared, joined to what actually happened. */
+export interface LabRow {
+  /**
+   * Stable identity for THIS ROW. A manifest's path when it has one, else the lab id — because two
+   * manifests can declare the same id, and keying rows by id makes them collapse into a pair of
+   * indistinguishable duplicates.
+   */
+  key: string;
+  /** The declared id. Run history attributes to this, so it is NOT unique across manifests. */
+  labId: string;
+  /**
+   * The handle an operator would actually type. Lab resolution is by FILENAME, so the manifest
+   * `\`.humanish/labs/persona-contrast-live.yaml\`` is reached as `persona-contrast-live` even when
+   * the id inside it says something else.
+   */
+  name: string;
+  /** The manifest's own title, when it has one. */
+  title?: string;
+  /**
+   * The shortest label that is UNIQUE among the rows it is listed with: the title when no other
+   * lab shares it, else the filename, else the full path. A list is only navigable if every row can
+   * be told from every other one, and a title is not guaranteed to be distinct — two manifests in
+   * this repo carry the same title AND the same declared id, differing only by filename.
+   */
+  label: string;
+  /** Repo-relative manifest path, absent for a lab known only from run history. */
+  path?: string;
+  origin?: "committed" | "ignored" | "explicit";
+  /**
+   * False for a lab that has runs but NO manifest here — renamed, deleted, or run from a path that
+   * is gone. Its runs are still evidence and must stay reachable, so it is listed and marked rather
+   * than dropped.
+   */
+  declared: boolean;
+  /**
+   * How many OTHER manifests declare this same lab id. Above zero, the run history below is shared
+   * between them and cannot be attributed to one file — worth saying, because it is a
+   * misconfiguration the operator almost certainly does not know about.
+   */
+  sharesIdWith: number;
+  runs: number;
+  live: number;
+  latest?: RunIndexEntry;
+  liveRuns: RunIndexEntry[];
+  expectation: LabExpectation;
+}
+
+/** The addressable handle for a manifest: its filename without directory or extension. */
+export function labNameFromPath(manifestPath: string): string {
+  const base = manifestPath.split("/").pop() ?? manifestPath;
+  return base.replace(/\.(ya?ml)$/i, "");
+}
+
+export interface DeclaredLab {
+  id: string;
+  title?: string;
+  path?: string;
+  origin?: "committed" | "ignored" | "explicit";
+}
+
+/**
+ * Join declared lab manifests to run history.
+ *
+ * Neither side alone is the truth. A fresh project has manifests and no runs — those labs are the
+ * whole screen, and a list built only from history would be empty on exactly the first visit that
+ * matters. A long-lived project accumulates runs from labs whose manifest has since been renamed or
+ * deleted — that evidence still exists on disk, so dropping those rows would make real runs
+ * unreachable from the surface that is supposed to list them.
+ *
+ * ONE ROW PER MANIFEST, not per id. The two are not the same thing: a manifest is addressed by its
+ * filename while its runs attribute to the id declared inside it, so several files can legitimately
+ * share an id. Collapsing them hides a real file; keying by id duplicates a row with no way to tell
+ * the copies apart. Both happen in practice — this repo has exactly that pair.
+ *
+ * Order puts a lab someone is working in first, then labs by how recently they ran, then declared
+ * labs that have never run (alphabetically BY WHAT IS DISPLAYED, so the order on screen is the
+ * order a reader can predict), then labs known only from history.
+ */
+export function labRows(
+  declared: readonly DeclaredLab[],
+  entries: readonly RunIndexEntry[]
+): { rows: LabRow[]; unattributed: RunIndexEntry[] } {
+  const { labs, unattributed } = groupRunsByLab(entries);
+  const byId = new Map(labs.map((lab) => [lab.labId, lab]));
+  const runsOf = new Map<string, RunIndexEntry[]>();
+  for (const entry of entries) {
+    const labId = entry.lab?.id;
+    if (labId === undefined) continue;
+    const bucket = runsOf.get(labId);
+    if (bucket === undefined) runsOf.set(labId, [entry]);
+    else bucket.push(entry);
+  }
+
+  const idCounts = new Map<string, number>();
+  for (const lab of declared) idCounts.set(lab.id, (idCounts.get(lab.id) ?? 0) + 1);
+
+  const build = (labId: string, manifest: DeclaredLab | undefined, isDeclared: boolean): LabRow => {
+    const rollup = byId.get(labId);
+    const manifestPath = manifest?.path;
+    return {
+      key: manifestPath ?? `id:${labId}`,
+      labId,
+      name: manifestPath === undefined ? labId : labNameFromPath(manifestPath),
+      ...(manifest?.title === undefined ? {} : { title: manifest.title }),
+      ...(manifestPath === undefined ? {} : { path: manifestPath }),
+      ...(manifest?.origin === undefined ? {} : { origin: manifest.origin }),
+      declared: isDeclared,
+      // Replaced by assignLabels once the whole set is known; a label is only meaningful relative
+      // to the rows it sits beside.
+      label: manifest?.title ?? (manifestPath === undefined ? labId : labNameFromPath(manifestPath)),
+      sharesIdWith: Math.max(0, (idCounts.get(labId) ?? 0) - 1),
+      runs: rollup?.runs ?? 0,
+      live: rollup?.live ?? 0,
+      ...(rollup?.latest === undefined ? {} : { latest: rollup.latest }),
+      liveRuns: rollup?.liveRuns ?? [],
+      expectation: expectationFor(runsOf.get(labId) ?? [])
+    };
+  };
+
+  const declaredIds = new Set(declared.map((lab) => lab.id));
+  const rows = [
+    ...declared.map((lab) => build(lab.id, lab, true)),
+    ...labs.filter((lab) => !declaredIds.has(lab.labId)).map((lab) => build(lab.labId, undefined, false))
+  ];
+
+  // Resolve each row's label BEFORE sorting, so the list is ordered by what a reader actually sees.
+  assignLabels(rows);
+
+  const label = (row: LabRow): string => row.label;
+  rows.sort((left, right) => {
+    if (left.live !== right.live) return right.live - left.live;
+    const rank = (row: LabRow): number => (row.runs > 0 ? 0 : row.declared ? 1 : 2);
+    if (rank(left) !== rank(right)) return rank(left) - rank(right);
+    if (left.runs > 0 && right.runs > 0) {
+      const recency = recencyOf(right.latest) - recencyOf(left.latest);
+      if (recency !== 0) return recency;
+    }
+    const byLabel = label(left).localeCompare(label(right));
+    return byLabel !== 0 ? byLabel : left.key.localeCompare(right.key);
+  });
+
+  return { rows, unattributed };
+}
+
+/**
+ * Give every row the shortest label that distinguishes it: title, else filename, else path.
+ *
+ * Falling straight back to the filename whenever a title repeats — rather than decorating the
+ * duplicate with a suffix — keeps the label something the operator can act on, because the filename
+ * is exactly what `humanish lab run` takes.
+ */
+function assignLabels(rows: LabRow[]): void {
+  const count = (values: readonly string[]): Map<string, number> => {
+    const counts = new Map<string, number>();
+    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+    return counts;
+  };
+  const titles = count(rows.map((row) => row.title ?? row.name));
+  const names = count(rows.map((row) => row.name));
+  for (const row of rows) {
+    const title = row.title ?? row.name;
+    if ((titles.get(title) ?? 0) === 1) {
+      row.label = title;
+      continue;
+    }
+    row.label = (names.get(row.name) ?? 0) === 1 ? row.name : (row.path ?? row.name);
+  }
+}

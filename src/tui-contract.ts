@@ -13,6 +13,7 @@
 // It also makes the UI testable without a terminal: a test hands `startTui` a fake index and reads
 // the frames back.
 
+import type { LabListResult } from "./labs.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
@@ -28,6 +29,12 @@ export interface TuiVersionInfo {
 export interface TuiCapabilities {
   /** Read every run in the project, cheapest source first. */
   readRunIndex(cwd: string, options?: ReadRunIndexOptions): Promise<RunIndexResult>;
+  /**
+   * The labs DECLARED in this project. Listed separately from run history because neither side is
+   * the whole truth: a fresh project has manifests and no runs, and a long-lived one has runs from
+   * manifests since renamed or deleted.
+   */
+  listLabs(cwd: string): Promise<LabListResult>;
 }
 
 export interface TuiOptions {
