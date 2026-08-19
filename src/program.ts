@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -79,6 +79,8 @@ import {
   verifyRun
 } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
+import { readRunIndex } from "./run-index.js";
+import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
 import type {
@@ -279,9 +281,12 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
   io.setExitCode(2);
 }
 
-export function createProgram(io: Partial<CliIo> & { keyDiscovery?: typeof discoverProviderKeys } = {}): Command {
+export function createProgram(
+  io: Partial<CliIo> & { keyDiscovery?: typeof discoverProviderKeys; tuiRuntime?: Partial<TuiRuntime> } = {}
+): Command {
   const cliIo: CliIo = { ...defaultIo, ...io };
   keyDiscoveryFn = io.keyDiscovery ?? discoverProviderKeys;
+  tuiRuntime = { ...defaultTuiRuntime, ...io.tuiRuntime };
   const program = new HumanishCommand(undefined, cliIo);
 
   // Bare `humanish` orients instead of printing sixteen subcommands (#367). --help is untouched;
@@ -328,6 +333,7 @@ export function createProgram(io: Partial<CliIo> & { keyDiscovery?: typeof disco
 
   registerInitCommand(program, cliIo);
   registerDoctorCommand(program, cliIo);
+  registerTuiCommand(program, cliIo);
   registerKeysCommand(program, cliIo);
   registerRunCommand(program, cliIo);
   registerVerifyCommand(program, cliIo);
@@ -387,6 +393,125 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
       writeResult(command, io, result, formatDoctorHuman);
       // Behavioral change: was exit 1, every other structured command uses 2.
       io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
+/**
+ * The pieces of the outside world the `tui` command touches. Injectable for the same reason
+ * `keyDiscovery` is: the refusals ARE the behavior worth testing, and a test cannot make a real
+ * TTY, an old Node, or a missing bundle appear.
+ */
+export interface TuiRuntime {
+  stdin: NodeJS.ReadStream;
+  stdout: NodeJS.WriteStream;
+  nodeVersion: string;
+  /** Resolves the bundle, or null when it is not present. */
+  loadTui(bundle: URL): Promise<TuiModule | null>;
+}
+
+const defaultTuiRuntime: TuiRuntime = {
+  stdin: process.stdin,
+  stdout: process.stdout,
+  nodeVersion: process.version,
+  loadTui: async (bundle) => {
+    if (!existsSync(bundle)) return null;
+    return (await import(bundle.href)) as TuiModule;
+  }
+};
+
+let tuiRuntime: TuiRuntime = defaultTuiRuntime;
+
+const TUI_RESULT_SCHEMA = "humanish.tui-result.v1";
+
+interface TuiRefusal {
+  schema: typeof TUI_RESULT_SCHEMA;
+  ok: false;
+  error: {
+    code: "HUMANISH_TUI_REQUIRES_TTY" | "HUMANISH_TUI_UNSUPPORTED_NODE" | "HUMANISH_TUI_BUNDLE_MISSING";
+    message: string;
+  };
+}
+
+function refuseTui(command: Command, io: CliIo, refusal: TuiRefusal): void {
+  if (wantsJson(command)) {
+    io.writeOut(`${JSON.stringify(refusal, null, 2)}\n`);
+  } else {
+    io.writeErr(`${refusal.error.message}\n`);
+  }
+  markInvocationEnvelopeWritten(command);
+  io.setExitCode(2);
+}
+
+/**
+ * The stakeholder surface (#455). Every other command is written so an agent can drive it; this one
+ * is the opposite — it takes the screen and waits for a person.
+ *
+ * That inversion is why it refuses rather than degrades. An agent that runs `humanish tui` with a
+ * piped stdout has asked for something that cannot exist, and the useful answer is a structured
+ * error naming the command that WOULD have answered the question. A TUI that quietly rendered
+ * frames into a pipe would poison a transcript with escape codes and look like a hang.
+ */
+function registerTuiCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("tui")
+    .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
+    .summary("Open the interactive terminal surface.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; json?: boolean }, command) => {
+      const { stdin, stdout } = tuiRuntime;
+
+      if (stdin.isTTY !== true || stdout.isTTY !== true) {
+        refuseTui(command, io, {
+          schema: TUI_RESULT_SCHEMA,
+          ok: false,
+          error: {
+            code: "HUMANISH_TUI_REQUIRES_TTY",
+            message:
+              "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one."
+          }
+        });
+        return;
+      }
+
+      if (!nodeSupportsTui(tuiRuntime.nodeVersion)) {
+        refuseTui(command, io, {
+          schema: TUI_RESULT_SCHEMA,
+          ok: false,
+          error: {
+            code: "HUMANISH_TUI_UNSUPPORTED_NODE",
+            message: `humanish tui needs Node ${TUI_MIN_NODE_MAJOR} or newer (this is ${tuiRuntime.nodeVersion}). Every other humanish command still works on this runtime.`
+          }
+        });
+        return;
+      }
+
+      // The Ink app ships as a pre-built bundle beside the compiled CLI and is loaded ONLY here, so
+      // no agent-facing command pays its parse cost.
+      const bundle = tuiBundleUrl(import.meta.url);
+      const loaded = await tuiRuntime.loadTui(bundle);
+      if (loaded === null) {
+        refuseTui(command, io, {
+          schema: TUI_RESULT_SCHEMA,
+          ok: false,
+          error: {
+            code: "HUMANISH_TUI_BUNDLE_MISSING",
+            message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; in an install, this package is incomplete — please report it.`
+          }
+        });
+        return;
+      }
+
+      const exitCode = await loaded.startTui({
+        cwd: resolve(options.cwd),
+        version: { cli: CLI_VERSION },
+        capabilities: { readRunIndex },
+        stdin,
+        stdout
+      });
+      // The surface owned the screen; it has already told the operator whatever there was to say.
+      markInvocationEnvelopeWritten(command);
+      io.setExitCode(exitCode);
     });
 }
 

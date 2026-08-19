@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import os from "node:os";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { parse as parseYaml } from "yaml";
@@ -51,6 +52,7 @@ import {
 } from "./run-paths.js";
 import { probeKeySources } from "./key-resolution.js";
 import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl } from "./tui-contract.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -4734,6 +4736,23 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
         message: present
           ? "optional peer @e2b/desktop is installed; live desktop lanes can launch"
           : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`."
+      };
+    })(),
+    // The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
+    // and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
+    // nothing about whether the PROJECT is ready. So this row is always ok and its job is to tell a
+    // human the surface exists and whether this machine can host it.
+    (() => {
+      const supported = nodeSupportsTui();
+      const bundlePresent = existsSync(tuiBundleUrl(import.meta.url));
+      return {
+        name: "terminal surface",
+        ok: true,
+        message: !supported
+          ? `\`humanish tui\` needs Node ${TUI_MIN_NODE_MAJOR}+ (this is ${process.version}); every other command works here`
+          : bundlePresent
+            ? "`humanish tui` is available in an interactive terminal"
+            : "`humanish tui` bundle is not built in this checkout — run `pnpm build` (installed packages ship it prebuilt)"
       };
     })(),
     // Provider-key discovery (#436): which source supplies each live-run key, through the same

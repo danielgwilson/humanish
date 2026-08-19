@@ -31,6 +31,17 @@ describe("run status: identity + liveness on disk (#455)", () => {
   const read = async (runId: string): Promise<RunStatusRecord> =>
     JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", runId, RUN_STATUS_FILE), "utf8")) as RunStatusRecord;
 
+  /** Poll until `probe` returns a value, so a timing assertion never depends on scheduler luck. */
+  async function waitFor<T>(probe: () => Promise<T | undefined>, timeoutMs = 2_000): Promise<T> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const value = await probe();
+      if (value !== undefined) return value;
+      if (Date.now() > deadline) throw new Error("timed out waiting for the cadence to write");
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  }
+
   it("writes a running record with lab identity the moment a run starts", async () => {
     const runPaths = await prepareRunArtifactPaths(cwd, "run-a");
     const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
@@ -185,19 +196,35 @@ describe("run status: identity + liveness on disk (#455)", () => {
     const runPaths = await prepareRunArtifactPaths(cwd, "run-c");
     const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
     const status = beginRunStatus(runPaths, { runId: "run-c", mode: "live", now: () => clock.t, touchMs: 10 });
-    // The initial write is fire-and-forget so starting a run never blocks on its own index;
-    // `started` is how a caller that needs determinism waits for it.
-    await status.started;
-    const first = (await read("run-c")).updatedAt;
-    clock.t += 60_000;
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    const second = (await read("run-c")).updatedAt;
-    expect(second).not.toBe(first);
-    status.stop();
-    const afterStop = (await read("run-c")).updatedAt;
-    clock.t += 60_000;
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    expect((await read("run-c")).updatedAt).toBe(afterStop);
+    try {
+      // The initial write is fire-and-forget so starting a run never blocks on its own index;
+      // `started` is how a caller that needs determinism waits for it.
+      await status.started;
+      const first = (await read("run-c")).updatedAt;
+      clock.t += 60_000;
+
+      // Poll rather than sleep a fixed span. The claim under test is "the cadence refreshes on its
+      // own", not "it refreshes within 60ms of wall clock" — and on a loaded machine an interval
+      // callback plus its async write can easily miss a fixed window, which made this the one
+      // flaky test in the suite.
+      const second = await waitFor(async () => {
+        const value = (await read("run-c")).updatedAt;
+        return value === first ? undefined : value;
+      });
+      expect(second).not.toBe(first);
+
+      status.stop();
+      const afterStop = (await read("run-c")).updatedAt;
+      clock.t += 60_000;
+      // The negative half stays a fixed wait: there is nothing to poll for, and the assertion is
+      // that several cadence intervals could have passed and none did.
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      expect((await read("run-c")).updatedAt).toBe(afterStop);
+    } finally {
+      // Always, even when an assertion above throws: a cadence left running writes into the run
+      // directory while afterEach is deleting it, which surfaces as an unrelated ENOTEMPTY.
+      status.stop();
+    }
   });
 
   it("a status write failure never breaks the run it describes", async () => {
