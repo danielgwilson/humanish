@@ -20,6 +20,7 @@
 // Deliberately NOT the hostname or any user/path identity — this file sits inside a run directory
 // that an operator may share, so it must carry nothing a share-safety gate would have to strip.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { hrtime } from "node:process";
 
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
@@ -119,6 +120,42 @@ export function inertRunStatus(): RunStatusHandle {
 }
 
 /**
+ * The set of handles opened inside the currently-running run, so the run's own return finalizes
+ * them. Scoped rather than global: labs can run concurrently in one process, and each must clean up
+ * only what it opened.
+ */
+const runStatusScope = new AsyncLocalStorage<Set<RunStatusHandle>>();
+
+/**
+ * Bind a run's status records to the lifetime of the run itself.
+ *
+ * WHY THIS IS NOT A `finally` AT EACH BACKEND. A run function does not have one exit — the lab
+ * backends have 18 early `return`s between opening the record and finalizing it, every one of them
+ * a fail-closed path (bad subject, packing failure, missing key). Relying on each of those to
+ * remember the record is the same per-call-site discipline that already failed once on this
+ * contract, and the failure is silent: the run is over, the cadence keeps ticking, and the record
+ * keeps saying `running` — a listing surface then shows a dead run as alive for as long as the
+ * process lives. CI caught it as a deleted run directory racing a still-live writer.
+ *
+ * So the scope owns the lifetime. Control returning from the run function IS the run ending,
+ * whatever path it took, and any record still open at that moment is finalized with NO outcome:
+ * the run ended and we have no verdict to report. That is honest and it is different from both
+ * neighbours — a backend that finalized properly carries its real outcome, and a process that
+ * CRASHED never reaches here at all, leaving a `running` record to go stale and read as
+ * `interrupted`, which is exactly what happened.
+ */
+export async function withRunStatusScope<T>(fn: () => Promise<T>): Promise<T> {
+  const scope = new Set<RunStatusHandle>();
+  try {
+    return await runStatusScope.run(scope, fn);
+  } finally {
+    // `finish` swallows its own write errors and is idempotent, so this can neither throw over the
+    // run's own error nor overwrite an outcome a backend already recorded.
+    await Promise.all([...scope].map((handle) => handle.finish()));
+  }
+}
+
+/**
  * Start a run's status record and keep it fresh. Fire-and-forget by design: a status write that
  * fails must never fail the run it describes, so every write swallows its error. The interval is
  * `unref`'d — this file can never be the reason a process stays alive.
@@ -169,7 +206,8 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
     }
   };
 
-  return {
+  const scope = runStatusScope.getStore();
+  const handle: RunStatusHandle = {
     started,
     async touch() {
       if (finished) return;
@@ -179,6 +217,7 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
       if (finished) return;
       finished = true;
       stop();
+      scope?.delete(handle);
       const completedAt = iso();
       await write({
         ...base,
@@ -188,8 +227,15 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
         ...(outcome === undefined ? {} : { outcome })
       });
     },
-    stop
+    stop() {
+      stop();
+      scope?.delete(handle);
+    }
   };
+  // The enclosing run now owns this record's lifetime; see `withRunStatusScope`. A caller outside a
+  // scope (a direct library import) simply gets the old behavior.
+  scope?.add(handle);
+  return handle;
 }
 
 /** The three ways a run reads from disk. `interrupted` is a `running` record gone stale. */

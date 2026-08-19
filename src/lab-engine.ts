@@ -29,7 +29,7 @@ import {
 } from "./concurrent-shared-world-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
-import type { RunLabProvenance } from "./run-status.js";
+import { withRunStatusScope, type RunLabProvenance } from "./run-status.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
 import { routesToComputerUse, routesToConcurrentSharedWorld, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
@@ -159,7 +159,17 @@ export function resolveLabDryRun(config: LabConfig, override: boolean | undefine
   return fallback;
 }
 
+/**
+ * The one seam every lab backend is dispatched through. The body runs inside a status scope so a
+ * backend that fails closed and RETURNS an error result — 18 such exits across the backends — can
+ * never leave its liveness record ticking as though the run were still going. See
+ * `withRunStatusScope`.
+ */
 export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  return withRunStatusScope(() => runLabInScope(config, options));
+}
+
+async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   const backend = selectLabBackend(config);
   const fanout = config.subject.clone?.fanout ?? config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
 
