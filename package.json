@@ -49,8 +49,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && node --eval \"import('node:fs').then(({ chmodSync, copyFileSync }) => { chmodSync('dist/cli.js', 0o755); copyFileSync('observer/dist/index.html', 'dist/observer-app.html'); })\"",
-    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
+    "check": "pnpm typecheck && pnpm test && pnpm build && pnpm tui:smoke",
     "humanish": "tsx src/cli.ts",
     "pack:dry-run": "npm pack --dry-run",
     "prepack": "pnpm build",
@@ -58,7 +58,7 @@
     "release:check": "pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
     "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter humanish-observer typecheck",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter humanish-observer typecheck && pnpm --filter humanish-tui typecheck",
     "humanish:doctor": "pnpm humanish -- doctor",
     "humanish:run": "pnpm humanish -- run --dry-run",
     "humanish:watch": "pnpm humanish -- watch",
@@ -69,7 +69,9 @@
     "humanish:lab:list": "pnpm humanish -- lab list",
     "humanish:lab:oss": "pnpm humanish -- lab run oss",
     "humanish:lab:oss:ci": "pnpm humanish -- lab run oss --dry-run --json --no-open",
-    "humanish:lab:oss:smoke": "pnpm humanish -- lab run oss-smoke"
+    "humanish:lab:oss:smoke": "pnpm humanish -- lab run oss-smoke",
+    "tui:typecheck": "pnpm --filter humanish-tui typecheck",
+    "tui:smoke": "node scripts/tui-smoke.mjs"
   },
   "repository": {
     "type": "git",

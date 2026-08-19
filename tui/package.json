@@ -1,0 +1,20 @@
+{
+  "name": "humanish-tui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The stakeholder terminal surface (#455): an Ink app bundled to one file and loaded on demand by `humanish tui`.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "7.1.1",
+    "react": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "esbuild": "^0.27.2",
+    "typescript": "^6.0.3"
+  }
+}
