@@ -3176,8 +3176,9 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   // Identity + liveness on disk from the first moment (#455): anything watching the runs
   // directory — the TUI, another terminal, an agent — can now tell which lab this is and that
   // it is alive, without waiting for the interactive observer flush that used to be the only
-  // mid-run write. Finalized on every exit path below; a crash leaves it stale, which reads
-  // as interrupted rather than as a lie.
+  // mid-run write. The success path finalizes it with the real outcome; the fail-closed returns
+  // below do not, so `runLab`'s status scope finalizes those with no outcome. A crash reaches
+  // neither and leaves the record stale, which reads as interrupted rather than as a lie.
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: dryRun ? "dry-run" : "live",

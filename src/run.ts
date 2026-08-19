@@ -50,7 +50,7 @@ import {
   type PreparedRunArtifactPaths
 } from "./run-paths.js";
 import { probeKeySources } from "./key-resolution.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -1312,7 +1312,16 @@ const builtinScenario = {
   sourceDigest: "builtin"
 };
 
+/**
+ * The synthetic/local backends. The body runs inside a status scope so that returning from it —
+ * by any of its exits, including the fail-closed ones — finalizes whatever status records it
+ * opened. See `withRunStatusScope`.
+ */
 export async function runDryRun(options: RunOptions): Promise<RunResult> {
+  return withRunStatusScope(() => runDryRunInScope(options));
+}
+
+async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
   const cwd = path.resolve(options.cwd);
   const cwdError = await validateCwd(cwd);
   const warnings: string[] = [];
