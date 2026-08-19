@@ -79,7 +79,8 @@ import {
   verifyRun
 } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
-import { readRunIndex } from "./run-index.js";
+import { RunIndexCache, readRunIndex } from "./run-index.js";
+import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
@@ -489,6 +490,7 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
       // The Ink app ships as a pre-built bundle beside the compiled CLI and is loaded ONLY here, so
       // no agent-facing command pays its parse cost.
       const bundle = tuiBundleUrl(import.meta.url);
+      const runIndexCache = new RunIndexCache();
       const loaded = await tuiRuntime.loadTui(bundle);
       if (loaded === null) {
         refuseTui(command, io, {
@@ -505,7 +507,14 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
       const exitCode = await loaded.startTui({
         cwd: resolve(options.cwd),
         version: { cli: CLI_VERSION },
-        capabilities: { readRunIndex, listLabs: listLabManifests },
+        capabilities: {
+          // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
+          // run tree each tick is the cost this index exists to avoid.
+          readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
+          listLabs: listLabManifests,
+          startRun: launchRun,
+          readLaunchLog: readLaunchLogTail
+        },
         stdin,
         stdout
       });

@@ -6,6 +6,30 @@ import type { LabRow } from "../../../src/run-projection.js";
 import { expectationLine, formatDuration, listWindow, livenessLabel } from "../../../src/run-projection.js";
 import { color } from "../text-props.js";
 
+/**
+ * What one row of the lab screen IS. Actions and history share a single list because they share a
+ * cursor: pressing Down from the last action lands on the newest run, which is how the screen reads
+ * to someone who is just holding an arrow key.
+ *
+ * Defined once and consumed by everything that needs to count, index, or open a row — the classic
+ * failure here is a screen whose "how many rows" and "what is row N" disagree by one.
+ */
+export type LabItem =
+  | { kind: "start"; mode: "dry-run" | "live" }
+  | { kind: "run"; run: RunIndexEntry };
+
+export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): LabItem[] {
+  return [
+    ...(canStart
+      ? ([
+          { kind: "start", mode: "dry-run" },
+          { kind: "start", mode: "live" }
+        ] as LabItem[])
+      : []),
+    ...runs.map((run): LabItem => ({ kind: "run", run }))
+  ];
+}
+
 export interface LabScreenProps {
   row: LabRow;
   runs: RunIndexEntry[];
@@ -13,6 +37,14 @@ export interface LabScreenProps {
   columns: number;
   viewport: number;
   now: number;
+  /** False for a lab with no manifest here — there is nothing to start. */
+  canStart: boolean;
+  /** Set while a live start is awaiting confirmation. */
+  confirming: "live" | undefined;
+  /** Rendered when a launch could not happen. */
+  launchError: string | undefined;
+  /** A launch in flight. Not a failure, so it is not styled as one. */
+  launchNote: string | undefined;
 }
 
 /**
@@ -22,7 +54,19 @@ export interface LabScreenProps {
  * deciding to spend money — and it always carries its own denominator, so "~$2.00 median" can never
  * be mistaken for a quote when it came from two runs.
  */
-export function LabScreen({ row, runs, selected, columns, viewport, now }: LabScreenProps): React.ReactElement {
+export function LabScreen({
+  row,
+  runs,
+  selected,
+  columns,
+  viewport,
+  now,
+  canStart,
+  confirming,
+  launchError,
+  launchNote
+}: LabScreenProps): React.ReactElement {
+  const items = labItems(runs, canStart);
   return (
     <Box flexDirection="column">
       {/* The header carries the human name; this is the handle you would actually type. Lab
@@ -43,13 +87,90 @@ export function LabScreen({ row, runs, selected, columns, viewport, now }: LabSc
         </Text>
       ) : null}
 
+      {launchNote === undefined ? null : (
+        <Box marginTop={1}>
+          <Text dimColor>{launchNote}</Text>
+        </Box>
+      )}
+      {launchError === undefined ? null : (
+        <Box marginTop={1}>
+          <Text color="red">{launchError}</Text>
+        </Box>
+      )}
+
       <Box marginTop={1} flexDirection="column">
+        {canStart ? (
+          <StartRows
+            items={items}
+            selected={selected}
+            columns={columns}
+            expectation={row.liveExpectation.sample > 0 ? expectationLine(row.liveExpectation) : "no live runs yet"}
+            confirming={confirming}
+          />
+        ) : null}
         {runs.length === 0 ? (
-          <Text dimColor>no runs yet</Text>
+          <Box marginTop={canStart ? 1 : 0}>
+            <Text dimColor>no runs yet</Text>
+          </Box>
         ) : (
-          <RunList runs={runs} selected={selected} columns={columns} viewport={viewport} now={now} />
+          <Box marginTop={canStart ? 1 : 0} flexDirection="column">
+            <RunList
+              runs={runs}
+              selected={selected - (canStart ? 2 : 0)}
+              columns={columns}
+              viewport={viewport}
+              now={now}
+            />
+          </Box>
         )}
       </Box>
+    </Box>
+  );
+}
+
+/**
+ * Two explicit rows rather than one row with a mode toggle.
+ *
+ * A toggle requires reading its current state correctly BEFORE pressing Enter, and misreading it
+ * spends real money on a study you did not mean to run. Putting the mode in the action itself means
+ * the wrong key cannot cost anything, and it leaves room to say what each one costs.
+ */
+function StartRows({
+  items,
+  selected,
+  columns,
+  expectation,
+  confirming
+}: {
+  items: LabItem[];
+  selected: number;
+  columns: number;
+  expectation: string;
+  confirming: "live" | undefined;
+}): React.ReactElement {
+  return (
+    <Box flexDirection="column">
+      {items.map((item, index) =>
+        item.kind !== "start" ? null : (
+          <Box key={item.mode} width={columns}>
+            <Text {...color(index === selected ? "cyan" : undefined)} bold={index === selected}>
+              {index === selected ? "›" : " "}{" "}
+              {item.mode === "dry-run" ? "Start a dry run" : "Start a live run"}
+            </Text>
+            <Box flexGrow={1} />
+            <Text dimColor={item.mode === "dry-run"} {...color(item.mode === "live" ? "yellow" : undefined)}>
+              {item.mode === "dry-run" ? "no spend" : expectation}
+            </Text>
+          </Box>
+        )
+      )}
+      {confirming === "live" ? (
+        // A live run spends money the moment it starts, so the second keypress is the one that
+        // commits — and it restates the cost rather than assuming it was read on the row above.
+        <Box marginTop={1}>
+          <Text color="yellow">start a live run? {expectation} · enter to confirm, esc to cancel</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }

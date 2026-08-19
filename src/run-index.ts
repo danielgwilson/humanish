@@ -35,6 +35,12 @@ export interface RunIndexEntry {
   derivedFrom: "status" | "bundle" | "directory";
   liveness: RunLiveness;
   mode?: "dry-run" | "live";
+  /**
+   * The pid that owns a run, when it recorded one. This is how a surface identifies the run IT just
+   * started without minting an id or guessing at a new directory: it spawned a process, and exactly
+   * one run's record carries that pid.
+   */
+  pid?: number;
   lab?: RunLabProvenance;
   startedAt?: string;
   updatedAt?: string;
@@ -131,6 +137,7 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
     derivedFrom: "status",
     liveness: classifyRunStatus(record, nowMs),
     mode: record.mode,
+    ...(typeof record.pid === "number" ? { pid: record.pid } : {}),
     ...(record.lab === undefined ? {} : { lab: record.lab }),
     startedAt: record.startedAt,
     updatedAt: record.updatedAt,

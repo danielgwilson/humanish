@@ -5,7 +5,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 
 import { App } from "../src/app.js";
-import type { TuiOptions } from "../../src/tui-contract.js";
+import type { TuiCapabilities, TuiOptions } from "../../src/tui-contract.js";
 import { normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
@@ -33,18 +33,26 @@ async function expectGolden(name: string, actual: string): Promise<void> {
   expect(actual).toBe(expected.replace(/\n$/, ""));
 }
 
-function options(overrides: Partial<TuiOptions> = {}): TuiOptions {
+/**
+ * A COMPLETE set of capabilities, merged with whatever a test wants to change. No cast: the
+ * compiler is the thing that catches a capability nobody remembered to fake, and a cast here would
+ * turn that into an unhandled rejection mid-render instead.
+ */
+function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
+  const capabilities: TuiCapabilities = {
+    readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
+    listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
+    startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
+    readLaunchLog: async () => "",
+    ...overrides
+  };
   return {
     cwd: "/projects/acme-app",
     version: { cli: "9.9.9" },
-    capabilities: {
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] })
-    },
+    capabilities,
     stdin: process.stdin,
-    stdout: process.stdout,
-    ...overrides
-  } as TuiOptions;
+    stdout: process.stdout
+  };
 }
 
 async function frameAt(columns: number, rows = 24): Promise<string> {
@@ -107,11 +115,9 @@ describe("the labs screen, rendered", () => {
 
   it("says the project is empty in a way that tells you what to do next", async () => {
     const empty = options({
-      capabilities: {
-        readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [], unreadable: [] }),
-        listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
-      }
-    } as Partial<TuiOptions>);
+      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [], unreadable: [] }),
+      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
+    });
     const rendered = await renderToText(<App options={empty} now={NOW} />, {
       columns: 80,
       until: (frame) => frame.includes("no labs")
@@ -124,13 +130,11 @@ describe("the labs screen, rendered", () => {
 
   it("reports a project it cannot read instead of rendering an empty one", async () => {
     const broken = options({
-      capabilities: {
-        readRunIndex: async () => {
-          throw new Error("EACCES: permission denied");
-        },
-        listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
-      }
-    } as Partial<TuiOptions>);
+      readRunIndex: async () => {
+        throw new Error("EACCES: permission denied");
+      },
+      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
+    });
     const rendered = await renderToText(<App options={broken} now={NOW} />, {
       columns: 80,
       until: (frame) => frame.includes("could not read")

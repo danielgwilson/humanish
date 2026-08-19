@@ -93,9 +93,18 @@ export interface LabExpectation {
  * Derive what to expect from a lab's own history. Only FINISHED runs count: an interrupted run's
  * duration is the length of an accident, not of a study, and including it would quietly bias the
  * estimate the operator uses to decide whether to press Start.
+ *
+ * MODE MATTERS, and mixing modes is a lie rather than an imprecision. A dry run spends nothing and
+ * takes no time, so a median over nine dry runs and one live one reports that a live run is free —
+ * next to a control that spends money. Pass the mode the figure is about; omit it only for a
+ * summary that is not attached to an action.
  */
-export function expectationFor(entries: readonly RunIndexEntry[]): LabExpectation {
-  const finished = entries.filter((entry) => entry.liveness === "finished");
+export function expectationFor(
+  entries: readonly RunIndexEntry[],
+  mode?: "dry-run" | "live"
+): LabExpectation {
+  const scoped = mode === undefined ? entries : entries.filter((entry) => entry.mode === mode);
+  const finished = scoped.filter((entry) => entry.liveness === "finished");
   const durations = finished
     .map((entry) => entry.durationMs)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0)
@@ -290,7 +299,10 @@ export interface LabRow {
   live: number;
   latest?: RunIndexEntry;
   liveRuns: RunIndexEntry[];
+  /** Across every finished run, whatever its mode. A summary, never attached to a spend decision. */
   expectation: LabExpectation;
+  /** Live runs only — the figure that belongs beside anything that spends money. */
+  liveExpectation: LabExpectation;
 }
 
 /** The addressable handle for a manifest: its filename without directory or extension. */
@@ -361,7 +373,8 @@ export function labRows(
       live: rollup?.live ?? 0,
       ...(rollup?.latest === undefined ? {} : { latest: rollup.latest }),
       liveRuns: rollup?.liveRuns ?? [],
-      expectation: expectationFor(runsOf.get(labId) ?? [])
+      expectation: expectationFor(runsOf.get(labId) ?? []),
+      liveExpectation: expectationFor(runsOf.get(labId) ?? [], "live")
     };
   };
 

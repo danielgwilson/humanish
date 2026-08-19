@@ -91,7 +91,13 @@ function LabRowView({ row, columns, active }: { row: LabRow; columns: number; ac
 function statusFor(row: LabRow, budget: number): string {
   if (row.live > 0) return `${row.live} running`;
   if (row.runs === 0) return row.declared ? "never run" : "no runs";
-  const full = expectationLine(row.expectation);
+  // Prefer the LIVE figure when there is one: cost and duration are what someone scans this column
+  // for, and a median diluted by dry runs reports a live study as cheaper and faster than it is.
+  // With no live history, report the count and claim nothing about either.
+  const full =
+    row.liveExpectation.sample > 0
+      ? expectationLine(row.liveExpectation)
+      : `${row.runs} ${row.runs === 1 ? "run" : "runs"}, none live`;
   if (full.length <= budget) return full;
   return `${row.runs} ${row.runs === 1 ? "run" : "runs"}`;
 }
