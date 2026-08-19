@@ -1657,6 +1657,40 @@ describe("runCuaActorLab", () => {
     expect(result.observer?.ok).toBe(true);
   });
 
+  it("writes lab identity into the bundle AND a finalized status record on disk (#455)", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      lab: { id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" },
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const runId = outcome.result.runId;
+
+    // Durable identity on the evidence-of-record.
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8")) as {
+      lab?: { id: string; path?: string; origin?: string };
+      review: { verdict: string };
+    };
+    expect(bundle.lab).toEqual({ id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" });
+
+    // And the index/liveness record, finalized from that same bundle — never claiming more.
+    const status = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "status.json"), "utf8")
+    ) as { schema: string; state: string; lab?: { id: string }; outcome?: { verdict?: string }; completedAt?: string };
+    expect(status.schema).toBe("humanish.run-status.v1");
+    expect(status.state).toBe("finished");
+    expect(status.lab?.id).toBe("cua-demo");
+    expect(status.outcome?.verdict).toBe(bundle.review.verdict);
+    expect(typeof status.completedAt).toBe("string");
+  });
+
   it("points .humanish/runs/latest.json at the cua run so `verify --run latest` stays honest", async () => {
     const outcome = await runLab(cuaConfig(), { cwd, dryRun: true });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");

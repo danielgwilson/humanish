@@ -35,6 +35,7 @@
 
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -172,6 +173,8 @@ const DEFAULT_MISSION =
   "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";
 
 export interface RunConcurrentSharedWorldLabOptions {
+  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
+  lab?: RunLabProvenance;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
@@ -785,6 +788,13 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
 
   const runId = options.runId ?? makeRunId();
   const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
+  // run without parsing bundles and without depending on the interactive-observer path.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
@@ -1634,6 +1644,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   }
 
   const bundle = buildConcurrentSharedWorldBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     config,
     descriptor,
     createdAt,
@@ -1677,6 +1688,24 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   });
 
   await writeConcurrentRunArtifacts(bundle, runPaths);
+  // Finalize identity+liveness from the bundle just written. Deliberately here and not inside
+  // writeConcurrentRunArtifacts — that writer is shared with the mid-run in-progress flushes, and
+  // finalizing there would declare the run finished while it is still going (#455).
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+  });
 
   const observer = await render(cwd, runId, { open: options.open === true });
   if (observer.ok && liveObserver) {
@@ -1856,6 +1885,8 @@ function formatSharedWorldActorOutcomes(outcomes: SharedWorldOutcome[], expected
 
 /** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
 export function buildConcurrentSharedWorldBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   createdAt: string;
@@ -2263,6 +2294,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     simCount: actorSpecs.length,
     createdAt,
     cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {

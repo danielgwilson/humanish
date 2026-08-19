@@ -4,6 +4,7 @@ import { lstat, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from "
 import path from "node:path";
 
 import { runDesktopCommandOrThrow } from "./command-failure.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -56,6 +57,8 @@ import { scoreOssMetaMeaningfulUse } from "./oss-meta-lab-scoring.js";
 export const OSS_META_LAB_SCHEMA = "humanish.oss-meta-lab-result.v1";
 
 export interface OssMetaLabOptions {
+  /** Which manifest produced this run (#455). */
+  lab?: RunLabProvenance;
   codexAppServer?: boolean;
   completionTimeoutMs?: number;
   count?: number;
@@ -811,6 +814,7 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   const physicalCwd = await realpath(cwd);
   const runResult: RunResult = await runDryRun({
     cwd: physicalCwd,
+      ...(options.lab === undefined ? {} : { lab: options.lab }),
     dryRun: true,
     runId,
     simCount: count
@@ -836,6 +840,14 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   }
 
   const preparedRunPaths = await bindExistingRunArtifactPaths(physicalCwd, runId);
+  // The dry-run route created (and finalized) this run dir; the meta lab now keeps working in it
+  // for minutes. Re-open the status record so a watcher sees a LIVE run rather than a finished one
+  // (#455) — the same file, honestly re-stated.
+  const runStatus: RunStatusHandle = beginRunStatus(preparedRunPaths, {
+    runId,
+    mode: dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = preparedRunPaths;
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
@@ -1031,6 +1043,9 @@ export async function runOssMetaLab(options: OssMetaLabOptions): Promise<OssMeta
   });
 
   await writeMetaBundleArtifacts(artifactRoot, bundle);
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict })
+  });
 
   const finalObserver = await renderObserver(physicalCwd, runId, { open: options.open === true });
   Object.assign(observer, finalObserver);

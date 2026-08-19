@@ -50,6 +50,7 @@ import {
   type PreparedRunArtifactPaths
 } from "./run-paths.js";
 import { probeKeySources } from "./key-resolution.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -93,6 +94,8 @@ const SAFE_GIT_NOTES = new Set([
 ]);
 
 export interface RunOptions {
+  /** Which manifest produced this run (#455). */
+  lab?: RunLabProvenance;
   cwd: string;
   actor?: string;
   actorCommand?: string[];
@@ -863,6 +866,13 @@ export interface RunBundle {
    */
   providerResources?: RunProviderResource[];
   /**
+   * Which lab manifest produced this run (#455). Optional + additive: absent on every bundle
+   * written before this contract and on library callers who pass a LabConfig directly (the run is
+   * then honestly lab-less rather than guessed). For older bundles a reader may fall back to
+   * `inferLegacyLabId`, which reads only the historical `persona.source = "lab:<id>"` convention.
+   */
+  lab?: RunLabProvenance;
+  /**
    * OPTIONAL, ADDITIVE run-level cost ESTIMATE (humanish.run-cost-summary.v1): the sum of every
    * lane's model-token estimate PLUS the E2B desktop-minute estimate, carrying the SAME
    * null-discipline the terminal cost ledger already ships. Absent on every pre-existing bundle
@@ -1409,6 +1419,13 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const selection = await loadDryRunSelection(projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(projectRoot);
   const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
+  // run from one small file instead of parsing bundles.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: options.dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.relativeRunRoot;
 
   if (humanishSource === "missing") {
@@ -1431,6 +1448,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     createdAt,
     cwd,
     artifactRoot,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     source,
     persona: selection.persona,
     scenario: selection.scenario,
@@ -1474,7 +1492,7 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
     feedbackCandidates: []
   };
 
-  await writeRunBundleArtifacts(runPaths, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({
@@ -1545,6 +1563,13 @@ async function runBrowserAppProof(options: RunOptions & {
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
+  // run from one small file instead of parsing bundles.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: options.dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.relativeRunRoot;
   if (selection.browserJourneyFailure) {
     return {
@@ -1593,6 +1618,7 @@ async function runBrowserAppProof(options: RunOptions & {
     createdAt,
     cwd: options.cwd,
     artifactRoot,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     source,
     persona: {
       id: selection.persona.id,
@@ -1717,7 +1743,7 @@ async function runBrowserAppProof(options: RunOptions & {
     feedbackCandidates: []
   };
 
-  await writeRunBundleArtifacts(runPaths, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({
@@ -1902,6 +1928,13 @@ async function runLocalCodexTui(options: RunOptions & {
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
+  // run from one small file instead of parsing bundles.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: options.dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
@@ -1964,6 +1997,7 @@ async function runLocalCodexTui(options: RunOptions & {
       createdAt,
       cwd: options.cwd,
       artifactRoot,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
       source,
       persona: selection.persona,
       scenario: selection.scenario,
@@ -2131,6 +2165,7 @@ async function runLocalCodexTui(options: RunOptions & {
     createdAt,
     cwd: options.cwd,
     artifactRoot,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     source,
     persona: selection.persona,
     scenario: selection.scenario,
@@ -2219,7 +2254,7 @@ async function runLocalCodexTui(options: RunOptions & {
     feedbackCandidates: []
   };
 
-  await writeRunBundleArtifacts(runPaths, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({
@@ -2406,6 +2441,13 @@ async function runLocalCodexExec(options: RunOptions & {
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
+  // run from one small file instead of parsing bundles.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: options.dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
@@ -2684,7 +2726,7 @@ async function runLocalCodexExec(options: RunOptions & {
     review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout", status, verdictReason)
   });
 
-  await writeRunBundleArtifacts(runPaths, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({
@@ -2891,6 +2933,13 @@ async function runLocalCodexAppServer(options: RunOptions & {
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
+  // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
+  // run from one small file instead of parsing bundles.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: options.dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
     warnings.push("Committed humanish/ source was not found; using built-in synthetic Codex app-server actor defaults.");
@@ -3117,7 +3166,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex app-server" : "Codex app-server fanout", status, verdictReason)
   });
 
-  await writeRunBundleArtifacts(runPaths, bundle);
+  await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({
@@ -5156,12 +5205,33 @@ async function readTextIfExists(filePath: string): Promise<string | null> {
   }
 }
 
-async function writeRunBundleArtifacts(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<void> {
+async function writeRunBundleArtifacts(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+  /** Pass ONLY when this write is the run's final one: the shared writer is also used for
+   *  mid-run in-progress snapshots, and finalizing there would declare a live run finished (#455). */
+  finalizeStatus?: RunStatusHandle
+): Promise<void> {
   const publicBundle: RunBundle = {
     ...bundle,
     cwd: PUBLIC_TARGET_CWD
   };
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
+  await finalizeStatus?.finish({
+    ...(publicBundle.review?.verdict === undefined ? {} : { verdict: publicBundle.review.verdict }),
+    ...(publicBundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: publicBundle.review.participants.total,
+            reachedGoal: publicBundle.review.participants.reachedGoal,
+            ...(publicBundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: publicBundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(publicBundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: publicBundle.cost.estimatedTotalUsd })
+  });
   await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
   await writeContainedOutputFile(runPaths, "review.md", renderReviewMarkdown(publicBundle), "utf8");
   await writeContainedOutputFile(runPaths, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");

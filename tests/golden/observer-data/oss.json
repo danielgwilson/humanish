@@ -7,7 +7,7 @@
     "mode": "dry-run",
     "status": "contract_proof_only",
     "title": "OSS Observer-of-Observers Meta-Lab - Codex TUI OSS Setup Operators",
-    "createdAt": "2026-08-17T17:34:52.028Z",
+    "createdAt": "2026-08-19T07:38:07.591Z",
     "simCount": 4,
     "persona": {
       "id": "oss-meta-codex-tui-operators",
@@ -29,17 +29,17 @@
     },
     "lifecycle": [
       {
-        "at": "2026-08-17T17:34:52.028Z",
+        "at": "2026-08-19T07:38:07.591Z",
         "event": "oss-meta.run.created",
         "message": "Created OSS meta-lab run with 4 headed desktop lanes."
       },
       {
-        "at": "2026-08-17T17:34:52.028Z",
+        "at": "2026-08-19T07:38:07.591Z",
         "event": "oss-meta.repos.assigned",
         "message": "Assigned repos: CorentinTh/it-tools, drawdb-io/drawdb, maciekt07/TodoApp, lissy93/dashy."
       },
       {
-        "at": "2026-08-17T17:34:52.028Z",
+        "at": "2026-08-19T07:38:07.591Z",
         "event": "oss-meta.observer.ready",
         "message": "Top-level Observer is ready to watch nested Humanish Observers."
       }
@@ -75,7 +75,7 @@
       "label": "E2B desktop - CorentinTh/it-tools",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-08-17T17:34:52.028Z",
+      "updatedAt": "2026-08-19T07:38:07.591Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 1"
@@ -130,8 +130,8 @@
         "streamIds": [
           "oss-01-desktop"
         ],
-        "startedAt": "2026-08-17T17:34:52.028Z",
-        "updatedAt": "2026-08-17T17:34:52.028Z"
+        "startedAt": "2026-08-19T07:38:07.591Z",
+        "updatedAt": "2026-08-19T07:38:07.591Z"
       },
       "kindLabel": "Browser",
       "statusLabel": "Contract proof",
@@ -139,7 +139,7 @@
       "timeline": [
         {
           "id": "event-001-assigned",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.repo.assigned",
           "message": "Assigned CorentinTh/it-tools to Codex desktop lane 1.",
@@ -148,7 +148,7 @@
         },
         {
           "id": "event-001-prompt",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.codex.prompt.ready",
           "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -164,7 +164,7 @@
       "label": "E2B desktop - drawdb-io/drawdb",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-08-17T17:34:52.028Z",
+      "updatedAt": "2026-08-19T07:38:07.591Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 2"
@@ -219,8 +219,8 @@
         "streamIds": [
           "oss-02-desktop"
         ],
-        "startedAt": "2026-08-17T17:34:52.028Z",
-        "updatedAt": "2026-08-17T17:34:52.028Z"
+        "startedAt": "2026-08-19T07:38:07.591Z",
+        "updatedAt": "2026-08-19T07:38:07.591Z"
       },
       "kindLabel": "Browser",
       "statusLabel": "Contract proof",
@@ -228,7 +228,7 @@
       "timeline": [
         {
           "id": "event-002-assigned",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.repo.assigned",
           "message": "Assigned drawdb-io/drawdb to Codex desktop lane 2.",
@@ -237,7 +237,7 @@
         },
         {
           "id": "event-002-prompt",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.codex.prompt.ready",
           "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -253,7 +253,7 @@
       "label": "E2B desktop - maciekt07/TodoApp",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-08-17T17:34:52.028Z",
+      "updatedAt": "2026-08-19T07:38:07.591Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 3"
@@ -308,8 +308,8 @@
         "streamIds": [
           "oss-03-desktop"
         ],
-        "startedAt": "2026-08-17T17:34:52.028Z",
-        "updatedAt": "2026-08-17T17:34:52.028Z"
+        "startedAt": "2026-08-19T07:38:07.591Z",
+        "updatedAt": "2026-08-19T07:38:07.591Z"
       },
       "kindLabel": "Browser",
       "statusLabel": "Contract proof",
@@ -317,7 +317,7 @@
       "timeline": [
         {
           "id": "event-003-assigned",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.repo.assigned",
           "message": "Assigned maciekt07/TodoApp to Codex desktop lane 3.",
@@ -326,7 +326,7 @@
         },
         {
           "id": "event-003-prompt",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.codex.prompt.ready",
           "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -342,7 +342,7 @@
       "label": "E2B desktop - lissy93/dashy",
       "status": "contract_proof_only",
       "transport": "snapshot",
-      "updatedAt": "2026-08-17T17:34:52.028Z",
+      "updatedAt": "2026-08-19T07:38:07.591Z",
       "embed": {
         "kind": "placeholder",
         "title": "E2B desktop 4"
@@ -397,8 +397,8 @@
         "streamIds": [
           "oss-04-desktop"
         ],
-        "startedAt": "2026-08-17T17:34:52.028Z",
-        "updatedAt": "2026-08-17T17:34:52.028Z"
+        "startedAt": "2026-08-19T07:38:07.591Z",
+        "updatedAt": "2026-08-19T07:38:07.591Z"
       },
       "kindLabel": "Browser",
       "statusLabel": "Contract proof",
@@ -406,7 +406,7 @@
       "timeline": [
         {
           "id": "event-004-assigned",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.repo.assigned",
           "message": "Assigned lissy93/dashy to Codex desktop lane 4.",
@@ -415,7 +415,7 @@
         },
         {
           "id": "event-004-prompt",
-          "at": "2026-08-17T17:34:52.028Z",
+          "at": "2026-08-19T07:38:07.591Z",
           "level": "info",
           "type": "oss-meta.codex.prompt.ready",
           "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -428,14 +428,14 @@
   "events": [
     {
       "id": "event-000",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.contract.created",
       "message": "Created public-safe OSS meta-lab Observer-of-Observers contract."
     },
     {
       "id": "event-001-assigned",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned CorentinTh/it-tools to Codex desktop lane 1.",
@@ -444,7 +444,7 @@
     },
     {
       "id": "event-001-prompt",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -453,7 +453,7 @@
     },
     {
       "id": "event-002-assigned",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned drawdb-io/drawdb to Codex desktop lane 2.",
@@ -462,7 +462,7 @@
     },
     {
       "id": "event-002-prompt",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -471,7 +471,7 @@
     },
     {
       "id": "event-003-assigned",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned maciekt07/TodoApp to Codex desktop lane 3.",
@@ -480,7 +480,7 @@
     },
     {
       "id": "event-003-prompt",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",
@@ -489,7 +489,7 @@
     },
     {
       "id": "event-004-assigned",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.repo.assigned",
       "message": "Assigned lissy93/dashy to Codex desktop lane 4.",
@@ -498,7 +498,7 @@
     },
     {
       "id": "event-004-prompt",
-      "at": "2026-08-17T17:34:52.028Z",
+      "at": "2026-08-19T07:38:07.591Z",
       "level": "info",
       "type": "oss-meta.codex.prompt.ready",
       "message": "Codex bootstrap prompt is available in the stream logs tab.",

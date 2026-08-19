@@ -29,6 +29,7 @@ import {
 } from "./concurrent-shared-world-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
+import type { RunLabProvenance } from "./run-status.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
 import { routesToComputerUse, routesToConcurrentSharedWorld, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
@@ -39,6 +40,10 @@ export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "
 export interface RunLabOptions {
   cwd: string;
   runId?: string;
+  /** Which manifest this run came from (#455): threaded to the backend so the run's own
+   *  status record and bundle can say which lab produced it. Absent for library callers who
+   *  hand a LabConfig directly — the run is then honestly lab-less rather than guessed. */
+  lab?: RunLabProvenance;
   dryRun?: boolean;
   open?: boolean;
   /** Lane override: synthetic sims, smoke repo limit, or meta desktop count. */
@@ -161,6 +166,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
   switch (backend) {
     case "synthetic": {
       const result = await runDryRun({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
         simCount: options.count ?? actorLaneCount(config) ?? 4,
@@ -172,6 +178,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       const keep = options.keep ?? config.subject.clone?.keep;
       const repos = options.repos ?? config.subject.repos;
       const result = await runOssLab({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         limit: options.count ?? fanout,
         ...(repos === undefined ? {} : { repos }),
@@ -186,6 +193,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       const codexAppServer = options.codexAppServer ?? config.execution?.desktop?.codexAppServer;
       const metaRepos = options.repos ?? config.subject.repos;
       const result = await runOssMetaLab({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         count: options.count ?? fanout,
         ...(metaRepos === undefined ? {} : { repos: metaRepos }),
@@ -203,6 +211,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runCuaActorLab({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,
@@ -226,6 +235,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       // spend. This differs deliberately from `run --app-url`, which actuates on invocation.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runScriptedBrowserLab({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,
@@ -241,6 +251,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       // emits contract evidence without creating a sandbox, reading a key, or spending.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runTerminalProductLab({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,
@@ -257,6 +268,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       // proof is fully $0 via the sharedWorldHooks DI seam.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runSharedWorldLab({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,
@@ -273,6 +285,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
       // The deterministic PoC proof is fully $0 via the sharedWorldHooks DI seam.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runConcurrentSharedWorld({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,

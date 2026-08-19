@@ -371,6 +371,14 @@ Core-owned fields:
 - `artifacts`
 - `review`
 - `feedbackCandidates`
+- `lab` (optional, additive): which manifest produced the run —
+  `{ id, path?, origin? }`, where `origin` is `committed` (humanish/labs),
+  `ignored` (a local overlay), or `explicit` (a path the operator passed).
+  Absent on bundles written before this contract and on library callers who
+  hand a `LabConfig` directly — the run is then honestly lab-less rather than
+  guessed. Readers wanting attribution for an older bundle may fall back to
+  `inferLegacyLabId`, which reads only the historical
+  `persona.source = "lab:<id>"` convention and nothing else.
 - `subject` (optional, additive): structured subject provenance —
   `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
   dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
@@ -878,6 +886,28 @@ Unknowns (`null`) never trip a cap (we cannot claim a violation we did not
 measure) and never grant a green pass (they surface as unmeasured). `verifyRun`
 fails closed when a live bundle lacks the cost ledger or no-spend proof, when the
 proof claims zero on a `null` line, or when known spend exceeds the declared cap.
+
+## Run Status (identity + liveness index)
+
+`humanish.run-status.v1` — `status.json`, written inside each run directory by
+every backend at run start, refreshed on a fixed cadence while the run is
+alive, and finalized when it ends: `{ schema, runId, state: running |
+finished, mode, lab?, pid, startedAt, updatedAt, completedAt?, outcome? }`.
+
+It answers two questions the filesystem could not answer before: **which lab**
+a run belongs to, and **whether it is still alive** — including for runs an
+agent launched (`lab run --json`) or that were detached, which previously wrote
+nothing at all until they completed.
+
+It is a DERIVED INDEX, not evidence. `run.json` remains the evidence-of-record;
+`verify` never gates on `status.json`, nothing in it is a claim about what a
+participant did, and when the two disagree the bundle wins and the record is
+rebuildable from it. A `running` record whose `updatedAt` is older than three
+touch intervals is INTERRUPTED, not alive — a dropped connection or a killed
+terminal leaves exactly that shape, and reading it as interrupted is the honest
+outcome (`classifyRunStatus` is the one shared definition). Fields are
+public-safe by construction: no hostname and no user paths, because a run
+directory may be shared.
 
 ## Run Cost Summary And Estimated Actor Cost
 

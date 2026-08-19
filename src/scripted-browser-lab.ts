@@ -22,6 +22,7 @@
 
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -131,6 +132,8 @@ export interface ScriptedBrowserLabHooks {
 }
 
 export interface RunScriptedBrowserLabOptions {
+  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
+  lab?: RunLabProvenance;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
@@ -317,6 +320,13 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
 
   const runId = options.runId ?? makeScriptedRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
+  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
+  // run without parsing bundles and without depending on the interactive-observer path.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
@@ -473,6 +483,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
     : undefined;
 
   const bundle = buildScriptedLabBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     actorId: descriptor.id,
     appUrl: evidenceAppUrl,
     createdAt,
@@ -495,6 +506,23 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   });
 
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
+  // stale, which reads as interrupted rather than as a false outcome (#455).
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+  });
   await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeContainedOutputFile(runPaths, "review.md", renderScriptedReviewMarkdown(bundle), "utf8");
   await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
@@ -727,6 +755,8 @@ function isSafeRelativeArtifactPath(value: string): boolean {
  * the bundle-builder tests.
  */
 export function buildScriptedLabBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
   actorId: string;
   appUrl: string;
   createdAt: string;
@@ -898,6 +928,7 @@ export function buildScriptedLabBundle(args: {
     simCount: args.surfaces.length,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {

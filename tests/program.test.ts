@@ -1,6 +1,6 @@
 import { CommanderError } from "commander";
 import { EventEmitter } from "node:events";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { connect as netConnect, createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -1301,5 +1301,63 @@ describe("provider-key discovery at the CLI seam (#436)", () => {
     expect(envelope.ok).toBe(true);
     expect(envelope.action).toBe("list");
     expect(Array.isArray(envelope.names)).toBe(true);
+  });
+});
+
+describe("lab provenance survives the whole CLI path (#455)", () => {
+  // This test exists because a live run caught what the unit tests could not: the provenance was
+  // built at the resolution site and forwarded through nine `runLab` call sites, and three of them
+  // silently dropped it — TypeScript cannot catch that, because a spread of an optional field is
+  // never an excess-property error. So the guard has to run the CLI end to end and read the disk.
+  it("`lab run` stamps the resolved lab into the bundle AND the status record", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-provenance-"));
+    try {
+      const labPath = path.join(cwd, "humanish", "labs", "provenance-demo.yaml");
+      await mkdir(path.dirname(labPath), { recursive: true });
+      await writeFile(
+        labPath,
+        [
+          "schema: humanish.lab.v2",
+          "id: provenance-demo",
+          "subject:",
+          "  source: this-repo",
+          "actors:",
+          "  - type: synthetic-persona",
+          "scenario:",
+          "  mode: dry-run",
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+
+      const result = await runCli(["lab", "run", "provenance-demo", "--cwd", cwd, "--json", "--no-open"]);
+      expect(result.exitCode).toBe(0);
+
+      const runsDir = path.join(cwd, ".humanish", "runs");
+      const runId = (await readdir(runsDir)).find((entry) => entry.startsWith("dryrun-"));
+      expect(runId).toBeDefined();
+
+      const bundle = JSON.parse(await readFile(path.join(runsDir, runId!, "run.json"), "utf8")) as {
+        lab?: { id: string; path?: string; origin?: string };
+      };
+      expect(bundle.lab).toEqual({
+        id: "provenance-demo",
+        path: path.join("humanish", "labs", "provenance-demo.yaml"),
+        origin: "committed"
+      });
+
+      const status = JSON.parse(await readFile(path.join(runsDir, runId!, "status.json"), "utf8")) as {
+        schema: string;
+        state: string;
+        mode: string;
+        lab?: { id: string };
+      };
+      expect(status.schema).toBe("humanish.run-status.v1");
+      expect(status.state).toBe("finished");
+      expect(status.mode).toBe("dry-run");
+      expect(status.lab?.id).toBe("provenance-demo");
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
   });
 });

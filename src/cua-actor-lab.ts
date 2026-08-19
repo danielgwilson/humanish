@@ -29,6 +29,7 @@ import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTokenUsage, ActorTrace, ActorTraceItem } from "./actor-contract.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -333,6 +334,8 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
 export interface RunCuaActorLabOptions {
   cwd: string;
   config: LabConfig;
+  /** Which manifest produced this run (#455); threaded into the run's status record + bundle. */
+  lab?: RunLabProvenance;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
   dryRun: boolean;
   open?: boolean;
@@ -3170,6 +3173,16 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   const runId = options.runId ?? makeCuaRunId();
   const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  // Identity + liveness on disk from the first moment (#455): anything watching the runs
+  // directory — the TUI, another terminal, an agent — can now tell which lab this is and that
+  // it is alive, without waiting for the interactive observer flush that used to be the only
+  // mid-run write. Finalized on every exit path below; a crash leaves it stale, which reads
+  // as interrupted rather than as a lie.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
@@ -3278,6 +3291,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   if (!dryRun && options.onObserverReady) {
     const inProgressBundle = laneCount === 1 && rerunLineage === undefined
       ? buildSingleLaneBundle({
+          ...(options.lab === undefined ? {} : { lab: options.lab }),
           spec: laneSpecs[0]!,
           outcome: undefined,
           descriptor,
@@ -3294,6 +3308,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
           localAppSubject
         })
       : buildCuaFanoutBundle({
+          ...(options.lab === undefined ? {} : { lab: options.lab }),
           specs: laneSpecs,
           laneSubjects: inProgressLaneSubjects,
           aggregateSubject: inProgressAggregateSubject,
@@ -3506,6 +3521,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 
   const bundle = laneCount === 1 && rerunLineage === undefined
     ? buildSingleLaneBundle({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         spec: laneSpecs[0]!,
         outcome: outcomes?.[0],
         descriptor,
@@ -3521,6 +3537,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
         localAppSubject
       })
     : buildCuaFanoutBundle({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
         specs: laneSpecs,
         ...(outcomes === undefined ? {} : { outcomes }),
         laneSubjects,
@@ -3562,6 +3579,24 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   });
 
   await writeCuaRunArtifacts(bundle, createdAt, runPaths);
+  // Finalize the status record from the bundle that was just written, so the index can never
+  // claim an outcome the evidence does not carry. A run that throws before reaching here leaves
+  // its record `running` and goes stale — read as interrupted, which is the truth.
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+  });
 
   const observer = await render(cwd, runId, { open: options.open === true });
   if (observer.ok && runtimeStreamUrls.length > 0) {
@@ -3746,6 +3781,7 @@ function observerResultForCuaArtifacts(
 
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
 function buildSingleLaneBundle(args: {
+  lab?: RunLabProvenance;
   spec: CuaLaneSpec;
   outcome: LaneRunOutcome | undefined;
   descriptor: CuaActorDescriptor;
@@ -3763,6 +3799,7 @@ function buildSingleLaneBundle(args: {
 }): RunBundle {
   const { spec, outcome, config } = args;
   return buildCuaBundle({
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
     laneId: spec.laneId,
@@ -4453,6 +4490,8 @@ export function participantFeedbackCandidates(args: {
 }
 
 export function buildCuaBundle(args: {
+  /** Lab provenance for the bundle's own `lab` field (#455). */
+  lab?: RunLabProvenance;
   actorId: string;
   appUrl: string;
   laneId?: string;
@@ -4759,6 +4798,7 @@ export function buildCuaBundle(args: {
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
     artifactRoot: path.join(".humanish", "runs", args.runId),
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     source: args.source,
     persona: {
       id: args.persona.id,
@@ -4873,6 +4913,8 @@ function subjectProvenanceMessage(
  * streams. The N=1 path NEVER reaches here (buildCuaBundle owns it, byte-stable).
  */
 export function buildCuaFanoutBundle(args: {
+  /** Lab provenance for the bundle's own `lab` field (#455). */
+  lab?: RunLabProvenance;
   specs: CuaLaneSpec[];
   outcomes?: LaneRunOutcome[];
   laneSubjects: CuaSubjectProjection[];
@@ -5280,6 +5322,7 @@ export function buildCuaFanoutBundle(args: {
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
     artifactRoot: path.join(".humanish", "runs", args.runId),
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     source: args.source,
     persona: {
       id: specs[0]!.persona.id,
