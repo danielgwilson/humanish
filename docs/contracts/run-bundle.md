@@ -21,6 +21,10 @@ runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
 createdAt: "<ISO timestamp>"
+lab: # optional, additive: which manifest produced this run
+  id: "<lab id>"
+  path: "humanish/labs/<lab id>.yaml"
+  origin: "committed|ignored|explicit"
 cwd: "[target-cwd]"
 artifactRoot: ".humanish/runs/<run-id>"
 source:
@@ -360,6 +364,10 @@ History entries use:
 schema: humanish.run-history-entry.v1
 runId: "<run-id>"
 createdAt: "<ISO timestamp>"
+lab: # optional, additive: which manifest produced this run
+  id: "<lab id>"
+  path: "humanish/labs/<lab id>.yaml"
+  origin: "committed|ignored|explicit"
 mode: "dry-run|live"
 path: ".humanish/runs/<run-id>"
 ```

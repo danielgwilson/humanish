@@ -59,7 +59,11 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
       const outcome = await runLab(resolved.config, {
         cwd: ROOT,
         runId: golden.runId,
-        dryRun: true
+        dryRun: true,
+        // The golden is captured through the real CLI, which resolves the manifest and stamps the
+        // run's lab provenance (#455). Faithfulness means invoking the same way, so this test
+        // supplies exactly what the resolution step supplies.
+        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin }
       });
       expect(outcome.result.ok ?? true).not.toBe(false);
 

@@ -23,6 +23,7 @@
 
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 
@@ -209,6 +210,8 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
 }
 
 export interface RunSharedWorldLabOptions {
+  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
+  lab?: RunLabProvenance;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
@@ -652,6 +655,13 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
 
   const runId = options.runId ?? makeSharedWorldRunId();
   const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
+  // run without parsing bundles and without depending on the interactive-observer path.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? defaultRoleSessionTimeoutMs(config, roleCount);
@@ -1053,6 +1063,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
       };
 
   const bundle = buildSharedWorldBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     config,
     descriptor,
     createdAt,
@@ -1093,6 +1104,23 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
 
   await validatePreparedRunArtifactPaths(runPaths);
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
+  // stale, which reads as interrupted rather than as a false outcome (#455).
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+  });
   await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeContainedOutputFile(runPaths, "review.md", renderSharedWorldReviewMarkdown(bundle), "utf8");
   await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
@@ -1193,6 +1221,8 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
 
 /** Project the shared-world run into a humanish.run-bundle.v1 with the sharedWorld evidence block. */
 export function buildSharedWorldBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   createdAt: string;
@@ -1523,6 +1553,7 @@ export function buildSharedWorldBundle(args: {
     simCount: roleSpecs.length,
     createdAt,
     cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {

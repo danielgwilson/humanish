@@ -44,6 +44,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
@@ -210,6 +211,8 @@ export interface TerminalProductLabHooks {
 }
 
 export interface RunTerminalProductLabOptions {
+  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
+  lab?: RunLabProvenance;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
@@ -367,6 +370,13 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
 
   const runId = options.runId ?? makeTerminalRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
+  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
+  // run without parsing bundles and without depending on the interactive-observer path.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    mode: dryRun ? "dry-run" : "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
     capturedAt: createdAt,
@@ -376,6 +386,7 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   });
 
   const bundle = buildTerminalProductBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     actorId: descriptor.id,
     createdAt,
     dryRun,
@@ -399,6 +410,23 @@ export async function runTerminalProductLab(options: RunTerminalProductLabOption
   });
 
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
+  // stale, which reads as interrupted rather than as a false outcome (#455).
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+  });
   await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeContainedOutputFile(runPaths, "review.md", renderTerminalReviewMarkdown(bundle), "utf8");
   await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
@@ -950,6 +978,14 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
 
   const runId = options.runId ?? makeTerminalRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
+  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
+  // run without parsing bundles and without depending on the interactive-observer path.
+  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
+    runId,
+    // This entry point IS the live terminal route; its dry-run sibling is a separate function.
+    mode: "live",
+    ...(options.lab === undefined ? {} : { lab: options.lab })
+  });
   const createdAt = nowIso();
   const source = await buildRunSource({ capturedAt: createdAt, cwd: physicalCwd, humanishSource: "present", packageName: "humanish" });
 
@@ -1225,6 +1261,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   await writeContainedOutputFile(runPaths, "actor.json", `${JSON.stringify(trace, null, 2)}\n`, "utf8");
 
   const bundle = buildLiveTerminalProductBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     actorId: descriptorId,
     createdAt,
     labId: config.id,
@@ -1263,6 +1300,23 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   await validatePreparedRunArtifactPaths(runPaths);
 
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
+  // stale, which reads as interrupted rather than as a false outcome (#455).
+  await runStatus.finish({
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction })
+          }
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+  });
   await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
   await writeContainedOutputFile(runPaths, "review.md", renderTerminalReviewMarkdown(bundle), "utf8");
   await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
@@ -1764,6 +1818,8 @@ function buildTerminalActorTrace(args: {
  * exist. The shipped live builder fills the same evidence contract. Exported for tests.
  */
 export function buildTerminalProductBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
   actorId: string;
   createdAt: string;
   dryRun: boolean;
@@ -1902,6 +1958,7 @@ export function buildTerminalProductBundle(args: {
     simCount: 1,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {
@@ -1954,6 +2011,8 @@ export function buildTerminalProductBundle(args: {
  * mode==="live") enforces the ledgers + proven cleanup + interventions-present over this bundle.
  */
 export function buildLiveTerminalProductBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
   actorId: string;
   createdAt: string;
   labId: string;
@@ -2090,6 +2149,7 @@ export function buildLiveTerminalProductBundle(args: {
     simCount: 1,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
     artifactRoot: path.join(".humanish", "runs", args.runId),
     source: args.source,
     persona: {

@@ -1,0 +1,187 @@
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  RUN_STATUS_FILE,
+  RUN_STATUS_SCHEMA,
+  RUN_STATUS_STALE_MS,
+  RUN_STATUS_TOUCH_MS,
+  beginRunStatus,
+  classifyRunStatus,
+  inertRunStatus,
+  inferLegacyLabId,
+  isRunStatusRecord,
+  type RunStatusRecord
+} from "../src/run-status.js";
+import { prepareRunArtifactPaths } from "../src/run-paths.js";
+
+describe("run status: identity + liveness on disk (#455)", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-status-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  const read = async (runId: string): Promise<RunStatusRecord> =>
+    JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", runId, RUN_STATUS_FILE), "utf8")) as RunStatusRecord;
+
+  it("writes a running record with lab identity the moment a run starts", async () => {
+    const runPaths = await prepareRunArtifactPaths(cwd, "run-a");
+    const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
+    const status = beginRunStatus(runPaths, {
+      runId: "run-a",
+      mode: "live",
+      lab: { id: "observer-live-check", path: ".humanish/labs/observer-live-check.yaml", origin: "ignored" },
+      now: () => clock.t,
+      pid: 4242,
+      touchMs: 0
+    });
+    await status.touch();
+
+    const record = await read("run-a");
+    expect(record.schema).toBe(RUN_STATUS_SCHEMA);
+    expect(record.state).toBe("running");
+    expect(record.mode).toBe("live");
+    expect(record.lab).toEqual({
+      id: "observer-live-check",
+      path: ".humanish/labs/observer-live-check.yaml",
+      origin: "ignored"
+    });
+    expect(record.pid).toBe(4242);
+    expect(record.startedAt).toBe("2026-08-19T10:00:00.000Z");
+    expect(isRunStatusRecord(record)).toBe(true);
+    // Public-safe by construction: no hostname, no user paths, nothing a share gate must strip.
+    const raw = await readFile(path.join(cwd, ".humanish", "runs", "run-a", RUN_STATUS_FILE), "utf8");
+    expect(raw).not.toMatch(/host/i);
+    expect(raw).not.toContain(cwd);
+  });
+
+  it("touch moves updatedAt; finish records the outcome and is idempotent", async () => {
+    const runPaths = await prepareRunArtifactPaths(cwd, "run-b");
+    const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
+    const status = beginRunStatus(runPaths, { runId: "run-b", mode: "live", now: () => clock.t, touchMs: 0 });
+
+    clock.t += 5_000;
+    await status.touch();
+    expect((await read("run-b")).updatedAt).toBe("2026-08-19T10:00:05.000Z");
+
+    clock.t += 5_000;
+    await status.finish({
+      verdict: "pass",
+      participants: { total: 1, reachedGoal: 1, reportedFriction: 0 },
+      estimatedCostUsd: 0.34
+    });
+    const finished = await read("run-b");
+    expect(finished.state).toBe("finished");
+    expect(finished.completedAt).toBe("2026-08-19T10:00:10.000Z");
+    expect(finished.outcome).toEqual({
+      verdict: "pass",
+      participants: { total: 1, reachedGoal: 1, reportedFriction: 0 },
+      estimatedCostUsd: 0.34
+    });
+
+    // A second finish (a backend with several exit paths) must not rewrite the record, and a late
+    // touch must never resurrect a finished run as running.
+    clock.t += 5_000;
+    await status.finish({ verdict: "fail" });
+    await status.touch();
+    const after = await read("run-b");
+    expect(after.state).toBe("finished");
+    expect(after.outcome?.verdict).toBe("pass");
+    expect(after.completedAt).toBe("2026-08-19T10:00:10.000Z");
+  });
+
+  it("classifies liveness from the record: running, stale-means-interrupted, finished", () => {
+    const at = (iso: string) => ({ state: "running" as const, updatedAt: iso });
+    const now = Date.parse("2026-08-19T10:01:00.000Z");
+    expect(classifyRunStatus(at("2026-08-19T10:00:58.000Z"), now)).toBe("running");
+    // Exactly at the threshold is still alive; one millisecond past it is not.
+    expect(classifyRunStatus(at(new Date(now - RUN_STATUS_STALE_MS).toISOString()), now)).toBe("running");
+    expect(classifyRunStatus(at(new Date(now - RUN_STATUS_STALE_MS - 1).toISOString()), now)).toBe("interrupted");
+    expect(classifyRunStatus({ state: "finished", updatedAt: "2026-08-19T09:00:00.000Z" }, now)).toBe("finished");
+    // A record whose timestamp cannot be parsed is interrupted, never optimistically alive.
+    expect(classifyRunStatus(at("not-a-date"), now)).toBe("interrupted");
+    // The threshold gives three touch intervals of slack, so a hiccup never mislabels a live run.
+    expect(RUN_STATUS_STALE_MS).toBe(RUN_STATUS_TOUCH_MS * 3);
+  });
+
+  it("the cadence refreshes updatedAt on its own, and never holds the process open", async () => {
+    const runPaths = await prepareRunArtifactPaths(cwd, "run-c");
+    const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
+    const status = beginRunStatus(runPaths, { runId: "run-c", mode: "live", now: () => clock.t, touchMs: 10 });
+    // The initial write is fire-and-forget so starting a run never blocks on its own index;
+    // `started` is how a caller that needs determinism waits for it.
+    await status.started;
+    const first = (await read("run-c")).updatedAt;
+    clock.t += 60_000;
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const second = (await read("run-c")).updatedAt;
+    expect(second).not.toBe(first);
+    status.stop();
+    const afterStop = (await read("run-c")).updatedAt;
+    clock.t += 60_000;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect((await read("run-c")).updatedAt).toBe(afterStop);
+  });
+
+  it("a status write failure never breaks the run it describes", async () => {
+    const runPaths = await prepareRunArtifactPaths(cwd, "run-d");
+    const status = beginRunStatus(runPaths, { runId: "run-d", mode: "dry-run", touchMs: 0 });
+    // Remove the run directory out from under it: the writes now fail, and every call must resolve.
+    await rm(path.join(cwd, ".humanish", "runs", "run-d"), { recursive: true, force: true });
+    await expect(status.touch()).resolves.toBeUndefined();
+    await expect(status.finish({ verdict: "pass" })).resolves.toBeUndefined();
+  });
+
+  it("the record is one small file — the point is listing runs without parsing bundles", async () => {
+    const runPaths = await prepareRunArtifactPaths(cwd, "run-e");
+    const status = beginRunStatus(runPaths, {
+      runId: "run-e",
+      mode: "live",
+      lab: { id: "x", path: "humanish/labs/x.yaml", origin: "committed" },
+      touchMs: 0
+    });
+    await status.finish({ verdict: "pass", participants: { total: 2, reachedGoal: 2 }, estimatedCostUsd: 1.2 });
+    const size = (await stat(path.join(cwd, ".humanish", "runs", "run-e", RUN_STATUS_FILE))).size;
+    expect(size).toBeLessThan(600);
+  });
+
+  it("shape guard accepts additive fields and rejects wrong ones", () => {
+    const base = {
+      schema: RUN_STATUS_SCHEMA,
+      runId: "r",
+      state: "running",
+      mode: "live",
+      pid: 1,
+      startedAt: "2026-08-19T10:00:00.000Z",
+      updatedAt: "2026-08-19T10:00:00.000Z"
+    };
+    expect(isRunStatusRecord({ ...base, somethingNewLater: true })).toBe(true);
+    expect(isRunStatusRecord({ ...base, state: "sleeping" })).toBe(false);
+    expect(isRunStatusRecord({ ...base, schema: "humanish.run-status.v2" })).toBe(false);
+    expect(isRunStatusRecord({ ...base, lab: { path: "x" } })).toBe(false);
+    expect(isRunStatusRecord(null)).toBe(false);
+  });
+
+  it("the legacy bridge reads the old lab:<id> convention, colons included, and nothing else", () => {
+    expect(inferLegacyLabId({ persona: { source: "lab:observer-live-check" } })).toBe("observer-live-check");
+    // Ids may legitimately contain a colon (the meta lab is `oss:meta`).
+    expect(inferLegacyLabId({ scenario: { source: "lab:oss:meta" } })).toBe("oss:meta");
+    // A plain persona path is NOT a lab marker — those runs are honestly lab-less.
+    expect(inferLegacyLabId({ persona: { source: "humanish/personas/synthetic-new-user.yaml" } })).toBeUndefined();
+    expect(inferLegacyLabId({ persona: { source: "lab:" } })).toBeUndefined();
+    expect(inferLegacyLabId({})).toBeUndefined();
+  });
+
+  it("the inert handle satisfies the interface for callers that cannot write", async () => {
+    const inert = inertRunStatus();
+    await expect(inert.touch()).resolves.toBeUndefined();
+    await expect(inert.finish()).resolves.toBeUndefined();
+    expect(() => inert.stop()).not.toThrow();
+  });
+});

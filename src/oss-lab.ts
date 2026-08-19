@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { runInit } from "./init.js";
+import type { RunLabProvenance } from "./run-status.js";
 import type { InitResult } from "./init.js";
 import { renderObserver } from "./observer.js";
 import type { ObserverResult } from "./observer.js";
@@ -41,6 +42,8 @@ export const DEFAULT_OSS_REPOS = [
 ] as const;
 
 export interface OssLabOptions {
+  /** Which manifest produced this run (#455). */
+  lab?: RunLabProvenance;
   cwd: string;
   keep?: boolean;
   limit?: number;

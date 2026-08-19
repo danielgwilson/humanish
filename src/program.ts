@@ -34,6 +34,7 @@ import type {
 } from "./labs.js";
 import { runLabPreflight, type LabPreflightReachabilityMode, type LabPreflightResult } from "./lab-preflight.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
+import type { RunLabProvenance } from "./run-status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
 import type { LabBackend } from "./lab-engine.js";
 import type { RunScorerProvenance } from "./run.js";
@@ -2118,6 +2119,7 @@ interface LoadedAdapterScorer {
 async function maybeLoadAdapterScorer(args: {
   cwd: string;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   backend: LabBackend;
   flag: string | undefined;
 }): Promise<
@@ -2172,6 +2174,11 @@ async function runLabCommand(args: {
   }
 
   const config = resolved.config;
+  // The run's identity (#455): which manifest, where it lives, and whether it is committed, a
+  // local overlay, or an explicit path. Resolved once here — the only place that knows all three —
+  // and carried into the run's status record and bundle so the filesystem can answer "which lab
+  // produced this run" without the old `persona.source = "lab:<id>"` string convention.
+  const lab: RunLabProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
   const backend = selectLabBackend(config);
   if (backend !== "cua" && labRerunFlagsRequested(args.options)) {
     writeUnsupportedRerunFlagsResult(args, backend);
@@ -2225,28 +2232,28 @@ async function runLabCommand(args: {
 
   switch (backend) {
     case "synthetic":
-      await runSyntheticBackend({ ...args, config });
+      await runSyntheticBackend({ ...args, config, labProvenance: lab });
       return;
     case "meta":
-      await runMetaBackend({ ...args, config });
+      await runMetaBackend({ ...args, config, labProvenance: lab });
       return;
     case "smoke":
-      await runSmokeBackend({ ...args, config });
+      await runSmokeBackend({ ...args, config, labProvenance: lab });
       return;
     case "cua":
-      await runCuaBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
+      await runCuaBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
       return;
     case "scripted":
-      await runScriptedBackend({ ...args, config });
+      await runScriptedBackend({ ...args, config, labProvenance: lab });
       return;
     case "terminal":
-      await runTerminalBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
+      await runTerminalBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
       return;
     case "shared-world":
-      await runSharedWorldBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
+      await runSharedWorldBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
       return;
     case "concurrent-shared-world":
-      await runConcurrentSharedWorldBackend({ ...args, config, ...(scorer ? { scorer } : {}) });
+      await runConcurrentSharedWorldBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
       return;
     default:
       // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
@@ -2282,6 +2289,7 @@ async function runSyntheticBackend(args: {
   io: CliIo;
   lab: string;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
@@ -2304,6 +2312,7 @@ async function runSyntheticBackend(args: {
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
+    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     count: simCount,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
@@ -2358,6 +2367,7 @@ async function runCuaBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
@@ -2432,6 +2442,7 @@ async function runCuaBackend(args: {
   try {
     outcome = await runLab(args.config, {
       cwd: args.options.cwd,
+      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       // Watch mode opens the served Observer below (or prints the phone target under --expose)
       // instead of the static render — preserved byte-for-byte from the pre-0.18 open policy so a
       // non-follow watch (dry-run/--json) does not double-open. Run mode keeps the static open.
@@ -2563,6 +2574,7 @@ async function runScriptedBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
@@ -2576,6 +2588,7 @@ async function runScriptedBackend(args: {
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
+    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     // Watch mode opens the served Observer below instead of the static render.
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
@@ -2608,6 +2621,7 @@ async function runTerminalBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
@@ -2622,6 +2636,7 @@ async function runTerminalBackend(args: {
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
+    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
@@ -2651,6 +2666,7 @@ async function runSharedWorldBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
@@ -2665,6 +2681,7 @@ async function runSharedWorldBackend(args: {
 
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
+    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
@@ -2713,6 +2730,7 @@ async function runConcurrentSharedWorldBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
@@ -2758,6 +2776,7 @@ async function runConcurrentSharedWorldBackend(args: {
   try {
     outcome = await runLab(args.config, {
       cwd: args.options.cwd,
+      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       open: wantsFollow ? false : shouldOpen,
       dryRun,
       ...(wantsFollow
@@ -2902,6 +2921,7 @@ async function runSmokeBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
@@ -2932,6 +2952,7 @@ async function runSmokeBackend(args: {
   const repos = labReposOverride(args.options);
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
+    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     count: limit,
     ...(repos === undefined ? {} : { repos }),
     ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
@@ -2949,6 +2970,7 @@ async function runMetaBackend(args: {
   command: Command;
   io: CliIo;
   config: LabConfig;
+  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
@@ -2996,6 +3018,8 @@ async function runMetaBackend(args: {
   try {
     const outcome = await runLab(args.config, {
       cwd: args.options.cwd,
+      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
+      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
       ...(codexAppServer === undefined ? {} : { codexAppServer }),
       ...(wantsFollow
