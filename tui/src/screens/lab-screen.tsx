@@ -3,7 +3,7 @@ import React from "react";
 
 import type { RunIndexEntry } from "../../../src/run-index.js";
 import type { LabRow } from "../../../src/run-projection.js";
-import { expectationLine, formatDuration, listWindow, livenessLabel } from "../../../src/run-projection.js";
+import { expectationLine, formatDuration, labSummaryLine, listWindow, livenessLabel } from "../../../src/run-projection.js";
 import { color } from "../text-props.js";
 
 /**
@@ -72,7 +72,10 @@ export function LabScreen({
       {/* The header carries the human name; this is the handle you would actually type. Lab
           resolution is by FILENAME, so this is the file stem and not necessarily the declared id. */}
       <Text dimColor>{row.declared ? `humanish lab run ${row.name}` : row.labId}</Text>
-      <Text>{expectationLine(row.expectation)}</Text>
+      {/* The SAME line the labs list shows. Rendering the mode-mixed expectation here instead put a
+          figure derived from dry runs two lines above "Start a live run" — the exact number this
+          screen's own docblock calls what someone reads before deciding to spend money. */}
+      <Text>{labSummaryLine(row)}</Text>
       {row.declared ? null : (
         // A lab that only exists in history is a real situation with a real cause, and the runs
         // stay readable. Saying why beats leaving someone to wonder if the surface is broken.

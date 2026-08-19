@@ -80,9 +80,27 @@ describe("what a lab may claim about itself", () => {
     expect(line).toBe("1m 30s · ~$0.50 median · 1 run");
   });
 
-  it("runs that finished but were never timed say so instead of showing a blank", () => {
+  it("runs that recorded nothing at all say exactly that", () => {
+    // No duration and no cost on either run: the honest line claims neither, and does not report
+    // "2 unpriced" as though a median existed for the rest of the sample.
     const line = expectationLine(expectationFor([run({ runId: "1" }), run({ runId: "2" })]));
-    expect(line).toBe("2 runs, nothing timed");
+    expect(line).toBe("2 runs, nothing recorded");
+  });
+
+  it("distinguishes SOME runs unpriced from NONE priced", () => {
+    const some = expectationLine(
+      expectationFor([
+        run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
+        run({ runId: "2", durationMs: 60_000 })
+      ])
+    );
+    expect(some).toBe("1m · ~$1.00 median · 2 runs, 1 unpriced");
+
+    const none = expectationLine(
+      expectationFor([run({ runId: "1", durationMs: 60_000 }), run({ runId: "2", durationMs: 60_000 })])
+    );
+    // A duration is known, so it is claimed; no cost is, so none is implied.
+    expect(none).toBe("1m · 2 runs, none priced");
   });
 });
 

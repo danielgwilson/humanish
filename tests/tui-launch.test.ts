@@ -20,7 +20,7 @@ describe("starting a run from the terminal surface (#455)", () => {
     const calls: { command: string; args: string[]; options: Record<string, unknown> }[] = [];
     const spawn = ((command: string, args: string[], options: Record<string, unknown>) => {
       calls.push({ command, args, options });
-      return { pid: 4242, unref: () => {} };
+      return { pid: 4242, unref: () => {}, on: () => {} };
     }) as never;
     return { calls, spawn };
   }
@@ -62,10 +62,62 @@ describe("starting a run from the terminal surface (#455)", () => {
     expect(live.calls[0]!.args).not.toContain("--dry-run");
   });
 
-  it("returns the pid, which is how the surface finds the run it just started", async () => {
+  it("returns the pid AND when the launch happened — a pid alone is not an identity", async () => {
     const { spawn } = recordingSpawn();
+    const before = Date.now();
     const result = await launchRun({ cwd, lab: "signup-flow", mode: "live", spawn, cliPath: "/x/cli.js" });
     expect(result.ok && result.run.pid).toBe(4242);
+    // Pids are recycled and a finished run keeps its pid in status.json forever, so a caller
+    // matching on pid must also be able to require the record to be newer than the launch.
+    const launchedAt = result.ok ? Date.parse(result.run.launchedAt) : Number.NaN;
+    expect(launchedAt).toBeGreaterThanOrEqual(before - 1_000);
+    expect(launchedAt).toBeLessThanOrEqual(Date.now() + 1_000);
+  });
+
+  it("refuses to write the log through a symlink", async () => {
+    // The log can carry provider error text, so a symlink planted at its path must not be able to
+    // redirect it outside .humanish or defeat the 0600 mode by targeting a looser file.
+    const { symlink, mkdir } = await import("node:fs/promises");
+    const outside = path.join(cwd, "outside.log");
+    const launches = path.join(cwd, ".humanish", "launches");
+    await mkdir(launches, { recursive: true });
+    const stamp = "2026-08-19T12-00-00-000Z";
+    await symlink(outside, path.join(launches, `${stamp}-signup-flow.log`));
+
+    const { calls, spawn } = recordingSpawn();
+    const result = await launchRun({
+      cwd,
+      lab: "signup-flow",
+      mode: "live",
+      spawn,
+      cliPath: "/x/cli.js",
+      now: () => new Date("2026-08-19T12:00:00.000Z")
+    });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error.code).toBe("HUMANISH_LAUNCH_FAILED");
+    // Nothing was spawned, and the symlink target was never created.
+    expect(calls).toHaveLength(0);
+    const { access } = await import("node:fs/promises");
+    await expect(access(outside)).rejects.toThrow();
+  });
+
+  it("survives an asynchronous spawn failure instead of taking the surface down with it", async () => {
+    // uv_spawn reports EAGAIN/EMFILE/ENOMEM by EMITTING an 'error' event. An 'error' event with no
+    // listener is re-thrown by EventEmitter as an uncaught exception, which would tear down the
+    // whole TUI — the one thing this module promises never to do.
+    const listeners: Record<string, ((error: Error) => void)[]> = {};
+    const spawn = (() => ({
+      pid: 4242,
+      unref: () => {},
+      on: (event: string, handler: (error: Error) => void) => {
+        (listeners[event] ??= []).push(handler);
+      }
+    })) as never;
+    const result = await launchRun({ cwd, lab: "signup-flow", mode: "live", spawn, cliPath: "/x/cli.js" });
+    expect(result.ok).toBe(true);
+    expect(listeners.error?.length ?? 0).toBeGreaterThan(0);
+    // Delivering the failure must not throw.
+    expect(() => listeners.error?.forEach((handler) => handler(new Error("EAGAIN")))).not.toThrow();
   });
 
   it("refuses a lab handle that could be read as a flag", async () => {

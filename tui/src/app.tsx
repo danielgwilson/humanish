@@ -45,6 +45,12 @@ const REFRESH_MS = 2_000;
 const LAUNCH_RECORD_TIMEOUT_MS = 5_000;
 const LAUNCH_RECORD_POLL_MS = 100;
 
+/**
+ * The shortest gap between arming a live run and committing it. Key auto-repeat delivers around one
+ * event every 30ms, so without a floor a held Enter arms and commits inside a single keypress.
+ */
+const LIVE_CONFIRM_MIN_MS = 400;
+
 export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const size = useTerminalSize();
@@ -53,9 +59,14 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const [error, setError] = useState<string | undefined>(undefined);
   // A live start is armed by the first Enter and committed by the second; a dry run needs neither.
   const [confirming, setConfirming] = useState<"live" | undefined>(undefined);
-  const [launchError, setLaunchError] = useState<string | undefined>(undefined);
+  // Launch state is SCOPED TO THE LAB it belongs to: it is one surface with one piece of state, and
+  // an unscoped note follows the operator to a different lab's screen and reports something about
+  // that lab which is not true of it.
+  const [launchError, setLaunchError] = useState<{ labKey: string; text: string } | undefined>(undefined);
   /** A launch in flight, or one whose record has not appeared yet. NOT an error. */
-  const [launchNote, setLaunchNote] = useState<string | undefined>(undefined);
+  const [launchNote, setLaunchNote] = useState<{ labKey: string; text: string } | undefined>(undefined);
+  /** When the live confirmation was armed, so a HELD key cannot blow through it. */
+  const [armedAt, setArmedAt] = useState<number | undefined>(undefined);
   const clock = now ?? Date.now();
 
   // Identity of the selected row, kept current so a refresh that REORDERS the list can put the
@@ -63,6 +74,8 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   // held across a refresh silently points at a different lab — and that is how someone opens, or
   // starts, the wrong one.
   const selectedIdRef = useRef<string | undefined>(undefined);
+  /** Where the operator is RIGHT NOW, readable from an async launch that started long ago. */
+  const screenRef = useRef<ReturnType<typeof currentScreen>>({ name: "labs" });
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +118,7 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const rowCount = countRows(screen, data);
 
   useEffect(() => {
+    screenRef.current = screen;
     const identity = identityOf(screen, data, selected);
     if (identity !== undefined) selectedIdRef.current = identity;
   }, [screen, data, selected]);
@@ -127,32 +141,58 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const start = useCallback(
     async (row: LabRow, mode: "dry-run" | "live"): Promise<void> => {
       if (mode === "live" && confirming !== "live") {
-        // Arm, do not fire. The row above says what a live run costs; this makes the operator
-        // press again having read it.
+        // Arm, do not fire. The row above says what a live run costs; this makes the operator press
+        // again having read it.
         setConfirming("live");
+        setArmedAt(Date.now());
+        return;
+      }
+      if (mode === "live" && armedAt !== undefined && Date.now() - armedAt < LIVE_CONFIRM_MIN_MS) {
+        // A held Enter delivers repeats every ~30ms, which would arm and commit a live run inside
+        // one keypress. A confirmation nobody had time to read is not a confirmation.
         return;
       }
       setConfirming(undefined);
+      setArmedAt(undefined);
       setLaunchError(undefined);
-      setLaunchNote(`starting ${row.name}…`);
+      setLaunchNote({ labKey: row.key, text: `starting ${row.name}…` });
       const result = await options.capabilities.startRun({ cwd: options.cwd, lab: row.name, mode });
       if (!result.ok) {
         setLaunchNote(undefined);
-        setLaunchError(result.error.message);
+        setLaunchError({ labKey: row.key, text: result.error.message });
         return;
       }
 
-      // The run is detached and writes its own record as it starts; the surface finds it by the pid
-      // it was handed rather than by minting an id or guessing at a new directory. Spawning takes a
-      // moment, so this WAITS for the record rather than reading once and concluding it is missing
-      // — a fast dry run beat that single read and reported a healthy run as a problem.
+      // Find the run this launch produced. A pid ALONE is not an identity: pids are recycled, and a
+      // finished run keeps its pid in status.json forever, so a week-old record can carry the pid
+      // the kernel just handed this child. The record must also be NEWER than the launch.
+      const launchedMs = Date.parse(result.run.launchedAt);
+      const isOurs = (run: RunIndexEntry): boolean => {
+        if (run.pid !== result.run.pid) return false;
+        const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
+        if (!Number.isFinite(started) || !Number.isFinite(launchedMs)) return false;
+        // A second of slack for clock granularity between the two processes.
+        return started >= launchedMs - 1_000;
+      };
+
       const deadline = Date.now() + LAUNCH_RECORD_TIMEOUT_MS;
       for (;;) {
         const index = await options.capabilities.readRunIndex(options.cwd);
-        const started = index.runs.find((run) => run.pid === result.run.pid);
+        const started = index.runs.find(isOurs);
         if (started !== undefined) {
+          // Publish what was just read BEFORE navigating. Reading the index into a local and then
+          // navigating leaves `data` on its pre-launch snapshot, so the run screen looks the new run
+          // up in a map that does not contain it and reports the run it just started as "no longer
+          // on disk" — on every single start.
+          const labs = await options.capabilities.listLabs(options.cwd);
+          setData(project(index, labs.labs));
           setLaunchNote(undefined);
-          dispatch({ type: "enter", screen: { name: "run", labId: row.labId, runId: started.runId } });
+          // Only follow the run if the operator is still where they launched from. This resolves up
+          // to LAUNCH_RECORD_TIMEOUT_MS later, by which time they may have gone somewhere else, and
+          // yanking the screen out from under them is worse than not following.
+          if (screenRef.current.name === "lab" && screenRef.current.labKey === row.key) {
+            dispatch({ type: "enter", screen: { name: "run", labId: row.labId, runId: started.runId } });
+          }
           return;
         }
         if (Date.now() >= deadline) break;
@@ -163,13 +203,15 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
       // only account of that — so show it rather than leaving a silent gap.
       const log = await options.capabilities.readLaunchLog(result.run.logPath);
       setLaunchNote(undefined);
-      setLaunchError(
-        log === ""
-          ? `${row.name} started (pid ${result.run.pid}) but has not reported in. Check ${result.run.logPath}.`
-          : `${row.name} did not report in. Its log ends:\n${log.split("\n").slice(-3).join("\n")}`
-      );
+      setLaunchError({
+        labKey: row.key,
+        text:
+          log === ""
+            ? `${row.name} started (pid ${result.run.pid}) but has not reported in. Check ${result.run.logPath}.`
+            : `${row.name} did not report in. Its log ends:\n${log.split("\n").slice(-3).join("\n")}`
+      });
     },
-    [confirming, options]
+    [confirming, armedAt, options]
   );
 
   useInput(
@@ -179,12 +221,14 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
           exit();
           return;
         }
-        if (key.upArrow || input === "k") {
-          dispatch({ type: "move", delta: -1, total: rowCount });
-          return;
-        }
-        if (key.downArrow || input === "j") {
-          dispatch({ type: "move", delta: 1, total: rowCount });
+        if (key.upArrow || input === "k" || key.downArrow || input === "j") {
+          // Moving off the armed row disarms it. Otherwise the banner keeps claiming Enter will
+          // confirm a live run while the cursor sits somewhere Enter does something else entirely.
+          if (confirming !== undefined) {
+            setConfirming(undefined);
+            setArmedAt(undefined);
+          }
+          dispatch({ type: "move", delta: key.upArrow || input === "k" ? -1 : 1, total: rowCount });
           return;
         }
         if (key.escape || key.leftArrow) {
@@ -390,8 +434,8 @@ function renderScreen(args: {
   viewport: number;
   now: number;
   confirming: "live" | undefined;
-  launchError: string | undefined;
-  launchNote: string | undefined;
+  launchError: { labKey: string; text: string } | undefined;
+  launchNote: { labKey: string; text: string } | undefined;
 }): React.ReactElement {
   const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote } = args;
   if (screen.name === "labs") {
@@ -418,8 +462,8 @@ function renderScreen(args: {
         now={now}
         canStart={row.declared}
         confirming={confirming}
-        launchError={launchError}
-        launchNote={launchNote}
+        launchError={launchError?.labKey === row.key ? launchError.text : undefined}
+        launchNote={launchNote?.labKey === row.key ? launchNote.text : undefined}
       />
     );
   }

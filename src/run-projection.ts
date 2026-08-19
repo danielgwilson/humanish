@@ -113,7 +113,13 @@ export function expectationFor(
     .map((entry) => entry.estimatedCostUsd)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
     .sort((a, b) => a - b);
-  const costUnknown = finished.filter((entry) => entry.estimatedCostUsd === null).length;
+  // A cost is unknown whether it was DECLARED absent (`null`) or never recorded at all
+  // (`undefined` — every fail-closed exit finalized with no outcome). Counting only the first
+  // reports "~$1.20 median · 3 runs" for a sample where two runs were never priced, which claims a
+  // denominator the figure does not have.
+  const costUnknown = finished.filter(
+    (entry) => entry.estimatedCostUsd === null || entry.estimatedCostUsd === undefined
+  ).length;
   return {
     sample: finished.length,
     ...(durations.length === 0
@@ -149,8 +155,28 @@ export function expectationLine(expectation: LabExpectation): string {
     parts.push(`~$${expectation.medianCostUsd.toFixed(2)} median`);
   }
   const sample = `${expectation.sample} run${expectation.sample === 1 ? "" : "s"}`;
-  const unknown = expectation.costUnknown > 0 ? `, ${expectation.costUnknown} unpriced` : "";
-  return parts.length === 0 ? `${sample}${unknown}, nothing timed` : `${parts.join(" · ")} · ${sample}${unknown}`;
+  // "2 of 3 unpriced" and "none of them priced" are different facts, and a line that reports the
+  // second as the first reads as though a median existed for the rest.
+  const allUnpriced = expectation.sample > 0 && expectation.costUnknown === expectation.sample;
+  const unknown = expectation.costUnknown === 0 ? "" : allUnpriced ? ", none priced" : `, ${expectation.costUnknown} unpriced`;
+  if (parts.length === 0) {
+    return allUnpriced ? `${sample}, nothing recorded` : `${sample}${unknown}, nothing timed`;
+  }
+  return `${parts.join(" · ")} · ${sample}${unknown}`;
+}
+
+/**
+ * The one line a lab may say about itself, wherever it is shown.
+ *
+ * Prefers LIVE figures: cost and duration are what someone reads before spending, and a median
+ * diluted by dry runs reports a live study as cheaper and faster than it has ever been. With no
+ * live history it reports the count and claims nothing about time or money — which is why this is
+ * shared rather than reimplemented per surface, since the two disagreeing is the whole failure.
+ */
+export function labSummaryLine(row: Pick<LabRow, "runs" | "declared" | "expectation" | "liveExpectation">): string {
+  if (row.runs === 0) return row.declared ? "never run" : "no runs";
+  if (row.liveExpectation.sample > 0) return expectationLine(row.liveExpectation);
+  return `${row.runs} ${row.runs === 1 ? "run" : "runs"}, none live`;
 }
 
 /** Compact duration: seconds under a minute, then m/s, then h/m. */

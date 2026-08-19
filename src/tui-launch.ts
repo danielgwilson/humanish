@@ -12,6 +12,7 @@
 // because the filesystem was always the source of truth rather than a process handle.
 
 import { spawn, type SpawnOptions } from "node:child_process";
+import { constants as fsConstants } from "node:fs";
 import { open } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,8 +24,12 @@ import { prepareManagedHumanishOutputDirectory } from "./selected-output-paths.j
  * characters a manifest name can actually contain, and — the part that matters — never allowed to
  * begin with `-`, because argv is positional: a lab called `--json` would otherwise be handed to
  * the CLI as a flag. There is no shell involved, so this is the whole injection surface.
+ *
+ * A leading underscore IS allowed: `_wip.yaml` is an ordinary way to name a work-in-progress
+ * manifest, `humanish lab run _wip` resolves it, and refusing it here would leave the surface
+ * listing a lab it will not start. A leading dot stays out — that names a hidden file, not a lab.
  */
-const SAFE_LAB_HANDLE = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
+const SAFE_LAB_HANDLE = /^[A-Za-z0-9_][A-Za-z0-9._:-]*$/;
 
 export function isSafeLabHandle(value: string): boolean {
   return SAFE_LAB_HANDLE.test(value) && value.length <= 128;
@@ -45,9 +50,15 @@ export interface LaunchRunOptions {
 }
 
 export interface LaunchedRun {
-  /** The spawned CLI's pid. The run's `status.json` stamps the same value, which is how the
-   *  surface identifies WHICH run it just started without having to mint an id or guess. */
+  /** The spawned CLI's pid. The run's `status.json` stamps the same value. */
   pid: number;
+  /**
+   * When the launch happened. A pid ALONE cannot identify a run: pids are recycled by the OS and a
+   * finished run keeps its pid in `status.json` forever, so a week-old record can carry the pid the
+   * kernel just handed this child. Anything matching on pid must also require the record to be
+   * newer than this.
+   */
+  launchedAt: string;
   /** Absolute path to the launch log; the only diagnosis when a run dies before writing evidence. */
   logPath: string;
   /** Exactly what was executed, so a failure can be reproduced by hand. */
@@ -83,6 +94,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   const cwd = path.resolve(options.cwd);
   const now = options.now ?? (() => new Date());
   const spawnFn = options.spawn ?? spawn;
+  const launchedAt = now().toISOString();
 
   let logPath: string;
   let handle;
@@ -90,9 +102,13 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     // Contained under `.humanish/`, through the same guard every other output path uses, so a
     // symlinked directory cannot redirect the log somewhere outside the project.
     const logDir = await prepareManagedHumanishOutputDirectory(cwd, "launches");
-    const stamp = now().toISOString().replace(/[:.]/g, "-");
+    const stamp = launchedAt.replace(/[:.]/g, "-");
     logPath = path.join(logDir.physicalPath, `${stamp}-${options.lab}.log`);
-    handle = await open(logPath, "a", 0o600);
+    // O_NOFOLLOW so a symlink planted at this path cannot redirect a run's output — which may carry
+    // provider error text — outside the project, and cannot defeat the 0600 mode by pointing at a
+    // file that already exists with looser permissions. O_CREAT|O_APPEND keeps ordinary reuse
+    // working; only a symlink is refused (ELOOP).
+    handle = await open(logPath, fsConstants.O_CREAT | fsConstants.O_WRONLY | fsConstants.O_APPEND | fsConstants.O_NOFOLLOW, 0o600);
   } catch (cause) {
     return {
       ok: false,
@@ -131,6 +147,14 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
 
   try {
     const child = spawnFn(process.execPath, args, spawnOptions);
+    // A spawn failure is delivered ASYNCHRONOUSLY as an 'error' event (EAGAIN, EMFILE, ENOMEM, a
+    // vanished node binary). An 'error' event with no listener is re-thrown by EventEmitter as an
+    // uncaught exception — which would tear down the whole surface, the one thing this module
+    // promises never to do. The run is already unref'd and unobserved, so recording it is all that
+    // is available; the operator learns about it from the launch log and the missing record.
+    child.on("error", () => {
+      // Deliberately empty: see above. The failure surfaces as a run that never reports in.
+    });
     if (child.pid === undefined) {
       await handle.close();
       return {
@@ -145,7 +169,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     await handle.close();
     return {
       ok: true,
-      run: { pid: child.pid, logPath, command: [process.execPath, ...args] }
+      run: { pid: child.pid, launchedAt, logPath, command: [process.execPath, ...args] }
     };
   } catch (cause) {
     await handle.close().catch(() => undefined);
