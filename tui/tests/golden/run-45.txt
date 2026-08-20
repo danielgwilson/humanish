@@ -1,10 +1,10 @@
-run                           humanish v9.9.9
-/projects/acme-app
+human(ish)   acme-app · 1 participant working
+‹ labs / signup-flow / run
 
 cua-2026-08-19T10-00-00-000Z-cc33dd44
 pass · live · signup-flow
 
-reading the run…
+no participant record yet
 
 started       2026-08-19T10:00:00.000Z
 duration      2m
@@ -13,4 +13,4 @@ outcome       2/2 reached the goal, 1
 cost          ~$1.20 estimated
 from          status.json
 
-esc back · q quit
+esc back   q quit

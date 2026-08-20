@@ -37,7 +37,8 @@ const options = (): TuiOptions =>
       listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
       startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
       readLaunchLog: async () => "",
-      readRunDetail: async () => null
+      readRunDetail: async () => null,
+      readLabSummary: async () => null
     },
     stdin: process.stdin,
     stdout: process.stdout
@@ -55,12 +56,18 @@ async function pressUntil(
   predicate: (frame: string) => boolean,
   limit = 8
 ): Promise<string> {
-  let frame = "";
+  // Waits for the frame the predicate wants BEFORE deciding to press again. Pressing and then
+  // testing whatever frame came back overshoots, because Ink's first frame after a key can predate
+  // the state change the key caused.
+  let last = "";
   for (let index = 0; index < limit; index += 1) {
-    frame = await surface.press(key);
-    if (predicate(frame)) return frame;
+    try {
+      return await surface.press(key, predicate, 400);
+    } catch (error) {
+      last = error instanceof Error ? error.message : String(error);
+    }
   }
-  throw new Error(`pressUntil: never reached the wanted row after ${limit} presses. Last frame:\n${frame}`);
+  throw new Error(`pressUntil: never reached the wanted row after ${limit} presses. Last: ${last.slice(0, 400)}`);
 }
 
 async function openSurface(columns = 80) {
@@ -73,50 +80,51 @@ async function openSurface(columns = 80) {
 describe("moving through the surface", () => {
   it("Enter opens the selected lab, and its runs are that lab's runs only", async () => {
     const surface = await openSurface();
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("Signup flow") && frame.includes("cua-"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
     surface.unmount();
 
     // The first lab is selected by default and is the live one, so Enter lands on Signup flow.
-    expect(lab).toContain("Signup flow");
-    // Both of signup-flow's runs, and neither of diagram-editor's.
-    expect(lab).toContain("aa11bb22");
-    expect(lab).toContain("cc33dd44");
-    expect(lab).not.toContain("ee55ff66");
+    expect(lab).toContain("‹ labs / signup-flow");
+    // Both of signup-flow's runs, and neither of diagram-editor's. Rows are identified by when they
+    // ran and what happened, not by their id — the id is on the run screen, one level in.
+    expect(lab).toContain("2/2 reached the goal");
+    expect(lab).toContain("~$1.20");
+    expect(lab).not.toContain("0/1 reached the goal");
   });
 
   it("Escape returns to the labs list, with the selection where it was left", async () => {
     const surface = await openSurface();
-    await surface.press(KEY.down, (frame) => frame.includes("› diagram-editor"));
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("no manifest") || frame.includes("ee55ff66"));
-    expect(lab).toContain("ee55ff66");
+    await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start") || frame.includes("no manifest"));
+    expect(lab).toContain("0/1 reached the goal");
 
     const back = await surface.press(KEY.escape, (frame) => frame.includes("never-run-lab"));
     surface.unmount();
     // Back where we were, still on the second row rather than reset to the top — a list that
     // forgets its position makes every "just check that one" cost the scroll again.
-    expect(back).toContain("› diagram-editor");
+    expect(back).toMatch(/❯[^\n]*diagram-editor/);
   });
 
   it("renders the lab screen", async () => {
     const surface = await openSurface();
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("Signup flow") && frame.includes("cua-"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
     surface.unmount();
     await expectGolden("lab-80", normalizeFrame(lab));
   });
 
   it("renders the lab screen on a phone-width terminal", async () => {
     const surface = await openSurface(45);
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("cua-"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
     surface.unmount();
     await expectGolden("lab-45", normalizeFrame(lab));
   });
 
   it("renders one run on a phone-width terminal, wrapping rather than overflowing", async () => {
     const surface = await openSurface(45);
-    await surface.press(KEY.enter, (frame) => frame.includes("cua-"));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
     // The FINISHED run, deliberately: it is the one carrying a participants line long enough to
     // run off a phone-width screen.
-    await pressUntil(surface, KEY.down, (frame) => /\u203a[^\n]*cc33dd44/.test(frame));
+    await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("outcome"));
     surface.unmount();
     const frame = normalizeFrame(run);
@@ -128,8 +136,8 @@ describe("moving through the surface", () => {
 
   it("renders one run, in place, with only the facts that were recorded", async () => {
     const surface = await openSurface();
-    await surface.press(KEY.enter, (frame) => frame.includes("cua-"));
-    await pressUntil(surface, KEY.down, (frame) => /›[^\n]*cc33dd44/.test(frame));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("outcome"));
     surface.unmount();
     await expectGolden("run-80", normalizeFrame(run));
@@ -137,19 +145,19 @@ describe("moving through the surface", () => {
 
   it("warns that two manifests share one id, because the runs below cannot be told apart", async () => {
     const surface = await openSurface();
-    await surface.press(KEY.down, (frame) => /\u203a[^\n]*diagram-editor/.test(frame));
+    await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
     const lab = await surface.press(KEY.enter, (frame) => frame.includes("manifests declare"));
     surface.unmount();
 
-    expect(lab).toContain("2 manifests declare id");
-    expect(lab).toContain("the runs below are shared between them");
+    expect(lab).toContain("2 manifests declare");
+    expect(lab).toContain("these runs are shared between them");
   });
 
   it("a run with no recorded cost says so rather than showing $0.00", async () => {
     const surface = await openSurface();
-    await surface.press(KEY.down, (frame) => frame.includes("› diagram-editor"));
-    await surface.press(KEY.enter, (frame) => frame.includes("ee55ff66"));
-    await pressUntil(surface, KEY.down, (frame) => /›[^\n]*ee55ff66/.test(frame));
+    await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*0\/1 reached the goal/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("cost"));
     surface.unmount();
 
@@ -161,9 +169,9 @@ describe("moving through the surface", () => {
 
   it("an interrupted run explains itself instead of looking like a bug", async () => {
     const surface = await openSurface();
-    await surface.press(KEY.down, (frame) => frame.includes("› diagram-editor"));
-    await surface.press(KEY.enter, (frame) => frame.includes("99887766"));
-    await pressUntil(surface, KEY.down, (frame) => /›[^\n]*99887766/.test(frame));
+    await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*no verdict/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
     surface.unmount();
 

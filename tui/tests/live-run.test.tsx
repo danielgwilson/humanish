@@ -59,7 +59,8 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
     listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
     startRun: async () => ({ ok: true, run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x", command: [] } }),
     readLaunchLog: async () => "",
-    readRunDetail: async () => detail
+    readRunDetail: async () => detail,
+    readLabSummary: async () => null
   };
   return {
     cwd: "/projects/acme-app",
@@ -77,13 +78,19 @@ async function openLiveRun(detail: RunDetail | null, columns = 80) {
     rows: 30,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
-  await surface.press(KEY.enter, (frame) => frame.includes("Start a dry run"));
-  // Past the two start actions to the newest run, which is the live one.
+  await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+  // Past the Start action to the newest run, which is the live one.
   for (let index = 0; index < 3; index += 1) {
     const frame = await surface.press(KEY.down);
-    if (/›[^\n]*aa11bb22/.test(frame)) break;
+    if (/❯[^\n]*(starting|synthetic-new-user|CUA browser)/.test(frame)) break;
   }
-  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("running ·") || candidate.includes("outcome"));
+  // Wait for the DETAIL-bearing frame: entering the run screen renders its own facts first and the
+  // participants a moment later, so matching the status line alone captures the frame before the
+  // thing under test has arrived.
+  const frame = await surface.press(
+    KEY.enter,
+    (candidate) => candidate.includes("patience:medium") || candidate.includes("no participant record yet")
+  );
   return { surface, frame };
 }
 

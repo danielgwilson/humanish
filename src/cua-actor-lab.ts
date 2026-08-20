@@ -3347,6 +3347,12 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     // write so a stale flush can never resurrect the in-progress bundle. A flush failure is
     // swallowed: mid-run observability must never break the run itself.
     const streamIdByLane = new Map(laneSpecs.map((spec) => [spec.laneId, spec.streamId]));
+    // The persona each lane is running, so the live flush can say who is in it.
+    const personaByStream = new Map(
+      laneSpecs
+        .map((spec) => [spec.streamId, spec.persona?.id] as const)
+        .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string")
+    );
     const liveItemsByStream = new Map<string, ActorTraceItem[]>();
     let flushWriting: Promise<void> | undefined;
     let flushDirty = false;
@@ -3365,7 +3371,20 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
             const liveItems = liveItemsByStream.get(stream.id);
             return liveItems === undefined
               ? stream
-              : { ...stream, liveActor: { schema: "humanish.live-actor.v1" as const, updatedAt, items: [...liveItems] } };
+              : {
+                  ...stream,
+                  liveActor: {
+                    schema: "humanish.live-actor.v1" as const,
+                    updatedAt,
+                    // WHO is in this lane, carried while the run is live. Without it a surface
+                    // watching a live run can only name the lane, and "CUA browser — observer-live-
+                    // check" is the harness talking about itself where the participant should be.
+                    ...(personaByStream.get(stream.id) === undefined
+                      ? {}
+                      : { persona: { id: personaByStream.get(stream.id)! } }),
+                    items: [...liveItems]
+                  }
+                };
           })
         };
         try {

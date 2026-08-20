@@ -21,6 +21,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
     },
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
+      readLabSummary: async () => null,
     ...overrides
   };
   const options: TuiOptions = {
@@ -43,7 +44,7 @@ async function openLab(options: TuiOptions) {
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
   // The first lab is selected by default; Enter opens it.
-  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("Start a dry run"));
+  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start"));
   return { surface, frame };
 }
 
@@ -64,7 +65,7 @@ describe("starting a run", () => {
   it("a live run is armed first and commits on the second press, restating the cost", async () => {
     const { started, options } = harness();
     const { surface } = await openLab(options);
-    await surface.press(KEY.down, (frame) => frame.includes("› Start a live run"));
+    await surface.press(KEY.right, (frame) => frame.includes("←→ switch"));
 
     const armed = await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
     // A person reads the prompt before pressing again. Confirming faster than a human can read is
@@ -74,7 +75,7 @@ describe("starting a run", () => {
     // above was read.
     expect(started).toHaveLength(0);
     expect(armed).toContain("~$1.20 median");
-    expect(armed).toContain("enter to confirm, esc to cancel");
+    expect(armed).toContain("⏎ confirm · esc cancel");
 
     await surface.press(KEY.enter, (frame) => frame.length >= 0);
     surface.unmount();
@@ -87,19 +88,19 @@ describe("starting a run", () => {
     // navigating away, which would leave the operator unsure whether they had just spent money.
     const { started, options } = harness();
     const { surface } = await openLab(options);
-    await surface.press(KEY.down, (frame) => frame.includes("› Start a live run"));
+    await surface.press(KEY.right, (frame) => frame.includes("←→ switch"));
     await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
 
     // Asserts what the frame CONTAINS, not only what it lacks: Ink writes blank control frames, and
     // a bare negation matches those trivially.
     const cancelled = await surface.press(
       KEY.escape,
-      (frame) => frame.includes("Start a live run") && !frame.includes("start a live run?")
+      (frame) => frame.includes("❯ Start") && !frame.includes("start a live run?")
     );
     surface.unmount();
     expect(started).toHaveLength(0);
     // Still on the lab, not thrown back to the labs list.
-    expect(cancelled).toContain("Start a live run");
+    expect(cancelled).toContain("Start");
   });
 
   it("shows why a launch failed rather than looking like nothing happened", async () => {
@@ -126,7 +127,7 @@ describe("starting a run", () => {
       until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
     });
     const lab = await surface.press(KEY.enter, (frame) => frame.includes("no manifest"));
-    expect(lab).not.toContain("Start a");
+    expect(lab).not.toContain("❯ Start");
     await surface.press(KEY.enter, (frame) => frame.length >= 0);
     surface.unmount();
     expect(started).toHaveLength(0);
@@ -157,10 +158,11 @@ describe("what a lab may claim about a live run", () => {
     const { surface, frame } = await openLab(options);
     surface.unmount();
 
-    const liveRow = frame.split("\n").find((line) => line.includes("Start a live run")) ?? "";
-    expect(liveRow).toContain("no live runs yet");
-    expect(liveRow).not.toContain("0s");
-    expect(liveRow).not.toContain("$");
+    // The lab's headline figure must not quote dry-run history: this lab has only dry runs, so it
+    // reports the count and claims nothing about time or money.
+    const headline = frame.split("\n").find((line) => /\d+ runs?, /.test(line)) ?? "";
+    expect(headline).toMatch(/none live|nothing recorded|none priced/);
+    expect(headline).not.toContain("$");
   });
 
   it("quotes live history when there is some, and only live history", async () => {
@@ -190,12 +192,12 @@ describe("what a lab may claim about a live run", () => {
     const { surface, frame } = await openLab(options);
     surface.unmount();
 
-    const liveRow = frame.split("\n").find((line) => line.includes("Start a live run")) ?? "";
     // The live run's own figures, undiluted by the dry run beside it — a median over both would
     // report $0.60 and a minute, neither of which anything ever cost or took.
-    expect(liveRow).toContain("~$1.20 median");
-    expect(liveRow).toContain("1 run");
-    expect(liveRow).not.toContain("2 runs");
+    const headline = frame.split("\n").find((line) => line.includes("median")) ?? "";
+    expect(headline).toContain("~$1.20 median");
+    expect(headline).toContain("1 run");
+    expect(headline).not.toContain("2 runs");
   });
 });
 
@@ -285,8 +287,8 @@ describe("what the surface says about the run it just started", () => {
     await surface.press(KEY.enter, (candidate) => candidate.includes("EACCES"));
     // Leave, and open a different lab: its screen must say nothing about the other lab's failure.
     await surface.press(KEY.escape, (candidate) => candidate.includes("never-run-lab"));
-    await pressUntilFrame(surface, KEY.down, (candidate) => /›[^\n]*diagram-editor/.test(candidate));
-    const other = await surface.press(KEY.enter, (candidate) => candidate.includes("Start a dry run"));
+    await pressUntilFrame(surface, KEY.down, (candidate) => /❯[^\n]*diagram-editor/.test(candidate));
+    const other = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start"));
     surface.unmount();
 
     expect(other).not.toContain("EACCES");
@@ -300,10 +302,13 @@ async function pressUntilFrame(
   predicate: (frame: string) => boolean,
   limit = 8
 ): Promise<string> {
-  let frame = "";
+  let last = "";
   for (let index = 0; index < limit; index += 1) {
-    frame = await surface.press(key);
-    if (predicate(frame)) return frame;
+    try {
+      return await surface.press(key, predicate, 400);
+    } catch (error) {
+      last = error instanceof Error ? error.message : String(error);
+    }
   }
-  throw new Error(`never reached the wanted row. Last frame:\n${frame}`);
+  throw new Error(`never reached the wanted row. Last: ${last.slice(0, 400)}`);
 }

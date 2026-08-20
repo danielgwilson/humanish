@@ -2,12 +2,14 @@ import { Box, Text, useApp, useInput } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import type { LabListEntry } from "../../src/labs.js";
+import type { LabSummary } from "../../src/lab-summary.js";
 import type { RunDetail } from "../../src/run-detail.js";
 import type { RunIndexEntry, RunIndexResult } from "../../src/run-index.js";
 import { labRows, type LabRow } from "../../src/run-projection.js";
 import type { TuiOptions } from "../../src/tui-contract.js";
 import { fitPathToWidth } from "./fit-text.js";
 import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
+import { Frame, contentWidth } from "./frame.js";
 import { LabScreen, labItems } from "./screens/lab-screen.js";
 import { LabsScreen } from "./screens/labs-screen.js";
 import { RunScreen } from "./screens/run-screen.js";
@@ -52,6 +54,9 @@ const LAUNCH_RECORD_POLL_MS = 100;
  */
 const LIVE_CONFIRM_MIN_MS = 400;
 
+/** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
+const SPINNER_MS = 120;
+
 export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const size = useTerminalSize();
@@ -74,6 +79,13 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
    * because "still loading" and "nothing there" are different facts.
    */
   const [detail, setDetail] = useState<RunDetail | null | undefined>(undefined);
+  /** Advances the spinners. A live row that does not move reads as stale data. */
+  const [tick, setTick] = useState(0);
+  /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
+  const [modeByLab, setModeByLab] = useState<Record<string, "dry-run" | "live">>({});
+  const [summary, setSummary] = useState<LabSummary | null | undefined>(undefined);
+  /** Detail for LIVE runs only, so the labs list can name who is in them. */
+  const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
   const clock = now ?? Date.now();
 
   // Identity of the selected row, kept current so a refresh that REORDERS the list can put the
@@ -238,6 +250,20 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
           dispatch({ type: "move", delta: key.upArrow || input === "k" ? -1 : 1, total: rowCount });
           return;
         }
+        // ←/→ switch the Start toggle when it is selected; otherwise ← is back.
+        if ((key.leftArrow || key.rightArrow) && screen.name === "lab" && data !== undefined) {
+          const { row, items } = itemsForLab(data, screen.labKey);
+          if (row !== undefined && items[selected]?.kind === "start") {
+            setModeByLab((previous) => ({
+              ...previous,
+              [row.key]: key.rightArrow ? "live" : "dry-run"
+            }));
+            // Switching the mode disarms: a confirmation shown for one mode must not commit another.
+            setConfirming(undefined);
+            setArmedAt(undefined);
+            return;
+          }
+        }
         if (key.escape || key.leftArrow) {
           // Escape cancels an armed live start before it means "go back": the nearer meaning of
           // "no" wins, so a confirmation can never be dismissed by accidentally leaving the screen.
@@ -253,7 +279,7 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
             const { row, items } = itemsForLab(data, screen.labKey);
             const item = items[selected];
             if (row !== undefined && item?.kind === "start") {
-              void start(row, item.mode);
+              void start(row, modeByLab[row.key] ?? "dry-run");
               return;
             }
           }
@@ -261,7 +287,7 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start]
+      [exit, rowCount, screen, data, selected, confirming, start, modeByLab]
     )
   );
 
@@ -298,28 +324,110 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
     };
   }, [openRunId, options]);
 
+  // The spinner clock. Independent of the data refresh, because motion is what says "live" and a
+  // 2s heartbeat does not read as motion.
+  useEffect(() => {
+    const timer = setInterval(() => setTick((previous) => previous + 1), SPINNER_MS);
+    timer.unref?.();
+    return () => clearInterval(timer);
+  }, []);
+
+  // Who is in each LIVE run, so the labs list can name them. Only live runs — reading detail for
+  // the whole list would open every bundle, which is exactly what the index exists to avoid.
+  const liveRunIds = (data?.rows ?? []).flatMap((row) => row.liveRuns.map((run) => run.runId)).join(",");
+  useEffect(() => {
+    if (liveRunIds === "") {
+      setLiveDetails(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const ids = liveRunIds.split(",");
+      const entries = await Promise.all(
+        ids.map(async (runId): Promise<[string, RunDetail] | null> => {
+          const read = await options.capabilities.readRunDetail(options.cwd, runId).catch(() => null);
+          return read === null ? null : [runId, read];
+        })
+      );
+      if (!cancelled) setLiveDetails(new Map(entries.filter((entry): entry is [string, RunDetail] => entry !== null)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [liveRunIds, options, tick]);
+
+  // What the open lab IS. Includes the key probe, which is why it is read per lab rather than for
+  // the whole list.
+  const openLabKey = screen.name === "lab" ? screen.labKey : undefined;
+  const openLabName = openLabKey === undefined ? undefined : data?.rows.find((row) => row.key === openLabKey)?.name;
+  useEffect(() => {
+    if (openLabName === undefined) {
+      setSummary(undefined);
+      return;
+    }
+    let cancelled = false;
+    setSummary(undefined);
+    void (async () => {
+      const read = await options.capabilities
+        .readLabSummary(options.cwd, openLabName, { checkKeys: true })
+        .catch(() => null);
+      if (!cancelled) setSummary(read);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [openLabName, options]);
+
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
     if (error !== undefined) return <Text color="red">could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
-    return renderScreen({ screen, data, selected, columns: size.columns, viewport, now: clock, confirming, launchError, launchNote, detail });
-  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail]);
+    return renderScreen({
+      screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
+      confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab
+    });
+  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab]);
 
   return (
-    <Box flexDirection="column" width={size.columns}>
-      <Box justifyContent="space-between">
-        <Text bold>{title(screen, data)}</Text>
-        <Text dimColor>humanish v{options.version.cli}</Text>
-      </Box>
-      <Text dimColor>{fitPathToWidth(options.cwd, size.columns)}</Text>
-      <Box marginTop={1} flexDirection="column">
-        {body}
-      </Box>
-      <Box marginTop={1}>
-        <Text dimColor>{keyHints(screen, data, selected, confirming)}</Text>
-      </Box>
-    </Box>
+    <Frame
+      columns={size.columns}
+      context={contextLine(screen, data, options)}
+      breadcrumb={breadcrumbOf(screen, data)}
+      hints={keyHints(screen, data, selected, confirming)}
+    >
+      {body}
+    </Frame>
   );
+}
+
+/**
+ * The right of the header: the project, and whether anyone is working in it. The two things a
+ * stakeholder wants without reading anything else.
+ */
+function contextLine(
+  screen: ReturnType<typeof currentScreen>,
+  data: ProjectData | undefined,
+  options: TuiOptions
+): string | undefined {
+  const project = options.cwd.split("/").filter(Boolean).pop();
+  if (data === undefined) return project;
+  const live = data.rows.reduce((total, row) => total + row.live, 0);
+  if (live === 0) return project;
+  return `${project} · ${live} participant${live === 1 ? "" : "s"} working`;
+}
+
+/** Where you are, as a path back. */
+function breadcrumbOf(
+  screen: ReturnType<typeof currentScreen>,
+  data: ProjectData | undefined
+): string | undefined {
+  if (screen.name === "labs") return undefined;
+  if (screen.name === "lab") {
+    const row = data?.rows.find((candidate) => candidate.key === screen.labKey);
+    return `‹ labs / ${row?.name ?? screen.labKey}`;
+  }
+  const lab = screen.labId;
+  return lab === undefined ? "‹ labs / run" : `‹ labs / ${lab} / run`;
 }
 
 function title(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined): string {
@@ -352,15 +460,15 @@ function keyHints(
   const move = "↑↓ move";
   switch (screen.name) {
     case "labs":
-      return `${move} · ↵ open · q quit`;
+      return `${move}   ⏎ open   q quit`;
     case "lab": {
       if (confirming !== undefined) return "↵ confirm · esc cancel";
       const item = data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
-      const enter = item?.kind === "start" ? (item.mode === "live" ? "↵ start live" : "↵ start dry run") : "↵ open run";
-      return `${move} · ${enter} · esc back · q quit`;
+      const enter = item?.kind === "start" ? "⏎ start · ←→ mode" : "⏎ open run";
+      return `${move}   ${enter}   esc back   q quit`;
     }
     default:
-      return "esc back · q quit";
+      return "esc back   q quit";
   }
 }
 
@@ -420,7 +528,7 @@ function identityOf(
   if (screen.name === "lab") {
     const item = itemsForLab(data, screen.labKey).items[selected];
     if (item === undefined) return undefined;
-    return item.kind === "start" ? `start:${item.mode}` : `run:${item.run.runId}`;
+    return item.kind === "start" ? "start" : `run:${item.run.runId}`;
   }
   return undefined;
 }
@@ -434,7 +542,7 @@ function indexOfIdentity(
   if (screen.name === "labs") return data.rows.findIndex((row) => row.key === identity);
   if (screen.name === "lab") {
     return itemsForLab(data, screen.labKey).items.findIndex((item) =>
-      item.kind === "start" ? `start:${item.mode}` === identity : `run:${item.run.runId}` === identity
+      item.kind === "start" ? identity === "start" : `run:${item.run.runId}` === identity
     );
   }
   return -1;
@@ -473,8 +581,13 @@ function renderScreen(args: {
   launchError: { labKey: string; text: string } | undefined;
   launchNote: { labKey: string; text: string } | undefined;
   detail: RunDetail | null | undefined;
+  summary: LabSummary | null | undefined;
+  liveDetails: Map<string, RunDetail>;
+  tick: number;
+  modeByLab: Record<string, "dry-run" | "live">;
 }): React.ReactElement {
   const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
+  const { summary, liveDetails, tick, modeByLab } = args;
   if (screen.name === "labs") {
     return (
       <LabsScreen
@@ -483,6 +596,18 @@ function renderScreen(args: {
         columns={columns}
         viewport={viewport}
         unattributed={data.unattributed.length}
+        tick={tick}
+        liveParticipants={
+          new Map(
+            [...liveDetails.entries()]
+              .map(([runId, value]): [string, string] | null => {
+                const who = value.participants[0]?.personaId ?? value.participants[0]?.label;
+                return who === undefined ? null : [runId, who];
+              })
+              .filter((entry): entry is [string, string] => entry !== null)
+          )
+        }
+        now={now}
       />
     );
   }
@@ -492,12 +617,16 @@ function renderScreen(args: {
     return (
       <LabScreen
         row={row}
+        summary={summary}
         runs={data.runsByLab.get(row.labId) ?? []}
+        liveDetail={liveDetails.get(row.liveRuns[0]?.runId ?? "")}
         selected={selected}
         columns={columns}
-        viewport={viewport - 4}
+        viewport={viewport}
         now={now}
+        tick={tick}
         canStart={row.declared}
+        mode={modeByLab[row.key] ?? "dry-run"}
         confirming={confirming}
         launchError={launchError?.labKey === row.key ? launchError.text : undefined}
         launchNote={launchNote?.labKey === row.key ? launchNote.text : undefined}

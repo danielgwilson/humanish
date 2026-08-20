@@ -45,6 +45,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
+      readLabSummary: async () => null,
     ...overrides
   };
   return {
@@ -56,14 +57,21 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
   };
 }
 
-async function frameAt(columns: number, rows = 24): Promise<string> {
-  const rendered = await renderToText(<App options={options()} now={NOW} />, {
+async function frameAt(
+  columns: number,
+  rows = 24,
+  overrides: Partial<TuiCapabilities> = {},
+  until?: (frame: string) => boolean
+): Promise<string> {
+  const rendered = await renderToText(<App options={options(overrides)} now={NOW} />, {
     columns,
     rows,
     // Wait for the DATA-BEARING frame, never a fixed sleep: the first frame says "reading project…"
     // and a timer captures whichever one the scheduler happened to reach. Defined by what the frame
     // is NOT, so it cannot silently stop matching when the copy on the screen changes.
-    until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
+    // Live participant names arrive from a SECOND async read, so a caller that asserts on them has
+    // to wait for that frame rather than the first data-bearing one.
+    until: until ?? ((frame) => frame.trim().length > 0 && !frame.includes("reading project"))
   });
   rendered.unmount();
   return normalizeFrame(rendered.last);
@@ -89,9 +97,10 @@ describe("the labs screen, rendered", () => {
     // neighbours to look populated.
     expect(lines[never]).toContain("never run");
     expect(lines[never]).not.toContain("$");
-    // And the live lab reports what is happening rather than history, because while something is
-    // running that is the only fact worth the width.
-    expect(lines[live]).toContain("1 running");
+    // A live lab reports WHO is in it and for how long — not a count. "1 running" answers the less
+    // interesting half of the question; the participant and the elapsed clock answer the rest.
+    expect(lines[live]).toMatch(/\d+:\d\d/);
+    expect(lines[live]).not.toContain("1 running");
   });
 
   it("shows one row per MANIFEST, and never two rows a reader cannot tell apart", async () => {
@@ -106,8 +115,30 @@ describe("the labs screen, rendered", () => {
     // The shared title is dropped precisely because it is shared — it identifies neither row.
     expect(lines.filter((line) => line.includes("Is the diagram axis load-bearing?")).length).toBe(0);
     // And no two rows are byte-identical, which is the failure the real project surfaced.
-    const rowLines = lines.filter((line) => line.startsWith("\u203a ") || line.startsWith("  "));
+    const rowLines = lines.filter((line) => line.startsWith("❯ ") || line.startsWith("  "));
     expect(new Set(rowLines).size).toBe(rowLines.length);
+  });
+
+  it("a live lab names the participant, not the lane the harness ran them in", async () => {
+    // "CUA browser — observer-live-check" is the harness describing itself. The row is about who is
+    // in there, so the persona wins whenever the live flush carries one.
+    const frame = await frameAt(
+      80,
+      24,
+      {
+      readRunDetail: async () => ({
+        schema: "humanish.run-detail.v1" as const,
+        runId: "cua-2026-08-19T11-30-00-000Z-aa11bb22",
+        participants: [
+          { id: "s1", label: "CUA browser — signup flow", personaId: "skeptical-power-user", traits: [], status: "running" }
+        ]
+      })
+      },
+      (candidate) => candidate.includes("skeptical-power-user")
+    );
+    const liveRow = frame.split("\n").find((line) => line.includes("Signup flow")) ?? "";
+    expect(liveRow).toContain("skeptical-power-user");
+    expect(liveRow).not.toContain("CUA browser");
   });
 
   it("counts runs with no lab separately instead of inventing a lab for them", async () => {
@@ -125,7 +156,10 @@ describe("the labs screen, rendered", () => {
     });
     rendered.unmount();
     const frame = normalizeFrame(rendered.last);
-    expect(frame).toContain("no labs in this project");
+    expect(frame).toContain("no labs here yet");
+    // The empty state says what a lab IS before telling you to run a command — someone seeing this
+    // screen in their home directory has no idea what they are being asked to make.
+    expect(frame).toContain("a lab is a study");
     expect(frame).toContain("humanish init");
   });
 
