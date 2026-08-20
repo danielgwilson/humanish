@@ -76,7 +76,7 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
 
 /** Open the first lab, then its live run (the newest, top of the history list). */
 async function openLiveRun(detail: RunDetail | null, columns = 80) {
-  const surface = await renderToText(<App options={options(detail)} now={NOW} />, {
+  const surface = await renderToText(<App options={options(detail)} now={NOW} tick={0} />, {
     columns,
     rows: 30,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
@@ -196,7 +196,7 @@ describe("the interrupted card", () => {
       stdin: process.stdin,
       stdout: process.stdout
     };
-    const surface = await renderToText(<App options={options} now={NOW} />, {
+    const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
       columns: 80,
       rows: 26,
       until: (frame) => frame.includes("diagram-editor")

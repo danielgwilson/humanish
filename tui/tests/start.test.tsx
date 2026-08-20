@@ -42,7 +42,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
  * construction, so reading it after pressing a key asserts against the previous screen.
  */
 async function openLab(options: TuiOptions) {
-  const surface = await renderToText(<App options={options} now={NOW} />, {
+  const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
     columns: 80,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
@@ -125,7 +125,7 @@ describe("starting a run", () => {
     const { started, options } = harness({
       listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
     });
-    const surface = await renderToText(<App options={options} now={NOW} />, {
+    const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
       columns: 80,
       until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
     });
