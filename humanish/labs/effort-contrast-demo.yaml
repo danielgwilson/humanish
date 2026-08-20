@@ -1,0 +1,58 @@
+schema: humanish.lab.v2
+id: effort-contrast-demo
+title: Is the effort axis load-bearing? (one persona, one mission, two reasoning efforts)
+description: >
+  A CONTROL, not a product study — the sibling of persona-contrast-demo, and arguably the
+  more urgent one. Two lanes clone and drive the SAME app with the SAME persona and the
+  SAME mission, and differ in exactly one variable: how hard the model is asked to think.
+  WHY THIS EXISTS: reasoning effort was reachable in the provider and unreachable from a
+  lab, so every computer-use run humanish had ever done was the provider default — not by
+  decision but by omission (#497). That makes an uncomfortable question fair: how many of
+  the frictions we recorded were the product's, and how many were a participant who was
+  not given enough thinking to get through them? A participant who abandons a flow at
+  medium and finishes it at high did not find a usability problem; the harness did.
+  WHAT TO COMPARE afterwards (per lane, from the run bundle): completion reason, action
+  count and mix, wall-clock to terminal state, how early the lane stopped, whether it
+  reported friction, the affordance classes it used, and the estimated cost — higher
+  effort buys thinking with tokens, so a delta that costs 3x is a different finding from
+  one that costs 1.1x. Each trace records the effort that produced it in
+  `modelSettings.reasoningEffort`, so the comparison never depends on remembering the
+  config.
+  If the two lanes come back indistinguishable, that is the good outcome: it means the
+  default was not quietly deciding our findings. Read both traces side by side, and note
+  that one run proves nothing about scale or repeatability.
+  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
+  launches no sandbox. A live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored
+  .humanish/labs/ copy with mode: live.
+subject:
+  source: clone
+  repos:
+    - drawdb-io/drawdb # the same public OSS subject the persona contrast uses, for comparability
+  clone:
+    depth: 1
+  serve:
+    install: npm install --no-audit --no-fund
+    build: npm run build
+    start: npx vite preview --host 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user # ONE persona for both lanes: effort is the only declared difference
+    mission: >-
+      Create a small database diagram with at least two related tables, then stop.
+    reasoningEffort: medium # the lane default, and the level every prior humanish run silently used
+    lanes:
+      - id: default-effort
+        instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
+      - id: harder-effort
+        reasoningEffort: high # the ONLY declared difference between the two lanes
+        instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
+execution:
+  target: e2b-desktop # both lanes live at once (the default: concurrency = seat count)
+  timeoutMs: 1200000 # PER-LANE budget; a short cap suppresses the axis under study — higher effort spends its gain on longer horizons
+  caps:
+    maxUsd: 15 # fail-closed per-lane spend abort; the run-level worst case is 2x this
+scenario:
+  mode: dry-run # committed fixture stays contract-only
+defaults:
+  open: false

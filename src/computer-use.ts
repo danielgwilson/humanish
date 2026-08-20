@@ -18,6 +18,7 @@ import {
   type StopWhen
 } from "./stop-conditions.js";
 import { TaskTracker, type LabTask } from "./tasks.js";
+import type { ReasoningEffort } from "./reasoning-effort.js";
 
 // The computer-use (CUA) loop engine.
 //
@@ -155,6 +156,12 @@ export interface CuaTurn {
 export interface CuaProvider {
   readonly id: string;
   readonly version?: string;
+  /**
+   * The request settings this provider will actually send, for the trace to record. `version` says
+   * WHICH model; this says how it was asked to run. Optional: a provider with no such settings
+   * records none, and absence stays absence rather than becoming a default nobody chose.
+   */
+  readonly modelSettings?: { readonly reasoningEffort: ReasoningEffort };
   readonly capabilities: ActorCapabilities;
   /**
    * True when nextTurn requires `observation.screenshot` to be present (a VISION model that
@@ -1211,6 +1218,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     completionReason,
     reason,
     ids,
+    ...(provider.modelSettings === undefined
+      ? {}
+      : { modelSettings: { reasoningEffort: provider.modelSettings.reasoningEffort } }),
     counts,
     items,
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),

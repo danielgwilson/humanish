@@ -62,7 +62,16 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       )}
       {summary?.subject === undefined ? null : (
         <Text dimColor wrap="truncate-end">
-          {[summary.subject, summary.participants, summary.model].filter(Boolean).join(" · ")}
+          {[
+            summary.subject,
+            summary.participants,
+            summary.model,
+            // The effort is part of "which model" — a knob nobody could see is how it stayed
+            // pinned at the provider default for every run humanish ever did (#497).
+            summary.reasoningEffort === undefined ? undefined : `${summary.reasoningEffort} effort`
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
       )}
       <Box width={columns}>

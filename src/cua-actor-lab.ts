@@ -43,6 +43,7 @@ import {
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
+import type { ReasoningEffort } from "./reasoning-effort.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
@@ -369,6 +370,9 @@ export interface CuaLanePlanEntry {
   /** Requested E2B/X screen resolution. This is not the measured browser CSS viewport. */
   resolution: [number, number];
   instructionDigest: string;
+  /** The declared reasoning effort for this lane, when the lab declared one. The plan line is what
+   *  you read BEFORE spending money, so a declared per-lane difference has to be visible there. */
+  reasoningEffort?: string;
   /** Present only when a lane overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
   targetDigest?: string;
 }
@@ -575,6 +579,12 @@ export interface CuaLaneSpec {
   targetUrl?: string;
   /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
   stopWhen?: StopWhen;
+  /**
+   * How hard this lane's model is asked to think. Lane-level override, else the actor default,
+   * else absent — and absent means the provider's own default, which the trace records as the
+   * resolved value rather than as nothing (#497).
+   */
+  reasoningEffort?: ReasoningEffort;
   /** The lab's declared protocol (#414). Every lane runs the SAME protocol — that is what makes the
    *  per-task rates comparable across participants. Goals are already composed into `instructions`;
    *  this carries the full tasks so the loop can corroborate completion, and the criteria never
@@ -823,6 +833,9 @@ function laneSpecsAndPlan(
       instructions: composed.instructions,
       ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
       ...((lane?.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
+      ...((lane?.reasoningEffort ?? actor?.reasoningEffort) === undefined
+        ? {}
+        : { reasoningEffort: (lane?.reasoningEffort ?? actor?.reasoningEffort) as ReasoningEffort }),
       ...(tasks === undefined ? {} : { tasks }),
       deviceName: device.name,
       devicePreset: device.preset,
@@ -855,6 +868,7 @@ function laneSpecsAndPlan(
       device: spec.deviceName,
       resolution: spec.resolution,
       instructionDigest: spec.persona.promptDigest,
+      ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
       ...(spec.targetUrl === undefined ? {} : { targetDigest: digestUrl(spec.targetUrl) })
     }))
   };
@@ -1013,7 +1027,8 @@ function formatLanePlanEntry(lane: CuaLanePlanEntry): string {
   const taxonomy = [
     lane.actorType ? `type=${lane.actorType}` : undefined,
     lane.surface ? `surface=${lane.surface}` : undefined,
-    lane.caseGroup ? `case=${lane.caseGroup}` : undefined
+    lane.caseGroup ? `case=${lane.caseGroup}` : undefined,
+    lane.reasoningEffort ? `effort=${lane.reasoningEffort}` : undefined
   ].filter((part): part is string => part !== undefined);
   return `${lane.id}: persona=${lane.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}${lane.targetDigest ? ` target#${lane.targetDigest}` : ""}`;
 }
@@ -2316,7 +2331,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         timeoutMs: deps.timeoutMs,
         openai: {
           apiKey: deps.openaiApiKey,
-          ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {})
+          ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
+          // Per-LANE, not per-actor: two lanes at different efforts is the control this exists for.
+          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort })
         },
         ...(maxUsd === undefined
           ? {}
