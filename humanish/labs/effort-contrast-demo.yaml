@@ -2,25 +2,30 @@ schema: humanish.lab.v2
 id: effort-contrast-demo
 title: Is the effort axis load-bearing? (one persona, one mission, two reasoning efforts)
 description: >
-  A CONTROL, not a product study — the sibling of persona-contrast-demo, and arguably the
-  more urgent one. Two lanes clone and drive the SAME app with the SAME persona and the
-  SAME mission, and differ in exactly one variable: how hard the model is asked to think.
+  A CONTRAST, not a confound check — the sibling of persona-contrast-demo. Two lanes
+  clone and drive the SAME app with the SAME persona and the SAME mission, and differ in
+  exactly one variable: how hard the model is asked to think.
   WHY THIS EXISTS: reasoning effort was reachable in the provider and unreachable from a
   lab, so every computer-use run humanish had ever done was the provider default — not by
-  decision but by omission (#497). That makes an uncomfortable question fair: how many of
-  the frictions we recorded were the product's, and how many were a participant who was
-  not given enough thinking to get through them? A participant who abandons a flow at
-  medium and finishes it at high did not find a usability problem; the harness did.
+  decision but by omission (#497). The problem with that is NOT that medium is the wrong
+  setting. It is that effort changes who the participant is, the same way a persona
+  prompt does, and we were varying the persona while silently pinning the other half.
+  Every persona finding we have filed is really a finding about that persona AT MEDIUM,
+  and we never said the second half out loud.
+  So a lane that abandons at medium and completes at high has told you about two
+  participants, not about a broken instrument. See docs/principles/actor-fidelity.md:
+  capability settings are recruiting decisions, and the obligation they create is to
+  declare and record, not to control.
   WHAT TO COMPARE afterwards (per lane, from the run bundle): completion reason, action
   count and mix, wall-clock to terminal state, how early the lane stopped, whether it
-  reported friction, the affordance classes it used, and the estimated cost — higher
-  effort buys thinking with tokens, so a delta that costs 3x is a different finding from
-  one that costs 1.1x. Each trace records the effort that produced it in
+  reported friction, the affordance classes it used, and the estimated cost — a more
+  capable participant costs more to recruit, so a delta that costs 3x is a different
+  finding from one that costs 1.1x. Each trace records the effort that produced it in
   `modelSettings.reasoningEffort`, so the comparison never depends on remembering the
   config.
-  If the two lanes come back indistinguishable, that is the good outcome: it means the
-  default was not quietly deciding our findings. Read both traces side by side, and note
-  that one run proves nothing about scale or repeatability.
+  If the two lanes come back indistinguishable, that is worth knowing too: it means this
+  dial does not move behavior on this task, and the default was not quietly deciding our
+  results. One run proves nothing about scale or repeatability either way.
   Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
   launches no sandbox. A live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored
   .humanish/labs/ copy with mode: live.

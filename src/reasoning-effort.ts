@@ -3,8 +3,10 @@
 //
 // WHY THIS EXISTS AT ALL: effort was reachable in the provider and unreachable from a lab. Every
 // computer-use run humanish had ever done was therefore the provider default — not by decision but
-// by omission, which is the kind of silent constant that turns a finding about a product into a
-// finding about a default nobody chose (#497).
+// by omission (#497). Effort changes who the PARTICIPANT is, the same way a persona prompt does
+// (docs/principles/actor-fidelity.md: capability settings are recruiting decisions), so pinning it
+// invisibly meant every persona finding was really a finding about that persona at medium, with the
+// second half unsaid.
 //
 // SUPPORT IS MODEL-DEPENDENT. OpenAI documents the vocabulary below as the union across models and
 // states plainly that "supported values are model-dependent"; there is no offline way to know which
