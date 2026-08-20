@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import React from "react";
 
+import { PALETTE } from "./palette.js";
 import { color } from "./text-props.js";
 
 /**
@@ -92,9 +93,9 @@ export function verdictGlyph(args: { liveness: string; verdict?: string; tick?: 
 }
 
 export function verdictColor(args: { liveness: string; verdict?: string }): string | undefined {
-  if (args.liveness === "running") return "green";
-  if (args.liveness === "interrupted") return "yellow";
-  if (args.verdict === "fail") return "red";
+  if (args.liveness === "running") return PALETTE.ok;
+  if (args.liveness === "interrupted") return PALETTE.warn;
+  if (args.verdict === "fail") return PALETTE.bad;
   return undefined;
 }
 

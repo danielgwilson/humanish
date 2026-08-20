@@ -13,6 +13,7 @@ import {
   normalizeThought
 } from "../../../src/run-projection.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
+import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 /**
@@ -73,7 +74,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         </Text>
         <Box flexGrow={1} />
         {summary?.keysReady === undefined ? null : (
-          <Text {...color(summary.keysReady ? "green" : "yellow")}>{summary.keysReady ? "keys ✓" : "keys ✗"}</Text>
+          <Text {...color(summary.keysReady ? PALETTE.ok : PALETTE.warn)}>{summary.keysReady ? "keys ✓" : "keys ✗"}</Text>
         )}
       </Box>
       {summary?.keysReady === false ? (
@@ -94,18 +95,18 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       )}
       {props.launchError === undefined ? null : (
         <Box marginTop={1}>
-          <Text color="red">{props.launchError}</Text>
+          <Text color={PALETTE.bad}>{props.launchError}</Text>
         </Box>
       )}
 
       {canStart ? <StartRow {...props} active={items[selected]?.kind === "start"} /> : null}
       {row.declared ? null : (
         <Box marginTop={1}>
-          <Text color="yellow">no manifest here — renamed, deleted, or run from elsewhere</Text>
+          <Text color={PALETTE.warn}>no manifest here — renamed, deleted, or run from elsewhere</Text>
         </Box>
       )}
       {row.sharesIdWith > 0 ? (
-        <Text color="yellow">
+        <Text color={PALETTE.warn}>
           {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot; — these runs are shared between them
         </Text>
       ) : null}
@@ -149,14 +150,14 @@ function StartRow({
   return (
     <Box marginTop={1} flexDirection="column">
       <Box width={columns}>
-        <Text {...color(active ? "cyan" : undefined)} bold={active}>
+        <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
           {gutter(active)} Start{"  "}
         </Text>
-        <Text {...color(live ? undefined : "cyan")} bold={!live} dimColor={live}>
+        <Text {...color(live ? undefined : PALETTE.accent)} bold={!live} dimColor={live}>
           dry-run
         </Text>
         <Text dimColor> / </Text>
-        <Text {...color(live ? "yellow" : undefined)} bold={live} dimColor={!live}>
+        <Text {...color(live ? PALETTE.warn : undefined)} bold={live} dimColor={!live}>
           live
         </Text>
         <Box flexGrow={1} />
@@ -164,7 +165,7 @@ function StartRow({
       </Box>
       {confirming === "live" ? (
         <Box marginTop={1}>
-          <Text color="yellow">
+          <Text color={PALETTE.warn}>
             {"  "}start a live run? {expectationLine(row.liveExpectation)} · ⏎ confirm · esc cancel
           </Text>
         </Box>
@@ -256,11 +257,11 @@ function LiveRun({
   return (
     <Box flexDirection="column">
       <Box width={columns}>
-        <Text {...color(active ? "cyan" : undefined)} bold={active}>
+        <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
           {gutter(active)}{" "}
         </Text>
-        <Text color="green">{verdictGlyph({ liveness: "running", tick })} </Text>
-        <Text {...color(active ? "cyan" : undefined)} bold={active} wrap="truncate-end">
+        <Text color={PALETTE.ok}>{verdictGlyph({ liveness: "running", tick })} </Text>
+        <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
           {participant?.personaId ?? participant?.label ?? "starting…"}
         </Text>
         <Box flexGrow={1} />
@@ -316,11 +317,11 @@ function PastRun({
   const summary = [when, outcome].filter(Boolean).join(" · ") + cost;
   return (
     <Box width={columns}>
-      <Text {...color(active ? "cyan" : undefined)} bold={active}>
+      <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
         {gutter(active)}{" "}
       </Text>
       <Text {...glyphColor(run)}>{verdictGlyph(run)} </Text>
-      <Text {...color(active ? "cyan" : undefined)} bold={active} wrap="truncate-end">
+      <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
         {summary}
       </Text>
     </Box>

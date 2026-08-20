@@ -1,5 +1,6 @@
 import { Box, Text, useApp, useInput } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { PALETTE } from "./palette.js";
 
 import type { LabListEntry } from "../../src/labs.js";
 import type { LabSummary } from "../../src/lab-summary.js";
@@ -442,7 +443,7 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
-    if (error !== undefined) return <Text color="red">could not read this project: {error}</Text>;
+    if (error !== undefined) return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
     return renderScreen({
       screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
@@ -737,7 +738,7 @@ function renderScreen(args: {
   }
   if (screen.name === "lab") {
     const row = data.rows.find((candidate) => candidate.key === screen.labKey);
-    if (row === undefined) return <Text color="yellow">that lab is no longer in this project</Text>;
+    if (row === undefined) return <Text color={PALETTE.warn}>that lab is no longer in this project</Text>;
     return (
       <LabScreen
         row={row}
@@ -782,7 +783,7 @@ function renderScreen(args: {
     );
   }
   const run = data.runsById.get(screen.runId);
-  if (run === undefined) return <Text color="yellow">that run is no longer on disk</Text>;
+  if (run === undefined) return <Text color={PALETTE.warn}>that run is no longer on disk</Text>;
   return (
     <RunScreen
       run={run}

@@ -6,6 +6,7 @@ import type { LabRow } from "../../../src/run-projection.js";
 import { formatDuration, labSummaryLine, listWindow } from "../../../src/run-projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, spinnerFrame } from "../frame.js";
+import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 export interface LabsScreenProps {
@@ -99,10 +100,10 @@ export function LabsScreen({
       {/* A global destination, and a peer rather than a lifecycle state — it is somewhere you go,
           not something the app decides you are in. */}
       <Box marginTop={1}>
-        <Text {...color(peerSelected ? "cyan" : undefined)} bold={peerSelected} dimColor={!peerSelected}>
+        <Text {...color(peerSelected ? PALETTE.accent : undefined)} bold={peerSelected} dimColor={!peerSelected}>
           {gutter(peerSelected)}   All runs
         </Text>
-        {liveTotal > 0 ? <Text color="green">   {liveTotal} working</Text> : null}
+        {liveTotal > 0 ? <Text color={PALETTE.ok}>   {liveTotal} working</Text> : null}
       </Box>
       {unattributed > 0 ? (
         <Box marginTop={1}>
@@ -139,17 +140,17 @@ function LabRowView({
   const nameRoom = Math.max(8, columns - shown.length - 6);
   return (
     <Box width={columns}>
-      <Text {...color(active ? "cyan" : undefined)} bold={active}>
+      <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
         {gutter(active)}{" "}
       </Text>
       <Text {...glyphColor({ liveness: live === undefined ? "finished" : "running" })}>
         {live === undefined ? " " : spinnerFrame(tick)}{" "}
       </Text>
-      <Text {...color(active ? "cyan" : undefined)} bold={active} wrap="truncate-end">
+      <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
         {fitLabelToWidth(row.label, nameRoom)}
       </Text>
       <Box flexGrow={1} />
-      <Text {...color(live === undefined ? undefined : "green")} dimColor={live === undefined}>
+      <Text {...color(live === undefined ? undefined : PALETTE.ok)} dimColor={live === undefined}>
         {shown}
       </Text>
     </Box>

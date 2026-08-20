@@ -6,6 +6,7 @@ import type { RunIndexEntry } from "../../../src/run-index.js";
 import { formatDuration, normalizeThought } from "../../../src/run-projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
+import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 /**
@@ -89,7 +90,7 @@ export function RunScreen({
         <Box marginTop={1} flexDirection="column">
           {actions.map((action, index) => (
             <Box key={action}>
-              <Text {...color(index === selected ? "cyan" : undefined)} bold={index === selected}>
+              <Text {...color(index === selected ? PALETTE.accent : undefined)} bold={index === selected}>
                 {gutter(index === selected)} {fitLabelToWidth(actionLabel(action), Math.max(10, columns - 3))}
               </Text>
             </Box>
@@ -211,7 +212,7 @@ function InterruptedFacts({
             ? "cost unknown — it ended before pricing itself"
             : costLine(run, participant)}
         </Text>
-        <Text color="yellow">  sandboxes may still be running</Text>
+        <Text color={PALETTE.warn}>  sandboxes may still be running</Text>
       </Box>
     </Box>
   );

@@ -6,6 +6,7 @@ import type { RunIndexEntry } from "../../../src/run-index.js";
 import { formatDuration, listWindow, normalizeThought } from "../../../src/run-projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { gutter, spinnerFrame } from "../frame.js";
+import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
 export interface AllRunsScreenProps {
@@ -84,7 +85,7 @@ export function AllRunsScreen({
               {/* Fixed-width marker column: relying on a trailing space inside the Text loses it at
                   a wrap boundary, so continuation lines lose their indent. */}
               <Box width={2} flexShrink={0}>
-                <Text color="cyan">▌</Text>
+                <Text color={PALETTE.accent}>▌</Text>
               </Box>
               <Text dimColor wrap="truncate-end">
                 {index === 0 ? `"${line}` : line}
@@ -148,12 +149,12 @@ function RunRow({
   const labRoom = Math.max(8, columns - right.length - whoRoom - 6);
   return (
     <Box width={columns}>
-      <Text {...color(active ? "cyan" : undefined)} bold={active}>
+      <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
         {gutter(active)}{" "}
       </Text>
-      <Text color="green">{spinnerFrame(tick)} </Text>
+      <Text color={PALETTE.ok}>{spinnerFrame(tick)} </Text>
       <Box width={whoRoom}>
-        <Text {...color(active ? "cyan" : undefined)} bold={active} wrap="truncate-end">
+        <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
           {fitLabelToWidth(who, whoRoom)}
         </Text>
       </Box>
