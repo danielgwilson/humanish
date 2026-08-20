@@ -52,7 +52,7 @@ import {
 } from "./run-paths.js";
 import { probeKeySources } from "./key-resolution.js";
 import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
-import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl } from "./tui-contract.js";
+import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui-contract.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -4740,19 +4740,27 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
     })(),
     // The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
     // and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
-    // nothing about whether the PROJECT is ready. So this row is always ok and its job is to tell a
-    // human the surface exists and whether this machine can host it.
+    // nothing about whether the PROJECT is ready. So this row is always ok.
+    //
+    // WHO IS READING decides the wording, and a real first-contact study
+    // (labs/first-contact.yaml) is why. An agent evaluating humanish read
+    // "`humanish tui` is available in an interactive terminal", correctly concluded it was not in
+    // one, and dropped it — then wrote a report FOR A HUMAN that never mentioned the human
+    // surface at all. Discovery worked; handoff did not. A capability described to a reader who
+    // cannot use it has to be phrased as something to PASS ON, or it reads as "not for you" and
+    // dies there.
     (() => {
       const supported = nodeSupportsTui();
       const bundlePresent = existsSync(tuiBundleUrl(import.meta.url));
       return {
         name: "terminal surface",
         ok: true,
-        message: !supported
-          ? `\`humanish tui\` needs Node ${TUI_MIN_NODE_MAJOR}+ (this is ${process.version}); every other command works here`
-          : bundlePresent
-            ? "`humanish tui` is available in an interactive terminal"
-            : "`humanish tui` bundle is not built in this checkout — run `pnpm build` (installed packages ship it prebuilt)"
+        message: terminalSurfaceMessage({
+          supported,
+          bundlePresent,
+          interactive: process.stdout.isTTY === true,
+          nodeVersion: process.version
+        })
       };
     })(),
     // Provider-key discovery (#436): which source supplies each live-run key, through the same

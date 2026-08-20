@@ -118,3 +118,31 @@ export function nodeSupportsTui(versionString: string = process.version): boolea
 export function tuiBundleUrl(baseUrl: string): URL {
   return new URL("./tui-app.js", baseUrl);
 }
+
+/**
+ * What `doctor` says about the stakeholder surface — a pure function of the machine's state and,
+ * crucially, of WHO IS READING.
+ *
+ * A real first-contact study (labs/first-contact.yaml) is why the reader matters. An autonomous
+ * agent evaluating humanish read "`humanish tui` is available in an interactive terminal",
+ * correctly concluded it was not in one, and dropped it — then wrote a report FOR A HUMAN that
+ * never mentioned the human surface at all. Discovery worked and handoff did not. A capability
+ * described to a reader who cannot use it has to be phrased as something to PASS ON, or it reads
+ * as "not for you" and dies in the transcript.
+ */
+export function terminalSurfaceMessage(state: {
+  supported: boolean;
+  bundlePresent: boolean;
+  interactive: boolean;
+  nodeVersion: string;
+}): string {
+  if (!state.supported) {
+    return `\`humanish tui\` needs Node ${TUI_MIN_NODE_MAJOR}+ (this is ${state.nodeVersion}); every other command works here`;
+  }
+  if (!state.bundlePresent) {
+    return "`humanish tui` bundle is not built in this checkout — run `pnpm build` (installed packages ship it prebuilt)";
+  }
+  return state.interactive
+    ? "`humanish tui` opens the interactive surface for browsing labs and runs"
+    : "`humanish tui` is the interactive surface a PERSON uses to watch and start runs here — this shell is not a terminal, so pass it on to whoever is";
+}

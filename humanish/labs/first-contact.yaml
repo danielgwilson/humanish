@@ -1,0 +1,70 @@
+schema: humanish.lab.v2
+id: first-contact
+title: A coding agent meets humanish for the first time (self-study, terminal lane)
+description: >
+  humanish studying humanish. A real autonomous terminal agent lands in a fresh Linux shell,
+  finds humanish from PUBLIC SURFACES ONLY, and tries to get somewhere useful with it. The
+  participant is the population this product is actually adopted by — a coding agent doing
+  setup work on someone's behalf — so this is a first-contact usability study, not a smoke test.
+  WHY THIS EXISTS: every judgement about humanish's developer experience so far has been made
+  by people who already know how it works. That is the one perspective a maintainer cannot
+  generate, and the abandonment case is the finding we most need and least want.
+  THE MISSION DELIBERATELY NAMES NO COMMAND. Not `init`, not `doctor`, not `tui`. Whether the
+  agent discovers them is the measurement; a mission that lists them would answer the question
+  by asking it. Read the transcript for what it reached for FIRST, and for what it never found.
+  WHAT TO READ AFTERWARDS, in order of how much it would change our work:
+  1. Did the agent ever discover that `humanish tui` exists? It is the human surface, and if an
+     agent setting humanish up for a person never learns to hand off to it, that is a docs
+     finding, not a TUI finding.
+  2. When it ran a command that cannot work in a pipe, did the refusal get it unstuck? The TUI
+     refuses a non-TTY with a structured error that is DESIGNED to name the command that would
+     have answered the question instead. This is the one error message in the product aimed
+     squarely at agents, and this lab is the only way to find out whether it lands.
+  3. Where did it stall, guess, or give up — and did it ever believe it had succeeded when it
+     had not? A confident wrong summary is worse than a stall.
+  NO NESTED SPEND. The agent gets a runtime LLM key command-scoped and nothing else: no E2B key,
+  no provider credentials, so it cannot launch a study of its own. That bound is deliberate and
+  it is also honest as a study design — it reproduces exactly what a developer meets on day one
+  before any keys are set, which is where adoption actually fails.
+  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
+  launches no sandbox. A live run needs OPENAI_API_KEY and a gitignored .humanish/labs/ copy.
+subject:
+  source: terminal-product
+  product:
+    name: humanish
+    publicSurfaces:
+      - https://www.npmjs.com/package/humanish
+      - https://github.com/danielgwilson/humanish
+actors:
+  - type: codex-exec # REAL dispatch key: resolves to the registered terminal actor
+    persona: autonomous-coding-agent # composed into the agent prompt + bundle provenance
+    mission: >-
+      You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine.
+      A teammate is considering adopting a tool called humanish and has asked you to try it and
+      report back. Find out what it is from its public surfaces, get it running, and get as far
+      as you can toward actually using it for what it is for. You do not have provider API keys,
+      so do not attempt anything that spends money; if you hit a wall that needs one, say so and
+      keep going with whatever else you can reach. Work in a scratch directory. When you are
+      done, tell your teammate plainly: what it does, whether you got it working, exactly where
+      you got stuck, and whether you would recommend adopting it.
+execution:
+  target: e2b-terminal
+  runtimeAuth: openai-env # dry-run records the name; live injects the key command-scoped only
+  timeoutMs: 900000 # agent session wall-clock budget
+  terminal:
+    transport: exec-stream # captured non-interactive exec output (NOT an interactive PTY)
+    stdin: disabled # autonomous, and comparable to an unassisted baseline
+scenario:
+  mode: dry-run # committed fixture stays contract-only
+  caps:
+    maxUsd: 0 # no-spend: the agent has no provider budget of its own
+    maxJobs: 0 # no billable product jobs
+    maxMinutes: 12
+policies:
+  # deny-by-default credential boundary: live execution passes only the runtime LLM key to the
+  # agent command. No E2B key means the participant cannot start a nested study, which is both
+  # the safety bound and the study condition (a day-one developer without keys).
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
