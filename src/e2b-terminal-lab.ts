@@ -44,7 +44,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
@@ -291,7 +291,18 @@ export interface TerminalProductLabResult {
   };
 }
 
+/**
+ * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
+ * from this function finalizes any record the run opened, whichever of its fail-closed exits it
+ * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
+ * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
+ * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ */
 export async function runTerminalProductLab(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
+  return withRunStatusScope(() => runTerminalProductLabInScope(options));
+}
+
+async function runTerminalProductLabInScope(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
