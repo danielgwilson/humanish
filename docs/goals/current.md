@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.54.0`)
+## Current Program Truth (source `0.55.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -39,7 +39,7 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 
 | Surface | Shipped | Still unproven or unbuilt |
 | --- | --- | --- |
-| Actor execution | Six first-party registry descriptors; computer-use, scripted-browser, and terminal-product dispatch paths | Public out-of-tree actor registration and conformance certification |
+| Actor execution | Six first-party registry descriptors; computer-use, scripted-browser, and terminal-product dispatch paths. `0.55.0` makes reasoning effort declarable per actor and per lane and records the resolved value on the trace (`humanish.model-settings.v1`) — it had been reachable in the provider and unreachable from a lab, so every prior run silently took the provider default | Public out-of-tree actor registration and conformance certification |
 | Persona scale | Bounded per-lane-world fan-out, including differentiated lanes and roster expansion; kept deterministic and live receipts | A completed first-party deletion branch that replaces a bespoke generic harness |
 | Shared state | Sequential and concurrent single-origin shared-world execution; sequential has deterministic proof, concurrent has deterministic and kept live proof | Multi-origin shared-world runtime/schema support; real-adopter deletion proof |
 | Subject sources/routes | Six declared sources: `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, and `local-tree`; support is route-specific and `this-repo` remains dry-run-only | One centralized run/resource lifecycle boundary across all routes |
