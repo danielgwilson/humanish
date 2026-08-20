@@ -286,6 +286,41 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
   io.setExitCode(2);
 }
 
+
+/** `unknown option '--x'` -> the sibling commands that DO declare `--x`. */
+function commandsDeclaring(root: Command, flag: string): string[] {
+  const found: string[] = [];
+  const walk = (command: Command, trail: string[]): void => {
+    const names = [...trail, command.name()];
+    if (trail.length > 0 && command.options.some((option) => option.long === flag || option.short === flag)) {
+      found.push(names.slice(1).join(" "));
+    }
+    for (const child of command.commands) walk(child, names);
+  };
+  walk(root, []);
+  return found;
+}
+
+/**
+ * Enrich commander's flag rejections with where the flag actually lives. A bare "unknown option"
+ * is accurate and unhelpful in the same way `no labs here yet` was: it reports a fact about this
+ * command and says nothing the reader can act on. Silence is preserved when no sibling has it —
+ * inventing a suggestion would be worse than none.
+ */
+export function withSiblingFlagHint(text: string, root: Command): string {
+  const match = /unknown option '([^']+)'/.exec(text);
+  if (match === null) return text;
+  const owners = commandsDeclaring(root, match[1]!);
+  if (owners.length === 0) return text;
+  // Truncation is REPORTED, never silent: a list that quietly drops owners would send a reader
+  // looking in the wrong place and think it had answered them.
+  const shown = owners.slice(0, 3);
+  const list = shown.map((owner) => `\`humanish ${owner}\``).join(", ");
+  const rest = owners.length - shown.length;
+  const tail = rest > 0 ? ` (and ${rest} more)` : "";
+  return `${text.replace(/\n+$/, "")}\n${match[1]} is an option of ${list}${tail}, not of this command.\n`;
+}
+
 export function createProgram(
   io: Partial<CliIo> & { keyDiscovery?: typeof discoverProviderKeys; tuiRuntime?: Partial<TuiRuntime> } = {}
 ): Command {
@@ -314,7 +349,14 @@ export function createProgram(
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({
       writeOut: (text) => cliIo.writeOut(text),
-      writeErr: (text) => cliIo.writeErr(text)
+      writeErr: (text) => cliIo.writeErr(text),
+      // A rejected flag should name the command that WOULD have taken it. Found by a real
+      // first-contact study (labs/first-contact.yaml): a participant reached for
+      // `humanish run --no-open` by analogy with `lab run`, got a bare "unknown option", and
+      // filed it as a documentation mismatch. The flag is genuinely absent — `run` opens
+      // nothing — but "unknown" says that badly, because the reader's actual question is
+      // "then where does it live?".
+      outputError: (text, write) => write(withSiblingFlagHint(text, program))
     })
     .addHelpText(
       "after",
