@@ -3,133 +3,105 @@ import React from "react";
 
 import type { RunDetail, RunParticipant } from "../../../src/run-detail.js";
 import type { RunIndexEntry } from "../../../src/run-index.js";
-import { formatDuration, livenessLabel, normalizeThought } from "../../../src/run-projection.js";
-import { fitLabelToWidth, fitPathToWidth } from "../fit-text.js";
+import { formatDuration, normalizeThought } from "../../../src/run-projection.js";
+import { fitLabelToWidth } from "../fit-text.js";
+import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { color } from "../text-props.js";
+
+/**
+ * What a run card can DO. Only actions that actually work appear — `Share…` waits for the export
+ * contract (#471) rather than shipping as a control that fails.
+ */
+export type RunAction = "observer" | "again" | "reclaim";
+
+export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefined): RunAction[] {
+  if (run.liveness === "interrupted") {
+    // An interrupted run may have left sandboxes running, and that costs money until something
+    // stops them. Reclaim leads; the evidence it did capture is still worth opening.
+    return detail?.observerPath === undefined ? ["reclaim"] : ["reclaim", "observer"];
+  }
+  if (run.liveness === "running") return [];
+  return detail?.observerPath === undefined ? ["again"] : ["observer", "again"];
+}
+
+export function actionLabel(action: RunAction): string {
+  switch (action) {
+    case "observer":
+      return "Open in Observer";
+    case "again":
+      return "Run again";
+    default:
+      return "Reclaim — stop sandboxes, keep evidence";
+  }
+}
 
 export interface RunScreenProps {
   run: RunIndexEntry;
-  /** Who is in the run and what they are thinking. Absent until the run writes a bundle. */
   detail: RunDetail | null | undefined;
   columns: number;
-  /** Rows this screen may use for participants before the facts block. */
   viewport: number;
+  selected: number;
+  tick: number;
+  now: number;
+  /** What the last action said. Always shown — an action that appears to do nothing is a bug. */
+  actionNote: string | undefined;
 }
 
 /**
- * One run. Its LIFECYCLE renders here rather than sending you to a different screen — a run that
- * finishes while you are looking at it changes in place, because it is still the same object.
+ * ONE RUN, AS A CARD.
  *
- * THE PARTICIPANT LEADS. What someone watching a run wants is who is in there and what they are
- * currently thinking; cost is a number they check, not the thing they watch. So the persona, its
- * traits and its latest recorded thought sit at the top, and time and money go in the facts block
- * underneath.
+ * The question changed, so the shape does: on the lab screen you are watching, here you are asking
+ * what happened. So the DENOMINATOR leads — `1/1 reached the goal`, never a bare "pass" — then the
+ * participant's own closing words, then the real figure with its decomposition, then what you can
+ * do about it.
  *
- * Every field is shown only when it was recorded. A dash for "not recorded" and a 0 for "cost
- * nothing" are different claims, and a surface that renders both as `$0.00` is lying about one.
+ * An interrupted run gets the same treatment at the same level rather than an apology: what it
+ * managed, what it spent, whether anything is still running, and the action that stops it.
  */
-export function RunScreen({ run, detail, columns, viewport }: RunScreenProps): React.ReactElement {
-  const participants = detail?.participants ?? [];
-  // Split the space between however many lanes there are: one participant gets a paragraph of
-  // thinking, four get a line each. Better to show every lane shallowly than one lane deeply and
-  // leave the others invisible.
-  const perParticipant = participants.length === 0 ? 0 : Math.floor(Math.max(0, viewport) / participants.length);
-  const thoughtLines = Math.max(1, Math.min(4, perParticipant - 2));
+export function RunScreen({
+  run,
+  detail,
+  columns,
+  selected,
+  tick,
+  now,
+  actionNote
+}: RunScreenProps): React.ReactElement {
+  const participant = detail?.participants[0];
+  const actions = runActions(run, detail);
+  const interrupted = run.liveness === "interrupted";
 
   return (
     <Box flexDirection="column">
-      <Text bold>{fitPathToWidth(run.runId, columns)}</Text>
       <Box>
-        <Text {...color(colorFor(run))}>{livenessLabel(run)}</Text>
-        {run.mode === undefined ? null : <Text dimColor> · {run.mode}</Text>}
-        {run.lab?.id === undefined ? null : <Text dimColor> · {run.lab.id}</Text>}
+        <Text {...glyphColor(run)} bold>
+          {verdictGlyph({ ...run, tick })} {headline(run, participant)}
+        </Text>
       </Box>
 
-      {participants.length === 0 ? (
-        <Box marginTop={1}>
-          <Text dimColor>
-            {detail === undefined ? "reading the run…" : "no participant record yet"}
-          </Text>
-        </Box>
+      {interrupted ? (
+        <InterruptedFacts run={run} detail={detail} participant={participant} now={now} columns={columns} />
       ) : (
+        <FinishedFacts run={run} participant={participant} columns={columns} />
+      )}
+
+      {actions.length === 0 ? null : (
         <Box marginTop={1} flexDirection="column">
-          {participants.map((participant) => (
-            <Participant
-              key={participant.id}
-              participant={participant}
-              columns={columns}
-              thoughtLines={thoughtLines}
-            />
+          {actions.map((action, index) => (
+            <Box key={action}>
+              <Text {...color(index === selected ? "cyan" : undefined)} bold={index === selected}>
+                {gutter(index === selected)} {fitLabelToWidth(actionLabel(action), Math.max(10, columns - 3))}
+              </Text>
+            </Box>
           ))}
         </Box>
       )}
 
-      <Box marginTop={1} flexDirection="column">
-        <Field label="started" value={run.startedAt} columns={columns} />
-        <Field
-          label="duration"
-          value={run.durationMs === undefined ? undefined : formatDuration(run.durationMs)}
-          columns={columns}
-        />
-        <Field label="outcome" value={participantsLine(run)} columns={columns} />
-        <Field label="cost" value={costLine(run)} columns={columns} />
-        <Field label="observer" value={detail?.observerPath} columns={columns} />
-        <Field label="from" value={sourceLine(run)} columns={columns} />
-      </Box>
-
-      {run.liveness === "interrupted" ? (
+      {actionNote === undefined ? null : (
         <Box marginTop={1}>
-          <Text color="yellow">
-            this run has no outcome on disk — the process ended before it finished writing
+          <Text dimColor wrap="truncate-end">
+            {actionNote}
           </Text>
-        </Box>
-      ) : null}
-    </Box>
-  );
-}
-
-/** One lane: who it is, how far they have got, and what they last thought. */
-function Participant({
-  participant,
-  columns,
-  thoughtLines
-}: {
-  participant: RunParticipant;
-  columns: number;
-  thoughtLines: number;
-}): React.ReactElement {
-  const progress = progressOf(participant);
-  const nameRoom = Math.max(8, columns - progress.length - 2);
-  // The thought is indented two columns and wrapped to what is left, so quoted speech reads as
-  // quoted rather than as more of the surface's own chrome.
-  const thought =
-    participant.thought === undefined
-      ? undefined
-      : normalizeThought(participant.thought.text, { width: Math.max(12, columns - 2), maxLines: thoughtLines });
-
-  return (
-    <Box flexDirection="column" marginBottom={1}>
-      <Box width={columns}>
-        <Text bold wrap="truncate-end">
-          {fitLabelToWidth(participant.label, nameRoom)}
-        </Text>
-        <Box flexGrow={1} />
-        <Text {...color(participant.status === "running" ? "green" : undefined)} dimColor={participant.status !== "running"}>
-          {progress}
-        </Text>
-      </Box>
-      {participant.traits.length === 0 ? null : (
-        <Text dimColor wrap="truncate-end">
-          {participant.traits.join(" · ")}
-        </Text>
-      )}
-      {thought === undefined ? (
-        <Text dimColor>no recorded thinking yet</Text>
-      ) : (
-        <Box flexDirection="column" marginTop={1} marginLeft={2}>
-          {thought.lines.map((line, index) => (
-            <Text key={index}>{line}</Text>
-          ))}
         </Box>
       )}
     </Box>
@@ -137,81 +109,130 @@ function Participant({
 }
 
 /**
- * How far a participant has got, in their own units. Turns and actions are what a computer-use lane
- * counts; a lane that counts neither says only what it is doing.
+ * The verdict, with its denominator. `pass` alone says a run succeeded without saying at what — and
+ * the count is the finding, not the label.
  */
-function progressOf(participant: RunParticipant): string {
-  const parts: string[] = [];
-  if (participant.turns !== undefined) parts.push(`turn ${participant.turns}`);
-  if (participant.actions !== undefined) parts.push(`${participant.actions} actions`);
-  if (parts.length > 0) return parts.join(" · ");
-  // A live participant has no turn count yet — the mid-run flush carries items, not counts — so
-  // report what can be counted rather than inferring a turn number from the shape of the trace.
-  if (participant.thoughts !== undefined) {
-    return `${participant.thoughts} thought${participant.thoughts === 1 ? "" : "s"}`;
+function headline(run: RunIndexEntry, participant: RunParticipant | undefined): string {
+  if (run.liveness === "interrupted") return "interrupted — no outcome recorded";
+  if (run.liveness === "running") {
+    // Until the run has written a participant record there is nobody to name, and "starting…" is
+    // the true thing to say rather than a sentence with a hole where the person goes.
+    const who = participant?.personaId ?? participant?.label;
+    return who === undefined ? "starting…" : `${who} is working`;
   }
-  return participant.status ?? "";
+  const counts = run.participants;
+  if (counts === undefined) return run.verdict ?? "finished, no verdict recorded";
+  const friction =
+    counts.reportedFriction === undefined || counts.reportedFriction === 0
+      ? ""
+      : ` · ${counts.reportedFriction} reported friction`;
+  return `${counts.reachedGoal}/${counts.total} reached the goal${friction}`;
 }
 
-/** A row that renders nothing at all when the value is absent, rather than an empty-looking one. */
-function Field({
-  label,
-  value,
+/** A finished run: what they said, then what it took, then what it cost. */
+function FinishedFacts({
+  run,
+  participant,
   columns
 }: {
-  label: string;
-  value: string | undefined;
+  run: RunIndexEntry;
+  participant: RunParticipant | undefined;
   columns: number;
-}): React.ReactElement | null {
-  if (value === undefined) return null;
-  const labelWidth = Math.min(14, Math.max(6, Math.floor(columns / 3)));
+}): React.ReactElement {
+  // The participant's OWN closing words, quoted. `completionReason` is the harness's word for the
+  // same moment; theirs is the one worth the space.
+  const closing =
+    participant?.thought === undefined
+      ? undefined
+      : normalizeThought(participant.thought.text, { width: Math.max(16, columns), maxLines: 3 });
+
+  const shape = [
+    run.durationMs === undefined ? undefined : formatDuration(run.durationMs),
+    participant?.turns === undefined ? undefined : `${participant.turns} turns`,
+    participant?.thoughts === undefined ? undefined : `${participant.thoughts} thoughts`
+  ].filter(Boolean).join(" · ");
+
   return (
-    <Box width={columns}>
-      <Box width={labelWidth} flexShrink={0}>
-        <Text dimColor>{label}</Text>
-      </Box>
-      {/* Wraps rather than truncates. A path or an id that has been cut looks actionable and is
-          not — the operator copies it, it fails, and the surface was the reason. */}
-      <Box width={Math.max(8, columns - labelWidth)}>
-        <Text>{value}</Text>
+    <Box flexDirection="column">
+      {closing === undefined ? null : (
+        <Box marginTop={1} flexDirection="column">
+          {closing.lines.map((line, index) => (
+            <Text key={index}>
+              {index === 0 ? `"${line}` : line}
+              {index === closing.lines.length - 1 ? '"' : ""}
+            </Text>
+          ))}
+        </Box>
+      )}
+      <Box marginTop={1} flexDirection="column">
+        {shape === "" ? null : <Text dimColor>{shape}</Text>}
+        <Text dimColor>{costLine(run, participant)}</Text>
       </Box>
     </Box>
   );
 }
 
-function participantsLine(run: RunIndexEntry): string | undefined {
-  const participants = run.participants;
-  if (participants === undefined) return undefined;
-  const friction =
-    participants.reportedFriction === undefined ? "" : `, ${participants.reportedFriction} reported friction`;
-  return `${participants.reachedGoal}/${participants.total} reached the goal${friction}`;
+/**
+ * An interrupted run, at the same level as a finished one. What it managed, what it spent, and
+ * whether anything is STILL RUNNING — which is the part that keeps costing money.
+ */
+function InterruptedFacts({
+  run,
+  detail,
+  participant,
+  now,
+  columns
+}: {
+  run: RunIndexEntry;
+  detail: RunDetail | null | undefined;
+  participant: RunParticipant | undefined;
+  now: number;
+  columns: number;
+}): React.ReactElement {
+  const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
+  const quiet = run.updatedAt === undefined ? Number.NaN : now - Date.parse(run.updatedAt);
+  const captured = [
+    participant?.thoughts === undefined ? undefined : `${participant.thoughts} thoughts`,
+    participant?.actions === undefined ? undefined : `${participant.actions} actions`
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <Box marginTop={1} flexDirection="column" width={columns}>
+      <Text dimColor>
+        {Number.isFinite(started) ? `started ${clockTime(started)}` : "start time not recorded"}
+        {Number.isFinite(quiet) ? ` · quiet ${formatDuration(quiet)}` : ""}
+        {captured === "" ? "" : ` · ${captured} captured`}
+      </Text>
+      <Box>
+        {/* A run that died before pricing itself genuinely does not know what it spent, and saying
+            so beats inventing a figure. The captured counts above are the honest proxy. */}
+        <Text dimColor>
+          {run.estimatedCostUsd === undefined && participant?.estimatedCostUsd === undefined
+            ? "cost unknown — it ended before pricing itself"
+            : costLine(run, participant)}
+        </Text>
+        <Text color="yellow">  sandboxes may still be running</Text>
+      </Box>
+    </Box>
+  );
 }
 
 /**
- * `null` is a DECLARED absent cost and says so; `undefined` means the run never recorded the field
- * at all and the row is omitted. Neither is ever rendered as $0.00.
+ * `null` is a DECLARED absent cost, `undefined` was never recorded, and neither is 0. An
+ * interrupted run that spent money before dying must still say so.
  */
-function costLine(run: RunIndexEntry): string | undefined {
-  if (run.estimatedCostUsd === undefined) return undefined;
-  if (run.estimatedCostUsd === null) return "not recorded";
-  return `~$${run.estimatedCostUsd.toFixed(2)} estimated`;
+function costLine(run: RunIndexEntry, participant: RunParticipant | undefined): string {
+  // NOT `??` between the two sources: `??` treats null as nullish, so a DECLARED ABSENT cost would
+  // fall through to the participant's and then to "not recorded" — collapsing the exact distinction
+  // this function exists to keep. Only a genuinely missing field falls through.
+  const value = run.estimatedCostUsd === undefined ? participant?.estimatedCostUsd : run.estimatedCostUsd;
+  if (value === undefined) return "cost not recorded";
+  if (value === null) return "cost declared absent";
+  return `~$${value.toFixed(2)} estimated`;
 }
 
-/** Where the listing's facts came from, so a surprising row can be traced to its source. */
-function sourceLine(run: RunIndexEntry): string {
-  switch (run.derivedFrom) {
-    case "status":
-      return "status.json";
-    case "bundle":
-      return "run.json (no status record)";
-    default:
-      return "the run directory alone";
-  }
-}
-
-function colorFor(run: RunIndexEntry): string | undefined {
-  if (run.liveness === "running") return "green";
-  if (run.liveness === "interrupted") return "yellow";
-  if (run.verdict === "fail") return "red";
-  return undefined;
+function clockTime(ms: number): string {
+  const date = new Date(ms);
+  const pad = (value: number): string => String(value).padStart(2, "0");
+  return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }

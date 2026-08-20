@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { App } from "../src/app.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui-contract.js";
-import { normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
+import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
 // Text goldens at two widths (#455).
@@ -47,6 +47,8 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     readRunDetail: async () => null,
       readLabSummary: async () => null,
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
+      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
     ...overrides
   };
   return {
@@ -213,7 +215,9 @@ describe("the two empty states are different problems", () => {
     const frame = await frameAt(80, 24, {
       readRunIndex: async () => empty,
       listLabs: async () => noLabs,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true })
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
+      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] })
     }, (candidate) => candidate.includes("no labs here yet"));
     expect(frame).toContain("no labs here yet");
     expect(frame).toContain("a lab is a study");
@@ -232,5 +236,94 @@ describe("the two empty states are different problems", () => {
     expect(frame).not.toContain("no labs here yet");
     // And it does not offer keys that do nothing here.
     expect(frame).not.toContain("⏎ open");
+  });
+});
+
+describe("all runs — everyone working, across every lab", () => {
+  const live = (runId: string, labId: string, minutesAgo: number) => ({
+    runId,
+    derivedFrom: "status" as const,
+    liveness: "running" as const,
+    mode: "live" as const,
+    lab: { id: labId },
+    startedAt: new Date(NOW - minutesAgo * 60_000).toISOString(),
+    updatedAt: new Date(NOW).toISOString()
+  });
+
+  const detailFor = (runId: string, persona: string, thought?: string) => ({
+    schema: "humanish.run-detail.v1" as const,
+    runId,
+    participants: [
+      {
+        id: "s1",
+        label: "lane",
+        personaId: persona,
+        traits: [],
+        status: "running",
+        ...(thought === undefined ? {} : { thought: { text: thought } })
+      }
+    ]
+  });
+
+  async function openAllRuns(columns = 80) {
+    const runs = [
+      live("r-1", "signup-flow", 3),
+      live("r-2", "diagram-editor", 1)
+    ];
+    const details: Record<string, ReturnType<typeof detailFor>> = {
+      "r-1": detailFor("r-1", "synthetic-new-user", "**Figuring out table creation** I am thinking about possible names."),
+      "r-2": detailFor("r-2", "skeptical-power-user")
+    };
+    const rendered = await renderToText(
+      <App
+        options={options({
+          readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs, unreadable: [] }),
+          readRunDetail: async (_cwd, runId) => details[runId] ?? null
+        })}
+        now={NOW}
+      />,
+      { columns, rows: 28, until: (frame) => frame.includes("All runs") }
+    );
+    // Down past the labs to the peer, then open it.
+    for (let index = 0; index < 8; index += 1) {
+      const frame = await rendered.press(KEY.down);
+      if (/❯\s+All runs/.test(frame)) break;
+    }
+    await rendered.press(KEY.enter, (candidate) => candidate.includes("synthetic-new-user"));
+    // Move to the participant who HAS recorded thinking: the quoted line follows the cursor, which
+    // is the whole reason only one is quoted.
+    let frame = "";
+    for (let index = 0; index < 4; index += 1) {
+      frame = await rendered.press(KEY.down);
+      if (/❯[^\n]*synthetic-new-user/.test(frame)) break;
+    }
+    rendered.unmount();
+    return frame;
+  }
+
+  it("leads with participants and follows with the lab they are in", async () => {
+    const frame = await openAllRuns();
+    const row = frame.split("\n").find((line) => line.includes("synthetic-new-user")) ?? "";
+    // And each run appears exactly once, even though two manifests declare the same lab id.
+    expect(frame.split("\n").filter((line) => line.includes("skeptical-power-user")).length).toBe(1);
+    // Who first, where second: when three studies run at once the question is who is doing what.
+    expect(row.indexOf("synthetic-new-user")).toBeLessThan(row.indexOf("Signup flow"));
+    expect(row).toMatch(/\d+:\d\d/);
+  });
+
+  it("quotes ONE thought — the selected row's — not every participant at once", async () => {
+    // Three participants each streaming their thinking turns this into a log tail nobody can read.
+    const frame = await openAllRuns();
+    expect(frame).toContain("Figuring out table creation");
+    expect(frame.match(/▌/g)?.length ?? 0).toBeGreaterThan(0);
+    // The second participant has no recorded thought, and none is invented for them.
+    expect(frame).not.toContain("skeptical-power-user is thinking");
+  });
+
+  it("reports spend as one line that says how much of it is actually known", async () => {
+    // Neither run has priced itself yet, and a total that quietly omitted them would read as a
+    // smaller number than the truth.
+    const frame = await openAllRuns();
+    expect(frame).toContain("no spend recorded yet");
   });
 });

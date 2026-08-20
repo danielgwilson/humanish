@@ -1,21 +1,14 @@
-human(ish)   acme-app · 1 participant working
+human(ish)             signup-flow · aa11bb22
 ‹ labs / signup-flow / run
 
-cua-2026-08-19T11-30-00-000Z-aa11bb22
-running · live · signup-flow
+⠙ synthetic-new-user is working
 
-CUA browser — signup f…  turn 12 · 31 actions
-patience:medium · skill:medium · accessibili…
+"Connecting fields for relationships I'm
+thinking about connecting fields to establish
+relationships between the notes and
+projects…"
 
-  Connecting fields for relationships I'm
-  thinking about connecting fields to
-  establish relationships between the notes
-  and projects. The naming of owner_id seems…
-
-started       2026-08-19T11:30:00.000Z
-observer      .humanish/runs/cua-2026-08-19T1
-              1-30-00-000Z-aa11bb22/observer/
-              index.html
-from          status.json
+12 turns
+cost not recorded
 
 esc back   q quit

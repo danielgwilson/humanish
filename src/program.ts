@@ -82,6 +82,7 @@ import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
 import { readLabSummary } from "./lab-summary.js";
 import { readProjectState } from "./tui-project.js";
+import { openObserverArtifact } from "./tui-actions.js";
 import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
@@ -519,7 +520,9 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
           readLaunchLog: readLaunchLogTail,
           readRunDetail,
           readLabSummary,
-          readProjectState
+          readProjectState,
+          openObserver: openObserverArtifact,
+          reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId)
         },
         stdin,
         stdout

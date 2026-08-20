@@ -10,7 +10,9 @@ import type { TuiOptions } from "../../src/tui-contract.js";
 import { fitPathToWidth } from "./fit-text.js";
 import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
+import { AllRunsScreen } from "./screens/all-runs-screen.js";
 import { LabScreen, labItems } from "./screens/lab-screen.js";
+import { runActions } from "./screens/run-screen.js";
 import { LabsScreen } from "./screens/labs-screen.js";
 import { RunScreen } from "./screens/run-screen.js";
 import { useTerminalSize } from "./use-terminal-size.js";
@@ -79,6 +81,8 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
    * because "still loading" and "nothing there" are different facts.
    */
   const [detail, setDetail] = useState<RunDetail | null | undefined>(undefined);
+  /** What the last run-card action reported. An action that appears to do nothing is a bug. */
+  const [actionNote, setActionNote] = useState<string | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [tick, setTick] = useState(0);
   /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
@@ -235,6 +239,51 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
     [confirming, armedAt, options]
   );
 
+  /**
+   * Run a card's action. Every branch sets a note, because a control that fires and says nothing is
+   * indistinguishable from one that is broken.
+   */
+  const act = useCallback(
+    async (run: RunIndexEntry, action: "observer" | "again" | "reclaim"): Promise<void> => {
+      if (action === "observer") {
+        const observerPath = detail?.observerPath;
+        if (observerPath === undefined) {
+          setActionNote("this run has no Observer artifact on disk");
+          return;
+        }
+        setActionNote("opening…");
+        const result = await options.capabilities.openObserver(options.cwd, observerPath);
+        setActionNote(result.message);
+        return;
+      }
+      if (action === "reclaim") {
+        setActionNote("reclaiming — stopping sandboxes, keeping evidence…");
+        const result = await options.capabilities.reclaimRun(options.cwd, run.runId);
+        setActionNote(
+          result.ok
+            ? `reclaimed ${result.receiptCount} recorded resource${result.receiptCount === 1 ? "" : "s"}`
+            : `could not reclaim: ${result.error?.message ?? "unknown"}`
+        );
+        return;
+      }
+      // Run again: the SAME lab, in the same mode it ran in, launched the same detached way.
+      const labId = run.lab?.id;
+      const row = labId === undefined ? undefined : data?.rows.find((candidate) => candidate.labId === labId);
+      if (row === undefined || !row.declared) {
+        setActionNote("cannot run this again — its lab has no manifest here any more");
+        return;
+      }
+      setActionNote(`starting ${row.name}…`);
+      const started = await options.capabilities.startRun({
+        cwd: options.cwd,
+        lab: row.name,
+        mode: run.mode === "live" ? "live" : "dry-run"
+      });
+      setActionNote(started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message);
+    },
+    [detail, options, data]
+  );
+
   useInput(
     useCallback(
       (input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean; escape?: boolean; leftArrow?: boolean; rightArrow?: boolean }) => {
@@ -277,6 +326,16 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
           return;
         }
         if (key.return || key.rightArrow) {
+          if (screen.name === "run" && data !== undefined) {
+            const run = data.runsById.get(screen.runId);
+            if (run !== undefined) {
+              const action = runActions(run, detail)[selected];
+              if (action !== undefined) {
+                void act(run, action);
+                return;
+              }
+            }
+          }
           if (screen.name === "lab" && data !== undefined) {
             const { row, items } = itemsForLab(data, screen.labKey);
             const item = items[selected];
@@ -289,7 +348,7 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start, modeByLab]
+      [exit, rowCount, screen, data, selected, confirming, start, modeByLab, detail, act]
     )
   );
 
@@ -301,6 +360,7 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   // deliberately does not — affordable for one run, not for a listing.
   const openRunId = screen.name === "run" ? screen.runId : undefined;
   useEffect(() => {
+    setActionNote(undefined);
     if (openRunId === undefined) {
       setDetail(undefined);
       return;
@@ -387,9 +447,9 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
     return renderScreen({
       screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
       confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab,
-      initialized: projectState.initialized
+      initialized: projectState.initialized, actionNote
     });
-  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab, projectState]);
+  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab, projectState, actionNote]);
 
   return (
     <Frame
@@ -413,8 +473,15 @@ function contextLine(
   options: TuiOptions
 ): string | undefined {
   const project = options.cwd.split("/").filter(Boolean).pop();
+  // On a run card the context carries WHICH RUN, because the card itself leads with the verdict —
+  // the id still has to be somewhere, and this is where the mock puts it.
+  if (screen.name === "run" && data !== undefined) {
+    const run = data.runsById.get(screen.runId);
+    const short = screen.runId.split("-").pop() ?? screen.runId;
+    return [run?.lab?.id, short].filter(Boolean).join(" · ");
+  }
   if (data === undefined) return project;
-  const live = data.rows.reduce((total, row) => total + row.live, 0);
+  const live = liveRunsOf(data).length;
   if (live === 0) return project;
   return `${project} · ${live} participant${live === 1 ? "" : "s"} working`;
 }
@@ -425,6 +492,7 @@ function breadcrumbOf(
   data: ProjectData | undefined
 ): string | undefined {
   if (screen.name === "labs") return undefined;
+  if (screen.name === "all-runs") return "‹ labs / all runs";
   if (screen.name === "lab") {
     const row = data?.rows.find((candidate) => candidate.key === screen.labKey);
     return `‹ labs / ${row?.name ?? screen.labKey}`;
@@ -472,8 +540,15 @@ function keyHints(
       const enter = item?.kind === "start" ? "⏎ start · ←→ mode" : "⏎ open run";
       return `${move}   ${enter}   esc back   q quit`;
     }
-    default:
-      return "esc back   q quit";
+    case "all-runs":
+      return `${move}   ⏎ open run   esc back   q quit`;
+    default: {
+      // Only when the card actually has actions — an empty legend beats one promising a key that
+      // does nothing on a run still in flight.
+      const run = data === undefined ? undefined : data.runsById.get(screen.name === "run" ? screen.runId : "");
+      const hasActions = run !== undefined && runActions(run, undefined).length > 0;
+      return hasActions ? `${move}   ⏎ select   esc back   q quit` : "esc back   q quit";
+    }
   }
 }
 
@@ -500,6 +575,30 @@ function project(index: RunIndexResult, labs: readonly LabListEntry[]): ProjectD
   return { rows, unattributed, runsByLab, runsById, unreadable: index.unreadable };
 }
 
+/**
+ * Every live run in the project, ONCE.
+ *
+ * Not a flatMap over lab rows: two manifests can declare the same lab id, so a run belonging to
+ * that id is reachable from both rows and would be listed twice — the same participant, twice, at
+ * the same elapsed time, which reads as two people working.
+ */
+function liveRunsOf(data: ProjectData): RunIndexEntry[] {
+  const seen = new Set<string>();
+  const out: RunIndexEntry[] = [];
+  for (const run of data.rows.flatMap((row) => row.liveRuns)) {
+    if (seen.has(run.runId)) continue;
+    seen.add(run.runId);
+    out.push(run);
+  }
+  return out;
+}
+
+/** A lab's display name from its id, for screens that only carry the id. */
+function labelForLab(data: ProjectData, labId: string | undefined): string {
+  if (labId === undefined) return "";
+  return data.rows.find((row) => row.labId === labId)?.label ?? labId;
+}
+
 /** The lab screen's rows, from the one definition both counting and opening share. */
 function itemsForLab(data: ProjectData, labKey: string): { row?: LabRow; items: ReturnType<typeof labItems> } {
   const row = data.rows.find((candidate) => candidate.key === labKey);
@@ -511,7 +610,10 @@ function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData |
   if (data === undefined) return 0;
   switch (screen.name) {
     case "labs":
-      return data.rows.length;
+      // The labs, plus the "All runs" peer beneath them.
+      return data.rows.length + 1;
+    case "all-runs":
+      return liveRunsOf(data).length;
     case "lab":
       return itemsForLab(data, screen.labKey).items.length;
     default:
@@ -529,7 +631,8 @@ function identityOf(
   selected: number
 ): string | undefined {
   if (data === undefined) return undefined;
-  if (screen.name === "labs") return data.rows[selected]?.key;
+  if (screen.name === "labs") return data.rows[selected]?.key ?? "peer:all-runs";
+  if (screen.name === "all-runs") return liveRunsOf(data)[selected]?.runId;
   if (screen.name === "lab") {
     const item = itemsForLab(data, screen.labKey).items[selected];
     if (item === undefined) return undefined;
@@ -544,7 +647,12 @@ function indexOfIdentity(
   data: ProjectData,
   identity: string
 ): number {
-  if (screen.name === "labs") return data.rows.findIndex((row) => row.key === identity);
+  if (screen.name === "labs") {
+    return identity === "peer:all-runs" ? data.rows.length : data.rows.findIndex((row) => row.key === identity);
+  }
+  if (screen.name === "all-runs") {
+    return liveRunsOf(data).findIndex((run) => run.runId === identity);
+  }
   if (screen.name === "lab") {
     return itemsForLab(data, screen.labKey).items.findIndex((item) =>
       item.kind === "start" ? identity === "start" : `run:${item.run.runId}` === identity
@@ -561,7 +669,13 @@ function openSelected(
   if (data === undefined) return undefined;
   if (screen.name === "labs") {
     const row = data.rows[selected];
-    return row === undefined ? undefined : { name: "lab", labKey: row.key };
+    // Past the last lab is the peer.
+    if (row === undefined) return selected === data.rows.length ? { name: "all-runs" } : undefined;
+    return { name: "lab", labKey: row.key };
+  }
+  if (screen.name === "all-runs") {
+    const run = liveRunsOf(data)[selected];
+    return run === undefined ? undefined : { name: "run", ...(run.lab?.id === undefined ? {} : { labId: run.lab.id }), runId: run.runId };
   }
   if (screen.name === "lab") {
     // Indexed through the SAME item list that counting uses. Reading `selected` as an index into
@@ -591,9 +705,10 @@ function renderScreen(args: {
   tick: number;
   modeByLab: Record<string, "dry-run" | "live">;
   initialized: boolean;
+  actionNote: string | undefined;
 }): React.ReactElement {
   const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
-  const { summary, liveDetails, tick, modeByLab, initialized } = args;
+  const { summary, liveDetails, tick, modeByLab, initialized, actionNote } = args;
   if (screen.name === "labs") {
     return (
       <LabsScreen
@@ -604,6 +719,8 @@ function renderScreen(args: {
         unattributed={data.unattributed.length}
         tick={tick}
         initialized={initialized}
+        peerSelected={selected === data.rows.length}
+        liveTotal={liveRunsOf(data).length}
         liveParticipants={
           new Map(
             [...liveDetails.entries()]
@@ -640,7 +757,42 @@ function renderScreen(args: {
       />
     );
   }
+  if (screen.name === "all-runs") {
+    const live = liveRunsOf(data);
+    return (
+      <AllRunsScreen
+        runs={live}
+        details={liveDetails}
+        labels={new Map(live.map((run) => [run.runId, labelForLab(data, run.lab?.id)]))}
+        expected={
+          new Map(
+            data.rows
+              .map((row): [string, number] | null =>
+                row.liveExpectation.medianDurationMs === undefined ? null : [row.labId, row.liveExpectation.medianDurationMs]
+              )
+              .filter((entry): entry is [string, number] => entry !== null)
+          )
+        }
+        selected={selected}
+        columns={columns}
+        viewport={viewport}
+        tick={tick}
+        now={now}
+      />
+    );
+  }
   const run = data.runsById.get(screen.runId);
   if (run === undefined) return <Text color="yellow">that run is no longer on disk</Text>;
-  return <RunScreen run={run} detail={detail} columns={columns} viewport={viewport} />;
+  return (
+    <RunScreen
+      run={run}
+      detail={detail}
+      columns={columns}
+      viewport={viewport}
+      selected={selected}
+      tick={tick}
+      now={now}
+      actionNote={actionNote}
+    />
+  );
 }

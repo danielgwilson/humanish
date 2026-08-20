@@ -61,7 +61,9 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
     readLaunchLog: async () => "",
     readRunDetail: async () => detail,
     readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true })
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
+      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] })
   };
   return {
     cwd: "/projects/acme-app",
@@ -90,7 +92,7 @@ async function openLiveRun(detail: RunDetail | null, columns = 80) {
   // thing under test has arrived.
   const frame = await surface.press(
     KEY.enter,
-    (candidate) => candidate.includes("patience:medium") || candidate.includes("no participant record yet")
+    (candidate) => candidate.includes(detail === null ? "starting…" : "Connecting fields")
   );
   return { surface, frame };
 }
@@ -101,14 +103,12 @@ describe("watching a run", () => {
     surface.unmount();
     const lines = frame.split("\n").filter((line) => line.trim().length > 0);
 
-    const participant = lines.findIndex((line) => line.includes("CUA browser"));
-    const traits = lines.findIndex((line) => line.includes("patience:medium"));
+    const participant = lines.findIndex((line) => line.includes("is working"));
     const thought = lines.findIndex((line) => line.includes("Connecting fields"));
-    const cost = lines.findIndex((line) => line.startsWith("cost"));
+    const cost = lines.findIndex((line) => line.includes("estimated") || line.includes("cost"));
 
     expect(participant).toBeGreaterThan(-1);
-    expect(traits).toBe(participant + 1);
-    expect(thought).toBeGreaterThan(traits);
+    expect(thought).toBeGreaterThan(participant);
     // The ordering IS the requirement: who is in there and what they are thinking, then the money.
     expect(cost === -1 || cost > thought).toBe(true);
   });
@@ -116,8 +116,7 @@ describe("watching a run", () => {
   it("shows how far the participant has got, in their own units", async () => {
     const { surface, frame } = await openLiveRun(LIVE_DETAIL);
     surface.unmount();
-    expect(frame).toContain("turn 12");
-    expect(frame).toContain("31 actions");
+    expect(frame).toContain("12 turns");
   });
 
   it("quotes the thought — never paraphrased, and with the markdown lead dropped", async () => {
@@ -127,21 +126,24 @@ describe("watching a run", () => {
     expect(frame).not.toContain("**");
   });
 
-  it("points at the Observer, because a terminal cannot show the screenshots", async () => {
+  it("offers no actions while a run is still going", async () => {
+    // Nothing on this card is safe or meaningful yet: the Observer artifact is not written until
+    // the run ends, and "Run again" while it is still running is a way to spend twice by accident.
+    // The thinking is what this screen is for while it runs.
     const { surface, frame } = await openLiveRun(LIVE_DETAIL);
     surface.unmount();
-    // The path WRAPS rather than truncating: a cut path cannot be opened, so it would be a value
-    // that looks actionable and is not. Unwrap before asserting the whole thing survived.
-    const unwrapped = frame.replace(/\n\s+/g, "");
-    expect(unwrapped).toContain(".humanish/runs/cua-2026-08-19T11-30-00-000Z-aa11bb22/observer/index.html");
+    expect(frame).not.toContain("Open in Observer");
+    expect(frame).not.toContain("Run again");
+    expect(frame).toContain("Connecting fields");
   });
 
-  it("says a run has no participant record yet instead of pretending it has none", async () => {
-    // A run that has just started has no bundle. "Not written yet" and "nobody is in this run" are
-    // different facts and the screen must not merge them.
+  it("names nobody when the run has not written a participant record yet", async () => {
+    // A run that has just started has no bundle. The card says "starting…" rather than a sentence
+    // with a hole where the person goes, and it does not invent one from the lane or the lab.
     const { surface, frame } = await openLiveRun(null);
     surface.unmount();
-    expect(frame).toContain("no participant record yet");
+    expect(frame).toContain("starting…");
+    expect(frame).not.toContain("is working");
   });
 
   it("renders the live frame", async () => {
@@ -159,4 +161,60 @@ describe("watching a run", () => {
     }
     await expectGolden("run-live-45", normalized);
   });
+});
+
+describe("the interrupted card", () => {
+  const interrupted = {
+    runId: "cua-2026-08-18T08-00-00-000Z-99887766",
+    derivedFrom: "directory" as const,
+    liveness: "interrupted" as const,
+    mode: "live" as const,
+    lab: { id: "diagram-editor" },
+    startedAt: new Date(NOW - 40 * 60_000).toISOString(),
+    updatedAt: new Date(NOW - 35 * 60_000).toISOString(),
+    estimatedCostUsd: 0.62
+  };
+
+  it("says what it spent and offers the action that stops the bleeding", async () => {
+    // An interrupted run may have left sandboxes running, and those cost money until something
+    // stops them. This card is not an apology — it is the place that says so and does something.
+    const capabilities: TuiCapabilities = {
+      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [interrupted], unreadable: [] }),
+      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
+      startRun: async () => ({ ok: true, run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/t", command: [] } }),
+      readLaunchLog: async () => "",
+      readRunDetail: async () => null,
+      readLabSummary: async () => null,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1", initialized: true, hasRuntime: true }),
+      openObserver: async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "opened" }),
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1", ok: true, cwd: "/x", runId: "r", receiptCount: 2, outcomes: [], warnings: [] })
+    };
+    const options: TuiOptions = {
+      cwd: "/projects/acme-app",
+      version: { cli: "9.9.9" },
+      capabilities,
+      stdin: process.stdin,
+      stdout: process.stdout
+    };
+    const surface = await renderToText(<App options={options} now={NOW} />, {
+      columns: 80,
+      rows: 26,
+      until: (frame) => frame.includes("diagram-editor")
+    });
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await surface.press(KEY.down, (frame) => /❯[^\n]*⚑/.test(frame));
+    const card = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
+
+    expect(card).toContain("interrupted — no outcome recorded");
+    // It spent real money before dying, and says so rather than reporting nothing.
+    expect(card).toContain("~$0.62");
+    expect(card).toContain("sandboxes");
+    expect(card).toContain("Reclaim");
+
+    const done = await surface.press(KEY.enter, (frame) => frame.includes("reclaimed"));
+    surface.unmount();
+    // The action reports what it did. One that fires and says nothing is indistinguishable from
+    // one that is broken.
+    expect(done).toContain("reclaimed 2 recorded resources");
+  }, 20_000);
 });

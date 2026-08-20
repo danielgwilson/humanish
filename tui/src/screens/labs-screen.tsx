@@ -27,6 +27,10 @@ export interface LabsScreenProps {
   now: number;
   /** Whether this directory is a humanish project at all. */
   initialized: boolean;
+  /** True when the "All runs" peer is the selected row (it sits after the labs). */
+  peerSelected: boolean;
+  /** How many participants are working, for the peer's own label. */
+  liveTotal: number;
 }
 
 /**
@@ -46,7 +50,9 @@ export function LabsScreen({
   tick,
   liveParticipants,
   now,
-  initialized
+  initialized,
+  peerSelected,
+  liveTotal
 }: LabsScreenProps): React.ReactElement {
   if (rows.length === 0) {
     // Two different problems. "This is not a project" has to be said first, because otherwise the
@@ -90,6 +96,14 @@ export function LabsScreen({
         />
       ))}
       {window.end < rows.length ? <Text dimColor>  ↓ {rows.length - window.end} more</Text> : null}
+      {/* A global destination, and a peer rather than a lifecycle state — it is somewhere you go,
+          not something the app decides you are in. */}
+      <Box marginTop={1}>
+        <Text {...color(peerSelected ? "cyan" : undefined)} bold={peerSelected} dimColor={!peerSelected}>
+          {gutter(peerSelected)}   All runs
+        </Text>
+        {liveTotal > 0 ? <Text color="green">   {liveTotal} working</Text> : null}
+      </Box>
       {unattributed > 0 ? (
         <Box marginTop={1}>
           <Text dimColor>

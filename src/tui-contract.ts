@@ -16,6 +16,8 @@
 import type { LabListResult } from "./labs.js";
 import type { LabSummary, ReadLabSummaryOptions } from "./lab-summary.js";
 import type { RunDetail } from "./run-detail.js";
+import type { ReclaimResult } from "./reclaim.js";
+import type { TuiActionResult } from "./tui-actions.js";
 import type { TuiProjectState } from "./tui-project.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
@@ -62,6 +64,10 @@ export interface TuiCapabilities {
   /** Whether this directory is a humanish project — an empty project and a wrong directory are
    *  different problems and must not share a screen. */
   readProjectState(cwd: string): TuiProjectState;
+  /** Hand off to the Observer: a terminal cannot show screenshots, and that surface can. */
+  openObserver(cwd: string, observerPath: string): Promise<TuiActionResult>;
+  /** Stop the sandboxes an interrupted run left behind, keeping its evidence. */
+  reclaimRun(cwd: string, runId: string): Promise<ReclaimResult>;
 }
 
 export interface TuiOptions {

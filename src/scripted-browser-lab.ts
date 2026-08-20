@@ -22,7 +22,7 @@
 
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -191,7 +191,18 @@ export interface ScriptedBrowserLabResult {
   };
 }
 
+/**
+ * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
+ * from this function finalizes any record the run opened, whichever of its fail-closed exits it
+ * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
+ * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
+ * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ */
 export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
+  return withRunStatusScope(() => runScriptedBrowserLabInScope(options));
+}
+
+async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const physicalCwd = await realpath(cwd);

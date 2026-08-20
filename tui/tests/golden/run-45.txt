@@ -1,16 +1,11 @@
-human(ish)   acme-app · 1 participant working
+human(ish)             signup-flow · cc33dd44
 ‹ labs / signup-flow / run
 
-cua-2026-08-19T10-00-00-000Z-cc33dd44
-pass · live · signup-flow
+✓ 2/2 reached the goal · 1 reported friction
 
-no participant record yet
+2m
+~$1.20 estimated
 
-started       2026-08-19T10:00:00.000Z
-duration      2m
-outcome       2/2 reached the goal, 1
-              reported friction
-cost          ~$1.20 estimated
-from          status.json
+❯ Run again
 
-esc back   q quit
+↑↓ move   ⏎ select   esc back   q quit

@@ -29,7 +29,7 @@ import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTokenUsage, ActorTrace, ActorTraceItem } from "./actor-contract.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -2869,7 +2869,18 @@ function subjectProvenanceArg(
   return undefined;
 }
 
+/**
+ * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
+ * from this function finalizes any record the run opened, whichever of its fail-closed exits it
+ * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
+ * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
+ * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+  return withRunStatusScope(() => runCuaActorLabInScope(options));
+}
+
+async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
   const { config, dryRun } = options;
   // Capture the physical project before reading or invoking any caller hook. A supported
   // symlink cwd remains valid, but retargeting that alias from a hook cannot redirect source

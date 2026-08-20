@@ -35,7 +35,7 @@
 
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -695,7 +695,18 @@ function observerResultForConcurrentArtifacts(
   };
 }
 
+/**
+ * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
+ * from this function finalizes any record the run opened, whichever of its fail-closed exits it
+ * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
+ * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
+ * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ */
 export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
+  return withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
+}
+
+async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};

@@ -12,6 +12,7 @@
 
 export type Screen =
   | { name: "labs" }
+  | { name: "all-runs" }
   | { name: "lab"; labKey: string }
   | { name: "run"; labId?: string; runId: string };
 
@@ -36,6 +37,8 @@ export function screenKey(screen: Screen): string {
   switch (screen.name) {
     case "labs":
       return "labs";
+    case "all-runs":
+      return "all-runs";
     case "lab":
       return `lab:${screen.labKey}`;
     default:

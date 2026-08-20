@@ -39,7 +39,9 @@ const options = (): TuiOptions =>
       readLaunchLog: async () => "",
       readRunDetail: async () => null,
       readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true })
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
+      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] })
     },
     stdin: process.stdin,
     stdout: process.stdout
@@ -126,7 +128,7 @@ describe("moving through the surface", () => {
     // The FINISHED run, deliberately: it is the one carrying a participants line long enough to
     // run off a phone-width screen.
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("outcome"));
+    const run = await surface.press(KEY.enter, (frame) => frame.includes("reached the goal"));
     surface.unmount();
     const frame = normalizeFrame(run);
     for (const line of frame.split("\n")) {
@@ -139,7 +141,7 @@ describe("moving through the surface", () => {
     const surface = await openSurface();
     await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("outcome"));
+    const run = await surface.press(KEY.enter, (frame) => frame.includes("reached the goal"));
     surface.unmount();
     await expectGolden("run-80", normalizeFrame(run));
   });
@@ -159,13 +161,15 @@ describe("moving through the surface", () => {
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
     await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*0\/1 reached the goal/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("cost"));
+    const run = await surface.press(KEY.enter, (frame) => frame.includes("cost declared absent") || frame.includes("Run again"));
     surface.unmount();
 
     // `null` is a DECLARED absent cost. Rendering it as $0.00 would claim the run was free.
-    expect(run).toContain("not recorded");
+    expect(run).toContain("cost declared absent");
     expect(run).not.toContain("$0.00");
-    expect(run).toContain("fail");
+    // The card leads with the DENOMINATOR, not the label: "fail" says a run failed without saying
+    // at what, and the count is the finding.
+    expect(run).toContain("0/1 reached the goal");
   });
 
   it("an interrupted run explains itself instead of looking like a bug", async () => {
@@ -176,10 +180,11 @@ describe("moving through the surface", () => {
     const run = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
     surface.unmount();
 
-    expect(run).toContain("interrupted");
-    expect(run).toContain("the process ended before it finished writing");
-    // And it names where the listing's facts came from, so a surprising row can be traced.
-    expect(run).toContain("the run directory alone");
+    // The interrupted card sits at the same level as a finished one: what it managed, what it
+    // spent, and whether anything is still running — which is the part that keeps costing money.
+    expect(run).toContain("interrupted — no outcome recorded");
+    expect(run).toContain("sandboxes");
+    expect(run).toContain("Reclaim");
   });
 });
 
