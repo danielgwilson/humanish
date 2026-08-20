@@ -41,7 +41,8 @@ const options = (): TuiOptions =>
       readLabSummary: async () => null,
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] })
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
+      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" })
     },
     stdin: process.stdin,
     stdout: process.stdout

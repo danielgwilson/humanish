@@ -25,6 +25,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
       reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
+      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" }),
     ...overrides
   };
   const options: TuiOptions = {

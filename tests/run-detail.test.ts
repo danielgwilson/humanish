@@ -160,3 +160,75 @@ describe("what one run's participants are doing (#455)", () => {
     expect(detail?.participants[1]?.estimatedCostUsd).toBeUndefined();
   });
 });
+
+describe("what a run has spent, while it is still spending it", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-live-cost-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("prices a live run from its running usage, not just at the end", async () => {
+    // The finished trace carries its own estimatedCost; a live one carries the running usage and
+    // the model it prices at. Knowing the cost mid-run is the half where it changes what you do.
+    await writeBundle(cwd, "run-live-cost", {
+      runId: "run-live-cost",
+      streams: [
+        {
+          id: "s1",
+          liveActor: {
+            status: "running",
+            ids: { model: "gpt-5.6-sol" },
+            tokenUsage: { input: 100_000, output: 2_000, cachedInput: 80_000, cacheWriteInput: 10_000 },
+            items: [{ kind: "reasoning", lifecycle: "completed", text: "working" }]
+          }
+        }
+      ]
+    });
+    const detail = await readRunDetail(cwd, "run-live-cost");
+    const cost = detail?.participants[0]?.estimatedCostUsd;
+    expect(typeof cost).toBe("number");
+    expect(cost).toBeGreaterThan(0);
+  });
+
+  it("declines to price a model it has no rate for, rather than guessing", async () => {
+    await writeBundle(cwd, "run-unknown-model", {
+      runId: "run-unknown-model",
+      streams: [
+        {
+          id: "s1",
+          liveActor: {
+            ids: { model: "some-model-we-do-not-price" },
+            tokenUsage: { input: 100_000, output: 2_000 },
+            items: []
+          }
+        }
+      ]
+    });
+    const detail = await readRunDetail(cwd, "run-unknown-model");
+    // No figure at all beats a wrong one: the surface then says the cost is unknown.
+    expect(detail?.participants[0]?.estimatedCostUsd).toBeUndefined();
+  });
+
+  it("a finished trace keeps its own recorded figure", async () => {
+    await writeBundle(cwd, "run-finished-cost", {
+      runId: "run-finished-cost",
+      streams: [
+        {
+          id: "s1",
+          actor: {
+            estimatedCost: { estimatedCostUsd: 0.42 },
+            ids: { model: "gpt-5.6-sol" },
+            tokenUsage: { input: 999_999, output: 99_999 },
+            items: []
+          }
+        }
+      ]
+    });
+    const detail = await readRunDetail(cwd, "run-finished-cost");
+    // The recorded figure wins over re-pricing the usage: it is what the run itself concluded.
+    expect(detail?.participants[0]?.estimatedCostUsd).toBeCloseTo(0.42);
+  });
+});

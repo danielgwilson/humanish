@@ -15,6 +15,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { estimateActorCost } from "./pricing.js";
+
 import { resolveRunPath } from "./run.js";
 
 export const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
@@ -76,6 +78,9 @@ interface ActorTraceFacts {
   completionReason?: string;
   counts?: { turns?: number; actions?: number };
   estimatedCost?: { estimatedCostUsd?: number | null };
+  /** Running usage during a live run; the finished trace carries its own `estimatedCost`. */
+  tokenUsage?: Record<string, unknown>;
+  ids?: { model?: string };
   items?: { kind?: string; title?: string; text?: string; at?: string; lifecycle?: string }[];
 }
 
@@ -132,10 +137,31 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
     ...(typeof trace.counts?.turns === "number" ? { turns: trace.counts.turns } : {}),
     ...(typeof trace.counts?.actions === "number" ? { actions: trace.counts.actions } : {}),
     ...(thoughts > 0 ? { thoughts } : {}),
-    ...(trace.estimatedCost === undefined || trace.estimatedCost.estimatedCostUsd === undefined
-      ? {}
-      : { estimatedCostUsd: trace.estimatedCost.estimatedCostUsd })
+    ...costOf(trace)
   };
+}
+
+/**
+ * What a participant has spent, priced the same way whether the run is finished or in flight.
+ *
+ * A finished trace carries its own `estimatedCost`. A live one carries the RUNNING usage and the
+ * model it prices at, so the same estimator gives a figure mid-run instead of the screen reporting
+ * the cost as unknown until the moment the run ends — which is the half of a run where knowing what
+ * it is costing actually changes what you do.
+ */
+function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
+  const recorded = trace.estimatedCost?.estimatedCostUsd;
+  if (recorded !== undefined) return { estimatedCostUsd: recorded };
+  const usage = trace.tokenUsage;
+  const model = trace.ids?.model;
+  if (usage === undefined || typeof model !== "string") return {};
+  try {
+    const estimated = estimateActorCost(usage as never, model);
+    // A model `src/pricing.ts` cannot price yields no figure rather than a wrong one.
+    return typeof estimated?.estimatedCostUsd === "number" ? { estimatedCostUsd: estimated.estimatedCostUsd } : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

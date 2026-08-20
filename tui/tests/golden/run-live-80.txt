@@ -10,4 +10,6 @@ seems a bit off."
 12 turns
 cost not recorded
 
-esc back   q quit
+❯ Stop this run
+
+↑↓ move   ⏎ select   esc back   q quit

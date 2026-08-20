@@ -49,6 +49,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
       reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
+      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" }),
     ...overrides
   };
   return {
@@ -217,7 +218,8 @@ describe("the two empty states are different problems", () => {
       listLabs: async () => noLabs,
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] })
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
+      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" })
     }, (candidate) => candidate.includes("no labs here yet"));
     expect(frame).toContain("no labs here yet");
     expect(frame).toContain("a lab is a study");

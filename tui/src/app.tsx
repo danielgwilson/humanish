@@ -90,6 +90,8 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   const [detail, setDetail] = useState<RunDetail | null | undefined>(undefined);
   /** What the last run-card action reported. An action that appears to do nothing is a bug. */
   const [actionNote, setActionNote] = useState<string | undefined>(undefined);
+  /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
+  const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
@@ -252,7 +254,22 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
    * indistinguishable from one that is broken.
    */
   const act = useCallback(
-    async (run: RunIndexEntry, action: "observer" | "again" | "reclaim"): Promise<void> => {
+    async (run: RunIndexEntry, action: "observer" | "again" | "reclaim" | "stop"): Promise<void> => {
+      if (action === "stop") {
+        // Armed like a live start, and for the same reason: it ends work that has already been paid
+        // for, and a single keystroke should not be able to do that by accident.
+        if (stopArmedAt === undefined) {
+          setStopArmedAt(Date.now());
+          setActionNote("stop this run? ⏎ again to confirm · esc cancel");
+          return;
+        }
+        if (Date.now() - stopArmedAt < LIVE_CONFIRM_MIN_MS) return;
+        setStopArmedAt(undefined);
+        setActionNote("stopping…");
+        const result = await options.capabilities.stopRun(options.cwd, run.runId);
+        setActionNote(result.message);
+        return;
+      }
       if (action === "observer") {
         const observerPath = detail?.observerPath;
         if (observerPath === undefined) {
@@ -289,7 +306,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
       });
       setActionNote(started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message);
     },
-    [detail, options, data]
+    [detail, options, data, stopArmedAt]
   );
 
   useInput(
@@ -324,10 +341,18 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
           }
         }
         if (key.escape || key.leftArrow) {
-          // Escape cancels an armed live start before it means "go back": the nearer meaning of
+          // Escape cancels an armed confirmation before it means "go back": the nearer meaning of
           // "no" wins, so a confirmation can never be dismissed by accidentally leaving the screen.
+          // Both kinds — starting a live run, and stopping one — are armed, and both are undone
+          // here rather than carried to whatever screen you land on next.
           if (confirming !== undefined) {
             setConfirming(undefined);
+            setArmedAt(undefined);
+            return;
+          }
+          if (stopArmedAt !== undefined) {
+            setStopArmedAt(undefined);
+            setActionNote(undefined);
             return;
           }
           dispatch({ type: "back" });
@@ -356,7 +381,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start, modeByLab, detail, act]
+      [exit, rowCount, screen, data, selected, confirming, start, modeByLab, detail, act, stopArmedAt]
     )
   );
 
@@ -369,6 +394,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   const openRunId = screen.name === "run" ? screen.runId : undefined;
   useEffect(() => {
     setActionNote(undefined);
+    setStopArmedAt(undefined);
     if (openRunId === undefined) {
       setDetail(undefined);
       return;

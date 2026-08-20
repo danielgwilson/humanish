@@ -13,7 +13,7 @@ import { color } from "../text-props.js";
  * What a run card can DO. Only actions that actually work appear — `Share…` waits for the export
  * contract (#471) rather than shipping as a control that fails.
  */
-export type RunAction = "observer" | "again" | "reclaim";
+export type RunAction = "observer" | "again" | "reclaim" | "stop";
 
 export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefined): RunAction[] {
   if (run.liveness === "interrupted") {
@@ -21,7 +21,10 @@ export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefi
     // stops them. Reclaim leads; the evidence it did capture is still worth opening.
     return detail?.observerPath === undefined ? ["reclaim"] : ["reclaim", "observer"];
   }
-  if (run.liveness === "running") return [];
+  // A run that is going nowhere costs money every turn, and stopping it used to mean finding the
+  // pid yourself. Nothing else belongs here: the Observer artifact is not written until it ends,
+  // and "Run again" mid-flight is a way to spend twice by accident.
+  if (run.liveness === "running") return ["stop"];
   return detail?.observerPath === undefined ? ["again"] : ["observer", "again"];
 }
 
@@ -31,6 +34,8 @@ export function actionLabel(action: RunAction): string {
       return "Open in Observer";
     case "again":
       return "Run again";
+    case "stop":
+      return "Stop this run";
     default:
       return "Reclaim — stop sandboxes, keep evidence";
   }

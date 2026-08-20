@@ -94,7 +94,7 @@ export interface CuaActorSessionOptions {
   /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot callback threaded to the loop (#441); see CuaLoopOptions.onTrace. */
-  onTrace?: (items: readonly ActorTraceItem[]) => void;
+  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage) => void;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
