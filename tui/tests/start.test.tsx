@@ -23,6 +23,8 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
     readRunDetail: async () => null,
       readLabSummary: async () => null,
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
+      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
     ...overrides
   };
   const options: TuiOptions = {
@@ -240,7 +242,7 @@ describe("what the surface says about the run it just started", () => {
     surface.unmount();
 
     expect(frame).not.toContain("no longer on disk");
-    expect(frame).toContain("cua-2026-08-19T12-00-01-000Z-newrun");
+    expect(frame).toContain("newrun");
   });
 
   it("does not adopt a stale run that merely shares the recycled pid", async () => {

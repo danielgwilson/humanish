@@ -5,6 +5,8 @@ human(ish)                                      acme-app · 1 participant workin
     diagram-editor-live                                  4m · 1 run, none priced
     never-run-lab                                                      never run
 
+    All runs   1 working
+
 1 run with no lab
 
 ↑↓ move   ⏎ open   q quit
