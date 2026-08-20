@@ -749,9 +749,10 @@ Core-owned fields:
   value is what produced the trace, so reporting it is honest where reporting
   "unset" would not be. Absent when a provider declares no settings and on every
   pre-existing bundle; tolerated by verify. It exists because effort was
-  unreachable from a lab, which made every run take the default silently, and a
-  trace that cannot say what effort produced it cannot be compared with one that
-  can
+  unreachable from a lab, which made every run take the default silently. Effort
+  is part of WHO the participant was rather than of how the instrument was tuned
+  (docs/principles/actor-fidelity.md), so a trace without it is a result missing
+  half its sample description
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which KIND of route this
   actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived

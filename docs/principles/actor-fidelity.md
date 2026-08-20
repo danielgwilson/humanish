@@ -125,7 +125,29 @@ a green run proves nothing.
 4. **Prompt guidance ships as a nudge whose take-rate is reported, never as the
    mechanism.** The evidence above is what that sentence is standing on.
 
-5. **Fail closed only on harness integrity, never on product semantics** — a lane that
+5. **Capability settings are recruiting decisions, not instrument settings.** Which
+   model runs a lane, and at what reasoning effort, changes who the participant IS —
+   the same way a persona prompt does. It is tempting to sort these into "the
+   participant" (persona) and "the harness" (model, effort) and treat a result that
+   moves with effort as a confound. That split does not survive contact: both are
+   things we set on a synthetic person before they touch the product, and the evidence
+   above says the persona half is the *weakly* grounded one. So a lane that abandons at
+   `medium` and completes at `high` produced two findings about two participants, not
+   one finding and one artifact.
+
+   What follows is a recording obligation, not a control obligation. Vary them
+   deliberately, declare what was recruited, and record the resolved value on the trace
+   (`ids.model`, `modelSettings.reasoningEffort`) so a reader can tell which participant
+   produced which result. The failure mode is not "we ran at medium" — it is running at
+   medium without saying so, then attributing the outcome to the one variable we did
+   declare.
+
+   **What this does not license:** claiming that any (model, effort) pair corresponds to
+   a real user population. No such mapping is calibrated here, and this project does not
+   assert one. A declared population says who was recruited; it does not say whom they
+   stand for.
+
+6. **Fail closed only on harness integrity, never on product semantics** — a lane that
    cannot report what it did is a broken instrument, which is a different thing from
    an actor that behaved unexpectedly.
 

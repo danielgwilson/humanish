@@ -181,8 +181,9 @@ export interface ActorTrace {
    * every pre-existing bundle, and its absence is tolerated by verify.
    *
    * It exists because effort was a silent constant: unreachable from a lab, so every run took the
-   * provider default. A trace that does not say what effort produced it cannot be compared with
-   * one that does, which makes any cross-run claim about a participant's competence unfalsifiable.
+   * provider default. Effort is part of WHO the participant was, not of how the instrument was
+   * tuned (docs/principles/actor-fidelity.md), so a trace that does not carry it is a result with
+   * half its sample description missing — and two such traces cannot honestly be compared.
    */
   modelSettings?: { reasoningEffort: string };
   counts: Record<string, number>;

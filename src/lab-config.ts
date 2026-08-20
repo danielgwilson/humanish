@@ -424,9 +424,12 @@ export interface LabActor {
    * declare an effort does not claim one. Support is model-dependent (see src/reasoning-effort.ts),
    * so a level a model does not accept fails on the first turn rather than being downgraded.
    *
-   * This is a study variable, not a tuning knob. Two lanes running the same persona and mission at
-   * different efforts is a control: it separates "the participant could not do this" from "the
-   * participant was not given enough thinking to do this".
+   * This is a recruiting decision, not a tuning knob: it changes who the participant IS, the same
+   * way a persona prompt does. Two lanes running the same persona and mission at different efforts
+   * is therefore a CONTRAST between two participants, not a control for an instrument — a lane that
+   * abandons at one level and completes at another has reported on both of them. The obligation it
+   * creates is to declare and record, never to hold it constant. See
+   * docs/principles/actor-fidelity.md.
    */
   reasoningEffort?: ReasoningEffort;
   /**
