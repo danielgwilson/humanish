@@ -1,7 +1,7 @@
 human(ish)                                                signup-flow · aa11bb22
 ‹ labs / signup-flow / run
 
-⠙ synthetic-new-user is working
+⠋ synthetic-new-user is working
 
 "Connecting fields for relationships I'm thinking about connecting fields to
 establish relationships between the notes and projects. The naming of owner_id

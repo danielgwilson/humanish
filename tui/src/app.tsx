@@ -32,6 +32,12 @@ export interface AppProps {
   onReady?: () => void;
   /** Frozen in tests so a golden never depends on the wall clock. */
   now?: number;
+  /**
+   * Frozen spinner phase, for the same reason `now` is frozen: the spinner glyph is part of every
+   * live frame, and it advances on a 120ms timer — so a golden containing one is a coin flip on a
+   * loaded machine. CI caught exactly that, passing on one Node version and failing on another.
+   */
+  tick?: number;
 }
 
 /** Chrome the frame always spends: title, path, blank, footer. */
@@ -60,7 +66,7 @@ const LIVE_CONFIRM_MIN_MS = 400;
 /** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
 const SPINNER_MS = 120;
 
-export function App({ options, onReady, now }: AppProps): React.ReactElement {
+export function App({ options, onReady, now, tick: frozenTick }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const size = useTerminalSize();
   const [nav, dispatch] = useReducer(navigate, undefined, initialNav);
@@ -85,7 +91,8 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   /** What the last run-card action reported. An action that appears to do nothing is a bug. */
   const [actionNote, setActionNote] = useState<string | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
-  const [tick, setTick] = useState(0);
+  const [liveTick, setTick] = useState(0);
+  const tick = frozenTick ?? liveTick;
   /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
   const [modeByLab, setModeByLab] = useState<Record<string, "dry-run" | "live">>({});
   const [summary, setSummary] = useState<LabSummary | null | undefined>(undefined);
@@ -390,10 +397,11 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   // The spinner clock. Independent of the data refresh, because motion is what says "live" and a
   // 2s heartbeat does not read as motion.
   useEffect(() => {
+    if (frozenTick !== undefined) return;
     const timer = setInterval(() => setTick((previous) => previous + 1), SPINNER_MS);
     timer.unref?.();
     return () => clearInterval(timer);
-  }, []);
+  }, [frozenTick]);
 
   // Who is in each LIVE run, so the labs list can name them. Only live runs — reading detail for
   // the whole list would open every bundle, which is exactly what the index exists to avoid.

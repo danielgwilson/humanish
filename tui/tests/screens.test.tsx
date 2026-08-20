@@ -66,7 +66,7 @@ async function frameAt(
   overrides: Partial<TuiCapabilities> = {},
   until?: (frame: string) => boolean
 ): Promise<string> {
-  const rendered = await renderToText(<App options={options(overrides)} now={NOW} />, {
+  const rendered = await renderToText(<App options={options(overrides)} now={NOW} tick={0} />, {
     columns,
     rows,
     // Wait for the DATA-BEARING frame, never a fixed sleep: the first frame says "reading project…"
@@ -153,7 +153,7 @@ describe("the labs screen, rendered", () => {
       readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [], unreadable: [] }),
       listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
     });
-    const rendered = await renderToText(<App options={empty} now={NOW} />, {
+    const rendered = await renderToText(<App options={empty} now={NOW} tick={0} />, {
       columns: 80,
       until: (frame) => frame.includes("no labs")
     });
@@ -173,7 +173,7 @@ describe("the labs screen, rendered", () => {
       },
       listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
     });
-    const rendered = await renderToText(<App options={broken} now={NOW} />, {
+    const rendered = await renderToText(<App options={broken} now={NOW} tick={0} />, {
       columns: 80,
       until: (frame) => frame.includes("could not read")
     });
@@ -193,7 +193,7 @@ describe("the harness renders the way a terminal does, not the way a build log d
     const previous = process.env.CI;
     process.env.CI = "true";
     try {
-      const rendered = await renderToText(<App options={options()} now={NOW} />, {
+      const rendered = await renderToText(<App options={options()} now={NOW} tick={0} />, {
         columns: 80,
         until: (frame) => frame.includes("Signup flow")
       });

@@ -74,7 +74,7 @@ async function pressUntil(
 }
 
 async function openSurface(columns = 80) {
-  return renderToText(<App options={options()} now={NOW} />, {
+  return renderToText(<App options={options()} now={NOW} tick={0} />, {
     columns,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
