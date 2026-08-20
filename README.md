@@ -30,9 +30,9 @@ actually involves ([docs/principles/three-roles.md](docs/principles/three-roles.
   protocol: personas, discrete tasks with success criteria the participant
   never sees, and a budget set once at the study level, the way recruiting
   decisions are made.
-- **The stakeholder** watches through Observer and reads results that carry
-  their denominator: `2/2 reached the goal, 1 reported friction; tasks:
-  reach-signup 2/2 · read-verification-mail 2/2`.
+- **The stakeholder** watches through Observer, drives from `humanish tui`, and
+  reads results that carry their denominator: `2/2 reached the goal, 1 reported
+  friction; tasks: reach-signup 2/2 · read-verification-mail 2/2`.
 - **The participant** is the persona: the subject of the study, never its
   instrument. A participant abandoning a task is a finding about the product,
   not a harness failure.
@@ -143,6 +143,54 @@ The CI-safe equivalent is:
 npx humanish watch --json --no-open
 ```
 
+## The Terminal Surface
+
+Every other humanish command is built so an agent can drive it. `humanish tui`
+is the one that is not: it takes the screen and waits for a person.
+
+```bash
+npx humanish tui
+```
+
+Arrow keys move, `enter` opens, `esc` goes back, `q` quits. Three screens, and
+you navigate between OBJECTS rather than between states — the set of labs, one
+lab, one run — while a run's lifecycle renders in place, so a run you are
+watching changes from running to its verdict without the screen moving under
+you.
+
+- **labs** — every lab in the project, whether or not it has ever run. Labs with
+  something running now sort first. Each row carries what to expect from a LIVE
+  run of it; a lab with no live history says `no live runs yet` rather than
+  quoting a median from dry runs, which spend nothing and take no time.
+- **lab** — that lab's history, and two ways to start it. A dry run starts on one
+  keypress because it cannot cost anything; a live run is armed by the first
+  `enter` and committed by the second, restating the cost in between.
+- **run** — who is in the run, what they are currently thinking, and how far they
+  have got, with time and money underneath. A terminal cannot show screenshots,
+  so the run's self-contained Observer artifact is named for you to open.
+
+A run you start from the surface is DETACHED: it keeps going if you quit the
+TUI, and it survives losing the SSH session you started it over. The surface
+follows it by reading `.humanish/runs/<id>/status.json`, holding no handle on
+it — which is why you can quit mid-run, reopen, and find it still there.
+
+Requires an interactive terminal and Node 22 or newer. It refuses anything else
+with a structured error rather than rendering escape codes into a pipe:
+
+```console
+$ humanish tui --json < /dev/null
+{
+  "schema": "humanish.tui-result.v1",
+  "ok": false,
+  "error": {
+    "code": "HUMANISH_TUI_REQUIRES_TTY",
+    "message": "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one."
+  }
+}
+```
+
+Every other command still works on Node 20; only this surface needs 22.
+
 ## Serve the Library
 
 `humanish watch` follows one attached run; `humanish serve` serves the whole
@@ -195,6 +243,7 @@ persisted evidence — screenshots, events, terminal tails — only). See
 | --- | --- |
 | `humanish init` | Scaffold committed `humanish/` source and ignored `.humanish/` runtime state. |
 | `humanish doctor` | Explain readiness and missing setup. |
+| `humanish tui` | Interactive terminal surface for browsing labs and runs and starting a run. Humans only — it refuses a non-interactive stdin or stdout. |
 | `humanish run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
 | `humanish run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
 | `humanish watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
