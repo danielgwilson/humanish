@@ -1,11 +1,10 @@
-labs                          humanish v9.9.9
-/projects/acme-app
+human(ish)   acme-app · 1 participant working
 
-› Signup flow                       1 running
-  diagram-editor                       2 runs
-  diagram-editor-live                  2 runs
-  never-run-lab                     never run
+❯ ⠋ Signup flow             starting… · 30:00
+    diagram-editor                     2 runs
+    diagram-editor-live                2 runs
+    never-run-lab                   never run
 
 1 run with no lab
 
-↑↓ move · ↵ open · q quit
+↑↓ move   ⏎ open   q quit

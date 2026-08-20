@@ -14,7 +14,9 @@
 // the frames back.
 
 import type { LabListResult } from "./labs.js";
+import type { LabSummary, ReadLabSummaryOptions } from "./lab-summary.js";
 import type { RunDetail } from "./run-detail.js";
+import type { TuiProjectState } from "./tui-project.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
 
@@ -51,6 +53,15 @@ export interface TuiCapabilities {
    * `null` when the run has not written a bundle yet.
    */
   readRunDetail(cwd: string, runId: string): Promise<RunDetail | null>;
+  /**
+   * What a lab IS — subject, participants, model, spend caps, and whether the keys a live run needs
+   * resolve right now. Read for the lab being looked at, because it is what someone reads before
+   * deciding to spend money.
+   */
+  readLabSummary(cwd: string, lab: string, options?: ReadLabSummaryOptions): Promise<LabSummary | null>;
+  /** Whether this directory is a humanish project — an empty project and a wrong directory are
+   *  different problems and must not share a screen. */
+  readProjectState(cwd: string): TuiProjectState;
 }
 
 export interface TuiOptions {

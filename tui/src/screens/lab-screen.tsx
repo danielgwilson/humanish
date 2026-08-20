@@ -1,130 +1,130 @@
 import { Box, Text } from "ink";
 import React from "react";
 
+import type { LabSummary } from "../../../src/lab-summary.js";
+import type { RunDetail } from "../../../src/run-detail.js";
 import type { RunIndexEntry } from "../../../src/run-index.js";
 import type { LabRow } from "../../../src/run-projection.js";
-import { expectationLine, formatDuration, labSummaryLine, listWindow, livenessLabel } from "../../../src/run-projection.js";
+import {
+  expectationLine,
+  formatDuration,
+  labSummaryLine,
+  listWindow,
+  normalizeThought
+} from "../../../src/run-projection.js";
+import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { color } from "../text-props.js";
 
 /**
- * What one row of the lab screen IS. Actions and history share a single list because they share a
- * cursor: pressing Down from the last action lands on the newest run, which is how the screen reads
- * to someone who is just holding an arrow key.
- *
- * Defined once and consumed by everything that needs to count, index, or open a row — the classic
- * failure here is a screen whose "how many rows" and "what is row N" disagree by one.
+ * One row of the lab screen. Start and history share a cursor because they share a screen: pressing
+ * Down from Start lands on the newest run, which is how it reads to someone holding an arrow key.
+ * Defined once and used by everything that counts, indexes or opens a row.
  */
-export type LabItem =
-  | { kind: "start"; mode: "dry-run" | "live" }
-  | { kind: "run"; run: RunIndexEntry };
+export type LabItem = { kind: "start" } | { kind: "run"; run: RunIndexEntry };
 
 export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): LabItem[] {
-  return [
-    ...(canStart
-      ? ([
-          { kind: "start", mode: "dry-run" },
-          { kind: "start", mode: "live" }
-        ] as LabItem[])
-      : []),
-    ...runs.map((run): LabItem => ({ kind: "run", run }))
-  ];
+  return [...(canStart ? ([{ kind: "start" }] as LabItem[]) : []), ...runs.map((run): LabItem => ({ kind: "run", run }))];
 }
 
 export interface LabScreenProps {
   row: LabRow;
+  summary: LabSummary | null | undefined;
   runs: RunIndexEntry[];
+  /** Detail for the live run, so it can lead with its participant. */
+  liveDetail: RunDetail | null | undefined;
   selected: number;
   columns: number;
   viewport: number;
   now: number;
-  /** False for a lab with no manifest here — there is nothing to start. */
+  tick: number;
   canStart: boolean;
-  /** Set while a live start is awaiting confirmation. */
+  /** Which mode the Start toggle is on. */
+  mode: "dry-run" | "live";
   confirming: "live" | undefined;
-  /** Rendered when a launch could not happen. */
   launchError: string | undefined;
-  /** A launch in flight. Not a failure, so it is not styled as one. */
   launchNote: string | undefined;
 }
 
 /**
- * One lab: what it is, what to expect from it, and everything it has done.
- *
- * The expectation line sits directly under the name because it is what someone reads before
- * deciding to spend money — and it always carries its own denominator, so "~$2.00 median" can never
- * be mistaken for a quote when it came from two runs.
+ * The object, and where the lifecycle lives. What this study does, what it typically costs, one
+ * action, then its runs newest-first — so idle, running and finished are one screen rather than
+ * three, and the run you just started appears where you are already looking.
  */
-export function LabScreen({
-  row,
-  runs,
-  selected,
-  columns,
-  viewport,
-  now,
-  canStart,
-  confirming,
-  launchError,
-  launchNote
-}: LabScreenProps): React.ReactElement {
+export function LabScreen(props: LabScreenProps): React.ReactElement {
+  const { row, summary, runs, selected, columns, viewport, now, tick, canStart } = props;
   const items = labItems(runs, canStart);
+
   return (
     <Box flexDirection="column">
-      {/* The header carries the human name; this is the handle you would actually type. Lab
-          resolution is by FILENAME, so this is the file stem and not necessarily the declared id. */}
-      <Text dimColor>{row.declared ? `humanish lab run ${row.name}` : row.labId}</Text>
-      {/* The SAME line the labs list shows. Rendering the mode-mixed expectation here instead put a
-          figure derived from dry runs two lines above "Start a live run" — the exact number this
-          screen's own docblock calls what someone reads before deciding to spend money. */}
-      <Text>{labSummaryLine(row)}</Text>
-      {row.declared ? null : (
-        // A lab that only exists in history is a real situation with a real cause, and the runs
-        // stay readable. Saying why beats leaving someone to wonder if the surface is broken.
-        <Text color="yellow">no manifest in this project — renamed, deleted, or run from elsewhere</Text>
+      {summary?.description === undefined ? null : (
+        <Text wrap="truncate-end">{firstSentence(summary.description)}</Text>
       )}
-      {row.sharesIdWith > 0 ? (
-        // Two manifests declaring one id is a misconfiguration the operator almost certainly does
-        // not know about, and its consequence lands exactly here: the runs below belong to the id,
-        // so they cannot be attributed to this file rather than the other one.
-        <Text color="yellow">
-          {row.sharesIdWith + 1} manifests declare id &quot;{row.labId}&quot; — the runs below are shared between them
+      {summary?.subject === undefined ? null : (
+        <Text dimColor wrap="truncate-end">
+          {[summary.subject, summary.participants, summary.model].filter(Boolean).join(" · ")}
+        </Text>
+      )}
+      <Box width={columns}>
+        <Text dimColor wrap="truncate-end">
+          {/* The SAME rule the labs list uses. Falling back to the mode-mixed expectation here put
+              a dry-run-derived figure directly above a control that spends money. */}
+          {labSummaryLine(row)}
+          {capsLine(summary)}
+        </Text>
+        <Box flexGrow={1} />
+        {summary?.keysReady === undefined ? null : (
+          <Text {...color(summary.keysReady ? "green" : "yellow")}>{summary.keysReady ? "keys ✓" : "keys ✗"}</Text>
+        )}
+      </Box>
+      {summary?.keysReady === false ? (
+        // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
+        // in a shell they sourced, a password manager, another project — and what they need is the
+        // one command that makes them resolve here, every time, without pasting a value into a
+        // terminal that is recording frames.
+        <Text dimColor wrap="truncate-end">
+          {summary.missingKeys?.join(", ")} not found — `humanish keys set openai` (or pass
+          --env-file when you launch)
         </Text>
       ) : null}
 
-      {launchNote === undefined ? null : (
+      {props.launchNote === undefined ? null : (
         <Box marginTop={1}>
-          <Text dimColor>{launchNote}</Text>
+          <Text dimColor>{props.launchNote}</Text>
         </Box>
       )}
-      {launchError === undefined ? null : (
+      {props.launchError === undefined ? null : (
         <Box marginTop={1}>
-          <Text color="red">{launchError}</Text>
+          <Text color="red">{props.launchError}</Text>
         </Box>
       )}
 
+      {canStart ? <StartRow {...props} active={items[selected]?.kind === "start"} /> : null}
+      {row.declared ? null : (
+        <Box marginTop={1}>
+          <Text color="yellow">no manifest here — renamed, deleted, or run from elsewhere</Text>
+        </Box>
+      )}
+      {row.sharesIdWith > 0 ? (
+        <Text color="yellow">
+          {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot; — these runs are shared between them
+        </Text>
+      ) : null}
+
       <Box marginTop={1} flexDirection="column">
-        {canStart ? (
-          <StartRows
-            items={items}
-            selected={selected}
-            columns={columns}
-            expectation={row.liveExpectation.sample > 0 ? expectationLine(row.liveExpectation) : "no live runs yet"}
-            confirming={confirming}
-          />
-        ) : null}
+        <Text dimColor>Runs</Text>
         {runs.length === 0 ? (
-          <Box marginTop={canStart ? 1 : 0}>
-            <Text dimColor>no runs yet</Text>
-          </Box>
+          <Text dimColor>  none yet</Text>
         ) : (
-          <Box marginTop={canStart ? 1 : 0} flexDirection="column">
-            <RunList
-              runs={runs}
-              selected={selected - (canStart ? 2 : 0)}
-              columns={columns}
-              viewport={viewport}
-              now={now}
-            />
-          </Box>
+          <RunList
+            runs={runs}
+            liveDetail={props.liveDetail}
+            selected={selected - (canStart ? 1 : 0)}
+            columns={columns}
+            viewport={Math.max(2, viewport - 6)}
+            now={now}
+            tick={tick}
+            expectedMs={row.liveExpectation.medianDurationMs}
+          />
         )}
       </Box>
     </Box>
@@ -132,46 +132,41 @@ export function LabScreen({
 }
 
 /**
- * Two explicit rows rather than one row with a mode toggle.
+ * ONE action with a mode toggle, as designed — not two rows.
  *
- * A toggle requires reading its current state correctly BEFORE pressing Enter, and misreading it
- * spends real money on a study you did not mean to run. Putting the mode in the action itself means
- * the wrong key cannot cost anything, and it leaves room to say what each one costs.
+ * Safe because the commit is two keystrokes for a live run: ←/→ chooses the mode, the first Enter
+ * arms and restates the cost, the second commits. Misreading the toggle therefore cannot spend
+ * anything, which was the only argument for splitting it.
  */
-function StartRows({
-  items,
-  selected,
+function StartRow({
+  mode,
+  confirming,
+  active,
   columns,
-  expectation,
-  confirming
-}: {
-  items: LabItem[];
-  selected: number;
-  columns: number;
-  expectation: string;
-  confirming: "live" | undefined;
-}): React.ReactElement {
+  row
+}: LabScreenProps & { active: boolean }): React.ReactElement {
+  const live = mode === "live";
   return (
-    <Box flexDirection="column">
-      {items.map((item, index) =>
-        item.kind !== "start" ? null : (
-          <Box key={item.mode} width={columns}>
-            <Text {...color(index === selected ? "cyan" : undefined)} bold={index === selected}>
-              {index === selected ? "›" : " "}{" "}
-              {item.mode === "dry-run" ? "Start a dry run" : "Start a live run"}
-            </Text>
-            <Box flexGrow={1} />
-            <Text dimColor={item.mode === "dry-run"} {...color(item.mode === "live" ? "yellow" : undefined)}>
-              {item.mode === "dry-run" ? "no spend" : expectation}
-            </Text>
-          </Box>
-        )
-      )}
+    <Box marginTop={1} flexDirection="column">
+      <Box width={columns}>
+        <Text {...color(active ? "cyan" : undefined)} bold={active}>
+          {gutter(active)} Start{"  "}
+        </Text>
+        <Text {...color(live ? undefined : "cyan")} bold={!live} dimColor={live}>
+          dry-run
+        </Text>
+        <Text dimColor> / </Text>
+        <Text {...color(live ? "yellow" : undefined)} bold={live} dimColor={!live}>
+          live
+        </Text>
+        <Box flexGrow={1} />
+        <Text dimColor>{live ? "←→ switch" : "no spend"}</Text>
+      </Box>
       {confirming === "live" ? (
-        // A live run spends money the moment it starts, so the second keypress is the one that
-        // commits — and it restates the cost rather than assuming it was read on the row above.
         <Box marginTop={1}>
-          <Text color="yellow">start a live run? {expectation} · enter to confirm, esc to cancel</Text>
+          <Text color="yellow">
+            {"  "}start a live run? {expectationLine(row.liveExpectation)} · ⏎ confirm · esc cancel
+          </Text>
         </Box>
       ) : null}
     </Box>
@@ -180,84 +175,188 @@ function StartRows({
 
 function RunList({
   runs,
+  liveDetail,
   selected,
   columns,
   viewport,
-  now
+  now,
+  tick,
+  expectedMs
 }: {
   runs: RunIndexEntry[];
+  liveDetail: RunDetail | null | undefined;
   selected: number;
   columns: number;
   viewport: number;
   now: number;
+  tick: number;
+  expectedMs: number | undefined;
 }): React.ReactElement {
   const window = listWindow({ total: runs.length, selected, viewport });
   return (
     <Box flexDirection="column">
-      {window.start > 0 ? <Text dimColor>↑ {window.start} more</Text> : null}
-      {runs.slice(window.start, window.end).map((run, offset) => (
-        <RunRow key={run.runId} run={run} columns={columns} active={window.start + offset === selected} now={now} />
-      ))}
-      {window.end < runs.length ? <Text dimColor>↓ {runs.length - window.end} more</Text> : null}
+      {window.start > 0 ? <Text dimColor>  ↑ {window.start} more</Text> : null}
+      {runs.slice(window.start, window.end).map((run, offset) =>
+        run.liveness === "running" ? (
+          <LiveRun
+            key={run.runId}
+            run={run}
+            detail={liveDetail}
+            active={window.start + offset === selected}
+            columns={columns}
+            now={now}
+            tick={tick}
+            expectedMs={expectedMs}
+          />
+        ) : (
+          <PastRun
+            key={run.runId}
+            run={run}
+            active={window.start + offset === selected}
+            columns={columns}
+          />
+        )
+      )}
+      {window.end < runs.length ? <Text dimColor>  ↓ {runs.length - window.end} more</Text> : null}
     </Box>
   );
-}
-
-function RunRow({
-  run,
-  columns,
-  active,
-  now
-}: {
-  run: RunIndexEntry;
-  columns: number;
-  active: boolean;
-  now: number;
-}): React.ReactElement {
-  const label = livenessLabel(run);
-  const when = relativeTime(run, now);
-  const right = run.durationMs === undefined ? when : `${when} · ${formatDuration(run.durationMs)}`;
-  const room = Math.max(6, columns - right.length - label.length - 6);
-  return (
-    <Box>
-      <Text {...color(active ? "cyan" : undefined)} bold={active}>
-        {active ? "›" : " "} {truncateId(run.runId, room)}
-      </Text>
-      <Box flexGrow={1} />
-      <Text {...color(colorFor(run))}>{label}</Text>
-      <Text dimColor> {right}</Text>
-    </Box>
-  );
-}
-
-function colorFor(run: RunIndexEntry): string | undefined {
-  if (run.liveness === "running") return "green";
-  if (run.liveness === "interrupted") return "yellow";
-  if (run.verdict === "fail") return "red";
-  return undefined;
 }
 
 /**
- * Run ids carry their own timestamp (`cua-2026-08-19T07-44-13-489Z-…`), which is already shown as a
- * relative time beside the row. Cutting the middle keeps the two ends that identify it — the lane
- * prefix and the short hash — instead of a wall of digits.
+ * The live run gets real vertical space and leads with the PARTICIPANT, then their thinking in
+ * full, then activity and spend as one quiet trailing line. Mid-run, cost is a guard rail rather
+ * than the subject — it answers a question before you start and after you finish.
  */
-function truncateId(runId: string, width: number): string {
-  if (runId.length <= width) return runId;
-  if (width < 8) return `${runId.slice(0, Math.max(1, width - 1))}…`;
-  const head = Math.ceil((width - 1) / 2);
-  const tail = width - 1 - head;
-  return `${runId.slice(0, head)}…${runId.slice(runId.length - tail)}`;
+function LiveRun({
+  run,
+  detail,
+  active,
+  columns,
+  now,
+  tick,
+  expectedMs
+}: {
+  run: RunIndexEntry;
+  detail: RunDetail | null | undefined;
+  active: boolean;
+  columns: number;
+  now: number;
+  tick: number;
+  expectedMs: number | undefined;
+}): React.ReactElement {
+  const participant = detail?.participants[0];
+  const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
+  const elapsed = Number.isFinite(started) ? clockOf(now - started) : undefined;
+  const of = expectedMs === undefined ? "" : ` of ~${clockOf(expectedMs)}`;
+  const thought =
+    participant?.thought === undefined
+      ? undefined
+      : normalizeThought(participant.thought.text, { width: Math.max(16, columns - 6), maxLines: 3 });
+
+  return (
+    <Box flexDirection="column">
+      <Box width={columns}>
+        <Text {...color(active ? "cyan" : undefined)} bold={active}>
+          {gutter(active)}{" "}
+        </Text>
+        <Text color="green">{verdictGlyph({ liveness: "running", tick })} </Text>
+        <Text {...color(active ? "cyan" : undefined)} bold={active} wrap="truncate-end">
+          {participant?.personaId ?? participant?.label ?? "starting…"}
+        </Text>
+        <Box flexGrow={1} />
+        <Text dimColor>{elapsed === undefined ? "" : `${elapsed}${of}`}</Text>
+      </Box>
+      {thought === undefined ? null : (
+        <Box flexDirection="column" marginLeft={4}>
+          {thought.lines.map((line, index) => (
+            <Text key={index} dimColor={index > 0}>
+              {index === 0 ? `"${line}` : line}
+              {index === thought.lines.length - 1 ? '"' : ""}
+            </Text>
+          ))}
+        </Box>
+      )}
+      {participant === undefined ? null : (
+        <Box width={columns}>
+          <Text dimColor>{"    "}{activityLine(participant)}</Text>
+        </Box>
+      )}
+    </Box>
+  );
 }
 
-/** Coarse on purpose: minutes and hours are what "when did this run" means to a person. */
-function relativeTime(run: RunIndexEntry, now: number): string {
-  const stamp = run.completedAt ?? run.updatedAt ?? run.startedAt;
-  if (stamp === undefined) return "unknown time";
+/** Activity as one quiet trailing line: what they have done, not what it has cost. */
+function activityLine(participant: NonNullable<RunDetail["participants"][number]>): string {
+  const parts: string[] = [];
+  if (participant.actions !== undefined) parts.push(`${participant.actions} actions`);
+  if (participant.thoughts !== undefined) parts.push(`${participant.thoughts} thoughts`);
+  if (participant.turns !== undefined) parts.push(`${participant.turns} turns`);
+  return parts.length === 0 ? "working…" : parts.join(" · ");
+}
+
+/** A finished run in one line: when, what happened, and how much it cost. */
+function PastRun({
+  run,
+  active,
+  columns
+}: {
+  run: RunIndexEntry;
+  active: boolean;
+  columns: number;
+}): React.ReactElement {
+  const when = shortDate(run.completedAt ?? run.startedAt);
+  const outcome =
+    run.participants === undefined
+      ? (run.verdict ?? "no verdict")
+      : `${run.participants.reachedGoal}/${run.participants.total} reached the goal`;
+  const cost =
+    run.estimatedCostUsd === undefined || run.estimatedCostUsd === null
+      ? ""
+      : ` · ~$${run.estimatedCostUsd.toFixed(2)}`;
+  const summary = [when, outcome].filter(Boolean).join(" · ") + cost;
+  return (
+    <Box width={columns}>
+      <Text {...color(active ? "cyan" : undefined)} bold={active}>
+        {gutter(active)}{" "}
+      </Text>
+      <Text {...glyphColor(run)}>{verdictGlyph(run)} </Text>
+      <Text {...color(active ? "cyan" : undefined)} bold={active} wrap="truncate-end">
+        {summary}
+      </Text>
+    </Box>
+  );
+}
+
+function capsLine(summary: LabSummary | null | undefined): string {
+  const lane = summary?.caps.laneUsd;
+  const study = summary?.caps.studyUsd;
+  if (lane === undefined && study === undefined) return "";
+  const parts: string[] = [];
+  if (lane !== undefined) parts.push(`$${lane} lane`);
+  if (study !== undefined) parts.push(`$${study} study`);
+  return ` · caps ${parts.join(" / ")}`;
+}
+
+/** The first sentence of a description: enough to say what the study is, in one line. */
+function firstSentence(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  const stop = flat.indexOf(". ");
+  return stop === -1 ? flat : flat.slice(0, stop + 1);
+}
+
+function shortDate(stamp: string | undefined): string {
+  if (stamp === undefined) return "";
   const parsed = Date.parse(stamp);
-  if (!Number.isFinite(parsed)) return "unknown time";
-  const delta = now - parsed;
-  if (delta < 0) return "just now";
-  if (delta < 60_000) return "just now";
-  return `${formatDuration(delta)} ago`;
+  if (!Number.isFinite(parsed)) return "";
+  const date = new Date(parsed);
+  const pad = (value: number): string => String(value).padStart(2, "0");
+  return `${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+}
+
+function clockOf(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "0:00";
+  const total = Math.floor(ms / 1000);
+  const minutes = Math.floor(total / 60);
+  if (minutes < 60) return `${minutes}:${String(total % 60).padStart(2, "0")}`;
+  return formatDuration(ms);
 }

@@ -1,10 +1,10 @@
-run                           humanish v9.9.9
-/projects/acme-app
+human(ish)   acme-app · 1 participant working
+‹ labs / signup-flow / run
 
 cua-2026-08-19T11-30-00-000Z-aa11bb22
 running · live · signup-flow
 
-… browser — signup flow  turn 12 · 31 actions
+CUA browser — signup f…  turn 12 · 31 actions
 patience:medium · skill:medium · accessibili…
 
   Connecting fields for relationships I'm
@@ -18,4 +18,4 @@ observer      .humanish/runs/cua-2026-08-19T1
               index.html
 from          status.json
 
-esc back · q quit
+esc back   q quit

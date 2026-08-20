@@ -49,7 +49,10 @@ try {
     capabilities: {
       // An empty project: the surface must render its ordinary empty state, not an error.
       readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd, runs: [], unreadable: [] }),
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd, labs: [], warnings: [] })
+        listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd, labs: [], warnings: [] }),
+      readRunDetail: async () => null,
+      readLabSummary: async () => null,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1", initialized: false, hasRuntime: false })
     },
     stdin,
     stdout,
@@ -59,8 +62,9 @@ try {
   const output = frames.join("");
   const expectations = [
     ["the product name", "humanish"],
-    ["the empty state", "no labs in this project"],
-    // The empty state has to say what to do next, not just that there is nothing.
+    // A bare temp directory is NOT a humanish project, and the surface has to say that rather than
+    // "no labs here" — which someone in the wrong directory cannot act on.
+    ["the empty state", "not a humanish project"],
     ["the next step", "humanish init"],
     ["the key hints", "q quit"]
   ];

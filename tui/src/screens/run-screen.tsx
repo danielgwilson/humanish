@@ -4,7 +4,7 @@ import React from "react";
 import type { RunDetail, RunParticipant } from "../../../src/run-detail.js";
 import type { RunIndexEntry } from "../../../src/run-index.js";
 import { formatDuration, livenessLabel, normalizeThought } from "../../../src/run-projection.js";
-import { fitPathToWidth } from "../fit-text.js";
+import { fitLabelToWidth, fitPathToWidth } from "../fit-text.js";
 import { color } from "../text-props.js";
 
 export interface RunScreenProps {
@@ -111,7 +111,7 @@ function Participant({
     <Box flexDirection="column" marginBottom={1}>
       <Box width={columns}>
         <Text bold wrap="truncate-end">
-          {fitPathToWidth(participant.label, nameRoom)}
+          {fitLabelToWidth(participant.label, nameRoom)}
         </Text>
         <Box flexGrow={1} />
         <Text {...color(participant.status === "running" ? "green" : undefined)} dimColor={participant.status !== "running"}>

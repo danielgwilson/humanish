@@ -1,13 +1,13 @@
-Signup flow                   humanish v9.9.9
-/projects/acme-app
+human(ish)   acme-app · 1 participant working
+‹ labs / signup-flow
 
-humanish lab run signup-flow
 2m · ~$1.20 median · 1 run
 
-› Start a dry run                    no spend
-  Start a live run 2m · ~$1.20 median · 1 run
+❯ Start  dry-run / live              no spend
 
-  cua-2026-08-…0Z-aa11bb22   running just now
-  cua-2026-0…-cc33dd44   pass 1h 58m ago · 2m
+Runs
+  ⠋ starting…                  30:00 of ~2:00
+ ✓ 08-19 10:02 · 2/2 reached the goal · ~$1.…
 
-↑↓ move · ↵ start dry run · esc back · q quit
+↑↓ move   ⏎ start · ←→ mode   esc back   q
+quit
