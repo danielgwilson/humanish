@@ -36,7 +36,8 @@ const options = (): TuiOptions =>
       readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
       listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
       startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
-      readLaunchLog: async () => ""
+      readLaunchLog: async () => "",
+      readRunDetail: async () => null
     },
     stdin: process.stdin,
     stdout: process.stdout
@@ -116,7 +117,7 @@ describe("moving through the surface", () => {
     // The FINISHED run, deliberately: it is the one carrying a participants line long enough to
     // run off a phone-width screen.
     await pressUntil(surface, KEY.down, (frame) => /\u203a[^\n]*cc33dd44/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("participants"));
+    const run = await surface.press(KEY.enter, (frame) => frame.includes("outcome"));
     surface.unmount();
     const frame = normalizeFrame(run);
     for (const line of frame.split("\n")) {
@@ -129,7 +130,7 @@ describe("moving through the surface", () => {
     const surface = await openSurface();
     await surface.press(KEY.enter, (frame) => frame.includes("cua-"));
     await pressUntil(surface, KEY.down, (frame) => /›[^\n]*cc33dd44/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("participants"));
+    const run = await surface.press(KEY.enter, (frame) => frame.includes("outcome"));
     surface.unmount();
     await expectGolden("run-80", normalizeFrame(run));
   });

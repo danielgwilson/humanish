@@ -157,6 +157,7 @@ interface BundleFacts {
   lab?: RunLabProvenance;
   persona?: { source?: string };
   scenario?: { source?: string };
+  simulations?: { status?: string }[];
   review?: {
     verdict?: string;
     participants?: { total: number; reachedGoal: number; reportedFriction?: number };
@@ -165,13 +166,17 @@ interface BundleFacts {
 }
 
 function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
-  // A bundle on disk means the run reached its final write, so it is finished — whatever the
-  // verdict says. Runs that died mid-flight have no bundle, which is how they are told apart.
+  // A bundle on disk USUALLY means the run reached its final write. But a live run now flushes an
+  // IN-PROGRESS bundle as it goes (so anything asking what a participant is doing has something to
+  // read), and that bundle marks its simulations `running`. Reaching this branch at all means there
+  // was no status record to classify from, so there is no freshness to judge — and the honest
+  // reading of "it started, and nothing here says it finished" is interrupted, not finished.
+  const inProgress = (bundle.simulations ?? []).some((simulation) => simulation?.status === "running");
   const legacyLabId = bundle.lab === undefined ? inferLegacyLabId(bundle) : undefined;
   return {
     runId: bundle.runId ?? runId,
     derivedFrom: "bundle",
-    liveness: "finished",
+    liveness: inProgress ? "interrupted" : "finished",
     ...(bundle.mode === "dry-run" || bundle.mode === "live" ? { mode: bundle.mode } : {}),
     ...(bundle.lab !== undefined ? { lab: bundle.lab } : legacyLabId === undefined ? {} : { lab: { id: legacyLabId } }),
     ...(bundle.createdAt === undefined ? {} : { startedAt: bundle.createdAt }),

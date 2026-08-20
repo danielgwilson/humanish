@@ -80,6 +80,7 @@ import {
 } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
+import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
@@ -513,7 +514,8 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
           readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
           listLabs: listLabManifests,
           startRun: launchRun,
-          readLaunchLog: readLaunchLogTail
+          readLaunchLog: readLaunchLogTail,
+          readRunDetail
         },
         stdin,
         stdout

@@ -67,6 +67,29 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
     expect(entry?.lab?.id).toBe("legacy-lab");
   });
 
+  it("an in-progress bundle with no status record is interrupted, never finished", async () => {
+    // A live run flushes an in-progress bundle as it goes, and that bundle marks its simulations
+    // `running`. Reaching the bundle branch means there was no status record to judge freshness
+    // from, so "it started and nothing says it finished" is the honest reading.
+    const runDir = path.join(cwd, ".humanish", "runs", "r-inflight");
+    await writeFixtureRun(cwd, { runId: "r-inflight", state: "orphan" }, NOW);
+    await writeFile(
+      path.join(runDir, "run.json"),
+      JSON.stringify({
+        schema: "humanish.run-bundle.v1",
+        runId: "r-inflight",
+        mode: "live",
+        persona: { source: "lab:signup" },
+        simulations: [{ id: "sim-001", status: "running" }]
+      }),
+      "utf8"
+    );
+    const index = await readRunIndex(cwd, { nowMs: NOW });
+    const entry = index.runs.find((run) => run.runId === "r-inflight");
+    expect(entry?.derivedFrom).toBe("bundle");
+    expect(entry?.liveness).toBe("interrupted");
+  });
+
   it("a run with neither record nor bundle is interrupted, not hidden", async () => {
     await writeFixtureRun(cwd, { runId: "r-orphan", state: "orphan" }, NOW);
     const index = await readRunIndex(cwd, { nowMs: NOW });
