@@ -25,6 +25,8 @@ export interface LabsScreenProps {
   liveParticipants: Map<string, string>;
   /** Frozen in tests so an elapsed time is not the wall clock. */
   now: number;
+  /** Whether this directory is a humanish project at all. */
+  initialized: boolean;
 }
 
 /**
@@ -43,15 +45,30 @@ export function LabsScreen({
   unattributed,
   tick,
   liveParticipants,
-  now
+  now,
+  initialized
 }: LabsScreenProps): React.ReactElement {
   if (rows.length === 0) {
-    return (
+    // Two different problems. "This is not a project" has to be said first, because otherwise the
+    // advice is unfollowable: someone in their home directory reading "write a lab" has no idea
+    // they are in the wrong place, and `npx humanish tui` is easy to type anywhere.
+    return initialized ? (
       <Box flexDirection="column">
         <Text>no labs here yet</Text>
         <Box marginTop={1} flexDirection="column">
           <Text dimColor>a lab is a study: who to send, to what, and what counts as done.</Text>
-          <Text dimColor>`humanish init` writes three to start from.</Text>
+          <Text dimColor>write one in humanish/labs/, or `humanish init` for three to start from.</Text>
+        </Box>
+      </Box>
+    ) : (
+      <Box flexDirection="column">
+        <Text>this directory is not a humanish project</Text>
+        <Box marginTop={1} flexDirection="column">
+          <Text dimColor>humanish studies live in a project: a humanish/ directory of labs and</Text>
+          <Text dimColor>personas beside the app they study.</Text>
+          <Box marginTop={1}>
+            <Text>cd to your project and run `humanish init`</Text>
+          </Box>
         </Box>
       </Box>
     );

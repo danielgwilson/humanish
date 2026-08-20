@@ -16,6 +16,7 @@
 import type { LabListResult } from "./labs.js";
 import type { LabSummary, ReadLabSummaryOptions } from "./lab-summary.js";
 import type { RunDetail } from "./run-detail.js";
+import type { TuiProjectState } from "./tui-project.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
 
@@ -58,6 +59,9 @@ export interface TuiCapabilities {
    * deciding to spend money.
    */
   readLabSummary(cwd: string, lab: string, options?: ReadLabSummaryOptions): Promise<LabSummary | null>;
+  /** Whether this directory is a humanish project — an empty project and a wrong directory are
+   *  different problems and must not share a screen. */
+  readProjectState(cwd: string): TuiProjectState;
 }
 
 export interface TuiOptions {

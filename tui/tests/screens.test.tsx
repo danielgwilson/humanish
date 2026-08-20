@@ -46,6 +46,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
       readLabSummary: async () => null,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
     ...overrides
   };
   return {
@@ -201,5 +202,35 @@ describe("the harness renders the way a terminal does, not the way a build log d
       if (previous === undefined) delete process.env.CI;
       else process.env.CI = previous;
     }
+  });
+});
+
+describe("the two empty states are different problems", () => {
+  const empty = { schema: "humanish.run-index.v1" as const, cwd: "/x", runs: [], unreadable: [] };
+  const noLabs = { schema: "humanish.lab-list.v1" as const, ok: true as const, cwd: "/x", labs: [], warnings: [] };
+
+  it("a project with no labs is told to write one", async () => {
+    const frame = await frameAt(80, 24, {
+      readRunIndex: async () => empty,
+      listLabs: async () => noLabs,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true })
+    }, (candidate) => candidate.includes("no labs here yet"));
+    expect(frame).toContain("no labs here yet");
+    expect(frame).toContain("a lab is a study");
+  });
+
+  it("a directory that is not a project is told THAT first", async () => {
+    // `npx humanish tui` is easy to type anywhere, and someone in their home directory reading
+    // "write a lab" cannot act on it — they do not know they are in the wrong place.
+    const frame = await frameAt(80, 24, {
+      readRunIndex: async () => empty,
+      listLabs: async () => noLabs,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: false, hasRuntime: false })
+    }, (candidate) => candidate.includes("not a humanish project"));
+    expect(frame).toContain("this directory is not a humanish project");
+    expect(frame).toContain("cd to your project");
+    expect(frame).not.toContain("no labs here yet");
+    // And it does not offer keys that do nothing here.
+    expect(frame).not.toContain("⏎ open");
   });
 });

@@ -38,7 +38,8 @@ const options = (): TuiOptions =>
       startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
       readLaunchLog: async () => "",
       readRunDetail: async () => null,
-      readLabSummary: async () => null
+      readLabSummary: async () => null,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true })
     },
     stdin: process.stdin,
     stdout: process.stdout

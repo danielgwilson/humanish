@@ -86,6 +86,8 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const [summary, setSummary] = useState<LabSummary | null | undefined>(undefined);
   /** Detail for LIVE runs only, so the labs list can name who is in them. */
   const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
+  /** Whether this is a humanish project. Cheap and synchronous — two existence checks. */
+  const projectState = useMemo(() => options.capabilities.readProjectState(options.cwd), [options]);
   const clock = now ?? Date.now();
 
   // Identity of the selected row, kept current so a refresh that REORDERS the list can put the
@@ -384,9 +386,10 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
     if (data === undefined) return <Text dimColor>reading project…</Text>;
     return renderScreen({
       screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
-      confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab
+      confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab,
+      initialized: projectState.initialized
     });
-  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab]);
+  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab, projectState]);
 
   return (
     <Frame
@@ -460,7 +463,9 @@ function keyHints(
   const move = "↑↓ move";
   switch (screen.name) {
     case "labs":
-      return `${move}   ⏎ open   q quit`;
+      // Nothing to move through or open on an empty screen, and a legend that lists inert keys
+      // teaches the wrong model of the surface.
+      return (data?.rows.length ?? 0) === 0 ? "q quit" : `${move}   ⏎ open   q quit`;
     case "lab": {
       if (confirming !== undefined) return "↵ confirm · esc cancel";
       const item = data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
@@ -585,9 +590,10 @@ function renderScreen(args: {
   liveDetails: Map<string, RunDetail>;
   tick: number;
   modeByLab: Record<string, "dry-run" | "live">;
+  initialized: boolean;
 }): React.ReactElement {
   const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
-  const { summary, liveDetails, tick, modeByLab } = args;
+  const { summary, liveDetails, tick, modeByLab, initialized } = args;
   if (screen.name === "labs") {
     return (
       <LabsScreen
@@ -597,6 +603,7 @@ function renderScreen(args: {
         viewport={viewport}
         unattributed={data.unattributed.length}
         tick={tick}
+        initialized={initialized}
         liveParticipants={
           new Map(
             [...liveDetails.entries()]

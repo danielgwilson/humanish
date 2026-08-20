@@ -60,7 +60,8 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
     startRun: async () => ({ ok: true, run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x", command: [] } }),
     readLaunchLog: async () => "",
     readRunDetail: async () => detail,
-    readLabSummary: async () => null
+    readLabSummary: async () => null,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true })
   };
   return {
     cwd: "/projects/acme-app",

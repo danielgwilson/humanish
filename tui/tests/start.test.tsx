@@ -22,6 +22,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
       readLabSummary: async () => null,
+      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
     ...overrides
   };
   const options: TuiOptions = {

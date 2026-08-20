@@ -73,11 +73,19 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         </Text>
         <Box flexGrow={1} />
         {summary?.keysReady === undefined ? null : (
-          <Text {...color(summary.keysReady ? "green" : "yellow")}>
-            {summary.keysReady ? "keys ✓" : `keys — ${summary.missingKeys?.join(", ") ?? "missing"}`}
-          </Text>
+          <Text {...color(summary.keysReady ? "green" : "yellow")}>{summary.keysReady ? "keys ✓" : "keys ✗"}</Text>
         )}
       </Box>
+      {summary?.keysReady === false ? (
+        // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
+        // in a shell they sourced, a password manager, another project — and what they need is the
+        // one command that makes them resolve here, every time, without pasting a value into a
+        // terminal that is recording frames.
+        <Text dimColor wrap="truncate-end">
+          {summary.missingKeys?.join(", ")} not found — `humanish keys set openai` (or pass
+          --env-file when you launch)
+        </Text>
+      ) : null}
 
       {props.launchNote === undefined ? null : (
         <Box marginTop={1}>
