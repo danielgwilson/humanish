@@ -68,6 +68,8 @@ export interface TuiCapabilities {
   openObserver(cwd: string, observerPath: string): Promise<TuiActionResult>;
   /** Stop the sandboxes an interrupted run left behind, keeping its evidence. */
   reclaimRun(cwd: string, runId: string): Promise<ReclaimResult>;
+  /** End a run that is still going. Stops the PROCESS; `reclaimRun` stops what it provisioned. */
+  stopRun(cwd: string, runId: string): Promise<TuiActionResult>;
 }
 
 export interface TuiOptions {

@@ -1160,7 +1160,7 @@ export interface CuaLaneDeps {
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot from a lane's loop (#441), keyed by lane. The live path wires the
    * incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
-  onTrace?: (laneId: string, items: readonly ActorTraceItem[]) => void;
+  onTrace?: (laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage) => void;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -2367,7 +2367,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot }),
         ...(deps.onTrace === undefined
           ? {}
-          : { onTrace: (items: readonly ActorTraceItem[]): void => deps.onTrace?.(spec.laneId, items) })
+          : {
+              // Forwards the RUNNING usage as well: the lane is where both are known, and usage
+              // without it never reaches the flush — which is how the live cost stayed unknown.
+              onTrace: (items: readonly ActorTraceItem[], usage: ActorTokenUsage): void =>
+                deps.onTrace?.(spec.laneId, items, usage)
+            })
       };
       session = await deps.runSession(sessionOptions);
     }
@@ -3245,11 +3250,11 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // Live-trace flush seam (#441): assigned by the attached-Observer block below when a live
   // run has an in-progress bundle to grow; lanes call it through deps.onTrace. Declared here
   // (before deps) so deps can reference it as a stable indirection.
-  let flushLiveTrace: ((laneId: string, items: readonly ActorTraceItem[]) => void) | undefined;
+  let flushLiveTrace: ((laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage) => void) | undefined;
   let stopLiveFlush: (() => Promise<void>) | undefined;
 
   const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
-    onTrace: (laneId, items) => flushLiveTrace?.(laneId, items),
+    onTrace: (laneId, items, usage) => flushLiveTrace?.(laneId, items, usage),
     config,
     descriptor,
     appUrl,
@@ -3365,6 +3370,12 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
         .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string")
     );
     const liveItemsByStream = new Map<string, ActorTraceItem[]>();
+    // Running token usage per lane, so a run in flight can price itself instead of reporting the
+    // cost as unknown until the moment it ends.
+    const liveUsageByStream = new Map<string, ActorTokenUsage>();
+    // The rate the running usage prices at. Usage without its model is not a cost, so both travel
+    // together or neither does.
+    const modelForLiveCost = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
     let flushWriting: Promise<void> | undefined;
     let flushDirty = false;
     let flushClosed = false;
@@ -3393,6 +3404,13 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
                     ...(personaByStream.get(stream.id) === undefined
                       ? {}
                       : { persona: { id: personaByStream.get(stream.id)! } }),
+                    ...(liveUsageByStream.get(stream.id) === undefined
+                      ? {}
+                      : {
+                          tokenUsage: liveUsageByStream.get(stream.id)!,
+                          // The model too: usage without the rate it prices at is not a cost.
+                          ids: { model: modelForLiveCost }
+                        }),
                     items: [...liveItems]
                   }
                 };
@@ -3421,13 +3439,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
         flushTimer.unref?.();
       }
     };
-    flushLiveTrace = (laneId, items) => {
+    flushLiveTrace = (laneId, items, usage) => {
       // An empty snapshot (the initial observation on a frameless route) carries no
       // evidence worth a disk write; the first real item triggers the first flush.
       if (items.length === 0) return;
       const streamId = streamIdByLane.get(laneId);
       if (streamId === undefined) return;
       liveItemsByStream.set(streamId, items.slice());
+      if (usage !== undefined) liveUsageByStream.set(streamId, usage);
       flushDirty = true;
       scheduleFlush();
     };

@@ -63,7 +63,8 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
     readLabSummary: async () => null,
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] })
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
+      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" })
   };
   return {
     cwd: "/projects/acme-app",
@@ -187,7 +188,8 @@ describe("the interrupted card", () => {
       readLabSummary: async () => null,
       readProjectState: () => ({ schema: "humanish.tui-project.v1", initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1", ok: true, cwd: "/x", runId: "r", receiptCount: 2, outcomes: [], warnings: [] })
+      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1", ok: true, cwd: "/x", runId: "r", receiptCount: 2, outcomes: [], warnings: [] }),
+      stopRun: async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "asked the run to stop" })
     };
     const options: TuiOptions = {
       cwd: "/projects/acme-app",
@@ -216,5 +218,34 @@ describe("the interrupted card", () => {
     // The action reports what it did. One that fires and says nothing is indistinguishable from
     // one that is broken.
     expect(done).toContain("reclaimed 2 recorded resources");
+  }, 20_000);
+});
+
+describe("stopping a run that is still going", () => {
+  it("is armed then confirmed, because it ends work already paid for", async () => {
+    const stopped: string[] = [];
+    const { surface, frame } = await openLiveRun(LIVE_DETAIL);
+    expect(frame).toContain("Stop this run");
+
+    const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("⏎ again to confirm"));
+    // Nothing has been stopped yet — one keystroke must not be able to end a running study.
+    expect(stopped).toHaveLength(0);
+    expect(armed).toContain("stop this run?");
+
+    const cancelled = await surface.press(KEY.escape, (candidate) => !candidate.includes("stop this run?") && candidate.includes("Stop this run"));
+    surface.unmount();
+    // Escape cancels the confirmation before it means "go back", same as a live start.
+    expect(cancelled).toContain("Stop this run");
+  }, 20_000);
+
+  it("says stopping the process is not the same as stopping the sandboxes", async () => {
+    // Two different resources: the run's process, and whatever it provisioned. Conflating them
+    // would leave an operator believing the money had stopped when it had not.
+    const { surface } = await openLiveRun(LIVE_DETAIL);
+    await surface.press(KEY.enter, (candidate) => candidate.includes("⏎ again to confirm"));
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    const done = await surface.press(KEY.enter, (candidate) => candidate.includes("asked the run to stop"));
+    surface.unmount();
+    expect(done).toContain("asked the run to stop");
   }, 20_000);
 });

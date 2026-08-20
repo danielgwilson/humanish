@@ -297,7 +297,8 @@ export interface CuaLoopOptions {
    * same objects the final trace persists). Fire-and-forget: the loop never awaits the
    * receiver, so a slow disk flush can never stall a turn. Default: no-op.
    */
-  onTrace?: (items: readonly ActorTraceItem[]) => void;
+  /** Per-turn trace snapshot, with the RUNNING usage so a watcher can price a run in flight. */
+  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage) => void;
 }
 
 export interface CuaLoopResult {
@@ -763,7 +764,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
     await maybeRecordScreenshot(observation, "turn-00-start");
-    onTrace?.(items.slice());
+    onTrace?.(items.slice(), runningUsage());
     observeTasks(observation, 0);
     stopConditionMatch = matchedStopWhen(observation);
     if (stopConditionMatch) {
@@ -1032,7 +1033,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;
       await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
-      onTrace?.(items.slice());
+      onTrace?.(items.slice(), runningUsage());
       observeTasks(observation, turnNumber);
       stopConditionMatch = matchedStopWhen(observation);
       if (stopConditionMatch) {

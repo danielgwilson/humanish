@@ -6,8 +6,11 @@
 // control that fails.
 
 import { spawn } from "node:child_process";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+
+import { RUN_STATUS_FILE, isRunStatusRecord } from "./run-status.js";
+import { resolveRunPath } from "./run.js";
 
 export const TUI_ACTION_SCHEMA = "humanish.tui-action.v1";
 
@@ -71,4 +74,84 @@ export async function openObserverArtifact(cwd: string, observerPath: string): P
       message: `could not open it (${cause instanceof Error ? cause.message : String(cause)}) — the file is at ${absolute}`
     };
   }
+}
+
+
+/**
+ * Stop a run that is still going.
+ *
+ * The counterpart to starting one: a study that is going nowhere costs money every turn, and until
+ * now the only way to end it was to find the pid yourself.
+ *
+ * It signals the PROCESS GROUP, not the process. A run is spawned detached — its own group — and it
+ * has children: the CLI, and whatever it spawned to reach the sandbox. Signalling only the parent
+ * leaves those orphaned and still working.
+ *
+ * SIGTERM, never SIGKILL: the run's own handlers get the chance to finalize its record and release
+ * what it holds. A killed run leaves a `running` record to go stale, which reads as interrupted —
+ * true, but strictly less informative than a run that was told to stop.
+ *
+ * This stops the PROCESS. Sandboxes it created are a separate resource with their own receipts, and
+ * `Reclaim` is what stops those — the run screen offers it as soon as this succeeds.
+ */
+export async function stopRun(cwd: string, runId: string): Promise<TuiActionResult> {
+  const runPaths = await resolveRunPath(path.resolve(cwd), runId).catch(() => null);
+  if (runPaths === null) {
+    return { schema: TUI_ACTION_SCHEMA, ok: false, message: `no run directory for ${runId}` };
+  }
+
+  let record: unknown;
+  try {
+    record = JSON.parse(await readFile(path.join(runPaths.absoluteRunRoot, RUN_STATUS_FILE), "utf8"));
+  } catch {
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: false,
+      message: "this run has no status record, so there is no pid to stop — it predates the contract or never started"
+    };
+  }
+  if (!isRunStatusRecord(record)) {
+    return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run's status record is unreadable" };
+  }
+  if (record.state === "finished") {
+    return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run already finished" };
+  }
+
+  const pid = record.pid;
+  if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 1) {
+    // pid 1 and below are never a run of ours, and signalling them would be catastrophic.
+    return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run recorded no usable pid" };
+  }
+
+  // Is it actually still there? A pid whose process is already gone means the run died without
+  // finalizing — nothing to stop, and the record will read as interrupted on its own.
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: false,
+      message: `nothing is running under pid ${pid} — it has already stopped, and its record will read as interrupted`
+    };
+  }
+
+  try {
+    // Negative pid = the whole process group, which is why the run was spawned detached.
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch (cause) {
+      return {
+        schema: TUI_ACTION_SCHEMA,
+        ok: false,
+        message: `could not stop it: ${cause instanceof Error ? cause.message : String(cause)}`
+      };
+    }
+  }
+  return {
+    schema: TUI_ACTION_SCHEMA,
+    ok: true,
+    message: "asked the run to stop — its sandboxes are separate, so Reclaim them once it reports interrupted"
+  };
 }
