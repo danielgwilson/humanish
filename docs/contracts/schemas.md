@@ -46,6 +46,7 @@ workflow without leaking private upstream truth into core.
 | Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/pricing.ts`; dated per-model + E2B desktop rates) | see Run Cost Summary And Estimated Actor Cost below |
 | Run cost summary | `humanish.run-cost-summary.v1` (additive `RunBundle.cost`; estimate, never a charge) | see Run Cost Summary And Estimated Actor Cost below |
 | Estimated actor cost | `humanish.actor-estimated-cost.v1` (additive `ActorTrace.estimatedCost`) | see Run Cost Summary And Estimated Actor Cost below |
+| Model settings | `humanish.model-settings.v1` (additive `ActorTrace.modelSettings`; the reasoning effort the request carried) | see Actor Trace below |
 | Affordance use | `humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`; per-class counts of the routes an actor took) | see Affordance Use below |
 | Adapter score | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
 | Adapter artifact | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
@@ -741,6 +742,16 @@ Core-owned fields:
   click-like `ui_action` items, structured `coord` (`x`/`y`) — both additive
   (#441): absent on older bundles and non-stamping producers, and absence means
   "timing/position unrecorded", never zero
+- optional `modelSettings` (`humanish.model-settings.v1`, #497): HOW the model was
+  asked to run, alongside `ids.model` which says which model it was. Today one
+  field, `reasoningEffort`. It records the value the request ACTUALLY carried,
+  including the provider default when a lab declared nothing — the resolved
+  value is what produced the trace, so reporting it is honest where reporting
+  "unset" would not be. Absent when a provider declares no settings and on every
+  pre-existing bundle; tolerated by verify. It exists because effort was
+  unreachable from a lab, which made every run take the default silently, and a
+  trace that cannot say what effort produced it cannot be compared with one that
+  can
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which KIND of route this
   actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived

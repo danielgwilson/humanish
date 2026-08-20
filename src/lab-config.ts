@@ -9,7 +9,7 @@
 // On the computer-use routes (app-url × e2b-desktop, and clone × e2b-desktop with a
 // computer-use actor), `actors[0].type` IS load-bearing: it must resolve to a registered
 // computer-use actor, and that descriptor runs the session. Those routes also consume
-// actors[0].{mission,persona,laneFocus.instruction,model}, execution.timeoutMs,
+// actors[0].{mission,persona,laneFocus.instruction,model,reasoningEffort}, execution.timeoutMs,
 // execution.desktop.{browser,resolution,sandboxTimeoutMs}, and (clone)
 // subject.{serve,env,state,clone.depth}.
 // On the scripted-browser route (app-url × local-or-absent, or clone × e2b-desktop, with a
@@ -53,6 +53,7 @@ import { containsSensitive } from "./redaction.js";
 import type { LabTask } from "./tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
+import { isReasoningEffort, reasoningEffortNames, type ReasoningEffort } from "./reasoning-effort.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 
@@ -339,6 +340,12 @@ export interface LabActorLane {
    */
   stopWhen?: StopWhen;
   /**
+   * How hard the model is asked to think in THIS lane; actor-level reasoningEffort is the default.
+   *
+   * The single-run control: same persona, same mission, two efforts, one set of conditions.
+   */
+  reasoningEffort?: ReasoningEffort;
+  /**
    * App-url computer-use ONLY: absolute browser URL this lane opens instead of `subject.appUrl`.
    * This is the generic setup-produced-target handoff for crawler/swarm labs: product adapters may
    * start any topology they need, then hand Humanish explicit lane targets. Public/non-loopback
@@ -410,6 +417,18 @@ export interface LabActor {
   tasks?: LabTask[];
   /** Provider model override. Consumed on the app-url route. */
   model?: string;
+  /**
+   * How hard the model is asked to think, per turn. Lane-level `reasoningEffort` overrides this.
+   *
+   * Absent means the PROVIDER's default, and absence is recorded as absence: a run that did not
+   * declare an effort does not claim one. Support is model-dependent (see src/reasoning-effort.ts),
+   * so a level a model does not accept fails on the first turn rather than being downgraded.
+   *
+   * This is a study variable, not a tuning knob. Two lanes running the same persona and mission at
+   * different efforts is a control: it separates "the participant could not do this" from "the
+   * participant was not given enough thinking to do this".
+   */
+  reasoningEffort?: ReasoningEffort;
   /**
    * Deterministic completion guard used as the default for CUA lanes. Lane-level stopWhen
    * overrides this value.
@@ -2272,6 +2291,12 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     if (mission) actor.mission = mission;
     const model = str(entry.model);
     if (model) actor.model = model;
+    if (entry.reasoningEffort !== undefined) {
+      if (!isReasoningEffort(entry.reasoningEffort)) {
+        return invalid(`actors[${index}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`);
+      }
+      actor.reasoningEffort = entry.reasoningEffort;
+    }
     const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${index}].stopWhen`);
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;
@@ -2402,6 +2427,12 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${actorIndex}].lanes[${laneIndex}].stopWhen`);
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) lane.stopWhen = stopWhenResult.value;
+    if (entry.reasoningEffort !== undefined) {
+      if (!isReasoningEffort(entry.reasoningEffort)) {
+        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`);
+      }
+      lane.reasoningEffort = entry.reasoningEffort;
+    }
     const target = str(entry.target);
     if (target !== undefined) {
       if (!isHttpUrl(target)) {

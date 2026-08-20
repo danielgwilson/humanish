@@ -1,6 +1,7 @@
 import type { ActorCapabilities } from "./actor-contract.js";
 import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { redactText } from "./redaction.js";
+import type { ReasoningEffort } from "./reasoning-effort.js";
 import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
@@ -63,6 +64,13 @@ export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
 // computer-use guide's own examples run on it). Explicit tier id so trace provenance and the
 // rate-table key stay stable if OpenAI repoints the alias (#334).
 export const DEFAULT_OPENAI_CU_MODEL = "gpt-5.6-sol";
+
+/**
+ * The effort a request carries when a lab declares none. Exported because a default that only
+ * exists as a literal inside the provider is exactly how it stayed invisible: the lab surface has
+ * to be able to say what will actually run (#497).
+ */
+export const DEFAULT_OPENAI_CU_REASONING_EFFORT: ReasoningEffort = "medium";
 
 // ---------------------------------------------------------------------------
 // Defensive readers. The Responses wire shape is loosely typed (unknown), so we
@@ -298,7 +306,7 @@ export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
 export interface OpenAiCuContext {
   model: string;
   instructions: string;
-  reasoningEffort: "low" | "medium" | "high";
+  reasoningEffort: ReasoningEffort;
   /** When set, request provider-sanctioned reasoning summaries (#427). Absent = do not ask. */
   reasoningSummary?: OpenAiReasoningSummary;
   safetyIdentifier?: string;
@@ -448,7 +456,13 @@ export type FetchLike = (
 export interface OpenAiResponsesProviderOptions {
   apiKey: string;
   model?: string;
-  reasoningEffort?: "low" | "medium" | "high";
+  /**
+   * How hard the model is asked to think per turn. Absent = the provider default below.
+   * The vocabulary is the documented union across models; SUPPORT IS MODEL-DEPENDENT, so an
+   * unsupported level surfaces as the provider's own first-turn error rather than a silent
+   * downgrade to something the trace would then misreport. See src/reasoning-effort.ts.
+   */
+  reasoningEffort?: ReasoningEffort;
   /**
    * Reasoning-summary capture (#427). Defaults to "auto" (the provider picks the best
    * summarizer the model supports); "off" never asks. If the account/model rejects the
@@ -547,7 +561,7 @@ function isAbortError(error: unknown): boolean {
 export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOptions): CuaProvider {
   const model = options.model ?? DEFAULT_OPENAI_CU_MODEL;
   const endpoint = options.endpoint ?? DEFAULT_ENDPOINT;
-  const reasoningEffort = options.reasoningEffort ?? "medium";
+  const reasoningEffort = options.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
   const maxRetries = options.maxRetries ?? 3;
   const fetchFn = options.fetchFn ?? defaultFetch();
   const delayFn = options.delayFn ?? defaultDelay;
@@ -667,6 +681,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   return {
     id: "openai-responses-cu",
     version: model,
+    // The effort the wire actually carries, not the one the lab asked for — the provider defaults
+    // an absent request to "medium", and the trace has to say what produced it (#497).
+    modelSettings: { reasoningEffort },
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
     // This is a VISION provider: nextTurn sends the screenshot as the computer_call_output, so
     // it cannot reason over a screenshot-less observation. The loop reads this to fail closed

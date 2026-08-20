@@ -7,7 +7,7 @@
 // Every field is optional and omitted when the manifest does not declare it. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
+import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
 import { probeKeySources } from "./key-resolution.js";
 
@@ -31,6 +31,14 @@ export interface LabSummary {
   participants?: string;
   /** The model that will actually run, override or default. */
   model?: string;
+  /**
+   * The reasoning effort that will actually run, override or default — and "per-lane" when the
+   * roster declares more than one, because a single value would be a lie about half the lanes.
+   *
+   * Shown because it was a silent constant: unreachable from a lab, so every run took the provider
+   * default. A study variable you cannot see is one nobody chose (#497).
+   */
+  reasoningEffort?: string;
   caps: LabCaps;
   /**
    * Whether every key a LIVE run of this lab needs is resolvable right now. `undefined` when not
@@ -38,6 +46,23 @@ export interface LabSummary {
    */
   keysReady?: boolean;
   missingKeys?: string[];
+}
+
+/**
+ * The effort every lane will run at, or "per-lane" when they differ. A lane that declares nothing
+ * inherits the actor's, and an actor that declares nothing gets the provider default — which is
+ * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
+ */
+function reasoningEffortOf(config: Record<string, unknown>): string {
+  const actors = config.actors as
+    | { reasoningEffort?: string; lanes?: { reasoningEffort?: string }[] }[]
+    | undefined;
+  const actor = actors?.[0];
+  const fallback = actor?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
+  const lanes = actor?.lanes ?? [];
+  const resolved = new Set(lanes.map((lane) => lane.reasoningEffort ?? fallback));
+  if (resolved.size > 1) return "per-lane";
+  return resolved.size === 1 ? [...resolved][0]! : fallback;
 }
 
 /** One short phrase for what the lab drives. */
@@ -119,6 +144,7 @@ export async function readLabSummary(
     ...(subject === undefined ? {} : { subject }),
     ...(participants === undefined ? {} : { participants }),
     model: actors?.[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
+    reasoningEffort: reasoningEffortOf(config),
     caps: capsOf(config),
     ...(keysReady === undefined ? {} : { keysReady }),
     ...(missingKeys === undefined ? {} : { missingKeys })

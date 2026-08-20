@@ -174,6 +174,17 @@ export interface ActorTrace {
   completionReason: ActorCompletionReason;
   reason: string;
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
+  /**
+   * ADDITIVE + OPTIONAL record of HOW the model was asked to run (humanish.model-settings.v1,
+   * #497). `ids.model` says which model; this says the reasoning effort the request actually
+   * carried. Present on lanes whose provider declares settings; absent everywhere else and on
+   * every pre-existing bundle, and its absence is tolerated by verify.
+   *
+   * It exists because effort was a silent constant: unreachable from a lab, so every run took the
+   * provider default. A trace that does not say what effort produced it cannot be compared with
+   * one that does, which makes any cross-run claim about a participant's competence unfalsifiable.
+   */
+  modelSettings?: { reasoningEffort: string };
   counts: Record<string, number>;
   /**
    * ADDITIVE + OPTIONAL affordance record (humanish.affordance-use.v1, #369): which KIND of route
