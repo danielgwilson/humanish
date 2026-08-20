@@ -14,6 +14,7 @@
 // the frames back.
 
 import type { LabListResult } from "./labs.js";
+import type { RunDetail } from "./run-detail.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
 
@@ -44,6 +45,12 @@ export interface TuiCapabilities {
   startRun(options: Omit<LaunchRunOptions, "spawn" | "cliPath" | "now">): Promise<LaunchRunResult>;
   /** The tail of a launch log: the only account of a run that died before writing evidence. */
   readLaunchLog(logPath: string): Promise<string>;
+  /**
+   * Who is in ONE run and what they are thinking. Opens that run's bundle, which the index
+   * deliberately does not — affordable because it is asked only for the run being watched.
+   * `null` when the run has not written a bundle yet.
+   */
+  readRunDetail(cwd: string, runId: string): Promise<RunDetail | null>;
 }
 
 export interface TuiOptions {

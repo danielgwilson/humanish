@@ -3289,7 +3289,13 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const inProgressAggregateSubject = inProgressLaneSubjects[0]!;
   const inProgressProvenance = subjectProvenanceArg(inProgressAggregateSubject, publicRepo, subjectEnvNames);
 
-  if (!dryRun && options.onObserverReady) {
+  // A live run writes what it is doing AS IT DOES IT, whether or not anyone is currently watching.
+  // This used to be gated on `options.onObserverReady` — the interactive Observer callback — so a
+  // run launched by an agent (`lab run --json`), detached, or from the terminal surface recorded
+  // nothing at all until it completed, and anything asking "what is this participant doing right
+  // now" got silence for the whole run. Who reads the evidence is not the run's business; the
+  // callback below stays conditional, the writing does not.
+  if (!dryRun) {
     const inProgressBundle = laneCount === 1 && rerunLineage === undefined
       ? buildSingleLaneBundle({
           ...(options.lab === undefined ? {} : { lab: options.lab }),
@@ -3332,7 +3338,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
     liveObserver = observerResultForCuaArtifacts(cwd, runId, artifactRoot, [
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted."
     ]);
-    await options.onObserverReady(liveObserver);
+    if (options.onObserverReady) await options.onObserverReady(liveObserver);
 
     // Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
     // rewrite the in-progress bundle with per-stream `liveActor` partials so the attached

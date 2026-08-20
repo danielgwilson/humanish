@@ -20,6 +20,7 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
       return { ok: true, run: { pid: 4242, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x.log", command: [] } };
     },
     readLaunchLog: async () => "",
+    readRunDetail: async () => null,
     ...overrides
   };
   const options: TuiOptions = {

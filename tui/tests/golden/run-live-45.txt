@@ -1,0 +1,21 @@
+run                           humanish v9.9.9
+/projects/acme-app
+
+cua-2026-08-19T11-30-00-000Z-aa11bb22
+running · live · signup-flow
+
+… browser — signup flow  turn 12 · 31 actions
+patience:medium · skill:medium · accessibili…
+
+  Connecting fields for relationships I'm
+  thinking about connecting fields to
+  establish relationships between the notes
+  and projects. The naming of owner_id seems…
+
+started       2026-08-19T11:30:00.000Z
+observer      .humanish/runs/cua-2026-08-19T1
+              1-30-00-000Z-aa11bb22/observer/
+              index.html
+from          status.json
+
+esc back · q quit

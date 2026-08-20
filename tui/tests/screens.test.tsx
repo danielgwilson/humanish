@@ -44,6 +44,7 @@ function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
     listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
     readLaunchLog: async () => "",
+    readRunDetail: async () => null,
     ...overrides
   };
   return {

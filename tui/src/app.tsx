@@ -2,6 +2,7 @@ import { Box, Text, useApp, useInput } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import type { LabListEntry } from "../../src/labs.js";
+import type { RunDetail } from "../../src/run-detail.js";
 import type { RunIndexEntry, RunIndexResult } from "../../src/run-index.js";
 import { labRows, type LabRow } from "../../src/run-projection.js";
 import type { TuiOptions } from "../../src/tui-contract.js";
@@ -67,6 +68,12 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
   const [launchNote, setLaunchNote] = useState<{ labKey: string; text: string } | undefined>(undefined);
   /** When the live confirmation was armed, so a HELD key cannot blow through it. */
   const [armedAt, setArmedAt] = useState<number | undefined>(undefined);
+  /**
+   * The open run's participants. `undefined` means "not read yet" and `null` means "read, and it
+   * has no bundle" — a run that has just started. The screen says something different for each,
+   * because "still loading" and "nothing there" are different facts.
+   */
+  const [detail, setDetail] = useState<RunDetail | null | undefined>(undefined);
   const clock = now ?? Date.now();
 
   // Identity of the selected row, kept current so a refresh that REORDERS the list can put the
@@ -262,12 +269,41 @@ export function App({ options, onReady, now }: AppProps): React.ReactElement {
     if (nav.quit) exit();
   }, [nav.quit, exit]);
 
+  // Detail is fetched ONLY for the run being looked at. It opens that run's bundle, which the index
+  // deliberately does not — affordable for one run, not for a listing.
+  const openRunId = screen.name === "run" ? screen.runId : undefined;
+  useEffect(() => {
+    if (openRunId === undefined) {
+      setDetail(undefined);
+      return;
+    }
+    let cancelled = false;
+    setDetail(undefined);
+    const read = async (): Promise<void> => {
+      try {
+        const next = await options.capabilities.readRunDetail(options.cwd, openRunId);
+        if (!cancelled) setDetail(next);
+      } catch {
+        // A detail that cannot be read leaves the run's own facts on screen rather than replacing
+        // them with an error: the index already told the truth about this run.
+        if (!cancelled) setDetail(null);
+      }
+    };
+    void read();
+    const timer = setInterval(() => void read(), REFRESH_MS);
+    timer.unref?.();
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [openRunId, options]);
+
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
     if (error !== undefined) return <Text color="red">could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
-    return renderScreen({ screen, data, selected, columns: size.columns, viewport, now: clock, confirming, launchError, launchNote });
-  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote]);
+    return renderScreen({ screen, data, selected, columns: size.columns, viewport, now: clock, confirming, launchError, launchNote, detail });
+  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail]);
 
   return (
     <Box flexDirection="column" width={size.columns}>
@@ -436,8 +472,9 @@ function renderScreen(args: {
   confirming: "live" | undefined;
   launchError: { labKey: string; text: string } | undefined;
   launchNote: { labKey: string; text: string } | undefined;
+  detail: RunDetail | null | undefined;
 }): React.ReactElement {
-  const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote } = args;
+  const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
   if (screen.name === "labs") {
     return (
       <LabsScreen
@@ -469,5 +506,5 @@ function renderScreen(args: {
   }
   const run = data.runsById.get(screen.runId);
   if (run === undefined) return <Text color="yellow">that run is no longer on disk</Text>;
-  return <RunScreen run={run} columns={columns} />;
+  return <RunScreen run={run} detail={detail} columns={columns} viewport={viewport} />;
 }
