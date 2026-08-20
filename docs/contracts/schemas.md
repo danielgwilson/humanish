@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.49.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.50.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -908,6 +908,45 @@ terminal leaves exactly that shape, and reading it as interrupted is the honest
 outcome (`classifyRunStatus` is the one shared definition). Fields are
 public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
+
+## Run Index, Run Detail, And The Terminal Surface (#455)
+
+Three derived projections that exist so a surface can list, classify and watch
+runs without opening evidence for all of them. None is authoritative: `run.json`
+remains the evidence-of-record, `verify` gates on none of these, and nothing in
+them is a claim about what a participant did.
+
+`humanish.run-index.v1` — the listing projection. One entry per run, read
+cheapest-source-first: the `status.json` record, else the bundle, else the run
+directory alone. `{ runId, derivedFrom: status | bundle | directory, liveness,
+mode?, pid?, lab?, startedAt?, updatedAt?, completedAt?, verdict?,
+participants?, estimatedCostUsd?, durationMs? }`. The point is cost: walking
+every run tree and parsing every bundle measured 167ms on a 25-run project,
+against 16ms cold and 2.8ms warm here, which is what makes a surface that
+refreshes on a cadence affordable. `derivedFrom` is reported so a surprising row
+can be traced to the file it came from. A run with receipts and no outcome is
+`interrupted` — the shape a dropped connection leaves — and so is an
+IN-PROGRESS bundle reached without a status record, because there is no
+freshness to judge and "it started and nothing here says it finished" is the
+honest reading.
+
+`humanish.run-detail.v1` — the watching projection, for ONE run. Who is in it
+and what they are thinking: `{ runId, participants: [{ id, label, personaId?,
+traits, status?, completionReason?, thought?, turns?, actions?, thoughts?,
+estimatedCostUsd? }], observerPath? }`. It reads the actor trace from
+`stream.liveActor` while a run is in flight and `stream.actor` once it has
+finished, preferring the live one, so a single screen renders a run the whole
+way through. A reasoning item still being written is skipped rather than quoted
+half-finished, and the text is carried verbatim — a surface may wrap it, nothing
+paraphrases it. Unlike the index this DOES open the bundle, which is affordable
+only because it is asked for the one run being watched.
+
+`humanish.tui-result.v1` — what `humanish tui` emits when it refuses:
+`{ schema, ok: false, error: { code, message } }` with `HUMANISH_TUI_REQUIRES_TTY`,
+`HUMANISH_TUI_UNSUPPORTED_NODE`, or `HUMANISH_TUI_BUNDLE_MISSING`. Every other
+command is built for an agent to drive; this one takes the screen and waits for
+a person, so a non-interactive stdin or stdout fails closed naming the commands
+that DO answer the question rather than rendering escape codes into a pipe.
 
 ## Run Cost Summary And Estimated Actor Cost
 

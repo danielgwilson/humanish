@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.49.0`)
+## Current Program Truth (source `0.50.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -45,7 +45,8 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 | Subject sources/routes | Six declared sources: `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, and `local-tree`; support is route-specific and `this-repo` remains dry-run-only | One centralized run/resource lifecycle boundary across all routes |
 | Public proof | A legible four-persona Observer hero from a verified real public-application study (commit-pinned drawDB) shipped in the npm payload (`0.16.0`) | Coverage beyond a single studied subject; the stratified breadth panel remains unbuilt |
 | OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
-| Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store; a control plane that can start runs |
+| Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store |
+| Stakeholder terminal surface | `humanish tui` (`0.50.0`): labs -> lab -> run, arrow-key navigation, and starting a dry or live run from the lab screen. The run is DETACHED and outlives the terminal — live-proven by killing the terminal 42s into a real run that then ran on for ~3.5 minutes and finished `pass` at $0.639751. The run screen leads with the participant and their recorded thinking, live-proven mid-flight against a real computer-use run. Ships as one bundled file loaded on demand; refuses a non-interactive stdin/stdout naming the JSON commands instead | Cancelling a run from the surface; per-user persisted config (#470); export (#471); aggregate stats (#472); agent-authored labs (#473); a reusable persona panel (#474) |
 | Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes over both HTTP and SMTP; live-proven end to end on 2026-08-08 — a persona signed up for a public app, read the emailed link in its inbox, and reached the signed-in product (`docs/goals/email-gated-signup/receipts/signup-verify-live-2026-08-08.md`); the adopter-hosted / app-url ingress plane is wired on the CUA and concurrent external-public routes (#387/#380, 2026-08-11) | Real-provider delivery; a live adopter-hosted receipt |
 
 Capability proof and adopter replacement are different gates. A deterministic
