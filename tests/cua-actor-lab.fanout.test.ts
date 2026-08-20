@@ -189,7 +189,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
 }
 
 /** A 4-lane differentiated roster on a loopback app-url subject. */
-function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["actors"][0]["lanes"]; template?: string }): LabConfig {
+function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["actors"][0]["lanes"]; template?: string; reasoningEffort?: string }): LabConfig {
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
     id: "fanout-proof",
@@ -198,6 +198,7 @@ function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["act
     actors: [{
       type: "openai-computer-use",
       mission: "Explore the app and stop.",
+      ...(overrides?.reasoningEffort === undefined ? {} : { reasoningEffort: overrides.reasoningEffort }),
       lanes: overrides?.lanes ?? [
         { id: "mobile-newcomer", persona: "first-time-visitor", device: "mobile", instruction: "Sign up from a phone." },
         { id: "small-skimmer", persona: "impatient-skimmer", device: "small-mobile", instruction: "Skim and bounce." },
@@ -391,6 +392,34 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ...extra
     };
   }
+
+  it("carries each lane's declared reasoning effort into the provider options (#497)", async () => {
+    // The link a unit test cannot see and a live run costs money to check: lab YAML -> lane spec ->
+    // the options the provider is actually built from. A declared effort that stops short of this
+    // call is indistinguishable from no effort at all, which is the defect being closed.
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 2,
+      reasoningEffort: "medium",
+      lanes: [
+        { id: "default-effort", persona: "p", device: "desktop", instruction: "Work." },
+        { id: "harder-effort", persona: "p", device: "desktop", instruction: "Work.", reasoningEffort: "high" }
+      ]
+    });
+    const seen: (string | undefined)[] = [];
+    const hooks = passingHooks(handle);
+    const inner = hooks.runSession!;
+    hooks.runSession = async (options: CuaActorSessionOptions) => {
+      seen.push(options.openai?.reasoningEffort);
+      return inner(options);
+    };
+
+    const result = await runLab(config, { cwd, runId: "cua-fanout-effort", cuaHooks: hooks });
+
+    expect(result.backend).toBe("cua");
+    // Both lanes share a persona and a mission; the effort is the only thing that may differ.
+    expect([...seen].sort()).toEqual(["high", "medium"]);
+  });
 
   it("publishes an attached live Observer while CUA fan-out actors are still running", async () => {
     const handle = makeFanoutModule();
