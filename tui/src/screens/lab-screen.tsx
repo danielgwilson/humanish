@@ -21,10 +21,28 @@ import { color } from "../text-props.js";
  * Down from Start lands on the newest run, which is how it reads to someone holding an arrow key.
  * Defined once and used by everything that counts, indexes or opens a row.
  */
-export type LabItem = { kind: "start" } | { kind: "run"; run: RunIndexEntry };
+export type LabItem = { kind: "start"; mode: LabRunMode } | { kind: "run"; run: RunIndexEntry };
 
+export type LabRunMode = "dry-run" | "live";
+
+/**
+ * TWO start rows, not one row with a hidden mode.
+ *
+ * This was one row carrying a ←/→ toggle, on the argument that arming made a misread toggle
+ * harmless. Both halves of that were wrong in practice. The stakeholder it was built for could not
+ * find how to start a real run at all — a mode you have to press a key to discover is a mode most
+ * people never discover — and the toggle ate ←/→ on that row, so the two keys that mean back and
+ * open everywhere else in the app silently meant something different here. Splitting the row
+ * restores both, and costs no safety: the live row still arms and still restates the spend.
+ */
 export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): LabItem[] {
-  return [...(canStart ? ([{ kind: "start" }] as LabItem[]) : []), ...runs.map((run): LabItem => ({ kind: "run", run }))];
+  const starts: LabItem[] = canStart
+    ? [
+        { kind: "start", mode: "dry-run" },
+        { kind: "start", mode: "live" }
+      ]
+    : [];
+  return [...starts, ...runs.map((run): LabItem => ({ kind: "run", run }))];
 }
 
 export interface LabScreenProps {
@@ -39,8 +57,6 @@ export interface LabScreenProps {
   now: number;
   tick: number;
   canStart: boolean;
-  /** Which mode the Start toggle is on. */
-  mode: "dry-run" | "live";
   confirming: "live" | undefined;
   launchError: string | undefined;
   launchNote: string | undefined;
@@ -91,10 +107,15 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         // in a shell they sourced, a password manager, another project — and what they need is the
         // one command that makes them resolve here, every time, without pasting a value into a
         // terminal that is recording frames.
-        <Text dimColor wrap="truncate-end">
-          {summary.missingKeys?.join(", ")} not found — `humanish keys set openai` (or pass
-          --env-file when you launch)
-        </Text>
+        // WRAPS, where every other line on this screen truncates. Truncation is right for a
+        // status: half a duration still reads as a duration. It is wrong for the one instruction
+        // that unblocks the screen — `humanish keys set openai` (or pass --e… ends mid-flag, and a
+        // command you cannot finish typing is not advice.
+        <Box flexDirection="column" width={columns}>
+          <Text {...color(PALETTE.warn)}>{summary.missingKeys?.join(", ")} not found</Text>
+          <Text dimColor>{"  "}humanish keys set openai{"   "}— stores them for every project</Text>
+          <Text dimColor>{"  "}humanish tui --env-file .env{"   "}— or just this session</Text>
+        </Box>
       ) : null}
 
       {props.launchNote === undefined ? null : (
@@ -108,7 +129,21 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         </Box>
       )}
 
-      {canStart ? <StartRow {...props} active={items[selected]?.kind === "start"} /> : null}
+      {canStart ? (
+        <Box marginTop={1} flexDirection="column">
+          <StartRow {...props} mode="dry-run" active={activeStart(items, selected) === "dry-run"} />
+          <StartRow {...props} mode="live" active={activeStart(items, selected) === "live"} />
+          {/* The armed prompt RESTATES the spend rather than assuming the row above was read. That
+              was the safety argument for the old hidden toggle, and it survives the split. */}
+          {props.confirming === "live" ? (
+            <Box marginTop={1}>
+              <Text color={PALETTE.warn}>
+                {"  "}start a live run? {expectationLine(props.row.liveExpectation)} · ⏎ confirm · esc cancel
+              </Text>
+            </Box>
+          ) : null}
+        </Box>
+      ) : null}
       {row.declared ? null : (
         <Box marginTop={1}>
           <Text color={PALETTE.warn}>no manifest here — renamed, deleted, or run from elsewhere</Text>
@@ -128,7 +163,9 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           <RunList
             runs={runs}
             liveDetail={props.liveDetail}
-            selected={selected - (canStart ? 1 : 0)}
+            // Derived from the item model, never from a literal: the count of start rows changed
+            // once already, and a hardcoded offset put a second cursor on the screen.
+            selected={selected - labItems([], canStart).length}
             columns={columns}
             viewport={Math.max(2, viewport - 6)}
             now={now}
@@ -141,44 +178,40 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
   );
 }
 
+/** Which start row the cursor is on, if any. */
+function activeStart(items: readonly LabItem[], selected: number): LabRunMode | undefined {
+  const item = items[selected];
+  return item?.kind === "start" ? item.mode : undefined;
+}
+
 /**
- * ONE action with a mode toggle, as designed — not two rows.
+ * One start row. The two of them are the whole lifecycle entry point, and they say what they cost
+ * before you press anything: a dry run is free and a live one spends, so the row itself carries
+ * the number rather than making you arm it to find out.
  *
- * Safe because the commit is two keystrokes for a live run: ←/→ chooses the mode, the first Enter
- * arms and restates the cost, the second commits. Misreading the toggle therefore cannot spend
- * anything, which was the only argument for splitting it.
+ * The live row still arms — the first Enter restates the spend, the second commits — so the safety
+ * that justified the old hidden toggle is intact while the option is now visible.
  */
 function StartRow({
   mode,
   confirming,
   active,
   columns,
-  row
-}: LabScreenProps & { active: boolean }): React.ReactElement {
+  row,
+  summary
+}: LabScreenProps & { active: boolean; mode: LabRunMode }): React.ReactElement {
   const live = mode === "live";
+  const blocked = live && summary?.keysReady === false;
+  const accent = live ? PALETTE.warn : PALETTE.accent;
   return (
-    <Box marginTop={1} flexDirection="column">
-      <Box width={columns}>
-        <Text {...color(active ? PALETTE.accent : undefined)} bold={active}>
-          {gutter(active)} Start{"  "}
-        </Text>
-        <Text {...color(live ? undefined : PALETTE.accent)} bold={!live} dimColor={live}>
-          dry-run
-        </Text>
-        <Text dimColor> / </Text>
-        <Text {...color(live ? PALETTE.warn : undefined)} bold={live} dimColor={!live}>
-          live
-        </Text>
-        <Box flexGrow={1} />
-        <Text dimColor>{live ? "←→ switch" : "no spend"}</Text>
-      </Box>
-      {confirming === "live" ? (
-        <Box marginTop={1}>
-          <Text color={PALETTE.warn}>
-            {"  "}start a live run? {expectationLine(row.liveExpectation)} · ⏎ confirm · esc cancel
-          </Text>
-        </Box>
-      ) : null}
+    <Box width={columns}>
+      <Text {...color(active ? accent : undefined)} bold={active} dimColor={blocked && !active}>
+        {gutter(active)} {live ? "Start a LIVE run" : "Start a dry run"}
+      </Text>
+      <Box flexGrow={1} />
+      <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
+        {blocked ? "needs keys — see above" : live ? expectationLine(row.liveExpectation) : "free · no keys, no spend"}
+      </Text>
     </Box>
   );
 }

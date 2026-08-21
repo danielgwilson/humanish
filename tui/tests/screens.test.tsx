@@ -329,3 +329,34 @@ describe("all runs — everyone working, across every lab", () => {
     expect(frame).toContain("no spend recorded yet");
   });
 });
+
+describe("the labs list says what a study IS (stakeholder feedback: \"so i know wtf they are\")", () => {
+  it("shows the selected lab's own first sentence, and only the first", async () => {
+    const surface = await renderToText(<App options={options()} now={NOW} tick={0} />, {
+      columns: 80,
+      until: (frame) => frame.includes("Signup flow")
+    });
+    const frame = surface.last;
+    surface.unmount();
+    expect(frame).toContain("Can a first-time visitor finish signing up unaided?");
+    // The second sentence stays in the manifest. A status bar that grows into a paragraph stops
+    // being scannable, which is the problem this line exists to solve.
+    expect(frame).not.toContain("Committed as dry-run");
+  });
+
+  it("says so plainly when a lab declares nothing, rather than echoing its own title back", async () => {
+    const surface = await renderToText(<App options={options()} now={NOW} tick={0} />, {
+      columns: 80,
+      until: (frame) => frame.includes("never-run-lab")
+    });
+    // Down to the lab with no description of its own.
+    let frame = "";
+    for (let index = 0; index < 6; index += 1) {
+      frame = await surface.press(KEY.down);
+      if (/❯[^\n]*never-run-lab/.test(frame)) break;
+    }
+    surface.unmount();
+    expect(frame).toContain("no description in the manifest");
+    expect(frame).not.toContain("▸ never-run-lab");
+  });
+});

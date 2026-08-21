@@ -306,6 +306,8 @@ export interface LabRow {
    * this repo carry the same title AND the same declared id, differing only by filename.
    */
   label: string;
+  /** The manifest's own words, for the list to say what this study IS. */
+  description?: string;
   /** Repo-relative manifest path, absent for a lab known only from run history. */
   path?: string;
   origin?: "committed" | "ignored" | "explicit";
@@ -340,6 +342,8 @@ export function labNameFromPath(manifestPath: string): string {
 export interface DeclaredLab {
   id: string;
   title?: string;
+  /** The manifest's own description, so a list of studies can say what each one is. */
+  description?: string;
   path?: string;
   origin?: "committed" | "ignored" | "explicit";
 }
@@ -394,6 +398,7 @@ export function labRows(
       // Replaced by assignLabels once the whole set is known; a label is only meaningful relative
       // to the rows it sits beside.
       label: manifest?.title ?? (manifestPath === undefined ? labId : labNameFromPath(manifestPath)),
+      ...(manifest?.description === undefined ? {} : { description: manifest.description }),
       sharesIdWith: Math.max(0, (idCounts.get(labId) ?? 0) - 1),
       runs: rollup?.runs ?? 0,
       live: rollup?.live ?? 0,

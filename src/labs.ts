@@ -49,6 +49,12 @@ export interface LabListEntry {
   origin: LabOrigin;
   path: string;
   title?: string;
+  /**
+   * The manifest's own first sentence. The list is where someone decides which study to open, and a
+   * list of names cannot answer "what is this one" for a project with twenty labs in it — the
+   * stakeholder feedback that added this was, verbatim, "so i know wtf they are".
+   */
+  description?: string;
 }
 
 export interface LabListResult {
@@ -227,7 +233,10 @@ export async function listLabManifests(cwd: string): Promise<LabListResult> {
         source: parsed.config.subject.source,
         origin: entry.origin,
         path: relativeToCwd(resolvedCwd, requestedPath),
-        ...(parsed.config.title ? { title: parsed.config.title } : {})
+        ...(parsed.config.title ? { title: parsed.config.title } : {}),
+        ...(typeof parsed.config.description === "string" && parsed.config.description.trim().length > 0
+          ? { description: parsed.config.description.trim() }
+          : {})
       });
     }
   }

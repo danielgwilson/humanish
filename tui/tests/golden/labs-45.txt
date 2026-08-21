@@ -3,10 +3,14 @@ human(ish)   acme-app · 1 participant working
 ❯ ⠋ Signup flow             starting… · 30:00
     diagram-editor                     2 runs
     diagram-editor-live                2 runs
+
+  not yet run
     never-run-lab                   never run
 
     All runs   1 working
 
 1 run with no lab
 
-↑↓ move   ⏎ open   q quit
+ Can a first-time visitor finish signing up …
+
+↑↓ move   ⏎ open   ? keys   q quit

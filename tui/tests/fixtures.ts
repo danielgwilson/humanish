@@ -13,7 +13,16 @@ export const NOW = Date.parse("2026-08-19T12:00:00.000Z");
 const at = (minutesAgo: number): string => new Date(NOW - minutesAgo * 60_000).toISOString();
 
 export const LABS: LabListEntry[] = [
-  { id: "signup-flow", source: "app-url", origin: "committed", path: "humanish/labs/signup-flow.yaml", title: "Signup flow" },
+  {
+    id: "signup-flow",
+    source: "app-url",
+    origin: "committed",
+    path: "humanish/labs/signup-flow.yaml",
+    title: "Signup flow",
+    // Two sentences on purpose: the list shows the FIRST one, because a paragraph in a status bar
+    // is a paragraph nobody reads.
+    description: "Can a first-time visitor finish signing up unaided? Committed as dry-run."
+  },
   { id: "diagram-editor", source: "app-url", origin: "committed", path: "humanish/labs/diagram-editor.yaml", title: "Is the diagram axis load-bearing?" },
   { id: "never-run-lab", source: "app-url", origin: "ignored", path: ".humanish/labs/never-run-lab.yaml" },
   // Two manifests declaring ONE id. Not hypothetical: this repo's own project has exactly this
