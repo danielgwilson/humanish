@@ -621,6 +621,14 @@ export function composeLaneInstructions(args: {
    *  no committed file, unparseable YAML) keeps the honest fallback: the bare line and an EMPTY
    *  traitsApplied, never fabricated traits. Resolved by the caller so this stays pure. */
   resolvedPersona?: ResolvedPersona;
+  /**
+   * desktop-cli (#495): the surface under study is a terminal window, not a page. Said plainly
+   * because a participant whose every prior world was a browser will look for one — and because a
+   * capability nobody declares is one the recording cannot later be read against. It states that a
+   * terminal is open and NOT what to type in it: naming commands would answer the question the
+   * study is asking.
+   */
+  surface?: "desktop-cli";
 }): { instructions: string; persona: ActorPersonaRef } {
   const { name, preset } = args.device;
   const deviceLine = preset.isMobile
@@ -637,9 +645,13 @@ export function composeLaneInstructions(args: {
     ? renderPersonaPromptSection(args.resolvedPersona)
     : args.persona ? `Persona: ${args.persona}.` : undefined;
   const traitsApplied = args.resolvedPersona ? personaToDirectives(args.resolvedPersona).traitsApplied : [];
+  const surfaceLine = args.surface === "desktop-cli"
+    ? "A terminal window is already open on this desktop, and there is a terminal in the dock at the bottom of the screen if you want another. Everything you need is on this machine; there is no browser task here."
+    : undefined;
   const parts = [
     personaLine,
     deviceLine,
+    surfaceLine,
     args.mission,
     taskLines,
     args.instruction ? `Lane focus: ${args.instruction}` : undefined
@@ -819,7 +831,8 @@ function laneSpecsAndPlan(
       ...(personaId === undefined ? {} : { persona: personaId }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(((roster ? lane?.instruction : actor?.laneFocus?.instruction)) === undefined ? {} : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
-      device: { name: device.name, preset: device.preset }
+      device: { name: device.name, preset: device.preset },
+      ...(config.subject.source === "desktop-cli" ? { surface: "desktop-cli" as const } : {})
     });
     lanes.push({
       laneId,
@@ -1118,6 +1131,8 @@ export interface CuaLaneDeps {
   descriptor: CuaActorDescriptor;
   appUrl: string;
   cloneRoute: boolean;
+  /** desktop-cli (#495): a CLI studied at a desktop. Nothing is cloned and no browser is opened. */
+  desktopCliRoute?: boolean;
   /** Optional so out-of-scope callers building CuaLaneDeps directly (other engines reusing
    *  runCuaLane) do not need to know about the local-tree route; undefined behaves as false. */
   localTreeRoute?: boolean;
@@ -1870,6 +1885,107 @@ function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+/**
+ * Put a CLI on the desktop before the participant arrives (#495).
+ *
+ * The install runs UNKEYED and before the session starts, for the same reason the clone route
+ * provisions its subject first: what is being studied begins when the participant looks at the
+ * screen, and making them fight an install first would be a study of the install.
+ */
+async function provisionDesktopCli(
+  desktop: E2BDesktopSandbox,
+  args: {
+    product: string;
+    install?: string;
+    requestTimeoutMs: number;
+    scrub: (value: string) => string;
+    onPhase?: (event: SubjectPhaseEvent) => void;
+  }
+): Promise<void> {
+  const install = args.install;
+  if (install === undefined) return;
+  const now = (): number => Date.now();
+  if (needsNodeRuntime([install])) {
+    const startedAt = now();
+    emitPhaseStarted(args.onPhase, now, "runtime", "providing the Node runtime the install needs");
+    const bootstrap = await runDetachedStep(desktop, {
+      name: "desktop-cli-runtime-node",
+      command: nodeBootstrapCommand(),
+      cwd: "/home/user",
+      timeoutMs: INSTALL_TIMEOUT_MS,
+      requestTimeoutMs: args.requestTimeoutMs
+    });
+    emitPhaseCompleted(args.onPhase, now, startedAt, "runtime", bootstrap.ok, bootstrap.ok
+      ? "Node runtime ready"
+      : "Node runtime bootstrap failed");
+    if (!bootstrap.ok) {
+      throw new Error(`desktop-cli runtime bootstrap failed for "${args.product}"`);
+    }
+  }
+  const startedAt = now();
+  emitPhaseStarted(args.onPhase, now, "install", `installing ${args.product} on the desktop`);
+  const result = await runDetachedStep(desktop, {
+    name: "desktop-cli-install",
+    command: install,
+    cwd: "/home/user",
+    timeoutMs: INSTALL_TIMEOUT_MS,
+    requestTimeoutMs: args.requestTimeoutMs
+  });
+  emitPhaseCompleted(args.onPhase, now, startedAt, "install", result.ok, result.ok
+    ? `${args.product} installed`
+    : `installing ${args.product} failed`);
+  if (!result.ok) {
+    // Fail closed: a participant handed a desktop where the product is not installed would produce
+    // a transcript about a missing command, and that finding belongs to the harness, not the tool.
+    // The tail rides along, scrubbed before truncation like every other provisioning failure — a
+    // bare "install failed" is unactionable to whoever wrote the command.
+    throw new Error(args.scrub(
+      `desktop-cli install failed for "${args.product}" (${result.timedOut ? "timed out" : `exit ${result.exitCode ?? "?"}`}): ${tailOf(args.scrub(result.logTail))}`
+    ));
+  }
+}
+
+/**
+ * Open a terminal window on the desktop.
+ *
+ * The stock template is XFCE and ships xfce4-terminal (also aliased x-terminal-emulator), verified
+ * live before this route was built. `x-terminal-emulator` is tried first so a template that swaps
+ * the emulator still works; a desktop with neither is a template problem and fails closed rather
+ * than handing a participant an empty screen and calling it a study.
+ */
+async function openDesktopTerminal(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+  workdir: string | undefined
+): Promise<void> {
+  const dir = workdir ?? "/home/user";
+  const result = await runDetachedStep(desktop, {
+    name: "desktop-cli-terminal",
+    command: [
+      "for candidate in x-terminal-emulator xfce4-terminal gnome-terminal konsole xterm; do",
+      '  if command -v "$candidate" >/dev/null 2>&1; then',
+      // LANG is set on the terminal we open, not globally: the stock image declares no locale, and
+      // a study that measures our own mojibake against an unconfigured template would be measuring
+      // the template. The PRODUCT-side fix (an ASCII fallback when the locale is not UTF-8) is in
+      // src/terminal-encoding.ts, and it is the one that matters for real users.
+      `    (cd ${shellSingleQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 nohup "$candidate" >/dev/null 2>&1 &)`,
+      "    sleep 3",
+      '    echo "humanish: opened $candidate"',
+      "    exit 0",
+      "  fi",
+      "done",
+      "echo 'humanish: no terminal emulator on this desktop template' >&2",
+      "exit 1"
+    ].join("\n"),
+    cwd: "/home/user",
+    timeoutMs: 60_000,
+    requestTimeoutMs
+  });
+  if (!result.ok) {
+    throw new Error("desktop-cli lane could not open a terminal on this desktop template");
+  }
+}
+
 async function startDesktopStream(
   desktop: E2BDesktopSandbox,
   browserWindowId: string | undefined
@@ -2000,6 +2116,7 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
  */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
+  const desktopCliRoute = deps.desktopCliRoute === true;
   const subjectEnvValues = config.subject.envValues ?? {};
   const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
@@ -2226,6 +2343,18 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           warnings: [...(desktopGeometry.warnings ?? []), mismatchWarning]
         };
       }
+      if (desktopCliRoute) {
+        // Put the product on the desktop before the participant sees it. UNKEYED, like every other
+        // provisioning step: the participant's world is prepared by the harness, and what is being
+        // studied starts at the moment they look at the screen.
+        await provisionDesktopCli(desktop, {
+          product: config.subject.product?.name ?? "",
+          ...(config.subject.product?.install === undefined ? {} : { install: config.subject.product.install }),
+          requestTimeoutMs: deps.requestTimeoutMs,
+          scrub: deps.scrubKnownValues,
+          onPhase: onSubjectPhase
+        });
+      }
       if (cloneRoute && serve && subjectRepo) {
         subjectCommit = await provisionCloneSubject(desktop, {
           repo: subjectRepo,
@@ -2259,35 +2388,50 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         });
       }
 
-      const browserLaunch = await openDesktopBrowserTarget(
-        desktop,
-        targetUrl,
-        deps.requestTimeoutMs,
-        config.execution?.desktop?.browser
-      );
-      desktopBrowser = browserLaunch.evidence;
-      launchedBrowserFamily = browserLaunch.family;
-      browserLaunchIdentity = browserLaunch.identity;
-      browserLaunched = true;
-      await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+      if (!desktopCliRoute) {
+        const browserLaunch = await openDesktopBrowserTarget(
+          desktop,
+          targetUrl,
+          deps.requestTimeoutMs,
+          config.execution?.desktop?.browser
+        );
+        desktopBrowser = browserLaunch.evidence;
+        launchedBrowserFamily = browserLaunch.family;
+        browserLaunchIdentity = browserLaunch.identity;
+        browserLaunched = true;
+        await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+      } else {
+        // A terminal window, opened the way the browser is opened on every other route: the
+        // participant arrives at a desktop with the thing they were asked to use already in front
+        // of them. They can still open another from the dock — that is the point of a desktop.
+        await openDesktopTerminal(desktop, deps.requestTimeoutMs, config.subject.product?.workdir);
+        await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+      }
 
       // World is ready: release the pipeline gate so the remaining lanes may start.
       provisioned = true;
       signal(true);
 
       try {
-        const browserGeometry = await captureDesktopBrowserGeometry({
-          desktop,
-          browserFamily: launchedBrowserFamily,
-          ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
-          laneId: spec.laneId,
-          targetUrl,
-          requestedScreen: spec.resolution,
-          requestTimeoutMs: deps.requestTimeoutMs
-        });
-        initialBrowserGeometry = browserGeometry;
-        browserWindowId = browserGeometry.browserWindowId;
-        browserTargetId = browserGeometry.browserTargetId;
+        // No browser means no browser geometry, and none is invented: the CSS-viewport facts a
+        // browser reports have no counterpart in a terminal window, and an empty record shaped like
+        // a measurement would read as one. The screen geometry above is still verified.
+        if (!desktopCliRoute) {
+          const browserGeometry = await captureDesktopBrowserGeometry({
+            desktop,
+            browserFamily: launchedBrowserFamily,
+            ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+            laneId: spec.laneId,
+            targetUrl,
+            requestedScreen: spec.resolution,
+            requestTimeoutMs: deps.requestTimeoutMs
+          });
+          initialBrowserGeometry = browserGeometry;
+          browserWindowId = browserGeometry.browserWindowId;
+          browserTargetId = browserGeometry.browserTargetId;
+        }
+        // The WHOLE desktop, not one window: a person studying a terminal app opens other windows,
+        // and a stream bound to the first one would quietly stop being evidence.
         await startDesktopStream(desktop, browserWindowId);
         const candidateStreamUrl: unknown = desktop.stream.getUrl({
           authKey: desktop.stream.getAuthKey(),
@@ -2938,6 +3082,8 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const render = hooks.renderObserverFn ?? renderObserver;
 
   const cloneRoute = config.subject.source === "clone";
+  // A CLI studied at a desktop (#495): nothing cloned, no browser, a terminal instead.
+  const desktopCliRoute = config.subject.source === "desktop-cli";
   const localTreeRoute = config.subject.source === "local-tree";
   // Both routes provision the subject in-sandbox (clone via git, local-tree via pack+upload)
   // and then share the identical install/build/state/start/probe pipeline, so every seam that
@@ -3018,10 +3164,12 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     }
   }
 
-  // Re-enforce the entry-target boundary (library API surface).
+  // Re-enforce the entry-target boundary (library API surface). A desktop-cli study has no entry
+  // target at all — the subject is a program on the machine, not an address — so the boundary is
+  // vacuous there rather than violated by an empty string.
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
   const declaredTargets = [appUrl, ...(actor?.lanes ?? []).map((lane) => lane.target).filter((target): target is string => target !== undefined)];
-  const entryTargetSafe = declaredTargets.every((target) =>
+  const entryTargetSafe = desktopCliRoute || declaredTargets.every((target) =>
     provisionedRoute || localAppSubject
       ? isLoopbackUrl(target)
       : allowPublicTargets
@@ -3276,6 +3424,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     descriptor,
     appUrl,
     cloneRoute,
+    desktopCliRoute,
     localTreeRoute,
     ...(serve === undefined ? {} : { serve }),
     ...(subjectRepo === undefined ? {} : { subjectRepo }),

@@ -297,6 +297,28 @@ describe("what the surface says about the run it just started", () => {
 
     expect(other).not.toContain("EACCES");
   });
+
+  it("keeps the price on the live row when the keys are missing (labs/tui-self-study.yaml)", async () => {
+    // A participant studying this screen reported it: "switching the TUI to live mode displayed no
+    // estimate or budget — only missing-key warnings". Whether a run is worth setting keys up FOR
+    // is the decision being made at that moment, so the number has to survive the blocker.
+    const { options } = harness({
+      readLabSummary: async () => ({
+        schema: "humanish.lab-summary.v1" as const,
+        labId: "signup-flow",
+        caps: {},
+        keysReady: false,
+        missingKeys: ["OPENAI_API_KEY"]
+      })
+    });
+    const { surface } = await openLab(options);
+    // The summary arrives after the first lab frame; wait for the frame that actually knows the
+    // keys are missing rather than asserting on the one rendered before it landed.
+    const frame = await surface.press(KEY.down, (candidate) => candidate.includes("needs keys"));
+    surface.unmount();
+    expect(frame).toContain("Start a LIVE run");
+    expect(frame).toContain("~$1.20 median");
+  });
 });
 
 /** Local copy of the intent-based navigation helper (this file predates the shared one). */
