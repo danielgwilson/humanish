@@ -1,0 +1,66 @@
+schema: humanish.lab.v2
+id: tui-self-study
+title: Can a developer get an answer out of the humanish TUI? (self-study, desktop)
+description: >
+  humanish watching someone use humanish. A computer-use participant sits at a desktop with a
+  terminal window open and `humanish` installed, and is asked to answer a question using it —
+  the way a person evaluating the tool would, by looking at the screen and typing.
+  WHY THIS IS THE COMPUTER-USE LANE AND NOT THE TERMINAL ONE: the terminal lane runs an
+  autonomous agent through a pipe with stdin disabled, which is the honest way to study what an
+  AGENT meets and structurally cannot study an interactive surface — `humanish tui` refuses a
+  non-TTY on purpose. A TUI can only be studied by a participant who can see it. That is this
+  population, and the two labs answer different questions rather than competing (see
+  labs/first-contact.yaml for the agent side).
+  WHAT TO READ AFTERWARDS, in order of how much it would change the design:
+  1. Where did they stop and look? A TUI is a series of screens someone has to parse; the
+     screenshot timeline shows which ones cost them time.
+  2. Did they find how to start a run, and did they understand the difference between the free
+     one and the one that spends? That pair of rows is the newest thing on the surface and the
+     part a stakeholder said they could not find at all.
+  3. Did they use the keys the surface claims? Arrow keys, ⏎, esc, `?`. A key nobody presses is
+     either undiscoverable or unnecessary, and the recording distinguishes those.
+  4. What did they say about it, unprompted? The train of thought is the closest thing we have
+     to a think-aloud protocol, and it is the half a maintainer cannot generate.
+  THE MISSION NAMES NO KEYSTROKES. It says what to find out, not how — a mission that listed
+  the keys would be testing whether the participant can follow instructions, which is not in
+  doubt and is not the question.
+subject:
+  source: desktop-cli
+  product:
+    name: humanish
+    # Runs UNKEYED before the participant arrives: this is a study of the surface, not of npm.
+    # sudo -n: the provisioning step runs as the desktop user, and the global npm
+    # prefix is root-owned on the stock template (EACCES without it).
+    install: >-
+      sudo -n npm install -g humanish@latest
+      && mkdir -p /home/user/project
+      && cd /home/user/project
+      && humanish init --yes
+    # The terminal opens HERE, in a project that already has studies in it. The first live run of
+    # this lab put the participant in an empty home directory and asked them what studies the
+    # project contained; they correctly reported there was no project and stopped. That finding
+    # was about the lab.
+    workdir: /home/user/project
+    publicSurfaces:
+      - https://www.npmjs.com/package/humanish
+      - https://github.com/danielgwilson/humanish
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user
+    mission: >-
+      You are evaluating a command-line tool called humanish that your team is considering. It is
+      already installed on this machine. Using its interactive terminal interface, find out what
+      studies this project already contains, pick the one that looks most interesting, and find
+      out what it would cost to run it for real. Then stop and say what you found, what confused
+      you, and whether you could tell how to start a real run. Do not start one.
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+  desktop:
+    resolution: [1440, 950]
+  caps:
+    maxUsd: 5
+scenario:
+  mode: dry-run # committed fixture stays contract-only
+defaults:
+  open: false

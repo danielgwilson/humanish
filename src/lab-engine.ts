@@ -118,6 +118,12 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // same composition without the topology declaration stays per-lane-worlds (cua).
     return "shared-world";
   }
+  if (config.subject.source === "desktop-cli") {
+    // A CLI studied at a desktop by someone who can see it (#495). Same lane as every other
+    // computer-use study — the difference is that the subject is a terminal window rather than a
+    // served page, so nothing is cloned and no browser is launched.
+    return "cua";
+  }
   if (routesToComputerUse(config)
     || config.subject.source === "app-url"
     || config.subject.source === "local-app"

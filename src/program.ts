@@ -86,6 +86,7 @@ import { openObserverArtifact, stopRun } from "./tui-actions.js";
 import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
+import { forTerminal } from "./terminal-encoding.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
 import type {
@@ -176,9 +177,16 @@ interface CodexAppServerUiCliResult {
   };
 }
 
+// Transcode ONLY for a terminal. A pipe carries bytes to another program — mangling those would
+// corrupt a JSON payload for a reader that handles UTF-8 perfectly well — while a TTY carries them
+// to a font, through a locale that may not decode them. See src/terminal-encoding.ts for what a
+// participant actually read back off the screen.
+const forStream = (stream: NodeJS.WriteStream, text: string): string =>
+  stream.isTTY === true ? forTerminal(text) : text;
+
 const defaultIo: CliIo = {
-  writeOut: (text) => process.stdout.write(text),
-  writeErr: (text) => process.stderr.write(text),
+  writeOut: (text) => process.stdout.write(forStream(process.stdout, text)),
+  writeErr: (text) => process.stderr.write(forStream(process.stderr, text)),
   setExitCode: (code) => {
     process.exitCode = code;
   }
@@ -3435,7 +3443,10 @@ function formatDoctorHuman(result: DoctorResult): string {
   return [
     `humanish doctor ${result.ok ? "ok" : "needs setup"}`,
     `cwd: ${result.cwd}`,
-    ...result.checks.map((check) => `- ${check.ok ? "ok" : "missing"} ${check.name}: ${check.message}`)
+    // "missing" is a VERDICT, and a row that never ran has none. A participant reading doctor on a
+    // fresh desktop got `- missing package.json: package.json is present and safe to read`, which
+    // contradicts itself in eleven words (labs/tui-self-study.yaml).
+    ...result.checks.map((check) => `- ${check.ok ? "ok" : check.checked === false ? "not checked" : "missing"} ${check.name}: ${check.message}`)
   ].join("\n") + "\n";
 }
 

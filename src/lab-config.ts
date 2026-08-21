@@ -71,7 +71,7 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
-export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product" | "local-tree";
+export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product" | "desktop-cli" | "local-tree";
 
 /**
  * How a subject's WORLD relates across actor lanes. `per-lane-worlds` (the default; absent ==
@@ -208,6 +208,23 @@ export interface LabSubjectState {
 export interface LabSubjectProduct {
   /** Public-safe product label (shape-validated like a lab id; interpolates into evidence). */
   name: string;
+  /**
+   * `desktop-cli` ONLY: how the product gets onto the desktop, run UNKEYED before the participant
+   * starts. Absent means the participant installs it themselves from the public surfaces, which is
+   * a different study — one about the install, not about the tool.
+   */
+  install?: string;
+  /**
+   * `desktop-cli` ONLY: the directory the participant's terminal opens in. Absent means the home
+   * directory.
+   *
+   * This exists because the first live study failed on it: the participant was asked what studies
+   * the project contained, landed in an empty home directory, correctly reported that there was no
+   * project, and stopped. The finding was about the lab, not the product. A study of a
+   * project-scoped tool has to put the participant IN a project, the same way an app study opens
+   * the app rather than a blank tab.
+   */
+  workdir?: string;
   /**
    * The product's PUBLIC surfaces — the only world the agent sees. Each must be an http(s) URL
    * (e.g. a docs page, an llms.txt, a skill manifest). Validated at parse; recorded in evidence.
@@ -1047,6 +1064,30 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
+  // desktop-cli route: a computer-use participant studies a CLI/TUI the way a person does — at a
+  // desktop, in a terminal window, by looking at it. The sibling of terminal-product, and the
+  // distinction is the POPULATION, not the product: terminal-product sends an autonomous agent
+  // through a pipe with stdin disabled, which is the honest way to study what an agent meets and
+  // structurally cannot study an interactive surface. This route sends someone who can see it.
+  //
+  // Fail-closed on the pairing (invariant 6): a hosted desktop and a computer-use actor, because
+  // "watch a person use a terminal" is not something the other substrates can do.
+  if (config.subject.source === "desktop-cli") {
+    if (config.subject.product?.name === undefined) {
+      return invalid("desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use.");
+    }
+    if (config.execution?.target !== undefined && config.execution.target !== "e2b-desktop") {
+      return invalid("desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it.");
+    }
+    if (!actorResolvesToComputerUse(config.actors[0]?.type ?? "")) {
+      return invalid("desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all.");
+    }
+    const install = config.subject.product.install;
+    if (install !== undefined && install.trim().length === 0) {
+      return invalid("`subject.product.install` must be a non-empty command when set (omit it to study the install itself).");
+    }
+  }
+
   // terminal-product route: a real autonomous agent studies a CLI/product from PUBLIC surfaces
   // inside an E2B shell. Fail-closed (invariant 6 — a field that cannot act on this route is an
   // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
@@ -1305,6 +1346,14 @@ export function routesToComputerUse(config: LabConfig): boolean {
   // routes to the cua backend exactly like an app-url subject with a computer-use actor.
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
     return actorResolvesToComputerUse(config.actors[0]?.type);
+  }
+  // desktop-cli hands the participant a terminal instead of a served page (#495), but it is the
+  // same lane: same desktop, same actor, same prompt fields. Leaving it out of this predicate told
+  // adopters their mission and persona were inert on the one route whose whole point is that a
+  // person reads a screen.
+  if (config.subject.source === "desktop-cli") {
+    return (config.execution?.target === undefined || config.execution.target === "e2b-desktop")
+      && actorResolvesToComputerUse(config.actors[0]?.type);
   }
   // local-tree packs+uploads the working tree, then serves it exactly like a computer-use clone
   // subject: same e2b-desktop + computer-use-actor gate.
@@ -1632,7 +1681,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // dry-run records the contract; live execution enforces caps and command-scoped auth. On every
   // OTHER route they are inert and must warn so a
   // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
-  if (config.subject.product && !routesToTerminal) inert.push("subject.product (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.subject.product && !routesToTerminal && config.subject.source !== "desktop-cli") inert.push("subject.product (needs subject.source: terminal-product or desktop-cli with the matching actor)");
   if (config.scenario?.caps && !routesToTerminal) inert.push("scenario.caps (needs subject.source: terminal-product + a registered terminal actor)");
   // The study-level budget is a CUA-route capability; the terminal route is a single agent whose
   // maxUsd already caps the whole run, so a maxTotalUsd there would be trusted and unenforced.
@@ -1714,8 +1763,8 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app" && source !== "terminal-product" && source !== "local-tree") {
-    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, local-tree.");
+  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app" && source !== "desktop-cli" && source !== "terminal-product" && source !== "local-tree") {
+    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, desktop-cli, local-tree.");
   }
   const subject: LabSubject = { source };
 
@@ -1741,8 +1790,8 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
 
   // `product` is terminal-product-only; reject it elsewhere (invariant 6: a field that cannot act
   // on this route is an honest parse error, not silently dropped).
-  if (source !== "terminal-product" && raw.product !== undefined) {
-    return invalid("`subject.product` applies only to terminal-product subjects (the CLI/product the terminal agent studies from public surfaces).");
+  if (source !== "terminal-product" && source !== "desktop-cli" && raw.product !== undefined) {
+    return invalid("`subject.product` applies only to terminal-product and desktop-cli subjects (the CLI a participant studies from public surfaces).");
   }
   // appUrl is app-url/local-app-only; a terminal-product subject drives PUBLIC surfaces, not a
   // single loopback app — reject appUrl on it.
@@ -1907,7 +1956,7 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     }
   }
 
-  if (source === "terminal-product") {
+  if (source === "terminal-product" || source === "desktop-cli") {
     const productResult = parseProduct(raw.product);
     if (!productResult.ok) {
       return productResult;
@@ -1950,6 +1999,14 @@ function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | La
   if (!name || !PRODUCT_NAME_PATTERN.test(name)) {
     return invalid("`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).");
   }
+  const workdir = str(raw.workdir);
+  if (raw.workdir !== undefined && (workdir === undefined || !/^[A-Za-z0-9_./-]+$/.test(workdir))) {
+    return invalid("`subject.product.workdir` must be a plain path (it interpolates into an in-sandbox command).");
+  }
+  const install = str(raw.install);
+  if (raw.install !== undefined && (install === undefined || install.trim().length === 0)) {
+    return invalid("`subject.product.install` must be a non-empty command string when set.");
+  }
   const publicSurfaces = strList(raw.publicSurfaces);
   if (!publicSurfaces || publicSurfaces.length === 0) {
     return invalid("`subject.product.publicSurfaces` must list at least one public surface URL.");
@@ -1958,7 +2015,7 @@ function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | La
   if (badSurface) {
     return invalid(`subject.product.publicSurfaces entries must be http(s) URLs (got "${badSurface}").`);
   }
-  return { ok: true, value: { name, publicSurfaces } };
+  return { ok: true, value: { name, publicSurfaces, ...(install === undefined ? {} : { install }), ...(workdir === undefined ? {} : { workdir }) } };
 }
 
 // Public-safe stance: a computer-use actor's ENTRY URL is always an app the lab owner runs on

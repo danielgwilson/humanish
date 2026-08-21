@@ -4,7 +4,32 @@ import { render } from "ink";
 import React from "react";
 
 import type { StartTui, TuiOptions } from "../../src/tui-contract.js";
+import { forTerminal, terminalRendersUnicode } from "../../src/terminal-encoding.js";
 import { App } from "./app.js";
+
+/**
+ * A stdout that a non-UTF-8 terminal can read.
+ *
+ * ONE choke point instead of a fallback at every glyph. Ink composes frames from dozens of strings
+ * across every screen, and a surface where most glyphs degrade and three do not is worse than
+ * either extreme — it looks broken in a way that reads as a bug in the tool. A participant at a
+ * stock desktop is where this came from: they read `humanish ��� run realistic synthetic personas`
+ * off the screen and reported it (labs/tui-self-study.yaml).
+ *
+ * Only the TUI can do this safely: the CLI transcodes for a TTY and never for a pipe, because a
+ * pipe carries bytes to a program. `humanish tui` refuses a non-TTY outright, so here the
+ * destination is always a person's font.
+ */
+function encodeFor(stdout: TuiOptions["stdout"]): TuiOptions["stdout"] {
+  if (terminalRendersUnicode()) return stdout;
+  const wrapped = Object.create(stdout) as TuiOptions["stdout"];
+  wrapped.write = ((chunk: unknown, ...rest: unknown[]): boolean =>
+    (stdout.write as (value: unknown, ...args: unknown[]) => boolean)(
+      typeof chunk === "string" ? forTerminal(chunk) : chunk,
+      ...rest
+    )) as typeof stdout.write;
+  return wrapped;
+}
 
 export const startTui: StartTui = async (options: TuiOptions): Promise<number> => {
   let ready: () => void = () => {};
@@ -12,9 +37,10 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number> =
     ready = resolve;
   });
 
+  const stdout = encodeFor(options.stdout);
   const instance = render(<App options={options} onReady={ready} />, {
     stdin: options.stdin,
-    stdout: options.stdout,
+    stdout,
     // Ink's own console patching rewrites stdout behind the app. humanish writes its logs to files
     // and its results to stdout through CliIo, so there is nothing to patch and patching would
     // only add a way for a stray write to corrupt the frame.

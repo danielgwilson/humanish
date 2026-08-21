@@ -1277,7 +1277,16 @@ export interface DoctorResult {
     name: string;
     ok: boolean;
     message: string;
-  }>;
+      /**
+     * ADDITIVE + OPTIONAL. `false` means the check never ran — the directory could not be read, so
+     * there is nothing to report about it either way. Absent means it ran and `ok` is its verdict.
+     *
+     * It exists because a failed check and an unrun one used to render identically, and the unrun
+     * rows carried the SUCCESS text: a participant read `missing package.json: package.json is
+     * present and safe to read` off a real screen (labs/tui-self-study.yaml).
+     */
+    checked?: boolean;
+}>;
 }
 
 interface RunPointer {
@@ -4668,10 +4677,10 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
   const cwdOk = await validateCwd(cwd).then((error) => error === null).catch(() => false);
   if (!cwdOk) {
     const checks = [
-      { name: "target cwd", ok: false, message: "target directory exists" },
-      { name: "package.json", ok: false, message: "package.json is present and safe to read" },
-      { name: "humanish source", ok: false, message: "committed humanish/ source directory is present and safe to read" },
-      { name: "runtime ignore", ok: false, message: ".gitignore safely contains .humanish/" }
+      { name: "target cwd", ok: false, message: "this directory does not exist, or humanish cannot read it" },
+      { name: "package.json", ok: false, checked: false, message: "not checked — the target directory could not be read" },
+      { name: "humanish source", ok: false, checked: false, message: "not checked — the target directory could not be read" },
+      { name: "runtime ignore", ok: false, checked: false, message: "not checked — the target directory could not be read" }
     ];
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
   }
@@ -4682,9 +4691,9 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
   } catch {
     const checks = [
       { name: "target cwd", ok: false, message: "target directory failed containment validation" },
-      { name: "package.json", ok: false, message: "package.json is present and safe to read" },
-      { name: "humanish source", ok: false, message: "committed humanish/ source directory is present and safe to read" },
-      { name: "runtime ignore", ok: false, message: ".gitignore safely contains .humanish/" }
+      { name: "package.json", ok: false, checked: false, message: "not checked — containment validation failed first" },
+      { name: "humanish source", ok: false, checked: false, message: "not checked — containment validation failed first" },
+      { name: "runtime ignore", ok: false, checked: false, message: "not checked — containment validation failed first" }
     ];
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
   }

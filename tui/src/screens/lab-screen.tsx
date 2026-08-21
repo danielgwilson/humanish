@@ -209,8 +209,17 @@ function StartRow({
         {gutter(active)} {live ? "Start a LIVE run" : "Start a dry run"}
       </Text>
       <Box flexGrow={1} />
+      {/* The price stays even when the keys are missing. Rev 9 replaced it with the gate, and a
+          participant studying this screen reported exactly the consequence: "switching the TUI to
+          live mode displayed no estimate or budget — only missing-key warnings". Whether a run is
+          worth setting keys up FOR is the decision being made at that moment, so the number has to
+          survive the blocker (labs/tui-self-study.yaml). */}
       <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
-        {blocked ? "needs keys — see above" : live ? expectationLine(row.liveExpectation) : "free · no keys, no spend"}
+        {live
+          ? blocked
+            ? `${expectationLine(row.liveExpectation)} · needs keys`
+            : expectationLine(row.liveExpectation)
+          : "free · no keys, no spend"}
       </Text>
     </Box>
   );

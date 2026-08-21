@@ -3,6 +3,7 @@ import React from "react";
 
 import { PALETTE } from "./palette.js";
 import { color } from "./text-props.js";
+import { terminalRendersUnicode } from "../../src/terminal-encoding.js";
 
 /**
  * The chrome every screen sits in (#455 rev 8).
@@ -72,7 +73,12 @@ export function Frame({ columns, context, breadcrumb, hints, children }: FramePr
  * A live row needs to LOOK live: a static list of labs where one says "running" reads as stale
  * data, and the thing that says otherwise is motion.
  */
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
+// Braille spinner where the terminal can render it, ASCII where it cannot. A participant at a
+// stock desktop read our em dash back as `���` (labs/tui-self-study.yaml); every glyph on this
+// surface has the same exposure, and a spinner made of replacement boxes is worse than a plain one.
+const SPINNER_FRAMES = terminalRendersUnicode()
+  ? (["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const)
+  : (["|", "/", "-", "\\", "|", "/", "-", "\\", "|", "/"] as const);
 
 export function spinnerFrame(tick: number): string {
   return SPINNER_FRAMES[Math.abs(Math.floor(tick)) % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0];
@@ -80,16 +86,17 @@ export function spinnerFrame(tick: number): string {
 
 /** The selection cursor, and the gutter that keeps unselected rows from shifting under it. */
 export function gutter(active: boolean): string {
-  return active ? "❯" : " ";
+  return active ? (terminalRendersUnicode() ? "❯" : ">") : " ";
 }
 
 /** Verdict glyphs — a run's outcome readable before its text is. */
 export function verdictGlyph(args: { liveness: string; verdict?: string; tick?: number }): string {
   if (args.liveness === "running") return spinnerFrame(args.tick ?? 0);
-  if (args.liveness === "interrupted") return "⚑";
-  if (args.verdict === "fail") return "⚑";
-  if (args.verdict === undefined) return "·";
-  return "✓";
+  const unicode = terminalRendersUnicode();
+  if (args.liveness === "interrupted") return unicode ? "⚑" : "!";
+  if (args.verdict === "fail") return unicode ? "⚑" : "!";
+  if (args.verdict === undefined) return unicode ? "·" : "-";
+  return unicode ? "✓" : "+";
 }
 
 export function verdictColor(args: { liveness: string; verdict?: string }): string | undefined {
