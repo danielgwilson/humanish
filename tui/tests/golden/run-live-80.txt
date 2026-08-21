@@ -12,4 +12,4 @@ cost not recorded
 
 ❯ Stop this run
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move   ⏎ select   esc back   ? keys   q quit

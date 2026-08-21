@@ -84,7 +84,7 @@ async function openSurface(columns = 80) {
 describe("moving through the surface", () => {
   it("Enter opens the selected lab, and its runs are that lab's runs only", async () => {
     const surface = await openSurface();
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     surface.unmount();
 
     // The first lab is selected by default and is the live one, so Enter lands on Signup flow.
@@ -99,7 +99,7 @@ describe("moving through the surface", () => {
   it("Escape returns to the labs list, with the selection where it was left", async () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start") || frame.includes("no manifest"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run") || frame.includes("no manifest"));
     expect(lab).toContain("0/1 reached the goal");
 
     const back = await surface.press(KEY.escape, (frame) => frame.includes("never-run-lab"));
@@ -111,21 +111,21 @@ describe("moving through the surface", () => {
 
   it("renders the lab screen", async () => {
     const surface = await openSurface();
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     surface.unmount();
     await expectGolden("lab-80", normalizeFrame(lab));
   });
 
   it("renders the lab screen on a phone-width terminal", async () => {
     const surface = await openSurface(45);
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     surface.unmount();
     await expectGolden("lab-45", normalizeFrame(lab));
   });
 
   it("renders one run on a phone-width terminal, wrapping rather than overflowing", async () => {
     const surface = await openSurface(45);
-    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     // The FINISHED run, deliberately: it is the one carrying a participants line long enough to
     // run off a phone-width screen.
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
@@ -140,7 +140,7 @@ describe("moving through the surface", () => {
 
   it("renders one run, in place, with only the facts that were recorded", async () => {
     const surface = await openSurface();
-    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*2\/2 reached the goal/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("reached the goal"));
     surface.unmount();
@@ -160,7 +160,7 @@ describe("moving through the surface", () => {
   it("a run with no recorded cost says so rather than showing $0.00", async () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
-    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*0\/1 reached the goal/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("cost declared absent") || frame.includes("Run again"));
     surface.unmount();
@@ -176,7 +176,7 @@ describe("moving through the surface", () => {
   it("an interrupted run explains itself instead of looking like a bug", async () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
-    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*no verdict/.test(frame));
     const run = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
     surface.unmount();

@@ -85,17 +85,31 @@ export function LabsScreen({
   return (
     <Box flexDirection="column">
       {window.start > 0 ? <Text dimColor>  ↑ {window.start} more</Text> : null}
-      {rows.slice(window.start, window.end).map((row, offset) => (
-        <LabRowView
-          key={row.key}
-          row={row}
-          columns={columns}
-          active={window.start + offset === selected}
-          tick={tick}
-          liveParticipants={liveParticipants}
-          now={now}
-        />
-      ))}
+      {rows.slice(window.start, window.end).map((row, offset) => {
+        const index = window.start + offset;
+        // The list is already sorted so everything with history comes first. Marking the seam
+        // gives twenty rows a rhythm instead of a wall, and it answers the question the order was
+        // silently encoding: these ones have something to look at, those ones do not yet.
+        const previous = index > 0 ? rows[index - 1] : undefined;
+        const startsUnrun = row.runs === 0 && previous !== undefined && previous.runs > 0;
+        return (
+          <React.Fragment key={row.key}>
+            {startsUnrun ? (
+              <Box marginTop={1}>
+                <Text dimColor>{"  "}not yet run</Text>
+              </Box>
+            ) : null}
+            <LabRowView
+              row={row}
+              columns={columns}
+              active={index === selected}
+              tick={tick}
+              liveParticipants={liveParticipants}
+              now={now}
+            />
+          </React.Fragment>
+        );
+      })}
       {window.end < rows.length ? <Text dimColor>  ↓ {rows.length - window.end} more</Text> : null}
       {/* A global destination, and a peer rather than a lifecycle state — it is somewhere you go,
           not something the app decides you are in. */}
@@ -112,8 +126,29 @@ export function LabsScreen({
           </Text>
         </Box>
       ) : null}
+      {/* ONE description line, at the foot, following the cursor — the same rule the all-runs
+          screen uses for thinking. Twenty labs each carrying their own blurb is a wall nobody
+          reads; the one you are pointing at is the one you are asking about. It sits last so it
+          reads as a detail bar for the selection rather than as another list item. Added because
+          a stakeholder scanning this list could not tell what any of these studies were. */}
+      <Box marginTop={1} width={columns}>
+        <Text {...color(PALETTE.accent)}>▸</Text>
+        <Text dimColor wrap="truncate-end">{` ${describe(rows[selected], peerSelected)}`}</Text>
+      </Box>
     </Box>
   );
+}
+
+/**
+ * What the cursor is pointing at, in the manifest's own words. A lab that declares no description
+ * says so plainly rather than borrowing its title back — an echo of the row above it would read
+ * like an answer while adding nothing.
+ */
+function describe(row: LabRow | undefined, peerSelected: boolean): string {
+  if (peerSelected) return "every run in this project, newest first — across every lab";
+  if (row === undefined) return "";
+  const described = row.description?.split(/(?<=[.!?])\s/)[0]?.trim();
+  return described !== undefined && described.length > 0 ? described : "no description in the manifest";
 }
 
 function LabRowView({
@@ -150,6 +185,9 @@ function LabRowView({
         {fitLabelToWidth(row.label, nameRoom)}
       </Text>
       <Box flexGrow={1} />
+      {/* Three weights, because the list answers three different questions: someone is working in
+          this one (ok), this one has evidence to open (plain dim), this one is still an idea
+          (dimmed further by having nothing but the words "never run" to say). */}
       <Text {...color(live === undefined ? undefined : PALETTE.ok)} dimColor={live === undefined}>
         {shown}
       </Text>

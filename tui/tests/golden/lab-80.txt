@@ -3,10 +3,11 @@ human(ish)                                      acme-app · 1 participant workin
 
 2m · ~$1.20 median · 1 run
 
-❯ Start  dry-run / live                                                 no spend
+❯ Start a dry run                                       free · no keys, no spend
+  Start a LIVE run                                    2m · ~$1.20 median · 1 run
 
 Runs
   ⠋ starting…                                                     30:00 of ~2:00
   ✓ 08-19 10:02 · 2/2 reached the goal · ~$1.20
 
-↑↓ move   ⏎ start · ←→ mode   esc back   q quit
+↑↓ move   ⏎ start   esc back   ? keys   q quit

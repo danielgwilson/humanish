@@ -82,9 +82,9 @@ async function openLiveRun(detail: RunDetail | null, columns = 80) {
     rows: 30,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
-  await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
+  await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
   // Past the Start action to the newest run, which is the live one.
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < 4; index += 1) {
     const frame = await surface.press(KEY.down);
     if (/❯[^\n]*(starting|synthetic-new-user|CUA browser)/.test(frame)) break;
   }
@@ -203,8 +203,13 @@ describe("the interrupted card", () => {
       rows: 26,
       until: (frame) => frame.includes("diagram-editor")
     });
-    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start"));
-    await surface.press(KEY.down, (frame) => /❯[^\n]*⚑/.test(frame));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
+    // Down until the cursor is on the interrupted run: the number of start rows above it is a
+    // design decision, not something a test should encode.
+    for (let index = 0; index < 4; index += 1) {
+      const frame = await surface.press(KEY.down);
+      if (/❯[^\n]*⚑/.test(frame)) break;
+    }
     const card = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
 
     expect(card).toContain("interrupted — no outcome recorded");

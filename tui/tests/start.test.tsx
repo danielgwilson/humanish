@@ -48,7 +48,7 @@ async function openLab(options: TuiOptions) {
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
   // The first lab is selected by default; Enter opens it.
-  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start"));
+  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start a dry run"));
   return { surface, frame };
 }
 
@@ -69,7 +69,7 @@ describe("starting a run", () => {
   it("a live run is armed first and commits on the second press, restating the cost", async () => {
     const { started, options } = harness();
     const { surface } = await openLab(options);
-    await surface.press(KEY.right, (frame) => frame.includes("←→ switch"));
+    await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
 
     const armed = await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
     // A person reads the prompt before pressing again. Confirming faster than a human can read is
@@ -92,14 +92,14 @@ describe("starting a run", () => {
     // navigating away, which would leave the operator unsure whether they had just spent money.
     const { started, options } = harness();
     const { surface } = await openLab(options);
-    await surface.press(KEY.right, (frame) => frame.includes("←→ switch"));
+    await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
     await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
 
     // Asserts what the frame CONTAINS, not only what it lacks: Ink writes blank control frames, and
     // a bare negation matches those trivially.
     const cancelled = await surface.press(
       KEY.escape,
-      (frame) => frame.includes("❯ Start") && !frame.includes("start a live run?")
+      (frame) => frame.includes("Start a dry run") && !frame.includes("start a live run?")
     );
     surface.unmount();
     expect(started).toHaveLength(0);
@@ -131,7 +131,7 @@ describe("starting a run", () => {
       until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
     });
     const lab = await surface.press(KEY.enter, (frame) => frame.includes("no manifest"));
-    expect(lab).not.toContain("❯ Start");
+    expect(lab).not.toContain("Start a dry run");
     await surface.press(KEY.enter, (frame) => frame.length >= 0);
     surface.unmount();
     expect(started).toHaveLength(0);
@@ -292,7 +292,7 @@ describe("what the surface says about the run it just started", () => {
     // Leave, and open a different lab: its screen must say nothing about the other lab's failure.
     await surface.press(KEY.escape, (candidate) => candidate.includes("never-run-lab"));
     await pressUntilFrame(surface, KEY.down, (candidate) => /❯[^\n]*diagram-editor/.test(candidate));
-    const other = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start"));
+    const other = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start a dry run"));
     surface.unmount();
 
     expect(other).not.toContain("EACCES");

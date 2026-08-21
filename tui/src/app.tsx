@@ -1,5 +1,6 @@
 import { Box, Text, useApp, useInput } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { HelpScreen } from "./screens/help-screen.js";
 import { PALETTE } from "./palette.js";
 
 import type { LabListEntry } from "../../src/labs.js";
@@ -92,11 +93,11 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   const [actionNote, setActionNote] = useState<string | undefined>(undefined);
   /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
   const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
+  const [showHelp, setShowHelp] = useState(false);
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
   /** Which side the Start toggle is on. Per lab, so switching labs does not carry `live` across. */
-  const [modeByLab, setModeByLab] = useState<Record<string, "dry-run" | "live">>({});
   const [summary, setSummary] = useState<LabSummary | null | undefined>(undefined);
   /** Detail for LIVE runs only, so the labs list can name who is in them. */
   const [liveDetails, setLiveDetails] = useState<Map<string, RunDetail>>(new Map());
@@ -312,8 +313,26 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   useInput(
     useCallback(
       (input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean; escape?: boolean; leftArrow?: boolean; rightArrow?: boolean }) => {
+        if (showHelp) {
+          // Any key leaves: a help screen you can get stuck in is worse than none. `q` still quits.
+          setShowHelp(false);
+          if (input === "q") exit();
+          return;
+        }
+        if (input === "?") {
+          setShowHelp(true);
+          return;
+        }
         if (input === "q") {
           exit();
+          return;
+        }
+        if (input === "g" || input === "G") {
+          if (confirming !== undefined) {
+            setConfirming(undefined);
+            setArmedAt(undefined);
+          }
+          dispatch({ type: "move", delta: input === "g" ? -rowCount : rowCount, total: rowCount });
           return;
         }
         if (key.upArrow || input === "k" || key.downArrow || input === "j") {
@@ -325,20 +344,6 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
           }
           dispatch({ type: "move", delta: key.upArrow || input === "k" ? -1 : 1, total: rowCount });
           return;
-        }
-        // ←/→ switch the Start toggle when it is selected; otherwise ← is back.
-        if ((key.leftArrow || key.rightArrow) && screen.name === "lab" && data !== undefined) {
-          const { row, items } = itemsForLab(data, screen.labKey);
-          if (row !== undefined && items[selected]?.kind === "start") {
-            setModeByLab((previous) => ({
-              ...previous,
-              [row.key]: key.rightArrow ? "live" : "dry-run"
-            }));
-            // Switching the mode disarms: a confirmation shown for one mode must not commit another.
-            setConfirming(undefined);
-            setArmedAt(undefined);
-            return;
-          }
         }
         if (key.escape || key.leftArrow) {
           // Escape cancels an armed confirmation before it means "go back": the nearer meaning of
@@ -373,7 +378,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
             const { row, items } = itemsForLab(data, screen.labKey);
             const item = items[selected];
             if (row !== undefined && item?.kind === "start") {
-              void start(row, modeByLab[row.key] ?? "dry-run");
+              void start(row, item.mode);
               return;
             }
           }
@@ -381,7 +386,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start, modeByLab, detail, act, stopArmedAt]
+      [exit, rowCount, screen, data, selected, confirming, start, detail, act, stopArmedAt, showHelp]
     )
   );
 
@@ -477,21 +482,22 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
+    if (showHelp) return <HelpScreen columns={contentWidth(size.columns)} />;
     if (error !== undefined) return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
     return renderScreen({
       screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
-      confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab,
+      confirming, launchError, launchNote, detail, summary, liveDetails, tick,
       initialized: projectState.initialized, actionNote
     });
-  }, [error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, modeByLab, projectState, actionNote]);
+  }, [showHelp, error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, projectState, actionNote]);
 
   return (
     <Frame
       columns={size.columns}
       context={contextLine(screen, data, options)}
       breadcrumb={breadcrumbOf(screen, data)}
-      hints={keyHints(screen, data, selected, confirming)}
+      hints={showHelp ? "any key returns   q quit" : keyHints(screen, data, selected, confirming)}
     >
       {body}
     </Frame>
@@ -568,21 +574,21 @@ function keyHints(
     case "labs":
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
       // teaches the wrong model of the surface.
-      return (data?.rows.length ?? 0) === 0 ? "q quit" : `${move}   ⏎ open   q quit`;
+      return (data?.rows.length ?? 0) === 0 ? "q quit" : `${move}   ⏎ open   ? keys   q quit`;
     case "lab": {
       if (confirming !== undefined) return "↵ confirm · esc cancel";
       const item = data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
-      const enter = item?.kind === "start" ? "⏎ start · ←→ mode" : "⏎ open run";
-      return `${move}   ${enter}   esc back   q quit`;
+      const enter = item?.kind === "start" ? "⏎ start" : "⏎ open run";
+      return `${move}   ${enter}   esc back   ? keys   q quit`;
     }
     case "all-runs":
-      return `${move}   ⏎ open run   esc back   q quit`;
+      return `${move}   ⏎ open run   esc back   ? keys   q quit`;
     default: {
       // Only when the card actually has actions — an empty legend beats one promising a key that
       // does nothing on a run still in flight.
       const run = data === undefined ? undefined : data.runsById.get(screen.name === "run" ? screen.runId : "");
       const hasActions = run !== undefined && runActions(run, undefined).length > 0;
-      return hasActions ? `${move}   ⏎ select   esc back   q quit` : "esc back   q quit";
+      return hasActions ? `${move}   ⏎ select   esc back   ? keys   q quit` : "esc back   ? keys   q quit";
     }
   }
 }
@@ -592,6 +598,7 @@ function project(index: RunIndexResult, labs: readonly LabListEntry[]): ProjectD
     labs.map((lab) => ({
       id: lab.id,
       ...(lab.title === undefined ? {} : { title: lab.title }),
+      ...(lab.description === undefined ? {} : { description: lab.description }),
       path: lab.path,
       origin: lab.origin
     })),
@@ -738,12 +745,11 @@ function renderScreen(args: {
   summary: LabSummary | null | undefined;
   liveDetails: Map<string, RunDetail>;
   tick: number;
-  modeByLab: Record<string, "dry-run" | "live">;
   initialized: boolean;
   actionNote: string | undefined;
 }): React.ReactElement {
   const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
-  const { summary, liveDetails, tick, modeByLab, initialized, actionNote } = args;
+  const { summary, liveDetails, tick, initialized, actionNote } = args;
   if (screen.name === "labs") {
     return (
       <LabsScreen
@@ -785,7 +791,6 @@ function renderScreen(args: {
         now={now}
         tick={tick}
         canStart={row.declared}
-        mode={modeByLab[row.key] ?? "dry-run"}
         confirming={confirming}
         launchError={launchError?.labKey === row.key ? launchError.text : undefined}
         launchNote={launchNote?.labKey === row.key ? launchNote.text : undefined}
