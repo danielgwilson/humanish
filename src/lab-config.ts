@@ -209,14 +209,19 @@ export interface LabSubjectProduct {
   /** Public-safe product label (shape-validated like a lab id; interpolates into evidence). */
   name: string;
   /**
-   * `desktop-cli` ONLY: how the product gets onto the desktop, run UNKEYED before the participant
-   * starts. Absent means the participant installs it themselves from the public surfaces, which is
-   * a different study — one about the install, not about the tool.
+   * How the product gets onto the machine, run UNKEYED before the participant starts, in the
+   * lane's working directory. Consumed on BOTH product routes: `desktop-cli` (a person at a
+   * desktop) and `terminal-product` (an agent in a shell).
+   *
+   * Absent means the participant installs it themselves from the public surfaces, which is a
+   * different study — one about the install, not about the tool. Present means the study starts
+   * where you want it to start: asking a participant what studies a project contains, in an empty
+   * directory, measures the lab rather than the product.
    */
   install?: string;
   /**
    * `desktop-cli` ONLY: the directory the participant's terminal opens in. Absent means the home
-   * directory.
+   * directory. (The terminal-product lane has its own fixed study workdir.)
    *
    * This exists because the first live study failed on it: the participant was asked what studies
    * the project contained, landed in an empty home directory, correctly reported that there was no

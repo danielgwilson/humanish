@@ -1097,7 +1097,43 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       completionReason = "harness_error";
       sessionError = sanitize(bootstrapError);
       sessionReason = `runtime bootstrap could not ensure Node/npm before codex exec: ${sessionError}`;
-    } else {
+    } else if (await (async (): Promise<boolean> => {
+      // --- Optional product setup (UNKEYED, no envs), before the keyed exec. ---
+      // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
+      // and a failure fails the lane closed rather than handing the agent a half-built world. It
+      // exists so a study can put the participant IN a prepared project — asking an agent what
+      // studies a project contains, in an empty directory, measures the lab and not the product
+      // (learned the hard way on the desktop lane, labs/tui-self-study.yaml).
+      const install = config.subject.product?.install;
+      if (install === undefined) return true;
+      const setupStartedAt = now();
+      let setupError: string | undefined;
+      try {
+        const setup = await sandbox.commands.run(`cd ${SANDBOX_WORKDIR} && ${install}`, {
+          requestTimeoutMs,
+          timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS
+        });
+        if ((setup.exitCode ?? 1) !== 0) {
+          setupError = `product setup exited ${setup.exitCode ?? "null"}`;
+        }
+      } catch (error) {
+        setupError = toErrorMessage(error);
+      }
+      recordLifecycle(
+        "terminal-lab.product.prepared",
+        setupError
+          ? `Product setup FAILED after ${Math.max(0, now() - setupStartedAt)}ms: ${sanitize(setupError)}`
+          : `Product setup completed in ${Math.max(0, now() - setupStartedAt)}ms (UNKEYED).`
+      );
+      if (setupError) {
+        sessionStatus = "failed";
+        completionReason = "harness_error";
+        sessionError = sanitize(setupError);
+        sessionReason = `subject.product.install could not prepare the world before codex exec: ${sessionError}`;
+        return false;
+      }
+      return true;
+    })()) {
       // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
       // The runtime key is injected ONLY here, command-scoped (safety contract item 1). stdin is
       // never wired (safety contract item 7) — commands.run takes no stdin channel. The command's

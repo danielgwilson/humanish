@@ -42,6 +42,8 @@ function workingRuntime(overrides: Partial<TuiRuntime> = {}): Partial<TuiRuntime
     stdin: fakeTty(true) as unknown as NodeJS.ReadStream,
     stdout: fakeTty(true),
     nodeVersion: `v${TUI_MIN_NODE_MAJOR}.0.0`,
+    // A plain person's terminal by default. Tests that want an agent session declare it.
+    env: {},
     loadTui: async () => module,
     seen,
     ...overrides
@@ -125,5 +127,56 @@ describe("the Node floor is stated once and read by everyone", () => {
 
   it("resolves the bundle beside the compiled CLI, so the loader and doctor look in one place", () => {
     expect(tuiBundleUrl("file:///opt/humanish/dist/program.js").pathname).toBe("/opt/humanish/dist/tui-app.js");
+  });
+});
+
+describe("an agent session, even with a real terminal (labs/handed-a-human-surface.yaml)", () => {
+  // Measured, not assumed. `codex exec` allocates a PTY for the commands it runs, so the TTY check
+  // passed and the TUI opened: the study watched the agent navigate the labs list, open a lab, and
+  // — its own words — "accidentally trigger a zero-cost dry run while navigating". A TTY says a
+  // terminal exists; it does not say a person is reading it.
+  it("refuses, names the marker that gave it away, and points at the JSON commands", async () => {
+    const result = await runCli(
+      ["tui", "--json"],
+      workingRuntime({ env: { CODEX_SESSION_ID: "abc123" } })
+    );
+    const parsed = JSON.parse(result.stdout) as { ok: boolean; error: { code: string; message: string } };
+
+    expect(parsed.ok).toBe(false);
+    expect(parsed.error.code).toBe("HUMANISH_TUI_AGENT_SESSION");
+    // Names the evidence, so the reader can check the claim rather than take it.
+    expect(parsed.error.message).toContain("CODEX_SESSION_ID");
+    expect(parsed.error.message).toContain("Codex");
+    // Including `lab list --json` — the study asked "what studies does this project have", and the
+    // old refusal named neither of the commands that answer that.
+    expect(parsed.error.message).toContain("humanish lab list --json");
+    expect(parsed.error.message).toContain("humanish runs --json");
+    expect(result.exitCode).toBe(2);
+  });
+
+  it("opens for a person who says they are one", async () => {
+    const runtime = workingRuntime({ env: { CLAUDECODE: "1" } });
+    const result = await runCli(["tui", "--force"], runtime);
+    expect(runtime.seen).toHaveLength(1);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("treats a blanked marker as absent — a wrapper that unsets one means it", async () => {
+    const runtime = workingRuntime({ env: { CLAUDECODE: "", AI_AGENT: "0" } });
+    const result = await runCli(["tui"], runtime);
+    expect(runtime.seen).toHaveLength(1);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("prefers the specific diagnosis over the generic one when both apply", async () => {
+    // An agent in a pipe is both "no terminal" and "an agent". The second names what is actually
+    // happening and carries three commands that answer the question; the first only says a
+    // terminal is missing, which the reader already knows and cannot fix.
+    const result = await runCli(
+      ["tui", "--json"],
+      workingRuntime({ stdout: fakeTty(false), env: { CLAUDECODE: "1" } })
+    );
+    const parsed = JSON.parse(result.stdout) as { error: { code: string } };
+    expect(parsed.error.code).toBe("HUMANISH_TUI_AGENT_SESSION");
   });
 });
