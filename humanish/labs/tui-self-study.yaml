@@ -5,12 +5,14 @@ description: >
   humanish watching someone use humanish. A computer-use participant sits at a desktop with a
   terminal window open and `humanish` installed, and is asked to answer a question using it —
   the way a person evaluating the tool would, by looking at the screen and typing.
-  WHY THIS IS THE COMPUTER-USE LANE AND NOT THE TERMINAL ONE: the terminal lane runs an
-  autonomous agent through a pipe with stdin disabled, which is the honest way to study what an
-  AGENT meets and structurally cannot study an interactive surface — `humanish tui` refuses a
-  non-TTY on purpose. A TUI can only be studied by a participant who can see it. That is this
-  population, and the two labs answer different questions rather than competing (see
-  labs/first-contact.yaml for the agent side).
+  WHY THIS IS THE COMPUTER-USE LANE AND NOT THE TERMINAL ONE: the population. This participant
+  sees the screen and reacts to what is on it, which is the only way to learn whether a screen is
+  any good.
+  (An earlier version of this note claimed the terminal lane "structurally cannot" study an
+  interactive surface because `humanish tui` refuses a non-TTY. That was wrong, and
+  labs/handed-a-human-surface.yaml is how we found out: `codex exec` allocates a PTY for the
+  commands it runs, so the TUI opened and the agent drove it. The lanes differ by who is watching,
+  not by what is technically reachable.)
   WHAT TO READ AFTERWARDS, in order of how much it would change the design:
   1. Where did they stop and look? A TUI is a series of screens someone has to parse; the
      screenshot timeline shows which ones cost them time.

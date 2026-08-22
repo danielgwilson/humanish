@@ -955,7 +955,14 @@ only because it is asked for the one run being watched.
 
 `humanish.tui-result.v1` — what `humanish tui` emits when it refuses:
 `{ schema, ok: false, error: { code, message } }` with `HUMANISH_TUI_REQUIRES_TTY`,
-`HUMANISH_TUI_UNSUPPORTED_NODE`, or `HUMANISH_TUI_BUNDLE_MISSING`. Every other
+`HUMANISH_TUI_AGENT_SESSION`, `HUMANISH_TUI_UNSUPPORTED_NODE`, or
+`HUMANISH_TUI_BUNDLE_MISSING`. `HUMANISH_TUI_AGENT_SESSION` is the one a TTY
+check could not catch: `codex exec` allocates a PTY for the commands it runs, so
+both streams are terminals and the surface used to open — a study watched an
+agent navigate the labs list and start a run it did not mean to start
+(labs/handed-a-human-surface.yaml). The refusal names the environment variable
+that identified the runner, so the reader can check the claim, and `--force` is
+the escape for a person who really is at that keyboard. Every other
 command is built for an agent to drive; this one takes the screen and waits for
 a person, so a non-interactive stdin or stdout fails closed naming the commands
 that DO answer the question rather than rendering escape codes into a pipe.

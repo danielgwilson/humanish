@@ -87,6 +87,7 @@ import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
 import { forTerminal } from "./terminal-encoding.js";
+import { detectAgentSession } from "./agent-session.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
 import type {
@@ -460,6 +461,8 @@ export interface TuiRuntime {
   stdin: NodeJS.ReadStream;
   stdout: NodeJS.WriteStream;
   nodeVersion: string;
+  /** Injected so a test can pose as an agent session without touching the real process env. */
+  env: NodeJS.ProcessEnv;
   /** Resolves the bundle, or null when it is not present. */
   loadTui(bundle: URL): Promise<TuiModule | null>;
 }
@@ -467,6 +470,7 @@ export interface TuiRuntime {
 const defaultTuiRuntime: TuiRuntime = {
   stdin: process.stdin,
   stdout: process.stdout,
+  env: process.env,
   nodeVersion: process.version,
   loadTui: async (bundle) => {
     if (!existsSync(bundle)) return null;
@@ -482,7 +486,11 @@ interface TuiRefusal {
   schema: typeof TUI_RESULT_SCHEMA;
   ok: false;
   error: {
-    code: "HUMANISH_TUI_REQUIRES_TTY" | "HUMANISH_TUI_UNSUPPORTED_NODE" | "HUMANISH_TUI_BUNDLE_MISSING";
+    code:
+      | "HUMANISH_TUI_REQUIRES_TTY"
+      | "HUMANISH_TUI_AGENT_SESSION"
+      | "HUMANISH_TUI_UNSUPPORTED_NODE"
+      | "HUMANISH_TUI_BUNDLE_MISSING";
     message: string;
   };
 }
@@ -512,9 +520,33 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
     .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
     .summary("Open the interactive terminal surface.")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean }, command) => {
+    .action(async (options: { cwd: string; force?: boolean; json?: boolean }, command) => {
       const { stdin, stdout } = tuiRuntime;
+
+      // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands
+      // it runs, so the TTY check below passes and the surface used to open: a study watched an
+      // agent navigate the labs list and start a run it did not mean to start
+      // (labs/handed-a-human-surface.yaml). A TTY says a terminal exists, not that anyone is
+      // reading it. `--force` is the escape for the person who really is at this keyboard —
+      // capturing frames from inside an agent session is exactly that case.
+      const agent = options.force === true ? undefined : detectAgentSession(tuiRuntime.env);
+      if (agent !== undefined) {
+        refuseTui(command, io, {
+          schema: TUI_RESULT_SCHEMA,
+          ok: false,
+          error: {
+            code: "HUMANISH_TUI_AGENT_SESSION",
+            message:
+              `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. `
+              + "It renders frames of escape codes into a transcript, and its keys can start runs. "
+              + "`humanish runs --json` lists runs, `humanish lab list --json` lists the studies in this project, "
+              + "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force."
+          }
+        });
+        return;
+      }
 
       if (stdin.isTTY !== true || stdout.isTTY !== true) {
         refuseTui(command, io, {
