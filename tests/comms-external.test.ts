@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SANDBOX_CATCH_SCRIPT, collectExternalCommsThread, drainExternalCommsCatch, externalCatchHealthy, externalInboxUrl } from "../src/comms-sandbox-catch.js";
 import { FakeInbox } from "../src/comms-fake-inbox.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
+import { freePort } from "./helpers/free-port.js";
 
 const TOKEN = "test-token-not-a-secret";
 let dir: string;
@@ -37,7 +38,7 @@ beforeAll(async () => {
   const surface = path.join(dir, "surface");
   await mkdir(surface, { recursive: true });
   await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-  port = 18000 + Math.floor(Math.random() * 2000);
+  port = await freePort();
   baseUrl = `http://127.0.0.1:${port}`;
   child = spawn("python3", [scriptPath, String(port), deliveries, surface, "0", TOKEN], { stdio: "ignore" });
   const ready = await waitForCatch(baseUrl);

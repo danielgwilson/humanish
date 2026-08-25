@@ -53,6 +53,7 @@ import { containsSensitive } from "../src/redaction.js";
 import { verifyRun } from "../src/run.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import type { LocalTreeArchive } from "../src/source-archive.js";
+import { freePort } from "./helpers/free-port.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves BOTH faces of the sandbox: the
@@ -3970,7 +3971,7 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
     const surface = path.join(dir, "surface");
     await mkdir(surface, { recursive: true });
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const port = 20000 + Math.floor(Math.random() * 2000);
+    const port = await freePort();
     const baseUrl = `http://127.0.0.1:${port}`;
     const child = spawn("python3", [scriptPath, String(port), path.join(dir, "deliveries.ndjson"), surface, "0", TOKEN], { stdio: "ignore" });
     try {
