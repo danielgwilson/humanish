@@ -14,6 +14,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { renderInboxSurfaceLocally } from "../src/comms-catch-host.js";
+import { withFreePort } from "./helpers/free-port.js";
 import {
   SANDBOX_CATCH_SCRIPT,
   capturedRecipientAddresses,
@@ -179,21 +180,32 @@ describe("catch script: persona-facing routes (#380)", () => {
     const surfaceDir = path.join(dir, "surface");
     await mkdir(surfaceDir, { recursive: true });
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const port = 8700 + Math.floor(Math.random() * 200);
-    child = spawn("python3", [scriptPath, String(port), path.join(dir, "deliveries.ndjson"), surfaceDir], {
-      stdio: "ignore"
+    // A free port from the OS, retried if the child loses a race for it. The old
+    // `8700 + random(200)` was ALSO used by comms-sandbox-catch.test.ts, so two vitest workers
+    // could hand the same port to two servers; the loser exited and this test waited out a health
+    // loop that could never succeed. See tests/helpers/free-port.ts.
+    // Resolved before the closure: `dir` is nullable at this scope and TypeScript cannot narrow it
+    // through an async callback.
+    const deliveriesPath = path.join(dir, "deliveries.ndjson");
+    const port = await withFreePort(async (candidate) => {
+      child = spawn("python3", [scriptPath, String(candidate), deliveriesPath, surfaceDir], {
+        stdio: "ignore"
+      });
+      // Sleep on EVERY failed attempt, not only on a thrown one: a non-ok response used to retry
+      // instantly, burning all 50 attempts inside a few milliseconds.
+      for (let i = 0; i < 50; i += 1) {
+        try {
+          if ((await fetch(`http://127.0.0.1:${candidate}/health`)).ok) return true;
+        } catch {
+          // not up yet
+        }
+        await new Promise((r) => setTimeout(r, 60));
+      }
+      child?.kill();
+      return false;
     });
 
     const base = `http://127.0.0.1:${port}`;
-    let up = false;
-    for (let i = 0; i < 50 && !up; i += 1) {
-      try {
-        up = (await fetch(`${base}/health`)).ok;
-      } catch {
-        await new Promise((r) => setTimeout(r, 60));
-      }
-    }
-    expect(up).toBe(true);
 
     // /health is what BOTH readiness probes assert on, so its shape must not move.
     expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, service: "humanish-comms-catch" });

@@ -18,6 +18,7 @@ import {
   type RawCapturedSend
 } from "../src/comms-sandbox-catch.js";
 import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import { freePort } from "./helpers/free-port.js";
 
 const VERIFICATION_HTML =
   '<p>Confirm your account.</p><p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
@@ -64,7 +65,7 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     const scriptPath = path.join(dir, "catch.py");
     const deliveries = path.join(dir, "deliveries.ndjson");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const port = 8300 + Math.floor(Math.random() * 400);
+    const port = await freePort();
     child = spawn("python3", [scriptPath, String(port), deliveries], { stdio: "ignore" });
 
     // wait for /health
@@ -108,8 +109,9 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     await mkdir(path.join(surfaceDir, "inbox"), { recursive: true });
     await writeFile(path.join(surfaceDir, "inbox", "index"), "<h1>INBOX OK</h1>", "utf8");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const port = 8500 + Math.floor(Math.random() * 200);
-    const inboxPort = port + 1;
+    // Two consecutive ports: the second is asked for separately rather than assumed free.
+    const port = await freePort();
+    const inboxPort = await freePort();
     child = spawn("python3", [scriptPath, String(port), deliveries, surfaceDir, String(inboxPort)], { stdio: "ignore" });
 
     const upBoth = async (): Promise<boolean> => {
@@ -375,7 +377,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
       await writeFile(full, file.body, "utf8");
     }
 
-    const port = 8700 + Math.floor(Math.random() * 200);
+    const port = await freePort();
     child = spawn("python3", [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" });
     const base = `http://127.0.0.1:${port}`;
     let up = false;
