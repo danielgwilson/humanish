@@ -38,7 +38,7 @@
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { realpath } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { parse as parseYaml } from "yaml";
@@ -102,6 +102,9 @@ export const TERMINAL_LEDGERS_ARTIFACT = "terminal-ledgers.json";
 
 /** The in-sandbox working directory for the agent (a scratch dir; nothing is cloned into it). */
 const SANDBOX_WORKDIR = "/home/user/study";
+/** A packed npm tarball is a couple of MB; the cap is generous and exists so a mis-set path cannot
+ *  stream something enormous into a sandbox. */
+const UPLOAD_MAX_BYTES = 64 * 1024 * 1024;
 // Server-side reclamation buffer past the codex command's own wall-clock (caps.maxMinutes) kill.
 const SANDBOX_TIMEOUT_BUFFER_MS = 5 * 60_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
@@ -1106,10 +1109,51 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       // (learned the hard way on the desktop lane, labs/tui-self-study.yaml).
       const install = config.subject.product?.install;
       if (install === undefined) return true;
+
+      // An optional local file, put on the machine before the install runs, so a study can meet a
+      // build that is not published yet. Read and checked HERE rather than trusted from the
+      // manifest: this puts a file from the operator's disk onto a machine an autonomous agent is
+      // about to drive, so it stays inside the project, must be a regular file, and is size-capped.
+      let uploadAssignment = "";
+      const uploadRel = config.subject.product?.upload;
+      if (uploadRel !== undefined) {
+        const uploadStartedAt = now();
+        try {
+          const resolved = path.resolve(cwd, uploadRel);
+          const projectRoot = await realpath(cwd);
+          const real = await realpath(resolved);
+          if (real !== projectRoot && !real.startsWith(`${projectRoot}${path.sep}`)) {
+            throw new Error("subject.product.upload resolved outside the project");
+          }
+          const info = await stat(real);
+          if (!info.isFile()) throw new Error("subject.product.upload is not a regular file");
+          if (info.size > UPLOAD_MAX_BYTES) {
+            throw new Error(`subject.product.upload is ${info.size} bytes; the cap is ${UPLOAD_MAX_BYTES}`);
+          }
+          const destination = `${SANDBOX_WORKDIR}/.humanish-upload/${path.basename(real)}`;
+          await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR}/.humanish-upload`, { requestTimeoutMs });
+          const bytes = await readFile(real);
+          await sandbox.files.write(destination, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+          // Inlined into the command string rather than passed as `envs`: the ONLY call in this
+          // lane that carries envs is the keyed codex exec, and that invariant is worth more than
+          // the convenience of a second envs channel.
+          uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD='${destination.replace(/'/g, "'\\''")}'; `;
+          recordLifecycle(
+            "terminal-lab.product.uploaded",
+            `Uploaded ${info.size} bytes to the sandbox in ${Math.max(0, now() - uploadStartedAt)}ms (UNKEYED).`
+          );
+        } catch (error) {
+          sessionStatus = "failed";
+          completionReason = "harness_error";
+          sessionError = sanitize(toErrorMessage(error));
+          sessionReason = `subject.product.upload could not be placed in the sandbox: ${sessionError}`;
+          return false;
+        }
+      }
       const setupStartedAt = now();
       let setupError: string | undefined;
       try {
-        const setup = await sandbox.commands.run(`cd ${SANDBOX_WORKDIR} && ${install}`, {
+        const setup = await sandbox.commands.run(`${uploadAssignment}cd ${SANDBOX_WORKDIR} && ${install}`, {
           requestTimeoutMs,
           timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS
         });

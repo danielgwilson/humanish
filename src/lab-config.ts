@@ -235,6 +235,17 @@ export interface LabSubjectProduct {
    * (e.g. a docs page, an llms.txt, a skill manifest). Validated at parse; recorded in evidence.
    */
   publicSurfaces: string[];
+  /**
+   * `terminal-product` ONLY: a local file uploaded into the sandbox before `install` runs, and
+   * exposed to it as `$HUMANISH_PRODUCT_UPLOAD`. A project-relative path; `..` and absolute paths
+   * are refused, because this reads a file off the operator's disk and puts it on a machine an
+   * autonomous agent is about to drive.
+   *
+   * It exists so a study can test a build that is NOT PUBLISHED YET. Installing `@latest` measures
+   * the last release, which is exactly the wrong artifact for a pre-release gate — the point is to
+   * meet the candidate before anyone else does. Any adopter shipping a CLI wants the same thing.
+   */
+  upload?: string;
 }
 
 export interface LabSubject {
@@ -2008,6 +2019,15 @@ function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | La
   if (raw.workdir !== undefined && (workdir === undefined || !/^[A-Za-z0-9_./-]+$/.test(workdir))) {
     return invalid("`subject.product.workdir` must be a plain path (it interpolates into an in-sandbox command).");
   }
+  const upload = str(raw.upload);
+  if (raw.upload !== undefined) {
+    if (upload === undefined || upload.trim().length === 0) {
+      return invalid("`subject.product.upload` must be a non-empty project-relative path when set.");
+    }
+    if (upload.startsWith("/") || /^[A-Za-z]:/.test(upload) || upload.split(/[\\/]/).includes("..")) {
+      return invalid("`subject.product.upload` must stay inside the project — no absolute paths and no `..` segments.");
+    }
+  }
   const install = str(raw.install);
   if (raw.install !== undefined && (install === undefined || install.trim().length === 0)) {
     return invalid("`subject.product.install` must be a non-empty command string when set.");
@@ -2020,7 +2040,7 @@ function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | La
   if (badSurface) {
     return invalid(`subject.product.publicSurfaces entries must be http(s) URLs (got "${badSurface}").`);
   }
-  return { ok: true, value: { name, publicSurfaces, ...(install === undefined ? {} : { install }), ...(workdir === undefined ? {} : { workdir }) } };
+  return { ok: true, value: { name, publicSurfaces, ...(install === undefined ? {} : { install }), ...(workdir === undefined ? {} : { workdir }), ...(upload === undefined ? {} : { upload }) } };
 }
 
 // Public-safe stance: a computer-use actor's ENTRY URL is always an app the lab owner runs on
