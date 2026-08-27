@@ -191,6 +191,7 @@ Do not close a change on narrative alone.
 Useful proof includes:
 
 - `pnpm release:check`;
+- `pnpm release:dogfood` before a tag — see below;
 - focused unit or contract tests;
 - a generated run bundle under ignored `.humanish/`;
 - Observer screenshots or health output;
@@ -242,3 +243,30 @@ End substantial work with:
 
 Future agents should be able to continue from the repo, not from the previous
 chat transcript.
+
+
+## Before you tag: send a participant to meet the build
+
+```bash
+pnpm release:dogfood     # needs OPENAI_API_KEY + E2B_API_KEY; costs about a dollar
+```
+
+`release:check` proves the code is internally consistent. It cannot tell you whether
+someone landing on this build can get anywhere with it, and that gap is not
+theoretical: `0.56.0` passed every check and shipped a regression that hid a run's
+price at exactly the moment a person was deciding whether to set keys up. A
+synthetic participant found it hours later.
+
+So the last gate before a tag is the product's own first-contact study, pointed at
+the release candidate. It packs the tarball, uploads it into the sandbox, and has a
+real autonomous agent install THAT — not `humanish@latest`, which would measure the
+last release, the one artifact we already know about.
+
+It prints the participant's report and fails the gate if they could not get there.
+**Read the report even when it passes.** The verdict is a marker the participant
+sets; the paragraph underneath it is the finding, and it has twice repeated an
+adoption problem we already knew about in words no test could produce.
+
+This spends money and needs keys, so it is deliberately NOT part of `release:check`
+and never runs in CI. The lab's caps hold product spend to `$0`; what it costs is
+the agent's own tokens and a few sandbox-minutes.
