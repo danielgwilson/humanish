@@ -44,6 +44,7 @@ import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
+import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
@@ -1130,6 +1131,8 @@ export interface CuaLaneDeps {
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   appUrl: string;
+  /** When set, the computer-use brain is this locally-signed-in CLI instead of a keyed API. */
+  localAgent?: LocalAgentId;
   cloneRoute: boolean;
   /** desktop-cli (#495): a CLI studied at a desktop. Nothing is cloned and no browser is opened. */
   desktopCliRoute?: boolean;
@@ -2473,6 +2476,18 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             : spec.instructions,
         persona: spec.persona,
         timeoutMs: deps.timeoutMs,
+        // The brain is either a keyed API client or a CLI the operator is already signed in to.
+        // Everything below this line — loop, executor, trace, affordances — is identical either
+        // way, which is what makes a local-agent run comparable to an API one.
+        ...(deps.localAgent === undefined
+          ? {}
+          : {
+              provider: createLocalAgentProvider({
+                agent: deps.localAgent,
+                ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+                ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
+              })
+            }),
         openai: {
           apiKey: deps.openaiApiKey,
           ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
@@ -3302,18 +3317,60 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
 
-  // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor.
+  // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
+  // for — the entire point of the actor. E2B is still required: the persona needs a machine.
+  const localAgentRoute = actorType === "local-agent";
+  // Which local CLI. `actors[0].model` may name one ("codex"/"claude"); otherwise the first one
+  // that is actually installed AND signed in wins, and preflight below refuses if there is none —
+  // an unfound agent must fail before a sandbox is paid for, not after.
+  const preferredLocalAgent: LocalAgentId = config.actors[0]?.model === "claude" ? "claude" : "codex";
+  // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor, and
+  // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcessRoute) {
     const missingKeys = [
-      ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
+      ...(openaiApiKey || localAgentRoute ? [] : ["OPENAI_API_KEY"]),
       ...(e2bApiKey ? [] : ["E2B_API_KEY"])
     ];
     if (missingKeys.length > 0) {
+      // The moment someone new actually hits the wall. If a signed-in coding agent is sitting
+      // right there, say so HERE rather than making them go and find an API key — that detour is
+      // where most people trying humanish stop.
+      const suggestion = missingKeys.includes("OPENAI_API_KEY")
+        ? await (async () => {
+            const ready = (await detectLocalAgents()).filter((agent) => agent.credentialsPresent);
+            return ready.length === 0
+              ? ""
+              : ` You have ${ready.map((agent) => agent.label).join(" and ")} signed in on this machine`
+                + ` — set actors[0].type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
+          })()
+        : "";
       return fail(
         "HUMANISH_CUA_LAB_KEYS_MISSING",
-        `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
+        `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}${suggestion}`,
         descriptor.id
       );
+    }
+    if (localAgentRoute) {
+      // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
+      // machine is paid for is the same information delivered at the worst possible moment.
+      const available = await detectLocalAgents();
+      const chosen = available.find((agent) => agent.id === preferredLocalAgent);
+      if (chosen === undefined) {
+        return fail(
+          "HUMANISH_CUA_LAB_KEYS_MISSING",
+          `actors[0].type: local-agent needs the ${preferredLocalAgent} CLI on PATH and signed in. `
+            + `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,
+          descriptor.id
+        );
+      }
+      if (!chosen.credentialsPresent) {
+        return fail(
+          "HUMANISH_CUA_LAB_KEYS_MISSING",
+          `${chosen.label} is installed but not signed in — run \`${chosen.bin}\` once to log in. `
+            + "humanish never reads its credentials; it only checks that the file exists.",
+          descriptor.id
+        );
+      }
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
@@ -3423,6 +3480,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     config,
     descriptor,
     appUrl,
+    ...(localAgentRoute ? { localAgent: preferredLocalAgent } : {}),
     cloneRoute,
     desktopCliRoute,
     localTreeRoute,
