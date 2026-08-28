@@ -28,6 +28,7 @@ import {
   type ClaudeSessionResult
 } from "./claude-agent-sdk.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use-actor.js";
+import { LOCAL_AGENT_CAPABILITIES } from "./local-agent-cli.js";
 import type { CuaLoopResult } from "./computer-use.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "./openai-responses-cu.js";
 import {
@@ -38,7 +39,7 @@ import {
 
 // Closed first-party actor registry. These ids are implemented in core; supported out-of-tree
 // actor registration does not ship. See docs/architecture/actor-contract.md.
-export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "scripted-browser" | "codex-exec";
+export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "local-agent" | "scripted-browser" | "codex-exec";
 
 interface ActorDescriptorBase {
   id: ActorId;
@@ -78,6 +79,14 @@ export interface CuaActorDescriptor extends ActorDescriptorBase {
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
 }
 
+// The same lane and the same session entry as CuaActorDescriptor — a separate descriptor only
+// because the ActorId is the slot a lab names, and "which brain" is the thing a lab is choosing
+// here. The provider is built from the operator's local CLI instead of a keyed API client.
+export interface LocalAgentActorDescriptor extends ActorDescriptorBase {
+  id: "local-agent";
+  runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
+}
+
 // The scripted descriptor exposes runSession ONLY (no toActorTrace): runScriptedBrowserSession
 // already returns a fully-formed ActorTrace at result.trace (the CUA shape), so a mapper would
 // be a no-op identity.
@@ -100,6 +109,7 @@ export type ActorDescriptor =
   | PiActorDescriptor
   | ClaudeActorDescriptor
   | CuaActorDescriptor
+  | LocalAgentActorDescriptor
   | ScriptedBrowserActorDescriptor
   | TerminalActorDescriptor;
 
@@ -158,6 +168,17 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   },
   // The ActorId names the actor slot (keeps the lane open for a future stagehand-cua provider);
   // the trace's `provider` string stays "openai-responses-cu" (the concrete model adapter).
+  // The operator's own signed-in coding agent as the computer-use brain (Codex on a ChatGPT plan,
+  // Claude Code on a Max plan). Same lane, same loop, same evidence — the only difference is where
+  // the next action comes from, which is exactly why it is a provider swap and not a new lane.
+  // It exists so someone new can watch a persona drive a real desktop without first going to find
+  // an API key; the machine they are on very often already has one of these signed in.
+  "local-agent": {
+    id: "local-agent",
+    label: "Local coding agent (operator-authenticated)",
+    capabilities: LOCAL_AGENT_CAPABILITIES,
+    runSession: runCuaActorSession
+  },
   "openai-computer-use": {
     id: "openai-computer-use",
     label: "OpenAI Computer Use",

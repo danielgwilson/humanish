@@ -53,6 +53,7 @@ import {
 import { probeKeySources } from "./key-resolution.js";
 import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui-contract.js";
+import { detectLocalAgents, localAgentDoctorMessage } from "./local-agent-cli.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -4771,6 +4772,14 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
           nodeVersion: process.version
         })
       };
+    })(),
+    // The operator's own signed-in coding agent, reported as a CAPABILITY and never a gate: a
+    // machine with none is not broken, it just needs a provider key. This row exists because
+    // "go make an API key" is where most people trying humanish stop, and a developer very often
+    // already has one of these signed in.
+    ...await (async () => {
+      const found = await detectLocalAgents();
+      return [{ name: "local agents", ok: true, message: localAgentDoctorMessage(found) }];
     })(),
     // Provider-key discovery (#436): which source supplies each live-run key, through the same
     // chain a live command resolves (env/--env-file, project overlay, vendor stores, the
