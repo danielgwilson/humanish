@@ -67,6 +67,44 @@ npx skills add danielgwilson/humanish --skill humanish
 The skill lives at [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md)
 for skills.sh discovery.
 
+## A First Live Run Without a Provider API Key
+
+A live study normally needs a provider API key. If you already have a coding
+agent signed in — Codex on a ChatGPT plan, Claude Code on a Max plan — humanish
+can use it as the participant's brain instead, and then the only credential it
+needs is `E2B_API_KEY`.
+
+```bash
+humanish doctor      # says which local agents are installed and signed in
+```
+
+```yaml
+actors:
+  - type: local-agent   # instead of openai-computer-use
+    persona: synthetic-new-user
+    mission: >-
+      ...
+```
+
+humanish never reads those credentials. It checks that the credential file
+**exists**, spawns the CLI tool-restricted (`--sandbox read-only` for Codex,
+`--allowedTools Read` for Claude Code) in a scratch directory, and hands it one
+screenshot per turn. The agent only **decides**; humanish performs the action
+inside the E2B sandbox, so nothing the persona chooses ever runs on your machine.
+
+Three things to know before you rely on it:
+
+- **It is not free.** Subscription usage consumes your own plan. Runs driven this
+  way record `estimatedCostUsd: null` with `reason: "no_token_usage"` rather than
+  `$0`, because `$0` would be untrue. Rate limits on those plans are built for
+  interactive coding; humanish fails closed with the CLI's own message rather
+  than retrying into them.
+- **It is slower.** Roughly 9 seconds per turn against about 3 for a direct API
+  call, so give the lane a longer `execution.timeoutMs` than you would otherwise.
+- **The evidence says which brain ran it.** The trace records
+  `ids.model: "codex (local, operator-authenticated)"`, so a local-agent run is
+  never silently compared against an API one.
+
 ## Public-Safety Boundary
 
 Humanish is designed for public repositories and public issue queues. The
