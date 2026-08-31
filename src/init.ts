@@ -295,7 +295,10 @@ async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvi
   } catch {
     hasDesktopSdk = false;
   }
+  const { fileURLToPath } = await import("node:url");
+  const here = fileURLToPath(import.meta.url);
   return {
+    installedInProject: here.startsWith(path.join(process.cwd(), "node_modules") + path.sep),
     hasDesktopSdk,
     hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
     hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,

@@ -59,6 +59,13 @@ configuring anything; point its `subject` at your own app once you have seen it
 run. It needs `E2B_API_KEY`, and a model — either a provider key or a coding
 agent you are already signed in to (see below).
 
+**Install it, do not one-shot it.** A live run needs the optional peer
+`@e2b/desktop`, and Node resolves that relative to humanish itself — so a
+one-shot `npx humanish@latest` can never find it, no matter what your project
+has installed. `npm i -D humanish @e2b/desktop` once, then `npx humanish …`
+resolves the local copy and works. The dry-run path (`humanish run first-run`)
+needs none of this.
+
 The package is `humanish`; the installed binary is `humanish`. For a one-shot
 command before installation, use `npx --package humanish humanish ...` to
 guarantee the binary comes from the `humanish` registry package rather than a

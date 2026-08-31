@@ -11,6 +11,9 @@
 // launched sandbox to E2BDesktopLike rather than widening this interface across the whole
 // meta file.
 
+import { sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
 export interface E2BDesktopModule {
   Sandbox: {
     /** Default `desktop` template (no custom image). The historical, byte-stable call shape. */
@@ -139,12 +142,32 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
       throw new Error(
-        "Live E2B desktop launch requires optional peer dependency @e2b/desktop. Install it in this project with `npm i -D @e2b/desktop`, or run `humanish lab run oss --dry-run`."
+        runningFromProject()
+          ? "Live E2B desktop launch requires the optional peer @e2b/desktop. Install it beside humanish "
+            + "in this project: `npm i -D @e2b/desktop`."
+          : "Live E2B desktop launch requires the optional peer @e2b/desktop, and humanish is running from an "
+            + "npx cache rather than from this project — so installing the peer here cannot help, because Node "
+            + "resolves it relative to humanish itself. Install BOTH into the project and run it from there: "
+            + "`npm i -D humanish @e2b/desktop` then `npx humanish run <lab>`."
       );
     }
 
     throw error;
   }
+}
+
+
+/**
+ * Is humanish running from this project's node_modules, or from an npx cache?
+ *
+ * It decides which advice is TRUE. `npx humanish@latest` resolves its optional peer relative to
+ * ITSELF, so "install @e2b/desktop in this project" is advice that cannot work there — and that
+ * message cost two cold verification runs before the difference was noticed. A one-shot npx
+ * invocation cannot do a live desktop run at all; humanish has to be installed alongside the peer.
+ */
+function runningFromProject(): boolean {
+  const here = fileURLToPath(import.meta.url);
+  return here.startsWith(`${process.cwd()}${sep}node_modules${sep}`);
 }
 
 export function isMissingE2BDesktopDependency(error: unknown): boolean {
