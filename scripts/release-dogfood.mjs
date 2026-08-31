@@ -56,13 +56,30 @@ const productBlock = "  product:\n    name: humanish\n";
 if (!fixture.includes(productBlock)) {
   fail("first-contact.yaml has changed shape — this gate rewrites its product block and cannot any more.");
 }
-const lab = fixture
+let lab = fixture
   .replace("id: first-contact", `id: ${LAB_ID}`)
   .replace("  mode: dry-run # committed fixture stays contract-only", "  mode: live")
   .replace(
     productBlock,
     `${productBlock}    upload: ${tarball}\n    install: >-\n      sudo -n npm install -g "$HUMANISH_PRODUCT_UPLOAD"\n      && humanish init --yes\n`
   );
+
+// THE MISSION HAS TO CHANGE, and the first version of this gate missed it. first-contact tells the
+// participant to FIND and install humanish from its public surfaces — so it did exactly that:
+// `npm install --save-dev humanish` from the registry, then `npx humanish`, which used the
+// published release and never touched the candidate we had just installed for it. The gate spent a
+// dollar telling us the LAST release worked. So the gate's copy says plainly that the build under
+// test is already here and must not be fetched.
+const missionAnchor = "    mission: >-\n";
+if (!lab.includes(missionAnchor)) fail("first-contact.yaml has changed shape — cannot rewrite its mission.");
+lab = lab.replace(
+  missionAnchor,
+  missionAnchor
+    + "      The build you are evaluating is ALREADY INSTALLED on this machine as `humanish`, and it is\n"
+    + "      a release candidate that is NOT on npm. Use the installed `humanish` command directly.\n"
+    + "      Do NOT run `npm install humanish`, `npx humanish`, or otherwise fetch it from a registry —\n"
+    + "      that would test a different build than the one under test.\n"
+);
 
 await mkdir(path.dirname(labPath), { recursive: true });
 await writeFile(labPath, lab, "utf8");
@@ -117,6 +134,28 @@ try {
 }
 console.log("  " + "-".repeat(70));
 console.log("");
+
+// VERIFY THE GATE TESTED THE CANDIDATE. Assuming it did is how the first version of this script
+// passed while measuring the previous release: the participant is free to install whatever it
+// likes, and the only proof it used ours is its own transcript.
+try {
+  const seen = await readFile(transcript, "utf8");
+  const exercised = [...seen.matchAll(/\b\d+\.\d+\.\d+\b/g)].map((match) => match[0]);
+  const sawCandidate = exercised.includes(version);
+  const others = [...new Set(exercised.filter((v) => v !== version && /^0\.\d+\.\d+$/.test(v)))];
+  if (!sawCandidate) {
+    fail(
+      `the participant never exercised ${version}.`
+      + (others.length > 0 ? ` It used ${others.join(", ")} instead — it fetched a published build.` : "")
+      + " The gate cannot vouch for this candidate."
+    );
+  }
+  if (others.length > 0) {
+    console.log(`  note: other humanish versions also appear in the transcript (${others.join(", ")}).`);
+  }
+} catch (error) {
+  fail(`could not read the transcript to confirm which build was exercised: ${String(error).slice(0, 160)}`);
+}
 
 if (result.ok !== true || session.status !== "passed") {
   fail(`the participant could not get there on this build. Do not tag ${version} until you know why.`);
