@@ -14,7 +14,7 @@ description = "Generic API Key"
 regex = '''(?i)(?:key|api|token|secret|client|passwd|password|auth|access)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:{1,3}=|\|\||:|<=|=>|:=|\?=|,)(?:'|\"|\s|=|\x60){0,5}([0-9a-z\-_.=]{10,150})(?:['|\"|\n|\r|\s|\x60|;|\\]|$)'''
 keywords = ["key", "api", "token", "secret", "client", "passwd", "password", "auth", "access"]
 
-  [rules.allowlist]
+  [[rules.allowlists]]
   description = """
   humanish's PostHog CAPTURE key (phc_). PostHog documents two classes of credential: public
   POST-only capture keys, which are meant to be embedded in client code, and private keys, which
@@ -31,3 +31,19 @@ keywords = ["key", "api", "token", "secret", "client", "passwd", "password", "au
   condition = "AND"
   regexes = ['''phc_[A-Za-z0-9]{20,}''']
   paths = ['''src/telemetry\.ts''', '''dist/telemetry\.js''']
+
+  [[rules.allowlists]]
+  description = """
+  Credential PLUMBING, not credentials. The nested-grant code passes key VALUES between functions,
+  so lines like `operatorKey: args.operatorE2bKey ?? ""` and `operatorE2bKey: env.E2B_API_KEY`
+  match the generic rule on shape alone -- the thing after the colon is a variable reference,
+  never a literal.
+
+  Scoped so it cannot excuse a real key: the regex matches ONLY an identifier expression
+  (`args.foo`, `env.FOO`), which no actual credential can look like, AND it applies only in the
+  two files that do this plumbing. A hardcoded key literal in these same files is still caught --
+  verified, not assumed, the same way the phc_ entry above was.
+  """
+  condition = "AND"
+  regexes = ['''^(?:args|env|config|process|grant|runtimeEnv|result)[.][A-Za-z0-9_.]+$''']
+  paths = ['''src/e2b-terminal-lab[.]ts''', '''src/nested-sandbox-grant[.]ts''']

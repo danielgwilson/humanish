@@ -80,7 +80,7 @@ precisely, because it is the direction this should move:
 
 - **Workload identity** (`iam.tokens` on `Sandbox.create`) issues short-lived, audience-scoped
   tokens instead of long-lived secrets — the ASI03 baseline control, shipped. It is in **private
-  beta** (request access at support@e2b.dev), so it is not available to us today.
+  beta** (access is request-only through E2B support), so it is not available to us today.
 - **Per-host request transforms** (`network.rules`) are in **public beta and usable now**. They let
   the *egress proxy* attach the credential to outbound requests for one host, which means the key
   would never exist inside the sandbox at all — an agent cannot exfiltrate a value it never holds.
