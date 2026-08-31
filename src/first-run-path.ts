@@ -16,6 +16,13 @@
 export interface FirstRunEnvironment {
   /** A sandbox to run the study in. Nothing live happens without it. */
   hasE2bKey: boolean;
+  /**
+   * Whether `@e2b/desktop` resolves from this project. It is an OPTIONAL peer — the no-keys path
+   * does not need it — so a fresh `npx humanish` install does not have it, and a live run stops
+   * with "install this other package first". Found by running the published artifact cold, after
+   * two local runs passed because they resolved the peer from the repo's own node_modules.
+   */
+  hasDesktopSdk: boolean;
   /** A provider API key for the model. */
   hasProviderKey: boolean;
   /** A coding agent already signed in locally — Codex or Claude Code. */
@@ -65,9 +72,15 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
     const brain = env.hasProviderKey
       ? "your provider key"
       : `${env.localAgents[0]} (already signed in — no API key needed)`;
+    // Everything the step needs, in one line. Splitting it across two commands means the second
+    // one fails, which is the same dead end this guidance exists to remove.
+    const command = env.hasDesktopSdk
+      ? "humanish run try-live"
+      : "npm i -D @e2b/desktop && humanish run try-live";
     steps.push({
-      command: "humanish run try-live",
+      command,
       why: `a REAL study: one participant drives a real app in a hosted desktop, using ${brain}`
+        + (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)")
     });
     return steps;
   }

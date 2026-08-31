@@ -49,9 +49,15 @@ are committed under
 
 ```bash
 npm i -D humanish
-npx humanish init --yes
-npx humanish watch
+npx humanish init --yes       # sets up, then tells you the next command for THIS machine
+npx humanish run first-run    # a study with no keys and no spend — about a minute
+npx humanish run try-live     # a REAL study on a hosted desktop, capped at $2
 ```
+
+`try-live` studies a real public app so that your first live run works without
+configuring anything; point its `subject` at your own app once you have seen it
+run. It needs `E2B_API_KEY`, and a model — either a provider key or a coding
+agent you are already signed in to (see below).
 
 The package is `humanish`; the installed binary is `humanish`. For a one-shot
 command before installation, use `npx --package humanish humanish ...` to

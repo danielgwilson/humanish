@@ -286,7 +286,17 @@ async function resolveFirstRunGuidance(env: NodeJS.ProcessEnv): Promise<string[]
  *  exists, never what is in it. */
 async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvironment> {
   const agents = await detectLocalAgents().catch(() => []);
+  let hasDesktopSdk = false;
+  try {
+    // Resolution from the PROJECT, not from wherever humanish itself lives.
+    const { createRequire } = await import("node:module");
+    createRequire(path.join(process.cwd(), "package.json")).resolve("@e2b/desktop");
+    hasDesktopSdk = true;
+  } catch {
+    hasDesktopSdk = false;
+  }
   return {
+    hasDesktopSdk,
     hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
     hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,
     localAgents: agents.filter((agent) => agent.credentialsPresent).map((agent) => agent.label)
