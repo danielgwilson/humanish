@@ -86,6 +86,13 @@ import {
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { applyAdapterScoreFailureToReview, frozenBundleView, recordDeclaredScorerVerdictFailure } from "./adapter-extension.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
+import {
+  NESTED_INJECTED_NAME,
+  resolveNestedSandboxGrant,
+  sweepNestedSandboxes,
+  verifyNestedGrantIsolation,
+  type SandboxLister
+} from "./nested-sandbox-grant.js";
 
 /** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
 export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
@@ -289,6 +296,10 @@ export interface TerminalProductLabResult {
       | "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
       | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"
       | "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
+  // The nested-grant refusals: a study may only create studies with a key that is not the
+  // operator's own (src/nested-sandbox-grant.ts).
+  | "HUMANISH_NESTED_GRANT_MISSING"
+  | "HUMANISH_NESTED_GRANT_NOT_SCOPED"
       | typeof TERMINAL_AGENT_NOT_IMPLEMENTED_CODE;
     message: string;
   };
@@ -619,6 +630,10 @@ export interface TerminalLedgers {
     remaining: number;
     /** Honest, human-readable statement of which by-id signal produced `remaining`. */
     reason: string;
+    /** Present ONLY when the run granted its participant a nested E2B key. Records what the
+     *  grant's own project still had running at teardown and how much of it was reclaimed, so
+     *  a grant is never an unbounded lease. Absent = no grant was made. */
+    nested?: { found: number; killed: number; error?: string };
   };
   /** The spend ledger. Unknowns are `null`, never guessed; the no-spend proof
    *  below is DERIVED from it. */
@@ -784,9 +799,21 @@ function buildCommandScopedRuntimeEnv(args: {
   runtimeAuth: string | undefined;
   /** The operator environment the key value is read from (process.env or a test fake). */
   env: Record<string, string | undefined>;
+  /** Declared by the lab; absent means no provider credential reaches the agent. */
+  nestedSandboxAuth?: "e2b-env-scoped" | undefined;
+  /** The key humanish itself is using, so the grant can refuse to be the same one. */
+  operatorE2bKey?: string | undefined;
 }):
-  | { ok: true; envs: Record<string, string>; keyName: string; keyValue: string }
-  | { ok: false; code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"; message: string } {
+  | {
+      ok: true;
+      envs: Record<string, string>;
+      keyName: string;
+      keyValue: string;
+      /** The nested E2B key value when a grant was made — so the run can add it to the redaction
+       *  set and sweep its project at teardown. Absent when no grant was made. */
+      nestedKeyValue?: string;
+    }
+  | { ok: false; code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED" | "HUMANISH_NESTED_GRANT_MISSING" | "HUMANISH_NESTED_GRANT_NOT_SCOPED"; message: string } {
   // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key SOURCE
   // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
   // (developers.openai.com/codex/noninteractive) document it as the channel for a SINGLE codex exec
@@ -828,11 +855,24 @@ function buildCommandScopedRuntimeEnv(args: {
   // documented single-invocation auth channel is populated either way (see the comment above).
   const envs: Record<string, string> =
     keyName === "OPENAI_API_KEY" ? { CODEX_API_KEY: keyValue, OPENAI_API_KEY: keyValue } : { [keyName]: keyValue };
+  // The ONE narrow widening of this allowlist, and only when the lab declares it: a scoped E2B key
+  // so the participant can create studies of its own. Refused unless it differs from the key
+  // humanish itself is using, because the bound is the separate E2B project, not the flag.
+  let nestedKeyValue: string | undefined;
+  if (args.nestedSandboxAuth === "e2b-env-scoped") {
+    const grant = resolveNestedSandboxGrant({ env: args.env, operatorKey: args.operatorE2bKey ?? "" });
+    if (!grant.ok) {
+      return { ok: false, code: grant.code, message: grant.message };
+    }
+    Object.assign(envs, grant.envs);
+    nestedKeyValue = grant.envs[NESTED_INJECTED_NAME];
+  }
   return {
     ok: true,
     envs,
     keyName,
-    keyValue
+    keyValue,
+    ...(nestedKeyValue ? { nestedKeyValue } : {})
   };
 }
 
@@ -947,10 +987,17 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   }
 
   // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
-  const runtimeEnv = buildCommandScopedRuntimeEnv({ runtimeAuth: config.execution?.runtimeAuth, env });
+  const runtimeEnv = buildCommandScopedRuntimeEnv({
+    runtimeAuth: config.execution?.runtimeAuth,
+    env,
+    nestedSandboxAuth: config.execution?.nestedSandboxAuth,
+    operatorE2bKey: env.E2B_API_KEY
+  });
   if (!runtimeEnv.ok) {
     return failed(runtimeEnv.code, runtimeEnv.message, { actor: descriptorId });
   }
+  // Held for the teardown sweep below. A grant is only bounded because this value is swept.
+  const grantedNestedKey = runtimeEnv.nestedKeyValue;
 
   // Compose the prompt from PUBLIC surfaces + the author mission ONLY (safety contract item 3).
   // Inject a per-run verdict nonce: the agent echoes HUMANISH_ACTOR_VERDICT=<status>
@@ -985,7 +1032,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
   // the second pass for secret-SHAPED content. Applied PRE-truncation so a cut can never split a
   // value past the scrubber.
-  const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter((v) => v.length >= 4);
+  const knownSecretValues = [runtimeEnv.keyValue, grantedNestedKey ?? "", env.E2B_API_KEY?.trim() ?? ""].filter((v) => v.length >= 4);
   const scrubKnownValues = (text: string): string =>
     knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
@@ -1176,6 +1223,27 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
         sessionReason = `subject.product.install could not prepare the world before codex exec: ${sessionError}`;
         return false;
       }
+      // A nested grant is only bounded if it lives in a DIFFERENT E2B project. Prove that here,
+      // before the credential is injected: if the granted key can see this run's own sandbox, the
+      // two keys share a project and the separate-budget bound does not exist.
+      if (grantedNestedKey) {
+        const isolation = await verifyNestedGrantIsolation({
+          apiKey: grantedNestedKey,
+          operatorSandboxId: sandbox.sandboxId,
+          lister: sandboxModule as unknown as SandboxLister
+        });
+        if (!isolation.isolated) {
+          completionReason = "harness_error";
+          sessionError = sanitize(isolation.reason);
+          sessionReason = `nested-grant isolation could not be proven, so no credential was injected: ${sessionError}`;
+          recordLifecycle("terminal-lab.grant.refused", sessionReason);
+          return false;
+        }
+        recordLifecycle(
+          "terminal-lab.grant.isolated",
+          "Nested E2B grant verified to be in a different project than the operator key."
+        );
+      }
       return true;
     })()) {
       // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
@@ -1274,6 +1342,25 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       recordLifecycle,
       warnings
     });
+    // A nested grant is bounded by THIS sweep, not by trust. It is scoped to the granted key, so
+    // it can only reach the grant's own project -- never the operator's (safety contract item 8
+    // forbids an account-wide list against the operator key, and this is not one).
+    if (grantedNestedKey) {
+      const swept = await sweepNestedSandboxes({
+        apiKey: grantedNestedKey,
+        lister: sandboxModule as unknown as SandboxLister
+      });
+      cleanup = { ...cleanup, nested: swept };
+      if (swept.error) {
+        warnings.push(`Nested-grant sweep could not run: ${sanitize(swept.error)}`);
+        recordLifecycle("terminal-lab.cleanup.nested_sweep_failed", sanitize(swept.error));
+      } else {
+        recordLifecycle(
+          "terminal-lab.cleanup.nested_swept",
+          `Granted project had ${swept.found} sandbox(es) at teardown; ${swept.killed} reclaimed.`
+        );
+      }
+    }
   }
 
   // Build the actor trace FIRST (the cost ledger reads its tokenUsage).

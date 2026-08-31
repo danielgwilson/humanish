@@ -1,0 +1,77 @@
+schema: humanish.lab.v2
+id: agent-full-funnel
+title: A coding agent takes humanish all the way to a real study (self-study, terminal lane)
+description: >
+  The other half of `first-contact`. That lab puts a coding agent in front of humanish with NO
+  provider keys, which reproduces day one honestly but stops the funnel where the product starts:
+  the agent can install, scaffold and dry-run, and then hits a wall it cannot pass. Every claim we
+  make about the last mile — that an agent can take someone from "never heard of it" to a real
+  study with real evidence — has therefore never been measured.
+  THIS LAB MEASURES IT. The participant is granted a scoped E2B key so it can launch a study of
+  its own, and the question is whether it gets there: does it find that a live run needs keys,
+  work out where they go, choose a lane, launch, and come back with a bundle it can point at?
+  READ AS A PAIR WITH first-contact. Same product, same public surfaces, same population; the one
+  variable is whether the participant can spend. The delta between the two transcripts is the cost
+  of our key-setup path, measured rather than asserted.
+  THE GRANT IS BOUNDED BY CONSTRUCTION, NOT BY TRUST. The key comes from a SEPARATE E2B project
+  with its own spending limit, humanish proves that separation before injecting anything (if the
+  granted key can see this run's own sandbox, the run fails closed), the key is command-scoped to
+  the single agent exec, its value is redacted from the transcript, and the granted project is
+  swept at teardown with what it reclaimed recorded in the cleanup ledger. See
+  docs/contracts/nested-sandbox-grant.md — including what this design does NOT provide.
+  WHAT TO READ AFTERWARDS, in order of how much it would change our work:
+  1. Did it reach a live run at all, and how many commands did that take from a cold shell? That
+     number is the last mile in the only unit that matters.
+  2. Where did it look for the key setup, and what did it try first? Wrong first guesses are the
+     docs finding; humanish tells operators about `HUMANISH_NESTED_E2B_API_KEY` in exactly one
+     place, and an agent that never finds it is evidence about that page, not about the agent.
+  3. Did it understand what it got back? A bundle it cannot interpret is the same failure as no
+     bundle, and it will report confidently either way.
+  4. Did it try to spend more than the study allowed, and did the caps hold? A participant that
+     probes the bound is a finding about the bound.
+  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
+  launches no sandbox. A live run additionally needs HUMANISH_NESTED_E2B_API_KEY set to a key from
+  a SEPARATE E2B project with a spending limit — never your usual one; humanish refuses that.
+subject:
+  source: terminal-product
+  product:
+    name: humanish
+    publicSurfaces:
+      - https://www.npmjs.com/package/humanish
+      - https://github.com/danielgwilson/humanish
+actors:
+  - type: codex-exec # REAL dispatch key: resolves to the registered terminal actor
+    persona: autonomous-coding-agent # composed into the agent prompt + bundle provenance
+    mission: >-
+      You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine.
+      A teammate is considering adopting a tool called humanish and has asked you to take it as
+      far as it goes: not just install it, but actually use it for what it is for and bring back
+      something real. Find out what it is from its public surfaces, get it running, and run an
+      actual study end to end. You have credentials available in your environment for the
+      services it needs; work out which ones it wants and where they go. Keep what you spend
+      small and stop if a run looks like it is going to be expensive. Work in a scratch
+      directory. When you are done, tell your teammate plainly: what it does, whether you got a
+      real result, where the evidence for that result lives, exactly where you got stuck, and
+      whether you would recommend adopting it.
+execution:
+  target: e2b-terminal
+  runtimeAuth: openai-env # dry-run records the name; live injects the key command-scoped only
+  nestedSandboxAuth: e2b-env-scoped # THE grant: a SEPARATE-project E2B key, proven before use
+  timeoutMs: 2700000 # a full funnel is a longer session than first-contact
+  terminal:
+    transport: exec-stream # captured non-interactive exec output (NOT an interactive PTY)
+    stdin: disabled # autonomous, and comparable to an unassisted baseline
+scenario:
+  mode: dry-run # committed fixture stays contract-only
+  caps:
+    maxUsd: 5 # the participant's whole study budget, enforced fail-closed
+    maxJobs: 0 # no billable product jobs
+    maxMinutes: 45
+policies:
+  # The ONE lab that declares this. The declaration alone still grants nothing: the credential
+  # only moves if execution.nestedSandboxAuth is set AND the granted key is proven to live in a
+  # different E2B project than the operator's.
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: true
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
