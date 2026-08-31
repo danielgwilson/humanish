@@ -790,9 +790,18 @@ function registerRunCommand(parent: Command, io: CliIo): void {
   parent
     .command("run")
     .argument("[lab]", "Optional lab id or .yaml path.")
-    .description("Run a persona/scenario simulation or synthetic dry-run bundle.")
+    .description("Run a lab (or a synthetic dry-run bundle). The everyday command.")
     .summary("Run a persona/scenario simulation or dry-run bundle.")
     .option("--dry-run", "Generate contract proof without browser, keys, or provider spend.")
+    // `humanish run <lab>` and `humanish lab run <lab>` are the SAME operation on the same
+    // dispatcher, but this one used to forward four options while its sibling forwarded all of
+    // them — so `humanish run first-run --no-open` failed while `lab run` accepted it. A
+    // participant hit exactly that and filed it as a documentation mismatch. Same command, same
+    // flags (CLIG: "be consistent across subcommands").
+    .option("--open", "Open the observer in the default browser.")
+    .option("--no-open", "Render without opening a browser.")
+    .option("--detach", "Render/open once and exit without an attached watch server.")
+    .option("--port <port>", "Local observer server port when following.", "0")
     .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
     .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec", "codex-app-server"]))
     .option("--sims <count>", "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.")
@@ -843,12 +852,9 @@ function registerRunCommand(parent: Command, io: CliIo): void {
           io,
           lab,
           mode: "run",
-          options: {
-            cwd: options.cwd,
-            ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-            ...(options.runId === undefined ? {} : { runId: options.runId }),
-            ...(options.sims === undefined ? {} : { sims: options.sims })
-          }
+          // Forwarded wholesale, exactly as `lab run` does. Cherry-picking a subset here is what
+          // made the two commands disagree in the first place.
+          options: options as LabCommandOptions
         });
         return;
       }
@@ -2032,7 +2038,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("run")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Run a Humanish lab manifest.")
+    .description("Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--dry-run", "Render contract evidence without live provider spend. The bundled OSS lab defaults to this mode.")
     .option("--codex-app-server", "Meta only: use Codex app-server client mode for headed desktop actor surfaces.")
