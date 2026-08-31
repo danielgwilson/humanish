@@ -118,6 +118,21 @@ Three things to know before you rely on it:
   `ids.model: "codex (local, operator-authenticated)"`, so a local-agent run is
   never silently compared against an API one.
 
+## Telemetry
+
+humanish collects anonymous usage data by default — which command ran, whether it
+worked, roughly how long it took — so the maintainers can tell whether anyone
+reaches a working first run. It never sends your labs, subjects, personas, paths,
+or evidence, and there is no field in the payload that could.
+
+```bash
+humanish telemetry status     # the exact document that would be sent
+humanish telemetry disable    # or set DO_NOT_TRACK=1
+```
+
+Full detail, including why it exists and everything it cannot contain:
+[TELEMETRY.md](TELEMETRY.md).
+
 ## Public-Safety Boundary
 
 Humanish is designed for public repositories and public issue queues. The
