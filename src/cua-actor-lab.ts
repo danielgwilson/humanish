@@ -45,6 +45,7 @@ import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js"
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
+import { startAppServerSession } from "./local-agent-appserver.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
@@ -2120,6 +2121,9 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
   const desktopCliRoute = deps.desktopCliRoute === true;
+  // The local brain, when there is one. `appServer` owns a process, so the lane closes it.
+  let appServer: Awaited<ReturnType<typeof startAppServerSession>> | undefined;
+  let localAgentProvider: CuaProvider | undefined;
   const subjectEnvValues = config.subject.envValues ?? {};
   const targetUrl = spec.targetUrl ?? appUrl;
   const env = deps.env;
@@ -2411,6 +2415,24 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
       }
 
+      // Start the brain BEFORE the first screenshot: the app-server handshake is ~500ms, and it
+      // is paid here, while the sandbox is still settling, rather than inside turn one.
+      if (deps.localAgent === "codex") {
+        appServer = await startAppServerSession({
+          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+          // The persona lives on the THREAD, so it is stated once instead of re-sent every turn.
+          baseInstructions: spec.instructions
+        });
+        localAgentProvider = appServer.provider;
+      } else if (deps.localAgent === "claude") {
+        localAgentProvider = createLocalAgentProvider({
+          agent: "claude",
+          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
+        });
+      }
+
       // World is ready: release the pipeline gate so the remaining lanes may start.
       provisioned = true;
       signal(true);
@@ -2479,15 +2501,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         // The brain is either a keyed API client or a CLI the operator is already signed in to.
         // Everything below this line — loop, executor, trace, affordances — is identical either
         // way, which is what makes a local-agent run comparable to an API one.
-        ...(deps.localAgent === undefined
-          ? {}
-          : {
-              provider: createLocalAgentProvider({
-                agent: deps.localAgent,
-                ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-                ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
-              })
-            }),
+        ...(localAgentProvider === undefined ? {} : { provider: localAgentProvider }),
         openai: {
           apiKey: deps.openaiApiKey,
           ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
@@ -2555,6 +2569,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
+    // The local brain owns a process. Close it before anything else can throw: a leaked
+    // app-server per lane would outlive the run and keep a thread open on the operator's plan.
+    appServer?.close();
     // Stop the mid-run inbox-surface loop FIRST — before the teardown evidence drain below — so the two
     // `cat`s never overlap and the final surface state is deterministic. A surface failure can never
     // block teardown (the loop body is fully try/caught and this await is on its already-caught promise).
@@ -3320,10 +3337,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
   // for — the entire point of the actor. E2B is still required: the persona needs a machine.
   const localAgentRoute = actorType === "local-agent";
-  // Which local CLI. `actors[0].model` may name one ("codex"/"claude"); otherwise the first one
-  // that is actually installed AND signed in wins, and preflight below refuses if there is none —
-  // an unfound agent must fail before a sandbox is paid for, not after.
-  const preferredLocalAgent: LocalAgentId = config.actors[0]?.model === "claude" ? "claude" : "codex";
+  // Which local CLI, from its OWN field: `model` means the model, so that "Claude Code running
+  // Opus" is sayable. Preflight below refuses when the chosen one is missing or signed out — that
+  // news is worthless after a sandbox is paid for.
+  const preferredLocalAgent: LocalAgentId = config.actors[0]?.localAgent ?? "codex";
   // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor, and
   // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcessRoute) {
@@ -5525,7 +5542,12 @@ export function buildCuaFanoutBundle(args: {
   );
   const participants = terminalOutcomes.length > 0
     ? tallyParticipantOutcomes(
-        terminalOutcomes.map((outcome) => outcome.session.status),
+        // A NO-ENGAGEMENT lane is not a participant who reached the goal. It said "done" having
+        // taken zero actions and said nothing, and `passedLanes` below already refuses to count
+        // it — but `reachedGoal` was reading the trace status directly, so one run could be both
+        // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
+        // first was the dishonest one. Found by a provider bug that ended a study on turn one.
+        terminalOutcomes.map((outcome) => (outcome.noEngagement === true ? "incomplete" : outcome.session.status)),
         // A participant who reached the goal AND told you the road there was broken is the most
         // useful result a study produces; reporting only the outcome would bury it.
         terminalOutcomes.map((outcome) => outcome.reportedFriction === true)

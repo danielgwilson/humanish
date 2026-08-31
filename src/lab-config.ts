@@ -451,6 +451,14 @@ export interface LabActor {
   /** Provider model override. Consumed on the app-url route. */
   model?: string;
   /**
+   * `local-agent` ONLY: which locally signed-in coding agent is the brain. Absent = codex.
+   *
+   * A separate field from `model` on purpose. The first cut of this route overloaded `model` to
+   * mean BOTH which CLI and which model, which left no way to say "Claude Code, running Opus" —
+   * two different choices wearing one name.
+   */
+  localAgent?: "codex" | "claude";
+  /**
    * How hard the model is asked to think, per turn. Lane-level `reasoningEffort` overrides this.
    *
    * Absent means the PROVIDER's default, and absence is recorded as absence: a run that did not
@@ -2376,6 +2384,13 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     if (mission) actor.mission = mission;
     const model = str(entry.model);
     if (model) actor.model = model;
+    const localAgent = str(entry.localAgent);
+    if (entry.localAgent !== undefined) {
+      if (localAgent !== "codex" && localAgent !== "claude") {
+        return invalid(`actors[${index}].localAgent must be "codex" or "claude" (the locally signed-in CLI that drives the study).`);
+      }
+      actor.localAgent = localAgent;
+    }
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
         return invalid(`actors[${index}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`);
