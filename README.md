@@ -1,10 +1,10 @@
 # humanish
 
-Synthetic user research for apps, CLIs, and agent-facing product flows —
-open-source and public-safe.
+Synthetic user research for apps, CLIs, and agent-facing product flows.
+Open-source and public-safe.
 
-Humanish runs studies. Realistic synthetic participants — each with its own
-goals, patience, and skill — actually use your product on hosted desktops while
+Humanish runs studies. Realistic synthetic participants, each with its own
+goals, patience, and skill, actually use your product on hosted desktops while
 you watch. A study leaves verifiable evidence: screenshots, action traces,
 per-task completion funnels, participant outcomes with the denominator
 attached, and estimated cost lines. A fail-closed share-safety gate stands
@@ -26,7 +26,7 @@ studied; it is not a Humanish adopter or endorser.
 Every design decision in humanish is checked against the three people a study
 actually involves ([docs/principles/three-roles.md](docs/principles/three-roles.md)):
 
-- **The researcher** — usually a coding agent driving the CLI — declares the
+- **The researcher** (usually a coding agent driving the CLI) declares the
   protocol: personas, discrete tasks with success criteria the participant
   never sees, and a budget set once at the study level, the way recruiting
   decisions are made.
@@ -37,12 +37,11 @@ actually involves ([docs/principles/three-roles.md](docs/principles/three-roles.
   instrument. A participant abandoning a task is a finding about the product,
   not a harness failure.
 
-What that produces in practice: a two-participant study of an email-gated
-signup on a public open-source document app completed end to end — signup,
-verification mail read in a captured inbox, signed-in dashboard — and the
-keyboard-first participant reported, unprompted, that the signature step could
-not be completed without a mouse. The panel cost about $1.50 and the receipts
-are committed under
+In practice: a two-participant study of an email-gated signup on a public
+open-source document app completed end to end (signup, verification mail read
+in a captured inbox, signed-in dashboard), and the keyboard-first participant
+reported, unprompted, that the signature step could not be completed without a
+mouse. The panel cost about $1.50 and the receipts are committed under
 [docs/goals/email-gated-signup/receipts/](docs/goals/email-gated-signup/receipts/).
 
 ## Install
@@ -56,11 +55,11 @@ npx humanish run try-live     # a REAL study on a hosted desktop, capped at $2
 
 `try-live` studies a real public app so that your first live run works without
 configuring anything; point its `subject` at your own app once you have seen it
-run. It needs `E2B_API_KEY`, and a model — either a provider key or a coding
+run. It needs `E2B_API_KEY`, and a model: either a provider key or a coding
 agent you are already signed in to (see below).
 
 **Install it, do not one-shot it.** A live run needs the optional peer
-`@e2b/desktop`, and Node resolves that relative to humanish itself — so a
+`@e2b/desktop`, and Node resolves that relative to humanish itself, so a
 one-shot `npx humanish@latest` can never find it, no matter what your project
 has installed. `npm i -D humanish @e2b/desktop` once, then `npx humanish …`
 resolves the local copy and works. The dry-run path (`humanish run first-run`)
@@ -83,7 +82,7 @@ for skills.sh discovery.
 ## A First Live Run Without a Provider API Key
 
 A live study normally needs a provider API key. If you already have a coding
-agent signed in — Codex on a ChatGPT plan, Claude Code on a Max plan — humanish
+agent signed in (Codex on a ChatGPT plan, Claude Code on a Max plan), humanish
 can use it as the participant's brain instead, and then the only credential it
 needs is `E2B_API_KEY`.
 
@@ -110,8 +109,8 @@ Three things to know before you rely on it:
 - **It is not free.** Subscription usage consumes your own plan. Runs driven this
   way record `estimatedCostUsd: null` with `reason: "no_token_usage"` rather than
   `$0`, because `$0` would be untrue. Rate limits on those plans are built for
-  interactive coding; humanish fails closed with the CLI's own message rather
-  than retrying into them.
+  interactive coding; humanish fails closed with the CLI's own message and does
+  not retry into them.
 - **It is slower.** Roughly 9 seconds per turn against about 3 for a direct API
   call, so give the lane a longer `execution.timeoutMs` than you would otherwise.
 - **The evidence says which brain ran it.** The trace records
@@ -120,8 +119,8 @@ Three things to know before you rely on it:
 
 ## Telemetry
 
-humanish collects anonymous usage data by default — which command ran, whether it
-worked, roughly how long it took — so the maintainers can tell whether anyone
+humanish collects anonymous usage data by default (which command ran, whether it
+worked, roughly how long it took) so the maintainers can tell whether anyone
 reaches a working first run. It never sends your labs, subjects, personas, paths,
 or evidence, and there is no field in the payload that could.
 
@@ -141,7 +140,7 @@ boundary is three planks, each enforced where it actually holds:
 **1. This repo and the published package are kept public-safe by CI.** Every
 push runs a public-surface scan (secret/key/path shapes, a sha256 binary-asset
 allowlist, over both tracked files and the packed npm payload) plus a
-full-history gitleaks scan. That protects what we ship — it does not scan your
+full-history gitleaks scan. That protects what we ship; it does not scan your
 repo.
 
 **2. The harness never persists secret values into run artifacts.** On every
@@ -152,8 +151,8 @@ evidence; values never are. Pixels are the exception: a raw screenshot shows
 whatever was on screen, which is why plank 3 exists.
 
 **3. Run bundles are local by default.** Evidence lands under gitignored
-`.humanish/`, and no command publishes it for you. Sharing evidence — committing
-screenshots, pasting transcripts, attaching bundles to issues — is a deliberate
+`.humanish/`, and no command publishes it for you. Sharing evidence (committing
+screenshots, pasting transcripts, attaching bundles to issues) is a deliberate
 act, and reviewing what you share is on you. Use synthetic personas and
 synthetic data so there is nothing sensitive to capture in the first place.
 
@@ -212,33 +211,33 @@ npx humanish watch --json --no-open
 ## The Terminal Surface
 
 Every other humanish command is built so an agent can drive it. `humanish tui`
-is the one that is not: it takes the screen and waits for a person.
+takes the screen and waits for a person.
 
 ```bash
 npx humanish tui
 ```
 
-Arrow keys move, `enter` opens, `esc` goes back, `q` quits. Three screens, and
-you navigate between OBJECTS rather than between states — the set of labs, one
-lab, one run — while a run's lifecycle renders in place, so a run you are
-watching changes from running to its verdict without the screen moving under
-you.
+Arrow keys move, `enter` opens, `esc` goes back, `q` quits. There are three
+screens, and you move between objects rather than between states: the set of
+labs, one lab, one run. A run's lifecycle
+renders in place, so a run you are watching changes from running to its verdict
+without the screen moving under you.
 
-- **labs** — every lab in the project, whether or not it has ever run. Labs with
-  something running now sort first. Each row carries what to expect from a LIVE
-  run of it; a lab with no live history says `no live runs yet` rather than
-  quoting a median from dry runs, which spend nothing and take no time.
-- **lab** — that lab's history, and two ways to start it. A dry run starts on one
+- **labs**: every lab in the project, whether or not it has ever run. Labs with
+  something running now sort first. Each row carries what to expect from a live
+  run of it; a lab with no live history says `no live runs yet` and does not
+  quote a median from dry runs, which spend nothing and take no time.
+- **lab**: that lab's history, and two ways to start it. A dry run starts on one
   keypress because it cannot cost anything; a live run is armed by the first
   `enter` and committed by the second, restating the cost in between.
-- **run** — who is in the run, what they are currently thinking, and how far they
+- **run**: who is in the run, what they are currently thinking, and how far they
   have got, with time and money underneath. A terminal cannot show screenshots,
   so the run's self-contained Observer artifact is named for you to open.
 
-A run you start from the surface is DETACHED: it keeps going if you quit the
+A run you start from the surface is detached: it keeps going if you quit the
 TUI, and it survives losing the SSH session you started it over. The surface
 follows it by reading `.humanish/runs/<id>/status.json`, holding no handle on
-it — which is why you can quit mid-run, reopen, and find it still there.
+it, so you can quit mid-run, reopen, and find it still there.
 
 Requires an interactive terminal and Node 22 or newer. It refuses anything else
 with a structured error rather than rendering escape codes into a pipe:
@@ -260,7 +259,7 @@ Every other command still works on Node 20; only this surface needs 22.
 ## Serve the Library
 
 `humanish watch` follows one attached run; `humanish serve` serves the whole
-local run library under `.humanish/runs/` — a library index plus every run's
+local run library under `.humanish/runs/`, a library index plus every run's
 Observer page:
 
 ```bash
@@ -273,34 +272,34 @@ npx humanish serve --expose --public-url https://observer.example.com
 The first serves the library on loopback only. The second is the phone path:
 ngrok's edge authenticates viewers with Google OAuth (restricted to your
 `--allow-email`/`--allow-domain` allow rules) before any request reaches the
-loopback server — humanish carries no in-process auth. The third is a secretless
+loopback server; humanish carries no in-process auth. The third is a secretless
 safe observer: no login, but only runs whose `humanish verify` shareSafety is
-`share_ready` exist at all — everything else is absent and 404s. The fourth
+`share_ready` exist at all; everything else is absent and 404s. The fourth
 trusts an edge you already secure (Cloudflare Access, Tailscale, a proxy you own)
 and just binds loopback behind it.
 
 In every mode the server binds `127.0.0.1`; exposure only ever happens through
 an authenticated edge forwarding to the loopback port. Exposure is fail-closed:
 `--expose` always needs a reachable public origin (a `--tunnel` or a `--public-url`,
-even under `--safe`), and then requires EITHER edge auth (`--oauth` on the tunnel,
-or a `--public-url` you secure) OR `--safe`. `--oauth google` with no allow rule
+even under `--safe`), and then requires either edge auth (`--oauth` on the tunnel,
+or a `--public-url` you secure) or `--safe`. `--oauth google` with no allow rule
 lets any Google account in and warns loudly.
 
 ### Watch a live run from your phone
 
 `humanish watch <cua-lab> --expose --tunnel ngrok --oauth google --allow-email
-you@example.com` streams the LIVE desktop of a computer-use run to an
+you@example.com` streams the live desktop of a computer-use run to an
 edge-authenticated remote viewer while it plays. The attached server comes up
 during the run and survives a timed-out/failed run, so you can inspect a failed
 run's evidence too. A live run is never `share_ready`, so `watch --expose` always
 requires edge auth; `--safe` is a `serve` library filter and is rejected on watch
-(`HUMANISH_WATCH_SAFE_NOT_APPLICABLE`). An exposed watch serves ONLY the attached
-run — its history lists just that run and every other run id 404s — so a remote
+(`HUMANISH_WATCH_SAFE_NOT_APPLICABLE`). An exposed watch serves only the attached
+run (its history lists just that run and every other run id 404s), so a remote
 viewer can never reach your other runs' raw evidence.
 
-Live E2B desktop stream URLs are served ONLY on `watch --expose`, and only behind
-edge auth; `serve` never injects them (remote viewers of the library see
-persisted evidence — screenshots, events, terminal tails — only). See
+Live E2B desktop stream URLs are served only on `watch --expose`, and only behind
+edge auth; `serve` never injects them (remote viewers of the library see only
+persisted evidence: screenshots, events, terminal tails). See
 [Serve architecture](docs/architecture/serve.md).
 
 ## Commands
@@ -309,7 +308,7 @@ persisted evidence — screenshots, events, terminal tails — only). See
 | --- | --- |
 | `humanish init` | Scaffold committed `humanish/` source and ignored `.humanish/` runtime state. |
 | `humanish doctor` | Explain readiness and missing setup. |
-| `humanish tui` | Interactive terminal surface for browsing labs and runs and starting a run. Humans only — it refuses a non-interactive stdin or stdout. |
+| `humanish tui` | Interactive terminal surface for browsing labs and runs and starting a run. Humans only; it refuses a non-interactive stdin or stdout. |
 | `humanish run --dry-run` | Generate a synthetic run bundle without browser, keys, or provider spend. |
 | `humanish run --app-url http://127.0.0.1:<port>` | Capture live desktop/mobile browser evidence against a running local app. |
 | `humanish watch [lab]` | Run sims or a named lab, open Observer, and keep watching. |
@@ -361,16 +360,16 @@ or Observer data.
 ### Computer-Use Labs
 
 A computer-use lab dispatches a **registered computer-use actor** (`actors[0].type`,
-resolved against the actor registry — e.g. `openai-computer-use`) to drive an app in
+resolved against the actor registry, e.g. `openai-computer-use`) to drive an app in
 a hosted E2B desktop browser and emit an evidence bundle under gitignored
-`.humanish/` (full-fidelity screenshots by default — see below; length-only typed
+`.humanish/` (full-fidelity screenshots by default, see below; length-only typed
 text; provider-neutral `humanish.actor-trace.v1` on the stream). Two subjects route
 here:
 
 - **`subject.source: clone`** (+ `execution.target: e2b-desktop` + a computer-use
-  actor): the lab clones your repo INTO the sandbox, runs your declared
+  actor): the lab clones your repo into the sandbox, runs your declared
   `serve.install`/`serve.build`/`serve.start` commands (detached, with readiness
-  probing), and drives the served app at `serve.url`. Subject env var NAMES declared
+  probing), and drives the served app at `serve.url`. Subject env var names declared
   in `subject.env` are provisioned from `--env-file` (names land in evidence; values
   never do). The bundle records provenance: repo, cloned commit, env names.
 - **`subject.source: app-url`**: you (a library caller) provision the app yourself
@@ -405,55 +404,53 @@ you own (a Vercel preview, staging), use an `app-url` subject with
 only declared subject env names do. `humanish init` scaffolds an example at
 `humanish/labs/cua-browser.yaml`.
 
-**Off-app email/SMS verification (`comms`).** When a flow is gated behind an email
-or SMS the app itself sends — a signup verification link, a one-time code, a magic
-link — add a `comms:` block to the lab. Humanish redirects the app's email-API sends
-(via one adopter-named env var — with the official Resend SDK it is `RESEND_BASE_URL`,
+**Off-app email/SMS verification (`comms`).** When a flow is gated behind an email or
+SMS the app itself sends (a signup verification link, a one-time code, a magic link),
+add a `comms:` block to the lab. Humanish redirects the app's email-API sends (via
+one adopter-named env var: with the official Resend SDK it is `RESEND_BASE_URL`,
 which the SDK reads on its own, so nothing in the app has to change; other providers
 need the app to actually pass the env through, and a run whose catch captures zero
-sends warns at teardown) into a catch **inside**
-the sandbox, so nothing leaves the machine. Every lane gets a deterministic inbox
-address automatically, and each persona's prompt carries the full handoff: the
-address to sign up with, the inbox URL to open, and that waiting for an email is a
-next step, not a blocker. The run bundle gets a digest-only
-`humanish.comms-thread.v1` artifact (from/to/subject/link digests + an OTP count —
-no raw address, link, or code persists); the readable proof a persona saw the email
-is its inbox-page screenshots. Hosted on the clone/local-tree computer-use lanes and
-the concurrent shared-world route (warned inert elsewhere), vendor-neutral
-(Resend/SendGrid shaped, or a custom profile). See `docs/contracts/schemas.md` for
-the full `comms:` shape.
+sends warns at teardown) into a catch **inside** the sandbox, so nothing leaves the
+machine. Every lane gets a deterministic inbox address automatically, and each
+persona's prompt carries the full handoff: the address to sign up with, the inbox URL
+to open, and that waiting for an email is a next step, not a blocker. The run bundle
+gets a digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link
+digests + an OTP count; no raw address, link, or code persists); the readable proof a
+persona saw the email is its inbox-page screenshots. Hosted on the clone/local-tree
+computer-use lanes and the concurrent shared-world route (warned inert elsewhere),
+vendor-neutral (Resend/SendGrid shaped, or a custom profile).
+See `docs/contracts/schemas.md` for the full `comms:` shape.
 
 **Screenshots are full-fidelity by default.** Run bundles live in gitignored
-`.humanish/`, so the Observer shows exactly what the persona saw — the point of
-simming your own app. Set `policies.redactScreenshots: true` to persist blurred
-thumbnails at capture instead (for unowned subjects, or bundles you intend to share
-as-is). Raw bundles stay local in gitignored `.humanish/`; nothing scans the pixels,
-so review them before sharing anywhere — a redact-on-export step is planned. The
-frame sent to the model is always full-resolution regardless. (Doctrine:
-`docs/principles/invariants-and-defaults.md` — redaction binds the publish boundary,
-not capture.) `humanish verify` reports raw-screenshot bundles as
-`shareSafety.status: local_only`; `humanish feedback issue` refuses them until the
-run is share-ready.
+`.humanish/`, so the Observer shows exactly what the persona saw. Set
+`policies.redactScreenshots: true` to persist blurred thumbnails at capture instead
+(for unowned subjects, or bundles you intend to share as-is). Raw bundles stay local
+in gitignored `.humanish/`; nothing scans the pixels, so review them before sharing
+anywhere. A redact-on-export step is planned. The frame sent to the model is always
+full-resolution regardless. (Doctrine: `docs/principles/invariants-and-defaults.md`.
+Redaction binds the publish boundary, not capture.) `humanish verify` reports
+raw-screenshot bundles as `shareSafety.status: local_only`; `humanish feedback issue`
+refuses them until the run is share-ready.
 
-**Device presets.** `execution.desktop.device` picks the hosted desktop screen size —
+**Device presets.** `execution.desktop.device` picks the hosted desktop screen size:
 `mobile` (414×896), `small-mobile` (360×740), `narrow-mobile` (320×700), `tablet`
 (820×1180), `desktop` (1440×950, default), or `wide` (1920×1080). The values are copied
-from the mature in-house sims, not invented. **Honest fidelity:** on the computer-use /
-E2B-desktop route width/height size the virtual display and browser outer window. The actual
-page viewport is smaller because browser chrome occupies space; Chromium-family live bundles
-measure it through CDP and record it separately from requested/verified screen geometry. Browsers
-without that measurement seam omit the viewport rather than guessing. A site's width-based
-responsive CSS still fires, and the model is *told* its device in the prompt, matching
-how those sims run organic mobile lanes. There is no touch input, the device-pixel-ratio
-isn't rendered, and the user-agent stays desktop on this route; true touch/DPR/UA emulation
-arrives with the deterministic CDP actor. Device is run-wide today; per-*persona* device
-(N personas × devices) lands with fan-out. `execution.desktop.resolution` is a raw escape
-hatch that overrides the preset.
+from the mature in-house sims. **Honest fidelity:** on the computer-use / E2B-desktop
+route width/height size the virtual display and browser outer window. The actual page
+viewport is smaller because browser chrome occupies space; Chromium-family live bundles
+measure it through CDP and record it separately from requested/verified screen geometry.
+Browsers without that measurement seam omit the viewport rather than guessing. A
+site's width-based responsive CSS still fires, and the model is *told* its device in the
+prompt, matching how those sims run organic mobile lanes. There is no touch input, the
+device-pixel-ratio isn't rendered, and the user-agent stays desktop on this route; true
+touch/DPR/UA emulation arrives with the deterministic CDP actor. Device is run-wide
+today; per-*persona* device (N personas × devices) lands with fan-out.
+`execution.desktop.resolution` is a raw escape hatch that overrides the preset.
 
 **Desktop browser choice.** Hosted computer-use lanes and shared-world actor seats use the
 route's historical opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,
-or `firefox`. A concrete value means "launch this browser or fail" rather than silently
-falling back to whatever the image prefers. When configured, run bundles record the requested
+or `firefox`. A concrete value means "launch this browser or fail"; it never silently
+falls back to whatever the image prefers. When configured, run bundles record the requested
 browser and the resolved in-sandbox command as `desktopBrowser`.
 
 **Deterministic stop conditions.** Freeform computer-use actors can keep acting after the
@@ -490,34 +487,34 @@ browser-observed stops, set `execution.desktop.browser: chrome` or `chromium`.
 
 **Cost tracking (estimated).** Computer-use run bundles carry an advisory `cost` block: a
 per-lane token-derived model estimate plus one aggregate E2B desktop-minute estimate. Every
-dollar figure is an ESTIMATE, never a provider charge — it is a rate-table multiply, always
+dollar figure is an estimate, never a provider charge. It is a rate-table multiply, always
 surfaced as "~$X estimated (rates as of `<date>`)" in the Observer and the run library, and it
 carries the pricing date + source so a token-derived number is never mistaken for an
 authoritative bill. Unknown model/rate is declared absent (`null` + a reason), never guessed or
 silently zeroed; dry-runs invent no spend. The rates live in
-[`src/pricing.ts`](src/pricing.ts) as **operator-editable, dated estimates** — the E2B desktop
-rate is still a `placeholder` stand-in; update the numbers AND the `asOf` date when providers
+[`src/pricing.ts`](src/pricing.ts) as **operator-editable, dated estimates**. The E2B desktop
+rate is still a `placeholder` stand-in; update the numbers and the `asOf` date when providers
 change pricing. On models that bill prompt-cache writes and long-context requests at their own
 rates (OpenAI's 5.6 family), the estimate prices both exactly from the trace's per-request
 usage ledger.
 
 **Choosing the model.** Computer-use lanes default to `gpt-5.6-sol` (the 5.6-generation
 flagship; `gpt-5.6` is OpenAI's alias for the same model). Configure it per lab with
-`actors[0].model` — any id in the rate table prices cleanly (`gpt-5.6-terra` and
+`actors[0].model`. Any id in the rate table prices cleanly (`gpt-5.6-terra` and
 `gpt-5.6-luna` are the cheaper tiers; `gpt-5.5` stays priced for pinned labs). A run with a
-spend cap (`execution.caps`) refuses an unpriced model at preflight rather than running
-uncapped, so add a dated rate to `src/pricing.ts` before capping a model the table does not
-know.
+spend cap (`execution.caps`) refuses an unpriced model at preflight, so add a dated rate to
+`src/pricing.ts` before capping a model the table does not know.
 
 **Fail-closed spend cap.** Set `execution.caps.maxUsd` on a computer-use lab to abort a session
-the moment its running estimated spend crosses the cap — the runaway-retry guard (mirrors the
-terminal lane's `scenario.caps.maxUsd`). It is a **per-lane** cap: enforced inside each lane's loop,
+the moment its running estimated spend crosses the cap, a runaway-retry guard that mirrors the
+terminal lane's `scenario.caps.maxUsd`. It is a **per-lane** cap: enforced inside each lane's loop,
 so an N-lane fan-out can spend up to N × `maxUsd` before any lane aborts (the run bundle warns with
 the true ~N × cap ceiling; a shared run-level budget is future work). A lane that did real work then
 hits its cap passes (`budget_reached`); a zero-action runaway that crosses it fails (`gave_up`).
 Absent = uncapped (the historical CUA behavior); `maxUsd: 0` = no-spend. A cap on a model
-`src/pricing.ts` cannot price is refused at preflight (`HUMANISH_CUA_LAB_UNPRICED_CAP`) rather than
-run uncapped — an unenforceable cap is more dangerous than none, so add a rate or drop the cap.
+`src/pricing.ts` cannot price is refused at preflight (`HUMANISH_CUA_LAB_UNPRICED_CAP`)
+rather than run uncapped: an unenforceable cap is more dangerous than none, so add a rate
+or drop the cap.
 
 **Failed-lane reruns.** Multi-lane CUA fan-out can be rerun surgically without mutating
 the source run:
@@ -531,10 +528,10 @@ This creates a new linked run containing only the failed/blocked/timed-out/hollo
 (or the explicit `--lanes` selection). The new `run.json` records `rerun.sourceRunId`,
 selected lane ids, and previous lane statuses; the source run's verdict is left unchanged.
 This is intentionally not automatic retry; a passing rerun is evidence of a
-nondeterminism candidate, not permission to erase the original red lane.
+nondeterminism candidate and does not license erasing the original red lane.
 
 **Run-owned cleanup.** Live providers can record resource evidence in `run.json`.
-Stored bundle IDs are mutable evidence, not provider-mutation authority. The
+Stored bundle IDs are mutable evidence and do not authorize provider mutation. The
 cleanup command writes a durable inspection receipt until Humanish has a
 verified resource-lease contract. Resources already recorded as killed become
 `already_clean`; recorded live or unknown resources become `failed`, which
@@ -551,7 +548,7 @@ orphan sweep is maintainer-only, opt-in, and verifies provider metadata before
 calling provider cleanup.
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
-subject env provisioned — the same trust class as a repo's package.json scripts.
+subject env provisioned, the same trust class as a repo's package.json scripts.
 Only run lab configs you trust, and declare only the env names that the subject
 genuinely needs. (Since 0.5.0, a clone × e2b-desktop lab whose actor is a
 registered computer-use actor routes here and requires `serve`; on earlier
@@ -563,9 +560,9 @@ The computer-use loop is provider- and substrate-agnostic. You can point a lab a
 **already-running local dev server** (`subject.source: local-app`) and drive it
 through its in-process JS contract (`window.app.getState()` etc.) with a custom
 `CuaExecutor` (screenshot optional, `appState` as the progress signal) paired with a
-**non-vision** `CuaProvider` (`requiresFrame` falsey) — keeping personas, the
-Observer, the evidence bundle, redaction, and the friction loop, with **NO E2B
-desktop and NO clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
+**non-vision** `CuaProvider` (`requiresFrame` falsey), keeping personas, the
+Observer, the evidence bundle, redaction, and the friction loop, with **no E2B
+desktop and no clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
 `runLab` (a config-only run with no hooks fails closed with a structured error). See
 [State-driven executor](docs/architecture/state-driven-executor.md).
 
