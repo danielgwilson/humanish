@@ -570,6 +570,14 @@ export interface LabExecution {
   /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Live runs inject the
    *  key command-scoped; dry-runs record names only. Inert on other routes. */
   runtimeAuth?: LabRuntimeAuth;
+  /**
+   * `terminal-product` ONLY: let the participant create studies of ITS OWN, by granting a scoped
+   * E2B key from `HUMANISH_NESTED_E2B_API_KEY`. Absent means no provider credential reaches the
+   * agent, which is the default and the right one for every study that is not dogfooding humanish
+   * itself. humanish refuses the grant if that key is the operator's own — the bound only exists
+   * if the nested sandboxes land in a separate, separately-budgeted E2B project.
+   */
+  nestedSandboxAuth?: "e2b-env-scoped";
 }
 
 export type LabScenarioMode = "dry-run" | "live";
@@ -645,7 +653,11 @@ export interface LabPolicies {
    */
   /** Recorded private-repo-access intent. No private-repo provisioning channel ships. */
   allowPrivateRepoAccess?: boolean;
-  /** Recorded provider-credential intent. No provider-credential injection channel ships. */
+  /**
+   * Recorded provider-credential intent. No GENERAL provider-credential injection channel ships;
+   * the one narrow exception is `execution.nestedSandboxAuth`, which grants a SCOPED E2B key so a
+   * study can create studies of its own. See src/nested-sandbox-grant.ts.
+   */
   allowProviderCredentials?: boolean;
   /** Recorded payment-credential intent. No payment-credential injection channel ships. */
   allowPaymentCredentials?: boolean;
@@ -2722,6 +2734,17 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
       return invalid("`execution.runtimeAuth` must be openai-env (the in-sandbox agent's command-scoped runtime-auth channel).");
     }
     execution.runtimeAuth = runtimeAuth;
+  }
+  if (raw.nestedSandboxAuth !== undefined) {
+    const nested = str(raw.nestedSandboxAuth);
+    if (nested !== "e2b-env-scoped") {
+      return invalid(
+        "`execution.nestedSandboxAuth` must be e2b-env-scoped — the only nested-credential channel that ships. "
+        + "It grants a SCOPED E2B key so a study can create studies of its own, and humanish refuses it if that key "
+        + "is the one humanish itself is using."
+      );
+    }
+    execution.nestedSandboxAuth = nested;
   }
   return { ok: true, value: Object.keys(execution).length > 0 ? execution : undefined };
 }
