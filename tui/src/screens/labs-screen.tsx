@@ -32,6 +32,10 @@ export interface LabsScreenProps {
   peerSelected: boolean;
   /** How many participants are working, for the peer's own label. */
   liveTotal: number;
+  /** True once the setup action is armed and one more Enter applies it. */
+  initArmed?: boolean;
+  /** The result of the last action, shown under it. */
+  actionNote?: string;
 }
 
 /**
@@ -53,7 +57,9 @@ export function LabsScreen({
   now,
   initialized,
   peerSelected,
-  liveTotal
+  liveTotal,
+  initArmed,
+  actionNote
 }: LabsScreenProps): React.ReactElement {
   if (rows.length === 0) {
     // Two different problems. "This is not a project" has to be said first, because otherwise the
@@ -73,10 +79,25 @@ export function LabsScreen({
         <Box marginTop={1} flexDirection="column">
           <Text dimColor>humanish studies live in a project: a humanish/ directory of labs and</Text>
           <Text dimColor>personas beside the app they study.</Text>
-          <Box marginTop={1}>
-            <Text>cd to your project and run `humanish init`</Text>
-          </Box>
         </Box>
+        {/* An ACTION, not an instruction to leave. The person reading this has just arrived, and
+            telling them to cd elsewhere and type a command was a dead end at exactly the moment
+            they were most likely to give up (#505). It arms first: it writes into their directory
+            and touches package.json, which is not something to do on one keystroke. */}
+        <Box marginTop={1}>
+          <Text {...color(PALETTE.accent)} bold>
+            {gutter(true)} Set up humanish here
+          </Text>
+          <Box flexGrow={1} />
+          <Text dimColor>
+            {initArmed ? "⏎ again to confirm · esc cancel" : "writes humanish/ and updates package.json"}
+          </Text>
+        </Box>
+        {actionNote === undefined ? null : (
+          <Box marginTop={1}>
+            <Text dimColor>{actionNote}</Text>
+          </Box>
+        )}
       </Box>
     );
   }

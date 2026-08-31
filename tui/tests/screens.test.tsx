@@ -234,8 +234,12 @@ describe("the two empty states are different problems", () => {
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: false, hasRuntime: false })
     }, (candidate) => candidate.includes("not a humanish project"));
     expect(frame).toContain("this directory is not a humanish project");
-    expect(frame).toContain("cd to your project");
     expect(frame).not.toContain("no labs here yet");
+    // It now OFFERS to fix it rather than telling the reader to leave. "cd somewhere else and run
+    // a command" was a dead end shown to exactly the person most likely to give up (#505), and the
+    // row says what it will write before it writes it.
+    expect(frame).toContain("Set up humanish here");
+    expect(frame).toContain("writes humanish/ and updates package.json");
     // And it does not offer keys that do nothing here.
     expect(frame).not.toContain("⏎ open");
   });

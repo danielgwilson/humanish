@@ -70,6 +70,12 @@ export interface TuiCapabilities {
   reclaimRun(cwd: string, runId: string): Promise<ReclaimResult>;
   /** End a run that is still going. Stops the PROCESS; `reclaimRun` stops what it provisioned. */
   stopRun(cwd: string, runId: string): Promise<TuiActionResult>;
+  /**
+   * Set this directory up as a humanish project. The surface's only WRITING action outside of
+   * starting runs — offered because "cd somewhere else and run init" is a dead end shown to
+   * exactly the person who has just arrived (#505).
+   */
+  initProject(cwd: string): Promise<TuiActionResult>;
 }
 
 export interface TuiOptions {

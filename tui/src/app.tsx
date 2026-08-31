@@ -94,6 +94,8 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
   const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
   const [showHelp, setShowHelp] = useState(false);
+  /** When the "set up humanish here" action was armed — it writes into the operator's directory. */
+  const [initArmedAt, setInitArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
@@ -360,10 +362,29 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
             setActionNote(undefined);
             return;
           }
+          if (initArmedAt !== undefined) {
+            setInitArmedAt(undefined);
+            return;
+          }
           dispatch({ type: "back" });
           return;
         }
         if (key.return || key.rightArrow) {
+          // The empty-project screen has exactly one action, so Enter means it. Armed, because it
+          // writes into the operator's directory and touches package.json.
+          if (screen.name === "labs" && projectState.initialized === false) {
+            if (initArmedAt === undefined) {
+              setInitArmedAt(Date.now());
+              return;
+            }
+            if (Date.now() - initArmedAt < LIVE_CONFIRM_MIN_MS) return;
+            setInitArmedAt(undefined);
+            void (async () => {
+              const outcome = await options.capabilities.initProject(options.cwd);
+              setActionNote(outcome.message);
+            })();
+            return;
+          }
           if (screen.name === "run" && data !== undefined) {
             const run = data.runsById.get(screen.runId);
             if (run !== undefined) {
@@ -386,7 +407,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start, detail, act, stopArmedAt, showHelp]
+      [exit, rowCount, screen, data, selected, confirming, start, detail, act, stopArmedAt, showHelp, initArmedAt, projectState, options]
     )
   );
 
@@ -488,7 +509,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
     return renderScreen({
       screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
       confirming, launchError, launchNote, detail, summary, liveDetails, tick,
-      initialized: projectState.initialized, actionNote
+      initialized: projectState.initialized, actionNote, initArmed: initArmedAt !== undefined
     });
   }, [showHelp, error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, projectState, actionNote]);
 
@@ -497,7 +518,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
       columns={size.columns}
       context={contextLine(screen, data, options)}
       breadcrumb={breadcrumbOf(screen, data)}
-      hints={showHelp ? "any key returns   q quit" : keyHints(screen, data, selected, confirming)}
+      hints={showHelp ? "any key returns   q quit" : keyHints(screen, data, selected, confirming, projectState.initialized)}
     >
       {body}
     </Frame>
@@ -567,14 +588,18 @@ function keyHints(
   screen: ReturnType<typeof currentScreen>,
   data: ProjectData | undefined,
   selected: number,
-  confirming: "live" | undefined
+  confirming: "live" | undefined,
+  initialized?: boolean
 ): string {
   const move = "↑↓ move";
   switch (screen.name) {
     case "labs":
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
       // teaches the wrong model of the surface.
-      return (data?.rows.length ?? 0) === 0 ? "q quit" : `${move}   ⏎ open   ? keys   q quit`;
+      if ((data?.rows.length ?? 0) > 0) return `${move}   ⏎ open   ? keys   q quit`;
+      // An empty screen with ONE action still has that action; a legend that omits it makes the
+      // row look decorative.
+      return initialized === false ? "⏎ set up humanish here   ? keys   q quit" : "? keys   q quit";
     case "lab": {
       if (confirming !== undefined) return "↵ confirm · esc cancel";
       const item = data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
@@ -747,6 +772,7 @@ function renderScreen(args: {
   tick: number;
   initialized: boolean;
   actionNote: string | undefined;
+  initArmed?: boolean;
 }): React.ReactElement {
   const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
   const { summary, liveDetails, tick, initialized, actionNote } = args;
@@ -762,6 +788,8 @@ function renderScreen(args: {
         initialized={initialized}
         peerSelected={selected === data.rows.length}
         liveTotal={liveRunsOf(data).length}
+        {...(args.initArmed === true ? { initArmed: true } : {})}
+        {...(args.actionNote === undefined ? {} : { actionNote: args.actionNote })}
         liveParticipants={
           new Map(
             [...liveDetails.entries()]

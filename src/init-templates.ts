@@ -146,6 +146,54 @@ defaults:
 `
   },
   {
+    path: "humanish/labs/try-live.yaml",
+    plane: "source",
+    contents: `schema: humanish.lab.v2
+id: try-live
+title: Your first REAL study — one participant, a real app, a hosted desktop
+description: >-
+  This lab runs live out of the box, on purpose. Every other starter file here is a template you
+  have to fill in first, and a first live run that cannot succeed is where most people stop.
+  THE SUBJECT IS A DEMO, NOT YOUR APP: it clones drawDB, a real public open-source diagram editor,
+  and serves it inside the sandbox. That is what makes this runnable with nothing to configure.
+  Once you have watched it work, point subject at your own app (see humanish/labs/cua-browser.yaml
+  for the shape) — that is the study you actually want.
+  WHAT IT COSTS: one participant, one small task, a fail-closed cap of two dollars. It will not
+  quietly become expensive.
+  WHAT A GOOD RESULT LOOKS LIKE: not necessarily a pass. A participant who gets stuck and says so
+  is the most useful thing this tool produces — humanish will refuse to call that a credible pass,
+  on purpose, and the friction they describe is the finding. A first run that ends in "I could not
+  do it, and here is where I got lost" worked exactly as intended.
+subject:
+  source: clone
+  repos:
+    - drawdb-io/drawdb
+  clone:
+    depth: 1
+  serve:
+    # Plain npm — humanish provides the Node runtime the stock desktop image does not ship.
+    install: npm install --no-audit --no-fund
+    build: npm run build
+    start: npx vite preview --host 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user
+    mission: >-
+      You have never seen this diagram tool before. Add two tables and give them meaningful names,
+      then stop and say what you did, what confused you, and where you hesitated.
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+  caps:
+    maxUsd: 2 # fail-closed: the run aborts rather than overspending
+scenario:
+  mode: live # the point of this lab — the others start as dry-run
+defaults:
+  open: true
+`
+  },
+  {
     path: "humanish/labs/cua-browser.yaml",
     plane: "source",
     contents: `schema: humanish.lab.v2
@@ -444,3 +492,27 @@ export const humanishScripts: Record<string, string> = {
   "humanish:watch:ci": "humanish watch --json --no-open",
   "humanish:verify": "humanish verify"
 };
+
+
+/**
+ * The starter files, with the live lab written for the brain this machine can use.
+ *
+ * `local-agent` is not a variant of the lab so much as a different participant: on a machine with
+ * a signed-in Codex and no provider key, the study runs with the operator's own agent and needs
+ * only E2B. Writing the other one there would hand someone homework instead of a first run.
+ */
+export function starterFilesFor(actor: "openai-computer-use" | "local-agent"): StarterFile[] {
+  if (actor === "openai-computer-use") return starterFiles;
+  return starterFiles.map((file) => {
+    if (file.path !== "humanish/labs/try-live.yaml") return file;
+    return {
+      ...file,
+      contents: file.contents.replace(
+        "  - type: openai-computer-use\n",
+        "  # Your machine has a coding agent signed in, so this study uses it: no provider API key,\n"
+        + "  # only E2B. Swap to `type: openai-computer-use` if you would rather use a provider key.\n"
+        + "  - type: local-agent\n"
+      )
+    };
+  });
+}

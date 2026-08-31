@@ -1,10 +1,13 @@
 import { lstat, realpath, stat } from "node:fs/promises";
 import path from "node:path";
+import { AGENTS_SECTION_MARKER, agentsSection, firstRunGuidance, starterActorFor, type FirstRunEnvironment } from "./first-run-path.js";
+import { detectLocalAgents } from "./local-agent-cli.js";
 
 import {
   humanishScripts,
   runtimeDirectories,
-  starterFiles
+  starterFiles,
+  starterFilesFor
 } from "./init-templates.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -21,6 +24,8 @@ export interface InitOptions {
   cwd: string;
   dryRun?: boolean;
   yes?: boolean;
+  /** Injected so a test can decide what credentials this machine appears to have. */
+  env?: NodeJS.ProcessEnv;
 }
 
 export type InitMode = "dry-run" | "applied" | "needs-confirmation";
@@ -39,6 +44,11 @@ export interface InitResult {
   cwd: string;
   changes: InitChange[];
   warnings: string[];
+  /**
+   * The next one or two commands, already resolved against THIS machine's credentials. Present on
+   * an applied init; absent on a dry-run or a failure, where there is no "next" yet.
+   */
+  nextSteps?: string[];
   error?: {
     code:
       | "HUMANISH_CONFIRMATION_REQUIRED"
@@ -98,7 +108,43 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     };
   }
 
-  for (const file of starterFiles) {
+  // Leave instructions for the NEXT agent. AGENTS.md is the cross-vendor convention (agents.md) —
+  // Codex, Claude Code, Cursor, Aider and others read it — and increasingly the thing that runs
+  // `humanish init` is a coding agent doing setup on someone's behalf. Without this, the agent
+  // that arrives tomorrow finds a humanish/ directory and no idea what to do with it.
+  //
+  // APPEND-ONLY and idempotent: an existing AGENTS.md is a file someone wrote, so humanish adds its
+  // own section once and never rewrites theirs.
+  {
+    const agentsPath = "AGENTS.md";
+    const existingAgents = await readTextIfExists(preparedProjectRoot, agentsPath);
+    const section = agentsSection();
+    if (existingAgents === null) {
+      changes.push({ path: agentsPath, action: "create", target: "source", reason: "how a coding agent runs humanish here" });
+      writes.push({
+        absolutePath: path.join(cwd, agentsPath),
+        relativePath: agentsPath,
+        contents: `# AGENTS.md\n${section}`,
+        target: "source"
+      });
+    } else if (existingAgents.includes(AGENTS_SECTION_MARKER)) {
+      changes.push({ path: agentsPath, action: "skip", target: "source", reason: "humanish section already present" });
+    } else {
+      changes.push({ path: agentsPath, action: "update", target: "source", reason: "append how a coding agent runs humanish" });
+      writes.push({
+        absolutePath: path.join(cwd, agentsPath),
+        relativePath: agentsPath,
+        contents: `${existingAgents.replace(/\s*$/, "")}\n${section}`,
+        target: "source"
+      });
+    }
+  }
+
+  // The starter live lab is written for the brain this machine can actually use. Shipping it as
+  // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
+  // a file that asks for a credential they were just told they do not need (#505).
+  const starterActor = starterActorFor(await firstRunEnvironment(options.env ?? process.env));
+  for (const file of starterFilesFor(starterActor)) {
     const absolutePath = path.join(cwd, file.path);
     const existing = await readTextIfExists(preparedProjectRoot, file.path);
 
@@ -221,7 +267,29 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     mode,
     cwd: requestedCwd,
     changes,
-    warnings
+    warnings,
+    // Resolved against THIS machine, because a next step that cannot work is worse than none.
+    ...(mode === "applied" ? { nextSteps: await resolveFirstRunGuidance(options.env ?? process.env) } : {})
+  };
+}
+
+/**
+ * What to tell the operator (or the agent acting for them) to do next. Credential PRESENCE only —
+ * no value is read, and the local-agent check asks whether a credential file exists, never what is
+ * in it.
+ */
+async function resolveFirstRunGuidance(env: NodeJS.ProcessEnv): Promise<string[]> {
+  return firstRunGuidance(await firstRunEnvironment(env));
+}
+
+/** Credential PRESENCE only. No value is read, and the local-agent check asks whether a file
+ *  exists, never what is in it. */
+async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvironment> {
+  const agents = await detectLocalAgents().catch(() => []);
+  return {
+    hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
+    hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,
+    localAgents: agents.filter((agent) => agent.credentialsPresent).map((agent) => agent.label)
   };
 }
 
