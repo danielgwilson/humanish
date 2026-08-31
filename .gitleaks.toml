@@ -1,0 +1,33 @@
+# gitleaks configuration.
+#
+# The default ruleset, plus ONE narrow exception. Everything about this file should be read as
+# hostile to itself: an allowlist in a secret scanner is how a real leak eventually gets through,
+# so the exception below is scoped to a single key prefix in a single file and is justified by the
+# vendor's own published policy rather than by our convenience.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(?:key|api|token|secret|client|passwd|password|auth|access)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:{1,3}=|\|\||:|<=|=>|:=|\?=|,)(?:'|\"|\s|=|\x60){0,5}([0-9a-z\-_.=]{10,150})(?:['|\"|\n|\r|\s|\x60|;|\\]|$)'''
+keywords = ["key", "api", "token", "secret", "client", "passwd", "password", "auth", "access"]
+
+  [rules.allowlist]
+  description = """
+  humanish's PostHog CAPTURE key (phc_). PostHog documents two classes of credential: public
+  POST-only capture keys, which are meant to be embedded in client code, and private keys, which
+  are not. Their published leaked-key policy auto-rolls phx_ (personal), phs_ (project secret),
+  pha_ and phr_ (OAuth) — and deliberately does NOT list phc_, because a capture key can write
+  events and read nothing. Next.js ships its telemetry key the same way.
+
+  DO NOT widen this to the other prefixes. phs_, phx_, pha_ and phr_ must keep failing this scan;
+  if one of those ever appears in this repo it is a real incident.
+  """
+  # AND, not the default OR. With OR, naming the file here would excuse EVERY secret in it.
+  # Verified rather than assumed: a phs_ project-secret key, in the same line shape and the same
+  # file, is still caught with this config — only the phc_ capture key passes.
+  condition = "AND"
+  regexes = ['''phc_[A-Za-z0-9]{20,}''']
+  paths = ['''src/telemetry\.ts''', '''dist/telemetry\.js''']
