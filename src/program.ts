@@ -21,6 +21,16 @@ import {
 } from "./feedback.js";
 import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
+import {
+  buildPayload,
+  disabledByEnvironment,
+  durationBucket,
+  readTelemetryState,
+  sendTelemetry,
+  telemetryStatePath,
+  TELEMETRY_NOTICE,
+  writeTelemetryState
+} from "./telemetry.js";
 import type { InitChange, InitResult } from "./init.js";
 import {
   inspectLabManifest,
@@ -201,6 +211,58 @@ const defaultIo: CliIo = {
 // HUMANISH_UNEXPECTED) or a single concise stderr line otherwise, then sets exit
 // code 2 through the existing CliIo.setExitCode seam. This is the single seam:
 // none of the ~20 .action() handlers below need their own try/catch for this.
+
+/**
+ * Record that a command ran. Anonymous, allowlisted, and unable to affect the command: it is not
+ * awaited, it is bounded by its own timeout, and every failure inside it is swallowed.
+ *
+ * The first time it would send anything, it prints the notice first — the convention Next.js and
+ * the Vercel CLI set is that collection is default-on but never silent.
+ */
+async function recordCommandTelemetry(
+  command: Command,
+  ok: boolean,
+  durationMs: number,
+  io: CliIo
+): Promise<void> {
+  try {
+    // `telemetry` itself is never measured: instrumenting the opt-out would be indecent.
+    const name = commandPath(command);
+    if (name.startsWith("telemetry")) return;
+    if (disabledByEnvironment(process.env)) return;
+    const state = await readTelemetryState();
+    if (!state.enabled) return;
+    if (!state.noticed) {
+      io.writeErr(`${TELEMETRY_NOTICE}\n`);
+      await writeTelemetryState({ ...state, noticed: true });
+    }
+    const payload = buildPayload({
+      event: "cli_command",
+      anonymousId: state.anonymousId,
+      version: CLI_VERSION,
+      properties: { command: name, ok, durationBucket: durationBucket(durationMs) }
+    });
+    if (process.env.HUMANISH_TELEMETRY_DEBUG !== undefined && process.env.HUMANISH_TELEMETRY_DEBUG !== "") {
+      io.writeErr(`humanish telemetry (debug, not sent): ${JSON.stringify(payload)}\n`);
+      return;
+    }
+    await sendTelemetry(payload);
+  } catch {
+    // Metrics are our problem, never the operator's.
+  }
+}
+
+/** `lab run`, not `run`, so the two are distinguishable — and nothing else from the invocation. */
+function commandPath(command: Command): string {
+  const parts: string[] = [];
+  let current: Command | null = command;
+  while (current && current.name() !== "humanish") {
+    parts.unshift(current.name());
+    current = current.parent;
+  }
+  return parts.join(" ");
+}
+
 class HumanishCommand extends Command {
   private readonly cliIo: CliIo;
 
@@ -216,16 +278,28 @@ class HumanishCommand extends Command {
   override action(fn: (this: this, ...args: any[]) => void | Promise<void>): this {
     const cliIo = this.cliIo;
     const wrapped = function (this: Command, ...args: any[]): void | Promise<void> {
+      // ONE emission point for every command, at the same seam that already catches every throw.
+      // Twenty .action() handlers each remembering to record a metric is twenty chances to forget
+      // one, and a funnel with a hole in it is worse than no funnel.
+      const startedAt = Date.now();
+      const finish = (ok: boolean): void => {
+        void recordCommandTelemetry(this, ok, Date.now() - startedAt, cliIo);
+      };
       try {
         // Reflect.apply (not fn.apply) sidesteps TS's special CallableFunction
         // overload for functions typed with an explicit `this` parameter, which
         // would otherwise reject the plain `Command` thisArg below.
         const result = Reflect.apply(fn, this, args) as void | Promise<void>;
         if (result && typeof result.then === "function") {
-          return result.catch((error: unknown) => {
-            reportUnexpectedActionError(this, cliIo, error);
-          });
+          return result.then(
+            () => { finish(true); },
+            (error: unknown) => {
+              reportUnexpectedActionError(this, cliIo, error);
+              finish(false);
+            }
+          );
         }
+        finish(true);
         return result;
       } catch (error) {
         reportUnexpectedActionError(this, cliIo, error);
@@ -390,6 +464,7 @@ export function createProgram(
   registerInitCommand(program, cliIo);
   registerDoctorCommand(program, cliIo);
   registerTuiCommand(program, cliIo);
+  registerTelemetryCommand(program, cliIo);
   registerKeysCommand(program, cliIo);
   registerRunCommand(program, cliIo);
   registerVerifyCommand(program, cliIo);
@@ -514,6 +589,70 @@ function refuseTui(command: Command, io: CliIo, refusal: TuiRefusal): void {
  * error naming the command that WOULD have answered the question. A TUI that quietly rendered
  * frames into a pipe would poison a transcript with escape codes and look like a hang.
  */
+/**
+ * `humanish telemetry status|enable|disable` — the opt-out the convention requires, plus a `status`
+ * that prints the exact document that would be sent. "You can read what we collect" is what makes
+ * default-on honest rather than merely lawful.
+ */
+function registerTelemetryCommand(parent: Command, io: CliIo): void {
+  const telemetry = parent
+    .command("telemetry")
+    .description("Show or change anonymous usage collection.");
+
+  telemetry
+    .command("status", { isDefault: true })
+    .description("What is collected, and whether it is on.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { json?: boolean }, command) => {
+      const state = await readTelemetryState();
+      const envOff = disabledByEnvironment(process.env);
+      const sample = buildPayload({
+        event: "cli_command",
+        anonymousId: state.anonymousId,
+        version: CLI_VERSION,
+        properties: { command: "run", lab: "try-live", mode: "live", outcome: "passed", durationBucket: "1-5m", ok: true }
+      });
+      const result = {
+        schema: "humanish.telemetry-status.v1" as const,
+        ok: true as const,
+        enabled: state.enabled && !envOff,
+        disabledBy: envOff ? "environment" : state.enabled ? undefined : "config",
+        statePath: telemetryStatePath(),
+        example: sample
+      };
+      if (options.json === true || wantsJson(command)) {
+        io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        io.writeOut([
+          `telemetry: ${result.enabled ? "on" : "off"}${envOff ? " (DO_NOT_TRACK / HUMANISH_TELEMETRY_DISABLED)" : ""}`,
+          `state: ${result.statePath}`,
+          "",
+          "a complete example of what is sent — there are no other fields:",
+          JSON.stringify(sample, null, 2),
+          "",
+          "never sent: labs you wrote, subjects, personas, missions, paths, run evidence, key names or values.",
+          "",
+          "humanish telemetry disable   turns it off"
+        ].join("\n") + "\n");
+      }
+      markInvocationEnvelopeWritten(command);
+    });
+
+  for (const [name, enabled] of [["enable", true], ["disable", false]] as const) {
+    telemetry
+      .command(name)
+      .description(`Turn anonymous usage collection ${name === "enable" ? "on" : "off"}.`)
+      .action(async (_options: unknown, command: Command) => {
+        const state = await readTelemetryState();
+        // Writing `noticed` here too: someone who has just made an explicit choice does not need
+        // to be told about the choice next time.
+        await writeTelemetryState({ ...state, enabled, noticed: true });
+        io.writeOut(`telemetry ${enabled ? "enabled" : "disabled"}\n`);
+        markInvocationEnvelopeWritten(command);
+      });
+  }
+}
+
 function registerTuiCommand(parent: Command, io: CliIo): void {
   parent
     .command("tui")
