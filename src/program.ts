@@ -219,11 +219,28 @@ const defaultIo: CliIo = {
  * The first time it would send anything, it prints the notice first — the convention Next.js and
  * the Vercel CLI set is that collection is default-on but never silent.
  */
+/**
+ * Print the disclosure the first time humanish would collect anything, and remember that it was
+ * shown. AWAITED by the caller: if this loses the race with process exit, a default-on collector
+ * becomes a silent one.
+ */
+async function announceTelemetryOnce(command: Command, io: CliIo): Promise<void> {
+  try {
+    if (commandPath(command).startsWith("telemetry")) return;
+    if (disabledByEnvironment(process.env)) return;
+    const state = await readTelemetryState();
+    if (!state.enabled || state.noticed) return;
+    io.writeErr(`${TELEMETRY_NOTICE}\n`);
+    await writeTelemetryState({ ...state, noticed: true });
+  } catch {
+    // Never blocks the command.
+  }
+}
+
 async function recordCommandTelemetry(
   command: Command,
   ok: boolean,
-  durationMs: number,
-  io: CliIo
+  durationMs: number
 ): Promise<void> {
   try {
     // `telemetry` itself is never measured: instrumenting the opt-out would be indecent.
@@ -232,10 +249,6 @@ async function recordCommandTelemetry(
     if (disabledByEnvironment(process.env)) return;
     const state = await readTelemetryState();
     if (!state.enabled) return;
-    if (!state.noticed) {
-      io.writeErr(`${TELEMETRY_NOTICE}\n`);
-      await writeTelemetryState({ ...state, noticed: true });
-    }
     const payload = buildPayload({
       event: "cli_command",
       anonymousId: state.anonymousId,
@@ -243,7 +256,7 @@ async function recordCommandTelemetry(
       properties: { command: name, ok, durationBucket: durationBucket(durationMs) }
     });
     if (process.env.HUMANISH_TELEMETRY_DEBUG !== undefined && process.env.HUMANISH_TELEMETRY_DEBUG !== "") {
-      io.writeErr(`humanish telemetry (debug, not sent): ${JSON.stringify(payload)}\n`);
+      process.stderr.write(`humanish telemetry (debug, not sent): ${JSON.stringify(payload)}\n`);
       return;
     }
     await sendTelemetry(payload);
@@ -282,8 +295,13 @@ class HumanishCommand extends Command {
       // Twenty .action() handlers each remembering to record a metric is twenty chances to forget
       // one, and a funnel with a hole in it is worse than no funnel.
       const startedAt = Date.now();
+      // The NOTICE is awaited; the SEND is not. They have opposite requirements: disclosure must
+      // never be lost (a silent default-on collector is indefensible), and a metric must never
+      // make anyone wait. The first version put both in the fire-and-forget path, and the notice
+      // lost the race with process exit — a real participant ran this build and never saw it.
+      const noticed = announceTelemetryOnce(this, cliIo);
       const finish = (ok: boolean): void => {
-        void recordCommandTelemetry(this, ok, Date.now() - startedAt, cliIo);
+        void recordCommandTelemetry(this, ok, Date.now() - startedAt);
       };
       try {
         // Reflect.apply (not fn.apply) sidesteps TS's special CallableFunction
@@ -291,7 +309,7 @@ class HumanishCommand extends Command {
         // would otherwise reject the plain `Command` thisArg below.
         const result = Reflect.apply(fn, this, args) as void | Promise<void>;
         if (result && typeof result.then === "function") {
-          return result.then(
+          return Promise.all([result, noticed]).then(
             () => { finish(true); },
             (error: unknown) => {
               reportUnexpectedActionError(this, cliIo, error);
@@ -299,7 +317,8 @@ class HumanishCommand extends Command {
             }
           );
         }
-        finish(true);
+        // A synchronous action still has to let the disclosure land before the process exits.
+        return noticed.then(() => { finish(true); });
         return result;
       } catch (error) {
         reportUnexpectedActionError(this, cliIo, error);
