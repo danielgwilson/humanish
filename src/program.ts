@@ -82,10 +82,10 @@ import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
 import { readLabSummary } from "./lab-summary.js";
 import { readProjectState } from "./tui-project.js";
-import { openObserverArtifact, stopRun } from "./tui-actions.js";
+import { openObserverArtifact, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
 import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
-import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule } from "./tui-contract.js";
+import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule} from "./tui-contract.js";
 import { forTerminal } from "./terminal-encoding.js";
 import { detectAgentSession } from "./agent-session.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
@@ -605,7 +605,21 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
           readProjectState,
           openObserver: openObserverArtifact,
           reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
-          stopRun
+          stopRun,
+          initProject: async (target: string) => {
+            const result = await runInit({ cwd: target, yes: true });
+            return result.ok
+              ? {
+                  schema: TUI_ACTION_SCHEMA,
+                  ok: true as const,
+                  message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
+                }
+              : {
+                  schema: TUI_ACTION_SCHEMA,
+                  ok: false as const,
+                  message: result.error?.message ?? "humanish init could not set this directory up"
+                };
+          }
         },
         stdin,
         stdout
@@ -3929,6 +3943,10 @@ function formatInitHuman(result: InitResult): string {
 
   if (result.mode === "needs-confirmation") {
     lines.push("", "Run with --dry-run --json to inspect or --yes to apply.");
+  } else if (result.ok && result.nextSteps !== undefined) {
+    // Twenty files and no next step is where the funnel died (#505). Increasingly the reader here
+    // is a coding agent doing setup for someone, and an agent does what stdout tells it to.
+    lines.push(...result.nextSteps);
   }
 
   return `${lines.join("\n")}\n`;

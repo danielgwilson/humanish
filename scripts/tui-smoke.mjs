@@ -65,7 +65,8 @@ try {
     // A bare temp directory is NOT a humanish project, and the surface has to say that rather than
     // "no labs here" — which someone in the wrong directory cannot act on.
     ["the empty state", "not a humanish project"],
-    ["the next step", "humanish init"],
+    // The empty state now OFFERS setup instead of naming a command to go type elsewhere (#505).
+    ["the offered next step", "Set up humanish here"],
     ["the key hints", "q quit"]
   ];
   for (const [what, needle] of expectations) {
