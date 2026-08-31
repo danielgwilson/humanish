@@ -23,6 +23,12 @@ export interface FirstRunEnvironment {
    * two local runs passed because they resolved the peer from the repo's own node_modules.
    */
   hasDesktopSdk: boolean;
+  /**
+   * Whether humanish itself is installed in this project rather than running from an npx cache.
+   * It changes what advice is TRUE: a one-shot `npx humanish` resolves its optional peer relative
+   * to itself, so "install the peer here" cannot work — humanish has to be installed alongside it.
+   */
+  installedInProject: boolean;
   /** A provider API key for the model. */
   hasProviderKey: boolean;
   /** A coding agent already signed in locally — Codex or Claude Code. */
@@ -76,7 +82,11 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
     // one fails, which is the same dead end this guidance exists to remove.
     const command = env.hasDesktopSdk
       ? "humanish run try-live"
-      : "npm i -D @e2b/desktop && humanish run try-live";
+      : env.installedInProject
+        ? "npm i -D @e2b/desktop && humanish run try-live"
+        // Running from an npx cache: installing only the peer here would not be found, because
+        // Node resolves it relative to humanish. Both, or neither.
+        : "npm i -D humanish @e2b/desktop && npx humanish run try-live";
     steps.push({
       command,
       why: `a REAL study: one participant drives a real app in a hosted desktop, using ${brain}`
