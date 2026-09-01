@@ -2759,7 +2759,12 @@ describe("dry-run bundles", () => {
               timeoutMs: 5_000
             }),
             new Promise<never>((_resolve, reject) => {
-              setTimeout(() => reject(new Error(`trust preflight hung on ${kind}`)), 1_000);
+              // The point is that the preflight REFUSES instead of hanging, and refusing takes
+              // tens of milliseconds. 1_000 was a coin flip on a loaded CI runner (this test went
+              // red on Node 24 while Node 22 passed the same commit). 4_000 still sits below
+              // runDryRun's own 5_000 timeoutMs, so a genuine hang is still caught here, with
+              // this named error rather than a bare vitest timeout.
+              setTimeout(() => reject(new Error(`trust preflight hung on ${kind}`)), 4_000);
             })
           ]);
           expect(result.ok).toBe(false);
