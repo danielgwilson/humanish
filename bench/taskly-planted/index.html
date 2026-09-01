@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taskly</title>
+<style>
+  :root { --ink:#1b1a17; --muted:#6b675f; --line:#e2ded6; --bg:#fbfaf8; --accent:#2f5d50; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:26px; margin:0 0 4px; letter-spacing:-0.01em; }
+  .sub { color:var(--muted); font-size:14px; margin-bottom:24px; }
+  form { display:flex; gap:8px; margin-bottom:18px; }
+  input[type=text] { flex:1; padding:10px 12px; border:1px solid var(--line);
+                     border-radius:8px; font-size:15px; background:#fff; }
+  button { padding:10px 14px; border:1px solid var(--line); background:#fff;
+           border-radius:8px; font-size:14px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .filters { display:flex; gap:6px; margin-bottom:14px; }
+  .filters button[aria-pressed=true] { background:var(--accent); color:#fff; border-color:var(--accent); }
+  ul { list-style:none; margin:0; padding:0; border:1px solid var(--line);
+       border-radius:10px; background:#fff; overflow:hidden; }
+  li { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
+  li:last-child { border-bottom:none; }
+  li.done .label { text-decoration:line-through; color:var(--muted); }
+  .label { flex:1; }
+  .empty { padding:24px 14px; color:var(--muted); text-align:center; }
+  .foot { display:flex; justify-content:space-between; align-items:center;
+          margin-top:14px; font-size:14px; color:var(--muted); }
+  .edit { flex:1; padding:6px 8px; border:1px solid var(--accent); border-radius:6px; font-size:15px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Taskly</h1>
+  <p class="sub">A small list for the things you actually have to do.</p>
+
+  <form id="add-form">
+    <input type="text" id="new-task" placeholder="What needs doing?" autocomplete="off" maxlength="120">
+    <button class="primary" type="submit">Add</button>
+  </form>
+
+  <div class="filters">
+    <button id="f-all" aria-pressed="true">All</button>
+    <button id="f-active" aria-pressed="false">Active</button>
+    <button id="f-done" aria-pressed="false">Completed</button>
+  </div>
+
+  <ul id="list"></ul>
+
+  <div class="foot">
+    <span id="count">0 left</span>
+    <button id="clear-done">Clear completed</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
