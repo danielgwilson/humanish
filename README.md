@@ -118,8 +118,14 @@ Three things to know before you rely on it:
 - **It is slower.** Roughly 9 seconds per turn against about 3 for a direct API
   call, so give the lane a longer `execution.timeoutMs` than you would otherwise.
 - **The evidence says which brain ran it.** The trace records
-  `ids.model: "codex (local, operator-authenticated)"`, so a local-agent run is
-  never silently compared against an API one.
+  `ids.model: "codex app-server (local, operator-authenticated)"` or
+  `"claude (local, operator-authenticated, one session per run)"`, so a
+  local-agent run is never silently compared against an API one.
+- **Both agents keep one conversation for the whole run.** Codex through an
+  app-server thread, Claude Code through one `claude -p` stream-json session.
+  A participant that starts every turn cold cannot remember trying the menu
+  and tries it again; measured on one lab, that was 188 actions over 90 turns
+  and no finish against 21 actions over 8 turns.
 
 ## Telemetry
 
