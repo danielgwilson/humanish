@@ -1,3 +1,4 @@
+import { DEVICE_PRESETS } from "../src/device-presets.js";
 import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { symlinkSync, unlinkSync } from "node:fs";
