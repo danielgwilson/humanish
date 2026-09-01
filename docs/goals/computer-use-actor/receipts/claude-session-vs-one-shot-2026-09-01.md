@@ -1,4 +1,4 @@
-# Does the Claude participant's memory across turns change the study? Not on try-live; yes on a harder mission
+# Does the Claude participant's memory across turns change the study? Not on try-live; on a harder mission, 4 of 4 against 1 of 8
 
 Date: 2026-09-01. Lab: the `try-live` starter with `localAgent: claude`, keyless (only
 `E2B_API_KEY`), subject drawDB, mission "add two tables and give them meaningful names, then say
@@ -70,7 +70,28 @@ Both keyboard-first session participants avoided the mouse-only modal's worst ca
 `/editor` URL and switching to the DBML code view, which is a route the affordance record shows
 (`url-navigation: 1`) and the mouse-driving newcomers never took.
 
+## The one-shot arm on a doubled budget, same hour
+
+Two more one-shot runs of the same lab with `timeoutMs: 600000` per lane, so that boot time cannot
+be the explanation:
+
+| run | lane | turns | actions | material | wall clock | outcome |
+|---|---|---:|---:|---:|---:|---|
+| `cua-2026-09-01T21-34-58-486Z-300cd865` | keyboard-first | 46 | 93 | 48 | 600 s | incomplete (budget) |
+| | mouse newcomer | 9 | 20 | 14 | 252 s | reached |
+| `cua-2026-09-01T21-35-23-499Z-194a6dae` | keyboard-first | 46 | 93 | 48 | 600 s | incomplete (budget) |
+| | mouse newcomer | 29 | 61 | 38 | 600 s | incomplete (budget) |
+
+One of four reached the goal with twice the time. Both keyboard-first lanes spent the full ten
+minutes on 46 turns and 48 material actions, four times the session arm's action count, and did
+not finish: a participant that cannot remember what it tried keeps trying it. The one newcomer that
+finished did so in nine turns by typing the schema into the DBML code view, the route the session
+participants also took.
+
+So, on this mission: session 4 of 4 in 300 s; one-shot 0 of 4 in 300 s and 1 of 4 in 600 s. The
+188-versus-21 figure in #520 was not an artefact of one run.
+
 ## Not verified
 
-Whether the one-shot arm would finish the harder mission on a longer budget; the 300 s cap does
-not separate "no memory" from "13 s per turn to boot".
+Anything beyond drawDB and these two missions; and whether a persona with more patience than
+`skeptical-power-user` would loop the same way without memory.
