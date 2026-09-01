@@ -22,6 +22,7 @@ import {
 import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
 import { computeStats, formatStatsHuman } from "./stats.js";
+import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./export.js";
 import {
   buildPayload,
   disabledByEnvironment,
@@ -521,6 +522,7 @@ export function createProgram(
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
+  registerExportCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
@@ -1137,6 +1139,29 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
       const result = await readReview(options.cwd, options.run);
       writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
+    });
+}
+
+function registerExportCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("export")
+    .description("Write one self-contained .html of a run's Observer with screenshots inlined (#471). Verify and the share_ready gate run inside; a local_only bundle exports only with --local-only, watermarked.")
+    .summary("Export one run as a single shareable .html file.")
+    .option("--run <id>", "Run id or 'latest'.", "latest")
+    .option("--out <path>", "Where to write the file. Defaults to .humanish/exports/<runId>.html.")
+    .option("--local-only", "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.")
+    .option("--max-bytes <n>", "Refuse an export larger than this.", String(DEFAULT_EXPORT_MAX_BYTES))
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; json?: boolean; run: string; out?: string; localOnly?: boolean; maxBytes: string }, command) => {
+      const maxBytes = Number.parseInt(options.maxBytes, 10);
+      const result = await exportRun(options.cwd, options.run, {
+        ...(options.out === undefined ? {} : { out: options.out }),
+        ...(options.localOnly === undefined ? {} : { localOnly: options.localOnly }),
+        ...(Number.isFinite(maxBytes) && maxBytes > 0 ? { maxBytes } : {})
+      });
+      writeResult(command, io, result, formatExportHuman);
+      io.setExitCode(result.ok ? 0 : 2);
     });
 }
 

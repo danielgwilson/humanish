@@ -338,6 +338,7 @@ persisted evidence: screenshots, events, terminal tails). See
 | `humanish cleanup` | Inspect recorded resource evidence and write `cleanup.json`; stored IDs do not authorize provider mutation. |
 | `humanish review` | Read review evidence for a run. |
 | `humanish runs` | List local runs and latest pointers. |
+| `humanish export` | One self-contained `.html` of a run's Observer with screenshots inlined; verify and the share_ready gate run inside, `--local-only` watermarks a raw-screenshot bundle. |
 | `humanish stats` | Cost, outcome, and duration roll-ups across run history; `--lab`, `--since`. Estimates stay labelled; unknown costs count as unknown. |
 | `humanish feedback issue` | Print a public-safe GitHub issue draft without API mutation. |
 | `humanish lab run oss` | Repo-maintainer contract example: dry-run Observer-of-Observers for authorized repo selections. |
