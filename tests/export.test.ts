@@ -107,6 +107,26 @@ describe("humanish export", () => {
     expect(result.error.message).toMatch(/\d+ bytes \(1 images/);
   });
 
+  it("renders the Observer for a `run` bundle that has none, so what produced the run never decides whether it can be sent (#597)", async () => {
+    await rm(path.join(runDir, "observer", "index.html"));
+    let rendered = 0;
+    const render = async () => {
+      rendered += 1;
+      await writeFile(path.join(runDir, "observer", "index.html"), `<!doctype html><html><head><script id="observer-data" type="application/json">{"streams":[{"frames":[{"href":"screenshots/lane-01/turn-01.png"}]}]}</script></head><body></body></html>`, "utf8");
+      return { ok: true };
+    };
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready"), render });
+    if (!result.ok) throw new Error(result.error.message);
+    expect(rendered).toBe(1);
+    expect(result.embeddedImages).toBe(1);
+    expect(result.warnings.some((w) => w.includes("rendered for this export"))).toBe(true);
+    // A run that cannot be rendered still fails, named.
+    await rm(path.join(runDir, "observer", "index.html"));
+    const failed = await exportRun(cwd, RUN, {}, { verify: verified("share_ready"), render: async () => ({ ok: false }) });
+    expect(failed.ok).toBe(false);
+    if (!failed.ok) expect(failed.error.code).toBe("HUMANISH_EXPORT_NO_OBSERVER");
+  });
+
   it("honours --out", async () => {
     const result = await exportRun(cwd, RUN, { out: "share/study.html" }, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
