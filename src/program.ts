@@ -29,6 +29,8 @@ import {
   readTelemetryState,
   sendTelemetry,
   telemetryStatePath,
+  deriveStudyFacts,
+  type TelemetryProperties,
   TELEMETRY_NOTICE,
   writeTelemetryState
 } from "./telemetry.js";
@@ -238,10 +240,14 @@ async function announceTelemetryOnce(command: Command, io: CliIo): Promise<void>
   }
 }
 
+/** The exit code the most recent command chose through CliIo.setExitCode; 0 until it says otherwise. */
+let lastExitCode = 0;
+
 async function recordCommandTelemetry(
   command: Command,
   ok: boolean,
-  durationMs: number
+  durationMs: number,
+  exitCode: number
 ): Promise<void> {
   try {
     // `telemetry` itself is never measured: instrumenting the opt-out would be indecent.
@@ -256,7 +262,16 @@ async function recordCommandTelemetry(
       event: "cli_command",
       anonymousId: state.anonymousId,
       version: CLI_VERSION,
-      properties: { command: name, ok, durationBucket: durationBucket(durationMs) }
+      // The study facts (mode, outcome, starter lab, brain, our own error code) were read off the
+      // result document when it was written; see writeResult. Without them every `run` event
+      // looked the same whether it was a dry run or the first live study that ever worked.
+      properties: {
+        ...studyFactsFor(command),
+        command: name,
+        ok: ok && exitCode === 0,
+        exitCode,
+        durationBucket: durationBucket(durationMs)
+      }
     });
     if (process.env.HUMANISH_TELEMETRY_DEBUG !== undefined && process.env.HUMANISH_TELEMETRY_DEBUG !== "") {
       process.stderr.write(`humanish telemetry (debug, not sent): ${JSON.stringify(payload)}\n`);
@@ -298,13 +313,14 @@ class HumanishCommand extends Command {
       // Twenty .action() handlers each remembering to record a metric is twenty chances to forget
       // one, and a funnel with a hole in it is worse than no funnel.
       const startedAt = Date.now();
+      lastExitCode = 0;
       // The NOTICE is awaited; the SEND is not. They have opposite requirements: disclosure must
       // never be lost (a silent default-on collector is indefensible), and a metric must never
       // make anyone wait. The first version put both in the fire-and-forget path, and the notice
       // lost the race with process exit — a real participant ran this build and never saw it.
       const noticed = announceTelemetryOnce(this, cliIo);
       const finish = (ok: boolean): void => {
-        void recordCommandTelemetry(this, ok, Date.now() - startedAt);
+        void recordCommandTelemetry(this, ok, Date.now() - startedAt, lastExitCode);
       };
       try {
         // Reflect.apply (not fn.apply) sidesteps TS's special CallableFunction
@@ -429,7 +445,17 @@ export function withSiblingFlagHint(text: string, root: Command): string {
 export function createProgram(
   io: Partial<CliIo> & { keyDiscovery?: typeof discoverProviderKeys; tuiRuntime?: Partial<TuiRuntime> } = {}
 ): Command {
-  const cliIo: CliIo = { ...defaultIo, ...io };
+  const given: CliIo = { ...defaultIo, ...io };
+  // Telemetry's `ok` used to mean "the handler did not throw", which is true of nearly every
+  // failure: commands report failure through their envelope and setExitCode(2), not by throwing.
+  // 1,359 study events in two days and every one said ok. Record the exit code the command chose.
+  const cliIo: CliIo = {
+    ...given,
+    setExitCode: (code) => {
+      lastExitCode = code;
+      given.setExitCode(code);
+    }
+  };
   keyDiscoveryFn = io.keyDiscovery ?? discoverProviderKeys;
   tuiRuntime = { ...defaultTuiRuntime, ...io.tuiRuntime };
   const program = new HumanishCommand(undefined, cliIo);
@@ -632,7 +658,7 @@ function registerTelemetryCommand(parent: Command, io: CliIo): void {
         event: "cli_command",
         anonymousId: state.anonymousId,
         version: CLI_VERSION,
-        properties: { command: "run", lab: "try-live", mode: "live", outcome: "passed", durationBucket: "1-5m", ok: true }
+        properties: { command: "run", lab: "try-live", mode: "live", outcome: "passed", brain: "provider-key", durationBucket: "1-5m", ok: true }
       });
       const result = {
         schema: "humanish.telemetry-status.v1" as const,
@@ -2586,6 +2612,9 @@ async function runLabCommand(args: {
   // and carried into the run's status record and bundle so the filesystem can answer "which lab
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
   const lab: RunLabProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
+  // Named here, once, for every backend: a synthetic or terminal result carries no labId, so the
+  // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
+  noteStudyFacts(args.command, deriveStudyFacts({ labId: config.id }));
   const backend = selectLabBackend(config);
   if (backend !== "cua" && labRerunFlagsRequested(args.options)) {
     writeUnsupportedRerunFlagsResult(args, backend);
@@ -3650,6 +3679,21 @@ export function writeResult<T>(command: Command, io: CliIo, result: T, formatHum
     io.writeOut(formatHuman(result));
   }
   markInvocationEnvelopeWritten(command);
+  // Every backend's result passes through here, so this is where a study's facts get read for
+  // telemetry — not in each backend, which is how they went unreported for two releases.
+  noteStudyFacts(command, deriveStudyFacts(result));
+}
+
+const studyFactsByCommand = new WeakMap<Command, TelemetryProperties>();
+
+function noteStudyFacts(command: Command, facts: TelemetryProperties): void {
+  if (Object.keys(facts).length === 0) return;
+  studyFactsByCommand.set(command, { ...studyFactsByCommand.get(command), ...facts });
+}
+
+/** Exported for tests: the facts writeResult read off a command's result document. */
+export function studyFactsFor(command: Command): TelemetryProperties {
+  return { ...studyFactsByCommand.get(command) };
 }
 
 function formatDoctorHuman(result: DoctorResult): string {

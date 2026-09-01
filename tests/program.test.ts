@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
-import { createProgram, followObserver, resolveBackendShouldOpen, writeResult } from "../src/program.js";
+import { createProgram, followObserver, resolveBackendShouldOpen, studyFactsFor, writeResult } from "../src/program.js";
 import * as humanishIndex from "../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
@@ -1359,5 +1359,22 @@ describe("lab provenance survives the whole CLI path (#455)", () => {
     } finally {
       await rm(cwd, { force: true, recursive: true });
     }
+  });
+});
+
+describe("study facts ride the result seam", () => {
+  it("writeResult reads a study's facts for telemetry, once, for whichever backend wrote it", () => {
+    const io = { writeOut: () => {}, writeErr: () => {}, setExitCode: () => {} };
+    const program = createProgram(io);
+    const command = program.command("probe-study-facts");
+    writeResult(command, io, {
+      schema: "humanish.cua-actor-lab-result.v1", ok: true, labId: "try-live", actor: "openai-computer-use",
+      dryRun: false, session: { status: "abandoned", completionReason: "gave_up", reason: "", screenshots: 3 }
+    }, () => "");
+    expect(studyFactsFor(command)).toEqual({ mode: "live", lab: "try-live", outcome: "abandoned", brain: "provider-key" });
+    // A command that wrote no study leaves nothing behind.
+    const other = program.command("probe-nothing");
+    writeResult(other, io, { schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] }, () => "");
+    expect(studyFactsFor(other)).toEqual({});
   });
 });

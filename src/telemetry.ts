@@ -41,6 +41,9 @@ export interface TelemetryProperties {
   brain?: "provider-key" | "local-agent" | "none";
   ok?: boolean;
   exitCode?: number;
+  /** One of humanish's OWN error codes (`HUMANISH_*`), never a message. Which failure ends a
+   *  first run is the question the funnel exists to answer. */
+  errorCode?: string;
 }
 
 export interface TelemetryState {
@@ -181,6 +184,12 @@ export function buildPayload(args: {
 }): TelemetryPayload {
   const env = args.env ?? process.env;
   const properties: Record<string, string | number | boolean> = {
+    // Ask the receiver not to derive a location from the request. "Anonymous" and "tied to
+    // nothing" are only true if the collector honours them too: PostHog enriches every event
+    // with GeoIP city/coordinates from the source address unless told not to, and the project
+    // is additionally set to discard the client IP at ingestion (`anonymize_ips`). Both, so that
+    // neither a default nor a console setting decides what the doc promised.
+    $geoip_disable: true,
     version: args.version,
     os: args.platform ?? process.platform,
     node: (args.nodeVersion ?? process.version).split(".")[0]!.replace("v", ""),
@@ -203,7 +212,92 @@ export function buildPayload(args: {
   if (given.brain !== undefined) properties.brain = given.brain;
   if (given.ok !== undefined) properties.ok = given.ok;
   if (given.exitCode !== undefined) properties.exit_code = given.exitCode;
+  if (given.errorCode !== undefined && OWN_ERROR_CODE.test(given.errorCode)) properties.error_code = given.errorCode;
   return { event: args.event, distinct_id: args.anonymousId, properties };
+}
+
+/** Our own codes only. A provider's or the OS's message is free text and never travels. */
+const OWN_ERROR_CODE = /^HUMANISH_[A-Z0-9_]{1,80}$/;
+
+/**
+ * The closed vocabulary an outcome may take. Actor statuses (src/actor-contract.ts), the two
+ * shared-world extras, a fan-out roll-up, and the two shapes a non-study command has. Anything
+ * else — a provider's reason string, a scorer's verdict text — is dropped, never forwarded.
+ */
+const OUTCOMES = new Set([
+  "passed", "abandoned", "incomplete", "blocked", "timed_out", "failed",
+  "contract_proof_only",
+  "all_passed", "some_passed", "none_passed",
+  "ok", "error"
+]);
+
+const BRAINS_BY_ACTOR: Record<string, NonNullable<TelemetryProperties["brain"]>> = {
+  "local-agent": "local-agent",
+  "openai-computer-use": "provider-key",
+  "codex-exec": "provider-key",
+  "codex-tui": "provider-key",
+  "codex-app-server": "provider-key",
+  "scripted-browser": "none"
+};
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
+}
+
+/**
+ * Read the study facts off a command's result document: mode, outcome, starter lab, brain route,
+ * and our own error code. Duck-typed over every result shape the CLI writes, because the point is
+ * ONE derivation at the one seam every command already passes through (writeResult), so that a
+ * backend added later cannot forget to report. Returns {} for results that carry no study.
+ *
+ * The first two days of 0.62.0 data had 1,359 `run`/`lab run` events and not one carried a mode
+ * or an outcome — the vocabulary existed, nothing populated it — so the one question telemetry
+ * was added to answer ("does anyone get to a working LIVE first run") had no answer in the data.
+ */
+export function deriveStudyFacts(result: unknown): TelemetryProperties {
+  const r = asRecord(result);
+  if (!r) return {};
+  const facts: TelemetryProperties = {};
+
+  if (r.dryRun === true) facts.mode = "dry-run";
+  else if (r.dryRun === false) facts.mode = "live";
+  else if (r.mode === "dry-run" || r.mode === "live") facts.mode = r.mode;
+
+  const labRecord = asRecord(r.lab);
+  const labId = typeof r.labId === "string" ? r.labId
+    : typeof labRecord?.id === "string" ? labRecord.id
+    : typeof r.lab === "string" ? r.lab
+    : undefined;
+  const lab = safeLabId(labId);
+  if (lab !== undefined) facts.lab = lab;
+
+  const error = asRecord(r.error);
+  if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code)) facts.errorCode = error.code;
+
+  const session = asRecord(r.session);
+  const laneSummary = asRecord(r.laneSummary);
+  let outcome: string | undefined;
+  if (laneSummary && typeof laneSummary.total === "number" && typeof laneSummary.passed === "number" && laneSummary.total > 1) {
+    outcome = laneSummary.passed === laneSummary.total ? "all_passed"
+      : laneSummary.passed === 0 ? "none_passed"
+      : "some_passed";
+  } else if (typeof session?.status === "string") {
+    outcome = session.status;
+  } else if (typeof r.status === "string") {
+    outcome = r.status;
+  } else if (r.error !== undefined && r.error !== null) {
+    outcome = "error";
+  } else if (r.ok === true && facts.mode !== undefined) {
+    outcome = "ok";
+  }
+  if (outcome !== undefined && OUTCOMES.has(outcome)) facts.outcome = outcome;
+  else if (outcome !== undefined && facts.errorCode !== undefined) facts.outcome = "error";
+
+  if (typeof r.actor === "string") {
+    const brain = facts.mode === "dry-run" ? "none" : BRAINS_BY_ACTOR[r.actor];
+    if (brain !== undefined) facts.brain = brain;
+  }
+  return facts;
 }
 
 /** The notice, shown once, before anything is sent. */
