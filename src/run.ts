@@ -1132,7 +1132,10 @@ export function formatParticipantOutcomes(outcomes: ParticipantOutcomes): string
   const parts: string[] = [`${outcomes.reachedGoal}/${outcomes.total} reached the goal`];
   if (outcomes.abandoned > 0) parts.push(`${outcomes.abandoned} gave up`);
   if (outcomes.ranOut > 0) parts.push(`${outcomes.ranOut} ran out of session`);
-  if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked on an approval`);
+  // "blocked" covers an approval the run could not give AND a blocker the participant reported in
+  // its own words (#476); the old "on an approval" read wrongly on a keyboard-first participant who
+  // wrote "Blocked before diagram creation" about a mouse-only modal.
+  if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked`);
   if (outcomes.harnessFailed > 0) parts.push(`${outcomes.harnessFailed} lost to a harness failure`);
   // Last, and separate, because it cuts across the outcomes rather than partitioning them: someone
   // can reach the goal and still have found the road there broken.

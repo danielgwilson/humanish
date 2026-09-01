@@ -85,7 +85,7 @@ describe("formatParticipantOutcomes", () => {
     expect(line).toContain("1/5 reached the goal");
     expect(line).toContain("1 gave up");
     expect(line).toContain("1 ran out of session");
-    expect(line).toContain("1 blocked on an approval");
+    expect(line).toContain("1 blocked");
     expect(line).toContain("1 lost to a harness failure");
   });
 
