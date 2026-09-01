@@ -190,6 +190,11 @@ export function buildPayload(args: {
     // is additionally set to discard the client IP at ingestion (`anonymize_ips`). Both, so that
     // neither a default nor a console setting decides what the doc promised.
     $geoip_disable: true,
+    // No person profile. PostHog builds one per distinct_id by default and attaches $set /
+    // $set_once properties to it (before 2026-09-01 those carried a city and coordinates). An
+    // anonymous machine id has nothing to profile, and PostHog's own docs name this flag as the
+    // way to say so.
+    $process_person_profile: false,
     version: args.version,
     os: args.platform ?? process.platform,
     node: (args.nodeVersion ?? process.version).split(".")[0]!.replace("v", ""),

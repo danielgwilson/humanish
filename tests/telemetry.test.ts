@@ -36,7 +36,7 @@ describe("what telemetry can possibly contain", () => {
       // a humanish study participant, so our own instrument stays separable from real adopters.
       // Same shape and same privacy profile as `ci`; it carries no identity and no free text.
       [
-        "$geoip_disable", "ci", "command", "duration", "lab", "mode", "node", "ok", "os", "outcome",
+        "$geoip_disable", "$process_person_profile", "ci", "command", "duration", "lab", "mode", "node", "ok", "os", "outcome",
         "studyParticipant", "version"
       ].sort()
     );
@@ -50,6 +50,8 @@ describe("what telemetry can possibly contain", () => {
     // event. The opt-out rides the payload so no console setting can reintroduce it.
     const payload = buildPayload({ event: "cli_command", anonymousId: "a", version: "1.0.0", env: {} });
     expect(payload.properties.$geoip_disable).toBe(true);
+    // And no person profile: there is no person, only a random machine id.
+    expect(payload.properties.$process_person_profile).toBe(false);
   });
 
   it("forwards only humanish's own error codes, never a message", () => {
