@@ -50,10 +50,10 @@ finds it for sixteen cents.
 
 - It says the `init` → first live run path works unmodified on 0.65.0. #505 (placeholder starter
   URL) is closed in practice as well as on paper.
-- `participants.reportedFriction` is `0` on all three while each report names two frictions. The
-  counter is for self-reported *blockers* (a participant who could not proceed), and none of these
-  three was blocked. The frictions live in the structured report. Worth knowing when reading a
-  tally: `reportedFriction: 0` does not mean "nothing to read".
+- `participants.reportedFriction` was `0` on all three while each report names two frictions: the
+  N=1 path never passed the friction flag (fixed in #562), and the friction scan only knew blocker
+  words (widened to "confused by", "overlap", "truncated" and the like in #578). On main these
+  three would read `reportedFriction: 1`.
 - N=3 on one machine with one provider key, and it does not measure a machine without `gh` (the
   CLI read `GH_TOKEN` from `gh auth token` here).
 
