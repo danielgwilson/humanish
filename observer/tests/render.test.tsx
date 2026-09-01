@@ -110,6 +110,26 @@ describe("the run library control (D6: first Base UI adoption)", () => {
   });
 });
 
+describe("the share chip (#584)", () => {
+  it("a run directory's Observer says local_only; an exported file says what verify said", async () => {
+    await mount(<App data={data} />);
+    expect(container.querySelector(".chip-mute")?.textContent).toBe("local_only");
+    await act(async () => {
+      root.unmount();
+    });
+    const exported: ObserverData = {
+      ...data,
+      publicSafety: { ...data.publicSafety, share: { status: "share_ready", verifiedAt: "2026-09-01T20:30:00.000Z", reasons: [] } }
+    };
+    await mount(<App data={exported} />);
+    const chip = [...container.querySelectorAll(".chip")].find((el) => el.textContent === "share_ready");
+    expect(chip).toBeDefined();
+    expect(chip?.getAttribute("title")).toContain("verify at export, 2026-09-01T20:30:00.000Z");
+    expect(chip?.classList.contains("chip-mute")).toBe(false);
+    expect(container.textContent).not.toContain("local_only");
+  });
+});
+
 describe("observer scaffold rendering the first-run golden", () => {
   it("renders the study grid: tally line + one card per participant", async () => {
     await mount(<App data={data} />);

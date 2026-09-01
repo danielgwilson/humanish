@@ -175,7 +175,17 @@ export async function exportRun(
     }
     return node;
   };
-  const inlined = await walk(data);
+  const inlined = await walk(data) as Record<string, unknown>;
+  // What verify said, in the file, so the chrome can agree with the result envelope (#584).
+  const publicSafety = (inlined.publicSafety ?? {}) as Record<string, unknown>;
+  inlined.publicSafety = {
+    ...publicSafety,
+    share: {
+      status: verified.shareSafety.status,
+      verifiedAt: new Date().toISOString(),
+      reasons: verified.shareSafety.reasons.map((r) => r.code)
+    }
+  };
 
   let output = html.replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(JSON.stringify(inlined))}</script>`);
   const watermarked = !shareReady;

@@ -114,7 +114,15 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
             ) : null}
           </Popover>
         )}
-        {data.publicSafety.publishable === false ? (
+        {data.publicSafety.share ? (
+          // An exported file carries what verify said at export time (#584); the chip says that.
+          <span
+            className={`chip chip-dot ${data.publicSafety.share.status === "share_ready" ? "" : "chip-mute"}`}
+            title={`verify at export, ${data.publicSafety.share.verifiedAt}${data.publicSafety.share.reasons.length > 0 ? `: ${data.publicSafety.share.reasons.join(", ")}` : ""}`}
+          >
+            {data.publicSafety.share.status}
+          </span>
+        ) : data.publicSafety.publishable === false ? (
           <span className="chip chip-dot chip-mute" title={data.publicSafety.note}>local_only</span>
         ) : null}
       </div>
