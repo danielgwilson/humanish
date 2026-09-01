@@ -56,7 +56,11 @@ npx humanish run try-live     # a REAL study on a hosted desktop, capped at $2
 `try-live` studies a real public app so that your first live run works without
 configuring anything; point its `subject` at your own app once you have seen it
 run. It needs `E2B_API_KEY`, and a model: either a provider key or a coding
-agent you are already signed in to (see below).
+agent you are already signed in to (see below). Measured on 2026-09-01 from
+three fresh directories against the published 0.65.0: 3 of 3 reached the goal,
+108 to 111 s each, about $0.16 each, and all three reported the same two
+frictions in the demo app
+([receipt](docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
 
 **Install it, do not one-shot it.** A live run needs the optional peer
 `@e2b/desktop`, and Node resolves that relative to humanish itself, so a
