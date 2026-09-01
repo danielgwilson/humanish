@@ -47,14 +47,12 @@ async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promis
     await cp(path.resolve("fixtures/minimal-app"), tempApp, { recursive: true });
     return await callback(tempApp);
   } finally {
-    // maxRetries because teardown races a late write INTO the run directory: CI hit
-    // "ENOTEMPTY: rmdir .../.humanish/runs/codex-unsafe-admin-gitdir-*" on Node 22 while Node 24
-    // passed the same commit, and the reverse on the previous run. Node documents retries as the
-    // remedy for exactly this on a tree that is still settling.
-    //
-    // This is a MITIGATION, not the fix. Something writes into a run directory after the CLI call
-    // resolves, which also means a caller cannot know when a run is durably finished. Tracked
-    // separately as #553: a caller cannot know when a run is durably finished.
+    // CI hit "ENOTEMPTY: rmdir .../.humanish/runs/codex-unsafe-admin-gitdir-*" here. It was read
+    // as a write landing AFTER runDryRun resolved (#553). It was not: the trust-preflight test
+    // raced runDryRun against a timer, and when the timer won on a loaded runner, this rm ran
+    // while the run was still writing its bundle. The ENOTEMPTY, thrown from a finally, replaced
+    // the "preflight hung" error that was the actual failure. That test now awaits the run before
+    // returning here. The retries stay as belt-and-braces; they are no longer load-bearing.
     await rm(tempRoot, { force: true, recursive: true, maxRetries: 5, retryDelay: 50 });
   }
 }
@@ -2749,28 +2747,40 @@ describe("dry-run bundles", () => {
         process.env.CODEX_HOME = codexHome;
         process.env.PATH = previousPath ? `${fakeBin}${path.delimiter}${previousPath}` : fakeBin;
 
+        // Held separately from the race so teardown can wait for it. When the timer below won,
+        // this promise was still running the refusal path — still writing its bundle — while
+        // withFixtureCopy's rm walked the same tree, and the rm's ENOTEMPTY thrown from a
+        // `finally` REPLACED the real error. #553 was filed as "something writes into a run
+        // directory after the CLI call resolves"; reproduced 0 of 32 times after resolve, and
+        // 2 of 15 times from exactly this lost race (scratch script, 2026-09-01).
+        const run = runDryRun({
+          cwd,
+          actor: "codex-tui",
+          runId: `codex-unsafe-admin-${kind}`,
+          simCount: 1,
+          timeoutMs: 5_000
+        });
+        let raceTimer: ReturnType<typeof setTimeout> | undefined;
         try {
           const result = await Promise.race([
-            runDryRun({
-              cwd,
-              actor: "codex-tui",
-              runId: `codex-unsafe-admin-${kind}`,
-              simCount: 1,
-              timeoutMs: 5_000
-            }),
+            run,
             new Promise<never>((_resolve, reject) => {
               // The point is that the preflight REFUSES instead of hanging, and refusing takes
               // tens of milliseconds. 1_000 was a coin flip on a loaded CI runner (this test went
               // red on Node 24 while Node 22 passed the same commit). 4_000 still sits below
               // runDryRun's own 5_000 timeoutMs, so a genuine hang is still caught here, with
               // this named error rather than a bare vitest timeout.
-              setTimeout(() => reject(new Error(`trust preflight hung on ${kind}`)), 4_000);
+              raceTimer = setTimeout(() => reject(new Error(`trust preflight hung on ${kind}`)), 4_000);
             })
           ]);
           expect(result.ok).toBe(false);
           expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
           await expect(access(spawnedSentinel)).rejects.toThrow();
         } finally {
+          clearTimeout(raceTimer);
+          // Whatever the race said, the run must be OVER before the fixture is deleted under it.
+          // runDryRun bounds itself (timeoutMs above), so this cannot hang the test.
+          await run.catch(() => undefined);
           if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
           else process.env.CODEX_HOME = previousCodexHome;
           if (previousActorCommand === undefined) delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
