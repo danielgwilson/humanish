@@ -130,6 +130,56 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
   });
 
+  it("(a2) counted-but-unpriced provider tokens are reported as such, never as no signal (#531)", async () => {
+    const killed: string[] = [];
+    // A codex stream that emits real turn.completed usage records, the shape a live run produces.
+    const codexWithUsage = (cmd: string) => ({
+      exitCode: 0,
+      stdout:
+        '{"type":"turn.completed","usage":{"input_tokens":201536,"cached_input_tokens":170558,'
+        + '"cache_write_input_tokens":30951,"output_tokens":2283}}\n'
+        + '{"type":"turn.completed","usage":{"input_tokens":141536,"cached_input_tokens":106256,'
+        + '"output_tokens":1409}}\n'
+        + `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`
+    });
+    const hooks: TerminalProductLabHooks = {
+      env: baseEnv(),
+      now: () => 1_000,
+      loadModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage })
+    };
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks
+    });
+
+    expect(result.ok).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
+
+    // usd stays null: tokens are the measured fact, the RATE is the unknown, and a guessed
+    // dollar figure would be worse than none.
+    expect(ledgers.cost.lines.provider.usd).toBeNull();
+    expect(ledgers.cost.lines.provider.source).toBe("unpriced-token-usage");
+    expect(ledgers.cost.lines.provider.note).toContain("343,072 input");
+    expect(ledgers.cost.lines.provider.note).toContain("276,814 of them cached");
+    expect(ledgers.cost.lines.provider.note).toContain("3,692 output");
+    expect(ledgers.cost.lines.provider.note).not.toContain("NOT MEASURED");
+
+    // The no-spend statement must not let "SATISFIED for maxUsd=0" read as "nothing was spent",
+    // and must not call provider signal-less one sentence after counting its tokens.
+    expect(ledgers.noSpendProof.satisfied).toBe(true);
+    expect(ledgers.noSpendProof.statement).toContain("Provider tokens WERE consumed");
+    expect(ledgers.noSpendProof.statement).toContain(
+      "provider has a measured token count but no rate"
+    );
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
   it("(b) null-for-unknown vs 0-for-known-zero vs the absence distinction are persisted crisply", async () => {
     const killed: string[] = [];
     const hooks: TerminalProductLabHooks = {

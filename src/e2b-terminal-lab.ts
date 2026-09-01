@@ -744,7 +744,13 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
       ? `Provider tokens WERE consumed on this run and are counted in the ledger; they are unpriced, not zero.`
       : "",
     unmeasuredLines.length > 0
-      ? `UNMEASURED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these — they carry no spend signal for this run.`
+      ? `UNPRICED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these. `
+        + (ledger.lines.provider.source === "unpriced-token-usage"
+            // provider has a signal here (a token count), it just has no rate. Saying it "carries
+            // no spend signal" one sentence after reporting its token total would contradict the
+            // line above it.
+            ? "Of these, provider has a measured token count but no rate; the rest carry no spend signal for this run."
+            : "They carry no spend signal for this run.")
       : "All applicable spend lines were measured."
   ]
     .filter((part) => part.length > 0)
