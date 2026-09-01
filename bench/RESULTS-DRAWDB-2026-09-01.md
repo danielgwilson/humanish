@@ -26,7 +26,7 @@ Checked against the repository at that commit after the runs.
 | 5 | the name updates live as typed, no Enter or Save | 3 | **confirmed** | `TableInfo.jsx` `onChange={(value) => updateTable(data.id, { name: value })}` |
 | 6 | expanding one table's row collapses the other and shifts the layout under the cursor | 2 | **confirmed** | `TablesTab.jsx` renders `<Collapse accordion>` |
 | 7 | the canvas truncates the long name | 3 | **confirmed** | `Table.jsx` header `overflow-hidden text-ellipsis whitespace-nowrap` |
-| 8 | the database modal is not keyboard accessible: Tab skips the options, Confirm stays disabled, Esc does nothing | 2 (both keyboard-first) | **confirmed** | options are `<div onClick>` with no `tabIndex`, `role`, or key handler; `okButtonProps={{ disabled: selectedDb === "" }}`; `closable={false}` `hasCancel={false}` |
+| 8 | the database modal is not keyboard accessible: Tab skips the options, Confirm stays disabled, Esc does nothing | 2 (both keyboard-first; a third keyboard-first participant in a later run reported it too) | **confirmed** | options are `<div onClick>` with no `tabIndex`, `role`, or key handler; `okButtonProps={{ disabled: selectedDb === "" }}`; `closable={false}` `hasCancel={false}` |
 | 9 | each new table comes with a default `id` primary-key field | 3 | **confirmed** | `fields: [{ name: "id", primary: true, ... }]` in `addTable` |
 | 10 | an Auto arrange tool resolves the overlap | 2 | **confirmed** | `src/utils/autoArrange.js` |
 | 11 | the landing page's "Try it for yourself" opens the editor | 4 | **confirmed** | `LandingPage.jsx` line 96 |

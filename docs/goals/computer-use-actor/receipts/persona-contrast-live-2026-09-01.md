@@ -1,4 +1,4 @@
-# Is the persona axis load-bearing? Two live runs say yes: 2 of 2 keyboard-first participants blocked, 2 of 2 mouse participants finished
+# Is the persona axis load-bearing? Three live runs: 3 of 3 keyboard-first participants hit a modal no mouse participant noticed
 
 Date: 2026-09-01, humanish 0.66.0, `openai-computer-use`, subject drawDB (`drawdb-io/drawdb`,
 cloned and served in-sandbox). Lab: the committed `humanish/labs/persona-contrast-demo.yaml` with
@@ -43,6 +43,19 @@ The same modal, the same failure, described twice by two participants who shared
 persona. The mouse-driving newcomer in both runs clicked a database card, confirmed, and went on to
 report the friction the provider-key and keyless cold-install runs found earlier today (new tables
 stacked at one canvas position; both newcomers used Auto arrange to get past it).
+
+## A third run, same day, with blurred capture
+
+`cua-2026-09-01T19-51-09-995Z-9c1caf85` ($1.88, 375 s; `policies.redactScreenshots: true` so the
+bundle is share-ready). Both lanes reached the goal this time. The keyboard-first participant hit
+the same modal, and its affordance record shows how it got past: 84 actions, 69 keyboard, 4 pointer.
+Its closing report: "Accessibility defects: the database chooser, confirmation control, and code
+editor were not keyboard-accessible; focus escaped behind the modal, requiring mouse clicks."
+
+So across three runs: 3 of 3 keyboard-first participants hit the modal and described it; 2 of 3
+stopped there; 1 of 3 broke its own keyboard-first rule with four clicks, finished, and said so.
+3 of 3 mouse-driving newcomers never mentioned it. The finding is replicated three times; the
+participant's response to it varies, which is what the affordance record is for.
 
 ## What this says
 
