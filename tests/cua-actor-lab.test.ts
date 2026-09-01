@@ -727,6 +727,33 @@ describe("runCuaActorLab", () => {
     expect(participantStatusForCredibility("abandoned", { noEngagement: false, selfReportedBlocker: true })).toBe("abandoned");
   });
 
+  it("does NOT flag 'can't' + a perception verb: a display defect reported after the goal", () => {
+    // Five of five completed live runs on 2026-09-01 were refused on sentences like these. Each
+    // participant had reached the goal and was describing what the screen showed.
+    for (const message of [
+      "Done. I added two tables. It looks like an internal ID leaked into the UI, and the canvas truncates it so you can't even read the whole thing.",
+      "Done. I renamed the table. I can't tell from the screen whether that rename is persisted or only in memory.",
+      "The long task was cut off at \u201cPrepare notes for Friday proje\u201d rather than wrapping, so I could not read its full description.",
+      "Clicking Save twice did not close edit mode or give confirmation, so I could not tell whether the rename had actually been saved.",
+      "I was unable to verify from the canvas alone that both tables were still there."
+    ]) {
+      expect(resolveSelfReportedBlocker(fakeBlockerSession(message)), message).toBeUndefined();
+      // They are still friction, and still count as such.
+      expect(resolveSelfReportedFriction(fakeBlockerSession(message)), message).toBeDefined();
+    }
+  });
+
+  it("still flags an inability to ACT, which is what a blocker is", () => {
+    for (const message of [
+      "Blocked after partial completion. Could not connect the two tables because every new table appeared on top of the previous one.",
+      "I could not complete the task; the delete button was disabled.",
+      "I can tab to the signature box but cannot get focus into the typed-signature entry area.",
+      "I was unable to proceed past the login screen."
+    ]) {
+      expect(resolveSelfReportedBlocker(fakeBlockerSession(message)), message).toBeDefined();
+    }
+  });
+
   it("does NOT flag a clean pass that says nothing blocked it", () => {
     // Found on 2026-09-01 by a real benchmark run: a passing lane ended "No functional failures
     // blocked me, and cleanup left the app back at an empty list" and was downgraded from a pass
@@ -741,6 +768,8 @@ describe("runCuaActorLab", () => {
 
   it("does NOT flag other ordinary ways of saying it went fine", () => {
     for (const message of [
+      // A clean benchmark run on 2026-09-01 was refused on this exact sentence.
+      "Overall, the main list actions were straightforward and worked on the first try. I encountered no blockers or unclear error output.",
       "I hit no obvious errors during the trial.",
       "There were no significant problems with the main flow.",
       "Nothing really stopped me from finishing the task.",
