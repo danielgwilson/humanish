@@ -46,7 +46,7 @@ The immutable 2026-06-10 proof-roadmap packet is paired with a
 | Public proof | A legible four-persona Observer hero from a verified real public-application study (commit-pinned drawDB) shipped in the npm payload (`0.16.0`) | Coverage beyond a single studied subject; the stratified breadth panel remains unbuilt |
 | OSS meta-lab | Dry-run contract and separate disposable smoke harness | Live meta-lab execution; disabled until repository instructions and actor credentials have an isolated boundary |
 | Observer serving | `watch`/`observe` loopback servers plus `serve` — the run-library surface with loopback default, capability-link exposure, `share_ready`-gated open mode, and optional operator-run tunnel; streams never served remotely | A remote live-stream (`--live-streams`) design; a persistent capability-link store |
-| Stakeholder terminal surface | `humanish tui` (`0.50.0`, redesigned to the reviewed spec in `0.51.0`, reworked again in `0.56.0` from stakeholder feedback: two explicit start rows instead of a hidden mode toggle, a description line so a list of studies says what they are, `?` keys, and ←/→ back to meaning back and open): labs -> lab -> run, arrow-key navigation, and starting a dry or live run from the lab screen. The run is DETACHED and outlives the terminal — live-proven by killing the terminal 42s into a real run that then ran on for ~3.5 minutes and finished `pass` at $0.639751. The run screen leads with the participant and their recorded thinking, live-proven mid-flight against a real computer-use run. Ships as one bundled file loaded on demand; refuses a non-interactive stdin/stdout naming the JSON commands instead. `0.51.0` builds the reviewed rev-8 design: wordmark and project context, content capped at 96 columns, live rows naming the PARTICIPANT and their elapsed clock, spinners and verdict glyphs, breadcrumbs, the lab's subject/model/caps/keys line, and one Start with a dry-run/live toggle. `0.52.0` completes the reviewed screen set: the run outcome card (denominator first, the participant's closing words, then Open in Observer / Run again), the interrupted card with Reclaim — live-proven by killing a real run and stopping its orphaned sandbox — and All runs, the cross-lab peer where participants lead and one thought line follows the cursor. `0.53.0` gives it the reviewed palette rather than the terminal's theme: exact hex on a truecolor terminal, downsampled where not, and never colour alone. `0.54.0` closes the last two gaps: stopping a running run (armed, signals the process GROUP, and says plainly that sandboxes are separate), and pricing a run WHILE it runs — the running usage now travels with the trace into the mid-run flush | Cancelling a run from the surface; per-user persisted config (#470); export (#471); aggregate stats (#472); agent-authored labs (#473); a reusable persona panel (#474) |
+| Stakeholder terminal surface | `humanish tui` (`0.50.0`, redesigned to the reviewed spec in `0.51.0`, reworked again in `0.56.0` from stakeholder feedback: two explicit start rows instead of a hidden mode toggle, a description line so a list of studies says what they are, `?` keys, and ←/→ back to meaning back and open): labs -> lab -> run, arrow-key navigation, and starting a dry or live run from the lab screen. The run is DETACHED and outlives the terminal — live-proven by killing the terminal 42s into a real run that then ran on for ~3.5 minutes and finished `pass` at $0.639751. The run screen leads with the participant and their recorded thinking, live-proven mid-flight against a real computer-use run. Ships as one bundled file loaded on demand; refuses a non-interactive stdin/stdout naming the JSON commands instead. `0.51.0` builds the reviewed rev-8 design: wordmark and project context, content capped at 96 columns, live rows naming the PARTICIPANT and their elapsed clock, spinners and verdict glyphs, breadcrumbs, the lab's subject/model/caps/keys line, and one Start with a dry-run/live toggle. `0.52.0` completes the reviewed screen set: the run outcome card (denominator first, the participant's closing words, then Open in Observer / Run again), the interrupted card with Reclaim — live-proven by killing a real run and stopping its orphaned sandbox — and All runs, the cross-lab peer where participants lead and one thought line follows the cursor. `0.53.0` gives it the reviewed palette rather than the terminal's theme: exact hex on a truecolor terminal, downsampled where not, and never colour alone. `0.54.0` closes the last two gaps: stopping a running run (armed, signals the process GROUP, and says plainly that sandboxes are separate), and pricing a run WHILE it runs — the running usage now travels with the trace into the mid-run flush | Cancelling a run from the surface; per-user persisted config (#470); the TUI views over `export` (#471) and `stats` (#472), both shipped as CLI commands in `0.68.0` and `0.69.0`; agent-authored labs (#473); a reusable persona panel (#474) |
 | Off-app comms | Vendor-neutral in-sandbox email/SMS catch, a minimal persona inbox surface, and digest-only `humanish.comms-thread.v1` evidence; wired into the computer-use and shared-world routes over both HTTP and SMTP; live-proven end to end on 2026-08-08 — a persona signed up for a public app, read the emailed link in its inbox, and reached the signed-in product (`docs/goals/email-gated-signup/receipts/signup-verify-live-2026-08-08.md`); the adopter-hosted / app-url ingress plane is wired on the CUA and concurrent external-public routes (#387/#380, 2026-08-11) | Real-provider delivery; a live adopter-hosted receipt |
 
 Capability proof and adopter replacement are different gates. A deterministic
@@ -462,6 +462,35 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-01 (0.66.0 through 0.70.0, one session).** The product got its first efficacy numbers and
+they are in the repo with run ids: planted-defect recall 43 of 45 over three benchmark runs and
+12 clean runs with nothing invented (`bench/`), 5 of 6 findings confirmed on TodoMVC and 11 of 12
+on drawDB against the source (20 participants on apps we did not write, 0 false reports), and the
+persona question answered on two apps: every keyboard-first participant hit a defect no
+mouse-driving participant met (drawDB's mouse-only database modal, TodoMVC's double-click-only
+rename), receipts under `docs/goals/computer-use-actor/receipts/`. Five cold installs of two
+published versions reached the goal in under three minutes each. On the way the runs found and
+the releases fixed: telemetry that never said what a study was (and stored IPs), a refused lane
+written up as a pass (#476), a blocker regex that refused five of five finished runs (#565, then
+the structural #570: the participant declares its own outcome, 12 of 12 adherence), a
+study-participant marker nothing set (#546), hung turns that ate a lane's budget (#469, #480),
+and a Claude participant with no memory across turns (#520). `humanish stats` (#472) and
+`humanish export` (#471) exist as CLI commands.
+
+The standing queue, in rough order:
+
+1. #581: after a failed terminal run the CLI process lingered sixteen minutes past its result;
+   the lane is clean in-process, so the holder is the SDK or the shell (`HUMANISH_DEBUG_HANDLES=1`
+   now names it on the next occurrence);
+2. #513: there is still nowhere to read the docs on humanish.dev (site copy is locked; a docs
+   route needs the operator's sign-off);
+3. the TUI views over `stats` and `export` (#455's metrics screen and `s` key), design-gated;
+4. the launch post: a draft with every number and its receipt path sits outside the public repo,
+   awaiting the operator; nothing has been announced;
+5. registry promotions (#431) and the shared-world honesty half (#365, #446), unchanged.
+
+Earlier state, kept for the record:
 
 The bounded public-proof side task is done: a verified, legible four-persona
 Observer hero from a commit-pinned public application (drawDB) shipped in

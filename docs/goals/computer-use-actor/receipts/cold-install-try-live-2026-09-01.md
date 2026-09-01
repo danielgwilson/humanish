@@ -76,3 +76,16 @@ A third route, `localAgent: claude` through the one-session-per-run adapter from
 same hour (`cua-2026-09-01T19-18-18-747Z-02a18f68`, `cua-2026-09-01T19-18-32-221Z-cf40bddb`):
 both reached the goal with full reports in 165 s and 200 s. Both lanes were then refused by the
 blocker scan on "can't even read" / "can't tell"; #565 fixes the scan and passes both transcripts.
+
+## Addendum, later the same day: the published 0.69.0, 2 of 2
+
+Same three commands against `humanish@0.69.0` as npm served it at 20:35 UTC, provider key present.
+
+| run | wall clock | cost | session | first line of the report |
+|---|---|---|---|---|
+| `cua-2026-09-01T20-35-04-013Z-d23b7fb9` | 113 s | $0.17 | passed, `declaredOutcome: reached` | `REACHED THE GOAL.` |
+| `cua-2026-09-01T20-35-23-065Z-b91f4b8e` | 183 s | $0.35 | passed, `declaredOutcome: reached` | `REACHED THE GOAL.` |
+
+Both tallies read `1/1 reached the goal, 1 reported friction`: the "What confused me" section now
+counts (#578), and the participant labels its own ending (#579). Five cold installs of two
+published versions today, five reached the goal.
