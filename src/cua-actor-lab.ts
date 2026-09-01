@@ -44,7 +44,7 @@ import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
-import { detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
+import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import { startAppServerSession } from "./local-agent-appserver.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
@@ -2498,12 +2498,26 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       } else if (deps.localAgent === "claude") {
         // One session for the whole run, like the codex thread above (#520). The one-shot
         // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
-        // started with no memory of the last.
-        claudeSession = await startClaudeSession({
-          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
-        });
-        localAgentProvider = claudeSession.provider;
+        // started with no memory of the last. HUMANISH_LOCAL_AGENT_ONE_SHOT=1 keeps that path
+        // reachable as a MEASUREMENT switch: MemTrapBench (2026-08) reports memory frameworks
+        // degrading agent performance by 10-40% on some tasks, so "remembers" has to be measured
+        // against "does not" on the same lab, not assumed. The trace records which one ran.
+        const oneShot = env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== undefined
+          && env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== ""
+          && env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "0";
+        if (oneShot) {
+          localAgentProvider = createLocalAgentProvider({
+            agent: "claude",
+            ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+            ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
+          });
+        } else {
+          claudeSession = await startClaudeSession({
+            ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+            ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
+          });
+          localAgentProvider = claudeSession.provider;
+        }
       }
 
       // World is ready: release the pipeline gate so the remaining lanes may start.
