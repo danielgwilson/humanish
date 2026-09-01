@@ -539,6 +539,22 @@ export function statusForCompletionReason(reason: ActorCompletionReason): ActorS
 
 // Distinct error classes so the loop can tell a deadline/abort apart from a real
 // adapter failure when raceSettle rejects.
+/**
+ * Read the fixed closing line the prompt asks for (#570): the FIRST non-empty line of the
+ * participant's last message, exactly one of three phrases, punctuation and case forgiven. Anything
+ * else is absence, never a guess. Exported for tests.
+ */
+export function declaredOutcomeFromClosingLine(message: string | undefined): ParticipantDeclaredOutcome | undefined {
+  if (message === undefined) return undefined;
+  const first = message.split(/\r?\n/).map((line) => line.trim()).find((line) => line.length > 0);
+  if (first === undefined) return undefined;
+  const normalized = first.replace(/^[*_#>\s-]+|[*_.!\s]+$/g, "").toLowerCase();
+  if (normalized === "reached the goal") return "reached";
+  if (normalized === "did not reach the goal") return "not_reached";
+  if (normalized === "blocked") return "blocked";
+  return undefined;
+}
+
 class CuaDeadlineError extends Error {}
 class CuaAbortError extends Error {}
 /** A single call outlived its own bound while the session still had budget: a stall, not a deadline. */
@@ -1029,8 +1045,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         // participant who stopped without finishing: gave_up, which tallies as abandoned. "blocked"
         // keeps goal_satisfied here (the actor did stop on purpose) and the lane's credibility read
         // turns it into a blocked participant, the same path a narrated blocker takes.
-        if (turn.outcome !== undefined) declaredOutcome = turn.outcome;
-        completionReason = turn.outcome === "not_reached" ? "gave_up" : "goal_satisfied";
+        // A schema field first; failing that, the fixed first line the prompt asks for (#570).
+        const outcome = turn.outcome ?? declaredOutcomeFromClosingLine(turn.message);
+        if (outcome !== undefined) declaredOutcome = outcome;
+        completionReason = outcome === "not_reached" ? "gave_up" : "goal_satisfied";
         const summary = turn.message?.trim();
         reason = summary
           ? redactNarration(summary)

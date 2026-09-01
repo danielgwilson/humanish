@@ -608,6 +608,19 @@ export interface CuaLaneSpec {
   traceArtifactPath: string;
 }
 
+/**
+ * The participant's outcome as ONE fixed first line of its last message (#570, second half). The
+ * free-text computer-use provider has no schema to fill; a fixed line is the next best thing, and
+ * the loop reads it into the trace's declaredOutcome. Prompt-only control is weak in general, so
+ * adherence is measured (declaredOutcome present or absent on the trace) and the regex over the
+ * paragraph stays as the fallback when the line is missing. This is a report format, deliberately
+ * not a behavioural instruction: it says how to label the ending, never how to act.
+ */
+export const CLOSING_LINE_DIRECTIVE =
+  "When you stop, make the FIRST line of your last message exactly one of these three, on its own line: "
+  + "REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. "
+  + "Then, from the next line, say what you did, what confused you, and where you hesitated.";
+
 /** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
  *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
 export function composeLaneInstructions(args: {
@@ -657,7 +670,8 @@ export function composeLaneInstructions(args: {
     surfaceLine,
     args.mission,
     taskLines,
-    args.instruction ? `Lane focus: ${args.instruction}` : undefined
+    args.instruction ? `Lane focus: ${args.instruction}` : undefined,
+    CLOSING_LINE_DIRECTIVE
   ].filter((part): part is string => Boolean(part));
   const instructions = parts.join("\n\n");
   return {

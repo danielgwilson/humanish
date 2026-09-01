@@ -32,7 +32,9 @@ import {
   runCuaActorLab,
   type ChromeCdpEndpoint,
   type CuaActorLabHooks,
-  participantStatusForCredibility
+  participantStatusForCredibility,
+  CLOSING_LINE_DIRECTIVE,
+  composeLaneInstructions
 } from "../src/cua-actor-lab.js";
 import type {
   E2BDesktopCreateOptions,
@@ -741,6 +743,18 @@ describe("runCuaActorLab", () => {
       // They are still friction, and still count as such.
       expect(resolveSelfReportedFriction(fakeBlockerSession(message)), message).toBeDefined();
     }
+  });
+
+  it("every computer-use lane is asked for the fixed closing line, after the mission and the lane focus (#570)", () => {
+    const composed = composeLaneInstructions({
+      mission: "Add two tables.",
+      instruction: "keyboard only",
+      device: { name: "desktop", preset: DEVICE_PRESETS.desktop }
+    });
+    expect(composed.instructions).toContain(CLOSING_LINE_DIRECTIVE);
+    expect(composed.instructions.indexOf("Lane focus: keyboard only")).toBeLessThan(composed.instructions.indexOf(CLOSING_LINE_DIRECTIVE));
+    // A report format, never a behavioural instruction: it does not tell the participant what to do.
+    expect(CLOSING_LINE_DIRECTIVE).not.toMatch(/never|always|do not (type|click|use)/i);
   });
 
   it("the participant's declared outcome wins over the paragraph, both ways (#570)", () => {
