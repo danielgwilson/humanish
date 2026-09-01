@@ -11,7 +11,8 @@ import {
   type CuaObservation,
   type CuaProvider,
   type CuaTurn,
-  type CuaTurnRequest
+  type CuaTurnRequest,
+  declaredOutcomeFromClosingLine
 } from "../src/computer-use.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 
@@ -557,6 +558,33 @@ describe("runComputerUseLoop", () => {
       title: "computer-use loop error",
       text: "phase: executing click (11, 22); error: Error; message: desktop actuator exited 1; last action: click (11, 22)"
     });
+  });
+
+  it("reads the fixed closing line the prompt asks for, and nothing looser (#570, second half)", async () => {
+    expect(declaredOutcomeFromClosingLine("REACHED THE GOAL.\nAdded two tables.")).toBe("reached");
+    expect(declaredOutcomeFromClosingLine("**Did not reach the goal**\n\nI gave up at the modal.")).toBe("not_reached");
+    expect(declaredOutcomeFromClosingLine("  blocked\nThe database chooser has no keyboard path.")).toBe("blocked");
+    // Anything else is absence, never a guess: the regex fallback reads the paragraph instead.
+    expect(declaredOutcomeFromClosingLine("Done. I added two tables.")).toBeUndefined();
+    expect(declaredOutcomeFromClosingLine("I reached the goal after some trouble.")).toBeUndefined();
+    expect(declaredOutcomeFromClosingLine("")).toBeUndefined();
+    expect(declaredOutcomeFromClosingLine(undefined)).toBeUndefined();
+  });
+
+  it("a free-text provider's closing line lands on the trace as declaredOutcome", async () => {
+    const provider: CuaProvider = {
+      id: "free-text",
+      version: "f",
+      capabilities: FAKE_CAPS,
+      nextTurn: async () => ({ actions: [], pendingSafetyChecks: [], done: true, message: "BLOCKED.\nThe database chooser is mouse-only." })
+    };
+    const executor: CuaExecutor = { observe: async () => ({ screenshot: frame(), stateSignature: "s0" }), execute: async () => {} };
+    const result = await runComputerUseLoop({ instructions: "go", provider, executor, persona, redaction: defaultRedactionHooks, timeoutMs: 10_000_000, now: monotonicClock() });
+    expect(result.trace.declaredOutcome).toBe("blocked");
+    // The schema field, when present, wins over the line.
+    const both: CuaProvider = { ...provider, nextTurn: async () => ({ actions: [], pendingSafetyChecks: [], done: true, outcome: "reached", message: "BLOCKED.\nbut the field says reached" }) };
+    const resultBoth = await runComputerUseLoop({ instructions: "go", provider: both, executor, persona, redaction: defaultRedactionHooks, timeoutMs: 10_000_000, now: monotonicClock() });
+    expect(resultBoth.trace.declaredOutcome).toBe("reached");
   });
 
   it("records the participant's declared outcome on the trace, and reads not_reached as gave_up (#570)", async () => {
