@@ -26,7 +26,8 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
  * - `passed`      the participant reached the goal
  * - `abandoned`   the participant stopped trying. A FINDING, not a malfunction
  * - `incomplete`  the session ended (time or budget) before the goal was reached
- * - `blocked`     the participant needed an approval the run could not give
+ * - `blocked`     the participant could not proceed: an approval the run could not give, or a
+ *                 blocker they described in their own final words (#476)
  * - `timed_out`   the session hit its deadline with no productive activity at all
  * - `failed`      the HARNESS failed: a dead sandbox, a provider error, a broken artifact
  */
