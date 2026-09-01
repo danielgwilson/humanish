@@ -758,6 +758,24 @@ describe("runCuaActorLab", () => {
     expect(resolveSelfReportedBlocker(fakeBlockerSession("I could not complete the task; the delete button was disabled."))).toBeDefined();
   });
 
+  it("counts a finished participant's report of defects or confusion as friction, so it becomes a candidate", () => {
+    // Eleven drawDB reports on 2026-09-01, all "What confused me" / "Accessibility defects:",
+    // none a blocker, none a candidate; the draft said "completed without a participant-reported
+    // finding" for a run that had just replicated a keyboard-accessibility defect.
+    for (const message of [
+      "Done. Confused by: \u201cAdd table\u201d immediately created a table with a long random name; the renaming method was not obvious.",
+      "Created and saved a PostgreSQL diagram. Accessibility defects: the database chooser and confirmation control were not keyboard-accessible; focus escaped behind the modal, requiring mouse clicks.",
+      "Done. The second table was placed exactly on top of the first one, so the two overlapped.",
+      "Done. Clicking Save did nothing; pressing Enter saved the name."
+    ]) {
+      expect(resolveSelfReportedFriction(fakeBlockerSession(message)), message).toBeDefined();
+      // Friction, and only friction: none of these refuses the pass.
+      expect(resolveSelfReportedBlocker(fakeBlockerSession(message)), message).toBeUndefined();
+    }
+    // A report with nothing to say stays silent.
+    expect(resolveSelfReportedFriction(fakeBlockerSession("Done. I added two tables named customers and orders; both are visible in the sidebar."))).toBeUndefined();
+  });
+
   it("still flags an inability to ACT, which is what a blocker is", () => {
     for (const message of [
       "Blocked after partial completion. Could not connect the two tables because every new table appeared on top of the previous one.",

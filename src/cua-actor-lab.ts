@@ -2033,8 +2033,18 @@ function hasBlockerLanguage(text: string): boolean {
 
 /** The friction scan (inclusive): does the narrative report ANY blocker-shaped language,
  *  resolved or not? Feeds the participants `reportedFriction` tally and feedback candidates. */
+// Report-shaped language: what a participant writes when it finished AND has something to say.
+// Every one of the day's eleven drawDB reports (2026-09-01) opened a section "What confused me"
+// or "Accessibility defects:"; none contained a blocker word, so none became a feedback candidate
+// and a lane that had just replicated a keyboard-accessibility defect three times drafted "Live
+// study completed without a participant-reported finding". Friction is the INCLUSIVE scan; a
+// false positive here adds a candidate a person then reads, which is the cheap direction.
+const REPORTED_DEFECT_LANGUAGE =
+  /\b(defects?|bugs?|accessibilit(y|ies)|inaccessible|not (keyboard|screen.?reader)[- ]?accessible|confus(ed|ing)|hesitat(ed|ion)|unexpected(ly)?|unclear|hard to (find|tell|see|read|reach)|no (visible )?focus|overlap(ped|ping|s)?|truncat(ed|es|ion)|cut off|did nothing|nothing happened|no effect)\b/;
+
 function completionReasonContradictsGoal(reason: string): boolean {
-  return hasBlockerLanguage(stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase())));
+  const text = stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase()));
+  return hasBlockerLanguage(text) || REPORTED_DEFECT_LANGUAGE.test(text);
 }
 
 /** The verdict scan (strict): like the friction scan, but resolved-arc segments are stripped
