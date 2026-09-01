@@ -54,6 +54,25 @@ finds it for sixteen cents.
   counter is for self-reported *blockers* (a participant who could not proceed), and none of these
   three was blocked. The frictions live in the structured report. Worth knowing when reading a
   tally: `reportedFriction: 0` does not mean "nothing to read".
-- N=3 on one machine with one provider key. It does not measure the `local-agent` route that a
-  keyless machine with a signed-in coding agent gets, and it does not measure a machine without
-  `gh` (the CLI read `GH_TOKEN` from `gh auth token` here).
+- N=3 on one machine with one provider key, and it does not measure a machine without `gh` (the
+  CLI read `GH_TOKEN` from `gh auth token` here).
+
+## Addendum, same day: the keyless route, 2 of 2
+
+Same procedure with `OPENAI_API_KEY` unset and Codex signed in on the machine. `init` wrote
+`type: local-agent` for `try-live` (the comment it leaves says why), and the run needed only
+`E2B_API_KEY`.
+
+| run | `run try-live` wall clock | brain | turns / actions | session |
+|---|---|---|---|---|
+| `cua-2026-09-01T19-13-27-106Z-5723d5e8` | 160 s | `local-agent-codex-app-server` | 9 / 15 | passed, goal_satisfied |
+| `cua-2026-09-01T19-13-46-616Z-faffe4db` | 156 s | `local-agent-codex-app-server` | 10 / 15 | passed, goal_satisfied |
+
+Cost line: about $0.007 each, E2B minutes only, labelled a lower bound because the model side is
+a subscription and is not priced. Both participants reported the same rename hesitation and the
+database-choice dialog; both reached the goal.
+
+A third route, `localAgent: claude` through the one-session-per-run adapter from #567, ran N=2 the
+same hour (`cua-2026-09-01T19-18-18-747Z-02a18f68`, `cua-2026-09-01T19-18-32-221Z-cf40bddb`):
+both reached the goal with full reports in 165 s and 200 s. Both lanes were then refused by the
+blocker scan on "can't even read" / "can't tell"; #565 fixes the scan and passes both transcripts.
