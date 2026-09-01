@@ -1210,6 +1210,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       let setupError: string | undefined;
       try {
         const setup = await sandbox.commands.run(`${uploadAssignment}cd ${SANDBOX_WORKDIR} && ${install}`, {
+          // The install step may run the product itself (release:dogfood's does: `humanish init
+          // --yes`); on the 0.67.0 dogfood that one command arrived unmarked while the participant's
+          // nine others carried the marker (#546).
+          envs: { HUMANISH_STUDY_PARTICIPANT: "1" },
           requestTimeoutMs,
           timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS
         });
