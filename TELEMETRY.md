@@ -20,10 +20,14 @@ cannot see its own activation is guessing about the thing that matters most.
 
 - which command ran (`run`, `lab run`, `init`, …)
 - the humanish version, your OS, your Node major version, whether you are in CI
-- whether the command succeeded, and roughly how long it took (a bucket such as
-  `1-5m`, never an exact duration)
-- for a study: whether it was a dry run or live, its outcome, and — **only if it
-  is one of the starter labs humanish itself ships** — which one
+- whether the command succeeded (its exit code), and roughly how long it took
+  (a bucket such as `1-5m`, never an exact duration)
+- for a study: whether it was a dry run or live, its outcome (one of a fixed
+  set of words such as `passed`, `abandoned`, `all_passed`), which brain route
+  ran it (`provider-key`, `local-agent`, or `none` for a dry run), and — **only
+  if it is one of the starter labs humanish itself ships** — which one
+- when a command fails: humanish's own error code (`HUMANISH_…`), never the
+  message. Which failure ends a first run is the question this exists to answer.
 
 See the exact document that would be sent, for your machine, right now:
 
@@ -47,6 +51,15 @@ code and pinned by tests, not promised in prose.
 
 Your machine is identified by a random id generated locally on first use, tied
 to nothing.
+
+The request that carries an event has a source IP address, like any HTTP
+request. Two things keep it out of the dataset: every event asks the receiver
+not to derive a location from it (`$geoip_disable`, visible in the document
+above), and the receiving project is set to discard the client address at
+ingestion. Events sent by versions before 0.66.0 did not carry the opt-out, so
+the receiver attached a city-level location to them; that setting has been
+turned off for the project and the doc said "anonymous" while it was on. Stated
+here rather than quietly fixed.
 
 ## How to opt out
 
