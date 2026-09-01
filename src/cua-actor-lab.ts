@@ -2077,6 +2077,10 @@ function stripResolvedArcSegments(text: string): string {
 
 function stripNegatedNonBlockerPhrases(text: string): string {
   return text
+    // FIRST, before the narrower rules eat the "no blockers" and leave "encountered ... error"
+    // behind: "I encountered no blockers or unclear error output." refused a clean passing run on
+    // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
+    .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, " ")
     .replace(/\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g, "")
     .replace(/\bwithout\s+(?:a\s+|any\s+)?(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\b/g, "")
     .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "")
@@ -2088,12 +2092,7 @@ function stripNegatedNonBlockerPhrases(text: string): string {
       /\bno\s+(?:\w+\s+){0,2}(?:blocker|blockers|blocking issues?|errors?|failures?|problems?|issues?)\b(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it))?/g,
       " "
     )
-    .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ")
-    // "I encountered no blockers or unclear error output." refused a clean passing run on
-    // 2026-09-01: the negation rule above removed "no blockers", and the rest of the clause still
-    // read "encountered ... error" to the scan. A verb of encounter followed by "no" negates the
-    // whole clause, so drop the clause.
-    .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, " ");
+    .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ");
 }
 
 /**
