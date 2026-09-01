@@ -53,10 +53,11 @@ Your machine is identified by a random id generated locally on first use, tied
 to nothing.
 
 The request that carries an event has a source IP address, like any HTTP
-request. Two things keep it out of the dataset: every event asks the receiver
+request. Three things keep it out of the dataset: every event asks the receiver
 not to derive a location from it (`$geoip_disable`, visible in the document
-above), and the receiving project is set to discard the client address at
-ingestion. Events sent by versions before 0.66.0 did not carry the opt-out, so
+above), every event asks for no person profile to be built for the machine id
+(`$process_person_profile: false`), and the receiving project is set to
+discard the client address at ingestion. Events sent by versions before 0.66.0 did not carry the opt-out, so
 the receiver attached a city-level location to them; that setting has been
 turned off for the project and the doc said "anonymous" while it was on. Stated
 here rather than quietly fixed.
