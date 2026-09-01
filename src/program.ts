@@ -24,6 +24,7 @@ import { runInit } from "./init.js";
 import {
   buildPayload,
   disabledByEnvironment,
+  inHumanishCheckout,
   durationBucket,
   readTelemetryState,
   sendTelemetry,
@@ -247,6 +248,8 @@ async function recordCommandTelemetry(
     const name = commandPath(command);
     if (name.startsWith("telemetry")) return;
     if (disabledByEnvironment(process.env)) return;
+    // Our own checkout never reports. See inHumanishCheckout for the measured reason.
+    if (inHumanishCheckout(process.cwd(), (p) => readFileSync(p, "utf8"))) return;
     const state = await readTelemetryState();
     if (!state.enabled) return;
     const payload = buildPayload({

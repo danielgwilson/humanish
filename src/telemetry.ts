@@ -68,7 +68,52 @@ export function telemetryStatePath(env: NodeJS.ProcessEnv = process.env, home = 
 export function disabledByEnvironment(env: NodeJS.ProcessEnv): boolean {
   const truthy = (value: string | undefined): boolean =>
     value !== undefined && value.trim() !== "" && value.trim() !== "0" && value.trim().toLowerCase() !== "false";
-  return truthy(env.DO_NOT_TRACK) || truthy(env.HUMANISH_TELEMETRY_DISABLED);
+  return (
+    truthy(env.DO_NOT_TRACK)
+    || truthy(env.HUMANISH_TELEMETRY_DISABLED)
+    // Our OWN development and test runs must never reach the adoption dataset. In the first two
+    // days after telemetry shipped, 82% of events (4,042 of 4,932, from 49 of 59 anonymous ids)
+    // came from humanish's own CI and suite: ~50 ids each running nearly every subcommand about
+    // once, which is the shape of a test matrix and not of people. That made the one number whose
+    // job is measuring adoption measure us instead.
+    //
+    // Deliberately NOT keyed on CI. An adopter running humanish in their pipeline is real usage
+    // and stays countable; the `ci` property already separates it, which is what Next.js does.
+    // This keys on being inside the humanish source tree, which only we ever are.
+    || truthy(env.HUMANISH_DEV)
+  );
+}
+
+/**
+ * True when this process is running from a humanish SOURCE CHECKOUT rather than an install.
+ *
+ * Checked by walking up from cwd for a package.json whose name is `humanish` AND which carries
+ * this repo's private marker. An adopter with a dependency named humanish in node_modules is not
+ * matched: node_modules copies are skipped, and a consumer's own package.json has a different
+ * name. Falls back to "not a checkout" on any read error, because the failure direction that
+ * loses one event is better than the one that silently disables real telemetry.
+ */
+export function inHumanishCheckout(startDir: string, readFileSyncFn: (p: string) => string): boolean {
+  let dir = path.resolve(startDir);
+  // Any node_modules ANYWHERE in the path means this is an installed copy, not our checkout.
+  // Checking only the basename missed `/app/node_modules/humanish`, which is the single most
+  // likely real-world path to get wrong: it would silence a genuine adopter.
+  if (dir.split(path.sep).includes("node_modules")) return false;
+  for (let depth = 0; depth < 12; depth += 1) {
+    try {
+      const parsed = JSON.parse(readFileSyncFn(path.join(dir, "package.json"))) as {
+        name?: unknown;
+        private?: unknown;
+      };
+      if (parsed.name === "humanish") return true;
+    } catch {
+      // No package.json here, or unreadable. Keep walking up.
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return false;
 }
 
 export async function readTelemetryState(
