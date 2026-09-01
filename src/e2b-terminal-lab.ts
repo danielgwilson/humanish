@@ -1042,6 +1042,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const source = await buildRunSource({ capturedAt: createdAt, cwd: physicalCwd, humanishSource: "present", packageName: "humanish" });
 
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
+  // Declared egress allowlist, or undefined for the historical unrestricted default (#538).
+  const egressAllow = config.execution?.egressAllow;
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
   const lifecycle: LifecycleRecord[] = [];
@@ -1088,6 +1090,14 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       requestTimeoutMs,
       timeoutMs: sandboxTimeoutMs,
       metadata,
+      // Egress allowlist when the lab declares one (#538). This is the ONE bound on the injected
+      // runtime key that does not depend on the participant's cooperation: codex spawns the
+      // participant's shell as a child, so it inherits that key and can spend it anywhere it can
+      // reach. It cannot reach a host that is not on this list. Absent means unrestricted, the
+      // historical default, because a wrong host list fails studies in confusing ways.
+      ...(egressAllow === undefined
+        ? {}
+        : { network: { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] } }),
       lifecycle: { onTimeout: "kill" }
       // NOTE: no `envs` key — see the credential boundary above. (A sandbox-global key would leak
       // into every process in the sandbox; command-scoped bounds it to the codex invocation.)
@@ -1097,6 +1107,14 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     // #358 salvage: durable id receipt the moment the sandbox exists (reclaim by exact id).
     await appendSandboxReceipt(runPaths, { at: nowIso(), laneId: "terminal", sandboxId, timeoutMs: sandboxTimeoutMs });
     recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env (runtime key is command-scoped).`);
+    // The allowlist is evidence: a reader of the ledger can see exactly what the participant was
+    // able to reach, without the ledger carrying any secret.
+    recordLifecycle(
+      "terminal-lab.egress.policy",
+      egressAllow === undefined
+        ? "Egress UNRESTRICTED (no execution.egressAllow declared): the injected runtime key can reach any host."
+        : `Egress DENIED except ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}.`
+    );
 
     // Readiness: a tiny in-sandbox probe (no key) confirms the shell answers before the keyed run.
     const ready = await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR} && echo HUMANISH_SHELL_READY`, { requestTimeoutMs });

@@ -570,6 +570,23 @@ export interface LabExecution {
   /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Live runs inject the
    *  key command-scoped; dry-runs record names only. Inert on other routes. */
   runtimeAuth?: LabRuntimeAuth;
+  /**
+   * `terminal-product` route: hosts the sandbox may reach. Declaring it denies all other egress.
+   *
+   * The lane injects the operator's runtime LLM key command-scoped, and codex spawns the
+   * participant's shell as a child, so the participant inherits that key and can spend it against
+   * any endpoint it likes, outside every declared cap (#538). An egress allowlist is the bound
+   * that does not depend on the participant's cooperation: it cannot reach an endpoint that is
+   * not on this list.
+   *
+   * Absent means unrestricted, which is the historical behavior and stays the default, because a
+   * wrong host list fails studies in ways that look like product bugs. Opt in per lab.
+   *
+   * Domain filtering covers HTTP on :80 (Host header) and TLS on :443 (SNI); anything else needs
+   * an IP or CIDR. `*.example.com` matches subdomains at any depth and NOT the apex, which needs
+   * its own entry.
+   */
+  egressAllow?: string[];
 }
 
 export type LabScenarioMode = "dry-run" | "live";
@@ -2722,6 +2739,22 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
       return invalid("`execution.runtimeAuth` must be openai-env (the in-sandbox agent's command-scoped runtime-auth channel).");
     }
     execution.runtimeAuth = runtimeAuth;
+  }
+  if (raw.egressAllow !== undefined) {
+    if (!Array.isArray(raw.egressAllow) || raw.egressAllow.some((h) => typeof h !== "string")) {
+      return invalid("`execution.egressAllow` must be an array of host strings.");
+    }
+    const hosts = (raw.egressAllow as string[]).map((h) => h.trim()).filter((h) => h.length > 0);
+    if (hosts.length === 0) {
+      // An empty list would deny everything including the agent's own model endpoint, which
+      // fails as an unexplained hang rather than a refusal. Say so at parse time.
+      return invalid(
+        "`execution.egressAllow` was declared but empty. Declaring it denies all other egress, so "
+        + "an empty list denies everything, including the agent's own provider endpoint. Remove "
+        + "the field for unrestricted egress, or list the hosts the run needs."
+      );
+    }
+    execution.egressAllow = hosts;
   }
   return { ok: true, value: Object.keys(execution).length > 0 ? execution : undefined };
 }
