@@ -768,6 +768,8 @@ describe("runCuaActorLab", () => {
 
   it("does NOT flag other ordinary ways of saying it went fine", () => {
     for (const message of [
+      // A clean benchmark run on 2026-09-01 was refused on this exact sentence.
+      "Overall, the main list actions were straightforward and worked on the first try. I encountered no blockers or unclear error output.",
       "I hit no obvious errors during the trial.",
       "There were no significant problems with the main flow.",
       "Nothing really stopped me from finishing the task.",

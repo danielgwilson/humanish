@@ -2088,7 +2088,12 @@ function stripNegatedNonBlockerPhrases(text: string): string {
       /\bno\s+(?:\w+\s+){0,2}(?:blocker|blockers|blocking issues?|errors?|failures?|problems?|issues?)\b(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it))?/g,
       " "
     )
-    .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ");
+    .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ")
+    // "I encountered no blockers or unclear error output." refused a clean passing run on
+    // 2026-09-01: the negation rule above removed "no blockers", and the rest of the clause still
+    // read "encountered ... error" to the scan. A verb of encounter followed by "no" negates the
+    // whole clause, so drop the clause.
+    .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, " ");
 }
 
 /**
