@@ -27,6 +27,21 @@ export class PortInUseError extends Error {
  * that cannot decide says "other", which is the answer that suggests the safer action.
  */
 export async function probePortHolder(port: number, fetchFn: typeof fetch = fetch): Promise<PortHolder> {
+  // The whole probe is raced against a hard clock as well: a fetch that ignores its abort signal
+  // (a test double, a proxy) must not turn "tell me whose port this is" into a hang.
+  let hardTimer: ReturnType<typeof setTimeout> | undefined;
+  const hardStop = new Promise<PortHolder>((resolve) => {
+    hardTimer = setTimeout(() => resolve("other"), 1_500);
+    hardTimer.unref?.();
+  });
+  try {
+    return await Promise.race([probeRoutes(port, fetchFn), hardStop]);
+  } finally {
+    clearTimeout(hardTimer);
+  }
+}
+
+async function probeRoutes(port: number, fetchFn: typeof fetch): Promise<PortHolder> {
   for (const route of ["/_humanish/history.json", "/observer-data.json"]) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 500);

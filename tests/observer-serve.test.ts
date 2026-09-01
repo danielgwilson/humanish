@@ -814,6 +814,9 @@ describe("serve on a port somebody already holds (#484)", () => {
     if (!dry.ok) throw new Error(dry.error?.message ?? "dry run failed");
     const port = await freePort();
     const holder = createNetServer();
+    // The probe opens a socket the silent holder never answers; close() would wait for it forever.
+    const sockets = new Set<import("node:net").Socket>();
+    holder.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
     await new Promise<void>((resolve) => holder.listen(port, "127.0.0.1", resolve));
     try {
       const started = await serveObserverLibrary(path.join(cwd, "app"), { port, safe: true, expose: false, edgeAuthed: false });
@@ -823,8 +826,9 @@ describe("serve on a port somebody already holds (#484)", () => {
       expect(started.error.message).toContain(String(port));
       expect(started.error.message).toContain("--port 0");
     } finally {
+      for (const socket of sockets) socket.destroy();
       await new Promise<void>((resolve) => holder.close(() => resolve()));
       await rm(cwd, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
