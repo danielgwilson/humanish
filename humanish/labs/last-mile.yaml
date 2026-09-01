@@ -1,0 +1,69 @@
+schema: humanish.lab.v2
+id: last-mile
+title: How far a coding agent gets toward a real study, with no keys (self-study, terminal lane)
+description: >
+  first-contact measured whether an agent can find humanish and get it running. It can. What no
+  lab has measured is the LAST MILE: whether an agent can take a person from "installed" to a
+  real study, which is the point where humanish starts doing its job and the point where every
+  adoption claim we make is currently unevidenced.
+  THIS LAB MEASURES THAT WITHOUT SPENDING. The last mile is four questions: does the agent
+  discover that a live run needs credentials, does it work out WHICH ones and WHERE they go, can
+  it construct the exact command, and can it read the bundle it gets back. The first three are
+  where adoption actually fails and none of them need a credential. Only the fourth does, and it
+  is the least uncertain, because the execution path has live receipts. So the participant is
+  given no provider keys and is asked to get to the launch line and describe it precisely.
+  The measurement is the gap between what it says it would run and what would actually work.
+  WHAT TO READ AFTERWARDS, in order of how much it would change our work:
+  1. The exact next command it produced. Would it run? A wrong flag, a missing lab id, or an
+     invented subcommand is a docs defect with a precise address.
+  2. WHERE it looked for key setup, and what it tried first. humanish names its env vars in a
+     small number of places; if the agent never reaches them, that is evidence about those pages.
+  3. Did it correctly identify which credentials are needed for which lane? Choosing the wrong
+     lane is a different failure from not finding the keys, and the fixes are different.
+  4. Did it believe it had succeeded when it had not? A confident wrong summary is the worst
+     outcome and the one most likely to reach a real adopter's teammate.
+  Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
+  launches no sandbox. A live run needs OPENAI_API_KEY for the participant and E2B_API_KEY for
+  the sandbox it works in, and a gitignored .humanish/labs/ copy.
+subject:
+  source: terminal-product
+  product:
+    name: humanish
+    publicSurfaces:
+      - https://www.npmjs.com/package/humanish
+      - https://github.com/danielgwilson/humanish
+actors:
+  - type: codex-exec # REAL dispatch key: resolves to the registered terminal actor
+    persona: autonomous-coding-agent # composed into the agent prompt + bundle provenance
+    mission: >-
+      You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine.
+      A teammate is considering adopting a tool called humanish and has asked you to take it as
+      far as it goes: not just install it, but work out how they would actually use it for what
+      it is for. Find out what it is from its public surfaces and get it running. There are no
+      provider API keys in this environment, so you cannot complete anything that spends money.
+      When you reach something that needs credentials you do not have, work out precisely what
+      would be required: which credentials, what they are called, where they go, and the exact
+      command your teammate should run next. Then carry on with whatever else you can still
+      reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it
+      does, how far you got, the exact next command and what it needs in order to work, where
+      you got stuck or had to guess, and whether you would recommend adopting it.
+execution:
+  target: e2b-terminal
+  runtimeAuth: openai-env # dry-run records the name; live injects the key command-scoped only
+  timeoutMs: 900000 # agent session wall-clock budget
+  terminal:
+    transport: exec-stream # captured non-interactive exec output (NOT an interactive PTY)
+    stdin: disabled # autonomous, and comparable to an unassisted baseline
+scenario:
+  mode: dry-run # committed fixture stays contract-only
+  caps:
+    maxUsd: 0 # the participant has no provider budget of its own
+    maxJobs: 0 # no billable product jobs
+    maxMinutes: 12
+policies:
+  # No provider credentials reach the participant. That is the study condition as well as the
+  # safety bound: it reproduces a developer on day one, before any keys are set.
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
