@@ -56,7 +56,7 @@ describe("what telemetry can possibly contain", () => {
     const own = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "HUMANISH_CUA_LAB_KEYS_MISSING" } });
     expect(own.properties.error_code).toBe("HUMANISH_CUA_LAB_KEYS_MISSING");
     // A provider's error or an OS error is free text and can carry anything.
-    const foreign = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "ENOENT: /Users/jane/acme-launch/lab.yaml" } });
+    const foreign = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "ENOENT: no such file or directory, open acme-launch/lab.yaml" } });
     expect(foreign.properties.error_code).toBeUndefined();
     const lower = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "humanish_x" } });
     expect(lower.properties.error_code).toBeUndefined();
