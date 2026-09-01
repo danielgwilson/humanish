@@ -17,16 +17,80 @@ For coding agents: `npx skills add danielgwilson/humanish`
 
 ## Commands
 
-- `humanish init` — scaffold a lab in YAML: personas, missions, and the app under test, either a repo to clone or a URL you own; `--yes` takes the defaults.
-- `humanish watch` — run every lane on hosted sandbox desktops. Your app does not need to be deployed or already running: the sandbox clones your repo, builds it, and serves it. Watch live in Observer; replay any lane after.
-- `humanish verify` — grade the evidence bundle against public-safety gates, fail-closed: `share_ready`, `local_only`, or `blocked`.
-- `humanish feedback issue` — render a public-safe GitHub issue draft from the bundle.
+Every command below exists in the shipped CLI. `tests/llms-txt-commands.test.ts` builds the
+command table from the program itself and fails if this list drifts.
 
-All four commands need Node 20 or newer. Hosted desktops also read `OPENAI_API_KEY` and
-`E2B_API_KEY` from your environment.
+Getting started:
 
-`humanish watch` with no lab argument renders a synthetic evidence bundle and Observer locally,
-without keys or provider spend.
+- `humanish init`: scaffold `humanish/` source files (personas, labs) and the ignored
+  `.humanish/` runtime directory; `--yes` takes the defaults.
+- `humanish doctor`: report project readiness and what setup is missing, including which
+  provider keys were found and where. Run this first when something will not start.
+- `humanish run <lab>`: run a lab. The everyday command. With no lab it renders a synthetic
+  dry-run bundle locally, without keys or provider spend.
+- `humanish watch`: run and keep the shell attached, with Observer open.
+
+Authoring and inspecting labs:
+
+- `humanish lab list`: list committed and ignored lab manifests.
+- `humanish lab inspect <lab>`: read a manifest without running it.
+- `humanish lab preflight <lab>`: check the manifest and target reachability before any actor
+  or model spend. Run this before a first live study.
+- `humanish lab run <lab>`: same as `humanish run <lab>`, grouped under `lab`.
+- `humanish lab cleanup`: sweep stale provider resources left by a crashed process.
+
+Evidence:
+
+- `humanish verify --run latest`: grade the bundle against public-safety gates, fail-closed:
+  `share_ready`, `local_only`, or `blocked`.
+- `humanish review`: build a review packet from verified evidence.
+- `humanish runs`: list local runs and the latest pointers.
+- `humanish observe`: serve a finished run's Observer over loopback instead of a file URL.
+- `humanish serve`: serve the whole local run library over loopback, with optional
+  tunnel-edge auth.
+- `humanish cleanup`: inspect recorded resource evidence and write `cleanup.json`.
+- `humanish reclaim`: kill an interrupted run's sandboxes by their journaled exact ids.
+
+Feedback, without mutating GitHub:
+
+- `humanish feedback draft --run latest`: generate a public-safe draft from verified evidence.
+- `humanish feedback verify`: check the draft for public-issue eligibility.
+- `humanish feedback issue`: print Markdown for a public issue.
+- `humanish feedback issue-url`: print a prefilled issue URL.
+- `humanish feedback list`: show draft state for a run.
+
+Keys and configuration:
+
+- `humanish keys set <provider>`: store one provider key in the user store at mode 0600,
+  prompted with hidden input. `humanish keys list` prints NAMES only, never values.
+  `humanish keys unset <provider>` removes one.
+- `humanish telemetry status`: what is collected, and whether it is on.
+  `humanish telemetry enable` and `humanish telemetry disable` change it. `DO_NOT_TRACK=1`
+  also turns it off.
+
+Other surfaces:
+
+- `humanish tui`: the interactive terminal surface for browsing labs and runs. **This one is
+  for a human, not for you.** It takes over the screen and waits for keystrokes, so it will
+  refuse a non-TTY with a structured error. If you are setting humanish up on someone's behalf,
+  this is the command to hand them.
+- `humanish comms catch`: run the email catch on this host, to study an app that sends mail.
+- `humanish codex app-server`: a Codex-native actor surface.
+
+## Credentials
+
+A live study needs two things in the environment:
+
+- `E2B_API_KEY`: the hosted sandbox the persona works in. Set it with
+  `npx humanish keys set e2b`, or `e2b auth login`.
+- `OPENAI_API_KEY`: the model driving the persona. Set it with `npx humanish keys set openai`.
+  Alternatively a signed-in local agent (Codex, Claude Code) can supply the participant, but
+  `E2B_API_KEY` is still required.
+
+`humanish doctor --json` reports which of these were found and names the exact command to fix
+each missing one. Values are never printed or persisted into run artifacts.
+
+Node 20 or newer throughout.
 
 ## Worked example: the Excalidraw study
 
