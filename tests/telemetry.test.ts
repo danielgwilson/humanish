@@ -31,7 +31,13 @@ describe("what telemetry can possibly contain", () => {
       properties: { command: "run", lab: "try-live", mode: "live", outcome: "passed", durationBucket: "1-5m", ok: true }
     });
     expect(Object.keys(payload.properties).sort()).toEqual(
-      ["ci", "command", "duration", "lab", "mode", "node", "ok", "os", "outcome", "version"].sort()
+      // studyParticipant joins the allowlist deliberately (#546): a boolean marking traffic from
+      // a humanish study participant, so our own instrument stays separable from real adopters.
+      // Same shape and same privacy profile as `ci`; it carries no identity and no free text.
+      [
+        "ci", "command", "duration", "lab", "mode", "node", "ok", "os", "outcome",
+        "studyParticipant", "version"
+      ].sort()
     );
     // No exact duration: a millisecond timing is a fingerprint.
     expect(JSON.stringify(payload)).not.toMatch(/\d{4,}/);
@@ -138,5 +144,42 @@ describe("durations are buckets", () => {
     expect(durationBucket(400)).toBe("<1s");
     expect(durationBucket(45_000)).toBe("10-60s");
     expect(durationBucket(3_600_000)).toBe(">15m");
+  });
+});
+
+describe("study-participant marking (#546)", () => {
+  it("is false by default, so an ordinary run is not mislabelled", () => {
+    const payload = buildPayload({
+      event: "cli_command",
+      anonymousId: "anon-1",
+      version: "9.9.9",
+      env: {},
+      properties: { command: "run" }
+    });
+    expect(payload.properties.studyParticipant).toBe(false);
+  });
+
+  it("is true when a harness marks the environment", () => {
+    const payload = buildPayload({
+      event: "cli_command",
+      anonymousId: "anon-1",
+      version: "9.9.9",
+      env: { HUMANISH_STUDY_PARTICIPANT: "1" },
+      properties: { command: "run" }
+    });
+    expect(payload.properties.studyParticipant).toBe(true);
+  });
+
+  it("treats 0 and empty as unmarked, matching how every other flag here reads", () => {
+    for (const value of ["", "0"]) {
+      const payload = buildPayload({
+        event: "cli_command",
+        anonymousId: "anon-1",
+        version: "9.9.9",
+        env: { HUMANISH_STUDY_PARTICIPANT: value },
+        properties: { command: "run" }
+      });
+      expect(payload.properties.studyParticipant).toBe(false);
+    }
   });
 });

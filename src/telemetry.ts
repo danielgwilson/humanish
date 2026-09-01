@@ -184,7 +184,15 @@ export function buildPayload(args: {
     version: args.version,
     os: args.platform ?? process.platform,
     node: (args.nodeVersion ?? process.version).split(".")[0]!.replace("v", ""),
-    ci: env.CI !== undefined && env.CI !== "" && env.CI !== "0"
+    ci: env.CI !== undefined && env.CI !== "" && env.CI !== "0",
+    // A humanish study participant is a real cold install on a machine we do not own, so it emits
+    // like any other new adopter and is indistinguishable from one. It is also the exact
+    // population we are trying to count, so a busy self-study day reads as an adoption spike.
+    // Stamped rather than suppressed, the same shape as `ci`: participant runs stay visible and
+    // stay separable, and we keep a genuine measurement of what a cold install does (#546).
+    studyParticipant: env.HUMANISH_STUDY_PARTICIPANT !== undefined
+      && env.HUMANISH_STUDY_PARTICIPANT !== ""
+      && env.HUMANISH_STUDY_PARTICIPANT !== "0"
   };
   const given = args.properties ?? {};
   if (given.command !== undefined) properties.command = given.command;
