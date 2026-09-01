@@ -1378,3 +1378,28 @@ describe("study facts ride the result seam", () => {
     expect(studyFactsFor(other)).toEqual({});
   });
 });
+
+describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
+  it("names what is still alive after a command settles, and only when asked", async () => {
+    const previous = process.env.HUMANISH_DEBUG_HANDLES;
+    const stderr: string[] = [];
+    const io = { writeOut: () => {}, writeErr: (text: string) => { stderr.push(text); }, setExitCode: () => {} };
+    const program = createProgram(io);
+    program.command("__probe-handles").action(() => {});
+    try {
+      process.env.HUMANISH_DEBUG_HANDLES = "1";
+      await program.parseAsync(["node", "humanish", "__probe-handles"]);
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(stderr.join("")).toMatch(/humanish debug: active resources after `__probe-handles` settled: /);
+      stderr.length = 0;
+      delete process.env.HUMANISH_DEBUG_HANDLES;
+      await program.parseAsync(["node", "humanish", "__probe-handles"]);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(stderr.join("")).not.toContain("active resources");
+    } finally {
+      if (previous === undefined) delete process.env.HUMANISH_DEBUG_HANDLES;
+      else process.env.HUMANISH_DEBUG_HANDLES = previous;
+    }
+  });
+});

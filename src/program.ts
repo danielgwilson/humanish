@@ -285,6 +285,26 @@ async function recordCommandTelemetry(
   }
 }
 
+/**
+ * HUMANISH_DEBUG_HANDLES=1: after a command's handler settles, name what is still keeping the
+ * process alive (#581). A live terminal run wrote its result 64 s in and the CLI stayed up for
+ * sixteen more minutes; nothing in the bundle could say what held it, and an in-process probe of
+ * the lane found nothing of ours. This is the one line that answers it next time: the resource
+ * types Node reports, once, to stderr, after one macrotask so settled work has cleared.
+ */
+function reportActiveHandles(command: Command, io: CliIo): void {
+  const flag = process.env.HUMANISH_DEBUG_HANDLES;
+  if (flag === undefined || flag === "" || flag === "0") return;
+  setImmediate(() => {
+    const proc = process as NodeJS.Process & { getActiveResourcesInfo?: () => string[] };
+    const resources = proc.getActiveResourcesInfo?.() ?? [];
+    const counts = new Map<string, number>();
+    for (const resource of resources) counts.set(resource, (counts.get(resource) ?? 0) + 1);
+    const summary = [...counts.entries()].map(([type, count]) => `${type}×${count}`).join(", ") || "none";
+    io.writeErr(`humanish debug: active resources after \`${commandPath(command) || "humanish"}\` settled: ${summary}\n`);
+  }).unref?.();
+}
+
 /** `lab run`, not `run`, so the two are distinguishable — and nothing else from the invocation. */
 function commandPath(command: Command): string {
   const parts: string[] = [];
@@ -323,6 +343,7 @@ class HumanishCommand extends Command {
       const noticed = announceTelemetryOnce(this, cliIo);
       const finish = (ok: boolean): void => {
         void recordCommandTelemetry(this, ok, Date.now() - startedAt, lastExitCode);
+        reportActiveHandles(this, cliIo);
       };
       try {
         // Reflect.apply (not fn.apply) sidesteps TS's special CallableFunction
