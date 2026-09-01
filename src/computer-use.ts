@@ -6,7 +6,8 @@ import {
   type ActorStatus,
   type ActorTokenUsage,
   type ActorTrace,
-  type ActorTraceItem
+  type ActorTraceItem,
+  type ParticipantDeclaredOutcome
 } from "./actor-contract.js";
 import { classifyCuaAction, summarizeAffordanceUse, type AffordanceObservation } from "./affordance.js";
 import { commandFailureInfo, isCommandExitError } from "./command-failure.js";
@@ -150,6 +151,8 @@ export interface CuaTurn {
   usage?: { input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
+  /** The participant's own word for how it ended, when its reply format carries one (#570). */
+  outcome?: ParticipantDeclaredOutcome;
 }
 
 /** The model side of the loop. Self-describes its identity and capabilities. */
@@ -778,6 +781,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   let completionReason: ActorCompletionReason = "goal_satisfied";
+  let declaredOutcome: ParticipantDeclaredOutcome | undefined;
   let reason = "computer-use loop completed";
   let stopConditionMatch: StopConditionMatch | undefined;
 
@@ -1021,7 +1025,12 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
 
       if (turn.done || turn.actions.length === 0) {
-        completionReason = "goal_satisfied";
+        // The participant's own word, when its reply format has one (#570). "not_reached" is a
+        // participant who stopped without finishing: gave_up, which tallies as abandoned. "blocked"
+        // keeps goal_satisfied here (the actor did stop on purpose) and the lane's credibility read
+        // turns it into a blocked participant, the same path a narrated blocker takes.
+        if (turn.outcome !== undefined) declaredOutcome = turn.outcome;
+        completionReason = turn.outcome === "not_reached" ? "gave_up" : "goal_satisfied";
         const summary = turn.message?.trim();
         reason = summary
           ? redactNarration(summary)
@@ -1341,6 +1350,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     counts,
     items,
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
+    ...(declaredOutcome === undefined ? {} : { declaredOutcome }),
     // The funnel is present exactly when a protocol was declared — including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),

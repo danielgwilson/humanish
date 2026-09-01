@@ -22,7 +22,7 @@ import readline from "node:readline";
 import type { ActorCapabilities } from "./actor-contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
-import { toCuaActions } from "./local-agent-cli.js";
+import { declaredOutcomeOf, toCuaActions } from "./local-agent-cli.js";
 
 type JsonObject = Record<string, unknown>;
 
@@ -125,11 +125,12 @@ export function turnOutputSchema(): JsonObject {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["reasoning", "done", "message", "actions"],
+    required: ["reasoning", "done", "message", "outcome", "actions"],
     properties: {
       reasoning: { type: "string" },
       done: { type: "boolean" },
       message: { type: ["string", "null"] },
+      outcome: { type: ["string", "null"], enum: ["reached", "not_reached", "blocked", null] },
       actions: {
         type: "array",
         items: {
@@ -248,7 +249,7 @@ export async function startAppServerSession(
               type: "text",
               // The persona already lives in baseInstructions; this is only the turn's ask, which
               // is why it stays this short.
-              text: `This is the current screen. What do you do next?${hint}`,
+              text: `This is the current screen. What do you do next? When you set done=true, set outcome: reached if the task is finished, blocked if something in the app stopped you, not_reached if you are stopping for another reason.${hint}`,
               text_elements: []
             }
           ]
@@ -306,6 +307,7 @@ export function turnFromNotification(note: JsonObject): CuaTurn {
     // narrated the screen, chose no action, and the provider called it finished. The schema
     // guarantees a `done` boolean, so there is nothing to infer.
     done: parsed.done === true,
+    ...(declaredOutcomeOf(parsed.outcome) === undefined ? {} : { outcome: declaredOutcomeOf(parsed.outcome)! }),
     ...(typeof parsed.reasoning === "string" && parsed.reasoning.length > 0 ? { reasoning: parsed.reasoning } : {}),
     ...(typeof parsed.message === "string" && parsed.message.length > 0 ? { message: parsed.message } : {})
     // No `usage`: a subscription thread reports nothing we could price, and a number invented here

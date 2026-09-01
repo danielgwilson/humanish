@@ -559,6 +559,32 @@ describe("runComputerUseLoop", () => {
     });
   });
 
+  it("records the participant's declared outcome on the trace, and reads not_reached as gave_up (#570)", async () => {
+    const run = async (outcome: "reached" | "not_reached" | "blocked" | undefined) => {
+      const provider: CuaProvider = {
+        id: "declares",
+        version: "d",
+        capabilities: FAKE_CAPS,
+        nextTurn: async () => ({ actions: [], pendingSafetyChecks: [], done: true, message: "I could not read the label, but the task is done.", ...(outcome === undefined ? {} : { outcome }) })
+      };
+      const executor: CuaExecutor = { observe: async () => ({ screenshot: frame(), stateSignature: "s0" }), execute: async () => {} };
+      return runComputerUseLoop({ instructions: "go", provider, executor, persona, redaction: defaultRedactionHooks, timeoutMs: 10_000_000, now: monotonicClock() });
+    };
+    const reached = await run("reached");
+    expect(reached.trace.declaredOutcome).toBe("reached");
+    expect(reached.completionReason).toBe("goal_satisfied");
+    const notReached = await run("not_reached");
+    expect(notReached.trace.declaredOutcome).toBe("not_reached");
+    expect(notReached.completionReason).toBe("gave_up");
+    expect(notReached.status).toBe("abandoned");
+    const blocked = await run("blocked");
+    expect(blocked.trace.declaredOutcome).toBe("blocked");
+    // The actor stopped on purpose; the LANE turns a declared blocker into a blocked participant.
+    expect(blocked.completionReason).toBe("goal_satisfied");
+    const silent = await run(undefined);
+    expect(silent.trace.declaredOutcome).toBeUndefined();
+  });
+
   it("a provider turn that stalls is retried once with a notice, and the run goes on (#469)", async () => {
     // Three lanes of a real run stopped producing turns within seven seconds of each other and
     // were closed 36 minutes later as budget_reached, nothing in the trace saying why: one hung
