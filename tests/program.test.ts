@@ -1403,3 +1403,23 @@ describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
     }
   });
 });
+
+describe("a taken port at the command boundary (#484)", () => {
+  it("is HUMANISH_PORT_IN_USE in the JSON envelope and on stderr, never HUMANISH_UNEXPECTED", async () => {
+    const { PortInUseError } = await import("../src/listen.js");
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const io = { writeOut: (t: string) => { stdout.push(t); }, writeErr: (t: string) => { stderr.push(t); }, setExitCode: () => {} };
+    const program = createProgram(io);
+    program.command("__probe-port").option("--json").action(() => { throw new PortInUseError(8791, "humanish"); });
+    await program.parseAsync(["node", "humanish", "__probe-port", "--json"]);
+    const envelope = JSON.parse(stdout.join("")) as { ok: boolean; error: { code: string; message: string } };
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error.code).toBe("HUMANISH_PORT_IN_USE");
+    expect(envelope.error.message).toContain("8791");
+    expect(envelope.error.message).toContain("another humanish process");
+    stdout.length = 0;
+    await program.parseAsync(["node", "humanish", "__probe-port"]);
+    expect(stderr.join("")).toMatch(/^HUMANISH_PORT_IN_USE: /);
+  });
+});
