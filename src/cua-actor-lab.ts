@@ -2063,7 +2063,16 @@ function stripNegatedNonBlockerPhrases(text: string): string {
   return text
     .replace(/\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g, "")
     .replace(/\bwithout\s+(?:a\s+|any\s+)?(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\b/g, "")
-    .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "");
+    .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "")
+    // "No functional failures blocked me" downgraded a clean passing run to a lab failure on
+    // 2026-09-01. The adjective list above is closed (real|remaining|actual), so an ordinary
+    // qualifier like "functional" slipped through and the trailing verb "blocked" tripped the
+    // scan. Allow up to two intervening words, and cover the verb form directly.
+    .replace(
+      /\bno\s+(?:\w+\s+){0,2}(?:blocker|blockers|blocking issues?|errors?|failures?|problems?|issues?)\b(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it))?/g,
+      " "
+    )
+    .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ");
 }
 
 /**

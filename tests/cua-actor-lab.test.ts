@@ -710,6 +710,39 @@ describe("runCuaActorLab", () => {
       .toContain("could not complete");
   });
 
+  it("does NOT flag a clean pass that says nothing blocked it", () => {
+    // Found on 2026-09-01 by a real benchmark run: a passing lane ended "No functional failures
+    // blocked me, and cleanup left the app back at an empty list" and was downgraded from a pass
+    // to a lab failure. The negation list only knew real/remaining/actual, so the ordinary
+    // qualifier "functional" slipped through and the trailing verb "blocked" tripped the scan.
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("No functional failures blocked me, and cleanup left the app empty.")
+      )
+    ).toBeUndefined();
+  });
+
+  it("does NOT flag other ordinary ways of saying it went fine", () => {
+    for (const message of [
+      "I hit no obvious errors during the trial.",
+      "There were no significant problems with the main flow.",
+      "Nothing really stopped me from finishing the task.",
+      "No blocking issues prevented me from completing it."
+    ]) {
+      expect(resolveSelfReportedBlocker(fakeBlockerSession(message))).toBeUndefined();
+    }
+  });
+
+  it("still flags a real blocker that happens to sit near the word no", () => {
+    // The negation widening must not swallow an actual report. "no" here belongs to a different
+    // clause than the blocker.
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("There was no undo button, and I could not complete the checkout at all.")
+      )
+    ).toContain("could not complete");
+  });
+
   it("does NOT flag a lane that merely QUOTES the subject app's copy containing a blocker word (#329)", () => {
     // The persona faithfully relays the app's banner text; a quoted span is not the actor's own
     // status and must not trip the blocker scan.

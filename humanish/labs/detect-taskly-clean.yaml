@@ -1,0 +1,42 @@
+schema: humanish.lab.v2
+id: detect-taskly-clean
+title: Taskly detection benchmark, clean arm
+description: >
+  One arm of the planted-defect benchmark (#548). Our nearest analogs lead with efficacy numbers
+  (ML6's cua-uat reports 27 of 28 planted bugs caught); humanish has only ever reported process
+  facts like lanes passed and verify checks run. This measures whether a persona doing ordinary
+  work surfaces defects it was never told about.
+  The two arms are identical except for which build is served. `taskly-planted` carries five
+  defects documented in bench/DEFECTS.md: a dead Clear-completed button, silent truncation past
+  30 characters, swapped Active/Completed filters, an empty state rendering the literal text
+  undefined, and a Save button in edit mode that does nothing. `taskly-clean` carries none.
+  Recall comes from the planted arm, precision from the clean one. Both matter: a tool that
+  reports five problems against a build with no planted defects has a precision problem, and that
+  is the failure mode synthetic-user tooling is most criticised for.
+  The mission never mentions defects, bugs, or testing. It describes ordinary use, because a
+  persona told to hunt for bugs will find them whether or not they exist.
+  Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY.
+subject:
+  source: local-tree
+  serve:
+    start: python3 -m http.server 8000 --directory bench/taskly-clean
+    url: http://127.0.0.1:8000/
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user
+    mission: >-
+      You are trying Taskly, a small web app for keeping a to-do list, for the first time. Use it the way you would actually use a list app. Add a few tasks, including one long enough to describe something properly. Mark something complete. Try the filters to see just what is left and just what is finished. Rename one of your tasks. Tidy up when you are done. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw.
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+scenario:
+  mode: dry-run
+  caps:
+    maxUsd: 3
+    maxJobs: 0
+    maxMinutes: 12
+policies:
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
