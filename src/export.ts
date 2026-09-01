@@ -12,6 +12,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { renderObserver } from "./observer.js";
 import { resolveRunPath, verifyRun, type VerifyResult } from "./run.js";
 
 export const EXPORT_SCHEMA = "humanish.export-result.v1";
@@ -68,6 +69,8 @@ export interface ExportOptions {
 export interface ExportDeps {
   /** Injected in tests: a fake verify with a chosen shareSafety, no full bundle needed. */
   verify?: (cwd: string, run: string) => Promise<VerifyResult>;
+  /** Injected in tests: renders observer/index.html for a run that has none. Defaults to renderObserver. */
+  render?: (cwd: string, run: string) => Promise<{ ok: boolean }>;
 }
 
 function escapeJsonScript(json: string): string {
@@ -124,12 +127,23 @@ export async function exportRun(
     };
   }
 
+  const warnings: string[] = [];
   const observerPath = path.join(runRoot, "observer", "index.html");
   let html: string;
   try {
     html = await readFile(observerPath, "utf8");
   } catch {
-    return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput, shareSafety: verified.shareSafety, error: { code: "HUMANISH_EXPORT_NO_OBSERVER", message: `Run ${runId} has no observer/index.html to export.` } };
+    // `run` writes observer-data.json and no index.html; `watch` writes both (#597). The
+    // 0.72.0 dogfood participant hit this on its first export. Render it here, from the same
+    // artifact watch uses, so what produced the run never decides whether it can be sent.
+    const rendered = await (deps.render ?? ((c, r) => renderObserver(c, r, { open: false })))(cwd, runInput).catch(() => ({ ok: false }));
+    try {
+      if (!rendered.ok) throw new Error("render failed");
+      html = await readFile(observerPath, "utf8");
+      warnings.push("observer/index.html was missing and has been rendered for this export (a `run` bundle; `watch` writes it)");
+    } catch {
+      return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput, shareSafety: verified.shareSafety, error: { code: "HUMANISH_EXPORT_NO_OBSERVER", message: `Run ${runId} has no observer/index.html and one could not be rendered from its bundle.` } };
+    }
   }
   const slot = OBSERVER_DATA_SLOT.exec(html);
   if (slot === null) {
@@ -142,7 +156,6 @@ export async function exportRun(
   const cache = new Map<string, string | null>();
   let embedded = 0;
   let imageBytes = 0;
-  const warnings: string[] = [];
   const inline = async (value: string): Promise<string> => {
     const ext = path.extname(value).toLowerCase();
     const mime = IMAGE_MIME[ext];
