@@ -21,6 +21,7 @@ import {
 } from "./feedback.js";
 import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
+import { computeStats, formatStatsHuman } from "./stats.js";
 import {
   buildPayload,
   disabledByEnvironment,
@@ -519,6 +520,7 @@ export function createProgram(
   registerCleanupCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
+  registerStatsCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
@@ -1135,6 +1137,25 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
       const result = await readReview(options.cwd, options.run);
       writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
+    });
+}
+
+function registerStatsCommand(parent: Command, io: CliIo): void {
+  parent
+    .command("stats")
+    .description("Cost, outcome, and duration roll-ups across run history (#472). Estimates stay labelled; unknown costs count as unknown.")
+    .summary("Roll up cost, outcomes, and durations across runs.")
+    .option("--lab <id>", "Only runs from this lab id.")
+    .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; json?: boolean; lab?: string; since?: string }, command) => {
+      const result = await computeStats(options.cwd, {
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        ...(options.since === undefined ? {} : { since: options.since })
+      });
+      writeResult(command, io, result, formatStatsHuman);
+      io.setExitCode(result.ok ? 0 : 2);
     });
 }
 
