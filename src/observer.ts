@@ -1,3 +1,4 @@
+import { listenOnLoopback } from "./listen.js";
 import { execSync, spawn } from "node:child_process";
 import { constants as fsConstants, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
@@ -358,7 +359,7 @@ export async function serveObserver(
     }
   });
 
-  const port = await listen(server, options.port ?? 0);
+  const port = await listenOnLoopback(server, options.port ?? 0);
   if (exposed) {
     hostAllowlist.add(`127.0.0.1:${port}`);
     hostAllowlist.add(`localhost:${port}`);
@@ -885,20 +886,6 @@ export function openTarget(target: string): { opened: boolean; command?: string;
   }
 }
 
-function listen(server: Server, port: number): Promise<number> {
-  return new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, "127.0.0.1", () => {
-      server.off("error", reject);
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        reject(new Error("Observer server did not bind to a TCP port."));
-        return;
-      }
-      resolve(address.port);
-    });
-  });
-}
 
 function closeServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
