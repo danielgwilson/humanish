@@ -53,6 +53,12 @@ npx humanish run first-run    # a study with no keys and no spend — about a mi
 npx humanish run try-live     # a REAL study on a hosted desktop, capped at $2
 ```
 
+**What it finds, measured (2026-09-01, receipts in `bench/` and `docs/goals/`):** 29 of 30 planted
+defects over two benchmark runs on an app we wrote, none invented on the clean arm; on two apps we
+did not write, 16 of 18 distinct findings confirmed against the source and 0 invented, across 14
+participants; and a keyboard-first persona blocked by a modal a mouse persona got past, 2 of
+2 against 2 of 2. Each file states its own caveats.
+
 `try-live` studies a real public app so that your first live run works without
 configuring anything; point its `subject` at your own app once you have seen it
 run. It needs `E2B_API_KEY`, and a model: either a provider key or a coding
