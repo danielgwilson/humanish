@@ -67,10 +67,22 @@ export interface E2BSandboxPaginator {
   nextItems(options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo[]>;
 }
 
+/** Sandbox egress policy. Domain filtering works for HTTP on :80 (Host header) and TLS on :443
+ *  (SNI); other ports need IPs. Passed straight through to the E2B SDK's `network` option. */
+export interface E2BNetworkOptions {
+  /** Hosts (or CIDRs) the sandbox may reach. Wildcards like `*.example.com` cover subdomains at
+   *  any depth; the apex is separate and needs its own entry. */
+  allowOut?: string[];
+  /** Denied traffic. `["0.0.0.0/0"]` with a populated allowOut is the deny-all-but shape. */
+  denyOut?: string[];
+}
+
 export interface E2BDesktopCreateOptions {
   apiKey: string;
   dpi?: number;
   envs?: Record<string, string>;
+  /** Absent means unrestricted egress, which is the historical behavior and stays the default. */
+  network?: E2BNetworkOptions;
   lifecycle?: {
     onTimeout: "kill" | "pause";
   };

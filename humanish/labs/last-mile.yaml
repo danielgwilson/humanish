@@ -51,6 +51,32 @@ execution:
   target: e2b-terminal
   runtimeAuth: openai-env # dry-run records the name; live injects the key command-scoped only
   timeoutMs: 900000 # agent session wall-clock budget
+  # Deny-all egress with a measured allowlist (#538). The lane injects the operator's runtime LLM
+  # key command-scoped and codex spawns the participant's shell as a child, so the participant
+  # inherits that key. This is the one bound on it that does not rely on the participant's
+  # cooperation. Every host below was established by a live run failing without it:
+  #   no DNS resolver          -> nothing resolves
+  #   no distro archives       -> runtime bootstrap exits 100 (apt) after ~20s, empty transcript
+  # Verified live 2026-09-01: the participant completed this study under this policy and reached
+  # the same next command as the unrestricted runs.
+  egressAllow:
+    - 8.8.8.8            # DNS. Domain rules match Host/SNI, which is AFTER resolution (UDP:53).
+    - 8.8.4.4
+    - 1.1.1.1
+    - deb.debian.org     # the runtime bootstrap installs Node with apt before codex can run
+    - security.debian.org
+    - archive.ubuntu.com
+    - security.ubuntu.com
+    - deb.nodesource.com
+    - registry.npmjs.org # installing humanish and codex
+    - "*.npmjs.org"
+    - api.openai.com     # the participant's own model
+    - chatgpt.com
+    - github.com         # the public surfaces the mission points at
+    - "*.github.com"
+    - "*.githubusercontent.com"
+    - nodejs.org
+    - "*.nodejs.org"
   terminal:
     transport: exec-stream # captured non-interactive exec output (NOT an interactive PTY)
     stdin: disabled # autonomous, and comparable to an unassisted baseline
