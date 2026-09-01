@@ -1,3 +1,4 @@
+import { listenOnLoopback, PortInUseError } from "./listen.js";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { lstat } from "node:fs/promises";
@@ -26,6 +27,7 @@ export type { ServeMode };
 
 export type ServeErrorCode =
   | "HUMANISH_INVALID_PORT"
+  | "HUMANISH_SERVE_PORT_IN_USE"
   | "HUMANISH_SERVE_TUNNEL_NOT_FOUND"
   | "HUMANISH_SERVE_TUNNEL_START_FAILED"
   | "HUMANISH_RUN_NOT_FOUND"
@@ -352,7 +354,16 @@ export async function serveObserverLibrary(
   const server = createServer((request, response) => {
     void handler(request, response);
   });
-  const port = await listen(server, options.port);
+  let port: number;
+  try {
+    port = await listenOnLoopback(server, options.port);
+  } catch (error) {
+    if (error instanceof PortInUseError) {
+      // The most expected failure a serve command has, named instead of HUMANISH_UNEXPECTED (#484).
+      return { ok: false, error: { code: "HUMANISH_SERVE_PORT_IN_USE", message: error.message } };
+    }
+    throw error;
+  }
   hostAllowlist.add(`127.0.0.1:${port}`);
   hostAllowlist.add(`localhost:${port}`);
   hostAllowlist.add(`[::1]:${port}`);
@@ -400,22 +411,6 @@ function writeText(
   response.end(body);
 }
 
-function listen(server: Server, port: number): Promise<number> {
-  return new Promise((resolve, reject) => {
-    server.once("error", reject);
-    // The serve surface never binds beyond loopback; exposure only ever happens
-    // through a tunnel or proxy forwarding to this port.
-    server.listen(port, "127.0.0.1", () => {
-      server.off("error", reject);
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        reject(new Error("Serve library server did not bind to a TCP port."));
-        return;
-      }
-      resolve(address.port);
-    });
-  });
-}
 
 function closeServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {

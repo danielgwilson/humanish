@@ -798,3 +798,33 @@ describe("serve library: labeled cost estimate", () => {
     expect(html).toContain(" est.");
   });
 });
+
+describe("serve on a port somebody already holds (#484)", () => {
+  it("reports HUMANISH_SERVE_PORT_IN_USE with the port, never HUMANISH_UNEXPECTED", async () => {
+    const { createServer: createNetServer } = await import("node:net");
+    const { freePort } = await import("./helpers/free-port.js");
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-serve-busy-"));
+    // A library with one run in it, so the bind is the only thing that can fail.
+    const { cp } = await import("node:fs/promises");
+    await cp(path.resolve("fixtures/minimal-app"), path.join(cwd, "app"), { recursive: true });
+    const dry = await runDryRun({ cwd: path.join(cwd, "app"), dryRun: true });
+    if (!dry.ok) throw new Error(dry.error?.message ?? "dry run failed");
+    const port = await freePort();
+    const holder = createNetServer();
+    await new Promise<void>((resolve) => holder.listen(port, "127.0.0.1", resolve));
+    try {
+      const started = await serveObserverLibrary(path.join(cwd, "app"), { port, safe: true, expose: false, edgeAuthed: false });
+      expect(started.ok).toBe(false);
+      if (started.ok) { await started.server.close(); return; }
+      expect(started.error.code).toBe("HUMANISH_SERVE_PORT_IN_USE");
+      expect(started.error.message).toContain(String(port));
+      expect(started.error.message).toContain("--port 0");
+    } finally {
+      await new Promise<void>((resolve) => holder.close(() => resolve()));
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});
