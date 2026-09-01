@@ -174,7 +174,7 @@
         "title": "CLI actor",
         "format": "plain",
         "stdin": "disabled",
-        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted"
+        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted"
       },
       "artifacts": [
         {
@@ -212,7 +212,7 @@
       },
       "kindLabel": "CLI",
       "statusLabel": "Contract proof",
-      "terminalPlain": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted",
+      "terminalPlain": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
       "timeline": [
         {
           "id": "event-002-a",
