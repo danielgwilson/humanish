@@ -132,7 +132,10 @@ Three things to know before you rely on it:
   app-server thread, Claude Code through one `claude -p` stream-json session.
   A participant that starts every turn cold cannot remember trying the menu
   and tries it again; measured on one lab, that was 188 actions over 90 turns
-  and no finish against 21 actions over 8 turns.
+  and no finish against 21 actions over 8 turns. `HUMANISH_LOCAL_AGENT_ONE_SHOT=1`
+  keeps the cold-start path for the Claude agent as a measurement switch, so
+  "remembers" can be compared against "does not" on your own lab; the trace's
+  `ids.model` says which ran.
 
 ## Telemetry
 
