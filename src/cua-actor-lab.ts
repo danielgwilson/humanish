@@ -825,7 +825,12 @@ function laneSpecsAndPlan(
     const simId = `sim-${String(i + 1).padStart(3, "0")}`;
     const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
     const device = resolveLaneDevice(config, lane);
-    const personaId = (roster ? lane?.persona : actor?.persona) as string | undefined;
+    // A lane's persona FALLS BACK to actors[0].persona, matching this field's own doc comment
+    // in src/lab-config.ts and its sibling resolutions (stopWhen, reasoningEffort) two lines
+    // below. Reading only lane.persona when a roster was present meant every fan-out lane of
+    // every lab that declared actors[0].persona ran with no persona at all: no personaLine in
+    // the prompt, traitsApplied [], and nothing warned (#512).
+    const personaId = (lane?.persona ?? actor?.persona) as string | undefined;
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeLaneInstructions({
       mission,
