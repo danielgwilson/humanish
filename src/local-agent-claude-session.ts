@@ -25,7 +25,7 @@ import readline from "node:readline";
 
 import type { ActorCapabilities } from "./actor-contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
-import { parseAgentJson, promptFor, toCuaActions, LOCAL_AGENT_CAPABILITIES } from "./local-agent-cli.js";
+import { declaredOutcomeOf, parseAgentJson, promptFor, toCuaActions, LOCAL_AGENT_CAPABILITIES } from "./local-agent-cli.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 
 type JsonObject = Record<string, unknown>;
@@ -212,6 +212,7 @@ export function turnFromResult(result: JsonObject): CuaTurn {
   }
   const actions = toCuaActions(Array.isArray(parsed.actions) ? (parsed.actions as never[]) : []);
   const done = parsed.done === true || (actions.length === 0 && typeof parsed.message === "string");
+  const outcome = declaredOutcomeOf(parsed.outcome);
   const usage = result.usage as JsonObject | undefined;
   const count = (key: string): number | undefined => (typeof usage?.[key] === "number" ? (usage[key] as number) : undefined);
   const input = count("input_tokens");
@@ -222,6 +223,7 @@ export function turnFromResult(result: JsonObject): CuaTurn {
     actions,
     pendingSafetyChecks: [],
     done,
+    ...(outcome === undefined ? {} : { outcome }),
     ...(typeof parsed.reasoning === "string" && parsed.reasoning.length > 0 ? { reasoning: parsed.reasoning } : {}),
     ...(typeof parsed.message === "string" && parsed.message.length > 0 ? { message: parsed.message } : {}),
     // Claude Code reports its token counts per turn (#531). They are recorded as counts; the

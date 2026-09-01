@@ -33,6 +33,15 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
  */
 export type ActorStatus = "passed" | "abandoned" | "incomplete" | "blocked" | "timed_out" | "failed";
 
+/**
+ * What the PARTICIPANT said happened, in a field rather than a paragraph (#570). Providers whose
+ * reply is schema-constrained (the local-agent routes) fill it on their final turn; a free-text
+ * provider leaves it absent and the lane falls back to reading the closing message. `reached`:
+ * the task is finished. `blocked`: something in the app stopped the participant. `not_reached`:
+ * the participant stopped for another reason (gave up, ran out of ideas).
+ */
+export type ParticipantDeclaredOutcome = "reached" | "not_reached" | "blocked";
+
 /** Statuses that describe what happened to a PARTICIPANT rather than a harness malfunction. Verify
  *  treats these as study results, so a run whose evidence is sound is not called untrustworthy just
  *  because a persona gave up. */
@@ -207,6 +216,13 @@ export interface ActorTrace {
    * was never measured is not an empty funnel). Its absence is tolerated by verify.
    */
   taskFunnel?: TaskFunnel;
+  /**
+   * ADDITIVE + OPTIONAL (#570): the outcome the participant declared on its final turn, when its
+   * provider's reply carries the field. Absent on free-text providers and on every older bundle.
+   * The lane reads this before it reads the closing paragraph; three regex patches in one month
+   * (#453, #549, #565) each fixed a false refusal and each left the next shape unhandled.
+   */
+  declaredOutcome?: ParticipantDeclaredOutcome;
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
   /**

@@ -743,6 +743,21 @@ describe("runCuaActorLab", () => {
     }
   });
 
+  it("the participant's declared outcome wins over the paragraph, both ways (#570)", () => {
+    const declared = (reason: string, outcome: "reached" | "blocked" | "not_reached") => {
+      const session = fakeBlockerSession(reason);
+      session.trace.declaredOutcome = outcome;
+      return session;
+    };
+    // A declared "reached" is not re-read for blocker phrases, however the paragraph is worded.
+    expect(resolveSelfReportedBlocker(declared("I could not complete the last step but marked it done anyway.", "reached"))).toBeUndefined();
+    // A declared "blocked" is a blocker even when the paragraph is mild.
+    expect(resolveSelfReportedBlocker(declared("Stopped at the database dialog.", "blocked"))).toContain("database dialog");
+    expect(resolveSelfReportedFriction(declared("Stopped at the database dialog.", "blocked"))).toContain("database dialog");
+    // No declaration: the paragraph is read, as before.
+    expect(resolveSelfReportedBlocker(fakeBlockerSession("I could not complete the task; the delete button was disabled."))).toBeDefined();
+  });
+
   it("still flags an inability to ACT, which is what a blocker is", () => {
     for (const message of [
       "Blocked after partial completion. Could not connect the two tables because every new table appeared on top of the previous one.",

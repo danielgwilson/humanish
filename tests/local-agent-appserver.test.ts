@@ -159,3 +159,14 @@ describe("a turn that does nothing is not a finished study", () => {
     expect(finished.done).toBe(true);
   });
 });
+
+describe("the participant's declared outcome (#570)", () => {
+  it("is constrained by the schema and read off the turn", () => {
+    const schema = turnOutputSchema() as { required: string[]; properties: Record<string, { enum?: unknown[] }> };
+    expect(schema.required).toContain("outcome");
+    expect(schema.properties.outcome?.enum).toEqual(["reached", "not_reached", "blocked", null]);
+    const note = (outcome: unknown) => ({ params: { turn: { items: [{ type: "agentMessage", text: JSON.stringify({ reasoning: "r", done: true, message: "m", outcome, actions: [] }) }] } } });
+    expect(turnFromNotification(note("not_reached")).outcome).toBe("not_reached");
+    expect(turnFromNotification(note(null)).outcome).toBeUndefined();
+  });
+});

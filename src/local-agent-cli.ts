@@ -25,7 +25,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { ActorCapabilities } from "./actor-contract.js";
+import type { ActorCapabilities, ParticipantDeclaredOutcome } from "./actor-contract.js";
 import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 
@@ -58,11 +58,13 @@ export function localAgentTurnSchema(): Record<string, unknown> {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["reasoning", "done", "message", "actions"],
+    required: ["reasoning", "done", "message", "outcome", "actions"],
     properties: {
       reasoning: { type: "string" },
       done: { type: "boolean" },
       message: { type: ["string", "null"] },
+      // The participant's own word for how it ended (#570). Null until done.
+      outcome: { type: ["string", "null"], enum: ["reached", "not_reached", "blocked", null] },
       actions: {
         type: "array",
         items: {
@@ -135,6 +137,11 @@ export function toCuaActions(raw: readonly RawAction[]): CuaAction[] {
  * than in two places, and a response with no object at all is a turn error, never an empty turn —
  * an empty turn would read to the loop as "the participant chose to do nothing".
  */
+/** The declared outcome, only if it is one of the three words; anything else is absence. */
+export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | undefined {
+  return value === "reached" || value === "not_reached" || value === "blocked" ? value : undefined;
+}
+
 export function parseAgentJson(text: string): Record<string, unknown> {
   // ORDER MATTERS, and a test caught it: Claude Code's envelope is valid JSON whose `result`
   // STRING contains a ```json fence. Stripping fences first reached inside that string and
@@ -232,7 +239,7 @@ export function promptFor(request: CuaTurnRequest, screenshotPath: string, agent
   // Claude Code has no --output-schema, so the shape is stated in the prompt for both; codex gets
   // it enforced as well. Saying it twice costs nothing and keeps one prompt for both adapters.
   const shape =
-    '{"reasoning":string,"done":boolean,"message":string|null,'
+    '{"reasoning":string,"done":boolean,"message":string|null,"outcome":"reached"|"not_reached"|"blocked"|null,'
     + '"actions":[{"kind":"click|double_click|type|keypress|scroll|wait|done",'
     + '"x":int|null,"y":int|null,"text":string|null,"keys":[string]|null,"ms":int|null}]}';
   const readFile = agent === "claude" ? `Read the image file ${screenshotPath}. ` : "";
@@ -242,7 +249,9 @@ export function promptFor(request: CuaTurnRequest, screenshotPath: string, agent
     `${readFile}That image is the CURRENT SCREEN. You are the participant: decide what to do next, `
       + "as this person would. Coordinates are pixels from the top-left of the screenshot.",
     "Return between one and three actions. Set done=true ONLY when the task is finished or you are "
-      + "giving up, and put your closing words in message.",
+      + "giving up, and put your closing words in message. When done=true, set outcome: reached if "
+      + "the task is finished, blocked if something in the app stopped you, not_reached if you are "
+      + "stopping for another reason. Otherwise outcome is null.",
     `Reply with ONLY a JSON object of this shape: ${shape}`,
     hint
   ].join("\n");
@@ -332,10 +341,12 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
         const turn = parseAgentJson(payload);
         const actions = toCuaActions(Array.isArray(turn.actions) ? (turn.actions as RawAction[]) : []);
         const done = turn.done === true || (actions.length === 0 && typeof turn.message === "string");
+        const outcome = declaredOutcomeOf(turn.outcome);
         return {
           actions,
           pendingSafetyChecks: [],
           done,
+          ...(outcome === undefined ? {} : { outcome }),
           ...(typeof turn.reasoning === "string" && turn.reasoning.length > 0 ? { reasoning: turn.reasoning } : {}),
           ...(typeof turn.message === "string" && turn.message.length > 0 ? { message: turn.message } : {})
           // No `usage`: a subscription CLI does not report tokens we can price, and inventing a

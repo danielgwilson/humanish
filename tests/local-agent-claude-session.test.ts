@@ -110,3 +110,16 @@ describe("one Claude Code session as the computer-use brain (#520)", () => {
     expect(userMessage("hi")).toEqual({ type: "user", message: { role: "user", content: [{ type: "text", text: "hi" }] } });
   });
 });
+
+describe("the participant's declared outcome (#570)", () => {
+  it("rides the turn when the reply carries one of the three words, and only then", () => {
+    const reached = turnFromResult({ type: "result", subtype: "success", result: JSON.stringify({ reasoning: "", done: true, message: "Both tables exist.", outcome: "reached", actions: [] }) });
+    expect(reached.outcome).toBe("reached");
+    const blocked = turnFromResult({ type: "result", subtype: "success", result: JSON.stringify({ reasoning: "", done: true, message: "The modal has no keyboard path.", outcome: "blocked", actions: [] }) });
+    expect(blocked.outcome).toBe("blocked");
+    const junk = turnFromResult({ type: "result", subtype: "success", result: JSON.stringify({ reasoning: "", done: true, message: "done", outcome: "success!!", actions: [] }) });
+    expect(junk.outcome).toBeUndefined();
+    const midRun = turnFromResult({ type: "result", subtype: "success", result: JSON.stringify({ reasoning: "", done: false, message: null, outcome: null, actions: [{ kind: "click", x: 1, y: 1 }] }) });
+    expect(midRun.outcome).toBeUndefined();
+  });
+});

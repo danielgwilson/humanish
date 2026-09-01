@@ -2125,6 +2125,12 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
  * when the lane is a clean pass. Exported for testing.
  */
 export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): string | undefined {
+  // The participant's own word wins when it gave one (#570): a declared "reached" is not re-read
+  // for blocker-shaped phrases, and a declared "blocked" is a blocker whatever the paragraph says.
+  const declared = session?.trace.declaredOutcome;
+  if (session !== undefined && declared !== undefined) {
+    return declared === "blocked" && session.completionReason === "goal_satisfied" ? session.reason : undefined;
+  }
   return session?.completionReason === "goal_satisfied"
     && completionReasonBlocksVerdict(session.reason)
     && !traceHasStopWhenMatch(session)
@@ -2139,6 +2145,9 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
  * quoted-copy and stopWhen discipline as the verdict resolver. Exported for testing.
  */
 export function resolveSelfReportedFriction(session: CuaLoopResult | undefined): string | undefined {
+  // Friction stays a read of the narrative even when the outcome was declared: a participant who
+  // reached the goal and described what was hard on the way has reported friction.
+  if (session?.trace.declaredOutcome === "blocked" && session.completionReason === "goal_satisfied") return session.reason;
   return session?.completionReason === "goal_satisfied"
     && completionReasonContradictsGoal(session.reason)
     && !traceHasStopWhenMatch(session)
