@@ -20,6 +20,41 @@ import {
 import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { freePort } from "./helpers/free-port.js";
 
+// A probe that a stranger's server cannot satisfy. CI failed this file with "expected
+// '<main>landing page</main>' to contain 'INBOX OK'": between freePort() releasing a port and
+// python binding it, another worker's fixture server (scripted-browser-lab, which answers every
+// path with 200) took it. The old probe accepted any 200 on /health, so the test then read the
+// wrong server. The script's /health carries a machine marker for exactly this reason.
+async function catchIsUp(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/health`);
+    if (!response.ok) return false;
+    const body = (await response.json()) as { service?: string };
+    return body.service === "humanish-comms-catch";
+  } catch {
+    return false;
+  }
+}
+
+/** Spawn the catch on fresh ports until OUR listeners answer; a stolen port gets a new pair. */
+async function spawnCatchOnFreePorts(
+  launch: (port: number, inboxPort: number) => ReturnType<typeof spawn>,
+  withInbox: boolean,
+  tries = 3
+): Promise<{ child: ReturnType<typeof spawn>; port: number; inboxPort: number }> {
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    const port = await freePort();
+    const inboxPort = withInbox ? await freePort() : 0;
+    const child = launch(port, inboxPort);
+    for (let i = 0; i < 50; i += 1) {
+      if ((await catchIsUp(port)) && (!withInbox || (await catchIsUp(inboxPort)))) return { child, port, inboxPort };
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    child.kill("SIGKILL");
+  }
+  throw new Error(`comms catch did not come up on its own ports in ${tries} tries`);
+}
+
 const VERIFICATION_HTML =
   '<p>Confirm your account.</p><p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
 
@@ -65,16 +100,13 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     const scriptPath = path.join(dir, "catch.py");
     const deliveries = path.join(dir, "deliveries.ndjson");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    const port = await freePort();
-    child = spawn("python3", [scriptPath, String(port), deliveries], { stdio: "ignore" });
-
-    // wait for /health
+    const spawned = await spawnCatchOnFreePorts(
+      (port) => spawn("python3", [scriptPath, String(port), deliveries], { stdio: "ignore" }),
+      false
+    );
+    child = spawned.child;
+    const port = spawned.port;
     const base = `http://127.0.0.1:${port}`;
-    let up = false;
-    for (let i = 0; i < 50 && !up; i += 1) {
-      try { up = (await fetch(`${base}/health`)).ok; } catch { await new Promise((r) => setTimeout(r, 60)); }
-    }
-    expect(up).toBe(true);
 
     // Resend flat shape → 200 { id }
     const flat = await fetch(`${base}/emails`, {
@@ -109,18 +141,13 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     await mkdir(path.join(surfaceDir, "inbox"), { recursive: true });
     await writeFile(path.join(surfaceDir, "inbox", "index"), "<h1>INBOX OK</h1>", "utf8");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
-    // Two consecutive ports: the second is asked for separately rather than assumed free.
-    const port = await freePort();
-    const inboxPort = await freePort();
-    child = spawn("python3", [scriptPath, String(port), deliveries, surfaceDir, String(inboxPort)], { stdio: "ignore" });
-
-    const upBoth = async (): Promise<boolean> => {
-      try { return (await fetch(`http://127.0.0.1:${port}/health`)).ok && (await fetch(`http://127.0.0.1:${inboxPort}/health`)).ok; }
-      catch { return false; }
-    };
-    let up = false;
-    for (let i = 0; i < 50 && !up; i += 1) { up = await upBoth(); if (!up) await new Promise((r) => setTimeout(r, 60)); }
-    expect(up).toBe(true);
+    // Two ports, each asked for separately; a stolen one gets a fresh pair (see spawnCatchOnFreePorts).
+    const spawned = await spawnCatchOnFreePorts(
+      (port, inboxPort) => spawn("python3", [scriptPath, String(port), deliveries, surfaceDir, String(inboxPort)], { stdio: "ignore" }),
+      true
+    );
+    child = spawned.child;
+    const { port, inboxPort } = spawned;
 
     // The 0.0.0.0 inbox listener serves the surface (GET)…
     const g = await fetch(`http://127.0.0.1:${inboxPort}/inbox`);
@@ -377,14 +404,12 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
       await writeFile(full, file.body, "utf8");
     }
 
-    const port = await freePort();
-    child = spawn("python3", [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" });
-    const base = `http://127.0.0.1:${port}`;
-    let up = false;
-    for (let i = 0; i < 50 && !up; i += 1) {
-      try { up = (await fetch(`${base}/health`)).ok; } catch { await new Promise((r) => setTimeout(r, 60)); }
-    }
-    expect(up).toBe(true);
+    const spawned = await spawnCatchOnFreePorts(
+      (port) => spawn("python3", [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" }),
+      false
+    );
+    child = spawned.child;
+    const base = `http://127.0.0.1:${spawned.port}`;
 
     // The persona opens the inbox list…
     const list = await fetch(`${base}/inbox`);
