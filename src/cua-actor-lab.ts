@@ -44,8 +44,9 @@ import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
-import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
+import { detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import { startAppServerSession } from "./local-agent-appserver.js";
+import { startClaudeSession } from "./local-agent-claude-session.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
@@ -2135,8 +2136,10 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, appUrl, cloneRoute, localTreeRoute, serve, subjectRepo, subjectEnvNames } = deps;
   const desktopCliRoute = deps.desktopCliRoute === true;
-  // The local brain, when there is one. `appServer` owns a process, so the lane closes it.
+  // The local brain, when there is one. `appServer` / `claudeSession` own a process, so the lane
+  // closes it.
   let appServer: Awaited<ReturnType<typeof startAppServerSession>> | undefined;
+  let claudeSession: Awaited<ReturnType<typeof startClaudeSession>> | undefined;
   let localAgentProvider: CuaProvider | undefined;
   const subjectEnvValues = config.subject.envValues ?? {};
   const targetUrl = spec.targetUrl ?? appUrl;
@@ -2440,11 +2443,14 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         });
         localAgentProvider = appServer.provider;
       } else if (deps.localAgent === "claude") {
-        localAgentProvider = createLocalAgentProvider({
-          agent: "claude",
+        // One session for the whole run, like the codex thread above (#520). The one-shot
+        // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
+        // started with no memory of the last.
+        claudeSession = await startClaudeSession({
           ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
           ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
         });
+        localAgentProvider = claudeSession.provider;
       }
 
       // World is ready: release the pipeline gate so the remaining lanes may start.
@@ -2586,6 +2592,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // The local brain owns a process. Close it before anything else can throw: a leaked
     // app-server per lane would outlive the run and keep a thread open on the operator's plan.
     appServer?.close();
+    await claudeSession?.close();
     // Stop the mid-run inbox-surface loop FIRST — before the teardown evidence drain below — so the two
     // `cat`s never overlap and the final surface state is deterministic. A surface failure can never
     // block teardown (the loop body is fully try/caught and this await is on its already-caught promise).

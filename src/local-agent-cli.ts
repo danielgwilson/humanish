@@ -227,7 +227,7 @@ export const LOCAL_AGENT_CAPABILITIES: ActorCapabilities = {
   license: "open"
 };
 
-function promptFor(request: CuaTurnRequest, screenshotPath: string, agent: LocalAgentId): string {
+export function promptFor(request: CuaTurnRequest, screenshotPath: string, agent: LocalAgentId): string {
   const hint = request.contextHint === undefined ? "" : `\n\nNote from the harness: ${request.contextHint}`;
   // Claude Code has no --output-schema, so the shape is stated in the prompt for both; codex gets
   // it enforced as well. Saying it twice costs nothing and keeps one prompt for both adapters.
