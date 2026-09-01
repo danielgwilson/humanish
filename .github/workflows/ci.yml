@@ -114,5 +114,10 @@ jobs:
           fetch-depth: 0
 
       # Full-history secret scan (license-free CLI via Docker; no GITLEAKS_LICENSE needed).
+      # Scoped to THIS ref's ancestry. `--all` walks every ref present in the clone, so one
+      # unmerged branch carrying a finding failed CI on every other open PR, which is what
+      # happened on 2026-08-31. Coverage is unchanged in practice: every branch runs this job,
+      # so a secret is still caught on the PR that introduces it, and `--full-history HEAD`
+      # still walks the whole ancestry rather than the diff.
       - name: Scan full git history for secrets (gitleaks)
-        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --log-opts="--all" --redact --no-banner
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --log-opts="--full-history HEAD" --redact --no-banner
