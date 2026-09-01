@@ -195,6 +195,21 @@ export interface CuaLoopOptions {
   redaction: RedactionHooks;
   /** Hard wall-clock runaway guard. The only count-free hard stop. */
   timeoutMs: number;
+  /**
+   * Per-turn bound on the provider call (#469). Without it a single hung HTTP request was
+   * indistinguishable from "the participant is still thinking" and cost the lane its whole
+   * remaining budget: three lanes of one run stalled within seven seconds of each other and were
+   * closed 36 minutes later as budget_reached with nothing in the trace to say why. A stalled
+   * turn is retried once with a notice; a second stall ends the lane as harness_error, named.
+   */
+  turnTimeoutMs?: number;
+  /**
+   * Per-call bound on observation work (#480): executor.observe(), and the idle actions
+   * (`wait`, `screenshot`, `move`) whose only job is to look. A default `wait` hung for ~90 s
+   * inside the desktop SDK and ended a lane as actor_error after twelve turns of ordinary work.
+   * A stalled observe is retried once; a stalled idle action is skipped with a notice.
+   */
+  observationTimeoutMs?: number;
   /** Injected clock (ms). Lets tests drive deadlines deterministically. */
   now: () => number;
   /** Cancellation. The loop checks it each turn and after each action batch. */
@@ -523,6 +538,15 @@ export function statusForCompletionReason(reason: ActorCompletionReason): ActorS
 // adapter failure when raceSettle rejects.
 class CuaDeadlineError extends Error {}
 class CuaAbortError extends Error {}
+/** A single call outlived its own bound while the session still had budget: a stall, not a deadline. */
+class CuaStallError extends Error {
+  constructor(readonly what: string, readonly afterMs: number) {
+    super(`${what} produced nothing within ${afterMs}ms`);
+  }
+}
+
+export const DEFAULT_TURN_TIMEOUT_MS = 180_000;
+export const DEFAULT_OBSERVATION_TIMEOUT_MS = 60_000;
 // Internal control-flow signal: the per-turn frame guard already set completionReason/reason
 // to a structured harness_error; this just unwinds the loop without being misread as an adapter
 // failure in the catch block (it carries no message to persist).
@@ -539,6 +563,28 @@ const neverAbort: AbortSignal = new AbortController().signal;
  * cannot be force-cancelled); we simply stop blocking the loop on it. An
  * already-settled promise always wins, so a fast op is never spuriously failed.
  */
+/**
+ * raceSettle with a second, tighter clock: the call's own bound. When the tighter clock wins the
+ * result is a CuaStallError (the caller decides whether to retry); when the session clock wins it
+ * stays a CuaDeadlineError, so the existing budget_reached / timed_out reading is untouched.
+ */
+async function raceBounded<T>(
+  what: string,
+  promise: Promise<T>,
+  remainingMs: number,
+  boundMs: number,
+  signal?: AbortSignal
+): Promise<T> {
+  const cap = Math.min(remainingMs, boundMs);
+  const boundWins = boundMs < remainingMs;
+  try {
+    return await raceSettle(promise, cap, signal);
+  } catch (error) {
+    if (error instanceof CuaDeadlineError && boundWins) throw new CuaStallError(what, cap);
+    throw error;
+  }
+}
+
 function raceSettle<T>(promise: Promise<T>, remainingMs: number, signal?: AbortSignal): Promise<T> {
   if (signal?.aborted) {
     return Promise.reject(new CuaAbortError());
@@ -603,6 +649,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
   const startedAtMs = now();
   const remaining = (): number => timeoutMs - (now() - startedAtMs);
+  const turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
+  const observationTimeoutMs = options.observationTimeoutMs ?? DEFAULT_OBSERVATION_TIMEOUT_MS;
   const items: ActorTraceItem[] = [];
   // The ONE recording choke point (#441): every trace item is stamped `at` from the
   // loop's injected clock as it is recorded, so timed playback reads recorded facts
@@ -763,7 +811,25 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let pendingAcks: CuaSafetyCheck[] | undefined;
   try {
     currentPhase = "observing initial UI state";
-    let observation = await raceSettle(executor.observe(), remaining(), signal);
+    // A stalled observe is retried once (#480); a second stall is the substrate telling us it is
+    // gone, and that ends the lane with its own name rather than an unexplained deadline.
+    const observeBounded = async (label: string): Promise<CuaObservation> => {
+      try {
+        return await raceBounded(`observe (${label})`, executor.observe(), remaining(), observationTimeoutMs, signal);
+      } catch (error) {
+        if (!(error instanceof CuaStallError)) throw error;
+        record({
+          id: nextId("notice"),
+          kind: "notice",
+          lifecycle: "completed",
+          status: "warn",
+          title: "observation stalled; retrying once",
+          text: `${error.what} produced nothing within ${error.afterMs}ms; asking the desktop again`
+        });
+        return await raceBounded(`observe (${label}, retry)`, executor.observe(), remaining(), observationTimeoutMs, signal);
+      }
+    };
+    let observation = await observeBounded("initial");
     // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
     onObservedUrl?.(observation.url);
     if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
@@ -812,7 +878,39 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       pendingAcks = undefined;
 
       currentPhase = `requesting provider turn ${turnNumber}`;
-      const turn = await raceSettle(provider.nextTurn(request, signal ?? neverAbort), remaining(), signal);
+      // Bounded per call (#469): one hung request used to be indistinguishable from thinking
+      // and cost the lane its whole remaining budget. One retry with a notice; then the lane ends
+      // as harness_error, named, instead of thirty silent minutes.
+      let turn: CuaTurn;
+      try {
+        turn = await raceBounded(`provider turn ${turnNumber}`, provider.nextTurn(request, signal ?? neverAbort), remaining(), turnTimeoutMs, signal);
+      } catch (error) {
+        if (!(error instanceof CuaStallError)) throw error;
+        record({
+          id: nextId("notice"),
+          kind: "notice",
+          lifecycle: "completed",
+          status: "warn",
+          title: "provider turn stalled; retrying once",
+          text: `${error.what} produced nothing within ${error.afterMs}ms; sending the same observation again`
+        });
+        try {
+          turn = await raceBounded(`provider turn ${turnNumber} (retry)`, provider.nextTurn(request, signal ?? neverAbort), remaining(), turnTimeoutMs, signal);
+        } catch (retryError) {
+          if (!(retryError instanceof CuaStallError)) throw retryError;
+          completionReason = "harness_error";
+          reason = `provider turn ${turnNumber} stalled twice (${retryError.afterMs}ms each); the model produced no turn and the lane was ended rather than left to run out its budget`;
+          record({
+            id: nextId("notice"),
+            kind: "notice",
+            lifecycle: "completed",
+            status: "error",
+            title: "provider turn stalled twice",
+            text: reason
+          });
+          break;
+        }
+      }
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
@@ -936,7 +1034,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         // stop evaluation rides it — the session is already over.
         if (taskTracker !== undefined) {
           try {
-            const closing = await raceSettle(executor.observe(), remaining(), signal);
+            const closing = await observeBounded("closing");
             observeTasks(closing, turnNumber);
           } catch {
             // Best-effort by design.
@@ -970,7 +1068,26 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         // action must not appear as a plainly-completed ui_action (#248). On
         // failure the error notice below captures the failing action + phase.
         try {
-          await raceSettle(executor.execute(action), remaining(), signal);
+          if (isIdleAction(action)) {
+            // Observation actions only look (#480). A `wait` that hangs inside the SDK has, by
+            // definition, waited; skipping it with a notice loses nothing the participant chose.
+            const idleBound = observationTimeoutMs + (action.kind === "wait" ? (action.ms ?? 0) : 0);
+            try {
+              await raceBounded(`idle action ${actionTitle}`, executor.execute(action), remaining(), idleBound, signal);
+            } catch (error) {
+              if (!(error instanceof CuaStallError)) throw error;
+              record({
+                id: nextId("notice"),
+                kind: "notice",
+                lifecycle: "completed",
+                status: "warn",
+                title: "observation action stalled; skipped",
+                text: `${error.what} produced nothing within ${error.afterMs}ms; the desktop was not asked again and the next screenshot decides`
+              });
+            }
+          } else {
+            await raceSettle(executor.execute(action), remaining(), signal);
+          }
         } catch (error) {
           // RECOVERY at the loop boundary (covers ALL action kinds uniformly):
           // only a genuine substrate-command failure is recoverable. The real
@@ -1032,7 +1149,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
       if (signal?.aborted) throw new CuaAbortError();
       currentPhase = `observing UI state after turn ${turnNumber}`;
-      observation = await raceSettle(executor.observe(), remaining(), signal);
+      observation = await observeBounded(`after turn ${turnNumber}`);
       // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
       onObservedUrl?.(observation.url);
       if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);

@@ -559,6 +559,138 @@ describe("runComputerUseLoop", () => {
     });
   });
 
+  it("a provider turn that stalls is retried once with a notice, and the run goes on (#469)", async () => {
+    // Three lanes of a real run stopped producing turns within seven seconds of each other and
+    // were closed 36 minutes later as budget_reached, nothing in the trace saying why: one hung
+    // HTTP request per lane, bounded only by the session budget.
+    let calls = 0;
+    const provider: CuaProvider = {
+      id: "stall-once",
+      version: "s",
+      capabilities: FAKE_CAPS,
+      nextTurn() {
+        calls += 1;
+        if (calls === 1) return new Promise<CuaTurn>(() => {}); // hangs; only a bound can settle it
+        return Promise.resolve({ actions: [], pendingSafetyChecks: [], done: true, message: "done" });
+      }
+    };
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: "s0" }),
+      execute: async () => {}
+    };
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      turnTimeoutMs: 30,
+      now: monotonicClock()
+    });
+    expect(calls).toBe(2);
+    expect(result.completionReason).toBe("goal_satisfied");
+    const notice = result.trace.items.find((item) => item.title === "provider turn stalled; retrying once");
+    expect(notice).toMatchObject({ kind: "notice", status: "warn" });
+    expect(notice?.text).toContain("provider turn 1 produced nothing within 30ms");
+  });
+
+  it("a provider turn that stalls twice ends the lane as harness_error, named, not thirty silent minutes", async () => {
+    const provider: CuaProvider = {
+      id: "stall-always",
+      version: "s",
+      capabilities: FAKE_CAPS,
+      nextTurn: () => new Promise<CuaTurn>(() => {})
+    };
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: "s0" }),
+      execute: async () => {}
+    };
+    const startedAt = Date.now();
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      turnTimeoutMs: 30,
+      now: monotonicClock()
+    });
+    // Ended by the per-turn bound, long before the session budget.
+    expect(Date.now() - startedAt).toBeLessThan(5_000);
+    expect(result.completionReason).toBe("harness_error");
+    expect(result.status).toBe("failed");
+    expect(result.reason).toContain("provider turn 1 stalled twice (30ms each)");
+    expect(result.trace.items.at(-1)).toMatchObject({ kind: "notice", status: "error", title: "provider turn stalled twice" });
+  });
+
+  it("a `wait` that hangs inside the desktop SDK is skipped with a notice; the participant is not failed (#480)", async () => {
+    // A default wait hung for ~90 s in the SDK after twelve turns of ordinary work and the lane
+    // ended actor_error. A wait that has hung has, by definition, waited.
+    let turns = 0;
+    const provider: CuaProvider = {
+      id: "wait-then-done",
+      version: "w",
+      capabilities: FAKE_CAPS,
+      async nextTurn() {
+        turns += 1;
+        if (turns === 1) return { actions: [{ kind: "wait", ms: 5 }], pendingSafetyChecks: [], done: false };
+        return { actions: [], pendingSafetyChecks: [], done: true, message: "done" };
+      }
+    };
+    const executor: CuaExecutor = {
+      observe: async () => ({ screenshot: frame(), stateSignature: `s${turns}` }),
+      execute: (action) => (action.kind === "wait" ? new Promise<void>(() => {}) : Promise.resolve())
+    };
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      observationTimeoutMs: 30,
+      now: monotonicClock()
+    });
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(turns).toBe(2);
+    const notice = result.trace.items.find((item) => item.title === "observation action stalled; skipped");
+    expect(notice).toMatchObject({ kind: "notice", status: "warn" });
+    expect(notice?.text).toContain("idle action wait 5ms produced nothing within 35ms");
+  });
+
+  it("an observe() that stalls is asked again once before the lane gives up on the desktop", async () => {
+    let observes = 0;
+    const provider: CuaProvider = {
+      id: "done-at-once",
+      version: "d",
+      capabilities: FAKE_CAPS,
+      nextTurn: async () => ({ actions: [], pendingSafetyChecks: [], done: true, message: "done" })
+    };
+    const executor: CuaExecutor = {
+      observe: () => {
+        observes += 1;
+        if (observes === 1) return new Promise<CuaObservation>(() => {});
+        return Promise.resolve({ screenshot: frame(), stateSignature: "s0" });
+      },
+      execute: async () => {}
+    };
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      observationTimeoutMs: 30,
+      now: monotonicClock()
+    });
+    expect(observes).toBe(2);
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.trace.items.some((item) => item.title === "observation stalled; retrying once")).toBe(true);
+  });
+
   it("a raceSettle DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
     let t = 0;
     const now = (): number => t;
