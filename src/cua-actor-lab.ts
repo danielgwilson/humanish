@@ -2011,6 +2011,18 @@ async function startDesktopStream(
   }
 }
 
+// "can't" followed by a PERCEPTION verb describes what the screen showed, not an inability to
+// proceed: "the canvas truncates it so you can't even read the whole thing", "I can't tell from
+// the screen whether the rename is persisted", "so I could not read its full description". Five
+// of five completed live runs on 2026-09-01 (two on drawDB, three on the planted benchmark app)
+// were refused as "not a credible pass" on exactly these sentences, every one a defect report
+// written AFTER the participant reached the goal. The more precisely a participant describes a
+// display defect, the more likely the scan was to refuse the run — the incentive inversion #453
+// fixed for resolved arcs, back in a new shape. "could not complete", "could not connect",
+// "unable to get focus" still count: those name an inability to act.
+const PERCEPTION_AFTER_MODAL =
+  /\b(can'?t|cannot|could ?not|couldn'?t|unable to|wasn'?t able to)\s+(even\s+|quite\s+|really\s+|fully\s+)?(read|see|tell|view|make out|verify|confirm|be sure|be certain|judge|know)\b/g;
+
 function hasBlockerLanguage(text: string): boolean {
   return /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text)
     || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
@@ -2028,8 +2040,12 @@ function completionReasonContradictsGoal(reason: string): boolean {
  *  first — failure narration the participant itself reports as overcome is friction on the
  *  road, not a blocker at the destination (#453). */
 function completionReasonBlocksVerdict(reason: string): boolean {
+  // Perception phrases are stripped for the VERDICT only: "I could not read the full description"
+  // is friction worth a tally count and a feedback candidate (the friction scan above keeps it),
+  // and it is not a reason to refuse the pass.
   return hasBlockerLanguage(
     stripResolvedArcSegments(stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase())))
+      .replace(PERCEPTION_AFTER_MODAL, "")
   );
 }
 
