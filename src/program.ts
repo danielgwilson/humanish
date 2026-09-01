@@ -308,6 +308,21 @@ function reportActiveHandles(command: Command, io: CliIo): void {
   }).unref?.();
 }
 
+/**
+ * Write observer/index.html for a finished run the way `watch` does, so a bundle is the same
+ * bundle whichever command produced it (#597). Never fails the run: a bundle without its Observer
+ * is still evidence, and `export` can render one later.
+ */
+async function renderObserverForRun(cwd: string, result: RunResult): Promise<void> {
+  if (!result.ok || result.runId === undefined) return;
+  try {
+    const rendered = await renderObserver(cwd, result.runId, { open: false });
+    if (!rendered.ok) result.warnings.push(`observer/index.html was not written: ${rendered.error?.message ?? "render failed"}`);
+  } catch (error) {
+    result.warnings.push(`observer/index.html was not written: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 /** `lab run`, not `run`, so the two are distinguishable — and nothing else from the invocation. */
 function commandPath(command: Command): string {
   const parts: string[] = [];
@@ -1119,6 +1134,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
         ...(simCount === undefined || simCount === null ? {} : { simCount }),
         ...(timeoutMs === undefined || timeoutMs === null ? {} : { timeoutMs })
       });
+      await renderObserverForRun(options.cwd, result);
       writeResult(command, io, result, formatRunHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
@@ -2832,6 +2848,11 @@ async function runSyntheticBackend(args: {
   const runResult = outcome.result;
 
   if (args.mode === "run") {
+    // `run` and `watch` used to disagree about whether a bundle has observer/index.html: watch
+    // rendered it to serve it, run did not, and the first `export` of a run bundle failed (#597,
+    // found by the 0.72.0 dogfood participant). Render it here too, so the two commands write the
+    // same bundle; a render failure is a warning on the result, never a failed run.
+    await renderObserverForRun(args.options.cwd, runResult);
     writeResult(args.command, args.io, runResult, formatRunHuman);
     args.io.setExitCode(runResult.ok ? 0 : 2);
     return;
