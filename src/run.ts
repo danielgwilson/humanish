@@ -1065,6 +1065,10 @@ export interface StudyTaskFunnel {
     sessions: number;
     /** False when the task declared no success criterion: asked for, never measurable. */
     observable: boolean;
+    /** Sessions where this task's criteria were never evaluated, because the observations they
+     *  read never arrived. Counted apart from failures: "0/3 completed" with 3 unmeasured is a
+     *  statement about our instrument, not about the participants (#514). */
+    unmeasured: number;
   }>;
 }
 
@@ -1072,25 +1076,35 @@ export interface StudyTaskFunnel {
 export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): StudyTaskFunnel | undefined {
   if (funnels.length === 0) return undefined;
   const order: string[] = [];
-  const byId = new Map<string, { completed: number; sessions: number; observable: boolean }>();
+  const byId = new Map<
+    string,
+    { completed: number; sessions: number; observable: boolean; unmeasured: number }
+  >();
   for (const funnel of funnels) {
     for (const task of funnel.tasks) {
       let entry = byId.get(task.id);
       if (entry === undefined) {
-        entry = { completed: 0, sessions: 0, observable: false };
+        entry = { completed: 0, sessions: 0, observable: false, unmeasured: 0 };
         byId.set(task.id, entry);
         order.push(task.id);
       }
       entry.sessions += 1;
       if (task.completed) entry.completed += 1;
       if (task.observable) entry.observable = true;
+      if (task.inputsObserved === false) entry.unmeasured += 1;
     }
   }
   return {
     sessions: funnels.length,
     tasks: order.map((id) => {
       const entry = byId.get(id)!;
-      return { id, completed: entry.completed, sessions: entry.sessions, observable: entry.observable };
+      return {
+        id,
+        completed: entry.completed,
+        sessions: entry.sessions,
+        observable: entry.observable,
+        unmeasured: entry.unmeasured
+      };
     })
   };
 }
@@ -1099,9 +1113,16 @@ export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): StudyTaskF
 export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
   if (funnel.tasks.length === 0) return "no tasks declared";
   return funnel.tasks
-    .map((task) => task.observable
-      ? `${task.id} ${task.completed}/${task.sessions}`
-      : `${task.id} (no completion criterion)`)
+    .map((task) => {
+      if (!task.observable) return `${task.id} (no completion criterion)`;
+      // A count that is entirely unmeasured must not render as a bare "0/3": that reads as a
+      // participant failure when it is our observer that produced nothing (#514).
+      if (task.unmeasured === task.sessions) {
+        return `${task.id} (never measured in ${task.sessions})`;
+      }
+      const caveat = task.unmeasured > 0 ? ` (${task.unmeasured} never measured)` : "";
+      return `${task.id} ${task.completed}/${task.sessions}${caveat}`;
+    })
     .join(" · ");
 }
 

@@ -250,6 +250,7 @@ describe("the study roll-up keeps its denominators", () => {
     total: 3,
     completed: completed.filter(Boolean).length,
     unobservable: 0,
+    unmeasured: 0,
     ...(completed.every(Boolean) ? {} : { stoppedAt: PROTOCOL[completed.indexOf(false)]!.id }),
     tasks: PROTOCOL.map((task, index) => ({
       id: task.id,
@@ -264,9 +265,9 @@ describe("the study roll-up keeps its denominators", () => {
     expect(study).toEqual({
       sessions: 2,
       tasks: [
-        { id: "reach-signup", completed: 2, sessions: 2, observable: true },
-        { id: "see-verify-notice", completed: 1, sessions: 2, observable: true },
-        { id: "reach-dashboard", completed: 1, sessions: 2, observable: true }
+        { id: "reach-signup", completed: 2, sessions: 2, observable: true, unmeasured: 0 },
+        { id: "see-verify-notice", completed: 1, sessions: 2, observable: true, unmeasured: 0 },
+        { id: "reach-dashboard", completed: 1, sessions: 2, observable: true, unmeasured: 0 }
       ]
     });
     expect(formatStudyTaskFunnel(study!)).toBe(
@@ -280,6 +281,7 @@ describe("the study roll-up keeps its denominators", () => {
       total: 1,
       completed: 0,
       unobservable: 1,
+      unmeasured: 0,
       tasks: [{ id: "tell-us-what-confused-you", completed: false, observable: false }]
     };
     const study = aggregateTaskFunnels([unmeasured]);
