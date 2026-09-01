@@ -38,6 +38,8 @@
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
 import { randomBytes, randomUUID } from "node:crypto";
+import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
+import type { ActorTokenUsage } from "./actor-contract.js";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -549,7 +551,15 @@ export interface CostLine {
   /** Optional billable-unit count, same discipline: a known count, or null = not measured. */
   count?: number | null;
   /** How this line's value was established (provenance for the verifier + the human reviewer). */
-  source: "provider-token-usage" | "no-spend-signal" | "operator-cap" | "unmeasured";
+  source:
+    | "provider-token-usage"
+    | "no-spend-signal"
+    | "operator-cap"
+    | "unmeasured"
+    /** Tokens were COUNTED but no rate could price them, so `usd` stays null while the note
+     *  carries the measured token totals (#531). Distinct from "unmeasured", which means no
+     *  signal at all. */
+    | "unpriced-token-usage";
   /** A short, public-safe note (never a secret value). */
   note: string;
 }
@@ -642,6 +652,8 @@ const COST_CATEGORIES: readonly CostCategory[] = ["product", "media", "payment",
  */
 function buildCostLedger(args: {
   tokenCostUsd?: number;
+  /** Measured token counts, when the run produced them but no rate could price them (#531). */
+  tokenUsage?: ActorTokenUsage;
   injectedLines?: Partial<Record<CostCategory, CostLine>>;
 }): TerminalCostLedger {
   const providerLine: CostLine =
@@ -650,6 +662,19 @@ function buildCostLedger(args: {
           usd: args.tokenCostUsd,
           source: "provider-token-usage",
           note: `Provider spend metered from the actor trace tokenUsage.costUsd (${args.tokenCostUsd} USD).`
+        }
+      : args.tokenUsage
+      ? {
+          // Tokens counted, no rate to price them. This stays `usd: null` because a guessed
+          // dollar figure would be worse than none, but the note carries the measured fact so a
+          // reader never mistakes "no charge recorded" for "nothing was consumed" (#531).
+          usd: null,
+          source: "unpriced-token-usage",
+          note:
+            `Provider spend UNPRICED: the run consumed ${describeTokenUsage(args.tokenUsage)}, `
+            + "but the terminal lane records the model as `codex` and src/pricing.ts carries no "
+            + "rate for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the "
+            + "price is the unknown. Recorded null (never guessed to 0)."
         }
       : {
           usd: null,
@@ -713,10 +738,17 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
     satisfied
       ? `No-spend proof SATISFIED for maxUsd=${cap}: every MEASURED spend line is zero (known total ${ledger.knownTotalUsd} USD).`
       : `No-spend proof NOT satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`,
+    // When tokens were counted but not priced, say so IN THE STATEMENT. A reader who sees
+    // "SATISFIED for maxUsd=0" must not walk away thinking nothing was consumed (#531).
+    ledger.lines.provider.source === "unpriced-token-usage"
+      ? `Provider tokens WERE consumed on this run and are counted in the ledger; they are unpriced, not zero.`
+      : "",
     unmeasuredLines.length > 0
       ? `UNMEASURED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these — they carry no spend signal for this run.`
       : "All applicable spend lines were measured."
-  ].join(" ");
+  ]
+    .filter((part) => part.length > 0)
+    .join(" ");
   return {
     schema: "humanish.terminal-no-spend-proof.v1",
     maxUsd,
@@ -1278,6 +1310,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
 
   // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
   const normalizedTranscript = normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join(""));
+  // Parsed from the FULL stream, not the tail: usage records arrive once per turn and the tail
+  // would drop all but the last (#531).
+  const terminalTokenUsage = parseTerminalTokenUsage(normalizedTranscript);
   const trace = buildTerminalActorTrace({
     persona,
     productName: product.name,
@@ -1289,7 +1324,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     durationMs: commandLog[0]?.durationMs ?? 0,
     terminalEvents,
     commandLog,
-    transcriptTail: tailOf(normalizedTranscript)
+    transcriptTail: tailOf(normalizedTranscript),
+    ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage })
   });
 
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
@@ -1301,6 +1337,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
   const cost = buildCostLedger({
     ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
+    ...(trace.tokenUsage === undefined ? {} : { tokenUsage: trace.tokenUsage }),
     ...(injectedLines ? { injectedLines } : {})
   });
   const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null);
@@ -1851,6 +1888,9 @@ function buildTerminalActorTrace(args: {
   terminalEvents: TerminalEventRecord[];
   commandLog: CommandLogRecord[];
   transcriptTail: string;
+  /** Per-turn provider token usage parsed from the exec stream (#531). Absent when the stream
+   *  carried no usage record, which stays distinct from a measured zero. */
+  tokenUsage?: ActorTokenUsage;
 }): ActorTrace {
   const items: ActorTraceItem[] = [
     ...args.commandLog.map((entry, index): ActorTraceItem => ({
@@ -1888,6 +1928,7 @@ function buildTerminalActorTrace(args: {
     completionReason: args.completionReason,
     reason: args.reason,
     ids: { model: "codex" },
+    ...(args.tokenUsage ? { tokenUsage: args.tokenUsage } : {}),
     counts: {
       commands: args.commandLog.length,
       // actions == executed commands; messages == 1 when the agent produced any output. The
