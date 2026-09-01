@@ -1977,7 +1977,7 @@ async function openDesktopTerminal(
       // a study that measures our own mojibake against an unconfigured template would be measuring
       // the template. The PRODUCT-side fix (an ASCII fallback when the locale is not UTF-8) is in
       // src/terminal-encoding.ts, and it is the one that matters for real users.
-      `    (cd ${shellSingleQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 nohup "$candidate" >/dev/null 2>&1 &)`,
+      `    (cd ${shellSingleQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 HUMANISH_STUDY_PARTICIPANT=1 nohup "$candidate" >/dev/null 2>&1 &)`,
       "    sleep 3",
       '    echo "humanish: opened $candidate"',
       "    exit 0",

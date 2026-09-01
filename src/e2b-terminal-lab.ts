@@ -1249,7 +1249,11 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       try {
         const result = await runWithWallClock(
           sandbox.commands.run(codexCommand, {
-            envs: runtimeEnv.envs, // <-- THE command-scoped key channel. The ONLY place the key goes.
+            // <-- THE command-scoped key channel. The ONLY place the key goes. The participant
+            // marker rides the same command: humanish telemetry from inside a study reads as a new
+            // adopter otherwise. #546 added the flag and nothing set it; the 0.66.0 dogfood
+            // participant's twelve commands arrived unmarked.
+            envs: { ...runtimeEnv.envs, HUMANISH_STUDY_PARTICIPANT: "1" },
             requestTimeoutMs,
             timeoutMs: wallClockMs,
             onStdout: (data: string) => appendTerminalChunk("stdout", data),

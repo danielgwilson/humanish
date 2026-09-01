@@ -247,7 +247,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     // so codex exec's documented single-invocation auth channel (CODEX_API_KEY) is populated too.
     expect(codexRun?.envs?.OPENAI_API_KEY).toBe(FAKE_RUNTIME_KEY);
     expect(codexRun?.envs?.CODEX_API_KEY).toBe(FAKE_RUNTIME_KEY);
-    expect(Object.keys(codexRun?.envs ?? {}).slice().sort()).toEqual(["CODEX_API_KEY", "OPENAI_API_KEY"]);
+    // The key names, plus the study-participant marker that rides the same command (#546): a
+    // participant's own humanish telemetry must not read as a new adopter.
+    expect(Object.keys(codexRun?.envs ?? {}).slice().sort()).toEqual(["CODEX_API_KEY", "HUMANISH_STUDY_PARTICIPANT", "OPENAI_API_KEY"]);
     // Deny-by-default: no banned credential reached the command envs.
     expect(codexRun?.envs).not.toHaveProperty("GITHUB_TOKEN");
     expect(codexRun?.envs).not.toHaveProperty("DATABASE_URL");
@@ -547,7 +549,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
     const codexRun = runs.find((r) => r.command.includes("codex"));
-    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: FAKE_RUNTIME_KEY });
+    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: FAKE_RUNTIME_KEY, HUMANISH_STUDY_PARTICIPANT: "1" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames).toEqual(["CODEX_API_KEY"]);
   });
@@ -566,7 +568,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
     const codexRun = runs.find((r) => r.command.includes("codex"));
-    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: FAKE_RUNTIME_KEY, OPENAI_API_KEY: FAKE_RUNTIME_KEY });
+    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: FAKE_RUNTIME_KEY, OPENAI_API_KEY: FAKE_RUNTIME_KEY, HUMANISH_STUDY_PARTICIPANT: "1" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames.slice().sort()).toEqual(["CODEX_API_KEY", "OPENAI_API_KEY"]);
   });
@@ -587,7 +589,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
     const codexRun = runs.find((r) => r.command.includes("codex"));
-    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: "FAKEKEY-codex-wins-0000000000000000" });
+    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: "FAKEKEY-codex-wins-0000000000000000", HUMANISH_STUDY_PARTICIPANT: "1" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames).toEqual(["CODEX_API_KEY"]);
   });
