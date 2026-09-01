@@ -22,6 +22,7 @@ import {
 import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
 import { computeStats, formatStatsHuman } from "./stats.js";
+import { PortInUseError } from "./listen.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./export.js";
 import {
   buildPayload,
@@ -137,7 +138,9 @@ export interface UnexpectedErrorEnvelope {
   schema: typeof CLI_RESPONSE_SCHEMA;
   ok: false;
   error: {
-    code: "HUMANISH_UNEXPECTED";
+    /** HUMANISH_PORT_IN_USE (#484): a bind failed because the port is held; every command that
+     *  opens a loopback server (watch, observe, run --open, serve) reports it under one code. */
+    code: "HUMANISH_UNEXPECTED" | "HUMANISH_PORT_IN_USE";
     message: string;
   };
 }
@@ -398,6 +401,9 @@ function invocationEnvelopeAlreadyWritten(command: Command): boolean {
 
 function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown): void {
   const message = redactText(error instanceof Error ? error.message : String(error));
+  // A taken port is the most expected thing a serving command meets; it gets its own code rather
+  // than the catch-all's (#484). The message already names the port and whose it is.
+  const code: UnexpectedErrorEnvelope["error"]["code"] = error instanceof PortInUseError ? "HUMANISH_PORT_IN_USE" : "HUMANISH_UNEXPECTED";
 
   if (wantsJson(command)) {
     if (invocationEnvelopeAlreadyWritten(command)) {
@@ -409,7 +415,7 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
       // second JSON document to stdout would break every JSON.parse(stdout)
       // consumer, so this failure goes to stderr instead, same as the non-json
       // branch below.
-      io.writeErr(`HUMANISH_UNEXPECTED: ${message}\n`);
+      io.writeErr(`${code}: ${message}\n`);
       io.setExitCode(2);
       return;
     }
@@ -418,13 +424,13 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
       schema: CLI_RESPONSE_SCHEMA,
       ok: false,
       error: {
-        code: "HUMANISH_UNEXPECTED",
+        code,
         message
       }
     };
     io.writeOut(`${JSON.stringify(envelope, null, 2)}\n`);
   } else {
-    io.writeErr(`HUMANISH_UNEXPECTED: ${message}\n`);
+    io.writeErr(`${code}: ${message}\n`);
   }
 
   io.setExitCode(2);
