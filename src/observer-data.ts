@@ -63,6 +63,17 @@ export interface ObserverData {
   publicSafety: {
     publishable: false;
     note: string;
+    /**
+     * ADDITIVE + OPTIONAL (#584): what `verify` said when this artifact was exported, written by
+     * `humanish export` and by nothing else. A run directory's Observer never carries it (the
+     * artifact is local evidence until something gates it); an exported file does, so its chrome
+     * can say `share_ready` instead of the run directory's `local_only`.
+     */
+    share?: {
+      status: "share_ready" | "local_only" | "blocked";
+      verifiedAt: string;
+      reasons: string[];
+    };
   };
   raw: {
     bundleSchema: string;

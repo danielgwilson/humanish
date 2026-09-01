@@ -66,6 +66,8 @@ describe("humanish export", () => {
     expect(html).toContain("../run.json");
     expect(html).not.toContain("humanish-local-only");
     expect(formatExportHuman(result)).toContain("1 image(s) embedded");
+    // The file says what verify said, so its chrome can agree with the result envelope (#584).
+    expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });
 
   it("refuses a bundle that is not share_ready, and says how to get one", async () => {
@@ -85,6 +87,7 @@ describe("humanish export", () => {
     expect(html).toContain(localOnlyBanner(["RAW_SCREENSHOTS"]));
     expect(html.indexOf("humanish-local-only")).toBeLessThan(html.indexOf('<div id="root">'));
     expect(formatExportHuman(result)).toContain("WATERMARKED LOCAL ONLY");
+    expect(html).toMatch(/"share":\{"status":"local_only","verifiedAt":"[^"]+","reasons":\["RAW_SCREENSHOTS"\]\}/);
   });
 
   it("refuses to package a run that fails its own verify, and a run it cannot find", async () => {
