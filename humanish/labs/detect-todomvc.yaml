@@ -1,0 +1,54 @@
+schema: humanish.lab.v2
+id: detect-todomvc
+title: Detection benchmark, real third-party app (TodoMVC javascript-es6)
+description: >
+  The honest next step named in bench/RESULTS-2026-09-01.md. The Taskly arms measured recall
+  against defects we planted in an app we wrote; the number was 15 of 15 and is an upper bound
+  precisely because we controlled the surface.
+  This arm removes that control. The subject is TodoMVC's javascript-es6 example, a widely used
+  reference implementation maintained by people who have never heard of us, served from its
+  committed dist/ so no build step can change what the persona sees. We planted nothing, so there
+  is no answer key and no recall number here.
+  WHAT THIS MEASURES: what a persona reports about real third-party software during ordinary use,
+  and whether those reports hold up when a human checks them against the app. Precision on real
+  code is the number our nearest analogs do not publish and the one an adopter actually needs,
+  because the failure mode of synthetic-user tooling is confident invention.
+  Read the findings, then verify each one by hand against the same build. A finding that survives
+  that check is a real observation about widely used OSS; one that does not is a false report, and
+  both belong in the writeup.
+  Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY.
+subject:
+  source: clone
+  repos:
+    - tastejs/todomvc
+  clone:
+    depth: 1
+  serve:
+    # dist/ is committed, so nothing is installed or built: the persona sees exactly what the
+    # repository ships, and no toolchain of ours sits between them.
+    start: python3 -m http.server 3000 --directory examples/javascript-es6/dist
+    url: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user
+    mission: >-
+      You are trying this to-do app for the first time. Use it the way you would actually use a
+      list app. Add a few items, including one long enough to describe something properly. Mark
+      something complete. Try the filters to see just what is left and just what is finished.
+      Rename one of your items. Tidy up when you are done. Report what worked, and describe
+      anything that behaved differently from what you expected, in plain terms, saying what you
+      did and what you saw.
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+scenario:
+  mode: dry-run
+  caps:
+    maxUsd: 3
+    maxJobs: 0
+    maxMinutes: 12
+policies:
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false
