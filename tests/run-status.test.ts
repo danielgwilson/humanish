@@ -157,10 +157,17 @@ describe("run status: identity + liveness on disk (#455)", () => {
     // one run returning must not finalize another run that is still going.
     const slowPaths = await prepareRunArtifactPaths(cwd, "run-slow");
     let slowStatus: ReturnType<typeof beginRunStatus> | undefined;
+    // The slow run is held open by a gate the test opens AFTER asserting, so "still running"
+    // is a fact about ordering. A sleep here made the assertion a race against wall-clock and
+    // it lost on loaded CI runners (Node 24 job, 2026-08-31).
+    let releaseSlow!: () => void;
+    const slowHeld = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
     const slow = withRunStatusScope(async () => {
       slowStatus = beginRunStatus(slowPaths, { runId: "run-slow", mode: "live", touchMs: 0 });
       await slowStatus.started;
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await slowHeld;
       await slowStatus.finish({ verdict: "pass" });
     });
 
@@ -174,6 +181,7 @@ describe("run status: identity + liveness on disk (#455)", () => {
     expect((await read("run-fast")).state).toBe("finished");
     expect((await read("run-slow")).state).toBe("running");
 
+    releaseSlow();
     await slow;
     expect((await read("run-slow")).outcome?.verdict).toBe("pass");
   });
