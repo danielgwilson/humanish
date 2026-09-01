@@ -1423,3 +1423,34 @@ describe("a taken port at the command boundary (#484)", () => {
     expect(stderr.join("")).toMatch(/^HUMANISH_PORT_IN_USE: /);
   });
 });
+
+describe("run writes the same bundle watch does (#597)", () => {
+  it("a `run` bundle carries observer/index.html, so it can be exported and opened like a watched one", async () => {
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      "humanish/labs/first-run.yaml": [
+        "schema: humanish.lab.v2",
+        "id: first-run",
+        "title: First run",
+        "subject:",
+        "  source: this-repo",
+        "actors:",
+        "  - type: synthetic-persona",
+        "    count: 2"
+      ].join("\n")
+    }, async (cwd) => {
+      const viaLab = await runCli(["lab", "run", "first-run", "--cwd", cwd, "--json", "--no-open"]);
+      expect(viaLab.exitCode).toBe(0);
+      const labEnvelope = JSON.parse(viaLab.stdout) as { ok: boolean; runId?: string; warnings: string[] };
+      expect(labEnvelope.ok).toBe(true);
+      expect(labEnvelope.warnings.some((w) => w.includes("observer/index.html was not written"))).toBe(false);
+      await expect(stat(path.join(cwd, ".humanish", "runs", labEnvelope.runId!, "observer", "index.html"))).resolves.toBeTruthy();
+
+      const direct = await runCli(["run", "--cwd", cwd, "--json", "--dry-run"]);
+      expect(direct.exitCode).toBe(0);
+      const directEnvelope = JSON.parse(direct.stdout) as { ok: boolean; runId?: string };
+      expect(directEnvelope.ok).toBe(true);
+      await expect(stat(path.join(cwd, ".humanish", "runs", directEnvelope.runId!, "observer", "index.html"))).resolves.toBeTruthy();
+    });
+  });
+});
