@@ -3942,6 +3942,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
         message: outcome?.sessionError
           ?? (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+            // The lane result (toLaneResult) named this refusal; the N=1 envelope fell through to
+            // "did not produce a terminal session", which is false — it produced one and refused it.
+            : outcome?.selfReportedBlocker
+            ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
             : observer.ok
               ? outcome?.session?.completionReason === "harness_error"
                 ? `Computer-use session ended with a harness error: ${outcome.session.reason}`
@@ -4132,6 +4136,15 @@ function buildSingleLaneBundle(args: {
     captureRedaction: args.redactScreenshots ? "blurred" : "raw",
     ...(outcome?.session ? { session: outcome.session } : {}),
     ...(outcome?.sessionError ? { sessionError: outcome.sessionError } : {}),
+    ...(outcome === undefined
+      ? {}
+      : {
+          credibility: {
+            noEngagement: outcome.noEngagement === true,
+            selfReportedBlocker: outcome.selfReportedBlocker === true,
+            reportedFriction: outcome.reportedFriction === true
+          }
+        }),
     source: args.source,
     ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
     ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
@@ -4837,6 +4850,14 @@ export function buildCuaBundle(args: {
   captureRedaction?: "raw" | "blurred";
   session?: CuaLoopResult;
   sessionError?: string;
+  /**
+   * The lane's own credibility read of a goal_satisfied session (#476). The actor's status is
+   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the lane
+   * (zero engagement, a final message that describes a blocker). The review has to say the same
+   * thing the lane's exit code says, or the durable bundle reports a participant reaching the
+   * goal on a run the harness refused to count.
+   */
+  credibility?: { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean };
   source: RunBundle["source"];
   /** Provisioned-route provenance (clone or local-tree): what the actor actually drove (names
    * + digests only, never values or command text), including the subject's state story. */
@@ -5078,22 +5099,36 @@ export function buildCuaBundle(args: {
   const singleStudyTasks = args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
     ? aggregateTaskFunnels([args.session.trace.taskFunnel])
     : undefined;
+  // What happened to the participant, as the LANE judged it — the same rule the fan-out roll-up
+  // applies (participantStatusForOutcome). Before #476 this read the actor's own status, so a
+  // run the lane refused as "not a credible pass" was written up as verdict pass, 1/1 reached
+  // the goal, and every projection of the bundle (Observer tally, `runs`, the status index)
+  // repeated it. Found on a real drawDB run whose participant wrote "Blocked after partial
+  // completion".
+  const participantStatus: ActorStatus | undefined = args.session === undefined
+    ? undefined
+    : participantStatusForCredibility(args.session.status, args.credibility);
+  const credibilityNote = args.session === undefined || participantStatus === args.session.status
+    ? undefined
+    : args.credibility?.noEngagement === true
+      ? "Not counted as a pass: the participant took no actions and said nothing."
+      : "Not counted as a pass: the participant's final message described a blocker.";
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict: args.inProgress === true
       ? "contract_proof_only"
-      : args.session
-        ? verdictForStatus(args.session.status)
+      : participantStatus !== undefined
+        ? verdictForStatus(participantStatus)
         : args.sessionError
           ? "fail"
           : "contract_proof_only",
     // One lane is still a study with a denominator of one, and saying so keeps a single-lane
     // result from being read as though it generalized.
-    ...(args.session && args.inProgress !== true
-      ? { participants: tallyParticipantOutcomes([args.session.status]) }
+    ...(participantStatus !== undefined && args.inProgress !== true
+      ? { participants: tallyParticipantOutcomes([participantStatus], [args.credibility?.reportedFriction === true]) }
       : {}),
     ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
-    summary: reason,
+    summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
     gaps: args.session || args.sessionError
       ? []
       : args.inProgress === true
@@ -5561,7 +5596,10 @@ export function buildCuaFanoutBundle(args: {
         // it — but `reachedGoal` was reading the trace status directly, so one run could be both
         // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
         // first was the dishonest one. Found by a provider bug that ended a study on turn one.
-        terminalOutcomes.map((outcome) => (outcome.noEngagement === true ? "incomplete" : outcome.session.status)),
+        terminalOutcomes.map((outcome) => participantStatusForCredibility(outcome.session.status, {
+          noEngagement: outcome.noEngagement === true,
+          selfReportedBlocker: outcome.selfReportedBlocker === true
+        })),
         // A participant who reached the goal AND told you the road there was broken is the most
         // useful result a study produces; reporting only the outcome would bury it.
         terminalOutcomes.map((outcome) => outcome.reportedFriction === true)
@@ -5751,6 +5789,23 @@ function providerResourcesForOutcome(args: {
         : "not killed during normal lane teardown; cleanup may reclaim by exact recorded id"
     }
   }];
+}
+
+/**
+ * The status a participant is TALLIED under, given what the lane made of the session. A
+ * goal_satisfied claim with zero engagement is a session that ran out before anything happened;
+ * one whose final message describes a blocker is a participant who could not proceed and said so.
+ * Both keep their trace status (the claim is evidence); neither is a participant who reached the
+ * goal. One rule for the single lane and the fan-out roll-up (#476).
+ */
+export function participantStatusForCredibility(
+  status: ActorStatus,
+  credibility: { noEngagement: boolean; selfReportedBlocker: boolean } | undefined
+): ActorStatus {
+  if (status !== "passed" || credibility === undefined) return status;
+  if (credibility.noEngagement) return "incomplete";
+  if (credibility.selfReportedBlocker) return "blocked";
+  return status;
 }
 
 function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] {

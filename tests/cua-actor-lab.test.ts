@@ -31,7 +31,8 @@ import {
   resolveSelfReportedFriction,
   runCuaActorLab,
   type ChromeCdpEndpoint,
-  type CuaActorLabHooks
+  type CuaActorLabHooks,
+  participantStatusForCredibility
 } from "../src/cua-actor-lab.js";
 import type {
   E2BDesktopCreateOptions,
@@ -209,6 +210,13 @@ const TWO_TURN_SESSION = [
 const SUCCESS_WITH_NEGATED_BLOCKER_SESSION = [
   { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
   { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Success: the target state is visible. No blocker encountered." }] }] }
+];
+// The 2026-08-19 drawDB run (#476): three tables created, then "could not connect the two tables
+// because every new table appeared directly on top of the previous one". goal_satisfied, with a
+// final message that is a blocker report.
+const BLOCKED_AFTER_PARTIAL_SESSION = [
+  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
+  { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Blocked after partial completion. Created three tables. Could not connect the two tables because every new table appeared directly on top of the previous one, and repeated attempts to drag them apart did not separate them." }] }] }
 ];
 const BROWSER_ADAPTER_NAMESPACE = "browser-adapter-proof";
 
@@ -708,6 +716,15 @@ describe("runCuaActorLab", () => {
   it("flags a goal_satisfied lane whose OWN narrative reports a real blocker", () => {
     expect(resolveSelfReportedBlocker(fakeBlockerSession("I could not complete the task; the delete button was disabled")))
       .toContain("could not complete");
+  });
+
+  it("tallies a refused goal_satisfied under the status the lane judged, one rule for N=1 and fan-out", () => {
+    expect(participantStatusForCredibility("passed", { noEngagement: false, selfReportedBlocker: true })).toBe("blocked");
+    expect(participantStatusForCredibility("passed", { noEngagement: true, selfReportedBlocker: false })).toBe("incomplete");
+    expect(participantStatusForCredibility("passed", { noEngagement: false, selfReportedBlocker: false })).toBe("passed");
+    expect(participantStatusForCredibility("passed", undefined)).toBe("passed");
+    // A session that did not claim a pass is not re-judged.
+    expect(participantStatusForCredibility("abandoned", { noEngagement: false, selfReportedBlocker: true })).toBe("abandoned");
   });
 
   it("does NOT flag a clean pass that says nothing blocked it", () => {
@@ -1344,6 +1361,49 @@ describe("runCuaActorLab", () => {
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(false);
     expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(false);
+  });
+
+  it("a lane the harness refused as 'not a credible pass' is not written up as a pass (#476)", async () => {
+    // Found on a real run: the lane said ok:false / HUMANISH_CUA_LAB_FAILED / "not a credible
+    // pass", and the BUNDLE said verdict pass, 1/1 reached the goal. Every projection of the
+    // bundle — Observer tally, `humanish runs`, the status index, a share — repeated the pass.
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(BLOCKED_AFTER_PARTIAL_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const result = outcome.result;
+    // The lane's judgment, unchanged: the actor claimed goal_satisfied, the harness refused it.
+    expect(result.session?.completionReason).toBe("goal_satisfied");
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
+    expect(result.error?.message).toContain("not a credible pass");
+
+    // The durable evidence now says the same thing the lane said.
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.review.verdict).toBe("blocked");
+    expect(bundle.review.summary).toMatch(/^Not counted as a pass: the participant's final message described a blocker\./);
+    // 0/1 reached the goal, 1 blocked, 1 reported friction — the honest reading of that run.
+    expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, blocked: 1, reportedFriction: 1 });
+    // The trace keeps the claim: what the actor SAID is evidence, what the harness COUNTED is the review.
+    expect(bundle.streams[0].actor.completionReason).toBe("goal_satisfied");
+
+    // The status index copies the review verbatim, so it inherits the fix rather than needing one.
+    const status = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"));
+    expect(status.outcome?.verdict).toBe("blocked");
+    expect(status.outcome?.participants).toMatchObject({ total: 1, reachedGoal: 0 });
+
+    // The evidence is sound — the harness did what it said — so verify still passes. A blocked
+    // participant is a finding, not a broken instrument.
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
   });
 
   it("device preset drives the E2B desktop resolution + tells the model it's mobile (sim-parity)", async () => {
