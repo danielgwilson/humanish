@@ -3248,7 +3248,11 @@ function buildSyntheticObserverFixtures(args: {
       label: "CLI actor",
       currentStep: "Command transcript contract captured",
       summary: "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
-      tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted",
+      // Every command in a shipped sample tail must be one the CLI actually accepts. This one
+      // advertised a `--scenario` flag on `run` for months. That flag has never existed, and a
+      // computer-use participant hit it in the first Observer it ever saw (#516).
+      // tests/shipped-command-strings.test.ts now checks this against the real command table.
+      tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
       viewport: undefined
     },
     {

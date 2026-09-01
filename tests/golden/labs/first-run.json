@@ -199,7 +199,7 @@
         "title": "CLI actor",
         "format": "plain",
         "stdin": "disabled",
-        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run --scenario first-run-smoke\ncontract proof emitted"
+        "tail": "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted"
       },
       "artifacts": [
         {
