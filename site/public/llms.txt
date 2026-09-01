@@ -45,6 +45,7 @@ Evidence:
   `share_ready`, `local_only`, or `blocked`.
 - `humanish review`: build a review packet from verified evidence.
 - `humanish runs`: list local runs and the latest pointers.
+- `humanish stats`: cost, outcome, and duration roll-ups across run history (`--lab`, `--since`, `--json`); unknown costs count as unknown, never $0.
 - `humanish observe`: serve a finished run's Observer over loopback instead of a file URL.
 - `humanish serve`: serve the whole local run library over loopback, with optional
   tunnel-edge auth.
