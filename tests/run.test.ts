@@ -47,7 +47,15 @@ async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promis
     await cp(path.resolve("fixtures/minimal-app"), tempApp, { recursive: true });
     return await callback(tempApp);
   } finally {
-    await rm(tempRoot, { force: true, recursive: true });
+    // maxRetries because teardown races a late write INTO the run directory: CI hit
+    // "ENOTEMPTY: rmdir .../.humanish/runs/codex-unsafe-admin-gitdir-*" on Node 22 while Node 24
+    // passed the same commit, and the reverse on the previous run. Node documents retries as the
+    // remedy for exactly this on a tree that is still settling.
+    //
+    // This is a MITIGATION, not the fix. Something writes into a run directory after the CLI call
+    // resolves, which also means a caller cannot know when a run is durably finished. Tracked
+    // separately as #553: a caller cannot know when a run is durably finished.
+    await rm(tempRoot, { force: true, recursive: true, maxRetries: 5, retryDelay: 50 });
   }
 }
 
