@@ -168,6 +168,13 @@ describe("the provider", () => {
     await claude.nextTurn({ instructions: "x", observation: observation() }, new AbortController().signal).catch(() => undefined);
     expect(seen[0]).toContain("--allowedTools");
     expect(seen[0]).toContain("Read");
+    // The prompt comes AFTER a `--`: --allowedTools takes a list, and a prompt placed right after
+    // it was read as a tool name (Claude Code 2.1.257 exited 1, "Input must be provided", on three
+    // of three live runs, 2026-09-01).
+    const args = seen[0]!;
+    expect(args[args.length - 2]).toBe("--");
+    expect(args[args.length - 1]).toContain("x");
+    expect(args.indexOf("--allowedTools") + 1).toBe(args.indexOf("Read"));
   });
 });
 

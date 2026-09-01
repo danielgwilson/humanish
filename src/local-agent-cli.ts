@@ -315,6 +315,11 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
             // Read is the only tool it needs — the screenshot — and the only one it gets.
             "--allowedTools", "Read",
             ...(options.model === undefined ? [] : ["--model", options.model]),
+            // `--allowedTools` takes a list, so a prompt placed right after it is read as a tool
+            // name and Claude Code exits 1 with "Input must be provided". Three of three one-shot
+            // runs failed on turn one that way on 2026-09-01 (Claude Code 2.1.257); `--` ends the
+            // options so the prompt is the prompt.
+            "--",
             prompt
           ];
         }
