@@ -1,0 +1,275 @@
+// The in-sandbox DevTools probe, run the way a sandbox runs it: the real python3, against a real
+// headless Chrome. The #514 root cause was an interpreter that was not there, so the contract is
+// executed, never simulated. Chrome-backed cases skip (loudly) where no Chrome binary exists.
+import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { createServer, type Server } from "node:http";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { accessSync, constants } from "node:fs";
+import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  CHROME_CDP_PROBE_PY,
+  chromeCdpProbeCommand,
+  parseChromeCdpProbeOutput,
+  type ChromeCdpProbeArgs,
+  type ChromeCdpProbeResult
+} from "../src/chrome-cdp-probe.js";
+import { makeChromeBrowserStateObserver, makeChromeDesktopGeometryObserver } from "../src/cua-actor-lab.js";
+import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+
+const execFileAsync = promisify(execFile);
+
+async function runProbe(args: ChromeCdpProbeArgs): Promise<ChromeCdpProbeResult> {
+  const { stdout } = await execFileAsync("python3", ["-c", CHROME_CDP_PROBE_PY, JSON.stringify(args)]);
+  return parseChromeCdpProbeOutput(stdout);
+}
+
+function findChrome(): string | undefined {
+  const fromEnv = [process.env.HUMANISH_TEST_CHROME, process.env.CHROME_BIN, process.env.PUPPETEER_EXECUTABLE_PATH];
+  const onPath = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
+  const dirs = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean);
+  for (const candidate of fromEnv) {
+    if (candidate) {
+      try {
+        accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch {
+        // try the next one
+      }
+    }
+  }
+  for (const name of onPath) {
+    for (const dir of dirs) {
+      const full = path.join(dir, name);
+      try {
+        accessSync(full, constants.X_OK);
+        return full;
+      } catch {
+        // keep looking
+      }
+    }
+  }
+  return undefined;
+}
+
+function hasPython3(): boolean {
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+    try {
+      accessSync(path.join(dir, "python3"), constants.X_OK);
+      return true;
+    } catch {
+      // keep looking
+    }
+  }
+  return false;
+}
+
+const python3 = hasPython3();
+const chrome = findChrome();
+
+describe("chrome-cdp-probe: port resolution under the real python3", () => {
+  let profileDir: string;
+  beforeAll(async () => {
+    profileDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-profile-"));
+  });
+  afterAll(async () => {
+    await rm(profileDir, { recursive: true, force: true });
+  });
+
+  it.skipIf(!python3)("cached launch-time port wins even when the marker file disagrees", async () => {
+    await writeFile(path.join(profileDir, "DevToolsActivePort"), "39321\n/devtools/browser/abc\n", "utf8");
+    expect((await runProbe({ mode: "port", cdpPort: 41234, profileDir, targetUrl: "http://127.0.0.1:3000/" })).cdpPort).toBe(41234);
+  });
+
+  it.skipIf(!python3)("no cached port: re-reads the profile's DevToolsActivePort at observe time (slow cold start)", async () => {
+    await writeFile(path.join(profileDir, "DevToolsActivePort"), "39321\n/devtools/browser/abc\n", "utf8");
+    expect((await runProbe({ mode: "port", profileDir, targetUrl: "http://127.0.0.1:3000/" })).cdpPort).toBe(39321);
+  });
+
+  it.skipIf(!python3)("no cached port + no marker: falls back to the legacy fixed 9222", async () => {
+    await rm(path.join(profileDir, "DevToolsActivePort"), { force: true });
+    expect((await runProbe({ mode: "port", profileDir, targetUrl: "http://127.0.0.1:3000/" })).cdpPort).toBe(9222);
+  });
+
+  it.skipIf(!python3)("garbled marker degrades to the legacy fallback instead of a bogus port", async () => {
+    await writeFile(path.join(profileDir, "DevToolsActivePort"), "not-a-port\n", "utf8");
+    expect((await runProbe({ mode: "port", profileDir, targetUrl: "http://127.0.0.1:3000/" })).cdpPort).toBe(9222);
+  });
+
+  it.skipIf(!python3)("a dead endpoint is reported as unavailable WITH the reason, not as an empty success", async () => {
+    // Nothing listens on this port; the probe must say so instead of printing {}.
+    const result = await runProbe({ mode: "state", cdpPort: 1, targetUrl: "http://127.0.0.1:3000/" });
+    expect(result.unavailable).toMatch(/127\.0\.0\.1:1\/json unreachable/);
+    expect(result.url).toBeUndefined();
+  });
+});
+
+describe("chrome-cdp-probe: against a real headless Chrome", () => {
+  let server: Server | undefined;
+  let pageUrl = "";
+  let profileDir = "";
+  let browser: ChildProcess | undefined;
+  let cdpPort = 0;
+
+  beforeAll(async () => {
+    if (!python3 || chrome === undefined) return;
+    server = createServer((_request, response) => {
+      response.setHeader("content-type", "text/html; charset=utf-8");
+      response.end("<html><head><title>probe page</title></head><body><h1>hello probe text</h1><p>second line</p></body></html>");
+    });
+    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
+    pageUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/index.html`;
+    profileDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-chrome-"));
+    browser = spawn(
+      chrome,
+      ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--remote-debugging-port=0", `--user-data-dir=${profileDir}`, pageUrl],
+      { stdio: "ignore" }
+    );
+    // Same seam the sandbox uses: the marker file appears once DevTools is listening.
+    const markerPath = path.join(profileDir, "DevToolsActivePort");
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const marker = await readFile(markerPath, "utf8").catch(() => "");
+      const parsed = Number.parseInt(marker.split("\n")[0] ?? "", 10);
+      if (Number.isInteger(parsed) && parsed > 0) {
+        cdpPort = parsed;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    // Let the tab finish navigating so the "active" read is the page, not the launch blank.
+    for (let attempt = 0; attempt < 40 && cdpPort > 0; attempt += 1) {
+      const state = await runProbe({ mode: "state", prefer: "active", cdpPort, targetUrl: pageUrl });
+      if (state.url === pageUrl && state.text !== undefined) break;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    if (browser !== undefined && browser.exitCode === null) {
+      // Let Chrome shut its helpers down before the profile dir goes; a SIGKILL followed by an
+      // immediate rm raced Chrome's own writers (ENOTEMPTY on Default/) in the full suite.
+      const exited = new Promise<void>((resolve) => browser!.once("exit", () => resolve()));
+      browser.kill("SIGTERM");
+      await Promise.race([exited, new Promise<void>((resolve) => setTimeout(resolve, 3_000))]);
+      if (browser.exitCode === null) {
+        browser.kill("SIGKILL");
+        await Promise.race([exited, new Promise<void>((resolve) => setTimeout(resolve, 2_000))]);
+      }
+    }
+    await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()));
+    if (profileDir) await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }, 20_000);
+
+  const live = python3 && chrome !== undefined;
+
+  it.skipIf(!live)("state mode reads url, title, innerText and scrollY through the page socket", async () => {
+    expect(cdpPort).toBeGreaterThan(0);
+    const state = await runProbe({ mode: "state", prefer: "active", profileDir, targetUrl: pageUrl });
+    expect(state.url).toBe(pageUrl);
+    expect(state.title).toBe("probe page");
+    expect(state.text).toContain("hello probe text");
+    expect(state.text).toContain("second line");
+    expect(state.scrollY).toBe(0);
+  });
+
+  it.skipIf(!live)("pinned mode attributes the page by the lane's target URL when no target id is known", async () => {
+    const state = await runProbe({ mode: "state", prefer: "pinned", cdpPort, targetUrl: pageUrl });
+    expect(state.url).toBe(pageUrl);
+  });
+
+  it.skipIf(!live)("geometry mode reads outer window bounds, the CSS viewport and the page target id", async () => {
+    const geometry = await runProbe({ mode: "geometry", cdpPort, targetUrl: pageUrl });
+    expect(geometry.unavailable).toBeUndefined();
+    expect(geometry.viewport?.width).toBeGreaterThan(0);
+    expect(geometry.viewport?.height).toBeGreaterThan(0);
+    expect(geometry.browserWindow?.width).toBeGreaterThan(0);
+    expect(geometry.targetId).toMatch(/^[0-9A-F]+$/i);
+    // The pinned id then selects the same page even when the target URL is wrong.
+    const pinned = await runProbe({ mode: "state", prefer: "pinned", cdpPort, targetUrl: "http://example.invalid/", targetId: geometry.targetId! });
+    expect(pinned.url).toBe(pageUrl);
+  });
+
+  it.skipIf(!live)("a target URL that matches no page (pinned, several tabs would be ambiguous) still reads the single page", async () => {
+    // One http page: the single-page fallback applies, as it did in the node probe.
+    const state = await runProbe({ mode: "state", prefer: "pinned", cdpPort, targetUrl: "http://example.invalid/" });
+    expect(state.url).toBe(pageUrl);
+  });
+
+  it.skipIf(!live)("the shipped command (python3 -c ... '<json>') runs end to end through a shell", async () => {
+    const command = chromeCdpProbeCommand({ mode: "state", prefer: "active", cdpPort, targetUrl: pageUrl });
+    expect(command.startsWith("python3 -c '")).toBe(true);
+    const { stdout } = await execFileAsync("sh", ["-c", command]);
+    expect(parseChromeCdpProbeOutput(stdout).url).toBe(pageUrl);
+  });
+});
+
+describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: the unavailable seam (#514)", () => {
+  function fakeDesktop(reply: { exitCode?: number; stdout?: string; stderr?: string }): E2BDesktopSandbox {
+    return { commands: { run: async () => reply } } as unknown as E2BDesktopSandbox;
+  }
+
+  it("reports a dark channel once, with the probe's reason, and still degrades to {} for the loop", async () => {
+    const reasons: string[] = [];
+    const observe = makeChromeBrowserStateObserver(
+      fakeDesktop({ exitCode: 0, stdout: JSON.stringify({ unavailable: "no http page among 0 CDP targets on 127.0.0.1:9222" }) }),
+      1_000,
+      { targetUrl: "http://127.0.0.1:3000/" },
+      undefined,
+      (reason) => reasons.push(reason)
+    );
+    expect(await observe()).toEqual({});
+    expect(await observe()).toEqual({});
+    expect(reasons).toEqual(["no http page among 0 CDP targets on 127.0.0.1:9222"]);
+  });
+
+  it("an interpreter that is not there (exit 127) is reported with the exit code, which is the #514 root cause", async () => {
+    const reasons: string[] = [];
+    const observe = makeChromeBrowserStateObserver(
+      fakeDesktop({ exitCode: 127, stdout: "", stderr: "sh: 1: python3: not found\n" }),
+      1_000,
+      { targetUrl: "http://127.0.0.1:3000/" },
+      undefined,
+      (reason) => reasons.push(reason)
+    );
+    expect(await observe()).toEqual({});
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain("probe exited 127");
+    expect(reasons[0]).toContain("python3: not found");
+  });
+
+  it("a healthy probe reports nothing and passes url/title/text/scrollY through", async () => {
+    const reasons: string[] = [];
+    const observe = makeChromeBrowserStateObserver(
+      fakeDesktop({ exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/pricing", title: "Pricing", text: "per seat", scrollY: 12 }) }),
+      1_000,
+      { targetUrl: "http://127.0.0.1:3000/" },
+      undefined,
+      (reason) => reasons.push(reason)
+    );
+    expect(await observe()).toEqual({ url: "http://127.0.0.1:3000/pricing", title: "Pricing", text: "per seat", scrollY: 12 });
+    expect(reasons).toEqual([]);
+  });
+
+  it("the geometry observer hands the reason to its caller so the viewport warning can name the cause", async () => {
+    const reasons: string[] = [];
+    const observe = makeChromeDesktopGeometryObserver(
+      fakeDesktop({ exitCode: 0, stdout: JSON.stringify({ unavailable: "CDP endpoint 127.0.0.1:9222/json unreachable (URLError)" }) }),
+      1_000,
+      { targetUrl: "http://127.0.0.1:3000/" },
+      undefined,
+      (reason) => reasons.push(reason)
+    );
+    expect(await observe()).toBeUndefined();
+    expect(reasons).toEqual(["CDP endpoint 127.0.0.1:9222/json unreachable (URLError)"]);
+  });
+
+  it("parseChromeCdpProbeOutput never turns garbage into an empty success", () => {
+    expect(parseChromeCdpProbeOutput("")).toEqual({ unavailable: "probe printed nothing" });
+    expect(parseChromeCdpProbeOutput("Traceback (most recent call last)")).toEqual({ unavailable: "probe output was not JSON" });
+    expect(parseChromeCdpProbeOutput("[]")).toEqual({});
+    expect(parseChromeCdpProbeOutput(JSON.stringify({ url: "", title: "", text: "", scrollY: null }))).toEqual({});
+  });
+});
