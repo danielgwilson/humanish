@@ -53,12 +53,14 @@ npx humanish run first-run    # a study with no keys and no spend — about a mi
 npx humanish run try-live     # a REAL study on a hosted desktop, capped at $2
 ```
 
-**What it finds, measured (2026-09-01, receipts in `bench/` and `docs/goals/`):** 29 of 30 planted
-defects over two benchmark runs on an app we wrote, none invented on the clean arm; on two apps we
-did not write, 16 of 18 distinct findings confirmed against the source and 0 invented, across 14
-participants; and a modal that stopped 2 of 3 keyboard-first participants, was reported by
-all 3, and was never mentioned by 3 mouse-driving newcomers. Each file states
-its own caveats.
+**What it finds, measured (2026-09-01 and 09-03, receipts in `bench/` and `docs/goals/`):** 43 of
+45 planted defects over three benchmark runs on an app we wrote, none invented on the clean arm; on
+two apps we did not write, 16 of 18 distinct findings confirmed against the source and 0 invented,
+across 14 participants; a drawDB modal reported by 5 of 5 keyboard-first participants (3 stopped
+there) and never mentioned by 5 mouse-driving newcomers; a TodoMVC rename that blocked 6 of 6
+keyboard-first participants and none of the others; and, on a phone-sized desktop, a drawDB
+relationship drag intercepted by a popover that both phone participants hit (one stopped) and no
+desktop participant reported. Each file states its own caveats.
 
 `try-live` studies a real public app so that your first live run works without
 configuring anything; point its `subject` at your own app once you have seen it
