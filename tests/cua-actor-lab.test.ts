@@ -584,6 +584,131 @@ describe("runCuaActorLab", () => {
     }
   });
 
+  it("mobile emulation (#221): launches Chrome with the mobile UA and touch flags, holds the CDP session, and records what the page reported", async () => {
+    const commands: string[] = [];
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        commands.push(command);
+        if (command.includes("xdpyinfo")) {
+          return { exitCode: 0, stdout: "dimensions: 500x896 pixels (300x200 millimeters)\n" };
+        }
+        if (command.includes("find_chrome_window")) {
+          return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
+        }
+        if (command.includes("getwindowgeometry")) {
+          return { exitCode: 0, stdout: "X=0\nY=0\nWIDTH=500\nHEIGHT=896\n" };
+        }
+        // Order matters: every probe command embeds the whole script, so match the JSON args first.
+        if (command.includes('"mode":"fidelity"')) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              fidelity: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1", devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true },
+              targetId: "T1"
+            })
+          };
+        }
+        if (command.includes("mobile-emulation-") && command.includes("tail -c")) {
+          return { exitCode: 0, stdout: JSON.stringify({ applied: ["Emulation.setDeviceMetricsOverride", "Emulation.setTouchEmulationEnabled", "Emulation.setEmitTouchEventsForMouse", "Emulation.setUserAgentOverride", "Page.reload"], held: true }) + "\n" };
+        }
+        if (command.includes("browserWindow: { x: window.screenX")) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              browserWindow: { x: 0, y: 0, width: 500, height: 896 },
+              viewport: { width: 414, height: 800, deviceScaleFactor: 3 },
+              targetId: "T1"
+            })
+          };
+        }
+        if (command.includes("browser_preference='chrome'")) {
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+        }
+        return undefined;
+      }
+    });
+    const { module } = makeFakeModule(sandbox);
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-mobile-fidelity",
+      title: "Mobile fidelity",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } } },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    expect(outcome.result.ok).toBe(true);
+
+    // Launch flags: the UA and touch hold browser-wide, beyond the launch tab the holder covers.
+    const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
+    expect(launch).toContain("--user-agent=Mozilla/5.0 (iPhone");
+    expect(launch).toContain("--touch-events=enabled");
+    // The holder was started detached (its script goes through files.write) with the lane's
+    // preset as the emulated device.
+    const holderScript = sandbox.calls
+      .filter((call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"))
+      .map((call) => String(call[2]))
+      .find((script) => script.includes('"mode":"hold"'))!;
+    expect(holderScript).toContain('"width":414');
+    expect(holderScript).toContain('"deviceScaleFactor":3');
+    expect(holderScript).toContain('"touch":true');
+
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams[0].desktopGeometry.fidelity).toEqual({
+      tier: "mobile-emulated",
+      requested: { width: 414, height: 896, deviceScaleFactor: 3, touch: true, userAgent: expect.stringContaining("iPhone") },
+      applied: ["Emulation.setDeviceMetricsOverride", "Emulation.setTouchEmulationEnabled", "Emulation.setEmitTouchEventsForMouse", "Emulation.setUserAgentOverride", "Page.reload"],
+      resolved: { userAgent: expect.stringContaining("iPhone"), devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true, source: "cdp" }
+    });
+    const geometryWarnings: string[] = bundle.streams[0].desktopGeometry.warnings ?? [];
+    expect(geometryWarnings.filter((warning) => warning.includes("Mobile emulation"))).toEqual([]);
+    expect(JSON.stringify(outcome.result)).not.toContain("Mobile emulation");
+  });
+
+  it("mobile emulation fails the lane closed when the launched browser is not Chromium", async () => {
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        if (command.includes("browser_preference='firefox'")) {
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=firefox\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\n" };
+        }
+        return undefined;
+      }
+    });
+    const { module, killed } = makeFakeModule(sandbox);
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-mobile-fidelity-firefox",
+      title: "Mobile fidelity on Firefox",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile", browser: "firefox", fidelity: { mobileEmulation: true } } },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: { env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" }, loadDesktopModule: async () => module }
+    });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    expect(outcome.result.ok).toBe(false);
+    expect(outcome.result.error?.message).toContain("mobileEmulation needs Chrome or Chromium");
+    expect(outcome.result.error?.message).toContain("firefox");
+    expect(killed).toEqual(["fake-sandbox-001"]);
+  });
+
   it("persists requested/verified screen, browser bounds, and a distinct measured CSS viewport", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {

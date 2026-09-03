@@ -466,11 +466,24 @@ viewport is smaller because browser chrome occupies space; Chromium-family live 
 measure it through CDP and record it separately from requested/verified screen geometry.
 Browsers without that measurement seam omit the viewport rather than guessing. A
 site's width-based responsive CSS still fires, and the model is *told* its device in the
-prompt, matching how those sims run organic mobile lanes. There is no touch input, the
-device-pixel-ratio isn't rendered, and the user-agent stays desktop on this route; true
-touch/DPR/UA emulation arrives with the deterministic CDP actor. Device is run-wide
-today; per-*persona* device (N personas × devices) lands with fan-out.
+prompt, matching how those sims run organic mobile lanes. Without the block below there is no
+touch input, the device-pixel-ratio isn't rendered, and the user-agent stays desktop on this
+route. Device is run-wide today; per-*persona* device (N personas × devices) lands with fan-out.
 `execution.desktop.resolution` is a raw escape hatch that overrides the preset.
+
+**Mobile emulation.** `execution.desktop.fidelity: { mobileEmulation: true }` turns a hosted
+Chrome/Chromium computer-use lane into a mobile-emulated browser before the participant
+arrives: the lane's preset width/height become the CSS viewport (414 px for `mobile`, where the
+X screen itself cannot go below 500), the preset's device pixel ratio applies (`deviceScaleFactor`
+overrides it), touch events are on (`touch: false` turns them off) and the browser presents a
+mobile user agent (`userAgent` replaces the default iPhone Safari string). The run bundle records
+`desktopGeometry.fidelity` with `tier: mobile-emulated`, the request, the CDP methods applied,
+and `resolved`: what the page itself reported afterwards (`navigator.userAgent`,
+`devicePixelRatio`, `innerWidth`, `maxTouchPoints`, coarse pointer). A page without a viewport
+meta lays out at 980 px, as it would on a phone, and the bundle says so. Firefox cannot be
+emulated, so the lane fails closed instead of shipping a desktop run labelled mobile. The
+emulation covers the launch tab (the user agent and touch flags are browser-wide); a bundle
+without a `fidelity` block is a responsive-viewport study whatever its preset is called.
 
 **Desktop browser choice.** Hosted computer-use lanes and shared-world actor seats use the
 route's historical opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,

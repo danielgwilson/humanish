@@ -599,6 +599,34 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.warnings).toEqual([]);
     });
 
+    it("execution.desktop.fidelity parses on the cua route with zero warnings, and rejects bad shapes (#221)", () => {
+      const ok = parseLabConfig({
+        ...validCua,
+        execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { device: "mobile", fidelity: { mobileEmulation: true, deviceScaleFactor: 2, touch: true, userAgent: "Mozilla/5.0 (Linux; Android 14) Mobile" } } }
+      });
+      expect(ok.ok).toBe(true);
+      if (!ok.ok) return;
+      expect(ok.config.execution?.desktop?.fidelity).toEqual({ mobileEmulation: true, deviceScaleFactor: 2, touch: true, userAgent: "Mozilla/5.0 (Linux; Android 14) Mobile" });
+      expect(ok.warnings).toEqual([]);
+
+      for (const [fidelity, needle] of [
+        [{ touch: true }, "mobileEmulation"],
+        [{ mobileEmulation: "yes" }, "mobileEmulation"],
+        [{ mobileEmulation: true, deviceScaleFactor: 0 }, "deviceScaleFactor"],
+        [{ mobileEmulation: true, deviceScaleFactor: 9 }, "deviceScaleFactor"],
+        [{ mobileEmulation: true, touch: "on" }, "touch"],
+        [{ mobileEmulation: true, userAgent: "   " }, "userAgent"]
+      ] as const) {
+        const bad = parseLabConfig({
+          ...validCua,
+          execution: { target: "e2b-desktop", timeoutMs: 120000, desktop: { fidelity } }
+        });
+        expect(bad.ok, JSON.stringify(fidelity)).toBe(false);
+        if (bad.ok) continue;
+        expect(bad.error.message).toContain(needle);
+      }
+    });
+
     it("rejects an unknown desktop browser", () => {
       const result = parseLabConfig({
         ...validCua,

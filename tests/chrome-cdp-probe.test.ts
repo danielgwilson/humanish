@@ -122,7 +122,9 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     if (!python3 || chrome === undefined) return;
     server = createServer((_request, response) => {
       response.setHeader("content-type", "text/html; charset=utf-8");
-      response.end("<html><head><title>probe page</title></head><body><h1>hello probe text</h1><p>second line</p></body></html>");
+      // A viewport meta, as real apps carry: without it a mobile-emulated page lays out at 980 px,
+      // which is what a phone does with a desktop-only page.
+      response.end("<html><head><title>probe page</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body><h1>hello probe text</h1><p>second line</p></body></html>");
     });
     await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
     pageUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/index.html`;
@@ -210,6 +212,55 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     const state = await runProbe({ mode: "state", prefer: "pinned", cdpPort, targetUrl: "http://example.invalid/" });
     expect(state.url).toBe(pageUrl);
   });
+
+  it.skipIf(!live)("emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page (#221)", async (ctx) => {
+    if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    const emulation = {
+      width: 414,
+      height: 896,
+      deviceScaleFactor: 3,
+      touch: true,
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    };
+    // One-shot apply: the session-scoped overrides (UA, touch, DPR) lapse when the socket closes,
+    // which is why the lane uses "hold". The one-shot still reports what it applied.
+    const applied = await runProbe({ mode: "emulate", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation });
+    expect(applied.unavailable).toBeUndefined();
+    expect(applied.applied).toEqual([
+      "Emulation.setDeviceMetricsOverride",
+      "Emulation.setTouchEmulationEnabled",
+      "Emulation.setEmitTouchEventsForMouse",
+      "Emulation.setUserAgentOverride",
+      "Page.reload"
+    ]);
+
+    // "hold": the applier stays attached; while it lives the page reports the emulated device.
+    const holder = spawn("python3", ["-c", CHROME_CDP_PROBE_PY, JSON.stringify({ mode: "hold", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation })], { stdio: ["ignore", "pipe", "ignore"] });
+    let announced = "";
+    holder.stdout.on("data", (chunk: Buffer) => { announced += chunk.toString("utf8"); });
+    try {
+      let read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
+      for (let attempt = 0; attempt < 40 && !(read.fidelity?.innerWidth === 414 && read.fidelity.userAgent.includes("iPhone")); attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
+      }
+      expect(parseChromeCdpProbeOutput(announced.split("\n").find((line) => line.startsWith("{")) ?? "").applied).toHaveLength(5);
+      expect(read.fidelity?.innerWidth).toBe(414);
+      expect(read.fidelity?.devicePixelRatio).toBe(3);
+      expect(read.fidelity?.maxTouchPoints).toBe(5);
+      expect(read.fidelity?.userAgent).toContain("iPhone");
+      expect(read.fidelity?.coarsePointer).toBe(true);
+    } finally {
+      holder.kill("SIGKILL");
+    }
+    // After the holder dies the session-scoped overrides lapse: the UA is the browser's own again.
+    let after = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
+    for (let attempt = 0; attempt < 40 && after.fidelity?.userAgent.includes("iPhone"); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      after = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
+    }
+    expect(after.fidelity?.userAgent).not.toContain("iPhone");
+  }, 45_000);
 
   it.skipIf(!live)("the shipped command (python3 -c ... '<json>') runs end to end through a shell", async (ctx) => {
     if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");

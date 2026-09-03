@@ -216,7 +216,9 @@ A lab is a composition over code primitives, not a hardcoded kind:
   preference: `default`, `chrome`, `chromium`, or `firefox`. Absent/default
   preserves the historical desktop opener behavior. A concrete value means
   launch that browser or fail closed; when configured, the bundle records
-  `desktopBrowser` with the requested value and the resolved in-sandbox command
+  `desktopBrowser` with the requested value and the resolved in-sandbox command;
+  `streams[].desktopGeometry.fidelity` (tier `mobile-emulated`, request, CDP methods applied,
+  and the page's own read-back) only when `execution.desktop.fidelity.mobileEmulation` was set
   when known. Inert (warned) where this route-specific browser launcher is not
   used;
 - `execution.terminal` + `execution.runtimeAuth` (terminal-product route):

@@ -389,6 +389,26 @@ export interface RunDesktopGeometry {
     deviceScaleFactor: number;
     source: "cdp";
   };
+  /**
+   * Mobile fidelity beyond viewport size (#221), present only when the lab asked for it. `requested`
+   * is what was applied through CDP; `resolved` is what the page reported about itself afterwards
+   * and is the proof, never copied from the request. A run without this block is a
+   * responsive-viewport study, whatever its preset is named.
+   */
+  fidelity?: {
+    tier: "mobile-emulated";
+    requested: { width: number; height: number; deviceScaleFactor: number; touch: boolean; userAgent: string };
+    applied: string[];
+    resolved?: {
+      userAgent: string;
+      devicePixelRatio: number;
+      innerWidth: number;
+      innerHeight: number;
+      maxTouchPoints: number;
+      coarsePointer: boolean;
+      source: "cdp";
+    };
+  };
   /** Public-safe geometry measurement/fill warnings retained with the stream evidence. */
   warnings?: string[];
 }

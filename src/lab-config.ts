@@ -541,6 +541,27 @@ export interface LabExecutionDesktop {
   template?: string;
   /** Use the Codex app-server client mode for headed desktop actor surfaces. Consumed (meta). */
   codexAppServer?: boolean;
+  /**
+   * Mobile fidelity beyond viewport size (#221). With `mobileEmulation: true`, every hosted
+   * Chromium computer-use lane gets CDP device emulation applied to its launch page before the
+   * participant arrives: the lane's device preset width/height as the CSS viewport, the preset's
+   * device pixel ratio (or `deviceScaleFactor`), touch events (`touch`, default true) and a mobile
+   * user agent (`userAgent`, default an iPhone Safari string). The bundle records what the page
+   * then reported about itself under `desktopGeometry.fidelity`; a browser that cannot be
+   * emulated (Firefox) fails the lane closed instead of shipping a desktop run labelled mobile.
+   * Applies to the launch tab; a tab the participant opens later is not emulated.
+   */
+  fidelity?: LabDesktopFidelity;
+}
+
+export interface LabDesktopFidelity {
+  mobileEmulation: boolean;
+  /** Emulated devicePixelRatio; default: the device preset's. */
+  deviceScaleFactor?: number;
+  /** Emulate touch (coarse pointer, touch events); default true. */
+  touch?: boolean;
+  /** Full user-agent string to present; default: a mobile Safari string. */
+  userAgent?: string;
 }
 
 export interface LabExecution {
@@ -1735,6 +1756,9 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
   if (!routesToCua && config.execution?.desktop?.device !== undefined) inert.push("execution.desktop.device");
   if (!routesToHostedCuaBrowser && config.execution?.desktop?.browser !== undefined) inert.push("execution.desktop.browser");
+  if (!routesToHostedCuaBrowser && config.execution?.desktop?.fidelity !== undefined) {
+    inert.push("execution.desktop.fidelity (mobile emulation is applied only to hosted Chromium computer-use lanes on execution.target: e2b-desktop)");
+  }
   if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
   // execution.desktop.template (the custom E2B desktop image) is consumed ONLY where a desktop is
   // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
@@ -2832,6 +2856,33 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
     desktop.template = template;
   }
   if (typeof raw.codexAppServer === "boolean") desktop.codexAppServer = raw.codexAppServer;
+  if (raw.fidelity !== undefined) {
+    if (!isRecord(raw.fidelity) || typeof raw.fidelity.mobileEmulation !== "boolean") {
+      return invalid("`execution.desktop.fidelity` must be an object with `mobileEmulation: true|false` (optional deviceScaleFactor, touch, userAgent).");
+    }
+    const fidelity: LabDesktopFidelity = { mobileEmulation: raw.fidelity.mobileEmulation };
+    if (raw.fidelity.deviceScaleFactor !== undefined) {
+      const scale = raw.fidelity.deviceScaleFactor;
+      if (typeof scale !== "number" || !Number.isFinite(scale) || scale <= 0 || scale > 4) {
+        return invalid("`execution.desktop.fidelity.deviceScaleFactor` must be a number greater than 0 and at most 4.");
+      }
+      fidelity.deviceScaleFactor = scale;
+    }
+    if (raw.fidelity.touch !== undefined) {
+      if (typeof raw.fidelity.touch !== "boolean") {
+        return invalid("`execution.desktop.fidelity.touch` must be true or false.");
+      }
+      fidelity.touch = raw.fidelity.touch;
+    }
+    if (raw.fidelity.userAgent !== undefined) {
+      const userAgent = str(raw.fidelity.userAgent);
+      if (userAgent === undefined) {
+        return invalid("`execution.desktop.fidelity.userAgent` must be a non-empty string when set.");
+      }
+      fidelity.userAgent = userAgent;
+    }
+    desktop.fidelity = fidelity;
+  }
   return { ok: true, value: Object.keys(desktop).length > 0 ? desktop : undefined };
 }
 

@@ -39,8 +39,36 @@ export interface ChromeCdpProbeArgs {
    * funnel read reach-dashboard 0/2 under a screenshot OF the dashboard).
    */
   prefer?: ChromeCdpPagePreference;
-  /** "state": url/title/text/scrollY. "geometry": outer window + CSS viewport. "port": resolution only. */
-  mode: "state" | "geometry" | "port";
+  /**
+   * "state": url/title/text/scrollY. "geometry": outer window + CSS viewport. "port": resolution
+   * only. "emulate": apply mobile emulation (#221) to the selected page and exit (the overrides that
+   * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same, then keep
+   * the socket open until killed, which is how a lane keeps them for its whole life. "fidelity": read
+   * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.
+   */
+  mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity";
+  /** For "emulate": what to apply. */
+  emulation?: ChromeMobileEmulationRequest;
+}
+
+/** Mobile emulation request (#221): the CDP Emulation domain applied to one page target. */
+export interface ChromeMobileEmulationRequest {
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+  touch: boolean;
+  userAgent: string;
+  platform?: string;
+}
+
+/** What the page reports after emulation: the proof, never copied from the request. */
+export interface ChromeFidelityRead {
+  userAgent: string;
+  devicePixelRatio: number;
+  innerWidth: number;
+  innerHeight: number;
+  maxTouchPoints: number;
+  coarsePointer: boolean;
 }
 
 /** The probe's stdout, before the caller narrows it. */
@@ -54,6 +82,10 @@ export interface ChromeCdpProbeResult {
   targetId?: string;
   browserWindow?: { x: number; y: number; width: number; height: number };
   viewport?: { width: number; height: number; deviceScaleFactor: number };
+  /** "emulate": the CDP methods that returned without error, in order. */
+  applied?: string[];
+  /** "fidelity": the read-back. */
+  fidelity?: ChromeFidelityRead;
 }
 
 /**
@@ -67,7 +99,7 @@ export interface ChromeCdpProbeResult {
  * a loopback read.
  */
 export const CHROME_CDP_PROBE_PY = String.raw`
-import base64, json, os, re, socket, struct, sys, urllib.request
+import base64, json, os, re, socket, struct, sys, time, urllib.request
 
 def resolve_port(args):
     port = args.get("cdpPort")
@@ -112,7 +144,9 @@ def select_page(pages, args):
         return match
     return http_pages[0] if len(http_pages) == 1 else None
 
-def evaluate(ws_url, expression, timeout=1.5):
+def ws_session(ws_url, messages, timeout=1.5, hold=False):
+    """Send CDP messages over one page socket, in order, and return their replies (None on failure).
+    hold=True prints the replies and then keeps the socket open until the process is killed."""
     match = re.match(r"^ws://([^/:]+):(\d+)(/.*)$", str(ws_url or ""))
     if not match:
         return None
@@ -136,25 +170,6 @@ def evaluate(ws_url, expression, timeout=1.5):
         head, buffer = buffer.split(b"\r\n\r\n", 1)
         if b" 101 " not in head.split(b"\r\n", 1)[0]:
             return None
-        payload = json.dumps({
-            "id": 1,
-            "method": "Runtime.evaluate",
-            "params": {"returnByValue": True, "expression": expression},
-        }).encode("utf-8")
-        mask = os.urandom(4)
-        frame = bytearray([0x81])
-        size = len(payload)
-        if size < 126:
-            frame.append(0x80 | size)
-        elif size < 65536:
-            frame.append(0x80 | 126)
-            frame += struct.pack(">H", size)
-        else:
-            frame.append(0x80 | 127)
-            frame += struct.pack(">Q", size)
-        frame += mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
-        sock.sendall(bytes(frame))
-
         state = {"buffer": buffer}
 
         def need(count):
@@ -164,42 +179,73 @@ def evaluate(ws_url, expression, timeout=1.5):
                     raise EOFError("socket closed")
                 state["buffer"] += chunk
 
-        message = b""
-        while True:
-            need(2)
-            first, second = state["buffer"][0], state["buffer"][1]
-            fin, opcode = first & 0x80, first & 0x0F
-            masked, length, offset = second & 0x80, second & 0x7F, 2
-            if length == 126:
-                need(4)
-                length, offset = struct.unpack(">H", state["buffer"][2:4])[0], 4
-            elif length == 127:
-                need(10)
-                length, offset = struct.unpack(">Q", state["buffer"][2:10])[0], 10
-            frame_mask = b""
-            if masked:
-                need(offset + 4)
-                frame_mask, offset = state["buffer"][offset:offset + 4], offset + 4
-            need(offset + length)
-            data = state["buffer"][offset:offset + length]
-            state["buffer"] = state["buffer"][offset + length:]
-            if masked:
-                data = bytes(byte ^ frame_mask[index % 4] for index, byte in enumerate(data))
-            if opcode == 8:
-                return None
-            if opcode in (9, 10):
-                continue
-            message += data
-            if fin:
-                try:
-                    reply = json.loads(message.decode("utf-8"))
-                except Exception:
+        def send(message):
+            payload = json.dumps(message).encode("utf-8")
+            mask = os.urandom(4)
+            frame = bytearray([0x81])
+            size = len(payload)
+            if size < 126:
+                frame.append(0x80 | size)
+            elif size < 65536:
+                frame.append(0x80 | 126)
+                frame += struct.pack(">H", size)
+            else:
+                frame.append(0x80 | 127)
+                frame += struct.pack(">Q", size)
+            frame += mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+            sock.sendall(bytes(frame))
+
+        def receive(wanted_id):
+            message = b""
+            while True:
+                need(2)
+                first, second = state["buffer"][0], state["buffer"][1]
+                fin, opcode = first & 0x80, first & 0x0F
+                masked, length, offset = second & 0x80, second & 0x7F, 2
+                if length == 126:
+                    need(4)
+                    length, offset = struct.unpack(">H", state["buffer"][2:4])[0], 4
+                elif length == 127:
+                    need(10)
+                    length, offset = struct.unpack(">Q", state["buffer"][2:10])[0], 10
+                frame_mask = b""
+                if masked:
+                    need(offset + 4)
+                    frame_mask, offset = state["buffer"][offset:offset + 4], offset + 4
+                need(offset + length)
+                data = state["buffer"][offset:offset + length]
+                state["buffer"] = state["buffer"][offset + length:]
+                if masked:
+                    data = bytes(byte ^ frame_mask[index % 4] for index, byte in enumerate(data))
+                if opcode == 8:
                     return None
-                message = b""
-                if isinstance(reply, dict) and reply.get("id") == 1:
-                    result = reply.get("result") or {}
-                    inner = result.get("result") if isinstance(result, dict) else None
-                    return inner.get("value") if isinstance(inner, dict) else None
+                if opcode in (9, 10):
+                    continue
+                message += data
+                if fin:
+                    try:
+                        reply = json.loads(message.decode("utf-8"))
+                    except Exception:
+                        return None
+                    message = b""
+                    if isinstance(reply, dict) and reply.get("id") == wanted_id:
+                        return reply
+
+        replies = []
+        for index, message in enumerate(messages, 1):
+            send({"id": index, **message})
+            replies.append(receive(index))
+        if hold:
+            # Announce the result now (the caller reads stdout once), then stay attached.
+            applied = [m["method"] for m, r in zip(messages, replies) if isinstance(r, dict) and "error" not in r]
+            failed = [m["method"] for m, r in zip(messages, replies) if not (isinstance(r, dict) and "error" not in r)]
+            print(json.dumps({"applied": applied, "held": not failed, **({"unavailable": "%s failed" % failed[0]} if failed else {})}), flush=True)
+            if failed:
+                return replies
+            sock.settimeout(None)
+            while True:
+                time.sleep(30)
+        return replies
     except Exception:
         return None
     finally:
@@ -208,6 +254,14 @@ def evaluate(ws_url, expression, timeout=1.5):
                 sock.close()
             except Exception:
                 pass
+
+def evaluate(ws_url, expression, timeout=1.5):
+    replies = ws_session(ws_url, [{"method": "Runtime.evaluate", "params": {"returnByValue": True, "expression": expression}}], timeout)
+    if not replies or not isinstance(replies[0], dict):
+        return None
+    result = replies[0].get("result") or {}
+    inner = result.get("result") if isinstance(result, dict) else None
+    return inner.get("value") if isinstance(inner, dict) else None
 
 STATE_EXPRESSION = (
     "({ url: location.href, title: document.title, "
@@ -218,6 +272,46 @@ GEOMETRY_EXPRESSION = (
     "({ browserWindow: { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight }, "
     "viewport: { width: window.innerWidth, height: window.innerHeight, deviceScaleFactor: window.devicePixelRatio } })"
 )
+FIDELITY_EXPRESSION = (
+    "({ userAgent: navigator.userAgent, devicePixelRatio: window.devicePixelRatio, "
+    "innerWidth: window.innerWidth, innerHeight: window.innerHeight, "
+    "maxTouchPoints: navigator.maxTouchPoints || 0, "
+    "coarsePointer: !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) })"
+)
+
+def emulate(ws_url, request, hold=False):
+    """Apply the Emulation domain to the page and reload it so scripts that read the UA at load see it.
+    With hold=True the socket stays open (the overrides are bound to this session) until the process is killed."""
+    width = int(request.get("width") or 0)
+    height = int(request.get("height") or 0)
+    scale = float(request.get("deviceScaleFactor") or 1)
+    user_agent = str(request.get("userAgent") or "")
+    platform = str(request.get("platform") or "")
+    messages = [
+        {"method": "Emulation.setDeviceMetricsOverride", "params": {
+            "width": width, "height": height, "deviceScaleFactor": scale, "mobile": True,
+            "screenWidth": width, "screenHeight": height}},
+    ]
+    if request.get("touch"):
+        messages.append({"method": "Emulation.setTouchEmulationEnabled", "params": {"enabled": True, "maxTouchPoints": 5}})
+        messages.append({"method": "Emulation.setEmitTouchEventsForMouse", "params": {"enabled": True, "configuration": "mobile"}})
+    if user_agent:
+        params = {"userAgent": user_agent}
+        if platform:
+            params["platform"] = platform
+        messages.append({"method": "Emulation.setUserAgentOverride", "params": params})
+    messages.append({"method": "Page.reload", "params": {}})
+    replies = ws_session(ws_url, messages, timeout=5, hold=hold)
+    if replies is None:
+        return None, "the page socket could not be opened"
+    applied = []
+    for message, reply in zip(messages, replies):
+        if isinstance(reply, dict) and "error" not in reply:
+            applied.append(message["method"])
+        else:
+            detail = (reply or {}).get("error", {}).get("message") if isinstance(reply, dict) else "no reply"
+            return applied, "%s failed: %s" % (message["method"], detail)
+    return applied, None
 
 def main():
     args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
@@ -236,6 +330,29 @@ def main():
         print(json.dumps({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)}))
         return
     ws_url = page.get("webSocketDebuggerUrl")
+    if mode == "emulate":
+        applied, failure = emulate(ws_url, args.get("emulation") or {}) if ws_url else (None, "the page has no socket")
+        if failure is not None:
+            print(json.dumps({"unavailable": failure, "applied": applied or []}))
+            return
+        print(json.dumps({"applied": applied, "targetId": str(page.get("id") or "")}))
+        return
+    if mode == "hold":
+        if not ws_url:
+            print(json.dumps({"unavailable": "the page has no socket"}), flush=True)
+            return
+        # Prints its own line from inside ws_session (before blocking) and never returns on success.
+        applied, failure = emulate(ws_url, args.get("emulation") or {}, hold=True)
+        if failure is not None:
+            print(json.dumps({"unavailable": failure, "applied": applied or []}), flush=True)
+        return
+    if mode == "fidelity":
+        result = evaluate(ws_url, FIDELITY_EXPRESSION) if ws_url else None
+        if not isinstance(result, dict):
+            print(json.dumps({"unavailable": "Runtime.evaluate over the page socket returned nothing"}))
+            return
+        print(json.dumps({"fidelity": result, "targetId": str(page.get("id") or "")}))
+        return
     if mode == "geometry":
         result = evaluate(ws_url, GEOMETRY_EXPRESSION) if ws_url else None
         if not isinstance(result, dict):
@@ -270,6 +387,7 @@ export function chromeCdpProbeCommand(args: ChromeCdpProbeArgs): string {
   if (args.profileDir !== undefined) payload.profileDir = args.profileDir;
   if (args.targetId !== undefined) payload.targetId = args.targetId;
   if (args.prefer !== undefined) payload.prefer = args.prefer;
+  if (args.emulation !== undefined) payload.emulation = args.emulation;
   return `python3 -c ${shellSingleQuote(CHROME_CDP_PROBE_PY)} ${shellSingleQuote(JSON.stringify(payload))}`;
 }
 
@@ -289,7 +407,12 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
   }
   if (!parsed || typeof parsed !== "object") return { unavailable: "probe output was not an object" };
   const record = parsed as Record<string, unknown>;
-  if (typeof record.unavailable === "string") return { unavailable: record.unavailable };
+  const applied = Array.isArray(record.applied)
+    ? record.applied.filter((item): item is string => typeof item === "string")
+    : undefined;
+  if (typeof record.unavailable === "string") {
+    return { unavailable: record.unavailable, ...(applied === undefined ? {} : { applied }) };
+  }
   const numberOr = (value: unknown): number | undefined =>
     typeof value === "number" && Number.isFinite(value) ? value : undefined;
   const box = (value: unknown, keys: string[]): Record<string, number> | undefined => {
@@ -307,7 +430,22 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
   const viewport = box(record.viewport, ["width", "height", "deviceScaleFactor"]) as ChromeCdpProbeResult["viewport"];
   const cdpPort = numberOr(record.cdpPort);
   const scrollY = numberOr(record.scrollY);
+  const fidelity = ((): ChromeFidelityRead | undefined => {
+    const raw = record.fidelity;
+    if (!raw || typeof raw !== "object") return undefined;
+    const source = raw as Record<string, unknown>;
+    const dpr = numberOr(source.devicePixelRatio);
+    const innerWidth = numberOr(source.innerWidth);
+    const innerHeight = numberOr(source.innerHeight);
+    const maxTouchPoints = numberOr(source.maxTouchPoints);
+    if (typeof source.userAgent !== "string" || dpr === undefined || innerWidth === undefined || innerHeight === undefined || maxTouchPoints === undefined) {
+      return undefined;
+    }
+    return { userAgent: source.userAgent, devicePixelRatio: dpr, innerWidth, innerHeight, maxTouchPoints, coarsePointer: source.coarsePointer === true };
+  })();
   return {
+    ...(applied === undefined ? {} : { applied }),
+    ...(fidelity === undefined ? {} : { fidelity }),
     ...(cdpPort === undefined ? {} : { cdpPort }),
     ...(typeof record.url === "string" && record.url.length > 0 ? { url: record.url } : {}),
     ...(typeof record.title === "string" && record.title.length > 0 ? { title: record.title } : {}),
