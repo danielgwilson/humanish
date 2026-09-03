@@ -3913,9 +3913,10 @@ describe("runCuaActorLab cost estimates", () => {
     // exact because the trace now records per-request turns (#334).
     const est = bundle.streams[0].actor.estimatedCost;
     expect(est.schema).toBe("humanish.actor-estimated-cost.v1");
-    // gpt-5.6-sol long tier: 2_000_000*5e-6*2 + 4_000*30e-6*1.5 = 20 + 0.18 = 20.18.
-    expect(est.estimatedCostUsd).toBeCloseTo(20.18, 6);
-    expect(est.ratesAsOf).toBe("2026-08-18");
+    // gpt-5.6-sol long tier (promo sheet 2026-09-03): 2_000_000*4e-6*2 + 4_000*20e-6*1.5
+    // = 16 + 0.12 = 16.12.
+    expect(est.estimatedCostUsd).toBeCloseTo(16.12, 6);
+    expect(est.ratesAsOf).toBe("2026-09-03");
     expect(est.source).toContain("developers.openai.com/api/docs/pricing");
     expect(est.placeholder).toBeUndefined();
     expect(est.modelId).toBe("gpt-5.6-sol");
@@ -3930,11 +3931,11 @@ describe("runCuaActorLab cost estimates", () => {
     expect(cost.tokenUsage).toEqual({ input: 2_000_000, output: 4_000, total: 2_004_000 });
     const modelLine = cost.breakdown.find((l: any) => l.kind === "model-tokens");
     const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
-    expect(modelLine.estimatedCostUsd).toBeCloseTo(20.18, 6);
-    expect(modelLine.ratesAsOf).toBe("2026-08-18");
+    expect(modelLine.estimatedCostUsd).toBeCloseTo(16.12, 6);
+    expect(modelLine.ratesAsOf).toBe("2026-09-03");
     expect(modelLine.source).toContain("developers.openai.com/api/docs/pricing");
     expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00276, 6);
-    expect(cost.estimatedTotalUsd).toBeCloseTo(20.18276, 6);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(16.12276, 6);
     // The desktop rate is still placeholder (RAM spec assumed), so the aggregate flag holds.
     expect(cost.placeholder).toBe(true);
     expect(cost.fullyEstimated).toBe(true);
