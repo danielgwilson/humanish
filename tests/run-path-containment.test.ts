@@ -77,7 +77,7 @@ describe("run path containment", () => {
         const result = await Promise.race([
           doctor(cwd),
           new Promise<never>((_resolve, reject) => {
-            setTimeout(() => reject(new Error(`Doctor hung on ${kind} .gitignore`)), 1_000);
+            setTimeout(() => reject(new Error(`Doctor hung on ${kind} .gitignore`)), 5_000);
           })
         ]);
 

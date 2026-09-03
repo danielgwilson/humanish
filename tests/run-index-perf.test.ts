@@ -63,19 +63,26 @@ describe("run index cost, measured against the existing listing", () => {
     await listRuns(cwd);
     await readRunIndex(cwd);
 
-    const t0 = performance.now();
-    const listed = await listRuns(cwd);
-    const listRunsMs = performance.now() - t0;
+    // Best of five for each reader. A single sample at the millisecond scale is one GC pause away
+    // from inverting warm and cold (CI on 2026-09-03: warm 4.6 ms, cold 3.2 ms, #606); the minimum
+    // is the algorithm's cost, the rest is the runner's.
+    const bestOf = async <T,>(reader: () => Promise<T>, samples = 5): Promise<{ result: T; ms: number }> => {
+      let best: { result: T; ms: number } | undefined;
+      for (let sample = 0; sample < samples; sample += 1) {
+        const started = performance.now();
+        const result = await reader();
+        const ms = performance.now() - started;
+        if (best === undefined || ms < best.ms) best = { result, ms };
+      }
+      return best!;
+    };
 
-    const t1 = performance.now();
-    const cold = await readRunIndex(cwd);
-    const indexColdMs = performance.now() - t1;
+    const { result: listed, ms: listRunsMs } = await bestOf(() => listRuns(cwd));
+    const { result: cold, ms: indexColdMs } = await bestOf(() => readRunIndex(cwd));
 
     const cache = new RunIndexCache();
     await readRunIndex(cwd, { cache });
-    const t2 = performance.now();
-    const warm = await readRunIndex(cwd, { cache });
-    const indexWarmMs = performance.now() - t2;
+    const { result: warm, ms: indexWarmMs } = await bestOf(() => readRunIndex(cwd, { cache }));
 
     // Same runs — cheaper is only worth anything if it is also complete.
     expect(listed.ok).toBe(true);
