@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.74.0`)
+## Current Program Truth (source `0.75.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -462,6 +462,18 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-03 (0.75.0).** Three fixes found by runs, each with a receipt. The DevTools probe behind
+every url, page-text and CSS-viewport observation ran on Node inside the sandbox, and the stock
+desktop has none, so on the app-url route and on any subject served by something other than Node
+every `urlIncludes` / `textIncludes` stop condition and task criterion had been silently blind; it
+runs on python3 now, a dark channel is named in the lane warnings, and the same lab reads
+"never measured in 2" on 0.74.0 and 2/2 at turn 0 on 0.75.0
+(`docs/goals/computer-use-actor/receipts/task-observation-514-2026-09-03.md`, #514). A subject
+install or runtime bootstrap that exits non-zero is retried once, and the error leads with a line a
+person can act on (#602). The gpt-5.6-sol rates were re-pinned at the live promotional sheet
+(4 / 0.40 / 5 / 20 per 1M through at least 2026-11-21), so estimates stop running 25-33% high, and
+gpt-6-astra is priced. #548 closed on the benchmark receipts.
 
 **2026-09-01 (0.66.0 through 0.70.0, one session).** The product got its first efficacy numbers and
 they are in the repo with run ids: planted-defect recall 43 of 45 over three benchmark runs and

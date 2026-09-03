@@ -18,6 +18,11 @@ Each run cost about $0.03 (two desktops for about 3 sandbox-minutes). In each ru
 participant finished and the other ran out its 150 s budget reading; that varied by lane between
 the two runs and is participant behaviour, not the harness.
 
+Repeated on merged main after #603 (run `cua-2026-09-03T21-18-05-032Z-c6bab1b9`): 2/2 and 2/2
+at turn 0 again, viewport 1440x863 from cdp on both lanes, both participants finished, $0.03.
+This is the kept bundle; the branch run above was produced from a worktree that was removed after
+the merge, so its bundle no longer exists locally.
+
 ## Root cause
 
 Every url, page-text and CSS-viewport observation ran `node --input-type=module -e ...` inside
