@@ -93,7 +93,7 @@ import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";
-import { chromeCdpProbeCommand, parseChromeCdpProbeOutput } from "./chrome-cdp-probe.js";
+import { chromeCdpProbeCommand, parseChromeCdpProbeOutput, type ChromeMobileEmulationRequest } from "./chrome-cdp-probe.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
@@ -1507,11 +1507,14 @@ async function openDesktopBrowserTarget(
   desktop: E2BDesktopSandbox,
   targetUrl: string,
   requestTimeoutMs: number,
-  browserPreference: LabDesktopBrowser | undefined
+  browserPreference: LabDesktopBrowser | undefined,
+  /** Launch-time flags that make mobile fidelity (#221) hold across every tab: the user agent and
+   *  touch events are browser-wide here, where the CDP holder covers only the launch page. */
+  extraChromiumFlags: readonly string[] = []
 ): Promise<DesktopBrowserLaunchResult> {
   const requestedBrowser = browserPreference ?? "default";
   if (isHttpUrl(targetUrl)) {
-    const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellSingleQuote).join(" ");
+    const chromiumFlags = [...CHROMIUM_EVIDENCE_HYGIENE_FLAGS, ...extraChromiumFlags].map(shellSingleQuote).join(" ");
     const browserLaunchCommand = [
       "set -euo pipefail",
       `target_url=${shellSingleQuote(targetUrl)}`,
@@ -1752,6 +1755,94 @@ export function makeChromeDesktopGeometryObserver(
   };
 }
 
+/** The user agent a mobile-emulated lane presents unless the lab sets its own. */
+export const DEFAULT_MOBILE_USER_AGENT =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+/**
+ * Apply mobile emulation (#221) to the lane's launch page and read back what the page reports.
+ * Fails CLOSED: a request that cannot be applied throws, because a desktop run labelled mobile is
+ * the over-trust this feature exists to prevent. A read-back that cannot be taken is a warning
+ * (the emulation was applied; only the proof is missing).
+ */
+export async function applyMobileEmulation(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+  endpoint: ChromeCdpEndpoint,
+  targetId: string | undefined,
+  request: ChromeMobileEmulationRequest
+): Promise<{ fidelity: NonNullable<RunDesktopGeometry["fidelity"]>; warnings: string[] }> {
+  const command = (mode: "hold" | "fidelity") =>
+    chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer: "pinned", mode, emulation: request });
+  const read = async () => {
+    const result = await desktop.commands.run(command("fidelity"), { requestTimeoutMs, timeoutMs: 15_000 });
+    if (result.exitCode !== undefined && result.exitCode !== 0) {
+      return { unavailable: `probe exited ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}` };
+    }
+    return parseChromeCdpProbeOutput(result.stdout);
+  };
+  // The UA / touch / DPR overrides are bound to the DevTools session that set them and lapse the
+  // moment its socket closes (measured: only the viewport width survived a one-shot apply). So the
+  // applier stays attached for the lane's whole life as a detached process; the sandbox teardown
+  // ends it. Its first stdout line says what was applied.
+  const holderName = `mobile-emulation-${Date.now().toString(36)}`;
+  await startDetachedProcess(desktop, { name: holderName, command: command("hold"), requestTimeoutMs });
+  let announced: ReturnType<typeof parseChromeCdpProbeOutput> | undefined;
+  for (let attempt = 0; attempt < 30 && announced === undefined; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const log = await readDetachedLog(desktop, holderName, requestTimeoutMs).catch(() => "");
+    const line = log.split("\n").find((candidate) => candidate.trim().startsWith("{"));
+    if (line !== undefined) announced = parseChromeCdpProbeOutput(line);
+  }
+  if (announced === undefined) {
+    throw new Error("mobile emulation could not be applied: the in-sandbox applier printed nothing within 15 s");
+  }
+  if (announced.unavailable !== undefined) {
+    throw new Error(
+      `mobile emulation could not be applied (${announced.unavailable}); applied before failing: ${(announced.applied ?? []).join(", ") || "nothing"}`
+    );
+  }
+  const applied = announced;
+  const warnings: string[] = [];
+  // The reload inside the applier takes a moment; the read-back is retried until the page reports
+  // the requested viewport and user agent, so a slow page does not read as "no proof".
+  let readBack = await read();
+  for (
+    let attempt = 0;
+    attempt < 20 && (readBack.fidelity === undefined || readBack.fidelity.innerWidth !== request.width || !readBack.fidelity.userAgent.includes(request.userAgent.slice(0, 24)));
+    attempt += 1
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    readBack = await read();
+  }
+  const fidelityRead = readBack;
+  const requested = {
+    width: request.width,
+    height: request.height,
+    deviceScaleFactor: request.deviceScaleFactor,
+    touch: request.touch,
+    userAgent: request.userAgent
+  };
+  if (fidelityRead.fidelity === undefined) {
+    warnings.push(`Mobile emulation was applied but the page's own report could not be read (${fidelityRead.unavailable ?? "no fidelity read"}); desktopGeometry.fidelity carries the request without a resolved block.`);
+    return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [] }, warnings };
+  }
+  const resolved = { ...fidelityRead.fidelity, source: "cdp" as const };
+  if (resolved.innerWidth !== request.width) {
+    warnings.push(`Mobile emulation requested a ${request.width} px viewport; the page reports ${resolved.innerWidth} px.`);
+  }
+  if (resolved.devicePixelRatio !== request.deviceScaleFactor) {
+    warnings.push(`Mobile emulation requested devicePixelRatio ${request.deviceScaleFactor}; the page reports ${resolved.devicePixelRatio}.`);
+  }
+  if (request.touch && resolved.maxTouchPoints === 0) {
+    warnings.push("Mobile emulation requested touch; the page reports navigator.maxTouchPoints 0.");
+  }
+  if (!resolved.userAgent.includes("Mobile") && !resolved.userAgent.includes("Android") && !resolved.userAgent.includes("iPhone")) {
+    warnings.push("Mobile emulation requested a mobile user agent; the page reports a desktop one.");
+  }
+  return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [], resolved }, warnings };
+}
+
 function isMeasuredRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
@@ -1868,10 +1959,13 @@ export async function captureDesktopBrowserGeometry(args: {
     : undefined;
   const browserWindow = chromeGeometry?.browserWindow ?? xdotoolWindow;
   const viewport = chromeGeometry?.viewport;
+  // The fill check reads the X window when it was measured: under mobile emulation (#221) the
+  // page's window.outerWidth reports the EMULATED screen (414), which is not a fill failure.
+  const fillBounds = xdotoolWindow ?? browserWindow;
   if (!browserWindow) {
     warnings.push(`Browser outer bounds could not be measured for lane ${args.laneId}.`);
-  } else if (browserWindow.width !== args.requestedScreen[0] || browserWindow.height !== args.requestedScreen[1]) {
-    warnings.push(`Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured outer bounds are ${browserWindow.width}x${browserWindow.height}.`);
+  } else if (fillBounds !== undefined && (fillBounds.width !== args.requestedScreen[0] || fillBounds.height !== args.requestedScreen[1])) {
+    warnings.push(`Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured outer bounds are ${fillBounds.width}x${fillBounds.height}.`);
   }
   if (!viewport) {
     // Name the cause, not only the symptom: the same dead DevTools channel that loses the viewport
@@ -2271,6 +2365,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let browserLaunchIdentity: DesktopBrowserLaunchIdentity | undefined;
   let browserLaunched = false;
   let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
+  let appliedFidelity: RunDesktopGeometry["fidelity"] | undefined;
   let browserWindowId: string | undefined;
   let browserTargetId: string | undefined;
   const declaredScreen = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
@@ -2463,17 +2558,58 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       }
 
       if (!desktopCliRoute) {
+        const requestedFidelity = config.execution?.desktop?.fidelity;
         const browserLaunch = await openDesktopBrowserTarget(
           desktop,
           targetUrl,
           deps.requestTimeoutMs,
-          config.execution?.desktop?.browser
+          config.execution?.desktop?.browser,
+          requestedFidelity?.mobileEmulation && spec.devicePreset.isMobile
+            ? [
+                `--user-agent=${requestedFidelity.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
+                ...(requestedFidelity.touch === false ? [] : ["--touch-events=enabled"])
+              ]
+            : []
         );
         desktopBrowser = browserLaunch.evidence;
         launchedBrowserFamily = browserLaunch.family;
         browserLaunchIdentity = browserLaunch.identity;
         browserLaunched = true;
         await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+        // Mobile fidelity beyond viewport size (#221): applied to the launch page before the
+        // geometry capture and the participant's first observation, OUTSIDE the stream/geometry
+        // try below (whose catch degrades to a warning): a request that cannot be applied fails
+        // the lane closed with the reason.
+        // Only lanes on a mobile preset are emulated: a run-wide flag must not hand a desktop or
+        // tablet lane an iPhone user agent (the first live proof did exactly that to the desktop
+        // newcomer beside the phone lane). Those lanes carry no fidelity block, which is honest.
+        const fidelityRequest = config.execution?.desktop?.fidelity;
+        if (fidelityRequest?.mobileEmulation && spec.devicePreset.isMobile) {
+          if (launchedBrowserFamily !== "chromium") {
+            throw new Error(
+              `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium on lane ${spec.laneId}; the launched browser family is ${launchedBrowserFamily}. Set execution.desktop.browser: chrome.`
+            );
+          }
+          const applied = await applyMobileEmulation(
+            desktop,
+            deps.requestTimeoutMs,
+            {
+              ...(browserLaunchIdentity?.cdpPort === undefined ? {} : { cdpPort: browserLaunchIdentity.cdpPort }),
+              ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
+              targetUrl
+            },
+            browserTargetId,
+            {
+              width: spec.devicePreset.width,
+              height: spec.devicePreset.height,
+              deviceScaleFactor: fidelityRequest.deviceScaleFactor ?? spec.devicePreset.deviceScaleFactor,
+              touch: fidelityRequest.touch ?? true,
+              userAgent: fidelityRequest.userAgent ?? DEFAULT_MOBILE_USER_AGENT
+            }
+          );
+          appliedFidelity = applied.fidelity;
+          warnings.push(...applied.warnings);
+        }
       } else {
         // A terminal window, opened the way the browser is opened on every other route: the
         // participant arrives at a desktop with the thing they were asked to use already in front
@@ -2538,6 +2674,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           initialBrowserGeometry = browserGeometry;
           browserWindowId = browserGeometry.browserWindowId;
           browserTargetId = browserGeometry.browserTargetId;
+
         }
         // The WHOLE desktop, not one window: a person studying a terminal app opens other windows,
         // and a stream bound to the first one would quietly stop being evidence.
@@ -2703,6 +2840,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           screen: desktopGeometry.screen,
           ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),
           ...(chosenGeometry.viewport === undefined ? {} : { viewport: chosenGeometry.viewport }),
+          ...(appliedFidelity === undefined ? {} : { fidelity: appliedFidelity }),
           ...((desktopGeometry.warnings?.length ?? 0) + geometryWarnings.length === 0
             ? {}
             : { warnings: [...(desktopGeometry.warnings ?? []), ...geometryWarnings] })
