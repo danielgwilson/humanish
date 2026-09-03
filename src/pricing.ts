@@ -120,17 +120,28 @@ const GPT56_SOURCE = "developers.openai.com/api/docs/pricing (gpt-5.6 family, st
 // One 5.6-family entry: rates in USD-per-1M for legibility, converted once. Cache writes bill at
 // 1.25x the uncached input rate on this family (`cache_write_tokens`, prompt-caching guide); the
 // built-in `computer` tool has no per-call fee on the live sheet.
-function gpt56Rate(inPer1M: number, cachedPer1M: number, writePer1M: number, outPer1M: number): ModelRate {
+function gpt56Rate(
+  inPer1M: number,
+  cachedPer1M: number,
+  writePer1M: number,
+  outPer1M: number,
+  asOf: string = "2026-08-18"
+): ModelRate {
   return {
     inputUsdPerToken: inPer1M * 1e-6,
     cachedInputUsdPerToken: cachedPer1M * 1e-6,
     cacheWriteUsdPerToken: writePer1M * 1e-6,
     outputUsdPerToken: outPer1M * 1e-6,
     longContext: { ...GPT56_LONG_CONTEXT },
-    asOf: "2026-08-18",
+    asOf,
     source: GPT56_SOURCE
   };
 }
+
+// gpt-5.6-sol promotional rates (live sheet 2026-09-03: $4 / $0.40 cached / $5 write / $20 out,
+// "available at least through November 21, 2026"). The 2026-08-18 pin of 5 / 0.5 / 6.25 / 30
+// over-estimated every Sol run by 25-33% for two weeks. Re-verify against the sheet after Nov 21.
+const GPT56_SOL_PROMO_AS_OF = "2026-09-03";
 
 // Per-model rates, keyed on the model id that lands in trace.ids.model (lookup is
 // case-insensitive on a trimmed id). An id NOT present here is DECLARED ABSENT, never guessed.
@@ -157,18 +168,23 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // the longContext block prices the >272K re-tier when per-request turns are recorded).
   // sol = flagship (the shipped CUA default), terra = cost-balanced, luna = high-volume,
   // cyber = the Daybreak frontier tier.
-  "gpt-5.6-sol": gpt56Rate(5, 0.5, 6.25, 30),
+  "gpt-5.6-sol": gpt56Rate(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
   // "gpt-5.6" is OpenAI's own alias for gpt-5.6-sol (models index); priced identically so a
   // lab configured with the alias never reads as unpriced.
-  "gpt-5.6": gpt56Rate(5, 0.5, 6.25, 30),
+  "gpt-5.6": gpt56Rate(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
   "gpt-5.6-terra": gpt56Rate(2, 0.2, 2.5, 12),
   "gpt-5.6-luna": gpt56Rate(0.2, 0.02, 0.25, 1.2),
   "gpt-5.6-cyber": gpt56Rate(12.5, 1.25, 15.625, 75),
   // Daybreak program aliases (blue -> sol, red -> cyber today). OpenAI repoints these as new
   // frontier models ship, so prefer the explicit tier id in labs; the entries exist so a
   // configured alias still prices at what the alias bills TODAY.
-  "daybreak-blue-latest": gpt56Rate(5, 0.5, 6.25, 30),
-  "daybreak-red-latest": gpt56Rate(12.5, 1.25, 15.625, 75)
+  "daybreak-blue-latest": gpt56Rate(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
+  "daybreak-red-latest": gpt56Rate(12.5, 1.25, 15.625, 75),
+  // gpt-6-astra (shipped 2026-09-03; API access announced as rolling out). Same two mechanics
+  // as the 5.6 family on the sheet: writes at 1.25x, >272K re-tiers at 2x input-side / 1.5x
+  // output ($20 / $2 / $25 / $75 long-context columns). Priced so a lab that declares it never
+  // reads as unpriced; NOT the default and not yet exercised by a live run here.
+  "gpt-6-astra": gpt56Rate(10, 1, 12.5, 50, GPT56_SOL_PROMO_AS_OF)
 };
 
 // E2B desktop sandbox compute, billed per-second by vCPU+RAM. Live sheet: 2 vCPU (default)
