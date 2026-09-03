@@ -62,6 +62,20 @@ the receiver attached a city-level location to them; that setting has been
 turned off for the project and the doc said "anonymous" while it was on. Stated
 here rather than quietly fixed.
 
+## What never reports
+
+- **humanish's own repository checkout.** A command started inside a checkout of this repository
+  (a `package.json` named `humanish` above the working directory, outside `node_modules`) sends
+  nothing, and so does a CLI whose own files live inside such a checkout, wherever it was started
+  from. The second rule exists because tests, the TUI smoke and the release dogfood spawn
+  `dist/cli.js` into temporary directories; one development machine put 1,251 of its own events
+  into the adoption count before that rule existed (2026-08-31 to 2026-09-03). An installed copy
+  lives under `node_modules` and is never matched by either rule.
+- **Continuous integration** still reports, with `ci: true`, because an adopter's pipeline is real
+  usage; the dashboards separate it.
+- **Study participants.** A humanish CLI that a study participant runs inside a sandbox carries
+  `studyParticipant: true` and is excluded from adoption counts.
+
 ## How to opt out
 
 ```bash
