@@ -2152,6 +2152,87 @@ describe("runCuaActorLab", () => {
     expect(created).toHaveLength(0);
   });
 
+  it("retries a subject install that exits non-zero exactly once, and the phase stream says so (#602)", async () => {
+    // A transient registry/TLS error inside the sandbox's npm install cost a cold adopter their
+    // whole first live study; the parallel install twenty seconds later passed. First attempt
+    // exits 1, the retry (its own step dir, so both logs survive) exits 0.
+    const config = cloneCuaConfig();
+    const statusReads: string[] = [];
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("subject-install") && command.includes("/status")) {
+          statusReads.push(command.includes("subject-install-retry") ? "retry" : "first");
+          return { stdout: command.includes("subject-install-retry") ? "0" : "1" };
+        }
+        if (command.includes("subject-install") && command.includes("tail -c")) {
+          return { stdout: "npm error code ERR_SSL_CIPHER_OPERATION_FAILED" };
+        }
+        return undefined;
+      })
+    });
+    const { module } = makeFakeModule(sandbox);
+    const phaseEvents: Array<{ type: string; ok?: boolean; message: string }> = [];
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+        onPhase: (event) => {
+          phaseEvents.push(event);
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(statusReads).toEqual(["first", "retry"]);
+    const installPhases = phaseEvents.filter((event) => event.type.includes(".install"));
+    expect(installPhases.map((event) => event.type)).toEqual([
+      "cua-lab.subject.install.started",
+      "cua-lab.subject.install-retry.started",
+      "cua-lab.subject.install-retry.completed",
+      "cua-lab.subject.install.completed"
+    ]);
+    expect(installPhases[1]?.message).toContain("first attempt exited 1; retrying once");
+    expect(installPhases[2]?.ok).toBe(true);
+    expect(installPhases[3]?.ok).toBe(true);
+    expect(installPhases[3]?.message).toBe("subject dependencies installed (on the second attempt)");
+  });
+
+  it("a subject install that fails twice reports one actionable line before npm's own output (#602)", async () => {
+    const config = cloneCuaConfig();
+    let attempts = 0;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("subject-install") && command.includes("/status")) {
+          attempts += 1;
+          return { stdout: "1" };
+        }
+        if (command.includes("subject-install") && command.includes("tail -c")) {
+          return { stdout: "npm error code ERR_SSL_CIPHER_OPERATION_FAILED\nnpm error ossl_gcm_stream_update" };
+        }
+        return undefined;
+      })
+    });
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(false);
+    expect(attempts).toBe(2);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+    const message = outcome.result.error?.message ?? "";
+    expect(message.indexOf("subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install"))
+      .toBeGreaterThanOrEqual(0);
+    expect(message.indexOf("subject install failed twice")).toBeLessThan(message.indexOf("ERR_SSL_CIPHER_OPERATION_FAILED"));
+  });
+
   it("scrubs PROVISIONED VALUES (no secret shape) from every artifact and the result when a serve step echoes them", async () => {
     // The P0 class: an app dumps its config on boot failure. The value is arbitrary — no
     // pattern can catch it; only literal scrubbing of known provisioned values can.
@@ -2159,7 +2240,8 @@ describe("runCuaActorLab", () => {
     const config = cloneCuaConfig({ env: ["DATABASE_PASSWORD"] });
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        if (command.includes("subject-install/status")) return { stdout: "1" };
+        // Both attempts fail (#602 retries an exit-code failure once under `subject-install-retry`).
+        if (command.includes("subject-install") && command.includes("/status")) return { stdout: "1" };
         if (command.includes("subject-install") && command.includes("tail -c")) {
           return { stdout: `boot dump: DATABASE_PASSWORD=${plainValue} (config echo)` };
         }
