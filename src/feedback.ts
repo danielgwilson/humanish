@@ -57,15 +57,45 @@ export interface FeedbackResult {
   issueMarkdown?: string;
   issueUrl?: string;
   draft?: FeedbackDraft;
+  /** Every usable candidate on the bundle, so a multi-lane study's second and third findings can be
+   *  chosen with `--candidate` instead of being invisible behind the first (#609). */
+  candidates?: FeedbackCandidateSummary[];
   shareSafety?: VerifyResult["shareSafety"];
   error?: {
     code:
       | "HUMANISH_RUN_NOT_FOUND"
       | "HUMANISH_INVALID_RUN_BUNDLE"
       | "HUMANISH_INVALID_FEEDBACK_DRAFT"
-      | "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED";
+      | "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED"
+      | "HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND";
     message: string;
   };
+}
+
+/** One row of `feedback list`: enough to choose a candidate, never the evidence itself. */
+export interface FeedbackCandidateSummary {
+  id: string;
+  stream_id?: string;
+  persona_id: string;
+  failure_owner: RunFeedbackCandidate["failure_owner"];
+  summary: string;
+}
+
+export interface FeedbackDraftOptions {
+  /** A candidate id from `feedback list`. Absent: the first usable candidate, as before. */
+  candidate?: string;
+}
+
+function summarizeCandidates(bundle: RunBundle): FeedbackCandidateSummary[] {
+  return bundle.feedbackCandidates
+    .filter((item): item is RunFeedbackCandidate => isUsableFeedbackCandidate(item))
+    .map((item) => ({
+      id: item.id,
+      ...(item.stream_id === undefined ? {} : { stream_id: item.stream_id }),
+      persona_id: item.persona_id,
+      failure_owner: item.failure_owner,
+      summary: item.summary
+    }));
 }
 
 type LoadedRunBundle = NonNullable<Awaited<ReturnType<typeof loadRunBundlePrepared>>>;
@@ -83,11 +113,19 @@ interface BoundFeedbackResult {
   result: FeedbackResult;
 }
 
-export async function draftFeedback(cwdInput: string, runInput: string): Promise<FeedbackResult> {
-  return (await draftFeedbackBound(cwdInput, runInput)).result;
+export async function draftFeedback(
+  cwdInput: string,
+  runInput: string,
+  options: FeedbackDraftOptions = {}
+): Promise<FeedbackResult> {
+  return (await draftFeedbackBound(cwdInput, runInput, options)).result;
 }
 
-async function draftFeedbackBound(cwdInput: string, runInput: string): Promise<BoundFeedbackResult> {
+async function draftFeedbackBound(
+  cwdInput: string,
+  runInput: string,
+  options: FeedbackDraftOptions = {}
+): Promise<BoundFeedbackResult> {
   const cwd = path.resolve(cwdInput);
   const context = await resolveFeedbackRunContext(cwd, runInput);
 
@@ -137,7 +175,24 @@ async function draftFeedbackBound(cwdInput: string, runInput: string): Promise<B
     } };
   }
 
-  const draft = buildDraft(context.loaded.bundle, context.loaded.bundlePath);
+  const candidates = summarizeCandidates(context.loaded.bundle);
+  if (options.candidate !== undefined && !candidates.some((item) => item.id === options.candidate)) {
+    return { context, result: {
+      schema: FEEDBACK_RESULT_SCHEMA,
+      ok: false,
+      cwd,
+      run: runInput,
+      candidates,
+      error: {
+        code: "HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND",
+        message: candidates.length === 0
+          ? `No feedback candidate on run ${context.storedRunId}; \`--candidate ${options.candidate}\` cannot be drafted.`
+          : `No feedback candidate \`${options.candidate}\` on run ${context.storedRunId}. Available: ${candidates.map((item) => item.id).join(", ")}.`
+      }
+    } };
+  }
+
+  const draft = buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
   const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
   await writeJson(context.preparedRunPaths, path.join("feedback", "draft.json"), draft);
 
@@ -147,16 +202,25 @@ async function draftFeedbackBound(cwdInput: string, runInput: string): Promise<B
     cwd,
     run: runInput,
     draftPath,
-    draft
+    draft,
+    candidates
   } };
 }
 
-export async function verifyFeedback(cwdInput: string, runInput: string): Promise<FeedbackResult> {
-  return (await verifyFeedbackBound(cwdInput, runInput)).result;
+export async function verifyFeedback(
+  cwdInput: string,
+  runInput: string,
+  options: FeedbackDraftOptions = {}
+): Promise<FeedbackResult> {
+  return (await verifyFeedbackBound(cwdInput, runInput, options)).result;
 }
 
-async function verifyFeedbackBound(cwdInput: string, runInput: string): Promise<BoundFeedbackResult> {
-  const drafted = await draftFeedbackBound(cwdInput, runInput);
+async function verifyFeedbackBound(
+  cwdInput: string,
+  runInput: string,
+  options: FeedbackDraftOptions = {}
+): Promise<BoundFeedbackResult> {
+  const drafted = await draftFeedbackBound(cwdInput, runInput, options);
 
   if (!drafted.result.ok || !drafted.result.draft || !drafted.context) {
     return drafted;
@@ -195,9 +259,10 @@ async function isSafeFeedbackEvidenceFile(context: FeedbackRunContext, evidenceP
 export async function renderIssueMarkdown(
   cwdInput: string,
   runInput: string,
-  repo: string
+  repo: string,
+  options: FeedbackDraftOptions = {}
 ): Promise<FeedbackResult> {
-  const verified = await verifyFeedbackBound(cwdInput, runInput);
+  const verified = await verifyFeedbackBound(cwdInput, runInput, options);
 
   if (!verified.result.ok || !verified.result.draft || !verified.result.draftPath || !verified.context) {
     return verified.result;
@@ -214,8 +279,13 @@ export async function renderIssueMarkdown(
   };
 }
 
-export async function renderIssueUrl(cwdInput: string, runInput: string, repo: string): Promise<FeedbackResult> {
-  const rendered = await renderIssueMarkdown(cwdInput, runInput, repo);
+export async function renderIssueUrl(
+  cwdInput: string,
+  runInput: string,
+  repo: string,
+  options: FeedbackDraftOptions = {}
+): Promise<FeedbackResult> {
+  const rendered = await renderIssueMarkdown(cwdInput, runInput, repo, options);
 
   if (!rendered.ok || !rendered.issueMarkdown || !rendered.draft) {
     return rendered;
@@ -254,7 +324,10 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
     ok: true,
     cwd,
     run: runInput,
-    ...(draft ? { draftPath, draft } : {})
+    ...(draft ? { draftPath, draft } : {}),
+    // The choice set for `draft --candidate`: a three-participant study has up to three findings,
+    // and until #609 only the first ever reached a draft.
+    candidates: summarizeCandidates(context.loaded.bundle)
   };
 }
 
@@ -305,8 +378,11 @@ async function resolveFeedbackRunContext(cwd: string, runInput: string): Promise
   return { cwd, loaded, physicalCwd, preparedRunPaths, storedRunId };
 }
 
-function buildDraft(bundle: RunBundle, bundlePath: string): FeedbackDraft {
-  const candidate = bundle.feedbackCandidates.find((item): item is RunFeedbackCandidate => isUsableFeedbackCandidate(item));
+function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string): FeedbackDraft {
+  const candidate = bundle.feedbackCandidates.find(
+    (item): item is RunFeedbackCandidate =>
+      isUsableFeedbackCandidate(item) && (candidateId === undefined || item.id === candidateId)
+  );
   if (candidate) {
     return {
       schema: FEEDBACK_SCHEMA,

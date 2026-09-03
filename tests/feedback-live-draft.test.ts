@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import type { ActorCapabilities, ActorTrace } from "../src/actor-contract.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
 import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
-import { draftFeedback } from "../src/feedback.js";
+import { draftFeedback, listFeedback } from "../src/feedback.js";
 import { runDryRun } from "../src/run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
@@ -145,6 +145,64 @@ describe("the live fallback draft describes the run that happened (#392)", () =>
       // The participants line rides the draft with its denominator intact.
       expect(draft.actual).toContain("0/1 reached the goal");
       expect(draft.actual).toContain("1 gave up");
+    } finally {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+});
+
+describe("a multi-lane study's second finding is one flag away (#609)", () => {
+  it("lists every candidate, drafts the first by default, drafts a chosen one, and names the ids on a miss", async () => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-candidate-draft-"));
+    const cwd = path.join(tempRoot, "minimal-app");
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+      await runDryRun({ cwd, dryRun: true, runId: "candidate-test" });
+
+      // Three participants: a keyboard-first report, a phone participant that gave up, a clean pass.
+      // Before #609 the phone finding (the study's new one) could not reach a draft at all.
+      const candidates = participantFeedbackCandidates({
+        runId: "candidate-test",
+        scenarioId: "cua-persona-axis",
+        adapterId: "persona-axis",
+        goal: "Create two related tables.",
+        substrate: "e2b-desktop",
+        lanes: [
+          { ...LANE_BASE, laneId: "impatient-expert", streamId: "stream-001", session: fakeSession("passed", "goal_satisfied", "REACHED THE GOAL. The database picker was not keyboard-accessible; I had to use the mouse, which is a defect.") },
+          { ...LANE_BASE, laneId: "phone-newcomer", streamId: "stream-003", personaId: "synthetic-new-user", session: fakeSession("abandoned", "gave_up", "gave up: dragging between fields kept opening detail popovers and no relationship was saved") },
+          { ...LANE_BASE, laneId: "patient-newcomer", streamId: "stream-002", personaId: "synthetic-new-user", session: fakeSession("passed", "goal_satisfied", "REACHED THE GOAL. Two tables linked.") }
+        ]
+      });
+      expect(candidates).toHaveLength(2);
+      const runJsonPath = path.join(cwd, ".humanish", "runs", "candidate-test", "run.json");
+      const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
+      bundle.mode = "live";
+      bundle.feedbackCandidates = candidates;
+      await writeFile(runJsonPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+
+      const listed = await listFeedback(cwd, "candidate-test");
+      expect(listed.ok).toBe(true);
+      expect(listed.candidates?.map((item) => item.id)).toEqual(candidates.map((item) => item.id));
+      expect(listed.candidates?.[1]?.persona_id).toBe("synthetic-new-user");
+
+      const first = await draftFeedback(cwd, "candidate-test");
+      expect(first.ok).toBe(true);
+      expect(first.draft?.source_candidate_id).toBe(candidates[0]!.id);
+      expect(first.candidates).toHaveLength(2);
+
+      const chosen = await draftFeedback(cwd, "candidate-test", { candidate: candidates[1]!.id });
+      expect(chosen.ok).toBe(true);
+      expect(chosen.draft?.source_candidate_id).toBe(candidates[1]!.id);
+      expect(chosen.draft?.actual).toContain("detail popovers");
+      // The draft on disk is the chosen one now.
+      const onDisk = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "candidate-test", "feedback", "draft.json"), "utf8"));
+      expect(onDisk.source_candidate_id).toBe(candidates[1]!.id);
+
+      const missing = await draftFeedback(cwd, "candidate-test", { candidate: "participant-report-nobody" });
+      expect(missing.ok).toBe(false);
+      expect(missing.error?.code).toBe("HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND");
+      expect(missing.error?.message).toContain(candidates[0]!.id);
+      expect(missing.error?.message).toContain(candidates[1]!.id);
     } finally {
       await rm(tempRoot, { force: true, recursive: true });
     }

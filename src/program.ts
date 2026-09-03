@@ -2135,9 +2135,10 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("Generate a public-safe feedback draft from verified evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--candidate <id>", "Which finding to draft (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
-      const result = await draftFeedback(options.cwd, options.run);
+    .action(async (options: { candidate?: string; cwd: string; json?: boolean; run: string }, command) => {
+      const result = await draftFeedback(options.cwd, options.run, candidateOption(options));
       writeResult(command, io, result, formatFeedbackHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
@@ -2147,9 +2148,10 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("Verify the feedback draft for public issue eligibility.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--candidate <id>", "Which finding to verify (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
-      const result = await verifyFeedback(options.cwd, options.run);
+    .action(async (options: { candidate?: string; cwd: string; json?: boolean; run: string }, command) => {
+      const result = await verifyFeedback(options.cwd, options.run, candidateOption(options));
       writeResult(command, io, result, formatFeedbackHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
@@ -2161,9 +2163,10 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in rendered filing instructions.")
     .option("--format <format>", "Output format.", "markdown")
+    .option("--candidate <id>", "Which finding to file (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
-      const result = await renderIssueMarkdown(options.cwd, options.run, options.repo);
+    .action(async (options: { candidate?: string; cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
+      const result = await renderIssueMarkdown(options.cwd, options.run, options.repo, candidateOption(options));
 
       if (wantsJson(command)) {
         io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
@@ -2186,9 +2189,10 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in the generated URL.")
+    .option("--candidate <id>", "Which finding to link (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; repo: string; run: string }, command) => {
-      const result = await renderIssueUrl(options.cwd, options.run, options.repo);
+    .action(async (options: { candidate?: string; cwd: string; json?: boolean; repo: string; run: string }, command) => {
+      const result = await renderIssueUrl(options.cwd, options.run, options.repo, candidateOption(options));
 
       if (wantsJson(command)) {
         io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
@@ -4112,16 +4116,30 @@ function exitCodeForSignal(signal: WatchStopSignal): number {
   }
 }
 
+/** `--candidate` as the module option, absent when not given (exactOptionalPropertyTypes). */
+function candidateOption(options: { candidate?: string }): { candidate?: string } {
+  return options.candidate === undefined ? {} : { candidate: options.candidate };
+}
+
 function formatFeedbackHuman(result: FeedbackResult): string {
   if (!result.ok) {
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
 
+  const candidates = result.candidates ?? [];
   return [
     "humanish feedback ready",
     `run: ${result.run}`,
     ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
-    ...(result.issuePath ? [`issue: ${result.issuePath}`] : [])
+    ...(result.issuePath ? [`issue: ${result.issuePath}`] : []),
+    ...(result.draft?.source_candidate_id ? [`candidate: ${result.draft.source_candidate_id}`] : []),
+    // Every finding the run produced, so the second and third are one flag away (#609).
+    ...(candidates.length > 1 || (candidates.length === 1 && result.draft === undefined)
+      ? [
+          `candidates (${candidates.length}; choose one with --candidate <id>):`,
+          ...candidates.map((item) => `- ${item.id} [${item.failure_owner}] ${item.persona_id}: ${item.summary}`)
+        ]
+      : [])
   ].join("\n") + "\n";
 }
 
