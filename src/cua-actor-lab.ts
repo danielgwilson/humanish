@@ -58,6 +58,8 @@ import {
   probeUrl,
   readDetachedLog,
   runDetachedStep,
+  type DetachedStepOptions,
+  type DetachedStepResult,
   startDetachedProcess,
   type DetachedTimers
 } from "./e2b-detached.js";
@@ -1075,6 +1077,64 @@ function isoNow(now: () => number): string {
 }
 
 /** Emit a phase-started event (no ok/durationMs: those belong to the matching completed event). */
+/**
+ * Run a provisioning step and, when it fails with an EXIT CODE, run it once more (#602). A cold
+ * install of 0.74.0 lost its whole first live study to one transient TLS error inside the
+ * sandbox's `npm install`; the parallel install twenty seconds later passed, as had the ten
+ * before it. One retry clears that class. A TIMEOUT is not retried: its budget is already spent,
+ * and a second wait would double it. The retry runs under its own step name so both logs stay.
+ */
+async function runProvisioningStepWithOneRetry(
+  desktop: E2BDesktopSandbox,
+  args: {
+    name: string;
+    command: string;
+    cwd: string;
+    timeoutMs: number;
+    requestTimeoutMs: number;
+    timers: Partial<Pick<DetachedStepOptions, "now" | "sleep" | "pollIntervalMs">>;
+    /** Phase name for the retry's own started/completed events (`cua-lab.subject.<phase>.*`). */
+    retryPhase: string;
+    retryMessage: string;
+    onPhase: ((event: SubjectPhaseEvent) => void) | undefined;
+    now: () => number;
+  }
+): Promise<DetachedStepResult & { attempts: 1 | 2; firstExitCode?: number }> {
+  const first = await runDetachedStep(desktop, {
+    name: args.name,
+    command: args.command,
+    cwd: args.cwd,
+    timeoutMs: args.timeoutMs,
+    requestTimeoutMs: args.requestTimeoutMs,
+    ...args.timers
+  });
+  if (first.ok || first.timedOut) return { ...first, attempts: 1 };
+  const retryStartedAt = args.now();
+  emitPhaseStarted(
+    args.onPhase,
+    args.now,
+    args.retryPhase,
+    `${args.retryMessage} (first attempt exited ${first.exitCode ?? "null"}; retrying once)`
+  );
+  const second = await runDetachedStep(desktop, {
+    name: `${args.name}-retry`,
+    command: args.command,
+    cwd: args.cwd,
+    timeoutMs: args.timeoutMs,
+    requestTimeoutMs: args.requestTimeoutMs,
+    ...args.timers
+  });
+  emitPhaseCompleted(
+    args.onPhase,
+    args.now,
+    retryStartedAt,
+    args.retryPhase,
+    second.ok,
+    second.ok ? `${args.retryMessage}: succeeded on the second attempt` : `${args.retryMessage}: failed twice`
+  );
+  return { ...second, attempts: 2, ...(first.exitCode === undefined ? {} : { firstExitCode: first.exitCode }) };
+}
+
 function emitPhaseStarted(
   onPhase: ((event: SubjectPhaseEvent) => void) | undefined,
   now: () => number,
@@ -4262,13 +4322,17 @@ async function runSubjectServePipeline(
   if (needsNodeRuntime(serveCommands)) {
     const runtimeStartedAt = now();
     emitPhaseStarted(args.onPhase, now, "runtime", "providing the Node runtime the serve pipeline needs");
-    const bootstrap = await runDetachedStep(desktop, {
+    const bootstrap = await runProvisioningStepWithOneRetry(desktop, {
       name: "subject-runtime-node",
       command: nodeBootstrapCommand(),
       cwd: SUBJECT_DIR,
       timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
-      ...timers
+      timers,
+      retryPhase: "runtime-retry",
+      retryMessage: "Node runtime bootstrap",
+      onPhase: args.onPhase,
+      now
     });
     let ok = bootstrap.ok;
     const corepack = ok ? corepackCommandFor(serveCommands) : undefined;
@@ -4293,7 +4357,7 @@ async function runSubjectServePipeline(
     );
     if (!ok) {
       throw new Error(
-        `the subject's serve pipeline needs a Node runtime and this desktop template has none, and bootstrapping one failed: ${tailOf(args.scrub(bootstrap.logTail))}. Use execution.desktop.template with an image that ships Node, or change serve.install to a runtime the template provides.`
+        `the subject's serve pipeline needs a Node runtime and this desktop template has none, and bootstrapping one failed${bootstrap.attempts === 2 ? " twice" : ""}: ${tailOf(args.scrub(bootstrap.logTail))}. Use execution.desktop.template with an image that ships Node, or change serve.install to a runtime the template provides.`
       );
     }
   }
@@ -4301,17 +4365,40 @@ async function runSubjectServePipeline(
   if (args.serve.install) {
     const installStartedAt = now();
     emitPhaseStarted(args.onPhase, now, "install", "installing subject dependencies");
-    const install = await runDetachedStep(desktop, {
+    const install = await runProvisioningStepWithOneRetry(desktop, {
       name: "subject-install",
       command: args.serve.install,
       cwd: SUBJECT_DIR,
       timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
-      ...timers
+      timers,
+      retryPhase: "install-retry",
+      retryMessage: "subject install",
+      onPhase: args.onPhase,
+      now
     });
-    emitPhaseCompleted(args.onPhase, now, installStartedAt, "install", install.ok, install.ok ? "subject dependencies installed" : "subject install failed");
+    emitPhaseCompleted(
+      args.onPhase,
+      now,
+      installStartedAt,
+      "install",
+      install.ok,
+      install.ok
+        ? install.attempts === 2
+          ? "subject dependencies installed (on the second attempt)"
+          : "subject dependencies installed"
+        : install.attempts === 2
+          ? "subject install failed twice"
+          : "subject install failed"
+    );
     if (!install.ok) {
-      throw new Error(`subject install ${install.timedOut ? "timed out" : `failed (exit ${install.exitCode})`}: ${tailOf(args.scrub(install.logTail))}`);
+      // Lead with the line a person can act on; npm's own trace follows it (#602).
+      const headline = install.timedOut
+        ? `subject install timed out after ${args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS}ms`
+        : install.attempts === 2
+          ? `subject install failed twice (exit ${install.firstExitCode ?? "null"}, then exit ${install.exitCode ?? "null"}); the sandbox could not complete serve.install`
+          : `subject install failed (exit ${install.exitCode ?? "null"})`;
+      throw new Error(`${headline}: ${tailOf(args.scrub(install.logTail))}`);
     }
     await refresh();
   }
