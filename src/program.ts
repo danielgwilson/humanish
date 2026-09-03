@@ -27,7 +27,6 @@ import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./export
 import {
   buildPayload,
   disabledByEnvironment,
-  inHumanishCheckout,
   durationBucket,
   readTelemetryState,
   sendTelemetry,
@@ -35,7 +34,8 @@ import {
   deriveStudyFacts,
   type TelemetryProperties,
   TELEMETRY_NOTICE,
-  writeTelemetryState
+  writeTelemetryState,
+  isOwnCheckoutRun
 } from "./telemetry.js";
 import type { InitChange, InitResult } from "./init.js";
 import {
@@ -259,8 +259,9 @@ async function recordCommandTelemetry(
     const name = commandPath(command);
     if (name.startsWith("telemetry")) return;
     if (disabledByEnvironment(process.env)) return;
-    // Our own checkout never reports. See inHumanishCheckout for the measured reason.
-    if (inHumanishCheckout(process.cwd(), (p) => readFileSync(p, "utf8"))) return;
+    // Our own checkout never reports, from whichever directory the command was started: see
+    // isOwnCheckoutRun for the measured reason both walks exist.
+    if (isOwnCheckoutRun(process.cwd(), dirname(fileURLToPath(import.meta.url)), (p) => readFileSync(p, "utf8"))) return;
     const state = await readTelemetryState();
     if (!state.enabled) return;
     const payload = buildPayload({

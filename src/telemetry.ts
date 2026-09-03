@@ -119,6 +119,23 @@ export function inHumanishCheckout(startDir: string, readFileSyncFn: (p: string)
   return false;
 }
 
+/**
+ * Is this command one of OUR runs, whichever directory it was started from? Two walks: from the
+ * cwd (catches `pnpm humanish ...` inside the repo) and from the running CLI's own directory
+ * (catches a test, TUI smoke or release-dogfood host that spawns dist/cli.js into a temp
+ * directory with a constructed env). The second walk is the one the 0.63.0 fix lacked: one
+ * development box put 1,251 events into the adopter metric between 2026-08-31 and 09-03 through
+ * exactly those spawns. An installed copy lives under node_modules and is never matched, so an
+ * adopter running from their own project still reports.
+ */
+export function isOwnCheckoutRun(
+  cwd: string,
+  cliDir: string,
+  readFileSyncFn: (p: string) => string
+): boolean {
+  return inHumanishCheckout(cwd, readFileSyncFn) || inHumanishCheckout(cliDir, readFileSyncFn);
+}
+
 export async function readTelemetryState(
   env: NodeJS.ProcessEnv = process.env,
   home = homedir()

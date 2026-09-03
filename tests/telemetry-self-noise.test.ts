@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { disabledByEnvironment, inHumanishCheckout } from "../src/telemetry.js";
+import { disabledByEnvironment, inHumanishCheckout, isOwnCheckoutRun } from "../src/telemetry.js";
 
 // In the two days after telemetry shipped in 0.62.0, 82% of all events (4,042 of 4,932, from 49
 // of 59 anonymous ids) came from humanish's own CI and test suite. The shape gave it away: about
@@ -34,6 +34,23 @@ describe("telemetry excludes our own runs (metric integrity)", () => {
       "/app/package.json": JSON.stringify({ name: "acme-web" })
     };
     expect(inHumanishCheckout("/app/node_modules/humanish", fakeReader(files))).toBe(false);
+  });
+
+  it("a CLI spawned from our checkout into a temp cwd is still ours (the walk the 0.63.0 fix lacked)", () => {
+    // This box: tests, the TUI smoke and the release dogfood spawn dist/cli.js with cwd under /tmp
+    // and a constructed env. 1,251 events reached the adopter metric that way, 2026-08-31..09-03.
+    const files = { "/repo/package.json": JSON.stringify({ name: "humanish", private: true }) };
+    expect(isOwnCheckoutRun("/tmp/humanish-smoke-abc", "/repo/dist", fakeReader(files))).toBe(true);
+    expect(isOwnCheckoutRun("/repo/tests", "/repo/dist", fakeReader(files))).toBe(true);
+  });
+
+  it("an adopter's installed copy reports from any cwd: node_modules disqualifies the CLI walk", () => {
+    const files = {
+      "/app/node_modules/humanish/package.json": JSON.stringify({ name: "humanish" }),
+      "/app/package.json": JSON.stringify({ name: "acme-web", dependencies: { humanish: "^0.75.0" } })
+    };
+    expect(isOwnCheckoutRun("/app", "/app/node_modules/humanish/dist", fakeReader(files))).toBe(false);
+    expect(isOwnCheckoutRun("/tmp/scratch", "/app/node_modules/humanish/dist", fakeReader(files))).toBe(false);
   });
 
   it("returns false when nothing is readable rather than silencing real telemetry", () => {
