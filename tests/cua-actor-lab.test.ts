@@ -1,11 +1,10 @@
 import { DEVICE_PRESETS } from "../src/device-presets.js";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { symlinkSync, unlinkSync } from "node:fs";
 import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
@@ -25,13 +24,11 @@ import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   buildCuaBundle,
   buildCuaCostSummary,
-  chromeCdpPortResolutionScript,
   makeChromeBrowserStateObserver,
   makeLaneWriteScreenshot,
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
   runCuaActorLab,
-  type ChromeCdpEndpoint,
   type CuaActorLabHooks,
   participantStatusForCredibility,
   CLOSING_LINE_DIRECTIVE,
@@ -3567,49 +3564,10 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
   });
 });
 
-// Observe-time CDP port re-resolution: on a slow cold start the launch-time DevToolsActivePort
-// poll can miss the marker, and with --remote-debugging-port=0 the legacy fixed 9222 is dead,
-// which used to lose browser-state observation for the whole session. The resolution script is
-// pure, so the contract runs it under the REAL node the sandbox would use.
-describe("chromeCdpPortResolutionScript (observe-time CDP port re-resolution)", () => {
-  const execFileAsync = promisify(execFile);
-
-  async function resolvePort(endpoint: ChromeCdpEndpoint): Promise<number> {
-    const script = [
-      ...chromeCdpPortResolutionScript(endpoint),
-      "console.log(JSON.stringify({ cdpPort }));"
-    ].join("\n");
-    const { stdout } = await execFileAsync(process.execPath, ["--input-type=module", "-e", script]);
-    return (JSON.parse(stdout.trim()) as { cdpPort: number }).cdpPort;
-  }
-
-  let profileDir: string;
-  beforeEach(async () => {
-    profileDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-profile-"));
-  });
-  afterEach(async () => {
-    await rm(profileDir, { recursive: true, force: true });
-  });
-
-  it("cached launch-time port wins even when the marker file disagrees", async () => {
-    await writeFile(path.join(profileDir, "DevToolsActivePort"), "39321\n/devtools/browser/abc\n", "utf8");
-    expect(await resolvePort({ cdpPort: 41234, profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(41234);
-  });
-
-  it("no cached port: re-reads the profile's DevToolsActivePort at observe time (slow cold start)", async () => {
-    await writeFile(path.join(profileDir, "DevToolsActivePort"), "39321\n/devtools/browser/abc\n", "utf8");
-    expect(await resolvePort({ profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(39321);
-  });
-
-  it("no cached port + no marker: falls back to the legacy fixed 9222", async () => {
-    expect(await resolvePort({ profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(9222);
-  });
-
-  it("garbled marker degrades to the legacy fallback instead of a bogus port", async () => {
-    await writeFile(path.join(profileDir, "DevToolsActivePort"), "not-a-port\n", "utf8");
-    expect(await resolvePort({ profileDir, targetUrl: "http://127.0.0.1:3000/" })).toBe(9222);
-  });
-
+// Observe-time CDP port re-resolution: the probe re-reads DevToolsActivePort at observe time (the
+// resolution itself is contract-tested under the real python3 in tests/chrome-cdp-probe.test.ts);
+// this pins that the shipped in-sandbox command carries the seam.
+describe("chromium browser-state observer command (observe-time CDP port re-resolution)", () => {
   it("the chromium browser-state observer embeds the re-read seam (profile dir + marker path) in its in-sandbox script", async () => {
     const commands: string[] = [];
     const desktop = {

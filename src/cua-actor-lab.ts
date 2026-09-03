@@ -91,6 +91,7 @@ import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";
+import { chromeCdpProbeCommand, parseChromeCdpProbeOutput } from "./chrome-cdp-probe.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
@@ -1593,9 +1594,9 @@ export function desktopBrowserFamily(value: string | undefined): DesktopBrowserF
 /**
  * Runtime-only CDP endpoint attribution for the exact chromium this lane launched. Port
  * resolution at OBSERVE time: the cached launch-time `cdpPort` wins; absent that, the observer
- * script re-reads `profileDir`'s DevToolsActivePort marker (a slow cold start can publish it
+ * probe re-reads `profileDir`'s DevToolsActivePort marker (a slow cold start can publish it
  * AFTER the launch-time poll gave up); absent both it falls back to the legacy fixed 9222,
- * where a dead endpoint degrades into an honest warning.
+ * where a dead endpoint degrades into an honest warning that names the cause.
  */
 export interface ChromeCdpEndpoint {
   cdpPort?: number;
@@ -1606,118 +1607,48 @@ export interface ChromeCdpEndpoint {
 }
 
 /**
- * Observe-time CDP port resolution lines (pure; exported for contract tests): cached
- * launch-time port first, then a re-read of the profile's DevToolsActivePort marker, then the
- * legacy fixed 9222. The re-read is a local best-effort file read inside the already
- * time-bounded observer command, so a missing/garbled marker degrades to the fallback,
- * never a hang.
+ * The URL / title / page-text / scroll observer behind stopWhen and task criteria. One probe per
+ * observation, run on the sandbox's python3 (see chrome-cdp-probe.ts for why not node: #514).
+ *
+ * "active": follow the participant to whatever tab they are driving now — never pin the state
+ * observer to the launch tab (a verification link that opened in a NEW tab left a pinned observer
+ * reading the old tab forever).
+ *
+ * `onUnavailable` fires ONCE, on the first probe that could not read the page, with the reason.
+ * The observer still degrades to `{}` for the loop; the callback is how a lane says out loud that
+ * url/text criteria are not being measured, instead of letting the funnel report 0/N (#514).
  */
-export function chromeCdpPortResolutionScript(endpoint: ChromeCdpEndpoint): string[] {
-  return [
-    `let cdpPort = ${endpoint.cdpPort === undefined ? "undefined" : JSON.stringify(endpoint.cdpPort)};`,
-    `const cdpProfileDir = ${JSON.stringify(endpoint.profileDir ?? "")};`,
-    "if (cdpPort === undefined && cdpProfileDir) {",
-    "  try {",
-    "    const { readFileSync } = await import('node:fs');",
-    "    const marker = readFileSync(cdpProfileDir + '/DevToolsActivePort', 'utf8');",
-    "    const parsed = Number.parseInt(String(marker.split('\\n')[0] ?? ''), 10);",
-    "    if (Number.isInteger(parsed) && parsed > 0) cdpPort = parsed;",
-    "  } catch {}",
-    "}",
-    "if (cdpPort === undefined) cdpPort = 9222;"
-  ];
-}
-
-/** Shared CDP page-selection preamble: pinned target id first, then this lane's target URL,
- *  then a single-page fallback; never an arbitrary page from a multi-page endpoint. */
-function chromeCdpPageSelectionScript(
-  endpoint: ChromeCdpEndpoint,
-  targetId: string | undefined,
-  /**
-   * "pinned" (default): the launch-time target, for measurements about the ORIGINAL window
-   * (geometry). "active": the tab the participant is driving NOW — Chrome's /json lists page
-   * targets most-recently-focused first. The state observer must follow the participant: a
-   * verification link that opens in a NEW tab left the pinned observer reading the old tab
-   * forever, so the observed URL never changed again and stopWhen/task criteria went blind
-   * (a live run's funnel read reach-dashboard 0/2 under a screenshot OF the dashboard).
-   */
-  prefer: "pinned" | "active" = "pinned"
-): string[] {
-  return [
-    ...chromeCdpPortResolutionScript(endpoint),
-    "const pages = await fetch('http://127.0.0.1:' + cdpPort + '/json').then((r) => r.json()).catch(() => []);",
-    `const expectedTargetId = ${JSON.stringify(targetId ?? "")};`,
-    `const expectedTargetUrl = ${JSON.stringify(endpoint.targetUrl)};`,
-    "const normalizeUrl = (value) => String(value || '').replace(/\\/$/, '');",
-    "const httpPages = Array.isArray(pages) ? pages.filter((entry) => entry && entry.type === 'page' && /^https?:/.test(String(entry.url || ''))) : [];",
-    prefer === "active"
-      ? "const page = httpPages[0] || (expectedTargetId ? httpPages.find((entry) => entry.id === expectedTargetId) : undefined);"
-      : "const page = expectedTargetId ? httpPages.find((entry) => entry.id === expectedTargetId) : (httpPages.find((entry) => normalizeUrl(entry.url) === normalizeUrl(expectedTargetUrl)) || (httpPages.length === 1 ? httpPages[0] : undefined));"
-  ];
-}
-
 export function makeChromeBrowserStateObserver(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
-  targetId?: string
+  targetId?: string,
+  onUnavailable?: (reason: string) => void
 ): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
+  let reported = false;
+  const unavailable = (reason: string): Record<string, never> => {
+    if (!reported) {
+      reported = true;
+      onUnavailable?.(reason);
+    }
+    return {};
+  };
   return async () => {
-    const script = [
-      // "active": follow the participant to whatever tab they are driving now — never pin the
-      // state observer to the launch tab (see chromeCdpPageSelectionScript).
-      ...chromeCdpPageSelectionScript(endpoint, targetId, "active"),
-      "if (!page) { console.log('{}'); process.exit(0); }",
-      "let text = '';",
-      "let scrollY = undefined;",
-      "let url = String(page.url || '');",
-      "let title = String(page.title || '');",
-      "if (typeof WebSocket === 'function' && page.webSocketDebuggerUrl) {",
-      "  const ws = new WebSocket(page.webSocketDebuggerUrl);",
-      "  const result = await new Promise((resolve) => {",
-      "    const timer = setTimeout(() => resolve(undefined), 1500);",
-      "    ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: '({ url: location.href, title: document.title, text: (document.body && document.body.innerText || \"\").slice(0, 20000), scrollY: (window.scrollY || 0) })' } }));",
-      "    ws.onmessage = (event) => {",
-      "      try {",
-      "        const payload = JSON.parse(String(event.data));",
-      "        if (payload.id !== 1) return;",
-      "        clearTimeout(timer);",
-      "        resolve(payload.result && payload.result.result && payload.result.result.value);",
-      "      } catch { clearTimeout(timer); resolve(undefined); }",
-      "    };",
-      "    ws.onerror = () => { clearTimeout(timer); resolve(undefined); };",
-      "  }).finally(() => { try { ws.close(); } catch {} });",
-      "  if (result && typeof result === 'object') {",
-      "    url = typeof result.url === 'string' ? result.url : url;",
-      "    title = typeof result.title === 'string' ? result.title : title;",
-      "    text = typeof result.text === 'string' ? result.text : '';",
-      "    scrollY = typeof result.scrollY === 'number' ? result.scrollY : undefined;",
-      "  }",
-      "}",
-      "console.log(JSON.stringify({ url, title, text, scrollY }));"
-    ].join("\n");
-    const result = await desktop.commands.run(`node --input-type=module -e ${shellSingleQuote(script)}`, {
-      requestTimeoutMs,
-      timeoutMs: 5_000
-    });
+    const result = await desktop.commands.run(
+      chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer: "active", mode: "state" }),
+      { requestTimeoutMs, timeoutMs: 5_000 }
+    );
     if (result.exitCode !== undefined && result.exitCode !== 0) {
-      return {};
+      return unavailable(`probe exited ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
     }
-    try {
-      const parsed = JSON.parse((result.stdout ?? "{}").trim() || "{}") as unknown;
-      if (!parsed || typeof parsed !== "object") {
-        return {};
-      }
-      const record = parsed as Record<string, unknown>;
-      return {
-        ...(typeof record.url === "string" && record.url.length > 0 ? { url: record.url } : {}),
-        ...(typeof record.title === "string" && record.title.length > 0 ? { title: record.title } : {}),
-        ...(typeof record.text === "string" && record.text.length > 0 ? { text: record.text } : {}),
-        ...(typeof record.scrollY === "number" && Number.isFinite(record.scrollY) ? { scrollY: record.scrollY } : {})
-      };
-    } catch {
-      return {};
-    }
+    const parsed = parseChromeCdpProbeOutput(result.stdout);
+    if (parsed.unavailable !== undefined) return unavailable(parsed.unavailable);
+    return {
+      ...(parsed.url === undefined ? {} : { url: parsed.url }),
+      ...(parsed.title === undefined ? {} : { title: parsed.title }),
+      ...(parsed.text === undefined ? {} : { text: parsed.text }),
+      ...(parsed.scrollY === undefined ? {} : { scrollY: parsed.scrollY })
+    };
   };
 }
 
@@ -1725,55 +1656,39 @@ export function makeChromeBrowserStateObserver(
  * Read the running browser's actual outer-window bounds and CSS layout viewport through the
  * already-enabled local Chrome DevTools endpoint. The returned values come from `window.*` in
  * the target page; requested E2B resolution is deliberately not an input to this function.
+ * `undefined` carries the reason the measurement is missing via `onUnavailable`, so the geometry
+ * warning can name the cause (a dead CDP endpoint, no python3) instead of only the symptom.
  */
 export function makeChromeDesktopGeometryObserver(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
-  targetId?: string
+  targetId?: string,
+  onUnavailable?: (reason: string) => void
 ): () => Promise<(Pick<RunDesktopGeometry, "browserWindow" | "viewport"> & { targetId?: string }) | undefined> {
   return async () => {
-    const script = [
-      ...chromeCdpPageSelectionScript(endpoint, targetId),
-      "if (!page || typeof WebSocket !== 'function' || !page.webSocketDebuggerUrl) { console.log('{}'); process.exit(0); }",
-      "const ws = new WebSocket(page.webSocketDebuggerUrl);",
-      "const result = await new Promise((resolve) => {",
-      "  const timer = setTimeout(() => resolve(undefined), 1500);",
-      "  ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: '({ browserWindow: { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight }, viewport: { width: window.innerWidth, height: window.innerHeight, deviceScaleFactor: window.devicePixelRatio } })' } }));",
-      "  ws.onmessage = (event) => {",
-      "    try {",
-      "      const payload = JSON.parse(String(event.data));",
-      "      if (payload.id !== 1) return;",
-      "      clearTimeout(timer);",
-      "      resolve(payload.result && payload.result.result && payload.result.result.value);",
-      "    } catch { clearTimeout(timer); resolve(undefined); }",
-      "  };",
-      "  ws.onerror = () => { clearTimeout(timer); resolve(undefined); };",
-      "}).finally(() => { try { ws.close(); } catch {} });",
-      "console.log(JSON.stringify(result ? { ...result, targetId: String(page.id || '') } : {}));"
-    ].join("\n");
-    const result = await desktop.commands.run(`node --input-type=module -e ${shellSingleQuote(script)}`, {
-      requestTimeoutMs,
-      timeoutMs: 5_000
-    });
+    const result = await desktop.commands.run(
+      chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer: "pinned", mode: "geometry" }),
+      { requestTimeoutMs, timeoutMs: 5_000 }
+    );
     if (result.exitCode !== undefined && result.exitCode !== 0) {
+      onUnavailable?.(`probe exited ${result.exitCode}: ${tailOf(result.stderr ?? result.stdout ?? "")}`);
       return undefined;
     }
-    try {
-      const parsed = JSON.parse((result.stdout ?? "{}").trim() || "{}") as unknown;
-      if (!parsed || typeof parsed !== "object") return undefined;
-      const record = parsed as Record<string, unknown>;
-      const rawWindow = record.browserWindow;
-      const rawViewport = record.viewport;
-      if (!isMeasuredRect(rawWindow) || !isMeasuredViewport(rawViewport)) return undefined;
-      return {
-        browserWindow: { ...rawWindow, source: "cdp" },
-        viewport: { ...rawViewport, source: "cdp" },
-        ...(typeof record.targetId === "string" && record.targetId.length > 0 ? { targetId: record.targetId } : {})
-      };
-    } catch {
+    const parsed = parseChromeCdpProbeOutput(result.stdout);
+    if (parsed.unavailable !== undefined) {
+      onUnavailable?.(parsed.unavailable);
       return undefined;
     }
+    if (!isMeasuredRect(parsed.browserWindow) || !isMeasuredViewport(parsed.viewport)) {
+      onUnavailable?.("the page reported no usable window or viewport dimensions");
+      return undefined;
+    }
+    return {
+      browserWindow: { ...parsed.browserWindow, source: "cdp" },
+      viewport: { ...parsed.viewport, source: "cdp" },
+      ...(parsed.targetId === undefined ? {} : { targetId: parsed.targetId })
+    };
   };
 }
 
@@ -1872,6 +1787,7 @@ export async function captureDesktopBrowserGeometry(args: {
     warnings.push(`Browser window bounds could not be measured for lane ${args.laneId}; the live stream will use the full desktop.`);
   }
 
+  let cdpUnavailable: string | undefined;
   const chromeGeometry = args.browserFamily === "chromium"
     ? await makeChromeDesktopGeometryObserver(
         args.desktop,
@@ -1881,8 +1797,14 @@ export async function captureDesktopBrowserGeometry(args: {
           ...(args.launchIdentity?.profileDir === undefined ? {} : { profileDir: args.launchIdentity.profileDir }),
           targetUrl: args.targetUrl
         },
-        args.browserTargetId
-      )().catch(() => undefined)
+        args.browserTargetId,
+        (reason) => {
+          cdpUnavailable = reason;
+        }
+      )().catch((error: unknown) => {
+        cdpUnavailable = toErrorMessage(error);
+        return undefined;
+      })
     : undefined;
   const browserWindow = chromeGeometry?.browserWindow ?? xdotoolWindow;
   const viewport = chromeGeometry?.viewport;
@@ -1892,9 +1814,12 @@ export async function captureDesktopBrowserGeometry(args: {
     warnings.push(`Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured outer bounds are ${browserWindow.width}x${browserWindow.height}.`);
   }
   if (!viewport) {
+    // Name the cause, not only the symptom: the same dead DevTools channel that loses the viewport
+    // loses every url/text observation, and a reader of the bundle should learn that here (#514).
+    const cause = cdpUnavailable === undefined ? "" : ` DevTools probe: ${redactText(cdpUnavailable)}.`;
     warnings.push(args.browserFamily === "firefox"
       ? `Browser CSS viewport measurement is unavailable for Firefox on lane ${args.laneId}; stream.viewport is omitted instead of reading a different browser's CDP endpoint.`
-      : `Browser CSS viewport could not be measured for lane ${args.laneId}; stream.viewport is omitted instead of copying the requested screen resolution.`);
+      : `Browser CSS viewport could not be measured for lane ${args.laneId}; stream.viewport is omitted instead of copying the requested screen resolution.${cause}`);
   }
   return {
     ...(browserWindowId === undefined ? {} : { browserWindowId }),
@@ -2614,7 +2539,15 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
                     ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
                     targetUrl
                   },
-                  browserTargetId
+                  browserTargetId,
+                  // Once per lane: a dark observation channel is a gap in the instrument, and the
+                  // funnel's NEVER MEASURED count needs this line to explain itself (#514).
+                  (reason) => {
+                    warnings.push(
+                      `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
+                        "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session."
+                    );
+                  }
                 )
               }
             }

@@ -142,16 +142,17 @@ describe("the state observer follows the participant's active tab", () => {
     await makeChromeBrowserStateObserver(desktop, 1000, { targetUrl: "http://127.0.0.1:3000/" }, "launch-target-id")();
     expect(commands).toHaveLength(1);
     // Chrome's /json lists page targets most-recently-focused first; the participant's current
-    // tab is the head. The launch target survives only as the fallback.
-    expect(commands[0]).toContain("const page = httpPages[0] ||");
+    // tab is the head. The launch target survives only as the fallback ("active" in the probe).
+    expect(commands[0]).toContain('"prefer":"active"');
+    expect(commands[0]).toContain('"targetId":"launch-target-id"');
   });
 
   it("keeps the geometry observer pinned to the launch window", async () => {
     const { commands, desktop } = captureScript();
     await makeChromeDesktopGeometryObserver(desktop, 1000, { targetUrl: "http://127.0.0.1:3000/" }, "launch-target-id")();
     expect(commands).toHaveLength(1);
-    expect(commands[0]).not.toContain("const page = httpPages[0] ||");
-    expect(commands[0]).toContain("expectedTargetId");
+    expect(commands[0]).toContain('"prefer":"pinned"');
+    expect(commands[0]).toContain('"targetId":"launch-target-id"');
   });
 
   it("parses scrollY from the observer and stamps it onto the observation", async () => {
