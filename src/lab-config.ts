@@ -543,8 +543,9 @@ export interface LabExecutionDesktop {
   codexAppServer?: boolean;
   /**
    * Mobile fidelity beyond viewport size (#221). With `mobileEmulation: true`, every hosted
-   * Chromium computer-use lane gets CDP device emulation applied to its launch page before the
-   * participant arrives: the lane's device preset width/height as the CSS viewport, the preset's
+   * Chromium computer-use lane ON A MOBILE PRESET (mobile / small-mobile / narrow-mobile) gets
+   * CDP device emulation applied to its launch page before the participant arrives; desktop,
+   * tablet and wide lanes in the same run are untouched and carry no fidelity block. Applied: the lane's device preset width/height as the CSS viewport, the preset's
    * device pixel ratio (or `deviceScaleFactor`), touch events (`touch`, default true) and a mobile
    * user agent (`userAgent`, default an iPhone Safari string). The bundle records what the page
    * then reported about itself under `desktopGeometry.fidelity`; a browser that cannot be

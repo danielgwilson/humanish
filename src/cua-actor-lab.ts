@@ -1959,10 +1959,13 @@ export async function captureDesktopBrowserGeometry(args: {
     : undefined;
   const browserWindow = chromeGeometry?.browserWindow ?? xdotoolWindow;
   const viewport = chromeGeometry?.viewport;
+  // The fill check reads the X window when it was measured: under mobile emulation (#221) the
+  // page's window.outerWidth reports the EMULATED screen (414), which is not a fill failure.
+  const fillBounds = xdotoolWindow ?? browserWindow;
   if (!browserWindow) {
     warnings.push(`Browser outer bounds could not be measured for lane ${args.laneId}.`);
-  } else if (browserWindow.width !== args.requestedScreen[0] || browserWindow.height !== args.requestedScreen[1]) {
-    warnings.push(`Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured outer bounds are ${browserWindow.width}x${browserWindow.height}.`);
+  } else if (fillBounds !== undefined && (fillBounds.width !== args.requestedScreen[0] || fillBounds.height !== args.requestedScreen[1])) {
+    warnings.push(`Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured outer bounds are ${fillBounds.width}x${fillBounds.height}.`);
   }
   if (!viewport) {
     // Name the cause, not only the symptom: the same dead DevTools channel that loses the viewport
@@ -2561,7 +2564,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           targetUrl,
           deps.requestTimeoutMs,
           config.execution?.desktop?.browser,
-          requestedFidelity?.mobileEmulation
+          requestedFidelity?.mobileEmulation && spec.devicePreset.isMobile
             ? [
                 `--user-agent=${requestedFidelity.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
                 ...(requestedFidelity.touch === false ? [] : ["--touch-events=enabled"])
@@ -2577,8 +2580,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         // geometry capture and the participant's first observation, OUTSIDE the stream/geometry
         // try below (whose catch degrades to a warning): a request that cannot be applied fails
         // the lane closed with the reason.
+        // Only lanes on a mobile preset are emulated: a run-wide flag must not hand a desktop or
+        // tablet lane an iPhone user agent (the first live proof did exactly that to the desktop
+        // newcomer beside the phone lane). Those lanes carry no fidelity block, which is honest.
         const fidelityRequest = config.execution?.desktop?.fidelity;
-        if (fidelityRequest?.mobileEmulation) {
+        if (fidelityRequest?.mobileEmulation && spec.devicePreset.isMobile) {
           if (launchedBrowserFamily !== "chromium") {
             throw new Error(
               `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium on lane ${spec.laneId}; the launched browser family is ${launchedBrowserFamily}. Set execution.desktop.browser: chrome.`

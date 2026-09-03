@@ -471,9 +471,10 @@ touch input, the device-pixel-ratio isn't rendered, and the user-agent stays des
 route. Device is run-wide today; per-*persona* device (N personas × devices) lands with fan-out.
 `execution.desktop.resolution` is a raw escape hatch that overrides the preset.
 
-**Mobile emulation.** `execution.desktop.fidelity: { mobileEmulation: true }` turns a hosted
-Chrome/Chromium computer-use lane into a mobile-emulated browser before the participant
-arrives: the lane's preset width/height become the CSS viewport (414 px for `mobile`, where the
+**Mobile emulation.** `execution.desktop.fidelity: { mobileEmulation: true }` turns every hosted
+Chrome/Chromium computer-use lane on a mobile preset (`mobile`, `small-mobile`, `narrow-mobile`)
+into a mobile-emulated browser before the participant arrives, and leaves desktop, tablet and
+wide lanes in the same run untouched: the lane's preset width/height become the CSS viewport (414 px for `mobile`, where the
 X screen itself cannot go below 500), the preset's device pixel ratio applies (`deviceScaleFactor`
 overrides it), touch events are on (`touch: false` turns them off) and the browser presents a
 mobile user agent (`userAgent` replaces the default iPhone Safari string). The run bundle records

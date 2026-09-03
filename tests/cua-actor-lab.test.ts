@@ -677,6 +677,46 @@ describe("runCuaActorLab", () => {
     expect(JSON.stringify(outcome.result)).not.toContain("Mobile emulation");
   });
 
+  it("mobile emulation leaves a desktop-preset lane alone: no launch flags, no holder, no fidelity block", async () => {
+    const commands: string[] = [];
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        commands.push(command);
+        if (command.includes("browser_preference='chrome'")) {
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+        }
+        return undefined;
+      }
+    });
+    const { module } = makeFakeModule(sandbox);
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-mobile-fidelity-desktop-lane",
+      title: "Mobile fidelity, desktop lane",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "desktop", browser: "chrome", fidelity: { mobileEmulation: true } } },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
+    expect(launch).not.toContain("--user-agent=");
+    expect(sandbox.calls.some((call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"))).toBe(false);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams[0].desktopGeometry.fidelity).toBeUndefined();
+  });
+
   it("mobile emulation fails the lane closed when the launched browser is not Chromium", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
