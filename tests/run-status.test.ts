@@ -164,12 +164,22 @@ describe("run status: identity + liveness on disk (#455)", () => {
     const slowHeld = new Promise<void>((resolve) => {
       releaseSlow = resolve;
     });
+    // The slow run signals once its record is ON DISK, and the test waits for that before reading
+    // it: `slow` is deliberately not awaited (it is held open), so without this gate the read raced
+    // the first write and lost on a loaded runner (ENOENT on run-slow/status.json, Node 22 job,
+    // 2026-09-03).
+    let slowStarted!: () => void;
+    const slowOnDisk = new Promise<void>((resolve) => {
+      slowStarted = resolve;
+    });
     const slow = withRunStatusScope(async () => {
       slowStatus = beginRunStatus(slowPaths, { runId: "run-slow", mode: "live", touchMs: 0 });
       await slowStatus.started;
+      slowStarted();
       await slowHeld;
       await slowStatus.finish({ verdict: "pass" });
     });
+    await slowOnDisk;
 
     const fastPaths = await prepareRunArtifactPaths(cwd, "run-fast");
     await withRunStatusScope(async () => {
