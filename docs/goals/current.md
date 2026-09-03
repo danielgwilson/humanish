@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.75.0`)
+## Current Program Truth (source `0.76.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -462,6 +462,18 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-03, later (0.76.0).** A hosted Chromium lane on a mobile preset can now be a
+mobile-emulated browser: `execution.desktop.fidelity.mobileEmulation: true` applies a real 414 px
+CSS viewport, the preset's device pixel ratio, touch events and a mobile user agent before the
+participant's first observation, and the bundle records what the page then reported about itself
+under `desktopGeometry.fidelity` (#221, `docs/goals/computer-use-actor/receipts/mobile-emulation-2026-09-03.md`).
+The persona axis was replicated the same evening on drawDB and TodoMVC and given a third app,
+Excalidraw, as the clean control (`persona-axis-phone-2026-09-03.md`); a multi-lane study's
+second and third findings reach `feedback draft` through `--candidate` (#609); a negated report
+word no longer counts as friction (#614); and the adopter metric excludes this project's own
+checkout wherever its CLI is spawned from (#611). Three host-timing test flakes were made
+load-independent.
 
 **2026-09-03 (0.75.0).** Three fixes found by runs, each with a receipt. The DevTools probe behind
 every url, page-text and CSS-viewport observation ran on Node inside the sandbox, and the stock
