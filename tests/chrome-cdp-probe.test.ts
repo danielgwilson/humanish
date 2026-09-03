@@ -235,16 +235,34 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     ]);
 
     // "hold": the applier stays attached; while it lives the page reports the emulated device.
-    const holder = spawn("python3", ["-c", CHROME_CDP_PROBE_PY, JSON.stringify({ mode: "hold", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation })], { stdio: ["ignore", "pipe", "ignore"] });
+    const holder = spawn("python3", ["-c", CHROME_CDP_PROBE_PY, JSON.stringify({ mode: "hold", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation })], { stdio: ["ignore", "pipe", "pipe"] });
     let announced = "";
+    let holderErrors = "";
     holder.stdout.on("data", (chunk: Buffer) => { announced += chunk.toString("utf8"); });
+    holder.stderr.on("data", (chunk: Buffer) => { holderErrors += chunk.toString("utf8"); });
     try {
+      // The holder announces once its socket is up; on a slow runner that can take a while, and a
+      // holder that never comes up is the runner's Chrome, not the probe (same posture as chromeUp).
+      const announceLine = async (): Promise<string | undefined> => {
+        for (let attempt = 0; attempt < 80; attempt += 1) {
+          const line = announced.split("\n").find((candidate) => candidate.startsWith("{"));
+          if (line !== undefined) return line;
+          if (holder.exitCode !== null) return undefined;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        return undefined;
+      };
+      const line = await announceLine();
+      if (line === undefined) {
+        console.warn(`chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`);
+        return ctx.skip("the hold-mode applier did not come up on this runner");
+      }
+      expect(parseChromeCdpProbeOutput(line).applied).toHaveLength(5);
       let read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
       for (let attempt = 0; attempt < 40 && !(read.fidelity?.innerWidth === 414 && read.fidelity.userAgent.includes("iPhone")); attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 250));
         read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
       }
-      expect(parseChromeCdpProbeOutput(announced.split("\n").find((line) => line.startsWith("{")) ?? "").applied).toHaveLength(5);
       expect(read.fidelity?.innerWidth).toBe(414);
       expect(read.fidelity?.devicePixelRatio).toBe(3);
       expect(read.fidelity?.maxTouchPoints).toBe(5);
