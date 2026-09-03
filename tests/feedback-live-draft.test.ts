@@ -103,6 +103,36 @@ describe("participantFeedbackCandidates (#392)", () => {
     expect(candidates[0]!.summary).toContain("stopped before completing");
   });
 
+  it("a negated report word is not friction: 'nothing confusing' files nothing, 'confusing' still does (#614)", () => {
+    const run = (reason: string) =>
+      participantFeedbackCandidates({
+        runId: "run-4",
+        scenarioId: "cua-lab",
+        adapterId: "lab",
+        goal: "Complete the flow.",
+        substrate: "e2b-desktop",
+        lanes: [{ ...LANE_BASE, session: fakeSession("passed", "goal_satisfied", reason) }]
+      });
+    for (const clean of [
+      "REACHED THE GOAL. Two tables linked; nothing confusing.",
+      "REACHED THE GOAL. Nothing was confusing and nothing was unclear.",
+      "REACHED THE GOAL. No defects, no unexpected behaviour, and I never hesitated.",
+      "REACHED THE GOAL. The flow was not confusing; nothing overlapped."
+    ]) {
+      expect(run(clean), clean).toHaveLength(0);
+    }
+    for (const friction of [
+      "REACHED THE GOAL. Renaming was confusing.",
+      "REACHED THE GOAL. Two tables overlapped exactly and looked locked.",
+      // Negations that describe a DEFECT stay friction.
+      "REACHED THE GOAL. The delete control shows no visible focus.",
+      "REACHED THE GOAL. The picker is not keyboard-accessible.",
+      "REACHED THE GOAL. Pressing Save did nothing."
+    ]) {
+      expect(run(friction), friction).toHaveLength(1);
+    }
+  });
+
   it("files nothing for a clean pass or a missing session", () => {
     const clean = fakeSession("passed", "goal_satisfied", "Signed up and reached the dashboard.");
     const candidates = participantFeedbackCandidates({

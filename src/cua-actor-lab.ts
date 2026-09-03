@@ -2041,8 +2041,20 @@ function hasBlockerLanguage(text: string): boolean {
 const REPORTED_DEFECT_LANGUAGE =
   /\b(defects?|bugs?|accessibilit(y|ies)|inaccessible|not (keyboard|screen.?reader)[- ]?accessible|confus(ed|ing)|hesitat(ed|ion)|unexpected(ly)?|unclear|hard to (find|tell|see|read|reach)|no (visible )?focus|overlap(ped|ping|s)?|truncat(ed|es|ion)|cut off|did nothing|nothing happened|no effect)\b/;
 
+// The friction scan's own negations (#614). "Nothing was confusing", "no defects", "not unclear"
+// are what a participant writes when it has NOTHING to report, and until 2026-09-03 each of them
+// counted as reported friction and became a feedback candidate whose "actual" was a sentence
+// reporting no problem. Only the report-shaped adjectives are negatable here: "no visible focus",
+// "not keyboard-accessible" and "did nothing" are defects and stay.
+const NEGATED_REPORT_LANGUAGE =
+  /\b(?:nothing|no|not|never|without|none)\s+(?:was\s+|were\s+|felt\s+|seemed\s+|really\s+|particularly\s+|especially\s+|major\s+|real\s+|obvious\s+|noticeable\s+)*(?:confus(?:ed|ing|ion)|unclear|unexpected(?:ly)?|hesitat(?:ed|ion|ions)|surpris(?:ed|ing|es)|defects?|bugs?|overlap(?:ped|ping|s)?|truncat(?:ed|es|ion)|hard to (?:find|tell|see|read|reach))\b/g;
+
+function stripNegatedReportLanguage(text: string): string {
+  return text.replace(NEGATED_REPORT_LANGUAGE, " ");
+}
+
 function completionReasonContradictsGoal(reason: string): boolean {
-  const text = stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase()));
+  const text = stripQuotedSpans(stripNegatedReportLanguage(stripNegatedNonBlockerPhrases(reason.toLowerCase())));
   return hasBlockerLanguage(text) || REPORTED_DEFECT_LANGUAGE.test(text);
 }
 
