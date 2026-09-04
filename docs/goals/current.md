@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.78.0`)
+## Current Program Truth (source `0.79.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -462,6 +462,24 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-04, evening (0.79.0).** Two of the operator's own asks, each with a live receipt. A
+declared observation window (#510): `dwell` on an actor or a lane holds the page once its condition
+matches (or from the start), captures a frame on a cadence, takes no action and requests no model
+turn, then hands control back with a hint or ends the session; the window is recorded in the trace
+as deliberate and never outlasts the session budget. On TodoMVC the window opened when "1 item
+left" matched, held 60.6 s, captured six frames with no model turn inside, and the participant then
+added the second task (`receipts/dwell-window-2026-09-04.md`). The first live attempt found the
+option dropped between the lane and the loop by a spread the type checker cannot see; a plumbing
+test now pins it. A participant with a camera (#509, first slice): `execution.desktop.media.camera`
+gives a hosted Chrome lane a capture device (ffmpeg's test pattern generated in the sandbox, or a
+`.y4m` of the adopter's) behind the browser's own permission dialog by default;
+`policies.mediaPermission: granted` bypasses it; the bundle records the feed and the flags under
+`desktopBrowser.media`; a microphone is refused without an image that has an audio stack, before
+any spend. Live, Chrome raised its real dialog with a preview of the feed, the participant chose
+"Allow this time" and read back 640x480 (`receipts/participant-camera-2026-09-04.md`). Under
+mobile emulation the TodoMVC rename now blocks 3 of 3 phone participants; Excalidraw stays clean
+at 12 of 12.
 
 **2026-09-04, later (0.78.0).** `@e2b/desktop` moved from 2.2.3 to 2.3.3 (#638): its 2.3.1
 changelog names the socket #581 found today, a background command's event stream the SDK kept
