@@ -44,8 +44,8 @@ export interface ChromeCdpProbeArgs {
    * only. "emulate": apply mobile emulation (#221) to the selected page and exit (the overrides that
    * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same over a browser-level
    * socket, then stay attached until killed (how a lane keeps them for its whole life) and attach
-   * to every page target Chrome opens later, paused before its first navigation, so a link that
-   * opens in a new tab is emulated from its first paint (#623). "fidelity": read
+   * to every page target Chrome opens later, sending it the same overrides and a reload the moment
+   * it exists, never pausing it (#623). "fidelity": read
    * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.
    */
   mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity";
@@ -350,9 +350,14 @@ def hold(port, page, request):
     """Emulate the launch page and then every page target Chrome opens later, for as long as this
     process lives (#221, #623). One browser-level socket with flattened sessions: the launch page is
     attached by id and reloaded so scripts that read the UA at load see it; a target that appears
-    later is attached PAUSED before its first navigation (waitForDebuggerOnStart), emulated, then
-    resumed, so a link that opens in a new tab lays out at the phone width from its first paint.
-    Prints one JSON line per attach; the first line is the announce the lane reads."""
+    later is attached the moment it exists, sent the same overrides, and reloaded once after its
+    first real navigation commits (touch emulation reaches a document only when it loads under it).
+    Two things this loop must never do (measured on a real desktop, 2026-09-04): pause new targets
+    (waitForDebuggerOnStart) and wait for their replies. A popup a participant taps open shares its
+    opener's renderer, answers Emulation commands only once it runs, and a loop blocked on that
+    reply never resumed the tab (it loaded forever) and never reached the next one. Overrides are
+    sent without waiting; replies, errors included, are logged as they arrive.
+    Prints one JSON line per attached target; the first line is the announce the lane reads."""
     launch_id = str(page.get("id") or "")
     try:
         ws = Ws(browser_ws_url(port), timeout=5)
@@ -369,24 +374,72 @@ def hold(port, page, request):
     print(json.dumps({"applied": applied, "held": failure is None, "targetId": launch_id, **({"unavailable": failure} if failure else {})}), flush=True)
     if failure:
         return
-    auto = ws.call("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True, "flatten": True})
+    auto = ws.call("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": False, "flatten": True})
     if not isinstance(auto, dict) or "error" in auto:
         print(json.dumps({"autoAttach": False, "unavailable": "Target.setAutoAttach failed; later tabs are not emulated"}), flush=True)
     ws.sock.settimeout(None)
+    pending = {}
+    # Sessions of later targets that still owe one reload: touch emulation reaches a document only
+    # when it loads under the override (measured: a popup's first document reported
+    # maxTouchPoints 0 with the viewport already 414 px), so each later tab is reloaded once after
+    # its first real navigation commits, or at once when it had already committed at attach time.
+    reload_owed = {}
     while True:
-        message = ws.events.pop(0) if ws.events else ws.recv()
-        if message is None:
+        try:
+            message = ws.events.pop(0) if ws.events else ws.recv()
+        except Exception as error:
+            print(json.dumps({"holderExit": "%s: %s" % (type(error).__name__, error)}), flush=True)
             return
-        if message.get("method") != "Target.attachedToTarget":
+        if message is None:
+            print(json.dumps({"holderExit": "browser socket closed"}), flush=True)
+            return
+        reply_id = message.get("id")
+        session = message.get("sessionId")
+        if reply_id in pending:
+            method = pending.pop(reply_id)
+            if "error" in message:
+                print(json.dumps({"replyError": method, "message": str((message.get("error") or {}).get("message"))}), flush=True)
+            elif method == "href" and session in reload_owed:
+                # The navigation may have committed before Page.enable could report it; the page's
+                # own location says so, and the reload it is owed goes out now (once: pop guards it).
+                href = str((((message.get("result") or {}).get("result") or {}).get("value")) or "")
+                if href and not href.startswith("about:"):
+                    target_id = reload_owed.pop(session)
+                    pending[ws.send("Page.reload", {}, session)] = "Page.reload"
+                    print(json.dumps({"reloaded": target_id, "url": href, "by": "href"}), flush=True)
             continue
+        method = message.get("method")
         params = message.get("params") or {}
+        if method == "Page.frameNavigated" and session in reload_owed:
+            frame = params.get("frame") or {}
+            url = str(frame.get("url") or "")
+            if not frame.get("parentId") and url and not url.startswith("about:"):
+                target_id = reload_owed.pop(session)
+                pending[ws.send("Page.reload", {}, session)] = "Page.reload"
+                print(json.dumps({"reloaded": target_id, "url": url}), flush=True)
+            continue
+        if method != "Target.attachedToTarget":
+            continue
         info = params.get("targetInfo") or {}
         new_session = params.get("sessionId")
         target_id = str(info.get("targetId") or "")
         if info.get("type") == "page" and target_id and target_id not in covered:
             covered.add(target_id)
-            applied, failure = apply_over(ws, request, new_session, reload=False)
-            print(json.dumps({"attached": target_id, "applied": applied, **({"unavailable": failure} if failure else {})}), flush=True)
+            messages = emulation_messages(request, reload=False)
+            for m in messages:
+                pending[ws.send(m["method"], m.get("params"), new_session)] = m["method"]
+            pending[ws.send("Page.enable", {}, new_session)] = "Page.enable"
+            url = str(info.get("url") or "")
+            if url and not url.startswith("about:"):
+                pending[ws.send("Page.reload", {}, new_session)] = "Page.reload"
+                print(json.dumps({"attached": target_id, "sent": [m["method"] for m in messages] + ["Page.reload"], "url": url}), flush=True)
+            else:
+                reload_owed[new_session] = target_id
+                # Two ways to learn the first real navigation committed, whichever answers first:
+                # Page.frameNavigated (if Page.enable landed before the commit) or the page's own
+                # location.href (if it did not).
+                pending[ws.send("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, new_session)] = "href"
+                print(json.dumps({"attached": target_id, "sent": [m["method"] for m in messages], "reloadAfterNavigation": True}), flush=True)
         if params.get("waitingForDebugger"):
             ws.send("Runtime.runIfWaitingForDebugger", {}, new_session)
 

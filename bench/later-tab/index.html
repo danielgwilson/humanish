@@ -1,0 +1,11 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Later tab check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:sans-serif;margin:24px;font-size:20px}a{font-size:24px}</style></head>
+<body>
+<h1>Later tab check</h1>
+<p>This page reports <strong id="w"></strong> px wide.</p>
+<p>The guide opens in a new tab.</p>
+<p><a href="/guide.html" target="_blank" rel="noopener">Open the guide</a></p>
+<script>document.getElementById("w").textContent = String(window.innerWidth);</script>
+</body></html>

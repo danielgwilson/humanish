@@ -1696,7 +1696,13 @@ export function makeChromeBrowserStateObserver(
    * be read) fires `onDrift` once, so a phone-labelled lane that spent part of its session at
    * desktop layout says so with the number the page gave.
    */
-  drift?: { emulatedTargetId: string; expectedWidth: number; onDrift: (reason: string) => void; onCovered?: (targetId: string, innerWidth: number) => void }
+  drift?: {
+    emulatedTargetId: string;
+    expectedWidth: number;
+    expectTouch?: boolean;
+    onDrift: (reason: string) => void;
+    onCovered?: (targetId: string, read: { innerWidth: number; devicePixelRatio: number; maxTouchPoints: number }) => void;
+  }
 ): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
   let reported = false;
   let drifted = false;
@@ -1717,7 +1723,13 @@ export function makeChromeBrowserStateObserver(
     );
     const fidelity = read.exitCode !== undefined && read.exitCode !== 0 ? undefined : parseChromeCdpProbeOutput(read.stdout).fidelity;
     if (fidelity !== undefined && fidelity.innerWidth === drift.expectedWidth) {
-      drift.onCovered?.(newTargetId, fidelity.innerWidth);
+      drift.onCovered?.(newTargetId, { innerWidth: fidelity.innerWidth, devicePixelRatio: fidelity.devicePixelRatio, maxTouchPoints: fidelity.maxTouchPoints });
+      if (drift.expectTouch === true && fidelity.maxTouchPoints === 0 && !drifted) {
+        // The viewport followed; touch did not (yet): the holder reloads a later tab once after its
+        // first navigation commits, and this observation may have landed before that reload.
+        drifted = true;
+        drift.onDrift(`a later page target reports the ${fidelity.innerWidth} px viewport but navigator.maxTouchPoints 0 on its first observation; touch reaches a document only when it loads under the override`);
+      }
       return;
     }
     if (drifted) return;
@@ -1804,7 +1816,7 @@ export async function applyMobileEmulation(
   endpoint: ChromeCdpEndpoint,
   targetId: string | undefined,
   request: ChromeMobileEmulationRequest
-): Promise<{ fidelity: NonNullable<RunDesktopGeometry["fidelity"]>; warnings: string[]; targetId?: string }> {
+): Promise<{ fidelity: NonNullable<RunDesktopGeometry["fidelity"]>; warnings: string[]; targetId?: string; holderName: string }> {
   const command = (mode: "hold" | "fidelity") =>
     chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer: "pinned", mode, emulation: request });
   const read = async () => {
@@ -1859,7 +1871,7 @@ export async function applyMobileEmulation(
   const emulatedTargetId = applied.targetId ?? fidelityRead.targetId;
   if (fidelityRead.fidelity === undefined) {
     warnings.push(`Mobile emulation was applied but the page's own report could not be read (${fidelityRead.unavailable ?? "no fidelity read"}); desktopGeometry.fidelity carries the request without a resolved block.`);
-    return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [] }, warnings, ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }) };
+    return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [] }, warnings, holderName, ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }) };
   }
   const resolved = { ...fidelityRead.fidelity, source: "cdp" as const };
   if (resolved.innerWidth !== request.width) {
@@ -1874,7 +1886,7 @@ export async function applyMobileEmulation(
   if (!resolved.userAgent.includes("Mobile") && !resolved.userAgent.includes("Android") && !resolved.userAgent.includes("iPhone")) {
     warnings.push("Mobile emulation requested a mobile user agent; the page reports a desktop one.");
   }
-  return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [], resolved }, warnings, ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }) };
+  return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [], resolved }, warnings, holderName, ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }) };
 }
 
 function isMeasuredRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
@@ -2408,6 +2420,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
   let appliedFidelity: RunDesktopGeometry["fidelity"] | undefined;
   let emulatedTargetId: string | undefined;
+  let emulationHolderName: string | undefined;
   let browserWindowId: string | undefined;
   let browserTargetId: string | undefined;
   const declaredScreen = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
@@ -2663,6 +2676,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           );
           appliedFidelity = applied.fidelity;
           emulatedTargetId = applied.targetId;
+          emulationHolderName = applied.holderName;
           warnings.push(...applied.warnings);
         }
       } else {
@@ -2817,16 +2831,17 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
                     : {
                         emulatedTargetId,
                         expectedWidth: spec.devicePreset.width,
+                        expectTouch: appliedFidelity?.requested.touch === true,
                         onDrift: (reason) => {
                           warnings.push(`Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`);
                         },
-                        onCovered: (coveredTargetId, innerWidth) => {
+                        onCovered: (coveredTargetId, read) => {
                           // A later tab the page itself reported at the phone width: evidence that
                           // the emulation followed the participant (#623), kept on the bundle.
                           if (appliedFidelity === undefined) return;
                           appliedFidelity = {
                             ...appliedFidelity,
-                            laterTargets: [...(appliedFidelity.laterTargets ?? []), { targetId: coveredTargetId, innerWidth }]
+                            laterTargets: [...(appliedFidelity.laterTargets ?? []), { targetId: coveredTargetId, ...read }]
                           };
                         }
                       }
@@ -2909,6 +2924,14 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           : initialBrowserGeometry ?? finalGeometry;
         const geometryWarnings = [...new Set(chosenGeometry.warnings.map((warning) => deps.scrubKnownValues(warning)))];
         warnings.push(...geometryWarnings);
+        // The emulation holder's own log, after its announce line: which later targets it
+        // attached to, what it sent, and any reply that came back as an error (#623). Read while
+        // the sandbox is alive; the first live proof had no way to say what the holder did.
+        if (appliedFidelity !== undefined && emulationHolderName !== undefined) {
+          const holderLog = await readDetachedLog(desktop, emulationHolderName, deps.requestTimeoutMs).catch(() => "");
+          const lines = holderLog.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("{")).slice(1, 51);
+          if (lines.length > 0) appliedFidelity = { ...appliedFidelity, holderLog: lines.map((line) => deps.scrubKnownValues(line)) };
+        }
         desktopGeometry = {
           screen: desktopGeometry.screen,
           ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),

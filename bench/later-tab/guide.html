@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:sans-serif;margin:24px;font-size:20px}</style></head>
+<body>
+<h1>Guide</h1>
+<p>Guide width: <strong id="w"></strong> px. Touch points: <strong id="t"></strong>. Pixel ratio: <strong id="d"></strong>.</p>
+<script>
+document.getElementById("w").textContent = String(window.innerWidth);
+document.getElementById("t").textContent = String(navigator.maxTouchPoints);
+document.getElementById("d").textContent = String(window.devicePixelRatio);
+</script>
+</body></html>

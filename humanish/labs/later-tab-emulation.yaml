@@ -1,0 +1,51 @@
+schema: humanish.lab.v2
+id: later-tab-emulation
+title: "Mobile emulation follows the participant into a tab that opens later (#623)"
+description: >
+  A two-page fixture (bench/later-tab): the landing page links to a guide with target=_blank, and
+  each page prints its own window.innerWidth, navigator.maxTouchPoints and devicePixelRatio. A phone
+  participant under mobile emulation opens the guide and reports the guide's numbers. The guide's
+  own numbers, in the participant's words and in the bundle's fidelity read-back
+  (desktopGeometry.fidelity.laterTargets), are the proof that the override reached the later tab.
+  Receipt: docs/goals/computer-use-actor/receipts/later-tab-emulation-2026-09-04.md.
+  Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.02.
+subject:
+  source: local-tree
+  serve:
+    start: python3 -m http.server 8000 --directory bench/later-tab
+    url: http://127.0.0.1:8000/
+actors:
+  - type: openai-computer-use
+    mission: >-
+      Open the guide from the link on the page. On the guide page, read the guide width, the touch points and the pixel ratio it reports, and tell me those three numbers exactly as written. Also tell me the width the first page reported. Then stop.
+    tasks:
+      - id: reach-guide
+        goal: Open the guide page.
+        success:
+          any:
+            - id: guide-text
+              textIncludes: "Guide width"
+    lanes:
+      - id: phone-newcomer
+        persona: synthetic-new-user
+        device: mobile
+        instruction: Use the page the way you normally would on a phone, and stop when you have the numbers.
+execution:
+  target: e2b-desktop
+  timeoutMs: 240000
+  desktop:
+    browser: chrome
+    fidelity:
+      mobileEmulation: true
+  caps:
+    maxUsd: 1
+    maxTotalUsd: 1
+scenario:
+  mode: dry-run
+defaults:
+  open: false
+policies:
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false

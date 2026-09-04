@@ -284,7 +284,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     expect(after.fidelity?.userAgent).not.toContain("iPhone");
   }, 45_000);
 
-  it.skipIf(!live)("hold mode emulates a page target opened AFTER it attached, from its first paint (#623)", async (ctx) => {
+  it.skipIf(!live)("hold mode emulates a page target opened AFTER it attached, without pausing it (#623)", async (ctx) => {
     if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
     const emulation = {
       width: 414,
@@ -325,18 +325,23 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
       expect(read.fidelity?.devicePixelRatio).toBe(3);
       expect(read.fidelity?.maxTouchPoints).toBe(5);
       expect(read.fidelity?.userAgent).toContain("iPhone");
-      // The holder's log names the target it attached to and what it applied (no reload: the tab
-      // was paused before its first navigation, so nothing had run at load).
+      // The holder's log names the target it attached to and what it sent (fire-and-forget, then a
+      // reload so a script that read the viewport at load sees the phone width); a reply that
+      // carried an error would be a replyError line, and there is none.
       const attachLine = lines().find((line) => line.includes(secondId));
       expect(attachLine, announced).toBeDefined();
-      const attached = JSON.parse(attachLine as string) as { attached: string; applied: string[]; unavailable?: string };
-      expect(attached.unavailable).toBeUndefined();
-      expect(attached.applied).toEqual([
+      const attached = JSON.parse(attachLine as string) as { attached: string; sent: string[]; reloadAfterNavigation?: boolean; url?: string };
+      expect(attached.sent.slice(0, 4)).toEqual([
         "Emulation.setDeviceMetricsOverride",
         "Emulation.setTouchEmulationEnabled",
         "Emulation.setEmitTouchEventsForMouse",
         "Emulation.setUserAgentOverride"
       ]);
+      // Either the tab had already committed at attach time (reloaded at once) or it owed one
+      // reload after its first navigation; either way exactly one reload line or reload send.
+      const reloadedLine = lines().find((line) => line.includes('"reloaded"') && line.includes(secondId));
+      expect(attached.sent.includes("Page.reload") || reloadedLine !== undefined, announced).toBe(true);
+      expect(lines().filter((line) => line.includes("replyError"))).toEqual([]);
       await fetch(`http://127.0.0.1:${cdpPort}/json/close/${secondId}`).catch(() => undefined);
     } finally {
       holder.kill("SIGKILL");
@@ -438,22 +443,42 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
   it("a later tab whose own read-back reports the requested width is recorded as covered, never as drift (#623)", async () => {
     const { desktop, commands } = driftingDesktop(phoneReadBack);
     const drifts: string[] = [];
-    const covered: [string, number][] = [];
+    const covered: [string, { innerWidth: number; devicePixelRatio: number; maxTouchPoints: number }][] = [];
     const observe = makeChromeBrowserStateObserver(desktop, 1_000, { targetUrl: "http://127.0.0.1:3000/" }, undefined, undefined, {
       emulatedTargetId: "EMULATED",
       expectedWidth: 414,
+      expectTouch: true,
       onDrift: (reason) => drifts.push(reason),
-      onCovered: (targetId, innerWidth) => covered.push([targetId, innerWidth])
+      onCovered: (targetId, read) => covered.push([targetId, read])
     });
     expect((await observe()).url).toBe("http://127.0.0.1:3000/");
     await observe();
     await observe();
     expect(drifts).toEqual([]);
-    expect(covered).toEqual([["OTHER-TAB", 414]]);
+    expect(covered).toEqual([["OTHER-TAB", { innerWidth: 414, devicePixelRatio: 3, maxTouchPoints: 5 }]]);
     // The read-back was taken ONCE for the new target, pinned to its id, not on every observation.
     const fidelityReads = commands().filter((command) => command.includes('"mode":"fidelity"'));
     expect(fidelityReads).toHaveLength(1);
     expect(fidelityReads[0]).toContain('"targetId":"OTHER-TAB"');
+  });
+
+  it("a later tab at the phone width but with no touch points is covered AND a touch warning (#623)", async () => {
+    const noTouch = JSON.stringify({ fidelity: { userAgent: "iPhone", devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 0, coarsePointer: false }, targetId: "OTHER-TAB" });
+    const { desktop } = driftingDesktop(noTouch);
+    const drifts: string[] = [];
+    const covered: string[] = [];
+    const observe = makeChromeBrowserStateObserver(desktop, 1_000, { targetUrl: "http://127.0.0.1:3000/" }, undefined, undefined, {
+      emulatedTargetId: "EMULATED",
+      expectedWidth: 414,
+      expectTouch: true,
+      onDrift: (reason) => drifts.push(reason),
+      onCovered: (targetId) => covered.push(targetId)
+    });
+    await observe();
+    await observe();
+    expect(covered).toEqual(["OTHER-TAB"]);
+    expect(drifts).toHaveLength(1);
+    expect(drifts[0]).toContain("maxTouchPoints 0");
   });
 
   it("a later tab that reports the window width is drift, once, with the number the page gave (#623)", async () => {
