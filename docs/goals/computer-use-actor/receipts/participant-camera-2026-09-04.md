@@ -42,6 +42,15 @@ adopter's own would carry its own name.
 camera”; no permission prompt appeared. Camera name: `/dev/shm/humanish-media/camera.y4m`. Size:
 `640x480`." Three turns, one action.
 
+## A feed of the adopter's own: `cua-2026-09-04T21-31-11-124Z-92af0e4b` ($0.04)
+
+`camera.source: .humanish/assets/participant.y4m`, a 2.3 MB Y4M written by hand on the host
+(320x240, ten frames a second, a bar moving across a grey field), uploaded into the sandbox before
+Chrome started. With the default `prompt`: the participant met the dialog, chose "Allow this
+time", and read back "Size: `320x240`", the file's own geometry and not the synthetic feed's
+640x480, so the page saw that file. The bundle: `"camera": { "source": "file", "file":
+"/dev/shm/humanish-media/camera.y4m" }`.
+
 ## What the bundle records
 
 `desktopBrowser.media` on both runs:
