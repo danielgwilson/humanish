@@ -466,9 +466,13 @@ Stop and correct course if:
 **2026-09-04 (0.77.0).** Four fixes found by runs and one by a scanner. A phone-emulated lane now
 follows the participant into a tab that opens later: the hold-mode applier attaches to every page
 target Chrome creates, paused before its first navigation, so the new tab lays out at the phone
-width from its first paint, and the state observer reads each new tab's own fidelity report,
-recording a covered tab under `desktopGeometry.fidelity.laterTargets` and a drifted one as a lane
-warning with the width the page gave (#623 closed, proven against a real Chrome). A sandbox create
+width, and the state observer reads each new tab's own fidelity report, recording a covered tab
+under `desktopGeometry.fidelity.laterTargets` (width, DPR, touch points) and a drifted one as a
+lane warning with the number the page gave; the applier's own log travels as `holderLog`. The
+first live proof failed in the participant's hands (a paused popup never resumed) and the shipped
+design is the one four live runs settled on: never pause a later tab, send the overrides the
+moment it exists, reload it once after its first navigation commits
+(`docs/goals/computer-use-actor/receipts/later-tab-emulation-2026-09-04.md`, #623, #636). A sandbox create
 or archive upload that fails on a transient provider error is retried once and named on the lane
 (#630): six lanes started 20 s apart lost five to E2B SDK errors before any turn, a probe of the
 same SDK a minute later worked in 6 s. The provider's `Retry-After` now governs a retry (capped
