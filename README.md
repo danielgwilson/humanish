@@ -53,8 +53,8 @@ npx humanish run first-run    # a study with no keys and no spend — about a mi
 npx humanish run try-live     # a REAL study on a hosted desktop, capped at $2
 ```
 
-**What it finds, measured (2026-09-01 and 09-03, receipts in `bench/` and `docs/goals/`):** 43 of
-45 planted defects over three benchmark runs on an app we wrote, none invented on the clean arm; on
+**What it finds, measured (2026-09-01 to 09-04, receipts in `bench/` and `docs/goals/`):** 58 of
+60 planted defects over four benchmark runs on an app we wrote, none invented in 15 clean runs; on
 two apps we did not write, 16 of 18 distinct findings confirmed against the source and 0 invented,
 across 14 participants; a drawDB modal reported by 5 of 5 keyboard-first participants (3 stopped
 there) and never mentioned by 5 mouse-driving newcomers; a TodoMVC rename that blocked 6 of 6
