@@ -4734,6 +4734,40 @@ export async function readReview(cwdInput: string, runInput: string): Promise<Ve
   };
 }
 
+/**
+ * The @e2b/desktop release that stopped holding a background command's event stream open after
+ * the command was launched (its 2.3.1 changelog, 2026-06-08). On older releases the CLI process
+ * stayed alive minutes past a run's written result on one socket to the provider (#581, measured
+ * 2026-09-04 on 2.2.3: twelve minutes).
+ */
+export const DESKTOP_SDK_FLOOR = "2.3.1";
+
+/** The advisory `doctor` attaches to an installed desktop SDK older than the floor, else undefined. */
+export function desktopSdkAdvisory(version: string | undefined): string | undefined {
+  if (version === undefined) return undefined;
+  const parse = (value: string): number[] => value.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10));
+  const have = parse(version);
+  const floor = parse(DESKTOP_SDK_FLOOR);
+  if (have.length < 3 || have.some((part) => !Number.isFinite(part))) return undefined;
+  const older = have[0]! < floor[0]!
+    || (have[0] === floor[0] && (have[1]! < floor[1]! || (have[1] === floor[1] && have[2]! < floor[2]!)));
+  return older
+    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, which stopped holding a background command stream open after a run (the CLI stayed alive minutes past its result, #581). Update with \`npm i -D @e2b/desktop@latest\`.`
+    : undefined;
+}
+
+/** The version of the @e2b/desktop that `import("@e2b/desktop")` resolves to from here, if readable. */
+async function installedDesktopSdkVersion(): Promise<string | undefined> {
+  try {
+    const { createRequire } = await import("node:module");
+    const manifest = createRequire(import.meta.url).resolve("@e2b/desktop/package.json");
+    const parsed = JSON.parse(await readFile(manifest, "utf8")) as { version?: unknown };
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function doctor(cwdInput: string): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
   const cwdOk = await validateCwd(cwd).then((error) => error === null).catch(() => false);
@@ -4801,11 +4835,13 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
           return false;
         }
       });
+      const version = present ? await installedDesktopSdkVersion() : undefined;
+      const advisory = desktopSdkAdvisory(version);
       return {
         name: "e2b desktop sdk",
         ok: present,
         message: present
-          ? "optional peer @e2b/desktop is installed; live desktop lanes can launch"
+          ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; live desktop lanes can launch${advisory === undefined ? "" : `. ${advisory}`}`
           : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`."
       };
     })(),
