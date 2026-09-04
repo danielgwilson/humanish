@@ -117,15 +117,19 @@ describe("participantFeedbackCandidates (#392)", () => {
       "REACHED THE GOAL. Two tables linked; nothing confusing.",
       "REACHED THE GOAL. Nothing was confusing and nothing was unclear.",
       "REACHED THE GOAL. No defects, no unexpected behaviour, and I never hesitated.",
-      "REACHED THE GOAL. The flow was not confusing; nothing overlapped."
+      "REACHED THE GOAL. The flow was not confusing; nothing overlapped.",
+      "REACHED THE GOAL. I had no trouble at all and encountered no blockers or unclear error output."
     ]) {
       expect(run(clean), clean).toHaveLength(0);
     }
     for (const friction of [
       "REACHED THE GOAL. Renaming was confusing.",
       "REACHED THE GOAL. Two tables overlapped exactly and looked locked.",
-      // Negations that describe a DEFECT stay friction.
+      // Negations that describe a DEFECT stay friction, whichever verb introduces them (#622).
       "REACHED THE GOAL. The delete control shows no visible focus.",
+      "REACHED THE GOAL. The delete control had no visible focus.",
+      "REACHED THE GOAL. I found no keyboard path to the rename and had no visible focus indicator.",
+      "REACHED THE GOAL. Pressing Save had no effect.",
       "REACHED THE GOAL. The picker is not keyboard-accessible.",
       "REACHED THE GOAL. Pressing Save did nothing."
     ]) {
