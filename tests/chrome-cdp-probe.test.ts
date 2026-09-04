@@ -185,6 +185,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     expect(state.text).toContain("hello probe text");
     expect(state.text).toContain("second line");
     expect(state.scrollY).toBe(0);
+    expect(state.targetId).toMatch(/^[0-9A-F]+$/i);
   });
 
   it.skipIf(!live)("pinned mode attributes the page by the lane's target URL when no target id is known", async (ctx) => {
@@ -347,6 +348,30 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     );
     expect(await observe()).toBeUndefined();
     expect(reasons).toEqual(["CDP endpoint 127.0.0.1:9222/json unreachable (URLError)"]);
+  });
+
+  it("reports emulation drift once when an observation reads a page target other than the emulated one (#623)", async () => {
+    let call = 0;
+    const desktop = {
+      commands: {
+        run: async () => {
+          call += 1;
+          const targetId = call === 1 ? "EMULATED" : "OTHER-TAB";
+          return { exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/", title: "t", text: "hello", scrollY: 0, targetId }) };
+        }
+      }
+    } as unknown as E2BDesktopSandbox;
+    const drifts: string[] = [];
+    const observe = makeChromeBrowserStateObserver(desktop, 1_000, { targetUrl: "http://127.0.0.1:3000/" }, undefined, undefined, {
+      emulatedTargetId: "EMULATED",
+      onDrift: (reason) => drifts.push(reason)
+    });
+    expect((await observe()).url).toBe("http://127.0.0.1:3000/");
+    expect(drifts).toEqual([]);
+    await observe();
+    await observe();
+    expect(drifts).toHaveLength(1);
+    expect(drifts[0]).toContain("not the 414 px viewport or DPR override");
   });
 
   it("parseChromeCdpProbeOutput never turns garbage into an empty success", () => {
