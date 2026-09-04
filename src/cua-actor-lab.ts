@@ -2191,12 +2191,19 @@ function stripResolvedArcSegments(text: string): string {
     .join(" ");
 }
 
+// Negations that DESCRIBE a defect rather than deny one. Kept out of every clause drop below.
+const DEFECT_SHAPED_NEGATION =
+  /\bno\s+(?:visible\s+)?focus\b|\bno\s+(?:keyboard|screen.?reader)[- ]?(?:access|path|route|way|alternative|equivalent)|\bnot\s+(?:keyboard|screen.?reader)[- ]?accessible\b|\bno\s+(?:effect|feedback|response)\b|\b(?:did|does)\s+nothing\b|\bnothing\s+happened\b/;
+
 function stripNegatedNonBlockerPhrases(text: string): string {
   return text
     // FIRST, before the narrower rules eat the "no blockers" and leave "encountered ... error"
     // behind: "I encountered no blockers or unclear error output." refused a clean passing run on
     // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
-    .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, " ")
+    // ... unless the clause names a DEFECT: "the delete control had no visible focus" is a
+    // finding, and the verb it happens to use must not decide whether it counts (#622).
+    .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, (clause) =>
+      DEFECT_SHAPED_NEGATION.test(clause) ? clause : " ")
     .replace(/\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g, "")
     .replace(/\bwithout\s+(?:a\s+|any\s+)?(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\b/g, "")
     .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "")
