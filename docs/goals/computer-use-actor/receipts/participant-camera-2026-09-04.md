@@ -36,6 +36,13 @@ Declared task `camera-on` (page text "Camera: on.") measured complete. Chrome na
 after the file it was fed, so the page's "camera name" is the feed's path; a `.y4m` of the
 adopter's own would carry its own name.
 
+## The gate twice more: `cua-2026-09-04T22-09-57-189Z-f6bcf98f`, `cua-2026-09-04T22-10-37-189Z-28359430` ($0.04 each)
+
+Same lab, same default `prompt`. One participant chose "Allow this time", the other "Allow while
+visiting the site"; both read back the camera's name and `640x480`, both said nothing confused
+them. At N=3 nobody refused and the one hesitation on record is the first run's pause between
+the two allow options. The gate is real, and three newcomers walked through it.
+
 ## The gate bypassed: `cua-2026-09-04T20-49-44-273Z-9d457120` ($0.02)
 
 `policies.mediaPermission: granted` adds `--use-fake-ui-for-media-stream`. "I clicked “Turn on
