@@ -36,6 +36,27 @@ on a viewport the app's own responsive rules treat as a phone; the second spent 
 working and did not finish. Both desktop newcomers finished, both by falling back to SQL after
 the tables overlapped.
 
+## TodoMVC on the published 0.76.0: touch changes the outcome
+
+Same shape on `tastejs/todomvc` (`examples/javascript-es6/dist`, served by python3), the four
+declared tasks from the persona-axis lab, run from a fresh `npm i -D humanish@0.76.0` by path.
+
+| run | desktop newcomer | phone newcomer (414x896, emulated, touch) |
+|---|---|---|
+| `cua-2026-09-03T23-40-18-531Z-571257e1` | REACHED; hover-only delete noted | BLOCKED: "the app says Double-click to edit, but repeated double-taps on the mobile layout only selected text and never opened an editor ... no touch-friendly edit control" |
+| `cua-2026-09-03T23-40-28-532Z-c71acd5f` | REACHED; hover-only delete noted | DID NOT REACH THE GOAL: "repeated double-click/double-tap attempts did not open editing ... the delete control only appeared on hover, a confusing interaction for a mobile/touch layout" |
+
+Cost: $0.17 and $0.19 per run. Task funnel: add-tasks, complete-one, filter-completed,
+filter-active each 2/2 in both runs (16 of 16 measured); the rename has no observable criterion
+and is where both phone participants stopped.
+
+Earlier the same evening, at 500 px with no touch emulation, both phone participants on TodoMVC
+finished and only *called* the double-click rename touch-hostile (`persona-axis-phone-2026-09-03.md`).
+With touch events emulated, neither could rename at all: a double-tap selects text and the
+`dblclick` editor never opens. The responsive-viewport study reported an opinion; the
+mobile-emulated study reported a blocker. That difference is the reason the bundle labels the
+tier.
+
 ## What the first run taught (fixed on the branch before merge)
 
 - The run-wide flag had also emulated the desktop newcomer (1440x950 with `mobile: true` and an

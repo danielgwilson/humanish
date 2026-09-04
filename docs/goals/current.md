@@ -468,6 +468,10 @@ mobile-emulated browser: `execution.desktop.fidelity.mobileEmulation: true` appl
 CSS viewport, the preset's device pixel ratio, touch events and a mobile user agent before the
 participant's first observation, and the bundle records what the page then reported about itself
 under `desktopGeometry.fidelity` (#221, `docs/goals/computer-use-actor/receipts/mobile-emulation-2026-09-03.md`).
+On the published 0.76.0, with touch emulated, neither phone participant on TodoMVC could rename at
+all (a double-tap selects text; the double-click editor never opens), where the 500 px runs without
+touch had finished and only called the rename touch-hostile: the responsive-viewport study reported
+an opinion, the mobile-emulated study reported a blocker.
 The persona axis was replicated the same evening on drawDB and TodoMVC and given a third app,
 Excalidraw, as the clean control (`persona-axis-phone-2026-09-03.md`); a multi-lane study's
 second and third findings reach `feedback draft` through `--candidate` (#609); a negated report
