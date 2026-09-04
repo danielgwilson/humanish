@@ -5,6 +5,27 @@
 > lifecycle events, estimated cost at dated rates. `humanish verify` grades the bundle
 > fail-closed.
 
+## When to use humanish
+
+Reach for it when the question is "what happens when someone who is not us tries this?" and
+the answer needs evidence rather than a prediction:
+
+- a first-time visitor, a keyboard-only user, or a phone user has to get through a real flow
+  (signup, first task, the thing the README promises) on a web app you maintain;
+- a maintainer wants a defect report they can act on: screenshots, the participant's own words,
+  a per-task funnel, a fail-closed verify grade, and a public-safe issue draft;
+- a change under the UI (a probe, a prompt, a model) has to be checked against an instrument with
+  known answers: `bench/` carries the planted-defect arms (58 of 60 defects reported over four
+  runs, nothing invented in 15 clean runs, receipts with run ids).
+
+Not the tool for load testing, pixel diffing, or a decision about people that needs people; the
+limits page below says where simulated users diverge from real ones.
+
+How an agent calls it: `npx humanish init --yes`, then `npx humanish run first-run` (no keys, no
+spend), then `npx humanish run try-live` (a real study, capped at $2). Read results with
+`npx humanish runs --json` and `npx humanish review --run latest --json`; draft feedback with
+`npx humanish feedback issue --run latest`. Every command has `--json`.
+
 ## Install
 
 ```

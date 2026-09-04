@@ -700,7 +700,12 @@ describe("runCuaActorLab", () => {
           };
         }
         if (command.includes("mobile-emulation-") && command.includes("tail -c")) {
-          return { exitCode: 0, stdout: JSON.stringify({ applied: ["Emulation.setDeviceMetricsOverride", "Page.reload"], held: true, targetId: "T1" }) + "\n" };
+          // The holder's log grows as tabs appear: the announce first, then one line per attach.
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ applied: ["Emulation.setDeviceMetricsOverride", "Page.reload"], held: true, targetId: "T1" }) + "\n"
+              + JSON.stringify({ attached: "T2", sent: ["Emulation.setDeviceMetricsOverride", "Page.reload"] }) + "\n"
+          };
         }
         if (command.includes('"mode":"state"')) {
           return { exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/help", title: "help", text: "help", scrollY: 0, targetId: "T2" }) };
@@ -745,7 +750,9 @@ describe("runCuaActorLab", () => {
   it("mobile emulation on a later tab (#623): a tab the page itself reports at the phone width is recorded on the bundle, with no drift warning", async () => {
     const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(414));
     expect((outcome.result.warnings ?? []).filter((warning: string) => warning.includes("Mobile emulation drift"))).toEqual([]);
-    expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toEqual([{ targetId: "T2", innerWidth: 414 }]);
+    expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toEqual([{ targetId: "T2", innerWidth: 414, devicePixelRatio: 3, maxTouchPoints: 5 }]);
+    // The holder's own account of the later tab travels with the bundle (after its announce line).
+    expect(bundle.streams[0].desktopGeometry.fidelity.holderLog).toEqual([JSON.stringify({ attached: "T2", sent: ["Emulation.setDeviceMetricsOverride", "Page.reload"] })]);
   });
 
   it("mobile emulation drift (#623): a later tab that reports the window width puts one warning on the lane, with the page's number", async () => {

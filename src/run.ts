@@ -414,7 +414,13 @@ export interface RunDesktopGeometry {
      * participant never left the launch tab; a later tab that did NOT report the width is a lane
      * warning instead.
      */
-    laterTargets?: { targetId: string; innerWidth: number }[];
+    laterTargets?: { targetId: string; innerWidth: number; devicePixelRatio: number; maxTouchPoints: number }[];
+    /**
+     * The emulation holder's log after its announce, one JSON line per later target it attached
+     * to (`attached`, `sent`) and per reply that came back as an error (`replyError`), at most 50
+     * lines. Absent when no later target appeared.
+     */
+    holderLog?: string[];
   };
   /** Public-safe geometry measurement/fill warnings retained with the stream evidence. */
   warnings?: string[];
