@@ -1,0 +1,50 @@
+schema: humanish.lab.v2
+id: participant-camera
+title: "A participant with a camera (#509): the browser's own permission prompt, then a synthetic feed"
+description: >
+  A one-page fixture (bench/media-check) with a button that calls getUserMedia and prints the
+  camera's name and frame size. The lane declares a synthetic camera; Chrome presents an ffmpeg
+  test pattern as a capture device. With the default policies.mediaPermission (prompt) the
+  participant meets Chrome's real permission dialog and answers it, which is the moment a real
+  person hesitates or refuses; the page's own read-back, in the participant's words, is the proof
+  that a camera was there. The bundle records the feed and the launch flags under
+  desktopBrowser.media. Receipt: docs/goals/computer-use-actor/receipts/participant-camera-2026-09-04.md.
+  Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
+subject:
+  source: local-tree
+  serve:
+    start: python3 -m http.server 8000 --directory bench/media-check
+    url: http://127.0.0.1:8000/
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user
+    mission: >-
+      Turn on the camera with the button on the page. If the browser asks for permission to use the camera, allow it for this visit. Then tell me exactly what the page says under the video: the camera's name and the size. Then stop.
+    tasks:
+      - id: camera-on
+        goal: Turn the camera on.
+        success:
+          any:
+            - id: on
+              textIncludes: "Camera: on."
+execution:
+  target: e2b-desktop
+  timeoutMs: 240000
+  desktop:
+    browser: chrome
+    media:
+      camera:
+        source: synthetic
+  caps:
+    maxUsd: 1
+    maxTotalUsd: 1
+scenario:
+  mode: dry-run
+defaults:
+  open: false
+policies:
+  mediaPermission: prompt
+  allowPrivateRepoAccess: false
+  allowProviderCredentials: false
+  allowPaymentCredentials: false
+  allowGitHubMutation: false

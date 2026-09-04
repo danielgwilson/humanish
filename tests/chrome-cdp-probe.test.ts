@@ -214,8 +214,20 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     expect(state.url).toBe(pageUrl);
   });
 
+  // The launch page reloads under an earlier case's holder and can be mid-navigation (no http
+  // target for a moment) when the next case starts: wait until it reads at its URL again, so a
+  // loaded runner does not turn that moment into "no http page among N CDP targets".
+  const settleLaunchPage = async (): Promise<void> => {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const state = await runProbe({ mode: "state", prefer: "pinned", cdpPort, targetUrl: pageUrl });
+      if (state.url === pageUrl && state.text !== undefined) return;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  };
+
   it.skipIf(!live)("emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page (#221)", async (ctx) => {
     if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    await settleLaunchPage();
     const emulation = {
       width: 414,
       height: 896,
@@ -286,6 +298,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)("hold mode emulates a page target opened AFTER it attached, without pausing it (#623)", async (ctx) => {
     if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    await settleLaunchPage();
     const emulation = {
       width: 414,
       height: 896,
@@ -350,6 +363,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
 
   it.skipIf(!live)("the shipped command (python3 -c ... '<json>') runs end to end through a shell", async (ctx) => {
     if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    await settleLaunchPage();
     const command = chromeCdpProbeCommand({ mode: "state", prefer: "active", cdpPort, targetUrl: pageUrl });
     expect(command.startsWith("python3 -c '")).toBe(true);
     const { stdout } = await execFileAsync("sh", ["-c", command]);

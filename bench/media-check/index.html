@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Camera check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:sans-serif;margin:24px;font-size:20px}button{font-size:22px;padding:12px 20px}video{display:block;margin-top:16px;max-width:100%;background:#000}#status{margin-top:16px;font-weight:bold}</style></head>
+<body>
+<h1>Camera check</h1>
+<p>Press the button to turn on your camera. The browser may ask for permission.</p>
+<button id="on">Turn on camera</button>
+<video id="v" autoplay playsinline muted width="320" height="240"></video>
+<p id="status">Camera: off</p>
+<script>
+const status = document.getElementById("status");
+document.getElementById("on").addEventListener("click", async () => {
+  status.textContent = "Camera: asking for permission";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const video = document.getElementById("v");
+    video.srcObject = stream;
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    status.textContent = `Camera: on. Name: ${track.label || "(unnamed)"}. Size: ${settings.width}x${settings.height}.`;
+  } catch (error) {
+    status.textContent = `Camera: ${error.name}: ${error.message}`;
+  }
+});
+</script>
+</body></html>

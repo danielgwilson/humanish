@@ -394,6 +394,59 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("dwell");
     });
 
+    it("parses a synthetic camera and the permission policy (#509)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { ...(validCua.execution as Record<string, unknown>), desktop: { media: { camera: { source: "synthetic" } } } },
+        policies: { mediaPermission: "granted" }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.execution?.desktop?.media).toEqual({ camera: { source: "synthetic" } });
+      expect(result.config.policies?.mediaPermission).toBe("granted");
+    });
+
+    it("accepts a .y4m camera file and defaults the permission to the participant's own answer", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { ...(validCua.execution as Record<string, unknown>), desktop: { media: { camera: { source: "./assets/participant.y4m" } } } }
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.execution?.desktop?.media?.camera?.source).toBe("./assets/participant.y4m");
+      expect(result.config.policies?.mediaPermission).toBeUndefined();
+    });
+
+    it.each([
+      ["camera source with the wrong extension", { media: { camera: { source: "./cam.mp4" } } }, "camera.source"],
+      ["camera without a source", { media: { camera: {} } }, "camera.source"],
+      ["media with neither device", { media: {} }, "neither"],
+      ["a microphone on the stock image", { media: { microphone: { source: "./room.wav" } } }, "no audio stack"]
+    ])("rejects %s before any spend", (_label, desktop, needle) => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { ...(validCua.execution as Record<string, unknown>), desktop }
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain(needle);
+    });
+
+    it("accepts a microphone once a custom desktop template is declared", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        execution: { ...(validCua.execution as Record<string, unknown>), desktop: { template: "adopter-desktop-with-audio", media: { microphone: { source: "./room.wav" } } } }
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it("rejects an unknown mediaPermission", () => {
+      const result = parseLabConfig({ ...validCua, policies: { mediaPermission: "auto" } });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("mediaPermission");
+    });
+
     it("keeps warning about mission/persona/model on routes that do NOT consume them", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,

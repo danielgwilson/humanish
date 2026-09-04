@@ -520,6 +520,14 @@ actors:
               textIncludes: Queue
 ```
 
+**A participant with a camera.** `execution.desktop.media.camera: { source: synthetic }` gives a
+hosted Chrome lane a capture device: an ffmpeg test pattern generated in the sandbox (or a
+`.y4m` file of yours, uploaded). The browser's own permission dialog stays in the way by default
+(`policies.mediaPermission: prompt`), because the gate is where a real person hesitates or
+refuses; `granted` bypasses it for studies about what happens after. The bundle records the
+feed and the exact launch flags under `desktopBrowser.media`. A microphone needs an image with
+an audio stack (`execution.desktop.template`); the stock desktop has none, so a declared
+microphone without a template is refused before any spend.
 **A declared observation window.** Some findings are "time passed and nothing broke": a call
 both participants stay on, an import that finishes, a dashboard that updates. A freeform
 participant with nothing to do keeps acting, so `dwell` lets the study hold instead. Once
