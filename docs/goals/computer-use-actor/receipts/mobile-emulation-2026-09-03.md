@@ -57,6 +57,23 @@ With touch events emulated, neither could rename at all: a double-tap selects te
 mobile-emulated study reported a blocker. That difference is the reason the bundle labels the
 tier.
 
+## drawDB again on 2026-09-04, on main at #636 (the 0.77.0 build)
+
+Same emulated drawDB lab, two runs from the primary checkout's build, 40 s apart, after the
+later-tab applier landed (`later-tab-emulation-2026-09-04.md`).
+
+| run | desktop newcomer | phone newcomer (414x896, emulated, touch) |
+|---|---|---|
+| `cua-2026-09-04T19-47-41-731Z-78b6bd67` ($0.81) | REACHED; "new tables initially overlapped exactly ... Auto arrange resolved this" | ran out of the 300 s session after 77 material actions over 43 turns |
+| `cua-2026-09-04T19-48-21-733Z-6a3c4fcf` ($1.25) | REACHED; "every new table appeared at the same position ... used the Code view to define the relationship" | REACHED; "the mobile canvas was mostly hidden behind the sidebar, and dragging or repositioning tables did not work clearly ... I used the built-in DBML view to add `Ref: posts.user_id > users.id`" |
+
+Both phone lanes read back 414 px, DPR 3, five touch points from the page; neither participant
+opened a second tab, so neither bundle carries `laterTargets`. Across the four emulated drawDB
+phone lanes since 09-03: one blocked, one out of budget, two reached, and every one of the three
+that reported named the canvas or the drag. Both desktop newcomers this time reached the goal by
+way of the Code or Auto-arrange controls after the stacked-tables confusion, which is the same
+finding the 09-01 and 09-03 desktop participants reported.
+
 ## What the first run taught (fixed on the branch before merge)
 
 - The run-wide flag had also emulated the desktop newcomer (1440x950 with `mobile: true` and an
@@ -70,6 +87,7 @@ tier.
 
 ## Not verified
 
-- Behaviour on a tab the participant opens later: the user agent and touch flags are browser-wide
-  (launch flags), the viewport and DPR override are bound to the launch page's DevTools session.
+- A tab the participant opens later was NOT covered by this design: the viewport and DPR override
+  were bound to the launch page's DevTools session. Closed on 2026-09-04 (#623, #636) with four
+  live runs: `later-tab-emulation-2026-09-04.md`.
 - Real device or simulator fidelity, which #221 keeps as a later tier.
