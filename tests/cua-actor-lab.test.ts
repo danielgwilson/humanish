@@ -743,15 +743,16 @@ describe("runCuaActorLab", () => {
       }
     });
     const { module, created } = makeFakeModule(sandbox);
-    const realCreate = module.Sandbox.create;
+    const realCreate = module.Sandbox.create as unknown as (...args: unknown[]) => Promise<E2BDesktopSandbox>;
     let attempts = 0;
-    module.Sandbox.create = async (...args: Parameters<typeof realCreate>) => {
+    const failingOnce = async (...args: unknown[]): Promise<E2BDesktopSandbox> => {
       attempts += 1;
       // The measured shape: the API allocated the sandbox, the desktop SDK's first envd request
       // (its Xvfb start) hit the proxy instead, and Sandbox.create threw without an id.
       if (attempts === 1) throw new Error("12: [unimplemented] HTTP 404");
       return realCreate(...args);
     };
+    module.Sandbox.create = failingOnce as unknown as typeof module.Sandbox.create;
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua-create-retry",
@@ -788,10 +789,11 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     let attempts = 0;
-    module.Sandbox.create = async () => {
+    const alwaysUnauthorized = async (): Promise<E2BDesktopSandbox> => {
       attempts += 1;
       throw new Error("401 Unauthorized: invalid API key");
     };
+    module.Sandbox.create = alwaysUnauthorized as unknown as typeof module.Sandbox.create;
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua-create-no-retry",
