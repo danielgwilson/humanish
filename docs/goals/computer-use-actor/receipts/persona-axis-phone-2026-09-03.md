@@ -71,6 +71,22 @@ is the honest answer for a canvas. The first run's keyboard-first report, "Nothi
 was tallied as reported friction by the harness on that build; that false positive is what
 #614 / #616 removed.
 
+### Excalidraw again on 2026-09-04, the phone lane under mobile emulation
+
+Same lab with `execution.desktop.fidelity.mobileEmulation: true` (the phone lane at a real 414 px,
+DPR 3, five touch points, read back from the page), two runs from the 0.77.0 build at #639.
+
+| run | keyboard-first | mouse newcomer | phone newcomer (414 px, emulated, touch) |
+|---|---|---|---|
+| `cua-2026-09-04T20-07-16-250Z-f4d37fd0` ($0.23) | REACHED; "keyboard shortcuts worked; no confusion or significant hesitation" | REACHED; "briefly hesitated when distinguishing the arrow tool from the line tool" | REACHED; "the mobile toolbar was hidden and the welcome screen offered no obvious new drawing action; keyboard shortcuts worked. I also had to redraw the second box after it extended past the canvas edge" |
+| `cua-2026-09-04T20-07-56-252Z-8b60fe36` ($0.23) | REACHED; "briefly hesitated over text-entry completion, but Ctrl+Enter worked" | REACHED; "briefly hesitated over whether double-clicking inside a box would add centered text, but it worked" | REACHED; "the mobile toolbar was not visible, so I repeatedly used the hamburger menu's Command palette to select the rectangle and arrow tools. Double-tapping inside each box to add text worked" |
+
+Twelve of twelve reached on Excalidraw over four runs (two at 500 px, two emulated). Under touch
+the phone participants' hesitation moved from "unlabelled icons" to "the mobile toolbar is
+hidden", and both found a way through (shortcuts, the command palette). TodoMVC under the same
+emulation blocked both phone participants (`mobile-emulation-2026-09-03.md`); Excalidraw did
+not. The control still reads as a control.
+
 ## What this does and does not show
 
 - The device preset is enforced by the harness, so the difference is not a matter of the
