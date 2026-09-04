@@ -50,8 +50,27 @@ zero actions and zero messages, which the engagement check reads as a hollow run
 dwell window that ended the session now counts as structured completion evidence, in the same
 clause as a matched `stopWhen`, when frames were captured.
 
+## Three participants present together: `concurrent-shared-world-2026-09-04T21-13-53-078Z-4791ebe3`
+
+The flow #510 came from, on the concurrent shared-world route after #645 forwarded the option
+there: the committed concurrent lab (one subject sandbox serving the synthetic task board, three
+actor desktops on its getHost URL) with `dwell: { ms: 45000, everyMs: 15000, then: continue }` on
+the actor and no `when`, so every seat holds from its first observation.
+
+| seat | window | frames | model turns inside | afterwards |
+|---|---|---|---|---|
+| stream-001 | 21:14:21 to 21:15:06 (45,467 ms) | 3 | 0 | added one task, REACHED |
+| stream-002 | 21:14:20 to 21:15:05 (45,429 ms) | 3 | 0 | added one task, REACHED |
+| stream-003 | 21:14:20 to 21:15:06 (45,462 ms) | 3 | 0 | added one task, REACHED |
+
+The board's checkpoint prober took 57 readings between 21:14:04 and 21:15:20. Its digest was one
+value from the first reading through all three overlapping windows and changed for the first time
+at 21:15:15, nine seconds after the last window closed, then again at 21:15:17: the shared world
+stood still while everyone was present and moved once they acted. Three turns per seat in all;
+four sandboxes reclaimed by id.
+
 ## Not verified
 
 - A window longer than a minute; the bound is the session budget, and a window is cut to fit it.
-- The shared-world and scripted-browser routes; the option is wired on the computer-use route.
-- Two participants dwelling together on one shared page (the flow #510 came from).
+- The sequential shared-world route live, and the scripted-browser route (the option is not wired
+  there; it has no model loop to hold).
