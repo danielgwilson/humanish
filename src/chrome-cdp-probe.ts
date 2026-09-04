@@ -456,6 +456,19 @@ def main():
         print(json.dumps({"unavailable": "CDP endpoint 127.0.0.1:%d/json unreachable (%s)" % (port, type(error).__name__)}))
         return
     page = select_page(pages, args)
+    # A listing with targets but no http page is usually an instant: a reload in flight, a tab
+    # between about:blank and its navigation. Ask again for up to a second before calling it
+    # unavailable (#653): the lane's observer would otherwise lose one turn of url/text evidence,
+    # and a test on a loaded runner saw exactly this twice in one evening.
+    for _ in range(4):
+        if page is not None or not pages:
+            break
+        time.sleep(0.25)
+        try:
+            pages = list_pages(port)
+        except Exception:
+            break
+        page = select_page(pages, args)
     if page is None:
         print(json.dumps({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)}))
         return
