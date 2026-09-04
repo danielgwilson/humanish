@@ -412,6 +412,7 @@ describe("runScriptedBrowserLab", () => {
   });
 
   it("live provisioned clone: provisions one synthetic subject, drives getHost, and persists only public-safe URL labels", async () => {
+    let clock = Date.parse("2026-09-04T00:00:00.000Z");
     await writeCommittedScenario(cwd);
     const fakeE2B = makeFakeE2BModule();
     const rawSessionUrls: string[] = [];
@@ -500,9 +501,16 @@ describe("runScriptedBrowserLab", () => {
           }
         };
       },
+      // An injected monotonic clock (#276): every poll loop on the provisioned path (install, build,
+      // readiness, seed steps) computes its deadline from `now()` and advances only through
+      // `sleep()`, so no wall-clock deadline can decide this case on a loaded runner. The earlier
+      // `now: Date.now` with a no-op sleep let a real 15 s budget expire twice on CI (2026-07 and
+      // 2026-09-03) while three local runs passed in under a second.
       detachedTimers: {
-        now: () => Date.now(),
-        sleep: async () => undefined
+        now: () => clock,
+        sleep: async (ms) => {
+          clock += ms;
+        }
       }
     };
 
@@ -511,7 +519,8 @@ describe("runScriptedBrowserLab", () => {
     if (outcome.backend !== "scripted") return;
     const result = outcome.result;
 
-    expect(result.ok).toBe(true);
+    // Name the step on failure: "expected false to be true" said nothing on either CI leg.
+    expect(result.ok, JSON.stringify({ error: result.error, warnings: result.warnings })).toBe(true);
     expect(result.appUrl).toBe("[provisioned-subject]");
     expect(result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: true });
     expect(result.hostDigest).toMatch(/^[a-f0-9]{16}$/);
