@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.76.0`)
+## Current Program Truth (source `0.77.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -460,6 +460,27 @@ Stop and correct course if:
 - live labs require private infrastructure to look impressive;
 - package docs link to files that are not shipped;
 - public-safety gates become optional.
+
+## Best Next Work
+
+**2026-09-04 (0.77.0).** Four fixes found by runs and one by a scanner. A phone-emulated lane now
+follows the participant into a tab that opens later: the hold-mode applier attaches to every page
+target Chrome creates, paused before its first navigation, so the new tab lays out at the phone
+width, and the state observer reads each new tab's own fidelity report, recording a covered tab
+under `desktopGeometry.fidelity.laterTargets` (width, DPR, touch points) and a drifted one as a
+lane warning with the number the page gave; the applier's own log travels as `holderLog`. The
+first live proof failed in the participant's hands (a paused popup never resumed) and the shipped
+design is the one four live runs settled on: never pause a later tab, send the overrides the
+moment it exists, reload it once after its first navigation commits
+(`docs/goals/computer-use-actor/receipts/later-tab-emulation-2026-09-04.md`, #623, #636). A sandbox create
+or archive upload that fails on a transient provider error is retried once and named on the lane
+(#630): six lanes started 20 s apart lost five to E2B SDK errors before any turn, a probe of the
+same SDK a minute later worked in 6 s. The provider's `Retry-After` now governs a retry (capped
+at 60 s) and a `403 misalignment_policy_violation` ends the lane named and unresumed (#633). The
+provisioned-clone CI flake runs on an injected clock (#276 closed). The fourth benchmark run on
+this build read 15 of 15 planted defects with nothing invented in three clean runs, cumulative 58
+of 60 (`bench/RESULTS-2026-09-04-0.76.0.md`). humanish.dev negotiates `Accept: text/markdown`
+and llms.txt says when to use humanish (#634).
 
 ## Best Next Work
 
