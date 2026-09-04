@@ -84,7 +84,7 @@ import { redactText } from "./redaction.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./selected-output-paths.js";
 import type { LocalTreeArchive } from "./source-archive.js";
-import type { StopWhen } from "./stop-conditions.js";
+import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -294,6 +294,8 @@ interface RoleSpec {
   deviceName: string;
   /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
   stopWhen?: StopWhen;
+  /** A declared observation window (#510). Lane-level override, else actor default. */
+  dwell?: DwellWindow;
   entry?: string;
   seatUrl: string;
   screenshotDir: string;
@@ -555,6 +557,7 @@ function buildRoleSpecs(
       instructions: composed.instructions,
       deviceName: device.name,
       ...((lane.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane.stopWhen ?? actor?.stopWhen) as StopWhen }),
+      ...((lane.dwell ?? actor?.dwell) === undefined ? {} : { dwell: (lane.dwell ?? actor?.dwell) as DwellWindow }),
       ...(lane.entry === undefined ? {} : { entry: lane.entry }),
       seatUrl: resolveSeatUrl(serveUrl, lane.entry) ?? serveUrl,
       screenshotDir: roleId,
@@ -913,7 +916,8 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             redactScreenshots,
             scrubText: scrubKnownValues,
             writeScreenshot,
-            ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen })
+            ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
+            ...(spec.dwell === undefined ? {} : { dwell: spec.dwell })
           };
           session = await runSession(sessionOptions);
         } catch (error) {
