@@ -120,7 +120,7 @@ import {
   type PreparedRunArtifactPaths
 } from "./run-paths.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "./source-archive.js";
-import type { StopWhen } from "./stop-conditions.js";
+import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
   loadRunBundle,
@@ -586,6 +586,8 @@ export interface CuaLaneSpec {
   targetUrl?: string;
   /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
   stopWhen?: StopWhen;
+  /** A declared observation window (#510). Lane-level override, else actor default. */
+  dwell?: DwellWindow;
   /**
    * How hard this lane's model is asked to think. Lane-level override, else the actor default,
    * else absent — and absent means the provider's own default, which the trace records as the
@@ -872,6 +874,7 @@ function laneSpecsAndPlan(
       instructions: composed.instructions,
       ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
       ...((lane?.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
+      ...((lane?.dwell ?? actor?.dwell) === undefined ? {} : { dwell: (lane?.dwell ?? actor?.dwell) as DwellWindow }),
       ...((lane?.reasoningEffort ?? actor?.reasoningEffort) === undefined
         ? {}
         : { reasoningEffort: (lane?.reasoningEffort ?? actor?.reasoningEffort) as ReasoningEffort }),
@@ -2281,7 +2284,9 @@ function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
   return session.trace.items.some((item) =>
     item.kind === "notice"
       && item.status === "matched"
-      && item.title.startsWith("stopWhen matched"));
+      // A dwell window that ended the session (then: stop) is the same class of harness-owned,
+      // structured completion as a matched stopWhen (#510).
+      && (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"));
 }
 
 /**
@@ -2855,6 +2860,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(spec.idleSteps === undefined ? {} : { idleSteps: spec.idleSteps }),
         ...(spec.noProgressSteps === undefined ? {} : { noProgressSteps: spec.noProgressSteps }),
         ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
+        ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
         ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
         // The STUDY budget (#299): this lane notes its own running estimate on the shared ledger
         // and stops when the RUN total crosses the cap — independent of the per-lane maxUsd above.
@@ -3103,6 +3109,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
       scrubText: deps.scrubKnownValues,
       writeScreenshot,
       ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
+      ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
       ...(spec.tasks === undefined ? {} : { tasks: spec.tasks })
     };
     session = await deps.runSession(sessionOptions);

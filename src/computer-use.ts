@@ -14,6 +14,7 @@ import { commandFailureInfo, isCommandExitError } from "./command-failure.js";
 import type { RedactionHooks } from "./redaction.js";
 import {
   evaluateStopWhen,
+  type DwellWindow,
   type StopConditionMatch,
   type StopConditionObservation,
   type StopWhen
@@ -253,6 +254,15 @@ export interface CuaLoopOptions {
    * wandering after the product already reached an app-visible endpoint.
    */
   stopWhen?: StopWhen;
+  /**
+   * A declared observation window (#510): once its condition matches (or after the first
+   * observation when it has none) the loop holds the page for the window, captures a frame on the
+   * cadence, takes no action and requests no model turn, then hands control back or ends. Runs at
+   * most once per session and never past the session budget.
+   */
+  dwell?: DwellWindow;
+  /** Injected pause for the dwell window's cadence; tests advance their clock through it. */
+  sleep?: (ms: number) => Promise<void>;
   /**
    * The lab's declared protocol (#414): discrete tasks whose completion is corroborated by the
    * same observations stopWhen reads, on the same cadence. The tracker never influences the loop's
@@ -650,6 +660,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     scrubText = (text) => text,
     writeScreenshot = async (name) => `screenshots/${name}`,
     stopWhen,
+    dwell,
+    sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
     tasks,
     maxUsd,
     overRunBudget,
@@ -849,6 +861,63 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         return await raceBounded(`observe (${label}, retry)`, executor.observe(), remaining(), observationTimeoutMs, signal);
       }
     };
+    // The declared observation window (#510). The harness holds, looks, and takes nothing back to
+    // the model: no action, no turn, no tokens. It runs once, cut to whatever session budget is
+    // left, and says in the trace that the time was deliberate.
+    let dwellDone = false;
+    let dwellHeldMs = 0;
+    const dwellIfDue = async (observation: CuaObservation, turnNumber: number): Promise<"continue" | "stop" | undefined> => {
+      if (dwell === undefined || dwellDone) return undefined;
+      if (dwell.when !== undefined && evaluateStopWhen(dwell.when, stopObservationOf(observation)) === undefined) return undefined;
+      dwellDone = true;
+      const trigger = dwell.when === undefined ? "at the start" : "its condition matched";
+      const budget = Math.min(dwell.ms, Math.max(0, remaining() - dwell.everyMs));
+      if (budget < dwell.everyMs) {
+        record({
+          id: nextId("notice"),
+          kind: "notice",
+          lifecycle: "completed",
+          status: "warn",
+          title: "dwell window skipped",
+          text: `${trigger} at turn ${turnNumber}, but only ${Math.max(0, remaining())}ms of session budget remained for a ${dwell.ms}ms window`
+        });
+        return undefined;
+      }
+      const dwellStartedAtMs = now();
+      record({
+        id: nextId("notice"),
+        kind: "notice",
+        lifecycle: "started",
+        title: "dwell window started",
+        text: `${trigger} at turn ${turnNumber}: holding ${budget}ms, a frame every ${dwell.everyMs}ms, no actions, no model turns`
+      });
+      let frames = 0;
+      while (now() - dwellStartedAtMs < budget) {
+        if (signal?.aborted) throw new CuaAbortError();
+        await sleep(Math.min(dwell.everyMs, budget - (now() - dwellStartedAtMs)));
+        currentPhase = `dwell frame ${frames + 1}`;
+        const frameObservation = await observeBounded(`dwell frame ${frames + 1}`);
+        frames += 1;
+        if (frameObservation.screenshot !== undefined) onScreenshot?.(frameObservation.screenshot);
+        await maybeRecordScreenshot(frameObservation, `dwell-${frames.toString().padStart(2, "0")}`);
+        onTrace?.(items.slice(), runningUsage());
+        observeTasks(frameObservation, turnNumber);
+      }
+      dwellHeldMs = now() - dwellStartedAtMs;
+      record({
+        id: nextId("notice"),
+        kind: "notice",
+        lifecycle: "completed",
+        // A window that ENDS the session is structured, harness-owned completion evidence, the
+        // same class as a matched stopWhen, and the verdict resolver reads it that way.
+        status: dwell.then === "stop" ? "matched" : "ok",
+        title: "dwell window complete",
+        text: `${frames} frame(s) over ${dwellHeldMs}ms; no model turn was requested during the window`
+      });
+      if (dwell.then === "stop") return "stop";
+      contextHint = `The study held this page under observation for ${Math.round(dwellHeldMs / 1000)} seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.`;
+      return "continue";
+    };
     let observation = await observeBounded("initial");
     // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
     onObservedUrl?.(observation.url);
@@ -859,6 +928,19 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     await maybeRecordScreenshot(observation, "turn-00-start");
     onTrace?.(items.slice(), runningUsage());
     observeTasks(observation, 0);
+    const initialDwell = await dwellIfDue(observation, 0);
+    if (initialDwell !== undefined) {
+      observation = await observeBounded("after dwell");
+      onObservedUrl?.(observation.url);
+      if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
+      await maybeRecordScreenshot(observation, "turn-00-after-dwell");
+      observeTasks(observation, 0);
+      if (initialDwell === "stop") {
+        completionReason = "goal_satisfied";
+        reason = `dwell window complete (${dwellHeldMs}ms held at the start)`;
+        throw new CuaStopWhenStop();
+      }
+    }
     stopConditionMatch = matchedStopWhen(observation);
     if (stopConditionMatch) {
       completionReason = "goal_satisfied";
@@ -1186,6 +1268,19 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
       onTrace?.(items.slice(), runningUsage());
       observeTasks(observation, turnNumber);
+      const dwellOutcome = await dwellIfDue(observation, turnNumber);
+      if (dwellOutcome !== undefined) {
+        observation = await observeBounded("after dwell");
+        onObservedUrl?.(observation.url);
+        if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
+        await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}-after-dwell`);
+        observeTasks(observation, turnNumber);
+        if (dwellOutcome === "stop") {
+          completionReason = "goal_satisfied";
+          reason = `dwell window complete (${dwellHeldMs}ms held after turn ${turnNumber})`;
+          break;
+        }
+      }
       stopConditionMatch = matchedStopWhen(observation);
       if (stopConditionMatch) {
         completionReason = "goal_satisfied";

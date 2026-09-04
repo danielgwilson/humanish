@@ -356,6 +356,44 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("stopWhen");
     });
 
+    it("parses an actor-level dwell window with defaults and a lane-level override (#510)", () => {
+      const result = parseLabConfig({
+        ...validCua,
+        actors: [{
+          type: "openai-computer-use",
+          mission: "Join, stay a while, leave.",
+          dwell: { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 120_000 },
+          lanes: [
+            { id: "lane-a", persona: "reviewer", instruction: "Join the room." },
+            { id: "lane-b", persona: "approver", instruction: "Join the room.", dwell: { ms: 30_000, everyMs: 5_000, then: "stop" } }
+          ]
+        }]
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.config.actors[0]?.dwell).toEqual({ when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 120_000, everyMs: 10_000, then: "continue" });
+      expect(result.config.actors[0]?.lanes?.[1]?.dwell).toEqual({ ms: 30_000, everyMs: 5_000, then: "stop" });
+      expect(result.config.actors[0]?.lanes?.[0]?.dwell).toBeUndefined();
+    });
+
+    it.each([
+      ["not an object", 5000],
+      ["ms missing", { everyMs: 1000 }],
+      ["ms below a second", { ms: 500 }],
+      ["ms above an hour", { ms: 3_600_001 }],
+      ["everyMs above ms", { ms: 5_000, everyMs: 6_000 }],
+      ["then unknown", { ms: 5_000, then: "pause" }],
+      ["when invalid", { ms: 5_000, when: { any: [] } }]
+    ])("rejects an invalid dwell window: %s", (_label, dwell) => {
+      const result = parseLabConfig({
+        ...validCua,
+        actors: [{ type: "openai-computer-use", dwell }]
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("dwell");
+    });
+
     it("keeps warning about mission/persona/model on routes that do NOT consume them", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
