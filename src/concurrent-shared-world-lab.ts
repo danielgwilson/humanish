@@ -1208,6 +1208,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
         timeoutMs,
         laneCount: roles.length,
         artifactRoot: runPaths,
+        labCwd: cwd,
         redactScreenshots,
         scrubKnownValues,
         runSession,
@@ -1342,6 +1343,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
       timeoutMs,
       laneCount: roles.length,
       artifactRoot: runPaths,
+        labCwd: cwd,
       redactScreenshots,
       // Scrub the latched lobby CODE (known once the host resolves it) from ALL narration.
       scrubKnownValues: scrubKnownValuesWithLobbyCode,

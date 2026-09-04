@@ -553,6 +553,21 @@ export interface LabExecutionDesktop {
    * Applies to the launch tab; a tab the participant opens later is not emulated.
    */
   fidelity?: LabDesktopFidelity;
+  /** Synthetic media devices behind the browser's own permission prompt (#509). */
+  media?: LabDesktopMedia;
+}
+
+/**
+ * A participant with a camera (#509): a property of the ENVIRONMENT, like the screen preset and
+ * the browser, never support for any conferencing product. `camera.source: synthetic` generates
+ * a test pattern in the sandbox with the image's own ffmpeg; a `.y4m` path on the host is
+ * uploaded instead. A microphone needs an image with an audio stack (`execution.desktop.template`);
+ * the stock desktop has none, so a declared microphone without a template is refused at parse
+ * time, before any spend.
+ */
+export interface LabDesktopMedia {
+  camera?: { source: string };
+  microphone?: { source: string };
 }
 
 export interface LabDesktopFidelity {
@@ -676,6 +691,14 @@ export interface LabPolicies {
    * the owner declared" — setting this IS that declaration (e.g. a Vercel preview of your app).
    */
   allowPublicTargets?: boolean;
+  /**
+   * How the browser's camera/microphone permission is answered (#509). `prompt` (default): the
+   * participant meets Chrome's real dialog and answers it, which is where a real person hesitates
+   * or refuses. `granted`: the dialog is bypassed (`--use-fake-ui-for-media-stream`, which Chrome
+   * marks with an "unsupported command-line flag" banner), for studies about what happens after
+   * the gate.
+   */
+  mediaPermission?: "prompt" | "granted";
   /**
    * Terminal-product credential-boundary declarations — all DEFAULT FALSE (deny-by-default). The
    * shipped live engine always passes only the runtime LLM key, command-scoped, and records these
@@ -883,6 +906,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     return scenarioResult;
   }
   if (scenarioResult.value) config.scenario = scenarioResult.value;
+  if (isRecord(raw.policies) && raw.policies.mediaPermission !== undefined && raw.policies.mediaPermission !== "prompt" && raw.policies.mediaPermission !== "granted") {
+    return invalid("`policies.mediaPermission` must be `prompt` (the participant answers the browser's own dialog) or `granted`.");
+  }
   const policies = parsePolicies(raw.policies);
   if (policies) config.policies = policies;
   const reviewResult = parseReview(raw.review);
@@ -2884,6 +2910,33 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
     }
     desktop.fidelity = fidelity;
   }
+  if (raw.media !== undefined) {
+    if (!isRecord(raw.media)) {
+      return invalid("`execution.desktop.media` must be an object with `camera` and/or `microphone` ({ source }).");
+    }
+    const media: LabDesktopMedia = {};
+    if (raw.media.camera !== undefined) {
+      const source = isRecord(raw.media.camera) ? str(raw.media.camera.source) : undefined;
+      if (source === undefined || (source !== "synthetic" && !source.endsWith(".y4m"))) {
+        return invalid("`execution.desktop.media.camera.source` must be `synthetic` or a path to a `.y4m` file (Chrome's fake video capture reads Y4M).");
+      }
+      media.camera = { source };
+    }
+    if (raw.media.microphone !== undefined) {
+      const source = isRecord(raw.media.microphone) ? str(raw.media.microphone.source) : undefined;
+      if (source === undefined) {
+        return invalid("`execution.desktop.media.microphone.source` must be a non-empty path when set.");
+      }
+      if (desktop.template === undefined) {
+        return invalid("`execution.desktop.media.microphone` needs `execution.desktop.template`: the stock desktop image has no audio stack, so Chrome enumerates no microphone and the participant would report a limitation of the instrument as a finding (#509).");
+      }
+      media.microphone = { source };
+    }
+    if (media.camera === undefined && media.microphone === undefined) {
+      return invalid("`execution.desktop.media` declares neither `camera` nor `microphone`.");
+    }
+    desktop.media = media;
+  }
   return { ok: true, value: Object.keys(desktop).length > 0 ? desktop : undefined };
 }
 
@@ -2945,6 +2998,7 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
   if (typeof raw.redactRepos === "boolean") policies.redactRepos = raw.redactRepos;
   if (typeof raw.redactScreenshots === "boolean") policies.redactScreenshots = raw.redactScreenshots;
   if (typeof raw.allowPublicTargets === "boolean") policies.allowPublicTargets = raw.allowPublicTargets;
+  if (raw.mediaPermission === "prompt" || raw.mediaPermission === "granted") policies.mediaPermission = raw.mediaPermission;
   if (typeof raw.allowPrivateRepoAccess === "boolean") policies.allowPrivateRepoAccess = raw.allowPrivateRepoAccess;
   if (typeof raw.allowProviderCredentials === "boolean") policies.allowProviderCredentials = raw.allowProviderCredentials;
   if (typeof raw.allowPaymentCredentials === "boolean") policies.allowPaymentCredentials = raw.allowPaymentCredentials;

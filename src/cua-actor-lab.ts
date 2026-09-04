@@ -87,8 +87,7 @@ import {
   type LabDesktopBrowser,
   type LabStateStepWhen,
   type LabSubjectServe,
-  type LabSubjectState
-} from "./lab-config.js";
+  type LabSubjectState, type LabDesktopMedia } from "./lab-config.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
@@ -192,6 +191,71 @@ const BROWSER_SETTLE_MS = 8_000;
 export interface DesktopBrowserEvidence {
   requested: LabDesktopBrowser;
   resolved?: string;
+  /** Synthetic media devices the browser was launched with (#509), and how permission is answered. */
+  media?: DesktopMediaEvidence;
+}
+
+export interface DesktopMediaEvidence {
+  camera?: { source: "synthetic" | "file"; file: string };
+  permission: "prompt" | "granted";
+  flags: string[];
+}
+
+/** Where a lane's synthetic camera feed lives inside the sandbox: a tmpfs the sandbox user can
+ *  write, and a path that contains neither /tmp/ nor /home/, which the public-safety scan reads
+ *  as an operator's local path (this one is the harness's own and belongs in the bundle). */
+export const SANDBOX_MEDIA_DIR = "/dev/shm/humanish-media";
+export const SANDBOX_CAMERA_PATH = `${SANDBOX_MEDIA_DIR}/camera.y4m`;
+/** The synthetic feed: ffmpeg's test pattern, 640x480 at 10 fps, six seconds (about 28 MB of
+ *  raw Y4M on the tmpfs), looped by Chrome's fake capture device. */
+export const SYNTHETIC_CAMERA_COMMAND =
+  `mkdir -p ${SANDBOX_MEDIA_DIR} && ffmpeg -y -loglevel error -f lavfi -i testsrc=size=640x480:rate=10 -t 6 -pix_fmt yuv420p ${SANDBOX_CAMERA_PATH}`;
+
+/**
+ * Put the declared camera feed in the sandbox and return the Chromium flags that present it as a
+ * capture device (#509). Fails CLOSED: a feed that cannot be produced (no ffmpeg on the image, an
+ * unreadable host file) is named before the browser launches, because a participant told it has
+ * a camera and finds none reports the instrument's gap as the product's.
+ */
+export async function prepareDesktopMedia(
+  desktop: E2BDesktopSandbox,
+  media: LabDesktopMedia,
+  permission: "prompt" | "granted",
+  cwd: string,
+  requestTimeoutMs: number,
+  readHostFile: (absolutePath: string) => Promise<Buffer> = (absolutePath) => readFile(absolutePath)
+): Promise<DesktopMediaEvidence> {
+  const flags: string[] = [];
+  let camera: DesktopMediaEvidence["camera"];
+  if (media.camera !== undefined) {
+    if (media.camera.source === "synthetic") {
+      const made = await desktop.commands.run(SYNTHETIC_CAMERA_COMMAND, { requestTimeoutMs, timeoutMs: 60_000 });
+      if (made.exitCode !== undefined && made.exitCode !== 0) {
+        throw new Error(
+          `the synthetic camera feed could not be generated on this desktop image (ffmpeg exited ${made.exitCode}: ${tailOf(made.stderr ?? made.stdout ?? "")}); give execution.desktop.media.camera.source a .y4m file instead`
+        );
+      }
+      camera = { source: "synthetic", file: SANDBOX_CAMERA_PATH };
+    } else {
+      const absolutePath = path.resolve(cwd, media.camera.source);
+      let bytes: Buffer;
+      try {
+        bytes = await readHostFile(absolutePath);
+      } catch (error) {
+        throw new Error(`execution.desktop.media.camera.source could not be read (${toErrorMessage(error)})`);
+      }
+      if (bytes.length > 64 * 1024 * 1024) {
+        throw new Error(`execution.desktop.media.camera.source is ${bytes.length} bytes; the camera feed is capped at 64 MiB`);
+      }
+      await desktop.commands.run(`mkdir -p ${SANDBOX_MEDIA_DIR}`, { requestTimeoutMs, timeoutMs: 15_000 });
+      const payload = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      await desktop.files.write(SANDBOX_CAMERA_PATH, payload, { requestTimeoutMs, useOctetStream: true });
+      camera = { source: "file", file: SANDBOX_CAMERA_PATH };
+    }
+    flags.push("--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${SANDBOX_CAMERA_PATH}`);
+  }
+  if (permission === "granted") flags.push("--use-fake-ui-for-media-stream");
+  return { ...(camera === undefined ? {} : { camera }), permission, flags };
 }
 
 export type DesktopBrowserFamily = "chromium" | "firefox" | "unknown";
@@ -1237,6 +1301,8 @@ export interface CuaLaneDeps {
   timeoutMs: number;
   laneCount: number;
   artifactRoot: PreparedOutputDirectory;
+  /** The lab's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
+  labCwd: string;
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
   runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
@@ -2626,19 +2692,35 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 
       if (!desktopCliRoute) {
         const requestedFidelity = config.execution?.desktop?.fidelity;
+        // A declared camera (#509) is in place before the browser starts: the feed is generated or
+        // uploaded first, and a feed that cannot be produced fails the lane closed here.
+        const requestedMedia = config.execution?.desktop?.media;
+        const mediaEvidence = requestedMedia === undefined
+          ? undefined
+          : await prepareDesktopMedia(desktop, requestedMedia, config.policies?.mediaPermission ?? "prompt", deps.labCwd, deps.requestTimeoutMs);
         const browserLaunch = await openDesktopBrowserTarget(
           desktop,
           targetUrl,
           deps.requestTimeoutMs,
           config.execution?.desktop?.browser,
-          requestedFidelity?.mobileEmulation && spec.devicePreset.isMobile
-            ? [
-                `--user-agent=${requestedFidelity.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
-                ...(requestedFidelity.touch === false ? [] : ["--touch-events=enabled"])
-              ]
-            : []
+          [
+            ...(requestedFidelity?.mobileEmulation && spec.devicePreset.isMobile
+              ? [
+                  `--user-agent=${requestedFidelity.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
+                  ...(requestedFidelity.touch === false ? [] : ["--touch-events=enabled"])
+                ]
+              : []),
+            ...(mediaEvidence?.flags ?? [])
+          ]
         );
-        desktopBrowser = browserLaunch.evidence;
+        desktopBrowser = mediaEvidence === undefined
+          ? browserLaunch.evidence
+          : { requested: config.execution?.desktop?.browser ?? "default", ...(browserLaunch.evidence ?? {}), media: mediaEvidence };
+        if (mediaEvidence !== undefined && browserLaunch.family !== "chromium") {
+          throw new Error(
+            `execution.desktop.media needs Chrome or Chromium on lane ${spec.laneId} (the fake-device flags are Chromium's); the launched browser family is ${browserLaunch.family}. Set execution.desktop.browser: chrome.`
+          );
+        }
         launchedBrowserFamily = browserLaunch.family;
         browserLaunchIdentity = browserLaunch.identity;
         browserLaunched = true;
@@ -3841,6 +3923,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     timeoutMs,
     laneCount,
     artifactRoot: runPaths,
+    labCwd: options.cwd,
     redactScreenshots,
     scrubKnownValues,
     runSession,

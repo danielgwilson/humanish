@@ -764,6 +764,86 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toBeUndefined();
   });
 
+  // A lane with a declared synthetic camera (#509): the fake desktop answers the ffmpeg feed
+  // generation and the Chrome launch, and the test reads what the browser was launched with.
+  function cameraSandbox(ffmpegExit: number) {
+    const commands: string[] = [];
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        commands.push(command);
+        if (command.includes("ffmpeg -y")) return { exitCode: ffmpegExit, stdout: "", ...(ffmpegExit === 0 ? {} : { stderr: "ffmpeg: command not found" }) };
+        if (command.includes("browser_preference='chrome'")) {
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+        }
+        return undefined;
+      }
+    });
+    return { sandbox, commands };
+  }
+  async function runCameraLane(sandbox: ReturnType<typeof makeFakeSandbox>, policies: Record<string, unknown>) {
+    const { module } = makeFakeModule(sandbox);
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-camera",
+      title: "Participant camera",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Turn on the camera and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { browser: "chrome", media: { camera: { source: "synthetic" } } } },
+      scenario: { mode: "live" },
+      policies
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    return outcome;
+  }
+
+  it("a synthetic camera (#509): the feed is generated before launch, Chrome gets the fake-device flags, the bundle records it, the permission dialog stays real", async () => {
+    const { sandbox, commands } = cameraSandbox(0);
+    const outcome = await runCameraLane(sandbox, {});
+    expect(outcome.result.ok, JSON.stringify(outcome.result.error)).toBe(true);
+    const ffmpeg = commands.findIndex((command) => command.includes("ffmpeg -y"));
+    const launch = commands.findIndex((command) => command.includes("browser_preference='chrome'"));
+    expect(ffmpeg).toBeGreaterThan(-1);
+    expect(launch).toBeGreaterThan(ffmpeg);
+    expect(commands[launch]).toContain("--use-fake-device-for-media-stream");
+    expect(commands[launch]).toContain("--use-file-for-fake-video-capture=/dev/shm/humanish-media/camera.y4m");
+    expect(commands[launch]).not.toContain("--use-fake-ui-for-media-stream");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopBrowser.media).toEqual({
+      camera: { source: "synthetic", file: "/dev/shm/humanish-media/camera.y4m" },
+      permission: "prompt",
+      flags: ["--use-fake-device-for-media-stream", "--use-file-for-fake-video-capture=/dev/shm/humanish-media/camera.y4m"]
+    });
+  });
+
+  it("policies.mediaPermission: granted adds the auto-accept flag and the bundle says so", async () => {
+    const { sandbox, commands } = cameraSandbox(0);
+    const outcome = await runCameraLane(sandbox, { mediaPermission: "granted" });
+    expect(outcome.result.ok).toBe(true);
+    const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
+    expect(launch).toContain("--use-fake-ui-for-media-stream");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.desktopBrowser.media.permission).toBe("granted");
+    expect(bundle.desktopBrowser.media.flags).toContain("--use-fake-ui-for-media-stream");
+  });
+
+  it("a desktop image without ffmpeg fails the lane closed before the browser launches, named", async () => {
+    const { sandbox, commands } = cameraSandbox(127);
+    const outcome = await runCameraLane(sandbox, {});
+    expect(outcome.result.ok).toBe(false);
+    expect(JSON.stringify(outcome.result.error)).toContain("synthetic camera feed could not be generated");
+    expect(commands.some((command) => command.includes("browser_preference='chrome'"))).toBe(false);
+  });
+
   it("sandbox create retried once (#630): a first attempt that hit an envd not yet routable is retried, named on the lane and in the phase trail", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {

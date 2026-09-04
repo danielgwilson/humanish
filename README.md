@@ -520,6 +520,15 @@ actors:
               textIncludes: Queue
 ```
 
+**A participant with a camera.** `execution.desktop.media.camera: { source: synthetic }` gives a
+hosted Chrome lane a capture device: an ffmpeg test pattern generated in the sandbox (or a
+`.y4m` file of yours, uploaded). The browser's own permission dialog stays in the way by default
+(`policies.mediaPermission: prompt`), because the gate is where a real person hesitates or
+refuses; `granted` bypasses it for studies about what happens after. The bundle records the
+feed and the exact launch flags under `desktopBrowser.media`. A microphone needs an image with
+an audio stack (`execution.desktop.template`); the stock desktop has none, so a declared
+microphone without a template is refused before any spend.
+
 Supported primitives are `urlIncludes`, `urlPathEquals`, `textIncludes`, and
 `appStatePathEquals`. URL and text observations are runtime-only and are not persisted into
 the run bundle; the trace stores only the matched rule id and primitive names. Browser URL

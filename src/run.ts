@@ -859,6 +859,15 @@ export interface RunBundle {
   desktopBrowser?: {
     requested: "default" | "chrome" | "chromium" | "firefox";
     resolved?: string;
+    /**
+     * Synthetic media devices the browser was launched with (#509): the camera feed's origin and
+     * in-sandbox path, how the permission dialog is answered, and the exact flags.
+     */
+    media?: {
+      camera?: { source: "synthetic" | "file"; file: string };
+      permission: "prompt" | "granted";
+      flags: string[];
+    };
   };
   /**
    * Optional lineage for a run that intentionally re-executes selected lanes from a prior
