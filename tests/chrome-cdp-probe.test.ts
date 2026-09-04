@@ -236,8 +236,14 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
       userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     };
     // One-shot apply: the session-scoped overrides (UA, touch, DPR) lapse when the socket closes,
-    // which is why the lane uses "hold". The one-shot still reports what it applied.
-    const applied = await runProbe({ mode: "emulate", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation });
+    // which is why the lane uses "hold". The one-shot still reports what it applied. On a loaded
+    // runner /json can list no http page for an instant (a reload in flight); that answer is
+    // transient, so it is retried the way the lane's observer retries on its next turn.
+    let applied = await runProbe({ mode: "emulate", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation });
+    for (let attempt = 0; attempt < 20 && applied.unavailable?.includes("no http page"); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      applied = await runProbe({ mode: "emulate", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation });
+    }
     expect(applied.unavailable).toBeUndefined();
     expect(applied.applied).toEqual([
       "Emulation.setDeviceMetricsOverride",
