@@ -329,7 +329,11 @@ def main():
     if page is None:
         print(json.dumps({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)}))
         return
-    ws_url = page.get("webSocketDebuggerUrl")
+    # Chrome omits webSocketDebuggerUrl from /json while another DevTools client is attached to the
+    # page, or for a moment after one detaches; the page socket URL is still /devtools/page/<id>.
+    ws_url = page.get("webSocketDebuggerUrl") or (
+        "ws://127.0.0.1:%d/devtools/page/%s" % (port, page.get("id")) if page.get("id") else None
+    )
     if mode == "emulate":
         applied, failure = emulate(ws_url, args.get("emulation") or {}) if ws_url else (None, "the page has no socket")
         if failure is not None:

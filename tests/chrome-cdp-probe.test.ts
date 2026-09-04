@@ -258,7 +258,10 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         console.warn(`chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`);
         return ctx.skip("the hold-mode applier did not come up on this runner");
       }
-      expect(parseChromeCdpProbeOutput(line).applied).toHaveLength(5);
+      // Name the announce on failure: "Target cannot be null" said nothing on the node-22 runner.
+      const announcedResult = parseChromeCdpProbeOutput(line);
+      expect(announcedResult.unavailable, line).toBeUndefined();
+      expect(announcedResult.applied, line).toHaveLength(5);
       let read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl });
       for (let attempt = 0; attempt < 40 && !(read.fidelity?.innerWidth === 414 && read.fidelity.userAgent.includes("iPhone")); attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 250));
