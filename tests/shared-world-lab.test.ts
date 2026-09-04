@@ -667,6 +667,23 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(seen).toEqual([actorDefault, laneOverride]);
   });
 
+  it("an explicit per-role budget that would push the ONE sandbox past the provider's 60-minute cap fails closed before any create, with the arithmetic", async () => {
+    const state = { worldVersion: 0 };
+    const sandbox = makeFakeSandbox(makeCommandHandler(state));
+    const { module, created } = makeFakeModule(sandbox);
+    const config = sharedWorldConfig();
+    config.execution = { ...(config.execution ?? {}), timeoutMs: 900_000 }; // 15 min x 2 roles + 30 + 10 = 70 min
+    const hooks: SharedWorldLabHooks = {
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
+      loadDesktopModule: async () => module,
+      runSession: makeRunSession(state, () => undefined),
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      onPhase: () => {}
+    };
+    await expect(runSharedWorldLab({ cwd, config, dryRun: false, hooks })).rejects.toThrow(/over the provider's 60-minute sandbox cap; set execution\.timeoutMs to at most \d+ ms per role/);
+    expect(created).toHaveLength(0);
+  });
+
   it("threads actor-default and lane-level dwell windows into sequential shared-world sessions (#510)", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
