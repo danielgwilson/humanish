@@ -144,7 +144,7 @@ def select_page(pages, args):
         return match
     return http_pages[0] if len(http_pages) == 1 else None
 
-def ws_session(ws_url, messages, timeout=1.5, hold=False):
+def ws_session(ws_url, messages, timeout=1.5, hold=False, announce_extra=None):
     """Send CDP messages over one page socket, in order, and return their replies (None on failure).
     hold=True prints the replies and then keeps the socket open until the process is killed."""
     match = re.match(r"^ws://([^/:]+):(\d+)(/.*)$", str(ws_url or ""))
@@ -239,7 +239,7 @@ def ws_session(ws_url, messages, timeout=1.5, hold=False):
             # Announce the result now (the caller reads stdout once), then stay attached.
             applied = [m["method"] for m, r in zip(messages, replies) if isinstance(r, dict) and "error" not in r]
             failed = [m["method"] for m, r in zip(messages, replies) if not (isinstance(r, dict) and "error" not in r)]
-            print(json.dumps({"applied": applied, "held": not failed, **({"unavailable": "%s failed" % failed[0]} if failed else {})}), flush=True)
+            print(json.dumps({"applied": applied, "held": not failed, **(announce_extra or {}), **({"unavailable": "%s failed" % failed[0]} if failed else {})}), flush=True)
             if failed:
                 return replies
             sock.settimeout(None)
@@ -279,7 +279,7 @@ FIDELITY_EXPRESSION = (
     "coarsePointer: !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) })"
 )
 
-def emulate(ws_url, request, hold=False):
+def emulate(ws_url, request, hold=False, target_id=""):
     """Apply the Emulation domain to the page and reload it so scripts that read the UA at load see it.
     With hold=True the socket stays open (the overrides are bound to this session) until the process is killed."""
     width = int(request.get("width") or 0)
@@ -301,7 +301,7 @@ def emulate(ws_url, request, hold=False):
             params["platform"] = platform
         messages.append({"method": "Emulation.setUserAgentOverride", "params": params})
     messages.append({"method": "Page.reload", "params": {}})
-    replies = ws_session(ws_url, messages, timeout=5, hold=hold)
+    replies = ws_session(ws_url, messages, timeout=5, hold=hold, announce_extra={"targetId": target_id} if hold else None)
     if replies is None:
         return None, "the page socket could not be opened"
     applied = []
@@ -342,7 +342,7 @@ def main():
             print(json.dumps({"unavailable": "the page has no socket"}), flush=True)
             return
         # Prints its own line from inside ws_session (before blocking) and never returns on success.
-        applied, failure = emulate(ws_url, args.get("emulation") or {}, hold=True)
+        applied, failure = emulate(ws_url, args.get("emulation") or {}, hold=True, target_id=str(page.get("id") or ""))
         if failure is not None:
             print(json.dumps({"unavailable": failure, "applied": applied or []}), flush=True)
         return
@@ -371,7 +371,7 @@ def main():
         title = result["title"] if isinstance(result.get("title"), str) else title
         text = result["text"] if isinstance(result.get("text"), str) else ""
         scroll_y = result["scrollY"] if isinstance(result.get("scrollY"), (int, float)) else None
-    print(json.dumps({"url": url, "title": title, "text": text, "scrollY": scroll_y}))
+    print(json.dumps({"url": url, "title": title, "text": text, "scrollY": scroll_y, "targetId": str(page.get("id") or "")}))
 
 main()
 `;

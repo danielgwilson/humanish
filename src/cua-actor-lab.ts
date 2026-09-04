@@ -1686,9 +1686,17 @@ export function makeChromeBrowserStateObserver(
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
   targetId?: string,
-  onUnavailable?: (reason: string) => void
+  onUnavailable?: (reason: string) => void,
+  /**
+   * Mobile emulation drift (#623): the viewport and DPR override are bound to the emulated page
+   * target; a tab the participant opens later lays out at the window width. When an observation
+   * reads a different target than the one emulated, `onDrift` fires once so the bundle says a
+   * phone-labelled lane spent part of its session at desktop layout.
+   */
+  drift?: { emulatedTargetId: string; onDrift: (reason: string) => void }
 ): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
   let reported = false;
+  let drifted = false;
   const unavailable = (reason: string): Record<string, never> => {
     if (!reported) {
       reported = true;
@@ -1706,6 +1714,12 @@ export function makeChromeBrowserStateObserver(
     }
     const parsed = parseChromeCdpProbeOutput(result.stdout);
     if (parsed.unavailable !== undefined) return unavailable(parsed.unavailable);
+    if (drift !== undefined && !drifted && parsed.targetId !== undefined && parsed.targetId !== drift.emulatedTargetId) {
+      drifted = true;
+      drift.onDrift(
+        "the participant drove a page target other than the emulated launch tab for at least one observation; that tab has the mobile user agent and touch events (browser-wide) but not the 414 px viewport or DPR override"
+      );
+    }
     return {
       ...(parsed.url === undefined ? {} : { url: parsed.url }),
       ...(parsed.title === undefined ? {} : { title: parsed.title }),
@@ -1771,7 +1785,7 @@ export async function applyMobileEmulation(
   endpoint: ChromeCdpEndpoint,
   targetId: string | undefined,
   request: ChromeMobileEmulationRequest
-): Promise<{ fidelity: NonNullable<RunDesktopGeometry["fidelity"]>; warnings: string[] }> {
+): Promise<{ fidelity: NonNullable<RunDesktopGeometry["fidelity"]>; warnings: string[]; targetId?: string }> {
   const command = (mode: "hold" | "fidelity") =>
     chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer: "pinned", mode, emulation: request });
   const read = async () => {
@@ -1823,9 +1837,10 @@ export async function applyMobileEmulation(
     touch: request.touch,
     userAgent: request.userAgent
   };
+  const emulatedTargetId = applied.targetId ?? fidelityRead.targetId;
   if (fidelityRead.fidelity === undefined) {
     warnings.push(`Mobile emulation was applied but the page's own report could not be read (${fidelityRead.unavailable ?? "no fidelity read"}); desktopGeometry.fidelity carries the request without a resolved block.`);
-    return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [] }, warnings };
+    return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [] }, warnings, ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }) };
   }
   const resolved = { ...fidelityRead.fidelity, source: "cdp" as const };
   if (resolved.innerWidth !== request.width) {
@@ -1840,7 +1855,7 @@ export async function applyMobileEmulation(
   if (!resolved.userAgent.includes("Mobile") && !resolved.userAgent.includes("Android") && !resolved.userAgent.includes("iPhone")) {
     warnings.push("Mobile emulation requested a mobile user agent; the page reports a desktop one.");
   }
-  return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [], resolved }, warnings };
+  return { fidelity: { tier: "mobile-emulated", requested, applied: applied.applied ?? [], resolved }, warnings, ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }) };
 }
 
 function isMeasuredRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
@@ -2373,6 +2388,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let browserLaunched = false;
   let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
   let appliedFidelity: RunDesktopGeometry["fidelity"] | undefined;
+  let emulatedTargetId: string | undefined;
   let browserWindowId: string | undefined;
   let browserTargetId: string | undefined;
   const declaredScreen = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
@@ -2615,6 +2631,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             }
           );
           appliedFidelity = applied.fidelity;
+          emulatedTargetId = applied.targetId;
           warnings.push(...applied.warnings);
         }
       } else {
@@ -2763,7 +2780,15 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
                       `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
                         "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session."
                     );
-                  }
+                  },
+                  emulatedTargetId === undefined
+                    ? undefined
+                    : {
+                        emulatedTargetId,
+                        onDrift: (reason) => {
+                          warnings.push(`Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`);
+                        }
+                      }
                 )
               }
             }

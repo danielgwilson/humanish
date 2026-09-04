@@ -483,8 +483,10 @@ and `resolved`: what the page itself reported afterwards (`navigator.userAgent`,
 `devicePixelRatio`, `innerWidth`, `maxTouchPoints`, coarse pointer). A page without a viewport
 meta lays out at 980 px, as it would on a phone, and the bundle says so. Firefox cannot be
 emulated, so the lane fails closed instead of shipping a desktop run labelled mobile. The
-emulation covers the launch tab (the user agent and touch flags are browser-wide); a bundle
-without a `fidelity` block is a responsive-viewport study whatever its preset is called.
+viewport and DPR override cover the launch tab (the user agent and touch flags are browser-wide);
+if an observation reads a tab the participant opened later, the lane records one warning saying
+so, because that tab laid out at the window width. A bundle without a `fidelity` block is a
+responsive-viewport study whatever its preset is called.
 
 **Desktop browser choice.** Hosted computer-use lanes and shared-world actor seats use the
 route's historical opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,
