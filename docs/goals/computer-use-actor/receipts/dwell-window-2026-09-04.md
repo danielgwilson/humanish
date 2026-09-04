@@ -69,8 +69,14 @@ at 21:15:15, nine seconds after the last window closed, then again at 21:15:17: 
 stood still while everyone was present and moved once they acted. Three turns per seat in all;
 four sandboxes reclaimed by id.
 
+## A two-minute window: `cua-2026-09-04T21-31-51-126Z-16145475` ($0.05)
+
+Same TodoMVC lab with `ms: 120000, everyMs: 20000`: "6 frame(s) over 120535ms; no model turn was
+requested during the window", six screenshot items and nothing else between the notices, both
+declared tasks measured complete afterwards, four turns in the whole session. The participant:
+"waited for the study to continue, then added “call the bank”."
+
 ## Not verified
 
-- A window longer than a minute; the bound is the session budget, and a window is cut to fit it.
-- The sequential shared-world route live, and the scripted-browser route (the option is not wired
-  there; it has no model loop to hold).
+- The sequential shared-world route live (its plumbing test passes), and the scripted-browser route
+  (the option is not wired there; it has no model loop to hold).
