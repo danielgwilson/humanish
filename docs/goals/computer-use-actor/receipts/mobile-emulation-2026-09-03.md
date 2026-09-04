@@ -57,6 +57,19 @@ With touch events emulated, neither could rename at all: a double-tap selects te
 mobile-emulated study reported a blocker. That difference is the reason the bundle labels the
 tier.
 
+## TodoMVC again on 2026-09-04, on main at #642 (the 0.79.0 build)
+
+Same emulated TodoMVC lab, two more runs from the primary checkout's build, 40 s apart.
+
+| run | desktop newcomer | phone newcomer (414x896, emulated, touch) |
+|---|---|---|
+| `cua-2026-09-04T20-53-07-677Z-00cbc93f` ($0.21) | REACHED; "the newest tasks appearing first was mildly unexpected" | BLOCKED: "I could not rename a task. The only instruction said Double-click to edit a todo, which is confusing on a touch device. I tried double-tapping twice and one keyboard-based recovery" |
+| `cua-2026-09-04T20-53-47-684Z-26d93f24` ($0.21) | REACHED; "briefly confused that new tasks appeared in reverse order" | DID NOT REACH THE GOAL: "I could not rename a task. The only instruction was Double-click to edit a todo, which is not suitable for a touch interface" |
+
+Under touch emulation the TodoMVC rename has now stopped **4 of 4** phone participants (two
+blocked, two did not reach) while **4 of 4** desktop newcomers finished, across two evenings and
+two builds. Both phone lanes read back 414 px, DPR 3, five touch points.
+
 ## drawDB again on 2026-09-04, on main at #636 (the 0.77.0 build)
 
 Same emulated drawDB lab, two runs from the primary checkout's build, 40 s apart, after the
