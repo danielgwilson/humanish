@@ -601,6 +601,7 @@ function buildActorSpec(
     persona: composed.persona,
     instructions: composed.instructions,
     ...((role.stopWhen ?? config.actors[0]?.stopWhen) === undefined ? {} : { stopWhen: (role.stopWhen ?? config.actors[0]?.stopWhen)! }),
+    ...((role.dwell ?? config.actors[0]?.dwell) === undefined ? {} : { dwell: (role.dwell ?? config.actors[0]?.dwell)! }),
     deviceName: device.name,
     devicePreset: device.preset,
     resolution: device.resolution,

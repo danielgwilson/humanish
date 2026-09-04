@@ -667,6 +667,27 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(seen).toEqual([actorDefault, laneOverride]);
   });
 
+  it("threads actor-default and lane-level dwell windows into sequential shared-world sessions (#510)", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state);
+    const config = sharedWorldConfig();
+    const actorDefault = { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000, everyMs: 10_000, then: "continue" as const };
+    const laneOverride = { ms: 5_000, everyMs: 1_000, then: "stop" as const };
+    config.actors[0]!.dwell = actorDefault;
+    config.actors[0]!.lanes![1]!.dwell = laneOverride;
+
+    const seen: Array<CuaActorSessionOptions["dwell"]> = [];
+    hooks.runSession = makeRunSession(state, (_index, options) => {
+      seen.push(options.dwell);
+      return undefined;
+    });
+
+    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(seen).toEqual([actorDefault, laneOverride]);
+  });
+
   it("HARNESS error on role 1 ⇒ remaining roles blocked + pinned reason (fail-fast); fail-fast event recorded", async () => {
     const state = { worldVersion: 0 };
     const sandbox = makeFakeSandbox(makeCommandHandler(state));

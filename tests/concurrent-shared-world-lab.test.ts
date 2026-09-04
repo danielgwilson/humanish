@@ -714,6 +714,31 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(seen.get("persona-3")).toEqual(actorDefault);
   });
 
+  it("threads actor-default and lane-level dwell windows into concurrent shared-world actors (#510)", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const config = concurrentConfig(3, 3);
+    const actorDefault = { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000, everyMs: 10_000, then: "continue" as const };
+    const laneOverride = { ms: 5_000, everyMs: 1_000, then: "stop" as const };
+    config.actors[0]!.dwell = actorDefault;
+    config.actors[0]!.lanes![1]!.dwell = laneOverride;
+
+    const seen = new Map<string, CuaActorSessionOptions["dwell"]>();
+    const runSession = hooks.runSession!;
+    hooks.runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
+      seen.set(options.persona.id, options.dwell);
+      return runSession(options);
+    };
+
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
+
+    expect(result.ok).toBe(true);
+    expect(seen.size).toBe(3);
+    expect(seen.get("persona-1")).toEqual(actorDefault);
+    expect(seen.get("persona-2")).toEqual(laneOverride);
+    expect(seen.get("persona-3")).toEqual(actorDefault);
+  });
+
   it("adapter fail score turns a coherent concurrent shared-world run red while keeping evidence verifiable", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
