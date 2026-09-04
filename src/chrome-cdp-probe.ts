@@ -42,8 +42,10 @@ export interface ChromeCdpProbeArgs {
   /**
    * "state": url/title/text/scrollY. "geometry": outer window + CSS viewport. "port": resolution
    * only. "emulate": apply mobile emulation (#221) to the selected page and exit (the overrides that
-   * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same, then keep
-   * the socket open until killed, which is how a lane keeps them for its whole life. "fidelity": read
+   * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same over a browser-level
+   * socket, then stay attached until killed (how a lane keeps them for its whole life) and attach
+   * to every page target Chrome opens later, paused before its first navigation, so a link that
+   * opens in a new tab is emulated from its first paint (#623). "fidelity": read
    * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.
    */
   mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity";
@@ -144,116 +146,128 @@ def select_page(pages, args):
         return match
     return http_pages[0] if len(http_pages) == 1 else None
 
-def ws_session(ws_url, messages, timeout=1.5, hold=False, announce_extra=None):
-    """Send CDP messages over one page socket, in order, and return their replies (None on failure).
-    hold=True prints the replies and then keeps the socket open until the process is killed."""
-    match = re.match(r"^ws://([^/:]+):(\d+)(/.*)$", str(ws_url or ""))
-    if not match:
-        return None
-    host, port, path = match.group(1), int(match.group(2)), match.group(3)
-    sock = None
-    try:
-        sock = socket.create_connection((host, port), timeout=timeout)
-        sock.settimeout(timeout)
+class Ws:
+    """One DevTools WebSocket: hand-rolled client frames, JSON in and out; events that arrive while
+    a reply is awaited are kept in .events for the caller."""
+    def __init__(self, ws_url, timeout=1.5):
+        match = re.match(r"^ws://([^/:]+):(\d+)(/.*)$", str(ws_url or ""))
+        if not match:
+            raise ValueError("not a ws url")
+        host, port, path = match.group(1), int(match.group(2)), match.group(3)
+        self.sock = socket.create_connection((host, port), timeout=timeout)
+        self.sock.settimeout(timeout)
         key = base64.b64encode(os.urandom(16)).decode("ascii")
-        handshake = (
+        self.sock.sendall((
             "GET %s HTTP/1.1\r\nHost: %s:%d\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
             "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n" % (path, host, port, key)
-        )
-        sock.sendall(handshake.encode("ascii"))
+        ).encode("ascii"))
         buffer = b""
         while b"\r\n\r\n" not in buffer:
-            chunk = sock.recv(4096)
+            chunk = self.sock.recv(4096)
             if not chunk:
-                return None
+                raise EOFError("closed during the handshake")
             buffer += chunk
-        head, buffer = buffer.split(b"\r\n\r\n", 1)
+        head, self.buffer = buffer.split(b"\r\n\r\n", 1)
         if b" 101 " not in head.split(b"\r\n", 1)[0]:
-            return None
-        state = {"buffer": buffer}
+            raise EOFError("handshake refused")
+        self.next_id = 0
+        self.events = []
 
-        def need(count):
-            while len(state["buffer"]) < count:
-                chunk = sock.recv(65536)
-                if not chunk:
-                    raise EOFError("socket closed")
-                state["buffer"] += chunk
+    def need(self, count):
+        while len(self.buffer) < count:
+            chunk = self.sock.recv(65536)
+            if not chunk:
+                raise EOFError("socket closed")
+            self.buffer += chunk
 
-        def send(message):
-            payload = json.dumps(message).encode("utf-8")
-            mask = os.urandom(4)
-            frame = bytearray([0x81])
-            size = len(payload)
-            if size < 126:
-                frame.append(0x80 | size)
-            elif size < 65536:
-                frame.append(0x80 | 126)
-                frame += struct.pack(">H", size)
-            else:
-                frame.append(0x80 | 127)
-                frame += struct.pack(">Q", size)
-            frame += mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
-            sock.sendall(bytes(frame))
+    def send(self, method, params=None, session_id=None):
+        self.next_id += 1
+        message = {"id": self.next_id, "method": method, "params": params or {}}
+        if session_id:
+            message["sessionId"] = session_id
+        payload = json.dumps(message).encode("utf-8")
+        mask = os.urandom(4)
+        frame = bytearray([0x81])
+        size = len(payload)
+        if size < 126:
+            frame.append(0x80 | size)
+        elif size < 65536:
+            frame.append(0x80 | 126)
+            frame += struct.pack(">H", size)
+        else:
+            frame.append(0x80 | 127)
+            frame += struct.pack(">Q", size)
+        frame += mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+        self.sock.sendall(bytes(frame))
+        return self.next_id
 
-        def receive(wanted_id):
-            message = b""
-            while True:
-                need(2)
-                first, second = state["buffer"][0], state["buffer"][1]
-                fin, opcode = first & 0x80, first & 0x0F
-                masked, length, offset = second & 0x80, second & 0x7F, 2
-                if length == 126:
-                    need(4)
-                    length, offset = struct.unpack(">H", state["buffer"][2:4])[0], 4
-                elif length == 127:
-                    need(10)
-                    length, offset = struct.unpack(">Q", state["buffer"][2:10])[0], 10
-                frame_mask = b""
-                if masked:
-                    need(offset + 4)
-                    frame_mask, offset = state["buffer"][offset:offset + 4], offset + 4
-                need(offset + length)
-                data = state["buffer"][offset:offset + length]
-                state["buffer"] = state["buffer"][offset + length:]
-                if masked:
-                    data = bytes(byte ^ frame_mask[index % 4] for index, byte in enumerate(data))
-                if opcode == 8:
+    def recv(self):
+        """The next JSON message (a reply or an event), or None once the socket closes."""
+        message = b""
+        while True:
+            self.need(2)
+            first, second = self.buffer[0], self.buffer[1]
+            fin, opcode = first & 0x80, first & 0x0F
+            masked, length, offset = second & 0x80, second & 0x7F, 2
+            if length == 126:
+                self.need(4)
+                length, offset = struct.unpack(">H", self.buffer[2:4])[0], 4
+            elif length == 127:
+                self.need(10)
+                length, offset = struct.unpack(">Q", self.buffer[2:10])[0], 10
+            frame_mask = b""
+            if masked:
+                self.need(offset + 4)
+                frame_mask, offset = self.buffer[offset:offset + 4], offset + 4
+            self.need(offset + length)
+            data = self.buffer[offset:offset + length]
+            self.buffer = self.buffer[offset + length:]
+            if masked:
+                data = bytes(byte ^ frame_mask[index % 4] for index, byte in enumerate(data))
+            if opcode == 8:
+                return None
+            if opcode in (9, 10):
+                continue
+            message += data
+            if fin:
+                try:
+                    reply = json.loads(message.decode("utf-8"))
+                except Exception:
                     return None
-                if opcode in (9, 10):
-                    continue
-                message += data
-                if fin:
-                    try:
-                        reply = json.loads(message.decode("utf-8"))
-                    except Exception:
-                        return None
-                    message = b""
-                    if isinstance(reply, dict) and reply.get("id") == wanted_id:
-                        return reply
+                message = b""
+                if isinstance(reply, dict):
+                    return reply
 
-        replies = []
-        for index, message in enumerate(messages, 1):
-            send({"id": index, **message})
-            replies.append(receive(index))
-        if hold:
-            # Announce the result now (the caller reads stdout once), then stay attached.
-            applied = [m["method"] for m, r in zip(messages, replies) if isinstance(r, dict) and "error" not in r]
-            failed = [m["method"] for m, r in zip(messages, replies) if not (isinstance(r, dict) and "error" not in r)]
-            print(json.dumps({"applied": applied, "held": not failed, **(announce_extra or {}), **({"unavailable": "%s failed" % failed[0]} if failed else {})}), flush=True)
-            if failed:
-                return replies
-            sock.settimeout(None)
-            while True:
-                time.sleep(30)
-        return replies
+    def call(self, method, params=None, session_id=None):
+        """Send one command and wait for its reply; events seen on the way are queued."""
+        wanted = self.send(method, params, session_id)
+        while True:
+            reply = self.recv()
+            if reply is None:
+                return None
+            if reply.get("id") == wanted:
+                return reply
+            if "method" in reply:
+                self.events.append(reply)
+
+    def close(self):
+        try:
+            self.sock.close()
+        except Exception:
+            pass
+
+def ws_session(ws_url, messages, timeout=1.5):
+    """Send CDP messages over one page socket, in order, and return their replies (None on failure)."""
+    try:
+        ws = Ws(ws_url, timeout)
+    except Exception:
+        return None
+    try:
+        return [ws.call(message["method"], message.get("params")) for message in messages]
     except Exception:
         return None
     finally:
-        if sock is not None:
-            try:
-                sock.close()
-            except Exception:
-                pass
+        ws.close()
 
 def evaluate(ws_url, expression, timeout=1.5):
     replies = ws_session(ws_url, [{"method": "Runtime.evaluate", "params": {"returnByValue": True, "expression": expression}}], timeout)
@@ -279,9 +293,8 @@ FIDELITY_EXPRESSION = (
     "coarsePointer: !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) })"
 )
 
-def emulate(ws_url, request, hold=False, target_id=""):
-    """Apply the Emulation domain to the page and reload it so scripts that read the UA at load see it.
-    With hold=True the socket stays open (the overrides are bound to this session) until the process is killed."""
+def emulation_messages(request, reload):
+    """The Emulation domain for one page session; reload only where scripts already ran at load."""
     width = int(request.get("width") or 0)
     height = int(request.get("height") or 0)
     scale = float(request.get("deviceScaleFactor") or 1)
@@ -300,10 +313,11 @@ def emulate(ws_url, request, hold=False, target_id=""):
         if platform:
             params["platform"] = platform
         messages.append({"method": "Emulation.setUserAgentOverride", "params": params})
-    messages.append({"method": "Page.reload", "params": {}})
-    replies = ws_session(ws_url, messages, timeout=5, hold=hold, announce_extra={"targetId": target_id} if hold else None)
-    if replies is None:
-        return None, "the page socket could not be opened"
+    if reload:
+        messages.append({"method": "Page.reload", "params": {}})
+    return messages
+
+def applied_of(messages, replies):
     applied = []
     for message, reply in zip(messages, replies):
         if isinstance(reply, dict) and "error" not in reply:
@@ -312,6 +326,69 @@ def emulate(ws_url, request, hold=False, target_id=""):
             detail = (reply or {}).get("error", {}).get("message") if isinstance(reply, dict) else "no reply"
             return applied, "%s failed: %s" % (message["method"], detail)
     return applied, None
+
+def emulate(ws_url, request):
+    """One-shot: apply the Emulation domain to the page and reload it. The session-scoped overrides
+    lapse when this socket closes; the lane uses hold() instead."""
+    messages = emulation_messages(request, reload=True)
+    replies = ws_session(ws_url, messages, timeout=5)
+    if replies is None:
+        return None, "the page socket could not be opened"
+    return applied_of(messages, replies)
+
+def apply_over(ws, request, session_id, reload):
+    messages = emulation_messages(request, reload)
+    return applied_of(messages, [ws.call(m["method"], m.get("params"), session_id) for m in messages])
+
+def browser_ws_url(port):
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open("http://127.0.0.1:%d/json/version" % port, timeout=2) as response:
+        info = json.loads(response.read().decode("utf-8"))
+    return str(info.get("webSocketDebuggerUrl") or "")
+
+def hold(port, page, request):
+    """Emulate the launch page and then every page target Chrome opens later, for as long as this
+    process lives (#221, #623). One browser-level socket with flattened sessions: the launch page is
+    attached by id and reloaded so scripts that read the UA at load see it; a target that appears
+    later is attached PAUSED before its first navigation (waitForDebuggerOnStart), emulated, then
+    resumed, so a link that opens in a new tab lays out at the phone width from its first paint.
+    Prints one JSON line per attach; the first line is the announce the lane reads."""
+    launch_id = str(page.get("id") or "")
+    try:
+        ws = Ws(browser_ws_url(port), timeout=5)
+    except Exception as error:
+        print(json.dumps({"unavailable": "the browser socket could not be opened (%s)" % type(error).__name__}), flush=True)
+        return
+    attach = ws.call("Target.attachToTarget", {"targetId": launch_id, "flatten": True})
+    session_id = ((attach or {}).get("result") or {}).get("sessionId") if isinstance(attach, dict) else None
+    if not session_id:
+        print(json.dumps({"unavailable": "Target.attachToTarget failed for the launch page"}), flush=True)
+        return
+    covered = {launch_id}
+    applied, failure = apply_over(ws, request, session_id, reload=True)
+    print(json.dumps({"applied": applied, "held": failure is None, "targetId": launch_id, **({"unavailable": failure} if failure else {})}), flush=True)
+    if failure:
+        return
+    auto = ws.call("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True, "flatten": True})
+    if not isinstance(auto, dict) or "error" in auto:
+        print(json.dumps({"autoAttach": False, "unavailable": "Target.setAutoAttach failed; later tabs are not emulated"}), flush=True)
+    ws.sock.settimeout(None)
+    while True:
+        message = ws.events.pop(0) if ws.events else ws.recv()
+        if message is None:
+            return
+        if message.get("method") != "Target.attachedToTarget":
+            continue
+        params = message.get("params") or {}
+        info = params.get("targetInfo") or {}
+        new_session = params.get("sessionId")
+        target_id = str(info.get("targetId") or "")
+        if info.get("type") == "page" and target_id and target_id not in covered:
+            covered.add(target_id)
+            applied, failure = apply_over(ws, request, new_session, reload=False)
+            print(json.dumps({"attached": target_id, "applied": applied, **({"unavailable": failure} if failure else {})}), flush=True)
+        if params.get("waitingForDebugger"):
+            ws.send("Runtime.runIfWaitingForDebugger", {}, new_session)
 
 def main():
     args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
@@ -342,13 +419,9 @@ def main():
         print(json.dumps({"applied": applied, "targetId": str(page.get("id") or "")}))
         return
     if mode == "hold":
-        if not ws_url:
-            print(json.dumps({"unavailable": "the page has no socket"}), flush=True)
-            return
-        # Prints its own line from inside ws_session (before blocking) and never returns on success.
-        applied, failure = emulate(ws_url, args.get("emulation") or {}, hold=True, target_id=str(page.get("id") or ""))
-        if failure is not None:
-            print(json.dumps({"unavailable": failure, "applied": applied or []}), flush=True)
+        # Prints its announce line, then stays attached (and attaches to every later page target)
+        # until killed.
+        hold(port, page, args.get("emulation") or {})
         return
     if mode == "fidelity":
         result = evaluate(ws_url, FIDELITY_EXPRESSION) if ws_url else None

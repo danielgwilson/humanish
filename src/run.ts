@@ -408,6 +408,13 @@ export interface RunDesktopGeometry {
       coarsePointer: boolean;
       source: "cdp";
     };
+    /**
+     * Page targets the participant drove AFTER the launch page (a link that opened in a new tab)
+     * whose own read-back reported the requested viewport width (#623). Absent when the
+     * participant never left the launch tab; a later tab that did NOT report the width is a lane
+     * warning instead.
+     */
+    laterTargets?: { targetId: string; innerWidth: number }[];
   };
   /** Public-safe geometry measurement/fill warnings retained with the stream evidence. */
   warnings?: string[];
