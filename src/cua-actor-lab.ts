@@ -50,6 +50,7 @@ import { startClaudeSession } from "./local-agent-claude-session.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
+  withOneRetryOnTransientE2BError,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox
@@ -2460,7 +2461,19 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       resolution: spec.resolution,
       dpi: 96,
       lifecycle: { onTimeout: "kill" }
-    }, config.execution?.desktop?.template);
+    }, config.execution?.desktop?.template, {
+      // One retry on a transient provider error (a sandbox whose envd was not routable yet, an
+      // API reply without a body). The failed attempt may have allocated a sandbox this process
+      // never learned the id of; its own timeoutMs is what reclaims it, so the warning says so.
+      onRetry: (reason) => {
+        const named = redactText(deps.scrubKnownValues(reason));
+        warnings.push(
+          `Sandbox create for lane ${spec.laneId} retried once after a transient provider error (${named}); ` +
+            `a sandbox the first attempt may have allocated is not known to this run and expires on the provider's ${Math.round(deps.perLaneSandboxMs / 60_000)}-minute timeout.`
+        );
+        onSubjectPhase({ at: new Date(deps.now()).toISOString(), type: "cua-lab.sandbox.create.retry", message: `sandbox create retried once (${named})` });
+      }
+    });
     sandboxId = desktop.sandboxId;
     // #358 salvage: journal the id to disk before any work — an interrupted run reclaims by
     // exact recorded id (`humanish reclaim`), never by enumerating the account.
@@ -4793,10 +4806,17 @@ export async function provisionLocalTreeSubject(
   const uploadStartedAt = now();
   emitPhaseStarted(args.onPhase, now, "upload", "uploading packed local-tree archive");
   try {
-    await desktop.files.write(LOCAL_TREE_REMOTE_ARCHIVE_PATH, args.archiveBuffer, {
-      requestTimeoutMs: args.requestTimeoutMs,
-      useOctetStream: true
-    });
+    await withOneRetryOnTransientE2BError(
+      () =>
+        desktop.files.write(LOCAL_TREE_REMOTE_ARCHIVE_PATH, args.archiveBuffer, {
+          requestTimeoutMs: args.requestTimeoutMs,
+          useOctetStream: true
+        }),
+      {
+        onRetry: (reason) => emitPhaseStarted(args.onPhase, now, "upload-retry", `local-tree archive upload retried once (${tailOf(args.scrub(reason))})`),
+        ...(args.sleep === undefined ? {} : { sleep: args.sleep })
+      }
+    );
   } catch (error) {
     emitPhaseCompleted(args.onPhase, now, uploadStartedAt, "upload", false, "local-tree archive upload failed");
     throw new Error(`subject-upload failed: ${tailOf(args.scrub(toErrorMessage(error)))}`);

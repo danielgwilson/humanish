@@ -216,9 +216,62 @@ export function isSandboxNotFoundError(error: unknown): boolean {
 export async function createDesktopSandbox(
   module: E2BDesktopModule,
   options: E2BDesktopCreateOptions,
-  template?: string
+  template?: string,
+  retry?: TransientRetryHooks
 ): Promise<E2BDesktopSandbox> {
-  return template === undefined
-    ? module.Sandbox.create(options)
-    : module.Sandbox.create(template, options);
+  const create = () => (template === undefined ? module.Sandbox.create(options) : module.Sandbox.create(template, options));
+  return withOneRetryOnTransientE2BError(create, retry);
+}
+
+/** How a caller hears about the one retry; `sleep` is injectable so tests never wait. */
+export interface TransientRetryHooks {
+  onRetry?: (reason: string) => void;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/** Wall-clock pause before the single retry; envd routing settles within a few seconds. */
+export const TRANSIENT_RETRY_DELAY_MS = 3_000;
+
+/**
+ * The provider errors worth exactly ONE retry, by the message the SDK throws. Measured
+ * 2026-09-04: six lanes created within 100 s lost five to these three shapes, and a probe of the
+ * same SDK a minute later created a sandbox, wrote 7 MB into it and killed it in 6 s.
+ *
+ * - `12: [unimplemented] HTTP 404` and `[unavailable]`: the sandbox exists but its envd is not
+ *   routable yet, so the first request (the desktop SDK's Xvfb start) hits the proxy instead.
+ * - `Cannot read properties of undefined (reading 'envdVersion')` / `Response data is missing`:
+ *   the create API answered without a body.
+ * - `Expected to receive information about written file`: a file write the envd accepted without
+ *   describing, the same routing gap seen from the upload side.
+ * - transport resets (`fetch failed`, `ECONNRESET`, `socket hang up`, 502/503/504).
+ *
+ * NOT retried: timeouts (the budget is spent), auth (401/403), quota and rate limits (429: a burst
+ * that hit the limit should be spaced, not repeated), and anything that names the request as wrong.
+ */
+export function isTransientE2BError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error ?? "");
+  if (/timeout|timed out|deadline/i.test(message)) return false;
+  if (/\b(401|403|429)\b|unauthorized|forbidden|rate limit|quota/i.test(message)) return false;
+  return /\[unimplemented\]|\[unavailable\]|HTTP 404|HTTP 50[234]|\b50[234]\b|reading 'envdVersion'|Response data is missing|Expected to receive information about written file|fetch failed|ECONNRESET|ECONNREFUSED|socket hang up|UND_ERR/i.test(
+    message
+  );
+}
+
+/**
+ * Run `attempt`; on a transient provider error, say so through `onRetry`, wait, and run it once
+ * more. A second failure, or a non-transient first one, propagates as is. The first attempt may
+ * have allocated a sandbox this process never learned the id of (the SDK throws after the API
+ * call); the provider's own `timeoutMs` on that sandbox is what reclaims it, which the caller's
+ * warning should say.
+ */
+export async function withOneRetryOnTransientE2BError<T>(attempt: () => Promise<T>, hooks?: TransientRetryHooks): Promise<T> {
+  try {
+    return await attempt();
+  } catch (error) {
+    if (!isTransientE2BError(error)) throw error;
+    const reason = error instanceof Error ? error.message : String(error);
+    hooks?.onRetry?.(reason);
+    await (hooks?.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))))(TRANSIENT_RETRY_DELAY_MS);
+    return attempt();
+  }
 }

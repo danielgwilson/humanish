@@ -757,6 +757,91 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toBeUndefined();
   });
 
+  it("sandbox create retried once (#630): a first attempt that hit an envd not yet routable is retried, named on the lane and in the phase trail", async () => {
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        if (command.includes("browser_preference='chrome'")) {
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+        }
+        return undefined;
+      }
+    });
+    const { module, created } = makeFakeModule(sandbox);
+    const realCreate = module.Sandbox.create as unknown as (...args: unknown[]) => Promise<E2BDesktopSandbox>;
+    let attempts = 0;
+    const failingOnce = async (...args: unknown[]): Promise<E2BDesktopSandbox> => {
+      attempts += 1;
+      // The measured shape: the API allocated the sandbox, the desktop SDK's first envd request
+      // (its Xvfb start) hit the proxy instead, and Sandbox.create threw without an id.
+      if (attempts === 1) throw new Error("12: [unimplemented] HTTP 404");
+      return realCreate(...args);
+    };
+    module.Sandbox.create = failingOnce as unknown as typeof module.Sandbox.create;
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-create-retry",
+      title: "Sandbox create retry",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { browser: "chrome" } },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const phases: string[] = [];
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        onPhase: (event) => phases.push(event.type),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(attempts).toBe(2);
+    expect(created).toHaveLength(1);
+    const retryWarnings = (outcome.result.warnings ?? []).filter((warning: string) => warning.includes("retried once after a transient provider error"));
+    expect(retryWarnings).toHaveLength(1);
+    expect(retryWarnings[0]).toContain("[unimplemented] HTTP 404");
+    expect(retryWarnings[0]).toContain("not known to this run");
+    expect(phases).toContain("cua-lab.sandbox.create.retry");
+  }, 20_000);
+
+  it("sandbox create is NOT retried on an auth failure: the lane fails closed on the first attempt", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    let attempts = 0;
+    const alwaysUnauthorized = async (): Promise<E2BDesktopSandbox> => {
+      attempts += 1;
+      throw new Error("401 Unauthorized: invalid API key");
+    };
+    module.Sandbox.create = alwaysUnauthorized as unknown as typeof module.Sandbox.create;
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-create-no-retry",
+      title: "Sandbox create, no retry",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(false);
+    expect(attempts).toBe(1);
+  });
+
   it("mobile emulation leaves a desktop-preset lane alone: no launch flags, no holder, no fidelity block", async () => {
     const commands: string[] = [];
     const sandbox = makeFakeSandbox({
