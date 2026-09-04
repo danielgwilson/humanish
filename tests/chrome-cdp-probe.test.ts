@@ -284,6 +284,65 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     expect(after.fidelity?.userAgent).not.toContain("iPhone");
   }, 45_000);
 
+  it.skipIf(!live)("hold mode emulates a page target opened AFTER it attached, from its first paint (#623)", async (ctx) => {
+    if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    const emulation = {
+      width: 414,
+      height: 896,
+      deviceScaleFactor: 3,
+      touch: true,
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    };
+    const holder = spawn("python3", ["-c", CHROME_CDP_PROBE_PY, JSON.stringify({ mode: "hold", prefer: "pinned", cdpPort, targetUrl: pageUrl, emulation })], { stdio: ["ignore", "pipe", "pipe"] });
+    let announced = "";
+    let holderErrors = "";
+    holder.stdout.on("data", (chunk: Buffer) => { announced += chunk.toString("utf8"); });
+    holder.stderr.on("data", (chunk: Buffer) => { holderErrors += chunk.toString("utf8"); });
+    const lines = () => announced.split("\n").filter((candidate) => candidate.startsWith("{"));
+    try {
+      for (let attempt = 0; attempt < 80 && lines().length === 0 && holder.exitCode === null; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      const announce = lines()[0];
+      if (announce === undefined) {
+        console.warn(`chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`);
+        return ctx.skip("the hold-mode applier did not come up on this runner");
+      }
+      expect(parseChromeCdpProbeOutput(announce).unavailable, announce).toBeUndefined();
+      // A second tab, opened the way a target=_blank link opens one, AFTER the holder attached.
+      // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry.
+      const created = (await (await fetch(`http://127.0.0.1:${cdpPort}/json/new?${pageUrl}?second`, { method: "PUT" })).json()) as { id?: string };
+      expect(typeof created.id, JSON.stringify(created)).toBe("string");
+      const secondId = created.id as string;
+      // The page's own read-back on THAT target: the phone viewport, DPR and touch, never inherited
+      // from the window (the launch page is emulated by its own session).
+      let read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl, targetId: secondId });
+      for (let attempt = 0; attempt < 40 && !(read.fidelity?.innerWidth === 414 && read.fidelity.userAgent.includes("iPhone")); attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        read = await runProbe({ mode: "fidelity", prefer: "pinned", cdpPort, targetUrl: pageUrl, targetId: secondId });
+      }
+      expect(read.fidelity?.innerWidth, JSON.stringify(read)).toBe(414);
+      expect(read.fidelity?.devicePixelRatio).toBe(3);
+      expect(read.fidelity?.maxTouchPoints).toBe(5);
+      expect(read.fidelity?.userAgent).toContain("iPhone");
+      // The holder's log names the target it attached to and what it applied (no reload: the tab
+      // was paused before its first navigation, so nothing had run at load).
+      const attachLine = lines().find((line) => line.includes(secondId));
+      expect(attachLine, announced).toBeDefined();
+      const attached = JSON.parse(attachLine as string) as { attached: string; applied: string[]; unavailable?: string };
+      expect(attached.unavailable).toBeUndefined();
+      expect(attached.applied).toEqual([
+        "Emulation.setDeviceMetricsOverride",
+        "Emulation.setTouchEmulationEnabled",
+        "Emulation.setEmitTouchEventsForMouse",
+        "Emulation.setUserAgentOverride"
+      ]);
+      await fetch(`http://127.0.0.1:${cdpPort}/json/close/${secondId}`).catch(() => undefined);
+    } finally {
+      holder.kill("SIGKILL");
+    }
+  }, 45_000);
+
   it.skipIf(!live)("the shipped command (python3 -c ... '<json>') runs end to end through a shell", async (ctx) => {
     if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
     const command = chromeCdpProbeCommand({ mode: "state", prefer: "active", cdpPort, targetUrl: pageUrl });
@@ -353,28 +412,77 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
     expect(reasons).toEqual(["CDP endpoint 127.0.0.1:9222/json unreachable (URLError)"]);
   });
 
-  it("reports emulation drift once when an observation reads a page target other than the emulated one (#623)", async () => {
-    let call = 0;
+  // A fake desktop whose "state" probe reports the launch tab first and OTHER-TAB afterwards, and
+  // whose "fidelity" probe on that tab answers with the given read-back (or exits non-zero).
+  function driftingDesktop(fidelityStdout: string | undefined): { desktop: E2BDesktopSandbox; commands: () => string[] } {
+    let stateCalls = 0;
+    const commands: string[] = [];
     const desktop = {
       commands: {
-        run: async () => {
-          call += 1;
-          const targetId = call === 1 ? "EMULATED" : "OTHER-TAB";
+        run: async (command: string) => {
+          commands.push(command);
+          if (command.includes('"mode":"fidelity"')) {
+            return fidelityStdout === undefined ? { exitCode: 1, stdout: "", stderr: "boom" } : { exitCode: 0, stdout: fidelityStdout };
+          }
+          stateCalls += 1;
+          const targetId = stateCalls === 1 ? "EMULATED" : "OTHER-TAB";
           return { exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/", title: "t", text: "hello", scrollY: 0, targetId }) };
         }
       }
     } as unknown as E2BDesktopSandbox;
+    return { desktop, commands: () => commands };
+  }
+  const phoneReadBack = JSON.stringify({ fidelity: { userAgent: "iPhone", devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true }, targetId: "OTHER-TAB" });
+  const desktopReadBack = JSON.stringify({ fidelity: { userAgent: "iPhone", devicePixelRatio: 1, innerWidth: 500, innerHeight: 700, maxTouchPoints: 5, coarsePointer: true }, targetId: "OTHER-TAB" });
+
+  it("a later tab whose own read-back reports the requested width is recorded as covered, never as drift (#623)", async () => {
+    const { desktop, commands } = driftingDesktop(phoneReadBack);
+    const drifts: string[] = [];
+    const covered: [string, number][] = [];
+    const observe = makeChromeBrowserStateObserver(desktop, 1_000, { targetUrl: "http://127.0.0.1:3000/" }, undefined, undefined, {
+      emulatedTargetId: "EMULATED",
+      expectedWidth: 414,
+      onDrift: (reason) => drifts.push(reason),
+      onCovered: (targetId, innerWidth) => covered.push([targetId, innerWidth])
+    });
+    expect((await observe()).url).toBe("http://127.0.0.1:3000/");
+    await observe();
+    await observe();
+    expect(drifts).toEqual([]);
+    expect(covered).toEqual([["OTHER-TAB", 414]]);
+    // The read-back was taken ONCE for the new target, pinned to its id, not on every observation.
+    const fidelityReads = commands().filter((command) => command.includes('"mode":"fidelity"'));
+    expect(fidelityReads).toHaveLength(1);
+    expect(fidelityReads[0]).toContain('"targetId":"OTHER-TAB"');
+  });
+
+  it("a later tab that reports the window width is drift, once, with the number the page gave (#623)", async () => {
+    const { desktop } = driftingDesktop(desktopReadBack);
     const drifts: string[] = [];
     const observe = makeChromeBrowserStateObserver(desktop, 1_000, { targetUrl: "http://127.0.0.1:3000/" }, undefined, undefined, {
       emulatedTargetId: "EMULATED",
+      expectedWidth: 414,
       onDrift: (reason) => drifts.push(reason)
     });
-    expect((await observe()).url).toBe("http://127.0.0.1:3000/");
-    expect(drifts).toEqual([]);
+    await observe();
     await observe();
     await observe();
     expect(drifts).toHaveLength(1);
-    expect(drifts[0]).toContain("not the 414 px viewport or DPR override");
+    expect(drifts[0]).toContain("reports a 500 px viewport where 414 px was requested");
+  });
+
+  it("a later tab whose read-back cannot be taken is drift with the uncertainty named (#623)", async () => {
+    const { desktop } = driftingDesktop(undefined);
+    const drifts: string[] = [];
+    const observe = makeChromeBrowserStateObserver(desktop, 1_000, { targetUrl: "http://127.0.0.1:3000/" }, undefined, undefined, {
+      emulatedTargetId: "EMULATED",
+      expectedWidth: 414,
+      onDrift: (reason) => drifts.push(reason)
+    });
+    await observe();
+    await observe();
+    expect(drifts).toHaveLength(1);
+    expect(drifts[0]).toContain("read-back could not be taken");
   });
 
   it("parseChromeCdpProbeOutput never turns garbage into an empty success", () => {

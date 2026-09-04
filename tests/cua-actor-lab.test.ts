@@ -681,19 +681,27 @@ describe("runCuaActorLab", () => {
     expect(JSON.stringify(outcome.result)).not.toContain("Mobile emulation");
   });
 
-  it("mobile emulation drift (#623): an observation on another page target puts one warning on the lane", async () => {
-    const sandbox = makeFakeSandbox({
+  // A phone lane whose every observation reads a NEW tab (T2) the participant opened; the tab's own
+  // fidelity read-back is what the test varies.
+  function laterTabSandbox(secondTabInnerWidth: number) {
+    return makeFakeSandbox({
       commandHandler: (command) => {
         if (command.includes("xdpyinfo")) return { exitCode: 0, stdout: "dimensions: 500x896 pixels (300x200 millimeters)\n" };
         if (command.includes("find_chrome_window")) return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
         if (command.includes("getwindowgeometry")) return { exitCode: 0, stdout: "X=0\nY=0\nWIDTH=500\nHEIGHT=896\n" };
         if (command.includes('"mode":"fidelity"')) {
-          return { exitCode: 0, stdout: JSON.stringify({ fidelity: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1", devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true }, targetId: "T1" }) };
+          const onSecondTab = command.includes('"targetId":"T2"');
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              fidelity: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1", devicePixelRatio: onSecondTab && secondTabInnerWidth !== 414 ? 1 : 3, innerWidth: onSecondTab ? secondTabInnerWidth : 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true },
+              targetId: onSecondTab ? "T2" : "T1"
+            })
+          };
         }
         if (command.includes("mobile-emulation-") && command.includes("tail -c")) {
           return { exitCode: 0, stdout: JSON.stringify({ applied: ["Emulation.setDeviceMetricsOverride", "Page.reload"], held: true, targetId: "T1" }) + "\n" };
         }
-        // Every observation reads a NEW tab the participant opened: the viewport override is not there.
         if (command.includes('"mode":"state"')) {
           return { exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/help", title: "help", text: "help", scrollY: 0, targetId: "T2" }) };
         }
@@ -706,6 +714,8 @@ describe("runCuaActorLab", () => {
         return undefined;
       }
     });
+  }
+  async function runLaterTabLane(sandbox: ReturnType<typeof makeFakeSandbox>) {
     const { module } = makeFakeModule(sandbox);
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -728,9 +738,23 @@ describe("runCuaActorLab", () => {
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    return { outcome, bundle };
+  }
+
+  it("mobile emulation on a later tab (#623): a tab the page itself reports at the phone width is recorded on the bundle, with no drift warning", async () => {
+    const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(414));
+    expect((outcome.result.warnings ?? []).filter((warning: string) => warning.includes("Mobile emulation drift"))).toEqual([]);
+    expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toEqual([{ targetId: "T2", innerWidth: 414 }]);
+  });
+
+  it("mobile emulation drift (#623): a later tab that reports the window width puts one warning on the lane, with the page's number", async () => {
+    const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(500));
     const driftWarnings = (outcome.result.warnings ?? []).filter((warning: string) => warning.includes("Mobile emulation drift"));
     expect(driftWarnings).toHaveLength(1);
+    expect(driftWarnings[0]).toContain("reports a 500 px viewport where 414 px was requested");
     expect(driftWarnings[0]).toContain("#623");
+    expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toBeUndefined();
   });
 
   it("mobile emulation leaves a desktop-preset lane alone: no launch flags, no holder, no fidelity block", async () => {

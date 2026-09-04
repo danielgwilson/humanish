@@ -1688,21 +1688,44 @@ export function makeChromeBrowserStateObserver(
   targetId?: string,
   onUnavailable?: (reason: string) => void,
   /**
-   * Mobile emulation drift (#623): the viewport and DPR override are bound to the emulated page
-   * target; a tab the participant opens later lays out at the window width. When an observation
-   * reads a different target than the one emulated, `onDrift` fires once so the bundle says a
-   * phone-labelled lane spent part of its session at desktop layout.
+   * Mobile emulation on later tabs (#623): the holder attaches to every page target Chrome opens
+   * after the launch page, so a tab the participant opens later should lay out at the phone width
+   * too. The first observation on each new target reads that page's OWN report; a target that
+   * reports the requested width is recorded through `onCovered`, and one that does not (or cannot
+   * be read) fires `onDrift` once, so a phone-labelled lane that spent part of its session at
+   * desktop layout says so with the number the page gave.
    */
-  drift?: { emulatedTargetId: string; onDrift: (reason: string) => void }
+  drift?: { emulatedTargetId: string; expectedWidth: number; onDrift: (reason: string) => void; onCovered?: (targetId: string, innerWidth: number) => void }
 ): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
   let reported = false;
   let drifted = false;
+  const checkedTargets = new Set<string>(drift === undefined ? [] : [drift.emulatedTargetId]);
   const unavailable = (reason: string): Record<string, never> => {
     if (!reported) {
       reported = true;
       onUnavailable?.(reason);
     }
     return {};
+  };
+  const checkLaterTarget = async (newTargetId: string): Promise<void> => {
+    if (drift === undefined || checkedTargets.has(newTargetId)) return;
+    checkedTargets.add(newTargetId);
+    const read = await desktop.commands.run(
+      chromeCdpProbeCommand({ ...endpoint, targetId: newTargetId, prefer: "pinned", mode: "fidelity" }),
+      { requestTimeoutMs, timeoutMs: 5_000 }
+    );
+    const fidelity = read.exitCode !== undefined && read.exitCode !== 0 ? undefined : parseChromeCdpProbeOutput(read.stdout).fidelity;
+    if (fidelity !== undefined && fidelity.innerWidth === drift.expectedWidth) {
+      drift.onCovered?.(newTargetId, fidelity.innerWidth);
+      return;
+    }
+    if (drifted) return;
+    drifted = true;
+    drift.onDrift(
+      fidelity === undefined
+        ? "the participant drove a page target other than the emulated launch tab and that page's own read-back could not be taken; whether it laid out at the phone width is not known"
+        : `the participant drove a page target other than the emulated launch tab and that page reports a ${fidelity.innerWidth} px viewport where ${drift.expectedWidth} px was requested (DPR ${fidelity.devicePixelRatio}); the mobile user agent and touch events are browser-wide, the viewport override was not re-applied to it`
+    );
   };
   return async () => {
     const result = await desktop.commands.run(
@@ -1714,12 +1737,7 @@ export function makeChromeBrowserStateObserver(
     }
     const parsed = parseChromeCdpProbeOutput(result.stdout);
     if (parsed.unavailable !== undefined) return unavailable(parsed.unavailable);
-    if (drift !== undefined && !drifted && parsed.targetId !== undefined && parsed.targetId !== drift.emulatedTargetId) {
-      drifted = true;
-      drift.onDrift(
-        "the participant drove a page target other than the emulated launch tab for at least one observation; that tab has the mobile user agent and touch events (browser-wide) but not the 414 px viewport or DPR override"
-      );
-    }
+    if (parsed.targetId !== undefined) await checkLaterTarget(parsed.targetId);
     return {
       ...(parsed.url === undefined ? {} : { url: parsed.url }),
       ...(parsed.title === undefined ? {} : { title: parsed.title }),
@@ -2785,8 +2803,18 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
                     ? undefined
                     : {
                         emulatedTargetId,
+                        expectedWidth: spec.devicePreset.width,
                         onDrift: (reason) => {
                           warnings.push(`Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`);
+                        },
+                        onCovered: (coveredTargetId, innerWidth) => {
+                          // A later tab the page itself reported at the phone width: evidence that
+                          // the emulation followed the participant (#623), kept on the bundle.
+                          if (appliedFidelity === undefined) return;
+                          appliedFidelity = {
+                            ...appliedFidelity,
+                            laterTargets: [...(appliedFidelity.laterTargets ?? []), { targetId: coveredTargetId, innerWidth }]
+                          };
                         }
                       }
                 )
