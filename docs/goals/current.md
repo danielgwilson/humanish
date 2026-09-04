@@ -493,7 +493,7 @@ gpt-6-astra is priced. #548 closed on the benchmark receipts.
 
 **2026-09-01 (0.66.0 through 0.70.0, one session).** The product got its first efficacy numbers and
 they are in the repo with run ids: planted-defect recall 43 of 45 over three benchmark runs and
-12 clean runs with nothing invented (`bench/`), 5 of 6 findings confirmed on TodoMVC and 11 of 12
+12 clean runs with nothing invented (`bench/`; 58 of 60 and 15 clean runs after the 09-04 rerun), 5 of 6 findings confirmed on TodoMVC and 11 of 12
 on drawDB against the source (20 participants on apps we did not write, 0 false reports), and the
 persona question answered on two apps: every keyboard-first participant hit a defect no
 mouse-driving participant met (drawDB's mouse-only database modal, TodoMVC's double-click-only
