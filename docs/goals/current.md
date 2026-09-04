@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.77.0`)
+## Current Program Truth (source `0.78.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -463,6 +463,13 @@ Stop and correct course if:
 
 ## Best Next Work
 
+**2026-09-04, later (0.78.0).** `@e2b/desktop` moved from 2.2.3 to 2.3.3 (#638): its 2.3.1
+changelog names the socket #581 found today, a background command's event stream the SDK kept
+open after `Xvfb` and `startxfce4` were launched, which held the CLI process alive twelve minutes
+past a run's written result. `doctor` now prints the installed desktop SDK version on its row and
+attaches an advisory with the fix below 2.3.1 (#639). A live try-live on the new SDK reached its
+goal in 104 s and settled with no active resources.
+
 **2026-09-04 (0.77.0).** Four fixes found by runs and one by a scanner. A phone-emulated lane now
 follows the participant into a tab that opens later: the hold-mode applier attaches to every page
 target Chrome creates, paused before its first navigation, so the new tab lays out at the phone
@@ -529,9 +536,10 @@ and a Claude participant with no memory across turns (#520). `humanish stats` (#
 
 The standing queue, in rough order:
 
-1. #581: after a failed terminal run the CLI process lingered sixteen minutes past its result;
-   the lane is clean in-process, so the holder is the SDK or the shell (`HUMANISH_DEBUG_HANDLES=1`
-   now names it on the next occurrence);
+1. #581, the remaining half: a `Sandbox.create` that fails after the API allocated the sandbox
+   (the desktop SDK's own startup) leaves a sandbox this run never learned the id of, reclaimed only
+   by the provider's timeout; the linger itself is the SDK's held command stream, closed by the
+   2.3.3 bump (0.78.0), and `doctor` names an older SDK;
 2. #513: there is still nowhere to read the docs on humanish.dev (site copy is locked; a docs
    route needs the operator's sign-off);
 3. the TUI views over `stats` and `export` (#455's metrics screen and `s` key), design-gated;
