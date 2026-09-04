@@ -80,4 +80,7 @@ was tallied as reported friction by the harness on that build; that false positi
   interception) while the outcome varied (reached, blocked), which is the within-arm variance the
   2026-08-26 handoff warned about; on TodoMVC and Excalidraw the phone participants finished
   every time. A clean app reads as a clean app: Excalidraw produced no blocker on any axis.
-- 500 px is not a phone. A 414 px CSS viewport (#221) may hide more, or less.
+- 500 px is not a phone. The same evening, 0.76.0 shipped mobile emulation (#221): the phone
+  participant at a real 414 px viewport with touch and a mobile user agent was blocked on drawDB
+  again, and on TodoMVC could not rename at all where these 500 px participants had finished.
+  See `mobile-emulation-2026-09-03.md`.
