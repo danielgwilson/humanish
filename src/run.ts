@@ -5786,12 +5786,14 @@ function hasStopWhenObservationEvidence(items: unknown[], screenshotCount: numbe
       && typeof item.screenshotRef.path === "string"
       && item.screenshotRef.path.length > 0);
   if (!hasScreenshot) return false;
+  // A matched stopWhen, or a declared dwell window that ended the session (#510): both are
+  // structured, harness-owned completion, with frames behind them.
   return items.some((item) =>
     isRecord(item)
       && item.kind === "notice"
       && item.status === "matched"
       && typeof item.title === "string"
-      && item.title.startsWith("stopWhen matched"));
+      && (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"));
 }
 
 function actorVerdictConsistencyFindings(bundle: RunBundle): string[] {

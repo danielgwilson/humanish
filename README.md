@@ -528,6 +528,28 @@ refuses; `granted` bypasses it for studies about what happens after. The bundle 
 feed and the exact launch flags under `desktopBrowser.media`. A microphone needs an image with
 an audio stack (`execution.desktop.template`); the stock desktop has none, so a declared
 microphone without a template is refused before any spend.
+**A declared observation window.** Some findings are "time passed and nothing broke": a call
+both participants stay on, an import that finishes, a dashboard that updates. A freeform
+participant with nothing to do keeps acting, so `dwell` lets the study hold instead. Once
+`when` matches (or after the first observation, when there is no `when`), the harness holds the
+page for `ms`, captures a frame every `everyMs` (default 10 s), takes no action and requests no
+model turn, then hands control back (`then: continue`, the default) or ends the session
+(`then: stop`). The window is recorded in the trace as deliberate, and it never outlasts the
+session budget. Lane-level `dwell` overrides the actor default.
+
+```yaml
+actors:
+  - type: openai-computer-use
+    mission: Join the room, stay a while, then leave.
+    dwell:
+      when:
+        any:
+          - id: in-room
+            urlIncludes: /room/
+      ms: 120000
+      everyMs: 10000
+      then: continue
+```
 
 Supported primitives are `urlIncludes`, `urlPathEquals`, `textIncludes`, and
 `appStatePathEquals`. URL and text observations are runtime-only and are not persisted into

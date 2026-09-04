@@ -52,7 +52,7 @@ import { actorRegistry } from "./actor-registry.js";
 import { containsSensitive } from "./redaction.js";
 import type { LabTask } from "./tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
-import type { StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
+import type { DwellWindow, StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 import { isReasoningEffort, reasoningEffortNames, type ReasoningEffort } from "./reasoning-effort.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
@@ -372,6 +372,8 @@ export interface LabActorLane {
    * observation matches any declared rule; actor-level stopWhen is used as the default.
    */
   stopWhen?: StopWhen;
+  /** A declared observation window for THIS lane (#510); actor-level dwell is the default. */
+  dwell?: DwellWindow;
   /**
    * How hard the model is asked to think in THIS lane; actor-level reasoningEffort is the default.
    *
@@ -478,6 +480,14 @@ export interface LabActor {
    * overrides this value.
    */
   stopWhen?: StopWhen;
+  /**
+   * A declared observation window (#510), the default for every lane; lane-level dwell overrides
+   * it. `when` is a stopWhen-shaped condition (absent: the window opens after the first
+   * observation); `ms` is the hold, `everyMs` the frame cadence (default 10 s), `then` whether
+   * the participant continues afterwards (default) or the session ends. The harness takes no
+   * action and requests no model turn during the window.
+   */
+  dwell?: DwellWindow;
 }
 
 export type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
@@ -2468,6 +2478,9 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${index}].stopWhen`);
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;
+    const dwellResult = parseDwell(entry.dwell, `actors[${index}].dwell`);
+    if (!dwellResult.ok) return dwellResult;
+    if (dwellResult.value !== undefined) actor.dwell = dwellResult.value;
     const tasksResult = parseTasks(entry.tasks, `actors[${index}].tasks`);
     if (!tasksResult.ok) return tasksResult;
     if (tasksResult.value !== undefined) actor.tasks = tasksResult.value;
@@ -2595,6 +2608,9 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${actorIndex}].lanes[${laneIndex}].stopWhen`);
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) lane.stopWhen = stopWhenResult.value;
+    const dwellResult = parseDwell(entry.dwell, `actors[${actorIndex}].lanes[${laneIndex}].dwell`);
+    if (!dwellResult.ok) return dwellResult;
+    if (dwellResult.value !== undefined) lane.dwell = dwellResult.value;
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
         return invalid(`actors[${actorIndex}].lanes[${laneIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`);
@@ -2658,6 +2674,30 @@ function parseTasks(raw: unknown, field: string): { ok: true; value: LabTask[] |
     tasks.push({ id, goal, ...(successResult.value === undefined ? {} : { success: successResult.value }) });
   }
   return { ok: true, value: tasks };
+}
+
+/** The bounds a dwell window (#510) must sit inside: at least one frame, at most an hour. */
+export const DWELL_MIN_MS = 1_000;
+export const DWELL_MAX_MS = 3_600_000;
+export const DWELL_DEFAULT_EVERY_MS = 10_000;
+
+function parseDwell(raw: unknown, field: string): { ok: true; value: DwellWindow | undefined } | LabConfigParseFailure {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalid(`${field} must be an object with ms (and optional when, everyMs, then).`);
+  const entry = raw as Record<string, unknown>;
+  const ms = entry.ms;
+  if (typeof ms !== "number" || !Number.isInteger(ms) || ms < DWELL_MIN_MS || ms > DWELL_MAX_MS) {
+    return invalid(`${field}.ms must be an integer between ${DWELL_MIN_MS} and ${DWELL_MAX_MS} milliseconds.`);
+  }
+  const everyMs = entry.everyMs === undefined ? DWELL_DEFAULT_EVERY_MS : entry.everyMs;
+  if (typeof everyMs !== "number" || !Number.isInteger(everyMs) || everyMs < DWELL_MIN_MS || everyMs > ms) {
+    return invalid(`${field}.everyMs must be an integer between ${DWELL_MIN_MS} and ${field}.ms.`);
+  }
+  const then = entry.then === undefined ? "continue" : entry.then;
+  if (then !== "continue" && then !== "stop") return invalid(`${field}.then must be "continue" or "stop".`);
+  const whenResult = parseStopWhen(entry.when, `${field}.when`);
+  if (!whenResult.ok) return whenResult;
+  return { ok: true, value: { ...(whenResult.value === undefined ? {} : { when: whenResult.value }), ms, everyMs, then } };
 }
 
 function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen | undefined } | LabConfigParseFailure {
