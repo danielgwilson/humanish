@@ -76,7 +76,20 @@ requested during the window", six screenshot items and nothing else between the 
 declared tasks measured complete afterwards, four turns in the whole session. The participant:
 "waited for the study to continue, then added “call the bank”."
 
+## The sequential route: `shared-world-2026-09-04T21-40-05-002Z-9f45cf4a`
+
+Two seats on ONE sandbox, in declared order, the same board and the same 45 s window from the
+start. The planner held 21:40:27 to 21:41:12 (45,639 ms, 3 frames, no model turn inside) and
+added its task; the coordinator, whose turn began after, held 21:41:37 to 21:42:22 (45,533 ms,
+3 frames, no model turn inside) and added its own; the checkpoint timeline carries the baseline
+and one reading after each seat. Three turns per seat.
+
+The first attempt at this run never created a sandbox: an explicit `execution.timeoutMs` of
+900,000 ms for two seats, plus the route's 30 minutes of provisioning budget and 10-minute
+reclamation buffer, asked the provider for a 70-minute sandbox and got "400: Timeout cannot be
+greater than 1 hours", which surfaced as a bundle that failed verification. The route now refuses
+that arithmetic before any call and names the per-role ceiling.
+
 ## Not verified
 
-- The sequential shared-world route live (its plumbing test passes), and the scripted-browser route
-  (the option is not wired there; it has no model loop to hold).
+- The scripted-browser route (the option is not wired there; it has no model loop to hold).

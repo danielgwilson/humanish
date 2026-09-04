@@ -692,6 +692,24 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       + (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
       + SANDBOX_TIMEOUT_BUFFER_MS;
 
+  // The provider caps a sandbox at MAX_SANDBOX_MS and refuses a longer request at create, after
+  // nothing but a paid API call; on 2026-09-04 an explicit 15-minute execution.timeoutMs for two
+  // seats did exactly that ("400: Timeout cannot be greater than 1 hours") and the refusal
+  // surfaced as a bundle that failed verification. Say the arithmetic here, before any call.
+  if (perRunSandboxMs > MAX_SANDBOX_MS) {
+    const perRoleCeilingMs = Math.floor(
+      (MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - SANDBOX_TIMEOUT_BUFFER_MS
+        - (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0))
+      / Math.max(1, roleCount)
+    );
+    throw new Error(
+      `the sequential shared-world sandbox would need ${Math.round(perRunSandboxMs / 60_000)} minutes `
+        + `(${roleCount} role(s) x ${Math.round(timeoutMs / 1000)} s of session budget, plus ${SUBJECT_PROVISION_BUDGET_MS / 60_000} minutes of provisioning `
+        + `and a ${SANDBOX_TIMEOUT_BUFFER_MS / 60_000}-minute reclamation buffer), over the provider's ${MAX_SANDBOX_MS / 60_000}-minute sandbox cap; `
+        + `set execution.timeoutMs to at most ${perRoleCeilingMs} ms per role, or execution.desktop.sandboxTimeoutMs explicitly`
+    );
+  }
+
   const source = await buildRunSource({ capturedAt: createdAt, cwd, humanishSource: "present", packageName: "humanish" });
 
   const warnings: string[] = [];
