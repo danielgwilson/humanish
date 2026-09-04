@@ -566,16 +566,22 @@ and a Claude participant with no memory across turns (#520). `humanish stats` (#
 
 The standing queue, in rough order:
 
-1. #581, the remaining half: a `Sandbox.create` that fails after the API allocated the sandbox
+1. #509, the microphone tier: a custom desktop image with an audio stack
+   (`execution.desktop.template`), then `media.microphone` threaded into the launch the way the
+   camera is; the parse-time refusal stands until then;
+2. #581, the remaining half: a `Sandbox.create` that fails after the API allocated the sandbox
    (the desktop SDK's own startup) leaves a sandbox this run never learned the id of, reclaimed only
    by the provider's timeout; the linger itself is the SDK's held command stream, closed by the
-   2.3.3 bump (0.78.0), and `doctor` names an older SDK;
-2. #513: there is still nowhere to read the docs on humanish.dev (site copy is locked; a docs
+   2.3.3 bump (0.78.0), and `doctor` names an older SDK; the upstream ask is drafted for the
+   operator;
+3. #221's later tier, a real device or simulator behind the emulated lane, and #623's
+   scripted-browser route, which has no model loop and so no dwell or later-tab applier;
+4. #513: there is still nowhere to read the docs on humanish.dev (site copy is locked; a docs
    route needs the operator's sign-off);
-3. the TUI views over `stats` and `export` (#455's metrics screen and `s` key), design-gated;
-4. the launch post: a draft with every number and its receipt path sits outside the public repo,
+5. the TUI views over `stats` and `export` (#455's metrics screen and `s` key), design-gated;
+6. the launch post: a draft with every number and its receipt path sits outside the public repo,
    awaiting the operator; nothing has been announced;
-5. registry promotions (#431) and the shared-world honesty half (#365, #446), unchanged.
+7. registry promotions (#431) and the shared-world honesty half (#365, #446), unchanged.
 
 Earlier state, kept for the record:
 
