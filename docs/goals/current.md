@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.79.0`)
+## Current Program Truth (source `0.80.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -462,6 +462,18 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-04, night (0.80.0).** The observation window reaches every desktop route: the
+sequential and concurrent shared-world seats forward `dwell` the way they forward `stopWhen`
+(#645), with a plumbing test per route and two live receipts, three participants holding together
+on one shared board whose checkpoint digest stood still until they acted, and two seats holding
+in turn on one sandbox (`receipts/dwell-window-2026-09-04.md`). The sequential route refuses a
+sandbox request over the provider's 60-minute cap before any call and names the per-role ceiling
+(#649); the provider's refusal had surfaced as a bundle that failed verification. The planted-defect
+benchmark ran with a second brain, the operator's own Claude Code as the participant: 14 of 15
+reported, nothing invented in three clean runs, 72 of 75 across both brains
+(`bench/RESULTS-2026-09-04-claude.md`). A two-minute window and a camera feed of the adopter's own
+are live receipts too.
 
 **2026-09-04, evening (0.79.0).** Two of the operator's own asks, each with a live receipt. A
 declared observation window (#510): `dwell` on an actor or a lane holds the page once its condition
