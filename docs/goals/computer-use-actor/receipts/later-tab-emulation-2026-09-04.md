@@ -16,6 +16,13 @@ true`), the newcomer persona, the mission "open the guide and tell me the number
 | `cua-2026-09-04T19-35-25-899Z-d98f9fbe` ($0.01) | plus one reload after the first navigation commits (`Page.frameNavigated`) | opened at once | width **414**, touch **0**, DPR **3** | `laterTargets` 414 / DPR 3 / touch 5 (the live read, after the load script ran); holder log `reloadAfterNavigation: true` but no reload: the commit beat `Page.enable` |
 | `cua-2026-09-04T19-38-06-794Z-b79e2eaa` ($0.01) | plus the page's own `location.href` as the second way to learn the commit happened | opened at once | width **414**, touch **5**, DPR **3** | `laterTargets` 414 / DPR 3 / touch 5; holder log: attached, then `reloaded ... by: href` |
 
+## The shipped design twice more: `cua-2026-09-04T22-24-11-182Z-51413b73`, `cua-2026-09-04T22-24-51-159Z-aacacc67` ($0.02, $0.01)
+
+Same lab on the 0.80.0 build at the end of the day. Both participants tapped the link, both read
+"Guide width 414, touch points 5, pixel ratio 3, first page 414", both bundles carry
+`laterTargets` at 414 / 3 / 5 and the holder's attach and reload lines, no warnings. Three of
+three on the design that shipped.
+
 ## What the first run taught
 
 The #629 design paused every new target before its first navigation and applied the overrides
