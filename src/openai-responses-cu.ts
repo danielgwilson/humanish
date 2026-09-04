@@ -451,7 +451,53 @@ export function wireCaptureFileName(callNumber: number): string {
 export type FetchLike = (
   url: string,
   init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }
-) => Promise<{ ok: boolean; status: number; text(): Promise<string>; json(): Promise<unknown> }>;
+) => Promise<{
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+  /** Optional so a scripted fake need not carry headers; the real fetch Response does. */
+  headers?: { get(name: string): string | null };
+}>;
+
+/** The longest wait a provider's Retry-After hint can impose on one retry. */
+export const RETRY_AFTER_CAP_MS = 60_000;
+
+/**
+ * Parse a Retry-After header (delay-seconds or an HTTP-date) into milliseconds from `now`;
+ * undefined when absent or unreadable. OpenAI's 2026-09-02 change added `429 slow_down` and
+ * `503 server_is_overloaded`, both of which may carry it; a fixed 200/400/800 ms backoff against
+ * a 20 s hint burns every retry inside the hint and ends the lane for nothing.
+ */
+export function retryAfterMs(value: string | null | undefined, now: number): number | undefined {
+  if (value === null || value === undefined) return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  if (/^\d+$/.test(trimmed)) return Number.parseInt(trimmed, 10) * 1000;
+  const at = Date.parse(trimmed);
+  if (Number.isNaN(at)) return undefined;
+  return Math.max(0, at - now);
+}
+
+/**
+ * The provider error codes a lane's reason may name. Read from a non-ok body, which is never
+ * kept or logged (it can echo the input); only a code on this list crosses over.
+ */
+const NAMED_PROVIDER_ERROR_CODES = [
+  "misalignment_policy_violation",
+  "slow_down",
+  "server_is_overloaded",
+  "rate_limit_exceeded",
+  "insufficient_quota",
+  "model_not_found",
+  "context_length_exceeded"
+] as const;
+
+export function namedProviderErrorCode(bodyText: string): string | undefined {
+  const match = /"code"\s*:\s*"([a-z_]+)"/.exec(bodyText);
+  const code = match?.[1];
+  return code !== undefined && (NAMED_PROVIDER_ERROR_CODES as readonly string[]).includes(code) ? code : undefined;
+}
 
 export interface OpenAiResponsesProviderOptions {
   apiKey: string;
@@ -665,12 +711,26 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
         }
         throw new Error("OpenAI Responses 400");
       }
+      if (res.status === 403) {
+        // Misalignment monitoring (2026-09-03): the provider can stop a threaded conversation
+        // mid-run with 403 misalignment_policy_violation; there is no resume path, and earlier
+        // actions may already have executed. Named, terminal, never retried.
+        const bodyText = await res.text().catch(() => "");
+        if (namedProviderErrorCode(bodyText) === "misalignment_policy_violation") {
+          throw new Error("OpenAI Responses 403 misalignment_policy_violation: the provider stopped this conversation and it cannot be resumed");
+        }
+        throw new Error("OpenAI Responses 403");
+      }
       const retryable = res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
       if (retryable && attempt < maxRetries) {
-        await delayFn(2 ** attempt * 200);
+        // The provider's own hint wins over the fixed backoff, up to the cap.
+        const backoff = 2 ** attempt * 200;
+        const hinted = retryAfterMs(res.headers?.get("retry-after"), Date.now());
+        await delayFn(hinted === undefined ? backoff : Math.min(Math.max(backoff, hinted), RETRY_AFTER_CAP_MS));
         continue;
       }
-      throw new Error(`OpenAI Responses ${res.status}`);
+      const code = namedProviderErrorCode(await res.text().catch(() => ""));
+      throw new Error(`OpenAI Responses ${res.status}${code === undefined ? "" : ` ${code}`}`);
     }
     if (sawNetworkError) {
       throw new Error("OpenAI Responses network error");

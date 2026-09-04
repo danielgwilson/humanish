@@ -9,8 +9,11 @@ import {
   buildContinuationRequest,
   buildInitialRequest,
   createOpenAiResponsesProvider,
+  namedProviderErrorCode,
   openAiActionToCua,
   parseOpenAiResponse,
+  RETRY_AFTER_CAP_MS,
+  retryAfterMs,
   type FetchLike,
   type OpenAiCuContext
 } from "../src/openai-responses-cu.js";
@@ -482,6 +485,92 @@ describe("createOpenAiResponsesProvider", () => {
     expect(call).toBe(2);
     expect(turn.done).toBe(true);
     expect(turn.message).toBe("ok");
+  });
+
+  it("honors Retry-After (seconds) on a 429 slow_down over the fixed backoff", async () => {
+    let call = 0;
+    const delays: number[] = [];
+    const fetchFn: FetchLike = async () => {
+      call += 1;
+      if (call === 1) {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: (name: string) => (name.toLowerCase() === "retry-after" ? "2" : null) },
+          text: async () => JSON.stringify({ error: { code: "slow_down", message: "slow down" } }),
+          json: async () => ({})
+        };
+      }
+      return { ok: true, status: 200, text: async () => "", json: async () => ({ id: "resp_1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }) };
+    };
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: async (ms) => { delays.push(ms); } });
+    const turn = await provider.nextTurn(request(), neverAbort);
+    expect(turn.message).toBe("ok");
+    expect(delays).toEqual([2_000]);
+  });
+
+  it("caps a Retry-After hint at 60 s and reads an HTTP-date form", async () => {
+    let call = 0;
+    const delays: number[] = [];
+    const inFive = new Date(Date.now() + 5_000).toUTCString();
+    const fetchFn: FetchLike = async () => {
+      call += 1;
+      if (call === 1) {
+        return { ok: false, status: 503, headers: { get: () => "600" }, text: async () => JSON.stringify({ error: { code: "server_is_overloaded" } }), json: async () => ({}) };
+      }
+      if (call === 2) {
+        return { ok: false, status: 503, headers: { get: () => inFive }, text: async () => "", json: async () => ({}) };
+      }
+      return { ok: true, status: 200, text: async () => "", json: async () => ({ id: "resp_1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }) };
+    };
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: async (ms) => { delays.push(ms); } });
+    await provider.nextTurn(request(), neverAbort);
+    expect(delays[0]).toBe(RETRY_AFTER_CAP_MS);
+    expect(delays[1]).toBeGreaterThan(3_000);
+    expect(delays[1]).toBeLessThanOrEqual(5_000);
+  });
+
+  it("a 403 misalignment_policy_violation is terminal and named, never retried, body never copied", async () => {
+    let call = 0;
+    const body = JSON.stringify({ error: { code: "misalignment_policy_violation", message: "private detail echoing the input" } });
+    const fetchFn: FetchLike = async () => {
+      call += 1;
+      return { ok: false, status: 403, text: async () => body, json: async () => ({}) };
+    };
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: noDelay });
+    let thrown: unknown;
+    try {
+      await provider.nextTurn(request(), neverAbort);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(call).toBe(1);
+    const message = (thrown as Error).message;
+    expect(message).toContain("OpenAI Responses 403 misalignment_policy_violation");
+    expect(message).toContain("cannot be resumed");
+    expect(message).not.toContain("private detail");
+  });
+
+  it("an exhausted 429 names a known code from the body, never the body itself", async () => {
+    const body = JSON.stringify({ error: { code: "insufficient_quota", message: "You exceeded your current quota, details: secret" } });
+    const fetchFn: FetchLike = async () => ({ ok: false, status: 429, text: async () => body, json: async () => ({}) });
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, maxRetries: 0, delayFn: noDelay });
+    let thrown: unknown;
+    try {
+      await provider.nextTurn(request(), neverAbort);
+    } catch (error) {
+      thrown = error;
+    }
+    expect((thrown as Error).message).toBe("OpenAI Responses 429 insufficient_quota");
+    expect((thrown as Error).message).not.toContain("secret");
+  });
+
+  it("an unknown code in the body is not copied into the error", () => {
+    expect(namedProviderErrorCode(JSON.stringify({ error: { code: "something_new_and_private" } }))).toBeUndefined();
+    expect(namedProviderErrorCode("not json")).toBeUndefined();
+    expect(retryAfterMs("7", 0)).toBe(7_000);
+    expect(retryAfterMs("", 0)).toBeUndefined();
+    expect(retryAfterMs("soon", 0)).toBeUndefined();
   });
 
   it("retries a transient thrown fetch error and then succeeds", async () => {
