@@ -764,6 +764,50 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toBeUndefined();
   });
 
+  it("a lab's dwell window reaches the session the lane runs (#510): actor default, lane override", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module } = makeFakeModule(sandbox);
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-dwell-plumbing",
+      title: "Dwell plumbing",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{
+        type: "openai-computer-use",
+        mission: "Watch the room.",
+        dwell: { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000 },
+        lanes: [
+          { id: "watcher", persona: "first-time-visitor", instruction: "Watch." },
+          { id: "leaver", persona: "first-time-visitor", instruction: "Watch, then leave.", dwell: { ms: 2_000, everyMs: 1_000, then: "stop" } }
+        ]
+      }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const seen: unknown[] = [];
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          seen.push(options.dwell);
+          return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    const verified = await verifyRun(cwd, outcome.result.runId);
+    expect(outcome.result.ok, JSON.stringify(verified.checks.filter((check) => !check.ok))).toBe(true);
+    // The spread that carried it past the type checker is exactly why this test exists: an excess
+    // property in a spread is never an error, so a dropped option is silent without it.
+    expect(seen).toEqual([
+      { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000, everyMs: 10_000, then: "continue" },
+      { ms: 2_000, everyMs: 1_000, then: "stop" }
+    ]);
+  }, 30_000);
+
   it("sandbox create retried once (#630): a first attempt that hit an envd not yet routable is retried, named on the lane and in the phase trail", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {

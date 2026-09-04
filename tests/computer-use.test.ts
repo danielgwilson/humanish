@@ -1629,3 +1629,132 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.completionReason).toBe("goal_satisfied");
   });
 });
+
+describe("dwell window (#510): the harness holds, looks, and requests no model turn", () => {
+  const item = (text: string, signature: string) => ({
+    screenshot: frame(),
+    stateSignature: signature,
+    url: "http://127.0.0.1:3000/",
+    text
+  });
+  // A clock that only moves when the loop sleeps, so the window's frame count is exact.
+  function heldClock() {
+    let t = 0;
+    return { now: () => t, sleep: async (ms: number) => { t += ms; } };
+  }
+
+  it("once its condition matches, holds for the window on the cadence, then hands control back with a hint", async () => {
+    const provider = new RepeatProvider({ actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false });
+    const executor = new ObservationSequenceExecutor([
+      item("Add a task", "s0"),
+      item("1 item left", "s1"), // after turn 1: the dwell condition matches
+      item("1 item left", "dwell-1"),
+      item("1 item left", "dwell-2"),
+      item("1 item left", "dwell-3"),
+      item("1 item left", "after-dwell"),
+      item("2 items left", "s2") // after turn 2: stopWhen
+    ]);
+    const clock = heldClock();
+    const rec = recorder();
+    const result = await runComputerUseLoop({
+      instructions: "Add one task, then add another.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: clock.now,
+      sleep: clock.sleep,
+      writeScreenshot: rec.writeScreenshot,
+      dwell: { when: { any: [{ id: "one-left", textIncludes: "1 item left" }] }, ms: 3_000, everyMs: 1_000, then: "continue" },
+      stopWhen: { any: [{ id: "two-left", textIncludes: "2 items left" }] }
+    });
+    expect(result.status).toBe("passed");
+    expect(result.reason).toBe("stopWhen matched two-left (textIncludes)");
+    // Two model turns in all: one before the window, one after. None during it.
+    expect(provider.seen).toHaveLength(2);
+    const titles = result.trace.items.map((entry) => entry.title);
+    const started = titles.indexOf("dwell window started");
+    const completed = titles.indexOf("dwell window complete");
+    expect(started).toBeGreaterThan(-1);
+    expect(completed).toBeGreaterThan(started);
+    const complete = result.trace.items[completed];
+    expect(complete?.text).toContain("3 frame(s) over 3000ms");
+    expect(complete?.text).toContain("no model turn was requested");
+    // The frames were persisted on the cadence, named as dwell frames.
+    expect(rec.written.map((entry) => entry.name).filter((name) => name.startsWith("dwell-"))).toEqual(["dwell-01.png", "dwell-02.png", "dwell-03.png"]);
+    // The turn after the window carries the hint that time passed deliberately.
+    expect(provider.seen[1]?.contextHint).toContain("held this page under observation for 3 seconds");
+    // Nothing the page said leaks through the window's notices.
+    expect(JSON.stringify(result.trace.items.filter((entry) => entry.kind === "notice"))).not.toContain("1 item left");
+  });
+
+  it("then: stop ends the session after the window with a reason that names the hold", async () => {
+    const provider = new RepeatProvider({ actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false });
+    const executor = new ObservationSequenceExecutor([
+      item("Add a task", "s0"),
+      item("1 item left", "s1"),
+      item("1 item left", "dwell-1"),
+      item("1 item left", "dwell-2"),
+      item("1 item left", "after-dwell")
+    ]);
+    const clock = heldClock();
+    const result = await runComputerUseLoop({
+      instructions: "Add one task.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: clock.now,
+      sleep: clock.sleep,
+      dwell: { when: { any: [{ id: "one-left", textIncludes: "1 item left" }] }, ms: 2_000, everyMs: 1_000, then: "stop" }
+    });
+    expect(result.status).toBe("passed");
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.reason).toBe("dwell window complete (2000ms held after turn 1)");
+    expect(provider.seen).toHaveLength(1);
+  });
+
+  it("with no condition the window opens at the start, before the first model turn", async () => {
+    const provider = new RepeatProvider({ actions: [], pendingSafetyChecks: [], done: true, message: "Nothing to do." });
+    const executor = new ObservationSequenceExecutor([item("Dashboard", "s0"), item("Dashboard", "d1"), item("Dashboard", "d2"), item("Dashboard", "after")]);
+    const clock = heldClock();
+    const result = await runComputerUseLoop({
+      instructions: "Watch the dashboard.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: clock.now,
+      sleep: clock.sleep,
+      dwell: { ms: 2_000, everyMs: 1_000, then: "continue" }
+    });
+    const titles = result.trace.items.map((entry) => entry.title);
+    expect(titles.indexOf("dwell window complete")).toBeGreaterThan(-1);
+    expect(result.trace.items[titles.indexOf("dwell window started")]?.text).toContain("at the start at turn 0");
+    expect(provider.seen).toHaveLength(1);
+    expect(provider.seen[0]?.contextHint).toContain("held this page under observation");
+  });
+
+  it("a window the session budget cannot hold is skipped and says so", async () => {
+    const provider = new RepeatProvider({ actions: [], pendingSafetyChecks: [], done: true, message: "Done." });
+    const executor = new ObservationSequenceExecutor([item("Dashboard", "s0")]);
+    const clock = heldClock();
+    const result = await runComputerUseLoop({
+      instructions: "Watch the dashboard.",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 5_000,
+      now: clock.now,
+      sleep: clock.sleep,
+      dwell: { ms: 60_000, everyMs: 10_000, then: "continue" }
+    });
+    const skipped = result.trace.items.find((entry) => entry.title === "dwell window skipped");
+    expect(skipped?.text).toContain("session budget remained for a 60000ms window");
+    expect(result.trace.items.some((entry) => entry.title === "dwell window started")).toBe(false);
+  });
+});

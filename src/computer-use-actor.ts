@@ -27,7 +27,7 @@ import {
   type OpenAiResponsesProviderOptions
 } from "./openai-responses-cu.js";
 import { defaultRedactionHooks, type RedactionHooks } from "./redaction.js";
-import type { StopWhen } from "./stop-conditions.js";
+import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import type { LabTask } from "./tasks.js";
 
 export interface CuaActorSessionOptions {
@@ -76,6 +76,8 @@ export interface CuaActorSessionOptions {
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
   /** Deterministic harness-owned stop guards evaluated between model turns. */
   stopWhen?: StopWhen;
+  /** A declared observation window (#510), forwarded to the loop. */
+  dwell?: DwellWindow;
   /** The lab's declared protocol; the loop records a corroborated task funnel on the trace (#414).
    *  Only the `success` criteria are read here — the participant-facing goals are already composed
    *  into `instructions` upstream, and the criteria never reach the prompt. */
@@ -117,6 +119,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.scrubText === undefined ? {} : { scrubText: options.scrubText }),
     ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot }),
     ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen }),
+    ...(options.dwell === undefined ? {} : { dwell: options.dwell }),
     ...(options.tasks === undefined ? {} : { tasks: options.tasks }),
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
     ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
