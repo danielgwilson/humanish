@@ -37,7 +37,7 @@
 //      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
 import type { ActorTokenUsage } from "./actor-contract.js";
 import { readFile, realpath, stat } from "node:fs/promises";
@@ -1064,6 +1064,37 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
   };
 
+  // E2B can stream every byte through callbacks AND return the same complete output (#667).
+  // Track transport delivery, independently per stream, rather than deduplicating participant
+  // lines or equal usage records. Hash raw callback bytes before redaction/truncation so the
+  // comparison cannot confuse two values that redact identically or lose capped-away delivery.
+  // Delivery tracking retains only counts and hashes; payloads still pass the artifact sanitizer.
+  const streamedOutput = {
+    stdout: { bytes: 0, hash: createHash("sha256") },
+    stderr: { bytes: 0, hash: createHash("sha256") }
+  };
+  const recordStreamedTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
+    streamedOutput[stream].bytes += Buffer.byteLength(raw, "utf8");
+    streamedOutput[stream].hash.update(raw, "utf8");
+    appendTerminalChunk(stream, raw);
+  };
+  const appendReturnedTerminalOutput = (stream: "stdout" | "stderr", raw: string): void => {
+    const delivered = streamedOutput[stream];
+    const returned = Buffer.from(raw, "utf8");
+    if (delivered.bytes > 0 && returned.length >= delivered.bytes) {
+      const returnedPrefixHash = createHash("sha256").update(returned.subarray(0, delivered.bytes)).digest("hex");
+      if (returnedPrefixHash === delivered.hash.copy().digest("hex")) {
+        // A complete replay adds nothing; a partly streamed prefix keeps only the unseen tail.
+        const suffix = returned.subarray(delivered.bytes).toString("utf8");
+        if (suffix) appendTerminalChunk(stream, suffix);
+        return;
+      }
+    }
+    // Older/final-only SDK delivery, or output that does not match the streamed prefix: keep it.
+    // Guessing at overlap here could erase legitimate repeated participant text.
+    appendTerminalChunk(stream, raw);
+  };
+
   let sandbox: E2BDesktopSandbox | undefined;
   let sandboxModule: E2BDesktopModule | undefined;
   let sandboxId: string | undefined;
@@ -1263,8 +1294,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
             envs: { ...runtimeEnv.envs, HUMANISH_STUDY_PARTICIPANT: "1" },
             requestTimeoutMs,
             timeoutMs: wallClockMs,
-            onStdout: (data: string) => appendTerminalChunk("stdout", data),
-            onStderr: (data: string) => appendTerminalChunk("stderr", data)
+            onStdout: (data: string) => recordStreamedTerminalChunk("stdout", data),
+            onStderr: (data: string) => recordStreamedTerminalChunk("stderr", data)
           }),
           wallClockMs,
           now
@@ -1273,9 +1304,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
           timedOut = true;
         } else {
           exitCode = result.value.exitCode;
-          // Some SDK shapes return final stdout/stderr in the result too (not only via callbacks).
-          if (result.value.stdout) appendTerminalChunk("stdout", result.value.stdout);
-          if (result.value.stderr) appendTerminalChunk("stderr", result.value.stderr);
+          // Reconcile the SDK's returned aggregate against bytes already delivered by callbacks.
+          if (result.value.stdout) appendReturnedTerminalOutput("stdout", result.value.stdout);
+          if (result.value.stderr) appendReturnedTerminalOutput("stderr", result.value.stderr);
           if (result.value.error) runError = result.value.error;
         }
       } catch (error) {
@@ -1342,6 +1373,11 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       warnings
     });
   }
+
+  // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
+  // chunks of each stream before any transcript/trace/event artifact is persisted; interleaved
+  // stderr must not hide a key assembled by consecutive stdout deliveries.
+  scrubSplitKnownValues(terminalEvents, knownSecretValues);
 
   // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
   const normalizedTranscript = normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join(""));
@@ -1865,6 +1901,46 @@ async function runWithWallClock<T>(
     return { timedOut: true };
   }
   return value;
+}
+
+/**
+ * Per-chunk sanitization cannot recognize a value split across deliveries. Redact those complete
+ * known values before persistence without collapsing events or changing stdout/stderr ordering.
+ * Work backwards through matches so edits to later text leave earlier offsets valid.
+ */
+function scrubSplitKnownValues(events: TerminalEventRecord[], knownValues: string[]): void {
+  for (const stream of ["stdout", "stderr"] as const) {
+    const chunks = events.filter((event) => event.stream === stream);
+    for (const value of knownValues) {
+      if (!value) continue;
+      let offset = 0;
+      const starts = chunks.map((event) => {
+        const start = offset;
+        offset += event.chunk.length;
+        return start;
+      });
+      const text = chunks.map((event) => event.chunk).join("");
+      const matches: number[] = [];
+      for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + value.length)) matches.push(at);
+      for (const at of matches.reverse()) {
+        let first = 0;
+        while (first + 1 < starts.length && (starts[first + 1] ?? Infinity) <= at) first += 1;
+        let last = first;
+        while (last + 1 < starts.length && (starts[last + 1] ?? Infinity) < at + value.length) last += 1;
+        const firstChunk = chunks[first];
+        const lastChunk = chunks[last];
+        if (!firstChunk || !lastChunk) continue;
+        const before = firstChunk.chunk.slice(0, at - (starts[first] ?? 0));
+        const after = lastChunk.chunk.slice(at + value.length - (starts[last] ?? 0));
+        firstChunk.chunk = `${before}[REDACTED_SECRET]${first === last ? after : ""}`;
+        for (let index = first + 1; index < last; index += 1) {
+          const middle = chunks[index];
+          if (middle) middle.chunk = "";
+        }
+        if (first !== last) lastChunk.chunk = after;
+      }
+    }
+  }
 }
 
 /** Build the in-sandbox `codex exec` command (non-interactive, JSON, stdin disabled by mechanism). */

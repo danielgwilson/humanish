@@ -39,7 +39,13 @@ interface RecordedRun {
 }
 
 function makeFakeModule(opts: {
-  codexBehavior: (cmd: string, run: RecordedRun) => { exitCode: number; stdout?: string; emit?: (onStdout: (d: string) => void) => void };
+  codexBehavior: (cmd: string, run: RecordedRun) => {
+    exitCode: number;
+    stdout?: string;
+    emit?: (onStdout: (d: string) => void, onStderr: (d: string) => void) => void;
+    returnedStdout?: string;
+    returnedStderr?: string;
+  };
   creates: RecordedCreate[];
   createError?: Error;
   runs: RecordedRun[];
@@ -90,7 +96,7 @@ function makeFakeModule(opts: {
           commands: {
             async run(
               command: string,
-              runOptions?: { envs?: Record<string, string>; timeoutMs?: number; onStdout?: (d: string) => void }
+              runOptions?: { envs?: Record<string, string>; timeoutMs?: number; onStdout?: (d: string) => void; onStderr?: (d: string) => void }
             ) {
               const rec: RecordedRun = {
                 command,
@@ -100,9 +106,13 @@ function makeFakeModule(opts: {
               opts.runs.push(rec);
               if (command.includes("codex")) {
                 const behavior = opts.codexBehavior(command, rec);
-                if (behavior.emit && runOptions?.onStdout) behavior.emit(runOptions.onStdout);
+                if (behavior.emit && runOptions?.onStdout) behavior.emit(runOptions.onStdout, runOptions.onStderr ?? (() => {}));
                 else if (behavior.stdout && runOptions?.onStdout) runOptions.onStdout(behavior.stdout);
-                return { exitCode: behavior.exitCode };
+                return {
+                  exitCode: behavior.exitCode,
+                  ...(behavior.returnedStdout === undefined ? {} : { stdout: behavior.returnedStdout }),
+                  ...(behavior.returnedStderr === undefined ? {} : { stderr: behavior.returnedStderr })
+                };
               }
               if (command.includes("nodesource.com")) {
                 // The UNKEYED runtime-bootstrap command (ensure Node/npm before the keyed exec).
@@ -208,6 +218,154 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   let cwd: string;
   beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-live-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+  // Captured verbatim from the real Codex event shape on 2026-09-05. This record has no
+  // identifiers or participant prose. The E2B callback/returned-stdout duplication is proven
+  // byte-for-byte in docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md.
+  const capturedUsage = '{"type":"turn.completed","usage":{"input_tokens":94325,"cached_input_tokens":55936,"cache_write_input_tokens":0,"output_tokens":1407,"reasoning_output_tokens":864}}\n';
+
+  it.each(["streamed-and-returned", "returned-only", "partial-prefix", "callbacks-only"] as const)("counts captured usage once for %s delivery and preserves actual repeated lines", async (delivery) => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const repeated = "I checked the same control again.\n";
+    const prefix = `Visible unicode: café 🧭\n${repeated}${repeated}known value ${FAKE_RUNTIME_KEY}\n`;
+    const result = await runTerminalProductLab({ cwd, config: liveConfig({ caps: { maxUsd: 1, maxMinutes: 1 } }), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => {
+        const output = `${prefix}${capturedUsage}HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`;
+        return {
+          exitCode: 0,
+          emit: (stdout) => {
+            if (delivery === "returned-only") return;
+            stdout(prefix);
+            if (delivery !== "partial-prefix") stdout(output.slice(prefix.length));
+          },
+          ...(delivery === "callbacks-only" ? {} : { returnedStdout: output })
+        };
+      } })
+    } });
+    expect(result.ok).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const transcript = await readFile(path.join(runDir, "terminal-transcript.txt"), "utf8");
+    expect(transcript.split(repeated).length - 1).toBe(2);
+    expect(transcript).toContain("Visible unicode: café 🧭");
+    expect(transcript).not.toContain(FAKE_RUNTIME_KEY);
+    expect(transcript).toContain("[REDACTED_SECRET]");
+    const actor = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
+    expect(actor.tokenUsage.turns).toHaveLength(1);
+    expect(actor.tokenUsage.input).toBe(94325);
+    expect(actor.tokenUsage.cachedInput).toBe(55936);
+    expect(actor.tokenUsage.output).toBe(1407);
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it.each(["partial-prefix", "complete-replay", "callbacks-only"] as const)("redacts a known key split across delivery chunks (%s)", async (delivery) => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => ({
+        exitCode: 0,
+        emit: (stdout, stderr) => {
+          stdout(`key was ${FAKE_RUNTIME_KEY.slice(0, 10)}`);
+          stderr("an interleaved diagnostic\n");
+          stdout(FAKE_RUNTIME_KEY.slice(10, -1));
+          if (delivery !== "partial-prefix") stdout(`${FAKE_RUNTIME_KEY.slice(-1)}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`);
+        },
+        ...(delivery === "callbacks-only" ? {} : { returnedStdout: `key was ${FAKE_RUNTIME_KEY}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n` })
+      }) })
+    } });
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const events = (await readFile(path.join(runDir, "terminal-events.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+    const stdout = events.filter((event) => event.stream === "stdout").map((event) => event.chunk).join("");
+    expect(stdout).not.toContain(FAKE_RUNTIME_KEY);
+    expect(stdout).not.toContain(FAKE_RUNTIME_KEY.slice(0, -1));
+    expect(stdout).toContain("[REDACTED_SECRET]");
+    expect(events.some((event) => event.chunk.includes("an interleaved diagnostic"))).toBe(true);
+    for (const file of ["run.json", "actor.json", "terminal-transcript.txt", "terminal-events.ndjson"]) {
+      expect(await readFile(path.join(runDir, file), "utf8")).not.toContain(FAKE_RUNTIME_KEY);
+    }
+  });
+
+  it("scrubs multiple split known values without losing surrounding repeated text", async () => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const e2bKey = baseEnv().E2B_API_KEY as string;
+    let expected = "";
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => {
+        const output = `repeat\n${FAKE_RUNTIME_KEY} between ${e2bKey} after ${FAKE_RUNTIME_KEY}\nrepeat\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`;
+        expected = output.split(FAKE_RUNTIME_KEY).join("[REDACTED_SECRET]").split(e2bKey).join("[REDACTED_SECRET]");
+        return { exitCode: 0, emit: (stdout) => {
+          for (let at = 0; at < output.length; at += 7) stdout(output.slice(at, at + 7));
+        }, returnedStdout: output };
+      } })
+    } });
+    const events = (await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-events.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+    expect(events.map((event) => event.chunk).join("")).toBe(expected);
+  });
+
+  it("retains legitimate equal-valued usage turns inside one complete delivery", async () => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => {
+        const output = `${capturedUsage}${capturedUsage}HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`;
+        return { exitCode: 0, stdout: output, returnedStdout: output };
+      } })
+    } });
+    const actor = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "actor.json"), "utf8"));
+    expect(actor.tokenUsage.turns).toHaveLength(2);
+    expect(actor.tokenUsage.input).toBe(188650);
+  });
+
+  it("reconciles stderr independently and preserves a returned-only stdout with the same text", async () => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const shared = `Same visible line on both streams: ${FAKE_RUNTIME_KEY}\n`;
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => ({
+        exitCode: 0,
+        emit: (_stdout, stderr) => { stderr(shared); },
+        returnedStderr: `${shared}stderr final tail\n`,
+        returnedStdout: `${shared}HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`
+      }) })
+    } });
+    const events = (await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-events.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+    const output = (stream: string): string => events.filter((event) => event.stream === stream).map((event) => event.chunk).join("");
+    expect(output("stdout").split("Same visible line").length - 1).toBe(1);
+    expect(output("stderr").split("Same visible line").length - 1).toBe(1);
+    expect(output("stderr")).toContain("stderr final tail");
+    expect(JSON.stringify(events)).not.toContain(FAKE_RUNTIME_KEY);
+  });
+
+  it("keeps nonmatching returned output instead of guessing away repeated participant text", async () => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => ({
+        exitCode: 0,
+        stdout: "first callback\nrepeat this line\n",
+        returnedStdout: `repeat this line\nfinal output\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`
+      }) })
+    } });
+    const transcript = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-transcript.txt"), "utf8");
+    expect(transcript.split("repeat this line").length - 1).toBe(2);
+    expect(transcript).toContain("first callback");
+    expect(transcript).toContain("final output");
+  });
+
+  it("does not spend the transcript cap twice on replayed stdout and drop returned-only stderr", async () => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => {
+        const output = `${"x".repeat(500 * 1024)}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`;
+        return { exitCode: 0, stdout: output, returnedStdout: output, returnedStderr: "important final diagnostic\n" };
+      } })
+    } });
+    const transcript = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-transcript.txt"), "utf8");
+    expect(transcript).toContain("important final diagnostic");
+    expect(Buffer.byteLength(transcript)).toBeLessThan(512 * 1024);
+  });
 
   it.each([undefined, ["api.openai.com", "example.com"]])("openai-egress keeps the raw key outside sandbox commands and preserves routing %j", async (egressAllow) => {
     const creates: RecordedCreate[] = [];
