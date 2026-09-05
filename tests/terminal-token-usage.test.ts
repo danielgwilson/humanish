@@ -53,7 +53,7 @@ describe("terminal token usage", () => {
     expect(text).toContain("403,072 input");
     expect(text).toContain("270,558 of them cached");
     expect(text).toContain("4,566 output");
-    expect(text).toContain("2 provider turns");
+    expect(text).toContain("2 Codex turns");
     // No dollar figure is invented anywhere in the statement.
     expect(text).not.toContain("$");
   });

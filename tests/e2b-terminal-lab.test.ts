@@ -76,6 +76,7 @@ function makeFakeModule(opts: {
    * path is covered by the THROWING shape, not just a structural non-zero return.
    */
   bootstrapThrow?: (command: string) => { exitCode?: number; stderr?: string; message?: string } | undefined;
+  versionProbe?: { exitCode: number; stdout: string } | Error;
 }) {
   let counter = 0;
   return {
@@ -104,6 +105,10 @@ function makeFakeModule(opts: {
                 ...(runOptions?.timeoutMs === undefined ? {} : { timeoutMs: runOptions.timeoutMs })
               };
               opts.runs.push(rec);
+              if (command.endsWith(" --version")) {
+                if (opts.versionProbe instanceof Error) throw opts.versionProbe;
+                return opts.versionProbe ?? { exitCode: 0, stdout: "codex-cli 0.153.3\n" };
+              }
               if (command.includes("codex")) {
                 const behavior = opts.codexBehavior(command, rec);
                 if (behavior.emit && runOptions?.onStdout) behavior.emit(runOptions.onStdout, runOptions.onStderr ?? (() => {}));
@@ -218,6 +223,89 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   let cwd: string;
   beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-live-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+  it("records dry-run runtime declarations without resolving or allocating", async () => {
+    const config = liveConfig();
+    config.execution!.runtime = { version: "0.153.3" };
+    config.actors[0]!.model = "gpt-5.6-sol";
+    const result = await runTerminalProductLab({ cwd, config, dryRun: true, open: false, hooks: {
+      loadModule: async () => { throw new Error("must not resolve or allocate"); }
+    } });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const event = bundle.events.find((entry: { type: string }) => entry.type === "terminal-lab.runtime.declared");
+    expect(JSON.parse(event.message)).toMatchObject({ requestedVersion: "0.153.3", versionStatus: "unobserved", requestedModel: "gpt-5.6-sol", modelStatus: "declared" });
+    expect(JSON.parse(event.message).observedVersion).toBeUndefined();
+  });
+
+  it("pins the observed executable, forwards declared model/effort, and preserves additive provenance", async () => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const config = liveConfig();
+    config.execution!.runtime = { version: "0.153.3" };
+    config.actors[0]!.model = "gpt-5.6-sol";
+    config.actors[0]!.reasoningEffort = "low";
+    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => ({
+        exitCode: 0, stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`
+      }) })
+    } });
+    expect(result.ok).toBe(true);
+    const probeIndex = runs.findIndex((r) => r.command.endsWith(" --version"));
+    const execIndex = runs.findIndex((r) => r.command.includes(" exec "));
+    expect(probeIndex).toBeLessThan(execIndex);
+    expect(runs[probeIndex]).toMatchObject({ timeoutMs: 60_000 });
+    expect(runs[probeIndex]?.envs).toBeUndefined();
+    expect(runs[probeIndex]?.command).toContain("@openai/codex@0.153.3 --version");
+    expect(runs[execIndex]?.command).toContain("@openai/codex@0.153.3 exec --model 'gpt-5.6-sol' -c 'model_reasoning_effort=\"low\"'");
+    const dir = path.join(cwd, ".humanish", "runs", result.runId);
+    const actor = JSON.parse(await readFile(path.join(dir, "actor.json"), "utf8"));
+    const ledgers = JSON.parse(await readFile(path.join(dir, "terminal-ledgers.json"), "utf8"));
+    const bundle = JSON.parse(await readFile(path.join(dir, "run.json"), "utf8"));
+    expect(actor.providerVersion).toBe("0.153.3");
+    expect(actor.runtime).toEqual({
+      schema: "humanish.actor-runtime.v1", package: "@openai/codex", requestedVersion: "0.153.3", observedVersion: "0.153.3",
+      versionStatus: "verified", requestedModel: "gpt-5.6-sol", modelStatus: "declared", requestedReasoningEffort: "low", usageGranularity: "runtime_turn"
+    });
+    expect(ledgers.runtime).toEqual(actor.runtime);
+    expect(bundle.streams[0].actor.runtime).toEqual(actor.runtime);
+    expect(actor.ids.model).toBeUndefined(); // No provider model response was inspected.
+    expect(ledgers.cost.lines.provider.usd).toBeNull(); // Declaration is not an observed charge.
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it.each([
+    { exitCode: 0, stdout: "codex-cli 0.153.2\n" },
+    { exitCode: 0, stdout: "unrecognized output\n" },
+    { exitCode: 1, stdout: "codex-cli 0.153.3\n" },
+    new Error("Synthetic version probe timeout")
+  ])("cleans the owned sandbox without a keyed exec after version failure %j", async (versionProbe) => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const config = liveConfig();
+    config.execution!.runtime = { version: "0.153.3" };
+    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, versionProbe, codexBehavior: () => { throw new Error("must not execute"); } })
+    } });
+    expect(result.ok).toBe(false);
+    expect(killed).toEqual(["fake-sandbox-1"]);
+    expect(runs.some((r) => r.envs?.CODEX_API_KEY)).toBe(false);
+    const actor = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "actor.json"), "utf8"));
+    expect(actor.runtime.versionStatus).toBe("failed");
+    expect(actor.runtime.modelStatus).toBe("runtime_default_unobserved");
+    expect(actor.ids.model).toBeUndefined();
+    expect(actor.providerVersion).toBeUndefined();
+  });
+
+  it("rejects a bad pin at the exported engine before loading or allocating", async () => {
+    const config = liveConfig();
+    config.execution!.runtime = { version: "latest; unexpected-command" };
+    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, hooks: {
+      env: baseEnv(), loadModule: async () => { throw new Error("must not load or allocate"); }
+    } });
+    expect(result.runId).toBe("not-created");
+    expect(result.error?.message).toContain("exact Codex version");
+  });
 
   // Captured verbatim from the real Codex event shape on 2026-09-05. This record has no
   // identifiers or participant prose. The E2B callback/returned-stdout duplication is proven
@@ -473,7 +561,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       rules: { "api.openai.com": [{ transform: { headers: { Authorization: `Bearer ${FAKE_RUNTIME_KEY}` } } }] }
     });
     expect(JSON.stringify(creates[0]?.metadata)).not.toContain(FAKE_RUNTIME_KEY);
-    const codexRun = runs.find((r) => r.command.includes("codex"));
+    const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({ CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE, HUMANISH_STUDY_PARTICIPANT: "1" });
     expect(codexRun?.command).toContain(`-c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`);
     expect(JSON.stringify(runs)).not.toContain(FAKE_RUNTIME_KEY);
@@ -550,9 +638,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(JSON.stringify(creates[0]?.metadata ?? {})).not.toContain(FAKE_RUNTIME_KEY);
 
     // The codex command run carried the key in its OWN envs (command-scoped) — and ONLY the runtime key.
-    const codexRun = runs.find((r) => r.command.includes("codex"));
+    const codexRun = runs.find((r) => r.command.includes(" exec "));
     // Pinned via npx, never an ambient/preinstalled `codex` binary (issue #159).
-    expect(codexRun?.command).toContain("npx -y @openai/codex@latest exec");
+    expect(codexRun?.command).toContain("npx -y @openai/codex@0.153.3 exec");
     expect(codexRun?.command).not.toContain("codex exec"); // never the bare ambient-binary form
     // codex's inner sandbox is bypassed: the E2B sandbox is the trust boundary.
     expect(codexRun?.command).toContain("--dangerously-bypass-approvals-and-sandbox");
@@ -572,6 +660,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simulations[0]?.progress).toBe(100);
+    expect(bundle.streams[0].actor.runtime).toMatchObject({ requestedVersion: "latest", observedVersion: "0.153.3", versionStatus: "verified", modelStatus: "runtime_default_unobserved" });
+    expect(bundle.streams[0].actor.ids.model).toBeUndefined();
     for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text).not.toContain(FAKE_RUNTIME_KEY);
@@ -614,7 +704,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     const readinessIndex = runs.findIndex((r) => r.command.includes("HUMANISH_SHELL_READY"));
     const bootstrapIndex = runs.findIndex((r) => r.command.includes("# humanish terminal-node-bootstrap"));
-    const codexIndex = runs.findIndex((r) => r.command.includes("codex"));
+    const codexIndex = runs.findIndex((r) => r.command.includes(" exec "));
     expect(readinessIndex).toBeGreaterThanOrEqual(0);
     expect(bootstrapIndex).toBeGreaterThan(readinessIndex);
     expect(codexIndex).toBeGreaterThan(bootstrapIndex);
@@ -651,7 +741,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
 
     // The keyed exec is NEVER attempted once the runtime bootstrap has failed.
-    expect(runs.some((r) => r.command.includes("codex"))).toBe(false);
+    expect(runs.some((r) => r.command.includes(" exec "))).toBe(false);
 
     // Fails closed as a structured lane result: the run completes (no unhandled throw escapes
     // the lane), is recorded as a harness error, and cleanup still runs.
@@ -861,7 +951,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
       })
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
-    const codexRun = runs.find((r) => r.command.includes("codex"));
+    const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({ CODEX_API_KEY: FAKE_RUNTIME_KEY, HUMANISH_STUDY_PARTICIPANT: "1" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames).toEqual(["CODEX_API_KEY"]);
@@ -880,7 +970,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
       })
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
-    const codexRun = runs.find((r) => r.command.includes("codex"));
+    const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({ CODEX_API_KEY: FAKE_RUNTIME_KEY, OPENAI_API_KEY: FAKE_RUNTIME_KEY, HUMANISH_STUDY_PARTICIPANT: "1" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames.slice().sort()).toEqual(["CODEX_API_KEY", "OPENAI_API_KEY"]);
@@ -901,7 +991,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
       })
     };
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
-    const codexRun = runs.find((r) => r.command.includes("codex"));
+    const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.envs).toEqual({ CODEX_API_KEY: "FAKEKEY-codex-wins-0000000000000000", HUMANISH_STUDY_PARTICIPANT: "1" });
     const ledgers = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]?.envNames).toEqual(["CODEX_API_KEY"]);
@@ -947,7 +1037,7 @@ describe("terminal persona traits (#308)", () => {
     expect(result.ok).toBe(true);
 
     // The persona's low-patience directive reached the agent's ACTUAL composed prompt.
-    const codexRun = runs.find((r) => r.command.includes("codex"));
+    const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.command).toContain("impatient");
     expect(codexRun?.command).not.toContain("persona: autonomous-creative-agent");
 

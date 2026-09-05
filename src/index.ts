@@ -15,6 +15,7 @@ export type {
   ActorStatus,
   ActorTokenUsage,
   ActorTrace,
+  ActorRuntimeProvenance,
   ActorTraceItem,
   ActorTraceItemKind,
   ParticipantClosingReport

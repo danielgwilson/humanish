@@ -36,7 +36,8 @@ function num(value: unknown): number | undefined {
 }
 
 /**
- * Accumulate per-turn provider token usage from a captured `codex exec --json` stream.
+ * Accumulate runtime-turn usage from a captured `codex exec --json` stream. A Codex turn may
+ * include multiple provider requests; these records cannot establish per-request pricing tiers.
  *
  * Returns undefined when the stream carried no usage record at all, which is the honest "no
  * signal" case and must stay distinguishable from a measured zero. Per-turn records are preserved
@@ -98,5 +99,5 @@ export function describeTokenUsage(usage: ActorTokenUsage): string {
   }
   if (usage.output !== undefined) parts.push(`${usage.output.toLocaleString("en-US")} output`);
   const turns = usage.turns?.length ?? 0;
-  return `${parts.join(", ")} tokens over ${turns} provider turn${turns === 1 ? "" : "s"}`;
+  return `${parts.join(", ")} tokens over ${turns} Codex turn${turns === 1 ? "" : "s"}`;
 }
