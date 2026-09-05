@@ -114,7 +114,7 @@ const CURSOR_READ_TIMEOUT_MS = 500;
  * The stock image's xdotool waits ~15s on a synchronized move to its current position (#681).
  * Only an exact integer match can omit that move; fractional actions keep the SDK's own
  * coordinate conversion. Read every time: another action or sequential role may move it.
- * SDK2.3.3 getCursorPosition has no timeout/signal options. Bound our wait, observe late
+ * SDK 2.3.3 getCursorPosition has no timeout/signal options. Bound our wait, observe late
  * rejection, and leave the underlying read-only request alone; it cannot dispatch a click.
  */
 function cursorAlreadyAt(

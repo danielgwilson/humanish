@@ -44,7 +44,7 @@ an input; wrappers must forward it (`execute: (...args) => inner.execute(...args
 one-argument executors remain compatible. This does not cancel already-dispatched substrate
 operations. The desktop executor uses this boundary while reading the current cursor before
 left/double clicks: an exact integer match avoids redundant movement; uncertain or fractional
-coordinates retain the original SDK path. The cursor read adds at most500ms of preparation
+coordinates retain the original SDK path. The cursor read adds at most 500 ms of preparation
 wait and does not cache a previous action's position.
 
 - **`screenshot` is optional.** A non-vision (state) executor omits it. The loop
