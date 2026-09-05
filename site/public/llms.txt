@@ -25,7 +25,7 @@ How an agent calls it: `npx humanish init --yes`, then `npx humanish run try-liv
 cap and separately billed desktop time). `npx humanish run first-run` is a synthetic evidence
 preview with no keys or spend; it does not study an app. Read results with
 `npx humanish runs --json` and `npx humanish review --run latest --json`; draft feedback with
-`npx humanish feedback issue --run latest`. `--json` is available where supported; `tui` is a human surface and refuses detected agent sessions.
+`npx humanish feedback issue --run latest --repo owner/repo`. `--json` is available where supported; `tui` is a human surface and refuses detected agent sessions.
 
 ## Install
 

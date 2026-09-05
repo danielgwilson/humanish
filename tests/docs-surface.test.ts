@@ -12,6 +12,7 @@ const names = readdirSync(resolve(root, "site/content/docs"))
   .map((name) => name.slice(0, -4));
 const pages = names.map((name) => ({ name, text: readFileSync(resolve(root, `site/content/docs/${name}.mdx`), "utf8") }));
 const readme = { name: "README", text: readFileSync(resolve(root, "README.md"), "utf8") };
+const llms = { name: "llms.txt", text: readFileSync(resolve(root, "site/public/llms.txt"), "utf8") };
 
 // The website is a runnable setup path. Catch unsupported flags and stale lab examples before
 // a reader spends provider money following them; parsing metadata never invokes CLI handlers.
@@ -20,11 +21,12 @@ describe("website documentation examples", () => {
     const program = createProgram();
     const failures: string[] = [];
     let checked = 0;
-    for (const { name, text } of [...pages, readme]) {
+    for (const { name, text } of [...pages, readme, llms]) {
       const examples = [...text.matchAll(/```bash[^\n]*\n([\s\S]*?)```/g)]
         .flatMap((block) => block[1]!.split("\n"))
         .filter((line) => line.startsWith("npx humanish "))
         .map((line) => line.slice("npx ".length));
+      examples.push(...[...text.matchAll(/`npx (humanish [^`]+)`/g)].map((match) => match[1]!));
       // README command-table rows are copyable instructions too. Missing --repo there previously
       // escaped the fenced-example check even though Commander requires it before feedback issue.
       examples.push(...[...text.matchAll(/^\| `(humanish [^`]+)` \|/gm)].map((match) => match[1]!));
@@ -95,7 +97,7 @@ describe("website documentation examples", () => {
 
   it("links to existing source files and documentation pages", () => {
     const failures: string[] = [];
-    for (const { name, text } of [...pages, readme]) {
+    for (const { name, text } of [...pages, readme, llms]) {
       for (const match of text.matchAll(/\]\(([^)]+)\)/g)) {
         const url = match[1]!.split("#")[0]!;
         if (url.startsWith("https://humanish.dev/docs")) {
