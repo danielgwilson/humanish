@@ -51,7 +51,12 @@ async function sdkProbe(options: {
       };
     }
   }
+  // A changed SDK debug path must fail before it can allocate a provider resource.
+  const allocation = vi.spyOn(ProbeSandbox as unknown as {
+    createSandbox(...args: unknown[]): Promise<unknown>;
+  }, "createSandbox").mockRejectedValue(new Error("provider allocation forbidden in conformance tests"));
   const desktop = await ProbeSandbox.create({ debug: true, apiKey: "synthetic-not-a-provider-key" });
+  expect(allocation).not.toHaveBeenCalled();
   return { desktop, paths };
 }
 
@@ -65,6 +70,7 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
       import { protectDesktopScreenshotCleanup, desktopScreenshotCleanupFailures } from ${JSON.stringify(helper)};
       let screenshotPath;
       class Probe extends Sandbox {
+        static async createSandbox() { throw new Error('provider allocation forbidden in conformance tests'); }
         constructor(...args) {
           super(...args);
           this.commands.run = async () => ({exitCode:0,stdout:'',stderr:'',pid:1,disconnect:async()=>{}});
@@ -164,12 +170,12 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
   it("does not hide an awaited removal failure inside a future SDK screenshot implementation", async () => {
     const error = new Error("synthetic-awaited-screenshot-cleanup");
     const pending = Promise.reject(error);
-    const files = { write: async () => undefined, read: async () => bytes, remove: () => pending };
+    const files = { write: async () => undefined, read: async (_path: string) => bytes, remove: (_path: string) => pending };
     const desktop = {
       files,
       async screenshot() {
-        await files.read();
-        await files.remove();
+        await files.read("/tmp/synthetic-frame.png");
+        await files.remove("/tmp/synthetic-frame.png");
         return bytes;
       }
     } as unknown as E2BDesktopSandbox;
