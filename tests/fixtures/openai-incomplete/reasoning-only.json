@@ -1,0 +1,35 @@
+{
+  "status": "incomplete",
+  "incomplete_details": {
+    "reason": "max_output_tokens"
+  },
+  "max_output_tokens": 16,
+  "model": "gpt-5.6-sol",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "medium",
+    "mode": "standard",
+    "summary": null
+  },
+  "service_tier": "default",
+  "usage": {
+    "input_tokens": 36,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 16,
+    "output_tokens_details": {
+      "reasoning_tokens": 16
+    },
+    "total_tokens": 52
+  },
+  "id": "resp_fixture_incomplete_1",
+  "output": [
+    {
+      "type": "reasoning",
+      "content": [],
+      "summary": []
+    }
+  ]
+}

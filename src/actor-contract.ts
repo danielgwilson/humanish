@@ -53,11 +53,9 @@ export type ActorCompletionReason =
   | "gave_up"
   | "blocked_approval"
   | "timed_out"
-  // Reached the wall-clock time budget AFTER productive activity (at least one material action).
-  // This is a NON-FAILURE completion for open-ended "watch it play" sessions: there is no goal to
-  // satisfy, productive play IS the outcome, so it maps to ActorStatus "passed". It stays distinct
-  // from "goal_satisfied" (a claimed endpoint) and from "timed_out" (a zero-progress deadline hit,
-  // which remains a failure). See docs/architecture/actor-contract.md.
+  // A study or provider limit ended the session before a natural endpoint. The computer-use
+  // loop maps this to "incomplete", even after productive activity. trace.reason distinguishes
+  // wall-clock, estimated-spend, and provider output/context token limits.
   | "budget_reached"
   | "actor_error"
   // A deterministic scripted step or expectation evaluated false: the scenario predicate

@@ -153,6 +153,8 @@ export interface CuaTurn {
   usage?: { input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
+  /** Explicit provider interruption, independent of actions or participant intent. */
+  interruption?: "token_limit" | "incomplete" | "unexpected_status";
   /** The participant's own word for how it ended, when its reply format carries one (#570). */
   outcome?: ParticipantDeclaredOutcome;
   /** Present only for an accepted structured closing account. */
@@ -1074,6 +1076,33 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
       recordUsage(turn);
+      if (turn.interruption !== undefined) {
+        // A provider can exhaust its response budget before producing visible text, or midway
+        // through an action. Preserve usage and partial narration, but never interpret either as
+        // participant completion or dispatch actions from an explicitly incomplete response.
+        overRunBudget?.(runningUsage());
+        if (turn.reasoning) {
+          record({ id: nextId("reasoning"), kind: "reasoning", lifecycle: "completed", status: "warn",
+            title: `incomplete reasoning turn ${turnNumber}`, text: redactNarration(turn.reasoning) });
+          bump("reasonings");
+        }
+        if (turn.message) {
+          record({ id: nextId("message"), kind: "message", lifecycle: "completed", status: "warn",
+            title: `incomplete message turn ${turnNumber}`, text: redactNarration(turn.message) });
+          bump("messages");
+        }
+        const tokenLimit = turn.interruption === "token_limit";
+        const unexpectedStatus = turn.interruption === "unexpected_status";
+        completionReason = tokenLimit ? "budget_reached" : "harness_error";
+        reason = tokenLimit
+          ? "the provider's output/context token limit interrupted this response; the participant did not report completion. No actions or closing request followed the incomplete response."
+          : unexpectedStatus
+            ? "the provider returned an unexpected noncompleted response status; the participant did not report completion. No actions or closing request followed this response."
+            : "the provider returned an explicitly incomplete response; the participant did not report completion. No actions or closing request followed the incomplete response.";
+        record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: tokenLimit ? "warn" : "error",
+          title: tokenLimit ? "provider token limit reached" : unexpectedStatus ? "unexpected provider response status" : "provider response incomplete", text: reason });
+        break;
+      }
       // RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read
       // the lobby code the host states after creating the lobby (CDP url-read is unreliable). Raw
       // text stays in memory; only an extracted code is used (and only as a digest).
