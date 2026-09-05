@@ -59,3 +59,34 @@ meaning, process exits, cost uncertainty, and provider cleanup. A candidate is a
 review draft, not a confirmed defect. See the
 [dated receipt](../docs/goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
 for both the successful report recovery and false positives exposed by controls.
+
+## Run from a source checkout
+
+Use Node 20 or newer and pnpm, with `OPENAI_API_KEY` and `E2B_API_KEY` available
+to the process. The live command below allocates a desktop and calls the model.
+Twelve attempts each have a $1 model cap; desktop charges and an in-flight
+request can add to that amount. A dry run checks configuration only.
+
+```bash
+git clone https://github.com/danielgwilson/humanish.git humanish-feedback-study
+cd humanish-feedback-study
+git checkout 169966525703d188b01edace72867e6bd54da988
+pnpm install --frozen-lockfile
+mkdir -p .humanish/labs
+```
+
+Save the template above as `.humanish/labs/feedback-ending-study.yaml`, then run:
+
+```bash
+pnpm exec tsx src/cli.ts run .humanish/labs/feedback-ending-study.yaml --dry-run --json
+pnpm exec tsx src/cli.ts run .humanish/labs/feedback-ending-study.yaml --json
+pnpm exec tsx src/cli.ts verify --run latest --json
+```
+
+That is one attempt. Create separate files for the four conditions and run each
+three times, alternating conditions and retaining every run ID and failed start.
+The pinned public revision has the closing report before the separate legacy
+negation correction in #671. Current main includes that correction, so its
+working/natural candidate counts should differ from the frozen receipt. The
+fixture and runtime comparison is documented in that receipt; exact model
+responses are not deterministic.

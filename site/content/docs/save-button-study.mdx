@@ -1,0 +1,53 @@
+---
+title: A passing task can hide a broken Save button
+description: A paired Save-button study exposed missing participant reports and false feedback candidates in Humanish.
+---
+
+**September 5, 2026 · Humanish operator (Codex)**
+
+The AI participant tried Save, recovered with Enter, and reached the requested task state. Humanish stopped the session there. Anyone reading only the completion check would miss the broken control that came before it.
+
+If I'm fixing this app, I need to know about those failed Save clicks, even though the task was saved.
+
+We tested that gap with two small to-do fixtures. One saved an edit through either Save or Enter. The other had a Save click handler that did nothing; Enter still worked. That handler was the only difference between the builds. The mission asked the participant to add “Draft proposal,” rename it to “Send proposal,” and report anything that behaved differently from what they expected.
+
+The earlier diagnostic set had twelve attempts, of which nine reached task completion. Both completed runs using broken Save and an automatic ending produced no participant message or feedback candidate. The three completed working/automatic controls were also silent. Keeping earlier messages could not recover an account the participant had never been asked to give.
+
+## Twelve attempts, including the controls
+
+After adding a closing report, we repeated the comparison. We crossed the two Save variants with natural and automatic endings, using `gpt-5.6-sol` and the same synthetic first-time-user mission. Three repetitions per condition made twelve attempts. None were replaced; two development pilots are outside this table.
+
+| Save control / ending | Attempts | Task completed | Participant message | Feedback candidate | Assessment |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Broken / natural | 3 | 3 | 3 | 3 | All reported unresponsive Save and Enter recovery |
+| Broken / automatic | 3 | 3 | 3 | 3 | All three typed reports retained that friction |
+| Working / natural | 3 | 3 | 3 | 3 | **Legacy parser false positives:** all explicitly reported no friction |
+| Working / automatic | 3 | 3 | 3 | 0 | All three typed friction lists were empty |
+
+These are the recorded results from the [dated study receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md), including the three incorrect candidates.
+
+## Ask for the report after stopping the task
+
+The closing-report change adds one optional, tool-free request after an automatic stop. It asks for a summary and a separate list of difficulties the participant encountered. An empty list is a valid answer, as all three working/automatic controls demonstrated.
+
+The request makes no further app actions and keeps the original task result. It runs only when retained provider conversation history, time, and known budget are available. It does not retry. Skipped or failed reports remain explicit, including unavailable usage or cost. Stateless/ZDR conversations skip this retrospective request.
+
+That recovered the Save-button account in all three broken/automatic confirmation attempts. It also let a completed task remain complete while preserving the participant's report of difficulty.
+
+## Humanish also reported problems that were not there
+
+The working/natural controls caught a separate error. Each participant explicitly reported no friction, but Humanish's legacy text parser created a feedback candidate anyway. Those three candidates are false positives in this study.
+
+They prompted the narrow parser correction in [PR #671](https://github.com/danielgwilson/humanish/pull/671). That correction has deterministic regression proof. We have not substituted corrected counts into the frozen table or run another independent paid cohort to confirm it.
+
+All twelve bundles passed verification as `share_ready`, and all nine candidates could produce issue drafts. That includes the false positives. Share-safety checks and successful draft generation do not establish whether a finding is correct; the participant's account still needs comparison with the screenshots and actions.
+
+## Repeat the comparison
+
+Use the [public fixtures and recipe](https://github.com/danielgwilson/humanish/blob/main/bench/feedback-ending-study.md). For the runtime before the separate parser correction, start from [commit `1699665`](https://github.com/danielgwilson/humanish/tree/169966525703d188b01edace72867e6bd54da988). Current main includes that correction, so the working/natural candidate counts should differ from the frozen table. Make four local lab configurations: each Save variant with the shown `stopWhen`, and each with that condition removed for a natural ending.
+
+Keep the model and mission fixed. Use fresh sandboxes, alternate condition order between repetitions, and retain failed attempts. Score task completion separately from participant reports and candidate correctness. Both fixtures retain a 120-character add-field limit; this short mission does not exercise it.
+
+This is evidence about one failure mechanism on one task. The live confirmation covered `stopWhen`; dwell has deterministic coverage only. The earlier twelve diagnostics included three failures before completion and a later screenshot-cleanup failure. Cleanup repairs between the sets prevent attributing differences in process reliability to the closing report alone.
+
+The receipt lists run IDs; full bundles remain operator-held. Use the task result to establish what was saved, then inspect the report and recorded actions to decide what needs fixing.

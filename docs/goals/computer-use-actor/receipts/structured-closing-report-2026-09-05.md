@@ -3,6 +3,15 @@
 Date: 2026-09-05. Instrument: OpenAI computer use, `gpt-5.6-sol`, desktop
 1440×950, synthetic first-time user. Confirmation source: `83360ce`.
 
+`83360ce` identifies the retained study checkout, not a publicly fetchable
+revision. Use [public reproduction commit `1699665`](https://github.com/danielgwilson/humanish/tree/169966525703d188b01edace72867e6bd54da988):
+its runtime implementation matches the measured source; the only `src/`
+difference is an added type export. Its four public Save-fixture files match both
+retained study checkouts byte for byte. The retained baseline tree also matches
+its recorded content digest. The later confirmation checkout changed after the
+runs, so this does not claim a reconstructed confirmation archive. Current main
+additionally includes the separate parser correction in #671.
+
 ## Problem and change
 
 A participant could encounter a broken Save button, recover with Enter, and
