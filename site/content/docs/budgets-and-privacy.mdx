@@ -19,8 +19,8 @@ execution:
 ```
 
 - `maxTotalUsd` tracks estimated model spend across the study.
-- `maxUsd` applies to each participant. Without a study cap, four participants at `$2` each can use about `$8` in model spend.
-- Caps are checked at turn boundaries. An in-flight model call and concurrent participants can cross a threshold before stopping. They are not hard provider billing limits.
+- `maxUsd` applies to each participant. Without a study cap, four participants at `$2` each have separate thresholds totaling `$8`; actual spend can exceed that sum.
+- Both thresholds are checked after model responses report usage. They do not reserve the cost of the next request. An in-flight model call and concurrent participants can cross a threshold before stopping. They are not hard provider billing limits.
 - E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.
 - A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
 
@@ -30,7 +30,14 @@ The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starti
 npx humanish stats --lab try-live --json
 ```
 
-Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A no-key `first-run` preview makes no provider calls.
+Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A `budget_reached` computer-use session is `incomplete`; reaching a threshold does not establish task completion.
+
+After `humanish init`, use the keyless first-run path or an explicit lab dry run for a preview that makes no provider calls:
+
+```bash
+npx humanish run first-run
+npx humanish lab run try-live --dry-run
+```
 
 ## How cost estimates work
 
@@ -67,11 +74,14 @@ such as `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`; consult the table in you
 installed version instead of assuming a newly available model is priced.
 
 A declared computer-use cap (`maxUsd` or `maxTotalUsd`) on an unpriced model is
-refused at preflight with `HUMANISH_CUA_LAB_UNPRICED_CAP`. Set a budget whose
-estimate Humanish can enforce. An absent cap is uncapped; `maxUsd: 0` is the
-no-model-spend boundary, not a promise that desktop provisioning is free.
+refused at preflight with `HUMANISH_CUA_LAB_UNPRICED_CAP`. This checks whether a
+rate is available; it does not prepay or reserve the next request. An absent cap
+is uncapped. A zero threshold can still allow a paid model request before its
+reported usage triggers the stop, so `maxUsd: 0` is not a no-provider-call mode.
+Desktop provisioning can also incur charges.
 
-The terminal route uses `scenario.caps.maxUsd` for its run budget. The
+The terminal route uses `scenario.caps.maxUsd` for its separate cost-ledger and
+product-spend rules; it does not use these computer-use model thresholds. The
 computer-use route uses `execution.caps`; `scenario.caps.maxTotalUsd` is not a
 terminal study budget. Check route warnings before relying on a field.
 

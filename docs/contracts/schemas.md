@@ -731,10 +731,10 @@ Core-owned fields:
 - `status` / `completionReason` / `reason` (`completionReason` includes
   `step_failed`: a deterministic scripted step/expectation evaluated false —
   the subject failed the script while the harness executed faithfully; and
-  `budget_reached`: an open-ended watch session that hit the wall-clock time
-  budget AFTER productive activity — status `passed`, a NON-FAILURE completion,
-  distinct from `timed_out`, which stays reserved for a zero-progress deadline
-  hit and remains a failure)
+  `budget_reached`: a computer-use session stopped by its time or estimated
+  spend budget, or an explicit provider token limit — status `incomplete`.
+  The `reason` distinguishes these causes; none establishes that the goal was
+  reached. `timed_out` remains the zero-progress wall-clock deadline outcome)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`. `tokenUsage`
   may carry `cacheWriteInput` (tokens billed at the provider's cache-write rate,
   OpenAI 5.6+) and `turns[]` (per provider-request usage, the recorded fact
@@ -1045,19 +1045,34 @@ rounded sum of its non-null lines (a null line coerced to 0 is a mechanism
 mismatch). A correctly-labeled huge estimate still passes. Cost is neither a
 secret nor a share-blocker, so it never affects `shareSafety`.
 
-**Fail-closed spend cap.** `execution.caps.maxUsd` (the terminal lane's
-`LabScenarioCaps` shape, consumed on the CUA route) aborts a session the moment
-its running ESTIMATED spend crosses the cap — the runaway-retry guard. It is a
-**PER-LANE** cap: enforced INSIDE each lane's loop independently, so an N-lane
-fan-out can spend up to N × `maxUsd` before any lane aborts (the run bundle
-warns with the true ~N × cap ceiling; a shared run-level budget is future work).
-A lane that does real work THEN crosses its cap ends `budget_reached` (passed); a
-zero-action runaway that crosses it ends `gave_up` (failed) — the cap classifies
-its outcome honestly rather than greenlighting the runaway it exists to catch.
-Absent = uncapped (the historical behavior); `maxUsd: 0` = no-spend. A cap on a
-model `src/pricing.ts` cannot price is REFUSED at preflight
-(`HUMANISH_CUA_LAB_UNPRICED_CAP`) before any sandbox rather than run uncapped —
-an unenforceable cap is more dangerous than none.
+**Computer-use spend thresholds.** `execution.caps.maxUsd` applies independently
+to each lane. `execution.caps.maxTotalUsd` shares an estimated model-spend ledger
+across the study's lanes. Either, both, or neither may be declared. Without a
+shared threshold, N lanes each have their own `maxUsd`; N × `maxUsd` is the sum
+of those thresholds, not a guaranteed total spending ceiling.
+
+The loop checks reported usage after a model response, before dispatching that
+response's actions or requesting another turn. It does not reserve the next
+request's worst-case cost. In-flight requests, retries, concurrent lanes, and
+unreported usage can exceed or escape these estimates. These thresholds are
+not hard provider billing caps and exclude desktop and target-app charges.
+
+A lane with material progress that crosses `maxUsd` ends `budget_reached` /
+`incomplete`; the existing zero-action guard ends `gave_up` / `abandoned`.
+Crossing the shared study threshold ends `budget_reached` / `incomplete`, with
+sibling lanes stopping when their next post-response check sees it. Reaching a
+threshold is not proof of task completion.
+
+An absent threshold is uncapped. A zero threshold can still permit a paid model
+request before reported usage trips it; `maxUsd: 0` is not a no-provider-call
+mode. Use the keyless `humanish run first-run` preview or an explicit
+`humanish lab run <lab> --dry-run` for a path without provider calls. A declared
+threshold on a model `src/pricing.ts` cannot price is refused at preflight
+(`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
+check is separate from the post-response spend check.
+
+These computer-use rules do not replace the terminal route's separate
+`scenario.caps` cost-ledger and product-spend rules described above.
 
 ## Affordance Use
 
