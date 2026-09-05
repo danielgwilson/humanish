@@ -17,6 +17,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { terminalParticipantReport } from "./lib/terminal-report.mjs";
 
 const cwd = process.cwd();
 const LAB_ID = "release-dogfood";
@@ -121,14 +122,12 @@ console.log("  What the participant said — read this before you tag:");
 console.log("  " + "-".repeat(70));
 const transcript = path.join(cwd, ".humanish", "runs", result.runId ?? "", "terminal-transcript.txt");
 try {
-  const messages = (await readFile(transcript, "utf8"))
-    .split("\n")
-    .filter((line) => line.startsWith("{"))
-    .map((line) => { try { return JSON.parse(line); } catch { return null; } })
-    .filter((event) => event?.type === "item.completed" && event.item?.type === "agent_message")
-    .map((event) => event.item.text);
-  const last = messages.at(-1) ?? "(the participant said nothing)";
+  const report = terminalParticipantReport(await readFile(transcript, "utf8"));
+  const last = report.last ?? "(the participant said nothing)";
   console.log(last.split("\n").map((line) => `  ${line}`).join("\n"));
+  if (report.malformedLines > 0) {
+    console.log(`  ${report.malformedLines} malformed JSON event line(s) skipped; inspect the retained transcript.`);
+  }
 } catch {
   console.log("  (no transcript on disk — the run did not get far enough to report)");
 }
