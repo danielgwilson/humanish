@@ -37,6 +37,8 @@ fail-closed cross-validation, and forward-declared warnings.
 | `execution.target` | `e2b-terminal` (or absent → implied) |
 | `execution.terminal` | `{ transport: exec-stream, stdin: disabled }` |
 | `execution.runtimeAuth` | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence |
+| `execution.runtime.version` | Optional exact `@openai/codex` version; observed before keyed execution |
+| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity |
 | `scenario.caps` | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget |
 | `policies` | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
 | `actors[0].type` | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`) |
@@ -45,6 +47,39 @@ fail-closed cross-validation, and forward-declared warnings.
 Routing is `routesToTerminalProduct(config)` — the single source of truth that
 both `selectLabBackend` and the forward-declared-warning logic consume, mirroring
 `routesToComputerUse` / `routesToScriptedBrowser`.
+
+## Repeating a terminal study with the same runtime
+
+```yaml
+actors:
+  - type: codex-exec
+    model: gpt-5.6-sol
+    reasoningEffort: low
+execution:
+  target: e2b-terminal
+  runtime:
+    version: 0.153.3
+```
+
+An explicit version must be exact semver; tags, ranges, URLs, and extra runtime
+fields fail at parsing. Before the keyed actor command, Humanish runs an unkeyed
+`npx @openai/codex@<selector> --version` command with a 60-second deadline.
+A malformed result, nonzero exit, or requested/observed mismatch fails the lane
+and reclaims its owned sandbox. When the version is omitted, the probe resolves
+`latest` once and execution uses the exact version it reported.
+
+`actor.json`, the bundle's terminal actor, and `terminal-ledgers.json` retain
+`humanish.actor-runtime.v1`: requested and observed versions, verification status,
+declared model/effort, and the usage granularity. The observed executable version
+also appears as `providerVersion`. An undeclared model stays explicitly
+`runtime_default_unobserved`; Humanish does not label the runtime name as a model.
+Dry runs record declarations only, in a `terminal-lab.runtime.declared` event.
+
+These settings make a study's request reproducible, but do not attest the actual
+provider model or add a provider spending limit. Codex `turn.completed` usage can
+aggregate several model requests, so Humanish does not use a declared model to
+infer per-request pricing tiers or fill in unknown costs. Runtime-token costs
+and the studied product's no-spend boundary still need separate interpretation.
 
 ## Runtime auth: raw-key placement and remaining provider access
 

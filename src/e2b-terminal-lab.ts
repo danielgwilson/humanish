@@ -40,7 +40,9 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
-import type { ActorTokenUsage } from "./actor-contract.js";
+import type { ActorTokenUsage, ActorRuntimeProvenance } from "./actor-contract.js";
+import { buildRuntimeExecPrefix, buildRuntimeVersionCommand, declaredRuntimeProvenance, isExactRuntimeVersion, parseTerminalRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./terminal-runtime.js";
+import { isReasoningEffort } from "./reasoning-effort.js";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -330,6 +332,14 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
     );
   }
 
+  const runtimeVersion = config.execution?.runtime?.version;
+  const actor = config.actors[0];
+  if ((config.execution?.runtime !== undefined && !isExactRuntimeVersion(runtimeVersion))
+    || (actor?.model !== undefined && (typeof actor.model !== "string" || actor.model.trim().length === 0))
+    || (actor?.reasoningEffort !== undefined && !isReasoningEffort(actor.reasoningEffort))) {
+    return failed("HUMANISH_TERMINAL_LAB_FAILED", "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value.");
+  }
+
   // Re-enforce the subject shape at the engine (the parser rejects these too, but this is exported
   // npm surface). A terminal-product subject MUST declare product.name + public surfaces.
   if (!product || !product.name || product.publicSurfaces.length === 0) {
@@ -409,6 +419,17 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
     },
     runId,
     source
+  });
+  bundle.events.push({
+    id: "event-terminal-runtime-declared",
+    at: createdAt,
+    level: "info",
+    type: "terminal-lab.runtime.declared",
+    message: redactText(JSON.stringify(declaredRuntimeProvenance({
+      ...(config.execution?.runtime?.version === undefined ? {} : { version: config.execution.runtime.version }),
+      ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+      ...(config.actors[0]?.reasoningEffort === undefined ? {} : { reasoningEffort: config.actors[0].reasoningEffort })
+    })))
   });
 
   await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -599,6 +620,7 @@ export interface NoSpendProof {
 /** The persisted terminal-product ledgers artifact (substrate lifecycle + command log + interventions + cleanup + cost). */
 export interface TerminalLedgers {
   schema: "humanish.terminal-ledgers.v1";
+  runtime?: ActorRuntimeProvenance;
   lifecycle: LifecycleRecord[];
   commandLog: CommandLogRecord[];
   /** ALWAYS present; ALWAYS empty while no assisted-input path ships — the safety contract. */
@@ -1097,6 +1119,11 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   let sessionReason = "live terminal-product session did not start";
   let sessionError: string | undefined;
   let timedOut = false;
+  const runtime = declaredRuntimeProvenance({
+    ...(config.execution?.runtime?.version === undefined ? {} : { version: config.execution.runtime.version }),
+    ...(config.actors[0]?.model === undefined ? {} : { model: sanitize(config.actors[0].model) }),
+    ...(config.actors[0]?.reasoningEffort === undefined ? {} : { reasoningEffort: config.actors[0].reasoningEffort })
+  });
 
   recordLifecycle("terminal-lab.run.created", `Created live terminal-product run ${runId} (actor ${descriptorId}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance UNPINNED (public surfaces only).`);
 
@@ -1182,6 +1209,30 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       sessionError = sanitize(bootstrapError);
       sessionReason = `runtime bootstrap could not ensure Node/npm before codex exec: ${sessionError}`;
     } else if (await (async (): Promise<boolean> => {
+      // Observe the executable without command-scoped auth, then use only that exact version.
+      // The SDK bounds the request and command; version failures reach the owned cleanup path.
+      try {
+        const versionProbe = await sandbox.commands.run(buildRuntimeVersionCommand(config.execution?.runtime?.version), {
+          requestTimeoutMs,
+          timeoutMs: TERMINAL_RUNTIME_VERSION_TIMEOUT_MS
+        });
+        const observed = parseTerminalRuntimeVersion(versionProbe.stdout ?? "");
+        if (observed !== undefined) runtime.observedVersion = observed;
+        if (versionProbe.exitCode !== 0 || observed === undefined) throw new Error("Codex version probe did not return a successful `codex-cli <exact-version>` result.");
+        if (config.execution?.runtime?.version !== undefined && observed !== config.execution.runtime.version) {
+          throw new Error(`Codex version mismatch: requested ${config.execution.runtime.version}, observed ${observed}.`);
+        }
+        runtime.versionStatus = "verified";
+        recordLifecycle("terminal-lab.runtime.version", `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "runtime default (unobserved)"}; reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`);
+      } catch (error) {
+        runtime.versionStatus = "failed";
+        sessionStatus = "failed";
+        completionReason = "harness_error";
+        sessionError = sanitize(toErrorMessage(error));
+        sessionReason = `Codex runtime version could not be verified before execution: ${sessionError}`;
+        recordLifecycle("terminal-lab.runtime.version.error", sessionReason);
+        return false;
+      }
       // --- Optional product setup (no runtime env), before the Codex exec. ---
       // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
       // and a failure fails the lane closed rather than handing the agent a half-built world. It
@@ -1268,7 +1319,12 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       // never wired (safety contract item 7) — commands.run takes no stdin channel. The command's
       // wall-clock is bounded by maxMinutes (safety contract item 2): commands.run timeoutMs +
       // an injected-clock guard so a mock/real run that exceeds it is killed and fails closed.
-      const codexCommand = buildCodexExecCommand({ workdir: SANDBOX_WORKDIR, prompt: composedPrompt, runtimeAuth: runtimeEnv.mode });
+      const codexCommand = buildCodexExecCommand({
+        workdir: SANDBOX_WORKDIR, prompt: composedPrompt, runtimeAuth: runtimeEnv.mode,
+        version: runtime.observedVersion!,
+        ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+        ...(config.actors[0]?.reasoningEffort === undefined ? {} : { reasoningEffort: config.actors[0].reasoningEffort })
+      });
       const commandDigest = digestText(codexCommand);
       const startedAt = now();
       recordLifecycle("terminal-lab.exec.started", `Launching codex exec (runtime auth ${runtimeEnv.mode}; command env names: ${Object.keys(runtimeEnv.envs).join(", ")}); wall-clock bound ${wallClockMs}ms.`);
@@ -1388,6 +1444,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     commandLog,
     transcriptTail: tailOf(normalizedTranscript),
     runtimeAuth: runtimeEnv.mode,
+    runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage })
   });
 
@@ -1433,6 +1490,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // event stream, the normalized transcript, the actor trace, and the run bundle.
   const ledgers: TerminalLedgers = {
     schema: "humanish.terminal-ledgers.v1",
+    runtime,
     lifecycle,
     commandLog,
     interventions, // ALWAYS present, ALWAYS empty while no assisted-input path ships.
@@ -1944,7 +2002,7 @@ function scrubSplitKnownValues(
 }
 
 /** Build the in-sandbox `codex exec` command (non-interactive, JSON, stdin disabled by mechanism). */
-function buildCodexExecCommand(args: { workdir: string; prompt: string; runtimeAuth: LabRuntimeAuth }): string {
+function buildCodexExecCommand(args: { workdir: string; prompt: string; runtimeAuth: LabRuntimeAuth; version: string; model?: string; reasoningEffort?: import("./reasoning-effort.js").ReasoningEffort }): string {
   // The prompt is passed via a heredoc on stdin of a wrapper? NO, stdin is DISABLED (item 7), so
   // the prompt rides as the final positional arg, shell-quoted. codex exec --json runs once and
   // exits (no interactive loop). --skip-git-repo-check: the workdir is a fresh scratch dir.
@@ -1963,7 +2021,7 @@ function buildCodexExecCommand(args: { workdir: string; prompt: string; runtimeA
   const providerConfig = args.runtimeAuth === "openai-egress"
     ? ` -c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`
     : "";
-  return `cd ${args.workdir} && npm_config_update_notifier=false npx -y @openai/codex@latest exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check${providerConfig} --json ${quotedPrompt}`;
+  return `cd ${args.workdir} && ${buildRuntimeExecPrefix(args.version, args.model, args.reasoningEffort)} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check${providerConfig} --json ${quotedPrompt}`;
 }
 
 /** Compose the live prompt: PUBLIC surfaces + author mission + the verdict-nonce marker contract. */
@@ -2008,7 +2066,8 @@ function buildTerminalActorTrace(args: {
   commandLog: CommandLogRecord[];
   transcriptTail: string;
   runtimeAuth: LabRuntimeAuth;
-  /** Per-turn provider token usage parsed from the exec stream (#531). Absent when the stream
+  runtime: ActorRuntimeProvenance;
+  /** Runtime-turn aggregate usage parsed from the exec stream (#531). Absent when the stream
    *  carried no usage record, which stays distinct from a measured zero. */
   tokenUsage?: ActorTokenUsage;
 }): ActorTrace {
@@ -2033,6 +2092,8 @@ function buildTerminalActorTrace(args: {
   return {
     schema: ACTOR_TRACE_SCHEMA,
     provider: "codex",
+    ...(args.runtime.versionStatus === "verified" ? { providerVersion: args.runtime.observedVersion } : {}),
+    runtime: args.runtime,
     protocol: "terminal-exec",
     lane: "terminal",
     persona: args.persona,
@@ -2047,7 +2108,7 @@ function buildTerminalActorTrace(args: {
     status: args.status,
     completionReason: args.completionReason,
     reason: args.reason,
-    ids: { model: "codex" },
+    ids: {}, // Runtime model requests are not observed; declarations live in runtime provenance.
     ...(args.tokenUsage ? { tokenUsage: args.tokenUsage } : {}),
     counts: {
       commands: args.commandLog.length,

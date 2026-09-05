@@ -30,6 +30,7 @@ function makeFakeModule(opts: {
           sandboxId,
           commands: {
             async run(command: string, runOptions?: { onStdout?: (d: string) => void }) {
+              if (command.endsWith(" --version")) return { exitCode: 0, stdout: "codex-cli 0.153.3\n" };
               if (command.includes("codex")) {
                 const behavior = opts.codexBehavior(command);
                 if (behavior.stdout && runOptions?.onStdout) runOptions.onStdout(behavior.stdout);

@@ -54,6 +54,7 @@ import type { LabTask } from "./tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type { DwellWindow, StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
 import { isReasoningEffort, reasoningEffortNames, type ReasoningEffort } from "./reasoning-effort.js";
+import { isExactRuntimeVersion } from "./terminal-runtime.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 
@@ -617,6 +618,8 @@ export interface LabExecution {
   /** `terminal-product` route: runtime key placement, defaulting to openai-env. openai-egress
    *  uses an external header transform; dry-runs record declarations only. Inert on other routes. */
   runtimeAuth?: LabRuntimeAuth;
+  /** Terminal Codex package pin. Omit to resolve latest once, observe it, then execute that version. */
+  runtime?: { version: string };
   /**
    * `terminal-product` route: outbound routing allowlist passed to E2B with a deny-all fallback.
    * Domain filtering is a routing control, not strict destination isolation on shared hosting.
@@ -1784,6 +1787,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   if (config.scenario?.caps?.maxTotalUsd !== undefined && routesToTerminal) inert.push("scenario.caps.maxTotalUsd (the study-level budget is a computer-use route capability; the terminal route's maxUsd already caps the whole run)");
   if (config.execution?.terminal && !routesToTerminal) inert.push("execution.terminal (needs subject.source: terminal-product + a registered terminal actor)");
   if (config.execution?.runtimeAuth !== undefined && !routesToTerminal) inert.push("execution.runtimeAuth (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.execution?.runtime !== undefined && !routesToTerminal) inert.push("execution.runtime (needs subject.source: terminal-product + a registered terminal actor)");
   // execution.desktop.* stays inert on the scripted route by design: device presets belong to
   // the cua desktop; scripted surfaces are the driver's fixed desktop/mobile viewports, where
   // isMobile/DSF genuinely render via playwright emulation.
@@ -2821,6 +2825,12 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
     return terminalResult;
   }
   if (terminalResult.value) execution.terminal = terminalResult.value;
+  if (raw.runtime !== undefined) {
+    if (!isRecord(raw.runtime) || Object.keys(raw.runtime).some((key) => key !== "version") || !isExactRuntimeVersion(raw.runtime.version)) {
+      return invalid("`execution.runtime` must contain only an exact Codex `version` (for example 0.153.3); tags, ranges, URLs, and unknown fields are not accepted.");
+    }
+    execution.runtime = { version: raw.runtime.version };
+  }
   if (raw.runtimeAuth !== undefined) {
     const runtimeAuth = str(raw.runtimeAuth);
     if (runtimeAuth !== "openai-env" && runtimeAuth !== "openai-egress") {

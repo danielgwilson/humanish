@@ -106,6 +106,18 @@ describe("terminal actor registration + keyPlacement metadata", () => {
 // ---------------------------------------------------------------------------
 
 describe("terminal-product parse matrix", () => {
+  it("accepts exact runtime versions and rejects ranges, tags, and misspelled runtime fields", () => {
+    const base = terminalConfig() as Record<string, unknown> & { execution: Record<string, unknown> };
+    for (const runtime of [{ version: "latest" }, { version: "^0.153.3" }, { version: "0.153.3; echo no" }, { version: "0.153.3", package: "other" }, {}, "0.153.3"]) {
+      expect(parseLabConfig({ ...base, execution: { ...base.execution, runtime } }).ok).toBe(false);
+    }
+    const result = parseLabConfig({ ...base, execution: { ...base.execution, runtime: { version: "0.153.3" } } });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.execution?.runtime).toEqual({ version: "0.153.3" });
+      expect(result.warnings.join(" ")).not.toContain("execution.runtime");
+    }
+  });
   it("accepts opt-in openai-egress and rejects unknown runtime auth modes", () => {
     const parsed = parseLabConfig(terminalConfig({ runtimeAuth: "openai-egress" }));
     expect(parsed.ok).toBe(true);

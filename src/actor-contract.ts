@@ -172,10 +172,25 @@ export interface ParticipantClosingReport {
   frictionReports: string[];
 }
 
+/** Runtime declarations and executable-version observations; not provider request attestation. */
+export interface ActorRuntimeProvenance {
+  schema: "humanish.actor-runtime.v1";
+  package: string;
+  requestedVersion: string;
+  observedVersion?: string;
+  versionStatus: "unobserved" | "verified" | "failed";
+  requestedModel?: string;
+  modelStatus: "declared" | "runtime_default_unobserved";
+  requestedReasoningEffort?: string;
+  /** Codex turn.completed aggregates requests; it cannot establish per-request pricing tiers. */
+  usageGranularity: "runtime_turn";
+}
+
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
   provider: string;
   providerVersion?: string;
+  runtime?: ActorRuntimeProvenance;
   protocol: ActorProtocol;
   lane: ActorLane;
   persona: ActorPersonaRef;
