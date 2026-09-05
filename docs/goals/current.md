@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.82.0`)
+## Current Program Truth (source `0.82.1`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -470,6 +470,13 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-05 (0.82.1).** Computer-use actors now preserve a provider output-limit
+interruption as incomplete instead of treating a response without actions as
+success. Two captured live Responses API shapes reproduce the old false pass
+and verify the correction; other explicit non-completed statuses also fail
+closed. Usage and partial text remain in the run, with no execution of actions
+from an interrupted response. See the [provider-limit receipt](computer-use-actor/receipts/provider-token-limit-2026-09-05.md).
 
 **2026-09-05 (0.82.0).** Computer-use desktop estimates now use observed CPU and RAM,
 with missing resources and incomplete lifetimes left unknown (#687). Repeated clicks avoid
