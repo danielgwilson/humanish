@@ -939,11 +939,20 @@ export interface RunCostLine {
   modelId?: string;
   /** null = NOT MEASURED / no rate; never coerced to 0. */
   estimatedCostUsd: number | null;
-  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration" | "closing_usage_unreported";
+  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration" | "closing_usage_unreported" | "no_desktop_resources" | "desktop_lifetime_incomplete";
   /** Pricing provenance date; non-null iff estimatedCostUsd is non-null. */
   ratesAsOf: string | null;
   source?: string;
   placeholder?: boolean;
+  /** Optional allocation evidence on newer desktop lines; older aggregate lines remain valid. */
+  desktop?: {
+    minutes: number | null;
+    durationBasis: "host-acquired-to-cleanup";
+    resources?: { cpuCount: number; memoryMiB: number };
+    resourceSource?: "e2b.getInfo";
+    resourceUnavailableReason?: "metadata_unavailable" | "metadata_invalid" | "metadata_timeout";
+    usdPerSecond?: number;
+  };
 }
 
 /**
@@ -957,7 +966,7 @@ export interface RunCostSummary {
   currency: "usd";
   /** Sum of the KNOWN (non-null) lines; null iff every applicable line is null. */
   estimatedTotalUsd: number | null;
-  /** Max asOf across contributing rates; null when nothing was priced. */
+  /** Oldest asOf across contributing rates; null when nothing was priced. */
   ratesAsOf: string | null;
   /** false when any applicable line is null (the total is a lower bound). */
   fullyEstimated: boolean;

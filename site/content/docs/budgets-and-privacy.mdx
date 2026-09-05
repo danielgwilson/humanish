@@ -35,19 +35,29 @@ Inspect the run's estimated model and desktop costs, rates, and missing-usage fi
 ## How cost estimates work
 
 Computer-use bundles carry a per-participant model estimate and an aggregate
-E2B desktop-time estimate. Model estimates multiply recorded token usage by a
-dated rate table; desktop estimates use measured lifetime and a per-minute
-assumption. Every amount is advisory, not an invoice.
+E2B compute estimate. Model estimates multiply recorded token usage by a
+dated rate table. On the independent computer-use route, each desktop records its
+observed CPU and memory and a host-measured span from acquired handle to cleanup.
+Different template sizes are priced separately. Every amount is advisory, not an invoice.
 
 The [rate table](https://github.com/danielgwilson/humanish/blob/main/src/pricing.ts)
-records its date, source, and whether a rate is a placeholder. The desktop rate
-is currently a placeholder. Inspect those fields alongside the amount.
+records its date, source, and whether a rate is a placeholder. Runtime desktop
+estimates use the allocation's resource readback; missing metadata stays unpriced.
+The legacy desktop helper uses a labeled 8-vCPU/8-GiB planning assumption, which
+is not a provider spending ceiling or a measurement of your template. Inspect
+those fields alongside the amount.
 An unknown model rate or missing token usage produces `estimatedCostUsd: null`
 with a reason; it is never silently counted as zero. Previews invent no spend.
 
 Where the model has separate cache or long-context rates, per-request usage
 lets the estimator apply them. Missing usage limits what can be priced; a
 complete-looking total is not proof that every provider charge was observed.
+
+Desktop estimates exclude allocation/startup time before Humanish acquired the
+handle, plan fees, credits, and negotiated enterprise prices. A desktop kept for
+debugging or with unconfirmed cleanup adds an unknown remaining-lifetime line,
+so its total is marked incomplete. Shared-world, scripted-browser, and terminal
+routes do not yet emit these per-desktop compute estimates.
 
 ## Choose a model
 

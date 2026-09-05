@@ -107,6 +107,8 @@ function makeFakeSandbox(options: {
   const sandbox = {
     calls,
     sandboxId: "fake-sandbox-001",
+    // Resource fields captured on stock E2B desktops; see fixtures/e2b-desktop-resources.
+    getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
     commands: {
       run: async (command: string) => {
         calls.push(["commands.run", command]);
@@ -4483,16 +4485,33 @@ describe("runCuaActorLab cost estimates", () => {
     expect(modelLine.estimatedCostUsd).toBeCloseTo(16.12, 6);
     expect(modelLine.ratesAsOf).toBe("2026-09-03");
     expect(modelLine.source).toContain("developers.openai.com/api/docs/pricing");
-    expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00276, 6);
-    expect(cost.estimatedTotalUsd).toBeCloseTo(16.12276, 6);
-    // The desktop rate is still placeholder (RAM spec assumed), so the aggregate flag holds.
-    expect(cost.placeholder).toBe(true);
+    expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00888, 6);
+    expect(desktopLine.desktop).toMatchObject({ resources: { cpuCount: 8, memoryMiB: 8192 }, resourceSource: "e2b.getInfo" });
+    expect(cost.estimatedTotalUsd).toBeCloseTo(16.12888, 6);
+    expect(cost.placeholder).toBe(false);
     expect(cost.fullyEstimated).toBe(true);
-    expect(cost.ratesAsOf).toBe("2026-08-05");
+    expect(cost.ratesAsOf).toBe("2026-09-03");
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
     expect(verify.ok).toBe(true);
+  });
+
+  it.each(["absent", "rejected"] as const)("keeps metadata %s unpriced while the actual lane still reclaims its handle", async mode => {
+    const sandbox = makeFakeSandbox();
+    if (mode === "absent") delete sandbox.getInfo;
+    else sandbox.getInfo = async () => { throw new Error("synthetic metadata failure"); };
+    const { module, killed } = makeFakeModule(sandbox);
+    const result = await runCuaActorLab({ cwd, config: configWithModel(), dryRun: false, hooks: {
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" }, loadDesktopModule: async () => module,
+      now: steppedClock(60_000),
+      runSession: async o => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
+    } });
+    expect(result.ok).toBe(true);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+    const bundle = await readBundle(result.runId);
+    expect(bundle.cost.fullyEstimated).toBe(false);
+    expect(bundle.cost.breakdown.find((line: any) => line.kind === "desktop-minutes")).toMatchObject({ estimatedCostUsd: null, reason: "no_desktop_resources" });
   });
 
   it("aggregate ratesAsOf is the OLDEST contributing asOf, never the newest — an aggregate is only as fresh as its stalest input", () => {
@@ -4624,9 +4643,8 @@ describe("runCuaActorLab cost estimates", () => {
     expect(bundle.streams[0].actor.estimatedCost.placeholder).toBeUndefined();
     const modelLine = bundle.cost.breakdown.find((l: any) => l.kind === "model-tokens");
     expect(modelLine.placeholder).toBeUndefined();
-    // The summary is STILL flagged placeholder because the E2B DESKTOP rate is a placeholder — an
-    // honest signal that a stand-in rate contributed to the total.
-    expect(bundle.cost.placeholder).toBe(true);
+    // Both the model rate and this allocation's observed resource rate are confirmed.
+    expect(bundle.cost.placeholder).toBe(false);
   });
 });
 

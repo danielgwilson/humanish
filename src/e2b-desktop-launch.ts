@@ -117,6 +117,8 @@ export interface E2BCommandResult {
 
 export interface E2BDesktopSandbox {
   sandboxId: string;
+  /** Read the owned allocation's actual resources; available on the current E2B SDK. */
+  getInfo?(options?: { requestTimeoutMs?: number; signal?: AbortSignal }): Promise<{ cpuCount?: number; memoryMB?: number }>;
   commands: {
     run(command: string, options?: E2BCommandRunOptions): Promise<E2BCommandResult>;
   };
