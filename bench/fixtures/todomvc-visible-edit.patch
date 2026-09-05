@@ -1,0 +1,115 @@
+diff --git a/examples/javascript-es6/src/app.css b/examples/javascript-es6/src/app.css
+index dc4c612..b94c5a4 100644
+--- a/examples/javascript-es6/src/app.css
++++ b/examples/javascript-es6/src/app.css
+@@ -18,3 +18,27 @@
+ .toggle-graph:focus svg path {
+     fill: black;
+ }
++.todo-list li label {
++    padding-right: 116px;
++}
++
++.todo-list li .edit-toggle {
++    position: absolute;
++    top: 50%;
++    right: 48px;
++    transform: translateY(-50%);
++    min-height: 32px;
++    padding: 4px 8px;
++    border: 1px solid #999;
++    border-radius: 4px;
++    background: #fff;
++    color: #444;
++    font-size: 14px;
++    line-height: 1.4;
++    cursor: pointer;
++}
++
++.todo-list li .edit-toggle:focus-visible {
++    outline: 2px solid #3175aa;
++    outline-offset: 2px;
++}
+diff --git a/examples/javascript-es6/src/index.html b/examples/javascript-es6/src/index.html
+index 44b0adf..8600abd 100644
+--- a/examples/javascript-es6/src/index.html
++++ b/examples/javascript-es6/src/index.html
+@@ -36,7 +36,7 @@
+             </footer>
+         </section>
+         <footer class="info">
+-            <p>Double-click to edit a todo</p>
++            <p>Use Edit or double-click a todo to rename it</p>
+ 			<p>Created by the TodoMVC Team</p>
+ 			<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+         </footer>
+diff --git a/examples/javascript-es6/src/template.js b/examples/javascript-es6/src/template.js
+index cf4cbd4..09a9d87 100644
+--- a/examples/javascript-es6/src/template.js
++++ b/examples/javascript-es6/src/template.js
+@@ -19,7 +19,8 @@ const createTodoItem = ({ id, title, completed, checked, index }) => `
+ <li data-id="${id}" class="${completed}">
+     <div class="view">
+         <input class="toggle" type="checkbox" ${checked}>
+-        <label>${title}</label>
++        <label id="todo-label-${id}">${title}</label>
++        <button class="edit-toggle" type="button" aria-describedby="todo-label-${id}">Edit</button>
+         <button class="destroy"></button>
+     </div>
+ </li>
+diff --git a/examples/javascript-es6/src/view.js b/examples/javascript-es6/src/view.js
+index f5ba496..dbfca8b 100644
+--- a/examples/javascript-es6/src/view.js
++++ b/examples/javascript-es6/src/view.js
+@@ -31,6 +31,7 @@ const _editItem = (id, title) => {
+ 
+     const input = document.createElement("input");
+     input.className = "edit";
++    input.setAttribute("aria-label", "Task name");
+ 
+     listItem.appendChild(input);
+     input.focus();
+@@ -44,6 +45,7 @@ const _editItemDone = (id, title) => {
+         return;
+ 
+     const input = qs("input.edit", listItem);
++    const restoreEditFocus = input.dataset.restoreEditFocus === "true";
+     listItem.removeChild(input);
+ 
+     listItem.className = listItem.className.replace(" editing", "");
+@@ -51,6 +53,8 @@ const _editItemDone = (id, title) => {
+     qsa("label", listItem).forEach((label) => {
+         label.textContent = title;
+     });
++    if (restoreEditFocus)
++        qs(".edit-toggle", listItem).focus();
+ };
+ 
+ const _itemId = (element) => {
+@@ -151,6 +155,7 @@ export default class View {
+                 break;
+             case "itemEdit":
+                 $delegate(this.$todoList, "li label", "dblclick", (e) => handler({ id: _itemId(e.target) }));
++                $delegate(this.$todoList, ".edit-toggle", "click", (e) => handler({ id: _itemId(e.target) }));
+                 break;
+             case "itemRemove":
+                 $delegate(this.$todoList, ".destroy", "click", (e) => handler({ id: _itemId(e.target) }));
+@@ -168,14 +173,17 @@ export default class View {
+                     }
+                 });
+                 $delegate(this.$todoList, "li .edit", "keypress", function (e) {
+-                    if (e.keyCode === ENTER_KEY)
++                    if (e.keyCode === ENTER_KEY) {
++                        e.target.dataset.restoreEditFocus = "true";
+                         e.target.blur();
++                    }
+                 });
+                 break;
+             case "itemEditCancel":
+                 $delegate(this.$todoList, "li .edit", "keyup", (e) => {
+                     if (e.keyCode === ESCAPE_KEY) {
+                         e.target.dataset.iscanceled = true;
++                        e.target.dataset.restoreEditFocus = "true";
+                         e.target.blur();
+                         handler({ id: _itemId(e.target) });
+                     }
