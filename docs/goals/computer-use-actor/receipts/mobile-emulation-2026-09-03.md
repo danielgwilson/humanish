@@ -1,5 +1,13 @@
 # A phone participant at a real 414 px viewport, with touch and a mobile user agent
 
+**Correction added 2026-09-05:** the historical outcomes and participant reports below are
+preserved. The TodoMVC 4/4 rename failures describe Humanish's then-shipped input path, not
+established touch-device behavior. Two later hosted conformance probes opened the original
+editor with direct touch while the SDK double click failed; a separate native-X control
+reproduced the click-count difference by toggling mouse-to-touch conversion.
+[Counterevidence, method and limits](mobile-input-conformance-2026-09-05.md).
+
+
 Date: 2026-09-03, branch `feat/mobile-emulation-221` (PR #618). Subject: drawDB, depth-1 clone,
 the persona-axis mission (two related tables). Two lanes: the mouse newcomer on the desktop preset
 and the same persona on `device: mobile`, with `execution.desktop.fidelity.mobileEmulation: true`.
@@ -36,7 +44,7 @@ on a viewport the app's own responsive rules treat as a phone; the second spent 
 working and did not finish. Both desktop newcomers finished, both by falling back to SQL after
 the tables overlapped.
 
-## TodoMVC on the published 0.76.0: touch changes the outcome
+## TodoMVC on the published 0.76.0: the emulated input path changed the outcome
 
 Same shape on `tastejs/todomvc` (`examples/javascript-es6/dist`, served by python3), the four
 declared tasks from the persona-axis lab, run from a fresh `npm i -D humanish@0.76.0` by path.
@@ -52,10 +60,10 @@ and is where both phone participants stopped.
 
 Earlier the same evening, at 500 px with no touch emulation, both phone participants on TodoMVC
 finished and only *called* the double-click rename touch-hostile (`persona-axis-phone-2026-09-03.md`).
-With touch events emulated, neither could rename at all: a double-tap selects text and the
-`dblclick` editor never opens. The responsive-viewport study reported an opinion; the
-mobile-emulated study reported a blocker. That difference is the reason the bundle labels the
-tier.
+Neither could rename through that emulated input path, and both reported a blocker. The later
+conformance check found that the path can reset click counts before the app receives a
+`dblclick`; direct touch did open the original editor. The earlier reports alone therefore
+cannot attribute the failed gesture to the app.
 
 ## TodoMVC again on 2026-09-04, on main at #642 (the 0.79.0 build)
 
@@ -66,9 +74,11 @@ Same emulated TodoMVC lab, two more runs from the primary checkout's build, 40 s
 | `cua-2026-09-04T20-53-07-677Z-00cbc93f` ($0.21) | REACHED; "the newest tasks appearing first was mildly unexpected" | BLOCKED: "I could not rename a task. The only instruction said Double-click to edit a todo, which is confusing on a touch device. I tried double-tapping twice and one keyboard-based recovery" |
 | `cua-2026-09-04T20-53-47-684Z-26d93f24` ($0.21) | REACHED; "briefly confused that new tasks appeared in reverse order" | DID NOT REACH THE GOAL: "I could not rename a task. The only instruction was Double-click to edit a todo, which is not suitable for a touch interface" |
 
-Under touch emulation the TodoMVC rename has now stopped **4 of 4** phone participants (two
+On the then-shipped input path, TodoMVC rename stopped **4 of 4** phone participants (two
 blocked, two did not reach) while **4 of 4** desktop newcomers finished, across two evenings and
-two builds. Both phone lanes read back 414 px, DPR 3, five touch points.
+two builds. Both phone lanes read back 414 px, DPR 3, five touch points. Those readings confirm
+context settings; the 2026-09-05 counterevidence above shows they do not certify gesture
+conformance. The participant counts remain historical observations of that instrument.
 
 ## drawDB again on 2026-09-04, on main at #636 (the 0.77.0 build)
 

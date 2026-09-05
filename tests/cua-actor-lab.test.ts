@@ -678,7 +678,11 @@ describe("runCuaActorLab", () => {
     });
     const geometryWarnings: string[] = bundle.streams[0].desktopGeometry.warnings ?? [];
     expect(geometryWarnings.filter((warning) => warning.includes("Mobile emulation"))).toEqual([]);
-    expect(JSON.stringify(outcome.result)).not.toContain("Mobile emulation");
+    // The advisory must reach the run result consumed by CLI/JSON callers even when every
+    // fidelity read-back matches. Correct context flags do not certify repeated-tap behavior.
+    expect(outcome.result.warnings.filter((warning) => warning.includes("pointer-to-touch conversion"))).toEqual([
+      "Mobile emulation uses desktop pointer-to-touch conversion, which can differ for repeated taps. Confirm gesture failures with direct or native touch input before attributing them to the app."
+    ]);
   });
 
   // A phone lane whose every observation reads a NEW tab (T2) the participant opened; the tab's own
@@ -1012,6 +1016,7 @@ describe("runCuaActorLab", () => {
     expect(sandbox.calls.some((call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"))).toBe(false);
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.streams[0].desktopGeometry.fidelity).toBeUndefined();
+    expect(outcome.result.warnings.some((warning) => warning.includes("pointer-to-touch conversion"))).toBe(false);
   });
 
   it("mobile emulation fails the lane closed when the launched browser is not Chromium", async () => {

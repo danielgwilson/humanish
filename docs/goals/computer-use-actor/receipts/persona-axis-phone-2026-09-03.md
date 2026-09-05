@@ -1,5 +1,12 @@
 # A third axis: the phone-sized newcomer met defects neither desktop participant met
 
+**Qualification added 2026-09-05:** phone-sized viewport observations below remain historical
+results. The later touch-emulated TodoMVC failures describe Humanish's input path; they do not
+establish touch-device app behavior. Direct touch opened the original editor in two hosted
+conformance probes where the SDK double click did not.
+[Input-conformance counterevidence](mobile-input-conformance-2026-09-05.md).
+
+
 Date: 2026-09-03, humanish main at #605 (0.75.0 candidate); the Excalidraw runs at #615. Three
 apps, three participants each,
 same mission per app, per-lane worlds, blurred capture. Two participants differ by persona (the
@@ -84,8 +91,9 @@ DPR 3, five touch points, read back from the page), two runs from the 0.77.0 bui
 Twelve of twelve reached on Excalidraw over four runs (two at 500 px, two emulated). Under touch
 the phone participants' hesitation moved from "unlabelled icons" to "the mobile toolbar is
 hidden", and both found a way through (shortcuts, the command palette). TodoMVC under the same
-emulation blocked both phone participants (`mobile-emulation-2026-09-03.md`); Excalidraw did
-not. The control still reads as a control.
+emulation had two phone participants report a blocker (`mobile-emulation-2026-09-03.md`);
+Excalidraw did not. The 2026-09-05 input-conformance check qualifies attribution of the TodoMVC
+result; these outcomes alone do not certify equivalent touch gestures between apps.
 
 ## What this does and does not show
 
@@ -97,6 +105,7 @@ not. The control still reads as a control.
   2026-08-26 handoff warned about; on TodoMVC and Excalidraw the phone participants finished
   every time. A clean app reads as a clean app: Excalidraw produced no blocker on any axis.
 - 500 px is not a phone. The same evening, 0.76.0 shipped mobile emulation (#221): the phone
-  participant at a real 414 px viewport with touch and a mobile user agent was blocked on drawDB
-  again, and on TodoMVC could not rename at all where these 500 px participants had finished.
-  See `mobile-emulation-2026-09-03.md`.
+  participant at a real 414 px viewport with touch and a mobile user agent reported a blocker on
+  drawDB again, and on TodoMVC could not rename through that input path where the 500 px
+  participants had finished. The later conformance correction above separates these instrument
+  observations from physical-device behavior. See `mobile-emulation-2026-09-03.md`.
