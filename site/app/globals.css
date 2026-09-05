@@ -260,7 +260,7 @@ code, kbd { font-family: var(--mono) }
   align-items: center;
   min-height: min(80vh, 780px);
 }
-h1:not(.humanish-docs h1) {
+h1:where(:not(.humanish-docs h1)) {
   font-family: var(--serif); font-weight: 300;
   font-size: clamp(2.45rem, 5vw, 4.15rem);
   line-height: 1.05; letter-spacing: -.016em;
@@ -373,7 +373,7 @@ h1:not(.humanish-docs h1) {
 .band { padding: clamp(72px, 10vh, 128px) var(--gutter) }
 .band-mineral { background: var(--mineral) }
 .band-dark { background: var(--dz); color: var(--dz-ink) }
-h2:not(.humanish-docs h2) {
+h2:where(:not(.humanish-docs h2)) {
   font-family: var(--serif); font-weight: 300;
   font-size: clamp(2rem, 3.9vw, 3.15rem);
   line-height: 1.06; letter-spacing: -.014em;
