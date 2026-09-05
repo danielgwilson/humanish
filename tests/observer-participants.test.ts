@@ -6,6 +6,7 @@
 // a number without its count is a machine for manufacturing certainty from n=1.
 import { describe, expect, it } from "vitest";
 
+import liveBundle from "./golden/labs/live.json" with { type: "json" };
 import { buildObserverData } from "../src/observer-data.js";
 import { tallyParticipantOutcomes } from "../src/run.js";
 import type { RunBundle } from "../src/run.js";
@@ -41,6 +42,54 @@ function bundleWith(review: Partial<RunBundle["review"]>): RunBundle {
 }
 
 describe("observer data: participants", () => {
+  it.each(["passed", "complete"] as const)("shows a declared blocker when the protocol status is %s", (status) => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    const stream = bundle.streams[0]!;
+    stream.status = status;
+    stream.actor!.completionReason = "goal_satisfied";
+    stream.actor!.declaredOutcome = "blocked";
+    stream.actor!.reason = "The edit control was unavailable.";
+    bundle.review.participants = tallyParticipantOutcomes(["blocked"]);
+    const original = structuredClone(bundle);
+
+    const data = buildObserverData(bundle);
+
+    expect(data.streams[0]!.status).toBe("blocked");
+    expect(data.streams[0]!.statusLabel).toBe("Blocked");
+    expect(data.summary.blocked).toBe(1);
+    expect(data.run.participantsLine).toBe("0/1 reached the goal, 1 blocked");
+    expect(data.streams[0]!.actor).toEqual(original.streams[0]!.actor);
+    expect(data.streams[0]!.sim).toEqual(original.simulations[0]);
+    expect(bundle).toEqual(original);
+  });
+
+  it.each(["running", "preparing", "failed", "timed_out"] as const)("preserves %s even with a blocked declaration", (status) => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    bundle.streams[0]!.status = status;
+    bundle.streams[0]!.actor!.completionReason = "goal_satisfied";
+    bundle.streams[0]!.actor!.declaredOutcome = "blocked";
+    expect(buildObserverData(bundle).streams[0]!.status).toBe(status);
+  });
+
+  it.each([undefined, "reached", "not_reached"] as const)("does not reclassify declarations of %s from prose", (declaredOutcome) => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    const stream = bundle.streams[0]!;
+    stream.status = "passed";
+    stream.actor!.completionReason = "goal_satisfied";
+    if (declaredOutcome === undefined) delete stream.actor!.declaredOutcome;
+    else stream.actor!.declaredOutcome = declaredOutcome;
+    stream.actor!.reason = "BLOCKED";
+    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Passed");
+  });
+
+  it("does not override a different completion reason", () => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    bundle.streams[0]!.status = "passed";
+    bundle.streams[0]!.actor!.completionReason = "timed_out";
+    bundle.streams[0]!.actor!.declaredOutcome = "blocked";
+    expect(buildObserverData(bundle).streams[0]!.status).toBe("passed");
+  });
+
   it("carries the tally and a rendered line a viewer cannot strip the denominator from", () => {
     const participants = tallyParticipantOutcomes(["passed", "passed", "abandoned"]);
     const data = buildObserverData(bundleWith({ participants }));
