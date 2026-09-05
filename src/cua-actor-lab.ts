@@ -2378,18 +2378,31 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
 }
 
 /**
- * The friction read of the same narrative (#453): everything the verdict scan counts PLUS
- * resolved arcs — a participant who hit a wall, got past it, and said so has reported friction
- * worth a tally count and a feedback candidate, without costing the lane its pass. Same
- * quoted-copy and stopWhen discipline as the verdict resolver. Exported for testing.
+ * Friction is independent of how a completed session ended (#657). Read the participant's
+ * redacted messages, including earlier reports, rather than the harness-owned reason that
+ * stopWhen/dwell writes. Reasoning, observations, and notices are not participant reports.
+ * Resolved arcs still count (#453); quoted copy and negated reports still do not. This read
+ * never changes the verdict. Exported for testing.
  */
 export function resolveSelfReportedFriction(session: CuaLoopResult | undefined): string | undefined {
+  if (session?.completionReason !== "goal_satisfied") return undefined;
   // Friction stays a read of the narrative even when the outcome was declared: a participant who
   // reached the goal and described what was hard on the way has reported friction.
-  if (session?.trace.declaredOutcome === "blocked" && session.completionReason === "goal_satisfied") return session.reason;
-  return session?.completionReason === "goal_satisfied"
-    && completionReasonContradictsGoal(session.reason)
+  if (session.trace.declaredOutcome === "blocked") return session.reason;
+  const messages = session.trace.items
+    .filter((item) => item.kind === "message")
+    .map((item) => item.text?.trim() ?? "")
+    .filter((text) => text.length > 0);
+  // One candidate per participant, with exact repeats removed (the closing report often repeats
+  // a prior turn). Scan each message separately so a quoted span cannot swallow another turn.
+  const reports = [...new Set(messages.filter(completionReasonContradictsGoal))];
+  if (reports.length > 0) return reports.join("\n\n");
+
+  // Older/custom sessions may expose only a closing reason. Preserve that contract, but never
+  // reinterpret a structured stop/dwell notice as participant text when no messages exist.
+  return messages.length === 0
     && !traceHasStopWhenMatch(session)
+    && completionReasonContradictsGoal(session.reason)
     ? session.reason
     : undefined;
 }
@@ -5170,8 +5183,8 @@ function desktopSpanToMinutes(desktopDurationMs: number | undefined): number | u
  * trying. A clean pass files nothing here — feedback exists to carry findings, and a run without
  * any falls back to an honest live summary in the draft layer instead of a template.
  *
- * Everything quoted is already scrub+redacted — `session.reason` passes through redactNarration in
- * the loop before it ever lands on a trace — and passes redactText again here as defense-in-depth.
+ * Everything quoted is already scrub+redacted — participant messages and `session.reason` pass
+ * through redactNarration in the loop — and passes redactText again here as defense-in-depth.
  */
 export function participantFeedbackCandidates(args: {
   runId: string;
