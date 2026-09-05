@@ -303,6 +303,59 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(events.map((event) => event.chunk).join("")).toBe(expected);
   });
 
+  it.each(["partial-prefix", "complete-replay", "callbacks-only"] as const)("redacts the retained key prefix when its completion is beyond the capture cap (%s)", async (delivery) => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => {
+        const prefix = `${"x".repeat(512 * 1024 - 20)}${FAKE_RUNTIME_KEY.slice(0, -1)}`;
+        const suffix = `${FAKE_RUNTIME_KEY.slice(-1)}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`;
+        return {
+          exitCode: 0,
+          emit: (stdout, stderr) => {
+            stdout(prefix);
+            if (delivery !== "partial-prefix") {
+              stderr("discarded interleaved diagnostic\n");
+              stdout(suffix.slice(0, 1));
+              stdout(suffix.slice(1));
+            }
+          },
+          ...(delivery === "callbacks-only" ? {} : { returnedStdout: `${prefix}${suffix}` })
+        };
+      } })
+    } });
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    for (const file of ["terminal-transcript.txt", "terminal-events.ndjson", "actor.json"]) {
+      expect(await readFile(path.join(runDir, file), "utf8")).not.toContain(FAKE_RUNTIME_KEY.slice(0, -1));
+    }
+    const transcript = await readFile(path.join(runDir, "terminal-transcript.txt"), "utf8");
+    expect(transcript).toContain("[REDACTED_SECRET]");
+    expect(transcript).not.toContain("HUMANISH_ACTOR_NONCE=");
+    expect(transcript).not.toContain("discarded interleaved diagnostic");
+  });
+
+  it.each([false, true])("scrubs a known key assembled across stdout and stderr in transcript order (capped=%s)", async (capped) => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const padding = capped ? "x".repeat(512 * 1024) : "";
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => ({
+        exitCode: 0,
+        emit: (stdout, stderr) => {
+          stdout(`${padding}${FAKE_RUNTIME_KEY.slice(0, 10)}`);
+          stderr(FAKE_RUNTIME_KEY.slice(10, 20));
+          stdout(FAKE_RUNTIME_KEY.slice(20));
+          stdout(`\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`);
+        }
+      }) })
+    } });
+    const events = (await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-events.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+    const transcriptOrder = events.map((event) => event.chunk).join("");
+    expect(transcriptOrder).not.toContain(FAKE_RUNTIME_KEY.slice(0, 10));
+    expect(transcriptOrder).toContain("[REDACTED_SECRET]");
+    if (!capped) expect(events.map((event) => event.stream)).toEqual(["stdout", "stderr", "stdout", "stdout"]);
+  });
+
   it("retains legitimate equal-valued usage turns inside one complete delivery", async () => {
     const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {

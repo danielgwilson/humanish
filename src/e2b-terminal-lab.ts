@@ -1050,6 +1050,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const lifecycle: LifecycleRecord[] = [];
   const commandLog: CommandLogRecord[] = [];
   const terminalEvents: TerminalEventRecord[] = [];
+  // Capture may stop inside a known key. Keep only enough following characters to finish the
+  // cross-chunk redaction below; this overlap is never added to terminal events/artifacts.
+  const discardedPrefixes = { stdout: "", stderr: "", combined: "" };
+  const maxDiscardedPrefixChars = Math.max(0, ...knownSecretValues.map((value) => value.length - 1));
   const interventions: InterventionRecord[] = []; // ALWAYS empty while no assisted-input path ships.
   let transcriptBytes = 0;
   let cleanup: TerminalLedgers["cleanup"] = { killed: false, remaining: -1, reason: "teardown not reached" };
@@ -1058,7 +1062,13 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     lifecycle.push({ at: nowIso(), event, message: sanitize(message) });
   };
   const appendTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
-    if (transcriptBytes >= MAX_TRANSCRIPT_BYTES) return;
+    if (transcriptBytes >= MAX_TRANSCRIPT_BYTES) {
+      for (const order of [stream, "combined"] as const) {
+        const remaining = maxDiscardedPrefixChars - discardedPrefixes[order].length;
+        if (remaining > 0) discardedPrefixes[order] += raw.slice(0, remaining);
+      }
+      return;
+    }
     transcriptBytes += Buffer.byteLength(raw, "utf8");
     // Scrub THEN redact at the SOURCE — raw bytes never leave this function (safety contract item 5).
     terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
@@ -1375,9 +1385,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   }
 
   // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
-  // chunks of each stream before any transcript/trace/event artifact is persisted; interleaved
-  // stderr must not hide a key assembled by consecutive stdout deliveries.
-  scrubSplitKnownValues(terminalEvents, knownSecretValues);
+  // chunks before any transcript/trace/event artifact is persisted. Check both each stream and
+  // the combined event order that the transcript uses; either view can assemble a split value.
+  scrubSplitKnownValues(terminalEvents, knownSecretValues, discardedPrefixes);
 
   // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
   const normalizedTranscript = normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join(""));
@@ -1908,9 +1918,18 @@ async function runWithWallClock<T>(
  * known values before persistence without collapsing events or changing stdout/stderr ordering.
  * Work backwards through matches so edits to later text leave earlier offsets valid.
  */
-function scrubSplitKnownValues(events: TerminalEventRecord[], knownValues: string[]): void {
-  for (const stream of ["stdout", "stderr"] as const) {
-    const chunks = events.filter((event) => event.stream === stream);
+function scrubSplitKnownValues(
+  events: TerminalEventRecord[],
+  knownValues: string[],
+  discardedPrefixes: Record<"stdout" | "stderr" | "combined", string>
+): void {
+  for (const order of ["stdout", "stderr", "combined"] as const) {
+    const chunks: Array<{ chunk: string }> = order === "combined"
+      ? [...events]
+      : events.filter((event) => event.stream === order);
+    // A virtual final chunk makes a key crossing the capture cap recognizable. Edits to retained
+    // events redact evidence; the raw overlap and this virtual chunk are never persisted.
+    if (discardedPrefixes[order]) chunks.push({ chunk: discardedPrefixes[order] });
     for (const value of knownValues) {
       if (!value) continue;
       let offset = 0;

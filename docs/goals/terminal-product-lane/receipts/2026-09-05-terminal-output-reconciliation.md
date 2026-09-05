@@ -15,9 +15,11 @@ nonmatching output remain supported. Participant text and usage records are not
 globally deduplicated; repeated lines and equal-valued legitimate turns survive.
 
 Known values are also scrubbed across retained chunks before artifacts are
-written. This protects a secret split between a streamed prefix and returned
-tail, including when stderr events appear between its stdout fragments, while
-preserving event order.
+written, in both per-stream and combined transcript order. This protects a
+secret split between a streamed prefix and returned tail, including interleaved
+stdout/stderr fragments, while preserving event order. If capture stops inside
+a known key, a bounded discarded prefix completes redaction of the retained
+fragment; discarded text is never added to evidence.
 
 ## Replay proof from the retained live streams
 
@@ -34,8 +36,8 @@ not two new live actors. No provider call or billable sandbox was made.
 Focused tests also cover callback-only, returned-only, complete dual delivery,
 partial prefixes, Unicode byte boundaries, separate stdout/stderr delivery,
 nonmatching fallback, repeated participant lines, equal-valued usage turns,
-split known keys, and avoiding a second charge against the transcript cap for
-replayed stdout. The committed usage event is a minimal identifier-free record
+split known keys (including across streams or the capture cap), and avoiding a
+second charge against the transcript cap for replayed stdout. The committed usage event is a minimal identifier-free record
 copied from the first retained live stream, not a guessed provider response.
 
 The earlier model-cost estimate from unique deliveries remains $0.0759273 for
