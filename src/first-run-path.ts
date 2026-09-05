@@ -62,7 +62,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   const steps: FirstRunStep[] = [
     {
       command: "humanish run first-run",
-      why: "a synthetic study with no keys and no spend — see the shape of the evidence in about a minute"
+      why: "an evidence preview: no browser or model runs, no keys, no spend"
     }
   ];
 
@@ -133,7 +133,7 @@ export function agentsSection(): string {
     "```bash",
     "humanish doctor            # what is configured, and what a live run still needs",
     "humanish lab list --json   # the studies in this project",
-    "humanish run first-run     # a synthetic study: no keys, no spend",
+    "humanish run first-run     # evidence preview only: no browser, model, keys, or spend",
     "humanish run try-live      # a REAL study against a demo app (needs E2B_API_KEY)",
     "humanish verify --run latest --json   # is the evidence share-safe",
     "```",
