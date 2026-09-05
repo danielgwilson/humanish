@@ -2506,6 +2506,17 @@ function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
   return Object.keys(laneFocus).length > 0 ? laneFocus : undefined;
 }
 
+// Like review fields, a declared lane distinction must not disappear silently (#343).
+// The exhaustive records make newly added interface fields require an explicit parser decision.
+const LANE_FIELDS: Record<keyof LabActorLane, true> = {
+  id: true, actorType: true, surface: true, caseGroup: true, persona: true,
+  device: true, instruction: true, stopWhen: true, dwell: true, reasoningEffort: true,
+  target: true, entry: true, host: true
+};
+const ROSTER_GROUP_FIELDS: Record<keyof LabActorRosterGroup, true> = { ...LANE_FIELDS, count: true };
+const LANE_KEYS = new Set(Object.keys(LANE_FIELDS));
+const ROSTER_GROUP_KEYS = new Set(Object.keys(ROSTER_GROUP_FIELDS));
+
 /**
  * Parse `actors[index].roster` compact groups into concrete lanes. This is authoring sugar for
  * "N users of M adapter-owned types across S surfaces"; the runtime receives only `lanes[]`.
@@ -2523,6 +2534,10 @@ function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value:
   for (const [groupIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(`actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`);
+    }
+    const unknownKeys = Object.keys(entry).filter((key) => !ROSTER_GROUP_KEYS.has(key));
+    if (unknownKeys.length > 0) {
+      return invalid(`Unknown \`actors[${actorIndex}].roster[${groupIndex}]\` field(s): ${unknownKeys.join(", ")}. Known roster group fields: ${[...ROSTER_GROUP_KEYS].join(", ")}.`);
     }
     const groupId = str(entry.id);
     if (groupId === undefined) {
@@ -2573,6 +2588,10 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
   for (const [laneIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(`actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`);
+    }
+    const unknownKeys = Object.keys(entry).filter((key) => !LANE_KEYS.has(key));
+    if (unknownKeys.length > 0) {
+      return invalid(`Unknown \`actors[${actorIndex}].lanes[${laneIndex}]\` field(s): ${unknownKeys.join(", ")}. Known lane fields: ${[...LANE_KEYS].join(", ")}.`);
     }
     const lane: LabActorLane = {};
     const id = str(entry.id);
