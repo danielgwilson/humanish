@@ -110,8 +110,9 @@ configuration](https://developers.openai.com/codex/config-advanced),
 and [E2B's CA installer](https://github.com/e2b-dev/infra/blob/main/packages/envd/internal/host/cacerts.go).
 E2B's installed
 SDK documents that transformed headers override request headers. Deterministic
-request/redaction tests do not establish live wire behavior; a live receipt is
-required for that claim.
+request/redaction tests do not establish live wire behavior. The [2026-09-05
+transport receipt](../goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
+records the controlled live header/auth checks and their scope.
 
 ## The original command-scoped safety contract
 
