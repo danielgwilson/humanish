@@ -18,8 +18,8 @@ Hosted browser studies support these sources:
   actor): the lab clones your repo into the sandbox, runs your declared
   `serve.install`/`serve.build`/`serve.start` commands (detached, with readiness
   probing), and drives the served app at `serve.url`. Subject env var names declared
-  in `subject.env` are provisioned from `--env-file` (names land in evidence; values
-  never do). The bundle records provenance: repo, cloned commit, env names.
+  in `subject.env` are provisioned from `--env-file` (provenance records names;
+  persisted text uses known-value and pattern redaction). The bundle records provenance: repo, cloned commit, env names.
 - **`subject.source: app-url`**: drive your reachable deployment with
   `policies.allowPublicTargets: true`. The standard independent-world route
   accepts one participant for this shared URL. Library callers can also provision
@@ -201,6 +201,26 @@ Supported primitives are `urlIncludes`, `urlPathEquals`, `textIncludes`, and
 the run bundle; the trace stores only the matched rule id and primitive names. Browser URL
 and text observation requires a Chrome/Chromium CDP session in the desktop. For deterministic
 browser-observed stops, set `execution.desktop.browser: chrome` or `chromium`.
+
+## Closing reports after an automatic stop
+
+**From Humanish 0.81.0.** After a `stopWhen` match or `dwell` with `then: stop`, a provider that supports
+closing reports can make one read-only request using the final observation.
+The current OpenAI provider supports this; local coding-agent providers do not.
+There is no extra CLI flag. Desktop interaction has already stopped, and any
+actions requested by the closing response are rejected rather than executed.
+
+The request needs at least one prior participant turn, the required observation,
+and remaining session/model budget. It is limited to 30 seconds or the smaller
+remaining deadline, without retry. Reported usage counts toward the existing
+model budgets; an in-flight request can cross a threshold.
+
+The trace's `debrief` records `completed`, `skipped`, or `failed`, a reason, and
+usage availability. An accepted typed report contains `summary` and
+`frictionReports`. An empty friction list means the participant reported none;
+a missing or failed report does not. The report preserves the original stop
+reason and task outcomes. Natural endings and budget/error exits do not request
+this extra report. See [reading outcomes](/docs/read-results#separate-a-finding-from-a-broken-run).
 
 ## Model selection and spend
 

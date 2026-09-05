@@ -21,23 +21,35 @@ describe("website documentation examples", () => {
     const failures: string[] = [];
     let checked = 0;
     for (const { name, text } of [...pages, readme]) {
-      for (const block of text.matchAll(/```bash[^\n]*\n([\s\S]*?)```/g)) {
-        for (const line of block[1]!.split("\n")) {
-          if (!line.startsWith("npx humanish ")) continue;
-          const tokens = line.slice("npx humanish ".length).trim().split(/\s+/);
-          let command = program;
-          while (tokens.length > 0 && command.commands.length > 0) {
-            const child = command.commands.find((entry) => entry.name() === tokens[0]);
-            if (!child) break;
-            tokens.shift();
-            command = child;
-          }
-          if (command === program) failures.push(`${name}: unknown command: ${line}`);
-          const parsed = command.parseOptions(tokens);
-          const invalid = parsed.unknown.filter((token) => token.startsWith("-"));
-          if (invalid.length) failures.push(`${name}: unsupported flags ${invalid.join(", ")}: ${line}`);
-          checked++;
+      const examples = [...text.matchAll(/```bash[^\n]*\n([\s\S]*?)```/g)]
+        .flatMap((block) => block[1]!.split("\n"))
+        .filter((line) => line.startsWith("npx humanish "))
+        .map((line) => line.slice("npx ".length));
+      // README command-table rows are copyable instructions too. Missing --repo there previously
+      // escaped the fenced-example check even though Commander requires it before feedback issue.
+      examples.push(...[...text.matchAll(/^\| `(humanish [^`]+)` \|/gm)].map((match) => match[1]!));
+      for (const line of examples) {
+        const tokens = line.slice("humanish ".length).trim().split(/\s+/);
+        let command = program;
+        while (tokens.length > 0 && command.commands.length > 0) {
+          const child = command.commands.find((entry) => entry.name() === tokens[0]);
+          if (!child) break;
+          tokens.shift();
+          command = child;
         }
+        if (command === program) failures.push(`${name}: unknown command: ${line}`);
+        const parsed = command.parseOptions(tokens);
+        const invalid = parsed.unknown.filter((token) => token.startsWith("-"));
+        if (invalid.length) failures.push(`${name}: unsupported flags ${invalid.join(", ")}: ${line}`);
+        for (const option of command.options) {
+          if (option.mandatory && option.defaultValue === undefined
+            && !tokens.some((token) => token === option.long || token === option.short || token.startsWith(`${option.long}=`))) {
+            failures.push(`${name}: missing required option ${option.long}: ${line}`);
+          }
+        }
+        const requiredArguments = command.registeredArguments.filter((arg) => arg.required).length;
+        if (parsed.operands.length < requiredArguments) failures.push(`${name}: missing required argument: ${line}`);
+        checked++;
       }
     }
     expect(checked).toBeGreaterThan(20);

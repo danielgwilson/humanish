@@ -24,9 +24,10 @@ npx humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/
 npx humanish lab run .humanish/labs/local-dogfood.yaml --json --no-open
 ```
 
-`--env-file` loads values for the current process only. Humanish reports loaded
-env var names, never values, and does not persist those values into run bundles
-or Observer data.
+`--env-file` loads values into the current Humanish process; declared subject
+variables can then be provisioned to the sandbox. Environment provenance records
+names. Persisted text is scrubbed for known values and secret patterns, with the
+[coverage limits described in the privacy guide](/docs/budgets-and-privacy#review-evidence-before-sharing).
 
 ## Inspect the route before running
 

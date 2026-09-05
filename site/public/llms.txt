@@ -125,7 +125,8 @@ A live study needs two things in the environment:
   `E2B_API_KEY` is still required.
 
 `humanish doctor --json` reports which of these were found and names the exact command to fix
-each missing one. Values are never printed or persisted into run artifacts.
+each missing one without printing key values. Persisted text is scrubbed for known
+secret values and patterns; this is not a guarantee that all sensitive content is detected.
 
 Node 20 or newer for the CLI; the human TUI requires Node 22 or newer.
 

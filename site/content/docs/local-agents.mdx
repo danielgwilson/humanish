@@ -28,16 +28,20 @@ actors:
 ```
 
 `localAgent` chooses the installed CLI (`codex` is the default); `model` is a
-separate optional model selection passed to that CLI. Humanish checks the chosen
-agent is installed and signed in before launching a desktop.
+separate optional model selection passed to that CLI. Before launching a desktop, Humanish checks that the chosen CLI is installed
+and its expected credential file is present; that is not a fresh authentication test.
 
 ## Where execution happens
 
-Humanish never reads those credentials. It checks that the credential file
-**exists**, spawns the CLI tool-restricted (`--sandbox read-only` for Codex,
-`--allowedTools Read` for Claude Code) in a scratch directory, and hands it one
-screenshot per turn. The agent only **decides**; humanish performs the action
-inside the E2B sandbox, so nothing the persona chooses ever runs on your machine.
+Humanish's [local-agent discovery](https://github.com/danielgwilson/humanish/blob/main/src/local-agent-cli.ts)
+checks credential-file existence without reading its contents. The authenticated
+coding CLI still runs on your host and uses its own sign-in state.
+
+Humanish starts it in a scratch directory with read-only restrictions for Codex
+or `--allowedTools Read` for Claude Code, and supplies a screenshot for each
+turn. The returned desktop actions execute in E2B. The local CLI remains a host
+process under those configured restrictions; they are not a separate sandbox
+for everything the CLI can access.
 
 ## Usage and limitations
 

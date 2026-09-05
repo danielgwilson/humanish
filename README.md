@@ -105,12 +105,13 @@ allowlist, over both tracked files and the packed npm payload) plus a
 full-history gitleaks scan. That protects what we ship; it does not scan your
 repo.
 
-**2. The harness never persists secret values into run artifacts.** On every
-route, values it provisioned are scrubbed by literal match (they have no shape
-for patterns to catch) and secret-shaped content is pattern-redacted before any
-log tail, harness error, or model narration lands on disk. Env var names are
-evidence; values never are. Pixels are the exception: a raw screenshot shows
-whatever was on screen, which is why plank 3 exists.
+**2. Persisted text is scrubbed for known values and secret patterns.** Humanish
+uses literal matching for provisioned secret values and pattern redaction for
+secret-shaped text in logs, errors, and model narration. Environment provenance
+records variable names. These checks have coverage limits: unknown values,
+unrecognized formats, and implementation defects can escape them. Raw
+screenshots contain whatever was on screen. Use synthetic data, verify the
+bundle, and review the actual text and pixels before sharing.
 
 **3. Run bundles are local by default.** Evidence lands under gitignored
 `.humanish/`, and no command publishes it for you. Sharing evidence (committing
@@ -154,7 +155,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | `humanish runs --json` | List local run history. |
 | `humanish review --run latest --json` | Read an existing run's evidence. |
 | `humanish verify --run latest --json` | Check evidence and share-safety gates. |
-| `humanish feedback issue --run latest` | Print an eligible feedback draft. |
+| `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft. |
 
 ## Exit Codes
 
