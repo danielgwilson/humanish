@@ -194,6 +194,11 @@ subjects, screenshots, devices, mobile emulation, stop rules, dwell windows,
 and failed-lane reruns. The [cost model](https://humanish.dev/docs/budgets-and-privacy#how-cost-estimates-work)
 explains model selection, dated estimates, and study/per-participant caps.
 
+Mobile viewport and touch flags do not certify gesture equivalence. The
+[2026-09-05 input-conformance correction](docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
+qualifies the historical phone-lane results: they describe Humanish's measured input path,
+not established physical-device app behavior.
+
 #### Adapters: drive a local app via its JS state contract (no E2B, no vision)
 
 See [state-driven local adapters](https://humanish.dev/docs/computer-use#state-driven-local-adapters).

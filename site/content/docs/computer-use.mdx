@@ -124,6 +124,15 @@ emulation holder also applies the settings to new page targets. Later observatio
 record the page's fidelity and warn if it drifts from the requested settings. A bundle without a `fidelity` block is a
 responsive-viewport study whatever its preset is called.
 
+When touch is enabled, desktop pointer input is converted to touch. Correct viewport and
+touch flags do not prove equivalent gesture behavior: in two hosted conformance probes,
+the SDK double click produced two single clicks while direct touch opened the original
+TodoMVC editor in both. **From Humanish 0.81.0**, these lanes carry a run warning to confirm
+gesture failures with direct or native touch before attributing them to the app. The earlier
+phone-lane outcomes remain observations of the measured Humanish input path. See the
+[dated input-conformance receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
+for the method and limits; physical-device behavior was not tested.
+
 ## Desktop browser choice
 
 Hosted computer-use lanes and shared-world actor seats use the
