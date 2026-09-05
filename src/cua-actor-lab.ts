@@ -146,7 +146,8 @@ import {
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "./run.js";
-import { estimateActorCost, estimateDesktopCost, MODEL_RATES, round6 } from "./pricing.js";
+import { estimateActorCost, estimateDesktopCost, estimateAllocatedDesktopCost, MODEL_RATES, round6 } from "./pricing.js";
+import { observeDesktopResources, type DesktopResourceObservation } from "./e2b-desktop-resources.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
@@ -1358,6 +1359,7 @@ export interface LaneRunOutcome {
    *  billed lifetime (server-side kill-on-timeout can extend it) — so the derived dollar figure is
    *  doubly an estimate. Absent on the in-process route (no sandbox) and on dry-run. */
   desktopDurationMs?: number;
+  desktopResources?: DesktopResourceObservation;
   killed: boolean;
   streamUrlPresent: boolean;
   screenshots: string[];
@@ -2544,9 +2546,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   let sandboxId: string | undefined;
   // Host-side E2B desktop billed-span endpoints, measured via the injected clock. Captured right
   // after create() succeeds and again in the finally after teardown resolves (both the killed and
-  // kept-for-debug paths), so the desktop-minute cost estimate reflects the honest lifetime.
+  // kept-for-debug paths). This measured span excludes allocation before the acquired handle;
+  // a kept/unconfirmed allocation gets an extra unknown lifetime cost line.
   let sandboxCreatedAtMs: number | undefined;
   let sandboxTornDownAtMs: number | undefined;
+  let desktopResources: DesktopResourceObservation | undefined;
   let killed = false;
   let streamUrl: string | undefined;
   let subjectCommit: string | undefined;
@@ -2628,6 +2632,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     await appendSandboxReceipt(deps.artifactRoot, { at: new Date(deps.now()).toISOString(), laneId: spec.laneId, sandboxId, timeoutMs: deps.perLaneSandboxMs });
     // The billed span starts the instant the sandbox exists.
     sandboxCreatedAtMs = deps.now();
+    desktopResources = await observeDesktopResources(desktop);
+    if ("reason" in desktopResources) {
+      warnings.push(`Desktop resource size unavailable (${desktopResources.reason}); compute cost remains unpriced.`);
+    }
 
     if (deps.hooks.prepareDesktop) {
       await deps.hooks.prepareDesktop(desktop, { laneId: spec.laneId, laneIndex: spec.laneIndex, laneCount: deps.laneCount });
@@ -3158,8 +3166,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       } else {
         warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
       }
-      // Close the billed span for BOTH the killed and kept-for-debug paths (a kept sandbox is
-      // still billed until its server-side timeout, so the honest span ends here either way).
+      // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost;
+      // the summary records that remaining lifetime as unknown instead of calling this complete.
       sandboxTornDownAtMs = deps.now();
       // The lane's live stream is now a dead page whichever teardown path ran (killed, kept, or
       // kill-failed-awaiting-TTL) — tell the watch overlay so the tile falls back to recorded
@@ -3217,6 +3225,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     ...(sessionError === undefined ? {} : { sessionError }),
     ...(sandboxId === undefined ? {} : { sandboxId }),
     ...(desktopDurationMs === undefined ? {} : { desktopDurationMs }),
+    ...(desktopResources === undefined ? {} : { desktopResources }),
     killed,
     streamUrlPresent: streamUrl !== undefined,
     screenshots,
@@ -4630,6 +4639,12 @@ function buildSingleLaneBundle(args: {
     ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
       ? {}
       : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
+    ...(outcome?.sandboxId === undefined ? {} : { desktopUsage: {
+      laneId: spec.laneId,
+      minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
+      observation: outcome.desktopResources,
+      lifetimeComplete: outcome.killed
+    } }),
     phaseEvents: outcome?.phaseRecords ?? []
   });
 }
@@ -5128,16 +5143,25 @@ function tailOf(log: string): string {
  */
 /**
  * Assemble the run-level cost ESTIMATE from each lane's persisted per-actor estimate
- * (trace.estimatedCost, set at the lab boundary) plus the aggregated E2B desktop-minute span.
+ * (trace.estimatedCost, set at the lab boundary) plus each observed E2B allocation's resources/span.
  * Returns undefined (cost OMITTED) when nothing was priceable AND no sandbox ran — a pure dry-run
  * or an in-process lane (no trace.estimatedCost, no desktop) stays byte-stable with no cost block.
  * The null-discipline mirrors the terminal ledger: a present-but-unpriceable line is null + a
  * reason and contributes NOTHING to estimatedTotalUsd (never coerced to 0); an all-null summary
  * has a null total. Every non-null figure carries its ratesAsOf date + source (invariant 6).
  */
+export interface CuaDesktopUsage {
+  laneId?: string;
+  minutes: number | undefined;
+  observation: DesktopResourceObservation | undefined;
+  lifetimeComplete: boolean;
+}
+
 export function buildCuaCostSummary(args: {
   lanes: Array<{ laneId?: string; trace: ActorTrace }>;
-  desktopMinutes: number | undefined;
+  /** Legacy library input: uses a labeled planning assumption; live routes use desktops. */
+  desktopMinutes?: number | undefined;
+  desktops?: CuaDesktopUsage[];
 }): RunCostSummary | undefined {
   const breakdown: RunCostLine[] = [];
   let sumInput = 0;
@@ -5177,7 +5201,32 @@ export function buildCuaCostSummary(args: {
     });
   }
 
-  if (args.desktopMinutes !== undefined) {
+  for (const usage of args.desktops ?? []) {
+    const observation = usage.observation;
+    const resources = observation && "resources" in observation ? observation.resources : undefined;
+    const estimate = estimateAllocatedDesktopCost(usage.minutes, resources);
+    breakdown.push({
+      kind: "desktop-minutes",
+      ...(usage.laneId === undefined ? {} : { laneId: usage.laneId }),
+      estimatedCostUsd: estimate.estimatedCostUsd,
+      ...(estimate.reason === undefined ? {} : { reason: estimate.reason }),
+      ratesAsOf: estimate.ratesAsOf,
+      ...(estimate.source === undefined ? {} : { source: estimate.source }),
+      desktop: {
+        minutes: estimate.minutes,
+        durationBasis: "host-acquired-to-cleanup",
+        ...(resources === undefined ? {} : { resources, resourceSource: "e2b.getInfo" }),
+        ...(observation && "reason" in observation ? { resourceUnavailableReason: observation.reason } : {}),
+        ...(estimate.usdPerSecond === undefined ? {} : { usdPerSecond: estimate.usdPerSecond })
+      }
+    });
+    if (!usage.lifetimeComplete) {
+      breakdown.push({ kind: "desktop-minutes", ...(usage.laneId === undefined ? {} : { laneId: usage.laneId }),
+        estimatedCostUsd: null, reason: "desktop_lifetime_incomplete", ratesAsOf: null });
+    }
+  }
+
+  if (args.desktops === undefined && args.desktopMinutes !== undefined) {
     const desktop = estimateDesktopCost(args.desktopMinutes);
     breakdown.push({
       kind: "desktop-minutes",
@@ -5214,9 +5263,12 @@ export function buildCuaCostSummary(args: {
     }
   }
   const estimatedTotalUsd = anyKnown ? round6(knownSum) : null;
-  const note = estimatedTotalUsd === null
+  const estimateNote = estimatedTotalUsd === null
     ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/pricing.ts to estimate this model.`
     : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
+  const note = estimateNote + ((args.desktops?.length ?? 0) > 0
+    ? " Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    : "");
 
   return {
     schema: "humanish.run-cost-summary.v1",
@@ -5227,7 +5279,9 @@ export function buildCuaCostSummary(args: {
     placeholder,
     breakdown,
     tokenUsage: { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
-    desktopMinutes: args.desktopMinutes ?? null,
+    desktopMinutes: args.desktops === undefined ? args.desktopMinutes ?? null
+      : args.desktops.some(usage => usage.minutes !== undefined)
+        ? round6(args.desktops.reduce((sum, usage) => sum + (usage.minutes ?? 0), 0)) : null,
     note
   };
 }
@@ -5394,12 +5448,14 @@ export function buildCuaBundle(args: {
   /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
    *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
   desktopMinutes?: number;
+  desktopUsage?: CuaDesktopUsage;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   // Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran).
   const cost = buildCuaCostSummary({
     lanes: args.session ? [{ ...(args.laneId === undefined ? {} : { laneId: args.laneId }), trace: args.session.trace }] : [],
-    desktopMinutes: args.desktopMinutes
+    desktopMinutes: args.desktopMinutes,
+    ...(args.desktopUsage === undefined ? {} : { desktops: [args.desktopUsage] })
   });
   const status: RunSimulationStatus = args.inProgress === true
     ? "running"
@@ -6170,16 +6226,17 @@ export function buildCuaFanoutBundle(args: {
     }));
 
   // Run-level cost ESTIMATE: one model-token line per lane that ran a session (from its persisted
-  // trace.estimatedCost) + one aggregate desktop-minutes line summing each lane's OWN sandbox span
-  // (per-lane worlds => no shared provisioning to double-count). Omitted on a pure dry-run.
+  // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
+  // Per-lane worlds have no shared provisioning to double-count. Omitted on a pure dry-run.
   const costLanes = specs
     .map((spec, index) => ({ laneId: spec.laneId, outcome: outcomes?.[index] }))
     .filter((entry): entry is { laneId: string; outcome: LaneRunOutcome } => entry.outcome?.session !== undefined)
     .map((entry) => ({ laneId: entry.laneId, trace: entry.outcome.session!.trace }));
-  const desktopMinutesTotal = (outcomes ?? []).some((outcome) => outcome.desktopDurationMs !== undefined)
-    ? (outcomes ?? []).reduce((sum, outcome) => sum + (outcome.desktopDurationMs ?? 0), 0) / 60_000
-    : undefined;
-  const cost = buildCuaCostSummary({ lanes: costLanes, desktopMinutes: desktopMinutesTotal });
+  const desktops = (outcomes ?? []).filter(outcome => outcome.sandboxId !== undefined).map(outcome => ({
+    laneId: outcome.spec.laneId, minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
+    observation: outcome.desktopResources, lifetimeComplete: outcome.killed
+  }));
+  const cost = buildCuaCostSummary({ lanes: costLanes, desktops });
 
   return {
     schema: RUN_BUNDLE_SCHEMA,

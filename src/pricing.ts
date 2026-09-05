@@ -59,6 +59,20 @@ export interface DesktopRate {
   placeholder?: boolean;
 }
 
+/** Resource quantities reported by the owned E2B allocation, not its template label. */
+export interface DesktopResources {
+  cpuCount: number;
+  /** E2B's `memoryMB` field is in MiB; normalize the unit before pricing GiB. */
+  memoryMiB: number;
+}
+
+export interface DesktopResourceRate {
+  usdPerCpuSecond: number;
+  usdPerGiBSecond: number;
+  asOf: string;
+  source: string;
+}
+
 /**
  * The token-derived cost ESTIMATE for one actor lane. `estimatedCostUsd: null` = DECLARED ABSENT
  * (unknown rate or no token usage) — never coerced to 0. A non-null figure ALWAYS carries its
@@ -99,12 +113,14 @@ export interface ActorEstimatedCost {
  *  null-discipline as ActorEstimatedCost: `estimatedCostUsd: null` = not measured (no duration). */
 export interface DesktopCostEstimate {
   estimatedCostUsd: number | null;
-  reason?: "no_duration";
+  reason?: "no_duration" | "no_desktop_resources" | "no_rate_for_desktop";
   ratesAsOf: string | null;
   source?: string;
   /** The billed minutes the estimate was keyed on; null when no duration was measured. */
   minutes: number | null;
   placeholder?: boolean;
+  resources?: DesktopResources;
+  usdPerSecond?: number;
 }
 
 // The gpt-5.6 long-context tier: >272K input tokens re-prices the FULL request at 2x
@@ -187,18 +203,57 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   "gpt-6-astra": gpt56Rate(10, 1, 12.5, 50, GPT56_SOL_PROMO_AS_OF)
 };
 
-// E2B desktop sandbox compute, billed per-second by vCPU+RAM. Live sheet: 2 vCPU (default)
-// $0.000028/s + RAM $0.0000045/GiB/s => at an ASSUMED 4 GiB desktop, $0.000046/s ~= $0.00276/min
-// (~$0.17/hr). The per-second rates are confirmed; the desktop template's RAM spec is not
-// published, so the assumption keeps this entry `placeholder` until a live run's sandbox spec
-// confirms it. 4 GiB is the conservative (higher) choice: over-estimating is the safe direction
-// for maxUsd caps.
+// Current public incremental running-compute rates. Subscription fees/credits, negotiated
+// enterprise prices, and unobserved allocation/startup time are outside this estimate.
+export const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
+  usdPerCpuSecond: 0.000014,
+  usdPerGiBSecond: 0.0000045,
+  asOf: "2026-09-05",
+  // A source label rather than an executable URL; runtime URL redaction protects E2B streams.
+  source: "e2b.dev/pricing"
+};
+
+// Planning/legacy-helper assumption only: stock desktops observed on 2026-09-05 had 8 vCPU /
+// 8 GiB. This is the largest CPU/RAM combination on that public sheet, not a provider billing
+// ceiling or a claim about custom/enterprise templates. Runtime CUA estimates use observed
+// allocation resources through estimateAllocatedDesktopCost instead of this fallback.
 export const DESKTOP_RATE: DesktopRate = {
-  usdPerMinute: 0.00276,
-  asOf: "2026-08-05",
-  source: "e2b.dev/pricing (2 vCPU default + assumed 4 GiB RAM; confirm spec from a live run)",
+  usdPerMinute: 0.00888,
+  asOf: "2026-09-05",
+  source: "e2b.dev/pricing (planning assumption: 8 vCPU / 8 GiB; not an observed allocation)",
   placeholder: true
 };
+
+export function isDesktopResources(value: unknown): value is DesktopResources {
+  if (value === null || typeof value !== "object") return false;
+  const resources = value as DesktopResources;
+  return Number.isSafeInteger(resources.cpuCount) && resources.cpuCount > 0
+    && Number.isSafeInteger(resources.memoryMiB) && resources.memoryMiB > 0;
+}
+
+/** Price one observed allocation. Missing quantities/rates stay unknown, never a stock guess. */
+export function estimateAllocatedDesktopCost(
+  minutes: number | undefined,
+  resources: DesktopResources | undefined,
+  rate: DesktopResourceRate = DESKTOP_RESOURCE_RATE
+): DesktopCostEstimate {
+  if (minutes === undefined || !Number.isFinite(minutes) || minutes < 0) {
+    return { estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null, minutes: null };
+  }
+  if (!isDesktopResources(resources)) {
+    return { estimatedCostUsd: null, reason: "no_desktop_resources", ratesAsOf: null, minutes: round6(minutes) };
+  }
+  // The public Hobby/Pro sheet stops at 8 CPU / 8 GiB; larger allocations may have negotiated
+  // prices. Retain the resource evidence without extrapolating a standard rate to them.
+  if (![1, 2, 4, 6, 8].includes(resources.cpuCount) || resources.memoryMiB < 512 || resources.memoryMiB > 8192
+    || !Number.isFinite(rate.usdPerCpuSecond) || rate.usdPerCpuSecond < 0
+    || !Number.isFinite(rate.usdPerGiBSecond) || rate.usdPerGiBSecond < 0) {
+    return { estimatedCostUsd: null, reason: "no_rate_for_desktop", ratesAsOf: null, minutes: round6(minutes), resources };
+  }
+  const usdPerSecond = resources.cpuCount * rate.usdPerCpuSecond + resources.memoryMiB / 1024 * rate.usdPerGiBSecond;
+  return { estimatedCostUsd: round6(minutes * 60 * usdPerSecond), ratesAsOf: rate.asOf,
+    source: rate.source, minutes: round6(minutes), resources, usdPerSecond };
+}
 
 /** Round a USD figure to 6 decimals so a float-accumulated total never carries spurious
  *  precision. This mirrors the SPIRIT of the terminal ledger's private roundUsd (6dp) without
@@ -333,7 +388,7 @@ export function estimateDesktopCost(
   minutes: number | undefined,
   rate: DesktopRate = DESKTOP_RATE
 ): DesktopCostEstimate {
-  if (minutes === undefined || !(minutes >= 0)) {
+  if (minutes === undefined || !Number.isFinite(minutes) || minutes < 0) {
     return { estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null, minutes: null };
   }
   return {

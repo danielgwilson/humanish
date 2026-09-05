@@ -978,16 +978,16 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
 `humanish.run-bundle.v1` stays v1 and every pre-existing bundle is byte-stable:
 
 - `humanish.pricing.v1` — the OPERATOR-EDITABLE rate table in `src/pricing.ts`:
-  dated per-model input/output USD-per-token rates and an E2B desktop
-  USD-per-minute rate, each with a public pricing-page `source` and an `asOf`
+  dated per-model input/output USD-per-token rates and E2B CPU/GiB-second
+  rates, each with a public pricing-page `source` and an `asOf`
   date. A prominent banner says these are estimates to update when providers
   change pricing. Model rates may carry a `cacheWriteUsdPerToken` (OpenAI 5.6+
   bills cache writes at 1.25x input as the total rate for written tokens) and a
   `longContext` tier (a per-request input threshold that re-prices the whole
   request; priced exactly only from the trace's per-request `turns` ledger —
   totals alone never re-tier, which is the under-estimate direction). Some
-  entries are `placeholder: true` stand-ins (the E2B desktop rate, pending a
-  live RAM-spec confirmation) — an operator MUST confirm them before trusting
+  entries are `placeholder: true` stand-ins (the legacy desktop helper's
+  8-vCPU/8-GiB planning assumption) — an operator MUST confirm them before trusting
   the magnitude; the flag propagates into every estimate so a stand-in is never
   mistaken for a live rate. An UNKNOWN model/desktop rate is DECLARED ABSENT
   (`estimatedCostUsd: null` + a `reason`), never guessed.
@@ -996,7 +996,14 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   `no_rate_for_model`/`no_token_usage`), `ratesAsOf`, `source`, `modelId`,
   optional `placeholder`, and a `breakdown`.
 - `humanish.run-cost-summary.v1` — `RunBundle.cost`: the sum of every lane's
-  `model-tokens` line PLUS one aggregate `desktop-minutes` line.
+  `model-tokens` lines PLUS `desktop-minutes` lines. New independent CUA runs
+  price each owned desktop separately; older single aggregate lines remain readable.
+  A desktop line's optional `desktop` object records `minutes`,
+  `durationBasis: host-acquired-to-cleanup`, observed `resources` (`cpuCount`,
+  `memoryMiB`), `resourceSource: e2b.getInfo`, and `usdPerSecond` when priceable.
+  Failed metadata reads record `resourceUnavailableReason`; no resource guess is used.
+  Resource metadata and missing/unsupported rates produce a null line. A kept or
+  unconfirmed allocation adds `desktop_lifetime_incomplete` as a second null line.
 
 The summary follows the SAME null discipline as the terminal cost ledger above.
 `estimatedTotalUsd` sums ONLY the non-null `breakdown` lines and is `null` iff
@@ -1008,8 +1015,10 @@ tried and could not price it) and contributes nothing. `fullyEstimated` is
 the MIN (oldest) `asOf` across contributing rates — an aggregate is only as fresh
 as its stalest input, so MAX would overclaim freshness (each `breakdown` line
 keeps its own true `asOf`). `desktopMinutes` is a HOST-SIDE
-create→teardown span — an approximation of E2B's server-side billed lifetime, so
-the desktop dollar figure is doubly an estimate.
+acquired-handle→cleanup span, excluding allocation/startup before handle acquisition.
+It approximates E2B's server-side billed lifetime. Plan fees, credits, and negotiated
+prices are excluded; unknown remaining lifetime makes `fullyEstimated` false.
+Shared-world, scripted-browser, and terminal routes do not yet emit these desktop lines.
 
 ```yaml
 schema: humanish.run-cost-summary.v1

@@ -88,15 +88,19 @@ export { COMMS_THREAD_SCHEMA } from "./comms-evidence.js";
 export type { CommsThreadArtifact, CommsThreadEntry } from "./comms-evidence.js";
 export {
   DESKTOP_RATE,
+  DESKTOP_RESOURCE_RATE,
   MODEL_RATES,
   PRICING_SCHEMA,
   estimateActorCost,
+  estimateAllocatedDesktopCost,
   estimateDesktopCost
 } from "./pricing.js";
 export type {
   ActorEstimatedCost,
   DesktopCostEstimate,
   DesktopRate,
+  DesktopResources,
+  DesktopResourceRate,
   ModelRate
 } from "./pricing.js";
 export { normalizeCliArgv } from "./argv.js";

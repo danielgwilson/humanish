@@ -124,6 +124,8 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
     const record = (name: string) => async (): Promise<void> => { void name; };
     return {
       sandboxId: id,
+      // Captured stock shape; resource-size variation tests live in desktop-resource-pricing.
+      getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
       commands: {
         run: async (command: string) => {
           if (command.includes("xdpyinfo")) {
@@ -1000,7 +1002,7 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
     { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }], usage: { input_tokens: 0, output_tokens: 0 } }
   ];
 
-  it("emits one model-tokens line per lane and a SINGLE aggregate desktop-minutes line, summing without double-counting", async () => {
+  it("emits model and observed-desktop lines per lane, summing without double-counting", async () => {
     const handle = makeFanoutModule();
     const config = fanoutConfig({
       concurrency: 2,
@@ -1029,10 +1031,11 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
 
     const modelLines = cost.breakdown.filter((l: { kind: string }) => l.kind === "model-tokens");
     const desktopLines = cost.breakdown.filter((l: { kind: string }) => l.kind === "desktop-minutes");
-    // One model-tokens line PER lane, keyed by laneId; exactly ONE aggregate desktop line.
+    // Each owned desktop retains its lane and resource basis.
     expect(modelLines).toHaveLength(2);
     expect(new Set(modelLines.map((l: { laneId?: string }) => l.laneId))).toEqual(new Set(["role-a", "role-b"]));
-    expect(desktopLines).toHaveLength(1);
+    expect(desktopLines).toHaveLength(2);
+    expect(new Set(desktopLines.map((line: { laneId?: string }) => line.laneId))).toEqual(new Set(["role-a", "role-b"]));
 
     // Token usage summed across BOTH lanes (2 * {input:1000, output:200}).
     expect(cost.tokenUsage).toEqual({ input: 2000, output: 400, total: 2400 });
@@ -1187,4 +1190,3 @@ describe("runCuaLanes total-runner guard (#342)", () => {
     expect(outcomes[2]!.skippedReason ?? "").toContain("pipeline gate");
   });
 });
-

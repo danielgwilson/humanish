@@ -40,7 +40,7 @@ describe("pricing schema constants", () => {
     // The shipped default resolves to gpt-5.6-sol (DEFAULT_OPENAI_CU_MODEL); it must be priceable
     // so a capped run is not refused by default. The 5.6-family rates are confirmed against
     // OpenAI's live sheet (#334); the previous-generation gpt-5.5 entry stays for pinned labs;
-    // the desktop rate stays placeholder until a live run confirms the template's RAM spec.
+    // the legacy desktop helper remains a labeled planning assumption, distinct from observed rates.
     expect(MODEL_RATES["gpt-5.6-sol"]?.placeholder).toBeUndefined();
     // OpenAI's own alias for sol must price identically so an alias-configured lab is never unpriced.
     expect(MODEL_RATES["gpt-5.6"]).toEqual(MODEL_RATES["gpt-5.6-sol"]);
