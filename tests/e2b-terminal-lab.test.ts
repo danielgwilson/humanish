@@ -269,6 +269,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect(await readFile(path.join(runDir, file), "utf8")).not.toContain(FAKE_RUNTIME_KEY);
     }
     expect(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8")).toContain("[REDACTED_SECRET]");
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.redaction.notes).toContain("Codex was not launched.");
+    expect(bundle.redaction.notes).not.toContain("Codex received");
   });
 
   it("injects the runtime key ONLY command-scoped, never into Sandbox.create or metadata or the bundle", async () => {
