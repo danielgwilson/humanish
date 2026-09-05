@@ -1,0 +1,33 @@
+{
+  "id": "fixture-typed-closing-report",
+  "status": "completed",
+  "output": [
+    {
+      "id": "fixture-typed-closing-report-item-0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"summary\":\"REACHED THE GOAL.\\nAdded \u201cDraft proposal,\u201d renamed it to \u201cSend proposal,\u201d and observed the saved task displayed with an Edit button.\",\"frictionReports\":[\"Clicking Save twice did not visibly exit edit mode, so I hesitated because it was unclear whether the rename had been saved. Pressing Enter in the task field exited edit mode and displayed the renamed task normally.\"]}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "usage": {
+    "input_tokens": 13543,
+    "input_tokens_details": {
+      "cache_write_tokens": 13468,
+      "cached_tokens": 0
+    },
+    "output_tokens": 221,
+    "output_tokens_details": {
+      "reasoning_tokens": 127
+    },
+    "total_tokens": 13764
+  }
+}

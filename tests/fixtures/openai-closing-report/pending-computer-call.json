@@ -1,0 +1,39 @@
+{
+  "id": "fixture-pending-computer-call",
+  "status": "completed",
+  "output": [
+    {
+      "id": "fixture-pending-computer-call-item-0",
+      "type": "computer_call",
+      "status": "completed",
+      "actions": [
+        {
+          "type": "click",
+          "button": "left",
+          "keys": null,
+          "x": 632,
+          "y": 393
+        },
+        {
+          "type": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      "call_id": "fixture-call-0"
+    }
+  ],
+  "usage": {
+    "input_tokens": 11541,
+    "input_tokens_details": {
+      "cache_write_tokens": 1689,
+      "cached_tokens": 9849
+    },
+    "output_tokens": 229,
+    "output_tokens_details": {
+      "reasoning_tokens": 187
+    },
+    "total_tokens": 11770
+  }
+}

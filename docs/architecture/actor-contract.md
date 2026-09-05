@@ -293,6 +293,28 @@ not cost — a live scripted run drives a real browser against a real running ap
 declaration as spend. "Live" on this route must never silently come to mean "costs money";
 this paragraph is the record of that decision.
 
+## Optional closing report
+
+`CuaProvider.debrief` is an optional read-only request after a structured
+`stopWhen` or dwell stop. It returns a `CuaTurn` with `closingReport` containing
+`summary` and `frictionReports`; an empty friction list is valid. The loop rejects
+actions, pending safety checks, and invalid report shapes. It redacts accepted
+reports, records them in `ActorTrace.debrief`, and projects one readable message
+without invoking action or communication callbacks.
+
+This request uses the final observation and retained provider history. It does
+not expose the hidden stop criterion or change the original task outcome. It is
+skipped before any participant turn, after natural completion, without provider
+support, or without remaining time and known budget. An attempted request's
+unreported usage remains an unknown cost line. `counts.debriefCalls` is separate
+from interaction turns, and reported usage contributes to aggregate cost.
+
+The OpenAI implementation makes one request with tools disabled and structured
+output; no HTTP or policy retries. Stateless/ZDR mode does not offer retrospective
+reporting because it does not retain the required session history. The
+[paired live receipt](../goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
+records both report recovery and control failures in the separate legacy parser.
+
 ## The state-driven executor seam (shipped — the transport-agnostic intent, made real)
 
 The `CuaExecutor` / `CuaProvider` ports are the concrete realization of the "plural harnesses /

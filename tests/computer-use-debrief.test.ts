@@ -136,10 +136,11 @@ describe("read-only participant debrief", () => {
   it("applies known-value scrub and pattern redaction to report and provider error", async () => {
     for (const error of [false, true]) {
       const s = setup({ scrubText: (text) => text.replaceAll("opaque-private-value", "[scrubbed]") });
-      const text = "The Save button did nothing. opaque-private-value sk-proj-abcdefghijklmnopqrstuvwxyz0123456789";
+      const fakeSecret = `sk-proj-${"abcdefghijklmnopqrstuvwxyz0123456789"}`;
+      const text = `The Save button did nothing. opaque-private-value ${fakeSecret}`;
       if (error) s.debrief.mockRejectedValue(new Error(text)); else s.debrief.mockResolvedValue(closing({ closingReport: { summary: "Renamed the item.", frictionReports: [text] } }));
       const result = await s.run(); const encoded = JSON.stringify(result.trace);
-      expect(encoded).not.toContain("opaque-private-value"); expect(encoded).not.toContain("sk-proj-abcdefghijklmnopqrstuvwxyz0123456789");
+      expect(encoded).not.toContain("opaque-private-value"); expect(encoded).not.toContain(fakeSecret);
     }
   });
   it("marks missing closing usage as unknown alongside priced interaction", async () => {
