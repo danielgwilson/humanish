@@ -662,7 +662,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   // transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
   // ZdrError; any other non-ok status throws with the STATUS ONLY (never the
   // body, which can echo the input/screenshot).
-  const post = async (body: Record<string, unknown>, signal: AbortSignal | undefined): Promise<unknown> => {
+  const post = async (body: Record<string, unknown>, signal: AbortSignal | undefined, retries = maxRetries): Promise<unknown> => {
     // Preflight the deterministic next capture leaf before any network side
     // effect. A hostile generated path must fail with zero provider calls.
     await prepareNextCapture();
@@ -673,7 +673,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     const payload = JSON.stringify(body);
     let lastStatus = 0;
     let sawNetworkError = false;
-    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
       let res: Awaited<ReturnType<FetchLike>>;
       try {
         res = await fetchFn(endpoint, {
@@ -687,7 +687,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
           throw error;
         }
         sawNetworkError = true;
-        if (attempt < maxRetries) {
+        if (attempt < retries) {
           await delayFn(2 ** attempt * 200);
           continue;
         }
@@ -722,7 +722,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
         throw new Error("OpenAI Responses 403");
       }
       const retryable = res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
-      if (retryable && attempt < maxRetries) {
+      if (retryable && attempt < retries) {
         // The provider's own hint wins over the fixed backoff, up to the cap.
         const backoff = 2 ** attempt * 200;
         const hinted = retryAfterMs(res.headers?.get("retry-after"), Date.now());
@@ -738,6 +738,61 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     throw new Error(`OpenAI Responses ${lastStatus}`);
   };
 
+  const requestTurn = async (req: CuaTurnRequest, signal: AbortSignal, closing = false): Promise<CuaTurn> => {
+    await prepareNextCapture();
+    const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
+
+    // POST with the recoverable-policy latches: a ZDR rejection switches to
+    // explicit-context mode; a reasoning-summary rejection latches summaries off.
+    // Each latch can flip only once, so the loop is bounded; anything else
+    // rethrows. The body is rebuilt per attempt so a flipped latch is reflected.
+    const attempt = async (build: (ctx: OpenAiCuContext) => Record<string, unknown>): Promise<unknown> => {
+      // A closing report makes exactly one request: no HTTP or policy-latch retries.
+      if (closing) {
+        return post({ ...build(buildContext(req.instructions)), tool_choice: "none", max_output_tokens: 1024 }, signal, 0);
+      }
+      for (;;) {
+        try {
+          return await post(build(buildContext(req.instructions)), signal);
+        } catch (error) {
+          if (error instanceof SummaryRejectionError && reasoningSummary !== undefined) {
+            reasoningSummary = undefined;
+            continue;
+          }
+          if (error instanceof ZdrError && mode !== "explicit_context") {
+            mode = "explicit_context";
+            continue;
+          }
+          throw error;
+        }
+      }
+    };
+
+    let raw: unknown;
+    if (isFirstTurn) {
+      raw = await attempt((ctx) => buildInitialRequest(ctx));
+    } else {
+      const callOutputs = pendingCallIds.map((id) =>
+        buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks)
+      );
+      raw = await attempt((ctx) =>
+        buildContinuationRequest({
+          ctx,
+          previousResponseId: lastResponseId,
+          callOutputs,
+          ...(req.contextHint === undefined ? {} : { contextHint: req.contextHint }),
+          ...(mode === "explicit_context" ? { explicitContextItems: lastOutputItems } : {})
+        })
+      );
+    }
+
+    const parsed = parseOpenAiResponse(raw);
+    if (parsed.turn.responseId !== undefined) lastResponseId = parsed.turn.responseId;
+    pendingCallIds = parsed.callIds;
+    lastOutputItems = parsed.outputItems;
+    return parsed.turn;
+  };
+
   return {
     id: "openai-responses-cu",
     version: model,
@@ -749,55 +804,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     // it cannot reason over a screenshot-less observation. The loop reads this to fail closed
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,
-    async nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn> {
-      await prepareNextCapture();
-      const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
-
-      // POST with the recoverable-policy latches: a ZDR rejection switches to
-      // explicit-context mode; a reasoning-summary rejection latches summaries off.
-      // Each latch can flip only once, so the loop is bounded; anything else
-      // rethrows. The body is rebuilt per attempt so a flipped latch is reflected.
-      const attempt = async (build: (ctx: OpenAiCuContext) => Record<string, unknown>): Promise<unknown> => {
-        for (;;) {
-          try {
-            return await post(build(buildContext(req.instructions)), signal);
-          } catch (error) {
-            if (error instanceof SummaryRejectionError && reasoningSummary !== undefined) {
-              reasoningSummary = undefined;
-              continue;
-            }
-            if (error instanceof ZdrError && mode !== "explicit_context") {
-              mode = "explicit_context";
-              continue;
-            }
-            throw error;
-          }
-        }
-      };
-
-      let raw: unknown;
-      if (isFirstTurn) {
-        raw = await attempt((ctx) => buildInitialRequest(ctx));
-      } else {
-        const callOutputs = pendingCallIds.map((id) =>
-          buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks)
-        );
-        raw = await attempt((ctx) =>
-          buildContinuationRequest({
-            ctx,
-            previousResponseId: lastResponseId,
-            callOutputs,
-            ...(req.contextHint === undefined ? {} : { contextHint: req.contextHint }),
-            ...(mode === "explicit_context" ? { explicitContextItems: lastOutputItems } : {})
-          })
-        );
-      }
-
-      const parsed = parseOpenAiResponse(raw);
-      if (parsed.turn.responseId !== undefined) lastResponseId = parsed.turn.responseId;
-      pendingCallIds = parsed.callIds;
-      lastOutputItems = parsed.outputItems;
-      return parsed.turn;
-    }
+    nextTurn: (req, signal) => requestTurn(req, signal),
+    debrief: (req, signal) => requestTurn(req, signal, true)
   };
 }

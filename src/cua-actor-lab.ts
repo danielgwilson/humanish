@@ -5129,6 +5129,18 @@ export function buildCuaCostSummary(args: {
       sumInput += usage.input ?? 0;
       sumOutput += usage.output ?? 0;
     }
+    // An attempted closing request can fail after provider work without reporting usage.
+    // Keep the known interaction estimate and make the additional unknown explicit.
+    if (lane.trace.debrief?.usageReported === false) {
+      breakdown.push({
+        kind: "model-tokens",
+        ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
+        ...(lane.trace.providerVersion === undefined ? {} : { modelId: lane.trace.providerVersion }),
+        estimatedCostUsd: null,
+        reason: "closing_usage_unreported",
+        ratesAsOf: null
+      });
+    }
     const est = lane.trace.estimatedCost;
     if (!est) {
       continue;

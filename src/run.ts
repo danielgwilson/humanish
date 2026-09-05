@@ -939,7 +939,7 @@ export interface RunCostLine {
   modelId?: string;
   /** null = NOT MEASURED / no rate; never coerced to 0. */
   estimatedCostUsd: number | null;
-  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration";
+  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration" | "closing_usage_unreported";
   /** Pricing provenance date; non-null iff estimatedCostUsd is non-null. */
   ratesAsOf: string | null;
   source?: string;

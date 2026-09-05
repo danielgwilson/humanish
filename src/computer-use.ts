@@ -181,6 +181,8 @@ export interface CuaProvider {
    */
   readonly requiresFrame?: boolean;
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
+  /** Optional read-only closing report. Implementations must disable tools and make no retries. */
+  debrief?(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
 }
 
 /** The desktop side of the loop. */
@@ -745,6 +747,22 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     counts[key] = (counts[key] ?? 0) + 1;
   };
 
+  const recordUsage = (turn: CuaTurn): void => {
+    if (turn.usage) {
+      sawUsage = true;
+      usageInput += turn.usage.input ?? 0;
+      usageCachedInput += turn.usage.cachedInput ?? 0;
+      usageCacheWriteInput += turn.usage.cacheWriteInput ?? 0;
+      usageOutput += turn.usage.output ?? 0;
+      usageTurns.push({
+        ...(turn.usage.input === undefined ? {} : { input: turn.usage.input }),
+        ...(turn.usage.cachedInput === undefined ? {} : { cachedInput: turn.usage.cachedInput }),
+        ...(turn.usage.cacheWriteInput === undefined ? {} : { cacheWriteInput: turn.usage.cacheWriteInput }),
+        ...(turn.usage.output === undefined ? {} : { output: turn.usage.output })
+      });
+    }
+  };
+
   // Whether any observation this run surfaced structured appState (a non-vision/state executor).
   // RUNTIME-ONLY signal: used solely to self-describe in redaction.notes that app state drove
   // progress detection and was NOT written to the trace — the appState itself never persists.
@@ -828,6 +846,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   // Loop-local state. Declared here (before the try) so the initial observe + the per-turn
   // frame guard can fail closed cleanly while these still scope across the loop.
   let previousResponseId: string | undefined;
+  let closingObservation: CuaObservation | undefined;
+  let closingTrigger: "stop_when" | "dwell" | undefined;
+  let debrief: ActorTrace["debrief"];
   let consecutiveIdle = 0;
   // One canonical "no progress" signal: turns that did not change the UI state
   // signature (idle or not). The nudge, the stop threshold, and the reason all
@@ -938,6 +959,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (initialDwell === "stop") {
         completionReason = "goal_satisfied";
         reason = `dwell window complete (${dwellHeldMs}ms held at the start)`;
+        closingObservation = observation;
+        closingTrigger = "dwell";
         throw new CuaStopWhenStop();
       }
     }
@@ -945,6 +968,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     if (stopConditionMatch) {
       completionReason = "goal_satisfied";
       reason = stopWhenReason(stopConditionMatch);
+      closingObservation = observation;
+      closingTrigger = "stop_when";
       record(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
       throw new CuaStopWhenStop();
     }
@@ -1016,19 +1041,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
-      if (turn.usage) {
-        sawUsage = true;
-        usageInput += turn.usage.input ?? 0;
-        usageCachedInput += turn.usage.cachedInput ?? 0;
-        usageCacheWriteInput += turn.usage.cacheWriteInput ?? 0;
-        usageOutput += turn.usage.output ?? 0;
-        usageTurns.push({
-          ...(turn.usage.input === undefined ? {} : { input: turn.usage.input }),
-          ...(turn.usage.cachedInput === undefined ? {} : { cachedInput: turn.usage.cachedInput }),
-          ...(turn.usage.cacheWriteInput === undefined ? {} : { cacheWriteInput: turn.usage.cacheWriteInput }),
-          ...(turn.usage.output === undefined ? {} : { output: turn.usage.output })
-        });
-      }
+      recordUsage(turn);
       // RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read
       // the lobby code the host states after creating the lobby (CDP url-read is unreliable). Raw
       // text stays in memory; only an extracted code is used (and only as a digest).
@@ -1278,6 +1291,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         if (dwellOutcome === "stop") {
           completionReason = "goal_satisfied";
           reason = `dwell window complete (${dwellHeldMs}ms held after turn ${turnNumber})`;
+          closingObservation = observation;
+          closingTrigger = "dwell";
           break;
         }
       }
@@ -1285,6 +1300,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (stopConditionMatch) {
         completionReason = "goal_satisfied";
         reason = stopWhenReason(stopConditionMatch);
+        closingObservation = observation;
+        closingTrigger = "stop_when";
         record(stopWhenTraceItem(nextId("notice"), stopConditionMatch, redactNarration));
         break;
       }
@@ -1414,6 +1431,86 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     }
   }
 
+  // Structured completion must stop interaction immediately, but the participant may not yet
+  // have spoken. Request one read-only account using the already captured final observation.
+  // No callbacks that coordinate live participants and no executor calls occur after this point.
+  if (closingTrigger !== undefined && closingObservation !== undefined) {
+    const note = (status: "completed" | "skipped" | "failed", detail: string, usageReported?: boolean): void => {
+      debrief = { trigger: closingTrigger!, status, reason: redactNarration(detail),
+        ...(usageReported === undefined ? {} : { usageReported }) };
+      record({ id: nextId("notice"), kind: "notice", lifecycle: "completed",
+        status: status === "completed" ? "ok" : "warn", title: `participant debrief ${status}`,
+        text: redactNarration(detail) });
+    };
+    let skip: string | undefined;
+    if ((counts.turns ?? 0) === 0) skip = "the study stopped before any participant turn";
+    else if (provider.debrief === undefined) skip = "this provider does not support read-only closing reports";
+    else if (signal?.aborted) skip = "the study was cancelled";
+    else if (remaining() <= 0) skip = "the session deadline was reached";
+    else if (provider.requiresFrame && closingObservation.screenshot === undefined) skip = "the final observation has no required frame";
+    if (skip === undefined && maxUsd !== undefined) {
+      const estimate = sawUsage ? estimateTurnCostUsd?.(runningUsage()) : undefined;
+      if (estimate === undefined || estimate === null || !Number.isFinite(estimate)) skip = "remaining model budget could not be established";
+      else if (estimate >= maxUsd) skip = "the estimated model budget was reached";
+    }
+    if (skip === undefined && overRunBudget?.(runningUsage()) != null) skip = "the study model budget was reached";
+    if (skip !== undefined) {
+      note("skipped", skip);
+    } else {
+      const capMs = Math.max(0, Math.min(30_000, turnTimeoutMs, remaining()));
+      if (capMs <= 0 || signal?.aborted) {
+        note("skipped", signal?.aborted ? "the study was cancelled" : "the session deadline was reached");
+      } else {
+        const controller = new AbortController();
+        const onAbort = (): void => controller.abort();
+        signal?.addEventListener("abort", onAbort, { once: true });
+        const timer = setTimeout(() => controller.abort(), capMs);
+        timer.unref?.();
+        bump("debriefCalls");
+        try {
+          const turn = await raceBounded("participant debrief", provider.debrief!({
+            instructions,
+            observation: closingObservation,
+            ...(previousResponseId === undefined ? {} : { previousResponseId }),
+            ...(pendingAcks === undefined ? {} : { acknowledgedSafetyChecks: pendingAcks }),
+            contextHint: "The interactive session has ended. Briefly report only what you actually did and observed, including any unexpected behavior or recovery. If nothing unexpected occurred, say so. Do not speculate or invent problems. Do not request or take further actions. This is a closing account, not another attempt at the task."
+          }, controller.signal), capMs, capMs, signal);
+          recordUsage(turn);
+          lastResponseId = turn.responseId ?? lastResponseId;
+          // Refresh a shared budget with all reported usage, without changing the completed task.
+          const sharedStop = overRunBudget?.(runningUsage());
+          const finalEstimate = maxUsd === undefined ? undefined : estimateTurnCostUsd?.(runningUsage());
+          if (sharedStop != null || (maxUsd !== undefined && finalEstimate != null && finalEstimate > maxUsd)) {
+            record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "warn",
+              title: "model budget reached during closing report",
+              text: "The closing request crossed an estimated budget; no further requests or actions followed. Task completion is unchanged." });
+          }
+          const usageReported = turn.usage !== undefined;
+          if (turn.actions.length > 0 || turn.pendingSafetyChecks.length > 0) {
+            note("failed", "the closing response requested actions or safety checks; none were executed and its report was not accepted", usageReported);
+          } else if (!turn.message?.trim()) {
+            note("failed", "the closing response contained no participant report", usageReported);
+          } else {
+            record({ id: nextId("message"), kind: "message", lifecycle: "completed",
+              title: "participant closing report", text: redactNarration(turn.message.trim()) });
+            bump("messages");
+            note("completed", "one read-only report; no additional desktop actions; original stop and task outcomes preserved", usageReported);
+          }
+        } catch (error) {
+          // A failed optional report cannot rewrite the already observed structured completion.
+          const detail = signal?.aborted ? "cancelled" : controller.signal.aborted || error instanceof CuaDeadlineError || error instanceof CuaStallError
+            ? "closing report deadline reached" : error instanceof Error ? error.message : String(error);
+          note("failed", `${detail}; closing request usage is unreported`, false);
+        } finally {
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", onAbort);
+          controller.abort();
+        }
+      }
+    }
+    onTrace?.(items.slice(), runningUsage());
+  }
+
   const completedAtMs = now();
   const status = statusForCompletionReason(completionReason);
   const ids: ActorTrace["ids"] = {};
@@ -1464,6 +1561,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     items,
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
     ...(declaredOutcome === undefined ? {} : { declaredOutcome }),
+    ...(debrief === undefined ? {} : { debrief }),
     // The funnel is present exactly when a protocol was declared — including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),

@@ -223,6 +223,14 @@ export interface ActorTrace {
    * (#453, #549, #565) each fixed a false refusal and each left the next shape unhandled.
    */
   declaredOutcome?: ParticipantDeclaredOutcome;
+  /** Closing report after a harness-owned stop. Does not change task outcomes or permit actions. */
+  debrief?: {
+    trigger: "stop_when" | "dwell";
+    status: "completed" | "skipped" | "failed";
+    reason: string;
+    /** Absent if no request was made; false means that request's cost is unreported. */
+    usageReported?: boolean;
+  };
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
   /**
