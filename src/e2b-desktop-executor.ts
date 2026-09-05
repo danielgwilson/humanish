@@ -12,7 +12,7 @@ import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
 // real @e2b/desktop Sandbox is passed in at the live call site later.
 //
 // E2BDesktopLike is a faithful STRUCTURAL SUBSET of the real @e2b/desktop Sandbox
-// (version 2.2.3). Each method name and signature below matches the real class so
+// (version 2.3.3). Each method name and signature below matches the real class so
 // a real Sandbox instance satisfies this interface with no adapter:
 //
 //   screenshot(): Promise<Uint8Array>            // default/'bytes' overload
@@ -21,6 +21,7 @@ import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
 //   middleClick(x?, y?): Promise<void>
 //   doubleClick(x?, y?): Promise<void>
 //   moveMouse(x, y): Promise<void>
+//   getCursorPosition(): Promise<{ x: number; y: number }>
 //   scroll(direction?: 'up' | 'down', amount?: number): Promise<void>
 //   write(text, options?): Promise<void>         // the text-typing method
 //   press(key: string | string[]): Promise<void>
@@ -44,7 +45,7 @@ import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
 
 /**
  * The minimal slice of the real @e2b/desktop Sandbox the executor depends on. A
- * structural subset of the real class (v2.2.3), so a real Sandbox satisfies it
+ * structural subset of the real class (v2.3.3), so a real Sandbox satisfies it
  * with no adapter. Methods are typed to return `Promise<void> | void` (and the
  * screenshot bytes likewise) so a synchronous fake also satisfies the port; the
  * executor awaits every call, which is correct for both sync and async returns.
@@ -74,6 +75,8 @@ export interface E2BDesktopLike {
   doubleClick(x?: number, y?: number): Promise<void> | void;
   /** Move the mouse to the given coordinates. */
   moveMouse(x: number, y: number): Promise<void> | void;
+  /** Optional fresh pointer read; older/custom desktops retain coordinate-bearing clicks. */
+  getCursorPosition?(): Promise<{ x: number; y: number }> | { x: number; y: number };
   /** Scroll the mouse wheel vertically by amount ticks in a direction. */
   scroll(direction?: "up" | "down", amount?: number): Promise<void> | void;
   /** Write text at the current cursor position (the SDK's typing method). */
@@ -105,6 +108,51 @@ export interface E2BDesktopExecutorOptions {
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
 const TYPE_FALLBACK_TIMEOUT_MS = 15_000;
+const CURSOR_READ_TIMEOUT_MS = 500;
+
+/**
+ * The stock image's xdotool waits ~15s on a synchronized move to its current position (#681).
+ * Only an exact integer match can omit that move; fractional actions keep the SDK's own
+ * coordinate conversion. Read every time: another action or sequential role may move it.
+ * SDK2.3.3 getCursorPosition has no timeout/signal options. Bound our wait, observe late
+ * rejection, and leave the underlying read-only request alone; it cannot dispatch a click.
+ */
+function cursorAlreadyAt(
+  desktop: E2BDesktopLike,
+  x: number,
+  y: number,
+  signal?: AbortSignal
+): Promise<boolean> {
+  if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y) || x < 0 || y < 0) return Promise.resolve(false);
+  let readPosition: E2BDesktopLike["getCursorPosition"];
+  try { readPosition = desktop.getCursorPosition; } catch { return Promise.resolve(false); }
+  if (typeof readPosition !== "function" || signal?.aborted) return Promise.resolve(false);
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (matches: boolean): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      resolve(matches);
+    };
+    const onAbort = (): void => finish(false);
+    const timer = setTimeout(() => finish(false), CURSOR_READ_TIMEOUT_MS);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve().then(() => settled ? undefined : readPosition.call(desktop)).then(
+      (position: unknown) => {
+        if (settled) return;
+        if (position === null || typeof position !== "object") { finish(false); return; }
+        // A custom port can return malformed values or throwing accessors; all are uncertainty.
+        try {
+          const point = position as { x?: unknown; y?: unknown };
+          finish(Number.isSafeInteger(point.x) && Number.isSafeInteger(point.y) && point.x === x && point.y === y);
+        } catch { finish(false); }
+      },
+      () => finish(false)
+    );
+  });
+}
 
 /** Coerce screenshot bytes (Uint8Array or Buffer) to a Node Buffer without copying when possible. */
 function toBuffer(bytes: Uint8Array | Buffer): Buffer {
@@ -307,7 +355,8 @@ export function createE2BDesktopExecutor(
       };
     },
 
-    async execute(action: CuaAction): Promise<void> {
+    async execute(action: CuaAction, signal?: AbortSignal): Promise<void> {
+      signal?.throwIfAborted();
       switch (action.kind) {
         case "click": {
           const button = action.button ?? "left";
@@ -316,13 +365,20 @@ export function createE2BDesktopExecutor(
           } else if (button === "middle") {
             await desktop.middleClick(action.x, action.y);
           } else {
-            await desktop.leftClick(action.x, action.y);
+            const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
+            signal?.throwIfAborted();
+            if (alreadyAtTarget) await desktop.leftClick();
+            else await desktop.leftClick(action.x, action.y);
           }
           return;
         }
-        case "double_click":
-          await desktop.doubleClick(action.x, action.y);
+        case "double_click": {
+          const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
+          signal?.throwIfAborted();
+          if (alreadyAtTarget) await desktop.doubleClick();
+          else await desktop.doubleClick(action.x, action.y);
           return;
+        }
         case "move":
           await desktop.moveMouse(action.x, action.y);
           return;
