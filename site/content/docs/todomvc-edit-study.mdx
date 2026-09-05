@@ -1,0 +1,41 @@
+---
+title: Keyboard rename worked after a local TodoMVC patch
+description: Twelve synthetic sessions tested an Edit control against TodoMVC's original double-click workflow, with interrupted attempts retained.
+---
+
+**September 5, 2026 · Humanish operator (Codex)**
+
+“I stopped without using the pointer; Draft proposal remains saved instead of Send proposal.” That was a synthetic keyboard participant's account of trying to rename a todo in TodoMVC.
+
+Adding the task worked. The original app offered a double-click on the task label to rename it. Tab reached the checkboxes and filter links, but skipped the task name. A pointer participant could follow the on-screen editing instruction; a keyboard-only participant had no equivalent control.
+
+## Add a keyboard route, then repeat the task
+
+We made a local patch to TodoMVC's JavaScript ES6 example: a visible native **Edit** button beside each todo, an accessible name for the editing field, focus return after Enter or Escape, and updated footer instructions. The original double-click route remained available.
+
+Then we ran twelve new synthetic sessions on fresh hosted desktops. Each participant had the same task: add “Draft proposal,” rename that same item to “Send proposal,” and leave it saved. The study crossed original and patched versions with pointer and keyboard-only instructions, with three repetitions per condition. Both versions used `gpt-5.6-sol` and Humanish `0.81.0`.
+
+| Version / input | Attempts | Rename completed | Stopped at rename | Provider interrupted |
+| --- | ---: | ---: | ---: | ---: |
+| Original / pointer | 3 | 3 | 0 | 0 |
+| Edit patch / pointer | 3 | 3 | 0 | 0 |
+| Original / keyboard-only | 3 | 0 | 2 | 1 |
+| Edit patch / keyboard-only | 3 | 2 | 0 | 1 |
+
+Both uninterrupted keyboard participants were blocked on the original app; both completed the task with the patch. One keyboard session in each version was interrupted by a provider failure. Those attempts remain in the table and were not replaced. All six pointer sessions completed.
+
+A renamed label alone could hide a workaround: delete the original todo and create another. The completion check therefore required the original item ID to carry the new title outside edit mode at the final observation. All eight completions met that condition. No keyboard participant used pointer actions. The [study receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/todomvc-edit-confirmation-2026-09-05.md) records the method and per-attempt outcomes.
+
+## The patch left smaller difficulties
+
+Successful participants still described unclear focus around the task row and having to select the existing title manually before typing. The patch made keyboard rename possible in the completed sessions; this study did not establish an overall reduction in reported friction.
+
+It tested the whole patch on one app with one model, so the button's individual contribution and human completion rates remain unknown. Mobile sessions were held because of a [known input-transport mismatch](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md). The pinned runtime also had a repeated-click delay, so we make no speed claim.
+
+The stored live screenshots were reduced to 96 × 63 pixels by the study's redaction setting, too small to read the task names. The usable evidence is the fresh item-state audit, recorded actions, participant reports, and source checks. All twelve bundles passed sharing verification; that check does not make a blurred screenshot legible.
+
+## Try the same repair on a disposable copy
+
+The [source patch and authoring recipe](https://github.com/danielgwilson/humanish/blob/main/bench/todomvc-edit-study.md) show how to rebuild the two app versions and define the same-item check. The recipe distinguishes the reusable app change from the study-specific audit required for this exact endpoint.
+
+TodoMVC is the public application studied, not a Humanish adopter or endorser. We changed a disposable local copy and made no upstream changes. For your own app, [start with one task](/docs/your-app), preserve its identity through the workflow, and repeat the comparison after making the repair.
