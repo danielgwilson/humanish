@@ -61,9 +61,13 @@ across 14 participants; a drawDB modal reported by 5 of 5 keyboard-first partici
 there) and never mentioned by 5 mouse-driving newcomers; a TodoMVC rename that blocked 6 of 6
 keyboard-first participants and none of the others; and, on a phone-sized desktop, a drawDB
 relationship drag intercepted by a popover that both phone participants hit (one stopped) and no
-desktop participant reported; under mobile emulation with touch, TodoMVC's double-click rename
-stopped 4 of 4 phone participants while 4 of 4 desktop newcomers finished, and Excalidraw read
-12 of 12. Each file states its own caveats.
+desktop participant reported; in the then-shipped mobile-emulation input path, 4 of 4 TodoMVC
+phone participants could not rename while 4 of 4 desktop newcomers finished, and Excalidraw read
+12 of 12. **Correction, 2026-09-05:** two conformance probes found the SDK double click reset click
+counts while direct touch opened the original TodoMVC editor in both. The historical mobile
+failures describe Humanish's input path, not established touch-device app behavior
+([input-fidelity receipt](docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)).
+Each file states its own caveats.
 
 `try-live` studies a real public app so that your first live run works without
 configuring anything; point its `subject` at your own app once you have seen it

@@ -34,6 +34,14 @@ keyboard-first participant
 The package source and repository implementation in this tree agree on these
 points:
 
+**Mobile input correction, 2026-09-05 (#676).** The historical 4/4 TodoMVC phone-lane rename
+failures describe the shipped desktop pointer-to-touch conversion path. In two new hosted
+conformance probes, SDK double click emitted two single clicks; direct touch opened the same
+original editor in both. A separate local native-X control reproduced the difference by toggling
+conversion. Mobile viewport and touch flags do not certify gesture equivalence or establish a
+physical-device app defect. Mobile lanes using touch conversion now carry that advisory in run
+warnings. [Method, traces summary and limits](computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md).
+
 The immutable 2026-06-10 proof-roadmap packet is paired with a
 [current implementation checkpoint](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md).
 
@@ -490,8 +498,9 @@ gives a hosted Chrome lane a capture device (ffmpeg's test pattern generated in 
 `desktopBrowser.media`; a microphone is refused without an image that has an audio stack, before
 any spend. Live, Chrome raised its real dialog with a preview of the feed, the participant chose
 "Allow this time" and read back 640x480 (`receipts/participant-camera-2026-09-04.md`). Under
-mobile emulation the TodoMVC rename now blocks 3 of 3 phone participants; Excalidraw stays clean
-at 12 of 12.
+the then-shipped mobile-emulation input path, TodoMVC rename had stopped 3 of 3 phone
+participants at this checkpoint; Excalidraw read 12 of 12. The 2026-09-05 input-conformance
+correction above qualifies attribution of those mobile failures.
 
 **2026-09-04, later (0.78.0).** `@e2b/desktop` moved from 2.2.3 to 2.3.3 (#638): its 2.3.1
 changelog names the socket #581 found today, a background command's event stream the SDK kept
@@ -526,10 +535,10 @@ mobile-emulated browser: `execution.desktop.fidelity.mobileEmulation: true` appl
 CSS viewport, the preset's device pixel ratio, touch events and a mobile user agent before the
 participant's first observation, and the bundle records what the page then reported about itself
 under `desktopGeometry.fidelity` (#221, `docs/goals/computer-use-actor/receipts/mobile-emulation-2026-09-03.md`).
-On the published 0.76.0, with touch emulated, neither phone participant on TodoMVC could rename at
-all (a double-tap selects text; the double-click editor never opens), where the 500 px runs without
-touch had finished and only called the rename touch-hostile: the responsive-viewport study reported
-an opinion, the mobile-emulated study reported a blocker.
+On the published 0.76.0, neither phone participant could rename through the emulated input path,
+where the 500 px runs without touch had finished. Those are historical instrument observations:
+the 2026-09-05 conformance check found SDK double click and direct touch differ on the original
+editor, so the earlier outcome does not establish a touch-device app defect.
 The persona axis was replicated the same evening on drawDB and TodoMVC and given a third app,
 Excalidraw, as the clean control (`persona-axis-phone-2026-09-03.md`); a multi-lane study's
 second and third findings reach `feedback draft` through `--candidate` (#609); a negated report

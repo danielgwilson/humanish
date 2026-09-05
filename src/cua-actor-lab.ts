@@ -1917,7 +1917,11 @@ export async function applyMobileEmulation(
     );
   }
   const applied = announced;
-  const warnings: string[] = [];
+  // Viewport/touch read-back proves context settings, not gesture equivalence. Two hosted
+  // replicas and a native-X conversion-toggle control reproduced reset click counts (#676).
+  const warnings: string[] = request.touch
+    ? ["Mobile emulation uses desktop pointer-to-touch conversion, which can differ for repeated taps. Confirm gesture failures with direct or native touch input before attributing them to the app."]
+    : [];
   // The reload inside the applier takes a moment; the read-back is retried until the page reports
   // the requested viewport and user agent, so a slow page does not read as "no proof".
   let readBack = await read();
