@@ -127,10 +127,19 @@ trusted hashes come from its [release manifest](https://nodejs.org/dist/v22.23.2
 Installation requires `curl`, `sha256sum`, `tar`, `gzip`, `mktemp`, and passwordless
 `sudo`. Only a verified archive is extracted into a root-owned versioned directory
 under `/opt/humanish`; `/usr/local/bin` links make Node/npm/npx available to later
-shells. The installer changes no global permissions or shell startup files. It
+shells. In that new distribution only, a missing built-in npm `prefix` defaults
+to `/usr/local`, so global product executables use the existing PATH. Existing
+distribution settings and higher-priority npm overrides are preserved; an adopter
+override can still choose a bin directory outside PATH. The installer changes no
+user/global npm configuration, global permissions, or shell startup files. It
 checks Node/npm in both ordinary and sudo shells after installation. The existing
 runtime fast path preserves user-specific installations; a later sudo product
 install can still fail if that installation is absent from sudo's PATH.
+
+The [global executable receipt](../goals/terminal-product-lane/receipts/2026-09-05-global-npm-prefix.md)
+records the regression found after the initial runtime-only proof and its stock
+desktop checks. npm documents [global executable locations](https://docs.npmjs.com/cli/v10/configuring-npm/folders#executables)
+and the [distribution built-in configuration](https://docs.npmjs.com/cli/v10/configuring-npm/npmrc#built-in-config-file).
 
 An egress allowlist must permit `nodejs.org` if the runtime needs installation,
 as well as the registries and product surfaces the study uses. Missing tools,
