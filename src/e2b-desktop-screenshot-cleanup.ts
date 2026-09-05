@@ -7,6 +7,9 @@ type ScreenshotFiles = { read?: FileOperation; remove?: FileOperation };
 
 const guarded = new WeakSet<object>();
 const failureCounts = new WeakMap<object, number>();
+// One long-lived context instance: creating one per desktop would require disable() on every
+// teardown for AsyncLocalStorage itself to be collected. Invocation stores follow async work.
+const screenshotScope = new AsyncLocalStorage<{ desktop: object; paths: Set<string> }>();
 
 /** Runtime diagnostic only; no provider errors, file paths, or image contents are retained. */
 export function desktopScreenshotCleanupFailures(desktop: object): number {
@@ -32,26 +35,26 @@ export function protectDesktopScreenshotCleanup<T extends E2BDesktopSandbox>(des
   if (typeof read !== "function" || typeof remove !== "function") return desktop;
 
   const screenshot = desktop.screenshot;
-  const scope = new AsyncLocalStorage<Set<string>>();
   files.read = function (path, ...args) {
     const pending = read.call(this, path, ...args);
-    const paths = scope.getStore();
-    if (paths === undefined) return pending;
+    const scope = screenshotScope.getStore();
+    if (scope?.desktop !== desktop) return pending;
     return pending.then((value) => {
-      paths.add(path);
+      scope.paths.add(path);
       return value;
     });
   };
   files.remove = function (path, ...args) {
     const pending = remove.call(this, path, ...args);
-    if (scope.getStore()?.has(path)) {
+    const scope = screenshotScope.getStore();
+    if (scope?.desktop === desktop && scope.paths.has(path)) {
       // The secondary handler resolves independently. Returning pending (not catch's promise)
       // preserves awaited removal failures while observing the SDK's detached rejection.
       void pending.catch(() => {
         const count = desktopScreenshotCleanupFailures(desktop) + 1;
         failureCounts.set(desktop, count);
         try {
-          process.stderr.write(`humanish desktop: screenshot temporary-file cleanup failed (${count}); captured image remains usable. Sandbox teardown reclaims temporary files.\n`);
+          process.stderr.write(`humanish desktop: screenshot temporary-file cleanup failed (${count}); image read completed. Sandbox teardown reclaims temporary files.\n`);
         } catch {
           // A closed diagnostic stream must not turn this secondary rejection observer into a
           // new unhandled rejection. The per-instance counter remains available.
@@ -61,7 +64,7 @@ export function protectDesktopScreenshotCleanup<T extends E2BDesktopSandbox>(des
     return pending;
   };
   desktop.screenshot = function (...args) {
-    return scope.run(new Set<string>(), () => screenshot.apply(this, args));
+    return screenshotScope.run({ desktop, paths: new Set<string>() }, () => screenshot.apply(this, args));
   };
   guarded.add(desktop);
   return desktop;

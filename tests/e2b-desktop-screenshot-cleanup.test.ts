@@ -185,6 +185,23 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     expect(warning).toHaveBeenCalledTimes(1);
   });
 
+  it("does not classify a second desktop's removal as the active desktop's screenshot cleanup", async () => {
+    const error = new Error("synthetic-other-desktop-removal");
+    const other = await sdkProbe({ remove: async () => { throw error; } });
+    protectDesktopScreenshotCleanup(other.desktop);
+    let unrelated: Promise<void> | undefined;
+    const current = await sdkProbe({ remove: async (path) => {
+      // Same async scope and exact path, but a different SDK instance owns this operation.
+      unrelated = other.desktop.files.remove(path);
+      void unrelated.catch(() => undefined);
+    } });
+    protectDesktopScreenshotCleanup(current.desktop);
+    expect(await current.desktop.screenshot()).toBe(bytes);
+    await expect(unrelated).rejects.toBe(error);
+    expect(desktopScreenshotCleanupFailures(other.desktop)).toBe(0);
+    expect(desktopScreenshotCleanupFailures(current.desktop)).toBe(0);
+  });
+
   it("leaves screenshot-only injected desktops unchanged", () => {
     const desktop = { files: { write: async () => undefined }, screenshot: async () => bytes } as unknown as E2BDesktopSandbox;
     const screenshot = desktop.screenshot;
