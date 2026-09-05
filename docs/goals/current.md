@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.81.0`)
+## Current Program Truth (source `0.82.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -470,6 +470,22 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-05 (0.82.0).** Computer-use desktop estimates now use observed CPU and RAM,
+with missing resources and incomplete lifetimes left unknown (#687). Repeated clicks avoid
+the redundant cursor move when a fresh position check confirms the pointer is already there
+(#685). Terminal studies accept an exact Codex package version and forward the declared model
+and reasoning effort; evidence records the executed version without presenting runtime defaults
+as observed model usage (#688). Local-path redaction preserves nested terminal JSON framing,
+and the release report reader exposes skipped malformed lines (#686). Observer cards and reports
+show typed participant blockers as Blocked while retaining the original protocol trace (#691).
+
+The new [TodoMVC comparison](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/todomvc-edit-confirmation-2026-09-05.md)
+connects a keyboard blocker to a reproducible local patch: uninterrupted keyboard completion was
+0/2 before and 2/2 after, with one provider interruption in each version retained in the twelve
+attempts. This descriptive synthetic comparison does not establish human completion rates.
+The public field notes and shorter reference-linked README make the method easier to inspect
+(#673, #682, #689).
 
 **2026-09-05 (0.81.0).** First use now distinguishes the free evidence preview
 from a live participant study, with concise successful setup output and complete JSON details
