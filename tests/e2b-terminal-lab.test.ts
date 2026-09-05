@@ -224,6 +224,37 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   // byte-for-byte in docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md.
   const capturedUsage = '{"type":"turn.completed","usage":{"input_tokens":94325,"cached_input_tokens":55936,"cache_write_input_tokens":0,"output_tokens":1407,"reasoning_output_tokens":864}}\n';
 
+  it.each(["returned-only", "callbacks-only", "split-before-quote"] as const)("preserves nested JSON and report extraction through %s delivery", async (delivery) => {
+    const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
+    const localPath = ["", "tmp", "synthetic-workspace"].join("/");
+    // Live message envelope captured on 2026-09-05; all variable content is synthetic.
+    const report = { type: "item.completed", item: {
+      id: "synthetic-message", type: "agent_message", text: `I opened "${localPath}".`
+    } };
+    const nested = JSON.stringify({ payload: JSON.stringify({ cwd: localPath, ok: true }) });
+    const records = `${JSON.stringify(report)}\n${nested}\n`;
+    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => {
+        const output = `${records}HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`;
+        return { exitCode: 0, emit: (stdout) => {
+          if (delivery === "returned-only") return;
+          if (delivery === "split-before-quote") {
+            const at = output.indexOf(localPath) + localPath.length + 1;
+            stdout(output.slice(0, at));
+            stdout(output.slice(at));
+          } else stdout(output);
+        }, ...(delivery === "callbacks-only" ? {} : { returnedStdout: output }) };
+      } })
+    } });
+    const transcript = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "terminal-transcript.txt"), "utf8");
+    const events = transcript.split("\n").filter((line) => line.startsWith("{")).map((line) => JSON.parse(line));
+    expect(events).toHaveLength(2);
+    expect(events[0].item.text).toBe('I opened "[REDACTED_LOCAL_PATH]".');
+    expect(JSON.parse(events[1].payload)).toEqual({ cwd: "[REDACTED_LOCAL_PATH]", ok: true });
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
   it.each(["streamed-and-returned", "returned-only", "partial-prefix", "callbacks-only"] as const)("counts captured usage once for %s delivery and preserves actual repeated lines", async (delivery) => {
     const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
     const repeated = "I checked the same control again.\n";
