@@ -59,8 +59,9 @@ report or change the successful completion verdict. Exact repeated reports
 appear once in the lane's candidate. Harness notices, reasoning, and observed
 page content do not become participant findings; quoted app copy and negated
 reports retain the existing exclusions. Code excerpts are treated as quoted
-material. Interim plans, questions, and hypothetical clauses are excluded from
-matching; a report followed by a retry plan can still qualify. This text
+material. Interim matching requires an observation-shaped clause and filters
+common plans, questions, and hypotheticals; a report followed by a retry plan
+can still qualify. This text
 heuristic does not establish that a reported defect is real or independently
 confirmed. A custom session's closing `reason` remains eligible even when it
 was not repeated in the message trace.

@@ -132,6 +132,9 @@ describe("participant feedback survives completion mechanisms (#657)", () => {
       "The accessibility guide explains keyboard shortcuts.",
       "The accessibility guide is open.",
       "I found the accessibility guide.",
+      "The app shows the error-handling documentation.",
+      "The app shows the error documentation.",
+      "I found the error reference.",
       "Does the Save button have any bugs?",
       "The task is to look for accessibility defects.",
       "The docs example shows this prior report:\n```text\nThe Save button did nothing.\n```\nI am reading the example before trying the app.",
@@ -155,7 +158,8 @@ describe("participant feedback survives completion mechanisms (#657)", () => {
       "I found accessibility defects: the Save control had no visible focus.",
       "The Save control is not keyboard-accessible.",
       "The first import failed. A simpler import succeeded.",
-      "The Save request returned an error; pressing Enter then worked."
+      "The Save request returned an error; pressing Enter then worked.",
+      "The error-handling documentation was confusing."
     ]) {
       const session = await runSession(ending, { messages: [message] });
       expect(resolveSelfReportedFriction(session), message).toBe(message);

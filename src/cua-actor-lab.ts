@@ -2289,9 +2289,11 @@ function interimMessageReportsFriction(message: string): boolean {
       || /\b(?:i|we)(?:['’]ll|\s+(?:will|plan|intend|want|hope|suspect|wonder))\b|\bgoing to\b|\blet['’]s\b/.test(clause)
       || /\b(?:task|goal|mission|objective|plan)\s+(?:(?:is|was)\s+)?to\b|^\s*(?:check|test|look|checking|testing)\b/.test(clause)) return false;
 
-    // Accessibility by itself names a topic ("the accessibility guide is open"). A narrated
-    // defect still qualifies through "defects", "no visible focus", "not ... accessible", etc.
-    const observation = clause.replace(/\baccessibilit(?:y|ies)\b/g, " ");
+    // A topic is not a defect ("the accessibility guide is open", "shows error-handling docs").
+    // Actual friction in those surfaces still qualifies: "the error guide was confusing".
+    const observation = clause
+      .replace(/\baccessibilit(?:y|ies)\b/g, " ")
+      .replace(/\berror[- ]handling\b|\berror\s+(?:documentation|docs?|guides?|reference|examples?)\b/g, " ");
     const assertsObservation = /\b(?:is|are|was|were|has|had|did|does|shows?|showed|seems?|seemed|looks?|looked|found|noticed|saw|hit|encountered|felt|got|failed|returned|cannot|can['’]?t|unable|could not)\b|\b(?:overlap(?:ped|ping|s)?|truncat(?:ed|es)|cut off|nothing happened|no (?:visible )?focus)\b/.test(observation);
     return assertsObservation && completionReasonContradictsGoal(observation);
   });
