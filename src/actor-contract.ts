@@ -166,6 +166,12 @@ export interface ActorTokenUsage {
   costUsd?: number;
 }
 
+/** The participant's account, not an independently confirmed product diagnosis. */
+export interface ParticipantClosingReport {
+  summary: string;
+  frictionReports: string[];
+}
+
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
   provider: string;
@@ -223,6 +229,17 @@ export interface ActorTrace {
    * (#453, #549, #565) each fixed a false refusal and each left the next shape unhandled.
    */
   declaredOutcome?: ParticipantDeclaredOutcome;
+  /** Closing report after a harness-owned stop. Does not change task outcomes or permit actions. */
+  debrief?: {
+    trigger: "stop_when" | "dwell";
+    status: "completed" | "skipped" | "failed";
+    reason: string;
+    /** Absent if no request was made; false means that request's cost is unreported. */
+    usageReported?: boolean;
+    report?: ParticipantClosingReport;
+    /** Links the readable projection so it is not heuristically classified a second time. */
+    messageId?: string;
+  };
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
   /**

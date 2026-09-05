@@ -16,7 +16,8 @@ export type {
   ActorTokenUsage,
   ActorTrace,
   ActorTraceItem,
-  ActorTraceItemKind
+  ActorTraceItemKind,
+  ParticipantClosingReport
 } from "./actor-contract.js";
 export { actorRegistry, getActor, isCuaActorDescriptor, isScriptedBrowserActorDescriptor, isTerminalActorDescriptor } from "./actor-registry.js";
 export type { ActorDescriptor, ActorId, CuaActorDescriptor, ScriptedBrowserActorDescriptor, TerminalActorDescriptor } from "./actor-registry.js";
