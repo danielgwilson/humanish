@@ -114,7 +114,7 @@ function makeFakeModule(opts: {
                   ...(behavior.returnedStderr === undefined ? {} : { stderr: behavior.returnedStderr })
                 };
               }
-              if (command.includes("nodesource.com")) {
+              if (command.includes("# humanish terminal-node-bootstrap")) {
                 // The UNKEYED runtime-bootstrap command (ensure Node/npm before the keyed exec).
                 const thrown = opts.bootstrapThrow?.(command);
                 if (thrown) {
@@ -582,7 +582,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
 
     const readinessIndex = runs.findIndex((r) => r.command.includes("HUMANISH_SHELL_READY"));
-    const bootstrapIndex = runs.findIndex((r) => r.command.includes("nodesource.com"));
+    const bootstrapIndex = runs.findIndex((r) => r.command.includes("# humanish terminal-node-bootstrap"));
     const codexIndex = runs.findIndex((r) => r.command.includes("codex"));
     expect(readinessIndex).toBeGreaterThanOrEqual(0);
     expect(bootstrapIndex).toBeGreaterThan(readinessIndex);
@@ -590,7 +590,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     // UNKEYED: the runtime-bootstrap command carries no envs at all (no runtime key touches it).
     expect(runs[bootstrapIndex]?.envs).toBeUndefined();
-    // Explicit generous timeout: the SDK's commands.run default (60s) is far too short for an apt install.
+    // Explicit generous timeout: the SDK's commands.run default (60s) can be too short for a verified runtime download.
     expect(runs[bootstrapIndex]?.timeoutMs).toBe(300_000);
 
     expect(result.session?.status).toBe("passed");

@@ -38,6 +38,7 @@
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
 import type { ActorTokenUsage } from "./actor-contract.js";
 import { readFile, realpath, stat } from "node:fs/promises";
@@ -111,25 +112,8 @@ const UPLOAD_MAX_BYTES = 64 * 1024 * 1024;
 // Server-side reclamation buffer past the codex command's own wall-clock (caps.maxMinutes) kill.
 const SANDBOX_TIMEOUT_BUFFER_MS = 5 * 60_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
-// The runtime-bootstrap step (ensure Node/npm) can run an apt-get install; the SDK's commands.run
-// timeoutMs default (60s) is far too short for that, so this step gets an explicit generous budget.
+// Allow the pinned runtime download and install enough time while retaining a finite deadline.
 const RUNTIME_BOOTSTRAP_TIMEOUT_MS = 300_000;
-// No runtime env: ensures Node/npm are present before Codex. In openai-egress the proxy is
-// already available to every process from sandbox creation.
-// Reuses the oss-meta-lab.ts ensure_node() shape: check node's major version, else install
-// Node 22 via NodeSource plus passwordless sudo (the stock @e2b/desktop image ships neither codex
-// nor a recent Node, per issue #159). A final presence check makes the whole command exit non-zero
-// (so the bootstrap step fails closed) if the install still leaves node/npm missing.
-const RUNTIME_BOOTSTRAP_COMMAND = [
-  `node_major=0`,
-  `if command -v node >/dev/null 2>&1; then node_major=$(node -e 'console.log(Number(process.versions.node.split(".")[0]))' 2>/dev/null || echo 0); fi`,
-  `if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && [ "$node_major" -ge 20 ]; then exit 0; fi`,
-  `sudo -n apt-get update`,
-  `sudo -n apt-get install -y ca-certificates curl gnupg`,
-  `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -n -E bash -`,
-  `sudo -n apt-get install -y nodejs`,
-  `command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1`
-].join(" && ");
 // How much of a captured stream / log tail rides a (redacted) message field.
 const TAIL_CHARS = 2000;
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
@@ -1165,16 +1149,13 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     recordLifecycle("terminal-lab.sandbox.ready", `Shell readiness probe exit=${ready.exitCode ?? "null"}; workdir ${SANDBOX_WORKDIR} prepared.`);
 
     // --- Runtime bootstrap: no runtime env; openai-egress proxy capability is already available. ---
-    // The stock @e2b/desktop image does not ship a recent Node (issue #159); codex is now invoked
-    // via `npx` (buildCodexExecCommand), which needs Node/npm on PATH. Reuses the proven
-    // oss-meta-lab.ts ensure_node() shape: a node major-version check, else install Node 22 via
-    // NodeSource plus passwordless sudo. No raw runtime key touches this step. An apt-get
-    // install can exceed the SDK's default 60s commands.run timeout, so this step gets an
-    // explicit, generous timeoutMs (requestTimeoutMs is passed through unchanged, as everywhere else).
+    // The stock desktop needs Node/npm on PATH before npx can run Codex. Reuse a working
+    // installation or install the pinned official binary after checksum verification (#674).
+    // No raw runtime key touches this step; the egress proxy, when selected, is already available.
     const bootstrapStartedAt = now();
     let bootstrapError: string | undefined;
     try {
-      const bootstrap = await sandbox.commands.run(RUNTIME_BOOTSTRAP_COMMAND, {
+      const bootstrap = await sandbox.commands.run(TERMINAL_NODE_BOOTSTRAP_COMMAND, {
         requestTimeoutMs,
         timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS
       });

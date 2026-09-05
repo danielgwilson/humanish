@@ -114,6 +114,30 @@ request/redaction tests do not establish live wire behavior. The [2026-09-05
 transport receipt](../goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
 records the controlled live header/auth checks and their scope.
 
+## Runtime prerequisite
+
+The terminal route reuses a working Node >=20 and npm from the calling shell.
+Otherwise it installs the pinned official Node 22.23.2 Linux x64 or arm64 archive,
+downloaded over verified HTTPS and checked against an architecture-specific
+SHA256 committed in the bootstrap. It does not refresh apt repositories or fetch
+an unpinned checksum beside the archive. Node 22 is a supported LTS line on the
+[official release schedule](https://nodejs.org/en/about/previous-releases); the
+trusted hashes come from its [release manifest](https://nodejs.org/dist/v22.23.2/SHASUMS256.txt).
+
+Installation requires `curl`, `sha256sum`, `tar`, `gzip`, `mktemp`, and passwordless
+`sudo`. Only a verified archive is extracted into a root-owned versioned directory
+under `/opt/humanish`; `/usr/local/bin` links make Node/npm/npx available to later
+shells. The installer changes no global permissions or shell startup files. It
+checks Node/npm in both ordinary and sudo shells after installation. The existing
+runtime fast path preserves user-specific installations; a later sudo product
+install can still fail if that installation is absent from sudo's PATH.
+
+An egress allowlist must permit `nodejs.org` if the runtime needs installation,
+as well as the registries and product surfaces the study uses. Missing tools,
+unsupported architectures, a failed download or checksum, and a failed runtime
+check stop the lane before Codex. Downloads have finite connection, transfer, and
+retry bounds within the existing five-minute bootstrap deadline.
+
 ## The original command-scoped safety contract
 
 The default mode **inverts** the credential-placement default of every other E2B route.
