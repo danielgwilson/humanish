@@ -204,3 +204,68 @@ describe("participant feedback survives completion mechanisms (#657)", () => {
     expect(containsSensitive(JSON.stringify(findings))).toBe(false);
   });
 });
+
+// Captured from three completed working controls, 2026-09-05. These are synthetic study
+// participant reports, not provider API fixtures. Keep the frozen reports unchanged.
+const CAPTURED_NO_FRICTION_REPORTS = [
+  "REACHED THE GOAL.\nAdded “Draft proposal,” edited it to “Send proposal,” and saved the change. The process was clear and behaved as expected; I did not encounter confusion or hesitation.",
+  "REACHED THE GOAL.\nAdded “Draft proposal,” edited it to “Send proposal,” and saved the change. Everything behaved as expected; the Add, Edit, and Save controls were clear, with no confusion or significant hesitation.",
+  "REACHED THE GOAL.\nAdded the task “Draft proposal,” then edited and saved it as “Send proposal.” Everything behaved as expected; the Add, Edit, and Save controls were clear, with no confusion or hesitation."
+];
+
+describe("coordinated no-friction reports (#669)", () => {
+  it.each(ENDINGS)("does not promote captured clean reports with %s completion", async (ending) => {
+    for (const report of CAPTURED_NO_FRICTION_REPORTS) {
+      const session = await runSession(ending, { messages: [report], closing: report });
+      expect(session.status).toBe("passed");
+      expect(session.trace.items.some((item) => item.text === report)).toBe(true);
+      expect(resolveSelfReportedFriction(session), report).toBeUndefined();
+      expect(candidates(session), report).toHaveLength(0);
+    }
+  });
+
+  it.each(ENDINGS)("keeps negation across report lists and encounter verbs for %s", async (ending) => {
+    for (const report of [
+      "The controls were clear, with no confusion and no hesitation.",
+      "I did not encounter any confusion or significant hesitation.",
+      "I didn't encounter confusion or hesitation.",
+      "I didn’t experience confusion or hesitation.",
+      "I never encountered confusion or hesitation.",
+      "There were no issues or hesitation.",
+      "No errors blocked me.",
+      "No functional failures blocked me.",
+      "I encountered no blockers or unclear error output.",
+      "I encountered no errors or hesitation.",
+      "I completed the task without confusion or significant hesitation.",
+      "The task was done; nothing was confusing or unexpected."
+    ]) {
+      const session = await runSession(ending, { messages: [report], closing: report });
+      expect(resolveSelfReportedFriction(session), report).toBeUndefined();
+      expect(candidates(session), report).toHaveLength(0);
+    }
+  });
+
+  it.each(ENDINGS)("preserves genuine friction beside a negated list with %s completion", async (ending) => {
+    for (const report of [
+      "I did not encounter confusion or hesitation, but the Save button did nothing.",
+      "The controls had no confusion or significant hesitation; the Save button did nothing.",
+      "The controls had no confusion or hesitation. The label was confusing.",
+      "The label was confusing. The controls had no confusion or hesitation.",
+      "I encountered no errors or hesitation, but the label was confusing.",
+      "I encountered no confusion and the label was confusing.",
+      "I did not encounter errors and found confusing labels in the dialog.",
+      "I did not encounter errors and experienced hesitation at Save.",
+      "No errors blocked me, but the label was confusing.",
+      "I encountered no blockers or unclear error output; the Save button did nothing.",
+      "There was no confusion or hesitation and Save did nothing.",
+      "I encountered no confusion, but the Save control had no visible focus.",
+      "The label was not only confusing but also hard to read.",
+      "The rename was not without hesitation.",
+      "The Save control was not keyboard-accessible. I encountered no other confusion or hesitation."
+    ]) {
+      const session = await runSession(ending, { messages: [report], closing: report });
+      expect(resolveSelfReportedFriction(session), report).toBe(report);
+      expect(candidates(session), report).toHaveLength(1);
+    }
+  });
+});

@@ -2255,15 +2255,29 @@ const REPORTED_DEFECT_LANGUAGE =
 // counted as reported friction and became a feedback candidate whose "actual" was a sentence
 // reporting no problem. Only the report-shaped adjectives are negatable here: "no visible focus",
 // "not keyboard-accessible" and "did nothing" are defects and stay.
-const NEGATED_REPORT_LANGUAGE =
-  /\b(?:nothing|no|not|never|without|none)\s+(?:was\s+|were\s+|felt\s+|seemed\s+|really\s+|particularly\s+|especially\s+|major\s+|real\s+|obvious\s+|noticeable\s+)*(?:confus(?:ed|ing|ion)|unclear|unexpected(?:ly)?|hesitat(?:ed|ion|ions)|surpris(?:ed|ing|es)|defects?|bugs?|overlap(?:ped|ping|s)?|truncat(?:ed|es|ion)|hard to (?:find|tell|see|read|reach))\b/g;
+const NEGATED_REPORT_ITEM = String.raw`(?:confus(?:ed|ing|ion)|unclear(?:\s+error\s+output)?|unexpected(?:ly)?|hesitat(?:ed|ion|ions)|surpris(?:ed|ing|es)|defects?|bugs?|overlap(?:ped|ping|s)?|truncat(?:ed|es|ion)|hard to (?:find|tell|see|read|reach)|blockers?|blocking issues?|errors?(?:\s+output)?|failures?|problems?|issues?)`;
+const NEGATED_REPORT_QUALIFIERS = String.raw`(?:(?:really|particularly|especially|major|minor|real|actual|remaining|functional|obvious|noticeable|significant|any|a|an)\s+)*`;
+const NEGATED_REPORT_MODIFIERS = String.raw`(?:(?:was|were|felt|seemed|really|particularly|especially|major|minor|real|actual|remaining|functional|obvious|noticeable|significant|any|a|an|encounter(?:ed)?|experience(?:d)?|notice(?:d)?|observe(?:d)?|feel|find|found|have|had)\s+)*`;
+const NEGATED_REPORT_LANGUAGE = new RegExp(
+  String.raw`\b(?:nothing|no|not|never|without|none|(?:did|do|does|was|were|has|have|had)n['’]t)\s+${NEGATED_REPORT_MODIFIERS}${NEGATED_REPORT_ITEM}\b`
+    // Negation scopes over a coordinated report list, not the rest of the sentence. In
+    // particular, leave "but the label was confusing" and "and Save did nothing" intact.
+    + String.raw`(?:\s*,?\s+(?:or|nor|and)\s+${NEGATED_REPORT_QUALIFIERS}${NEGATED_REPORT_ITEM}\b)*`
+    // Keep the predicate inside its negation: "No errors blocked me" reports no blocker.
+    + String.raw`(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it)\b)?`,
+  "g"
+);
 
 function stripNegatedReportLanguage(text: string): string {
-  return text.replace(NEGATED_REPORT_LANGUAGE, " ");
+  // "Not without hesitation" reports hesitation; do not let the inner "without" erase it.
+  return text.replace(/\b(?:not|never)\s+without\b/g, "with").replace(NEGATED_REPORT_LANGUAGE, " ");
 }
 
 function completionReasonContradictsGoal(reason: string): boolean {
-  const text = stripQuotedSpans(stripNegatedReportLanguage(stripNegatedNonBlockerPhrases(stripCodeExamples(reason).toLowerCase())));
+  // Preserve the full negated list before the older blocker-specific rules remove its first
+  // noun ("no issues or hesitation"). Matching reports first also avoids their broad encounter
+  // clause rule swallowing a genuine subsequent observation.
+  const text = stripQuotedSpans(stripNegatedNonBlockerPhrases(stripNegatedReportLanguage(stripCodeExamples(reason).toLowerCase())));
   return hasBlockerLanguage(text) || REPORTED_DEFECT_LANGUAGE.test(text);
 }
 
