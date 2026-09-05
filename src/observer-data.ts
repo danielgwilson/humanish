@@ -82,6 +82,8 @@ export interface ObserverData {
 }
 
 export interface ObserverStream extends RunStream {
+  /** Participant-facing status. The actor and simulation retain their original protocol status. */
+  status: RunStream["status"];
   sim: RunSimulation;
   kindLabel: string;
   statusLabel: string;
@@ -106,13 +108,22 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
   const events = [...(bundle.events ?? [])];
   const streams = (bundle.streams ?? []).map((stream) => {
     const sim = bundle.simulations.find((candidate) => candidate.id === stream.simId) ?? fallbackSimulation(bundle, stream);
+    // A natural session can finish its protocol while the participant explicitly reports a
+    // blocker (#690). Match the review's typed-outcome rule without rewriting the raw trace or
+    // guessing from prose. Never turn an active or failed harness into a participant outcome.
+    const status = (stream.status === "passed" || stream.status === "complete")
+      && stream.actor?.completionReason === "goal_satisfied"
+      && stream.actor.declaredOutcome === "blocked"
+      ? "blocked"
+      : stream.status;
     byKind[stream.kind] += 1;
 
     return {
       ...stream,
+      status,
       sim,
       kindLabel: kindLabel(stream.kind),
-      statusLabel: statusLabel(stream.status),
+      statusLabel: statusLabel(status),
       terminalPlain: stripAnsi(stream.terminal?.tail ?? ""),
       timeline: events.filter((event) => event.simId === sim.id || event.streamId === stream.id)
     };
