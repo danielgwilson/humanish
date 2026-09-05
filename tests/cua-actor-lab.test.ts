@@ -936,7 +936,8 @@ describe("runCuaActorLab", () => {
     const retryWarnings = (outcome.result.warnings ?? []).filter((warning: string) => warning.includes("retried once after a transient provider error"));
     expect(retryWarnings).toHaveLength(1);
     expect(retryWarnings[0]).toContain("[unimplemented] HTTP 404");
-    expect(retryWarnings[0]).toContain("not known to this run");
+    // Cleanup evidence now comes from the guarded SDK error when a handle was acquired.
+    expect(retryWarnings[0]).not.toContain("not known to this run");
     expect(phases).toContain("cua-lab.sandbox.create.retry");
   }, 20_000);
 

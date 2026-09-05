@@ -150,7 +150,7 @@ export interface E2BDesktopSandbox {
 
 export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
   try {
-    return await import("@e2b/desktop") as unknown as E2BDesktopModule;
+    return guardDesktopSandboxCreate(await import("@e2b/desktop") as unknown as E2BDesktopModule);
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
       throw new Error(
@@ -168,6 +168,97 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
   }
 }
 
+export const DESKTOP_CREATE_CLEANUP_TIMEOUT_MS = 10_000;
+
+type DesktopCreateCleanup = "killed" | "already_gone" | "unconfirmed";
+type OwnedDesktop = E2BDesktopSandbox & {
+  kill(options: { requestTimeoutMs: number; signal: AbortSignal }): Promise<boolean>;
+};
+type DesktopSdkClass = E2BDesktopModule["Sandbox"] & {
+  new (...args: unknown[]): OwnedDesktop;
+};
+
+/** Startup failed after this call acquired a handle. No credentials/options are included here. */
+export class E2BDesktopStartupError extends Error {
+  constructor(error: unknown, readonly cleanup: DesktopCreateCleanup) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const cleanupNote = cleanup === "killed"
+      ? "the allocated sandbox was reclaimed"
+      : cleanup === "already_gone"
+        ? "the allocated sandbox was already gone"
+        : "cleanup of the allocated sandbox was not confirmed; no retry is allowed and its provider timeout remains the backstop";
+    super(`Desktop startup failed after allocation; ${cleanupNote}. ${detail}`, { cause: error });
+    this.name = "E2BDesktopStartupError";
+  }
+}
+
+/**
+ * Preserve ownership before the desktop SDK starts Xvfb/XFCE (#581). Its public generic create
+ * constructs `new this(...)` through the base SDK, then awaits desktop startup without a catch.
+ * Each call gets a separate subclass/closure so concurrent attempts cannot exchange handles.
+ *
+ * This deliberately depends on SDK construction order, not a copied private `_start` method.
+ * The real installed SDK's debug-mode conformance test must pass on dependency updates: the
+ * constructor must run before bootstrap and public create must preserve its subclass type.
+ * Failures before a constructor returns still have no acquired handle and remain unproven.
+ */
+export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopModule {
+  const SdkSandbox = module.Sandbox as DesktopSdkClass;
+  class GuardedSandbox extends SdkSandbox {
+    static override async create(
+      templateOrOptions: string | E2BDesktopCreateOptions,
+      options?: E2BDesktopCreateOptions
+    ): Promise<E2BDesktopSandbox> {
+      let cleanupOwned: OwnedDesktop["kill"] | undefined;
+      const CallingSandbox = this;
+      class AttemptSandbox extends CallingSandbox {
+        constructor(...args: unknown[]) {
+          super(...args);
+          cleanupOwned = this.kill.bind(this);
+        }
+      }
+      try {
+        const args = typeof templateOrOptions === "string" ? [templateOrOptions, options] : [templateOrOptions];
+        return await Reflect.apply(SdkSandbox.create, AttemptSandbox, args) as E2BDesktopSandbox;
+      } catch (error) {
+        if (cleanupOwned === undefined) throw error;
+        const createOptions = typeof templateOrOptions === "string" ? options : templateOrOptions;
+        const requestedTimeout = createOptions?.requestTimeoutMs;
+        const timeoutMs = requestedTimeout !== undefined && Number.isFinite(requestedTimeout) && requestedTimeout > 0
+          ? Math.min(requestedTimeout, DESKTOP_CREATE_CLEANUP_TIMEOUT_MS)
+          : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
+        const cleanup = await reclaimFailedDesktopCreate(cleanupOwned, timeoutMs);
+        throw new E2BDesktopStartupError(error, cleanup);
+      }
+    }
+  }
+  return { ...module, Sandbox: GuardedSandbox };
+}
+
+async function reclaimFailedDesktopCreate(
+  kill: OwnedDesktop["kill"], timeoutMs: number
+): Promise<DesktopCreateCleanup> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      kill({ requestTimeoutMs: timeoutMs, signal: controller.signal }),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error("desktop create cleanup deadline reached"));
+        }, timeoutMs);
+      })
+    ]);
+    // The installed SDK documents false as an exact-id 404: already absent is also reclaimed.
+    return result === true ? "killed" : result === false ? "already_gone" : "unconfirmed";
+  } catch {
+    // Do not serialize cleanup options, connection state, or provider errors that may echo auth.
+    return "unconfirmed";
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
 
 /**
  * Is humanish running from this project's node_modules, or from an npx cache?
@@ -249,6 +340,7 @@ export const TRANSIENT_RETRY_DELAY_MS = 3_000;
  * that hit the limit should be spaced, not repeated), and anything that names the request as wrong.
  */
 export function isTransientE2BError(error: unknown): boolean {
+  if (error instanceof E2BDesktopStartupError && error.cleanup === "unconfirmed") return false;
   const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error ?? "");
   if (/timeout|timed out|deadline/i.test(message)) return false;
   if (/\b(401|403|429)\b|unauthorized|forbidden|rate limit|quota/i.test(message)) return false;
