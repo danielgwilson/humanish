@@ -284,10 +284,17 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
           ...(usageCacheWriteInput === undefined ? {} : { cacheWriteInput: usageCacheWriteInput })
         };
 
+  // Responses can exhaust output/context tokens before producing any visible answer. Empty
+  // actions on that wire status are an interrupted generation, never a natural endpoint.
+  const interruption = root.status === "incomplete"
+    ? (asRecord(root.incomplete_details).reason === "max_output_tokens" ? "token_limit" : "incomplete")
+    : root.status !== undefined && root.status !== "completed" ? "unexpected_status" : undefined;
+
   const turn: CuaTurn = {
     actions,
     pendingSafetyChecks: safetyChecks,
-    done: actions.length === 0,
+    done: interruption === undefined && actions.length === 0,
+    ...(interruption === undefined ? {} : { interruption }),
     ...(responseId === undefined ? {} : { responseId }),
     ...(reasoning.length > 0 ? { reasoning } : {}),
     ...(message.length > 0 ? { message } : {}),
