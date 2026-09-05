@@ -1,3 +1,4 @@
+import { validClosingReport } from "./computer-use.js";
 import type { ActorCapabilities } from "./actor-contract.js";
 import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { redactText } from "./redaction.js";
@@ -749,7 +750,12 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     const attempt = async (build: (ctx: OpenAiCuContext) => Record<string, unknown>): Promise<unknown> => {
       // A closing report makes exactly one request: no HTTP or policy-latch retries.
       if (closing) {
-        return post({ ...build(buildContext(req.instructions)), tool_choice: "none", max_output_tokens: 1024 }, signal, 0);
+        return post({ ...build(buildContext(req.instructions)), tool_choice: "none", max_output_tokens: 1024,
+          text: { format: { type: "json_schema", name: "participant_closing_report", strict: true,
+            schema: { type: "object", additionalProperties: false, required: ["summary", "frictionReports"],
+              properties: { summary: { type: "string" }, frictionReports: { type: "array", items: { type: "string" } } } }
+          } }
+        }, signal, 0);
       }
       for (;;) {
         try {
@@ -790,6 +796,16 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     if (parsed.turn.responseId !== undefined) lastResponseId = parsed.turn.responseId;
     pendingCallIds = parsed.callIds;
     lastOutputItems = parsed.outputItems;
+    if (closing) {
+      // Refusals, incomplete output, malformed JSON, and invalid shapes remain no-report results.
+      // Never promote raw JSON or a fallback paragraph into a structured finding.
+      try {
+        const report: unknown = JSON.parse(parsed.turn.message ?? "");
+        if (asRecord(raw).status === "completed" && validClosingReport(report)) {
+          return { ...parsed.turn, closingReport: report };
+        }
+      } catch { /* A failed optional closing account keeps its usage and no report. */ }
+    }
     return parsed.turn;
   };
 
@@ -805,6 +821,10 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,
     nextTurn: (req, signal) => requestTurn(req, signal),
-    debrief: (req, signal) => requestTurn(req, signal, true)
+    // Stateless mode retains only the latest output packet, not the whole session needed for
+    // retrospective claims. This getter follows both configured ZDR and a runtime policy latch.
+    get debrief() {
+      return mode === "explicit_context" || lastResponseId === undefined ? undefined : (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, true);
+    }
   };
 }

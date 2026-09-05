@@ -6,7 +6,8 @@ import { defaultRedactionHooks } from "../src/redaction.js";
 const report = "The Save button did nothing. I used Enter and finished the task.";
 const closing = (overrides: Partial<CuaTurn> = {}): CuaTurn => ({
   actions: [], pendingSafetyChecks: [], done: true, message: report,
-  usage: { input: 20, output: 10 }, ...overrides
+  usage: { input: 20, output: 10 },
+  closingReport: { summary: "I renamed the item.", frictionReports: [report] }, ...overrides
 });
 function setup(overrides: Partial<CuaLoopOptions> = {}) {
   let time = 0;
@@ -78,7 +79,7 @@ describe("read-only participant debrief", () => {
   it.each([
     closing({ actions: [{ kind: "click", x: 0, y: 0 }] }),
     closing({ pendingSafetyChecks: [{ id: "safety", code: "check", message: "check" }] }),
-    closing({ message: "" })
+    closing({ closingReport: { summary: "", frictionReports: [] } })
   ])("rejects an unusable report while accounting for its usage", async (turn) => {
     const s = setup(); s.debrief.mockResolvedValue(turn);
     const result = await s.run();
@@ -136,7 +137,7 @@ describe("read-only participant debrief", () => {
     for (const error of [false, true]) {
       const s = setup({ scrubText: (text) => text.replaceAll("opaque-private-value", "[scrubbed]") });
       const text = "The Save button did nothing. opaque-private-value sk-proj-abcdefghijklmnopqrstuvwxyz0123456789";
-      if (error) s.debrief.mockRejectedValue(new Error(text)); else s.debrief.mockResolvedValue(closing({ message: text }));
+      if (error) s.debrief.mockRejectedValue(new Error(text)); else s.debrief.mockResolvedValue(closing({ closingReport: { summary: "Renamed the item.", frictionReports: [text] } }));
       const result = await s.run(); const encoded = JSON.stringify(result.trace);
       expect(encoded).not.toContain("opaque-private-value"); expect(encoded).not.toContain("sk-proj-abcdefghijklmnopqrstuvwxyz0123456789");
     }
@@ -149,6 +150,51 @@ describe("read-only participant debrief", () => {
     expect(cost).toMatchObject({ estimatedTotalUsd: 0.02, fullyEstimated: false,
       breakdown: [{ reason: "closing_usage_unreported", estimatedCostUsd: null }, { estimatedCostUsd: 0.02 }] });
     expect(cost?.note).toContain("LOWER BOUND");
+  });
+
+  it("treats the typed friction list as authoritative for its summary", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(closing({ closingReport: {
+      summary: "I read the accessibility guide and the error-handling docs. The plan was to check whether Save failed.",
+      frictionReports: []
+    } }));
+    const result = await s.run();
+    expect(resolveSelfReportedFriction(result)).toBeUndefined();
+    expect(result.trace.debrief?.messageId).toBeDefined();
+    expect(result.trace.debrief?.report?.frictionReports).toEqual([]);
+  });
+
+  it("retains uncertainty in a typed report with phrasing the old heuristic missed", async () => {
+    const text = "Clicking Save did not appear to work after two attempts; pressing Enter saved the rename.";
+    const s = setup(); s.debrief.mockResolvedValue(closing({ closingReport: { summary: "Renamed it.", frictionReports: [text, text] } }));
+    const result = await s.run();
+    expect(resolveSelfReportedFriction(result)).toBe(text);
+    expect(result.trace.debrief?.report?.frictionReports).toEqual([text]);
+  });
+
+  it.each([{}, { input: 20 }, { output: 10 }, { cachedInput: 5 }, { input: Number.NaN, output: 10 }, { input: 20, output: Number.POSITIVE_INFINITY }])(
+    "keeps incomplete closing usage unknown and preserves known finite totals (%j)", async (usage) => {
+      const s = setup(); s.debrief.mockResolvedValue(closing({ usage }));
+      const result = await s.run();
+      expect(result.trace.debrief?.usageReported).toBe(false);
+      expect(Number.isFinite(result.trace.tokenUsage?.input)).toBe(true);
+      expect(Number.isFinite(result.trace.tokenUsage?.output)).toBe(true);
+      const cost = buildCuaCostSummary({ lanes: [{ trace: result.trace }], desktopMinutes: undefined });
+      expect(cost?.fullyEstimated).toBe(false);
+      expect(cost?.breakdown[0]?.reason).toBe("closing_usage_unreported");
+    }
+  );
+
+  it("skips optional spend if any earlier interaction turn omitted usage", async () => {
+    const s = setup({ maxUsd: 0.5, estimateTurnCostUsd: () => 0.01 });
+    s.options.stopWhen = { any: [{ textIncludes: "done" }] };
+    s.observe.mockResolvedValueOnce({ stateSignature: "0", text: "editing" })
+      .mockResolvedValueOnce({ stateSignature: "1", text: "editing" })
+      .mockResolvedValueOnce({ stateSignature: "2", text: "done" });
+    s.nextTurn.mockResolvedValueOnce({ actions: [{ kind: "click", x: 1, y: 1 }], pendingSafetyChecks: [], done: false });
+    const result = await s.run();
+    expect(s.debrief).not.toHaveBeenCalled();
+    expect(result.trace.debrief?.reason).toContain("earlier participant turn");
   });
 
 });

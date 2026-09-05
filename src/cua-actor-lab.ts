@@ -2422,7 +2422,7 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
   // reached the goal and described what was hard on the way has reported friction.
   if (session.trace.declaredOutcome === "blocked") return session.reason;
   const messages = session.trace.items
-    .filter((item) => item.kind === "message")
+    .filter((item) => item.kind === "message" && item.id !== session.trace.debrief?.messageId)
     .map((item) => item.text?.trim() ?? "")
     .filter((text) => text.length > 0);
   // A custom session may keep its closing report only in reason even when earlier messages exist.
@@ -2430,9 +2430,11 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
   const closingReport = traceHasStopWhenMatch(session) ? undefined : session.reason.trim();
   // One candidate per participant, with exact repeats removed (the closing report often repeats
   // a prior turn). Earlier turns require observed-report clauses, not arbitrary defect mentions.
-  const reports = [...new Set(messages.filter((message) => message === closingReport
+  const typedReports = session.trace.debrief?.status === "completed"
+    ? session.trace.debrief.report?.frictionReports ?? [] : [];
+  const reports = [...new Set([...typedReports, ...messages.filter((message) => message === closingReport
     ? completionReasonContradictsGoal(message)
-    : interimMessageReportsFriction(message)))];
+    : interimMessageReportsFriction(message))])];
   if (closingReport && completionReasonContradictsGoal(closingReport) && !reports.includes(closingReport)) {
     reports.push(closingReport);
   }
