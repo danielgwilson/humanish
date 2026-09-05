@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
 import { createProgram } from "../src/program.js";
 import { parseLabConfig } from "../src/lab-config.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../src/scripted-browser-actor.js";
 
 const root = resolve(import.meta.dirname, "..");
-const names = ["index", "your-app", "read-results", "budgets-and-privacy"];
+const names = readdirSync(resolve(root, "site/content/docs"))
+  .filter((name) => name.endsWith(".mdx") && name !== "cli.mdx")
+  .map((name) => name.slice(0, -4));
 const pages = names.map((name) => ({ name, text: readFileSync(resolve(root, `site/content/docs/${name}.mdx`), "utf8") }));
+const readme = { name: "README", text: readFileSync(resolve(root, "README.md"), "utf8") };
+const llms = { name: "llms.txt", text: readFileSync(resolve(root, "site/public/llms.txt"), "utf8") };
 
 // The website is a runnable setup path. Catch unsupported flags and stale lab examples before
 // a reader spends provider money following them; parsing metadata never invokes CLI handlers.
@@ -16,24 +21,37 @@ describe("website documentation examples", () => {
     const program = createProgram();
     const failures: string[] = [];
     let checked = 0;
-    for (const { name, text } of pages) {
-      for (const block of text.matchAll(/```bash[^\n]*\n([\s\S]*?)```/g)) {
-        for (const line of block[1]!.split("\n")) {
-          if (!line.startsWith("npx humanish ")) continue;
-          const tokens = line.slice("npx humanish ".length).trim().split(/\s+/);
-          let command = program;
-          while (tokens.length > 0 && command.commands.length > 0) {
-            const child = command.commands.find((entry) => entry.name() === tokens[0]);
-            if (!child) break;
-            tokens.shift();
-            command = child;
-          }
-          if (command === program) failures.push(`${name}: unknown command: ${line}`);
-          const parsed = command.parseOptions(tokens);
-          const invalid = parsed.unknown.filter((token) => token.startsWith("-"));
-          if (invalid.length) failures.push(`${name}: unsupported flags ${invalid.join(", ")}: ${line}`);
-          checked++;
+    for (const { name, text } of [...pages, readme, llms]) {
+      const examples = [...text.matchAll(/```bash[^\n]*\n([\s\S]*?)```/g)]
+        .flatMap((block) => block[1]!.split("\n"))
+        .filter((line) => line.startsWith("npx humanish "))
+        .map((line) => line.slice("npx ".length));
+      examples.push(...[...text.matchAll(/`npx (humanish [^`]+)`/g)].map((match) => match[1]!));
+      // README command-table rows are copyable instructions too. Missing --repo there previously
+      // escaped the fenced-example check even though Commander requires it before feedback issue.
+      examples.push(...[...text.matchAll(/^\| `(humanish [^`]+)` \|/gm)].map((match) => match[1]!));
+      for (const line of examples) {
+        const tokens = line.slice("humanish ".length).trim().split(/\s+/);
+        let command = program;
+        while (tokens.length > 0 && command.commands.length > 0) {
+          const child = command.commands.find((entry) => entry.name() === tokens[0]);
+          if (!child) break;
+          tokens.shift();
+          command = child;
         }
+        if (command === program) failures.push(`${name}: unknown command: ${line}`);
+        const parsed = command.parseOptions(tokens);
+        const invalid = parsed.unknown.filter((token) => token.startsWith("-"));
+        if (invalid.length) failures.push(`${name}: unsupported flags ${invalid.join(", ")}: ${line}`);
+        for (const option of command.options) {
+          if (option.mandatory && option.defaultValue === undefined
+            && !tokens.some((token) => token === option.long || token === option.short || token.startsWith(`${option.long}=`))) {
+            failures.push(`${name}: missing required option ${option.long}: ${line}`);
+          }
+        }
+        const requiredArguments = command.registeredArguments.filter((arg) => arg.required).length;
+        if (parsed.operands.length < requiredArguments) failures.push(`${name}: missing required argument: ${line}`);
+        checked++;
       }
     }
     expect(checked).toBeGreaterThan(20);
@@ -59,12 +77,33 @@ describe("website documentation examples", () => {
     expect(panel.ok, JSON.stringify(panel)).toBe(true);
   });
 
+  it("accepts the moved computer-use fragments and scripted-browser scenario", () => {
+    const ownApp = parse(pages.find(({ name }) => name === "your-app")!.text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!);
+    for (const name of ["computer-use", "local-agents"]) {
+      const page = pages.find((page) => page.name === name)!;
+      for (const block of page.text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)) {
+        const fragment = parse(block[1]!);
+        const combined = { ...structuredClone(ownApp), ...fragment };
+        if (fragment.subject?.source === "clone") delete combined.policies.allowPublicTargets;
+        const result = parseLabConfig(combined);
+        expect(result.ok, `${name}: ${JSON.stringify(result)}`).toBe(true);
+      }
+    }
+    const scenario = parse(pages.find(({ name }) => name === "lab-manifests")!.text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!);
+    const parsed = parseBrowserPersonaJourneyFromScenario({ raw: scenario, relativePath: "humanish/scenarios/todo-onboarding.yaml", sourceDigest: "docs-example" });
+    expect(parsed.failure).toBeUndefined();
+    expect(parsed.journey?.steps).toHaveLength(3);
+  });
+
   it("links to existing source files and documentation pages", () => {
     const failures: string[] = [];
-    for (const { name, text } of pages) {
+    for (const { name, text } of [...pages, readme, llms]) {
       for (const match of text.matchAll(/\]\(([^)]+)\)/g)) {
         const url = match[1]!.split("#")[0]!;
-        if (url.startsWith("https://github.com/danielgwilson/humanish/blob/main/")) {
+        if (url.startsWith("https://humanish.dev/docs")) {
+          const slug = url === "https://humanish.dev/docs" ? "index" : url.slice("https://humanish.dev/docs/".length);
+          if (!existsSync(resolve(root, `site/content/docs/${slug}.mdx`))) failures.push(`${name}: ${url}`);
+        } else if (url.startsWith("https://github.com/danielgwilson/humanish/blob/main/")) {
           const localPath = url.replace("https://github.com/danielgwilson/humanish/blob/main/", "");
           if (!existsSync(resolve(root, localPath))) failures.push(`${name}: ${url}`);
         } else if (url === "/docs" || url.startsWith("/docs/")) {

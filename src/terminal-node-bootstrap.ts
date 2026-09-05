@@ -4,6 +4,17 @@
 // A checksum fetched alongside the archive at runtime would not pin what we trust.
 export const TERMINAL_NODE_VERSION = "22.23.2";
 
+// npm normally derives its global prefix from the real Node executable. This distribution
+// lives under /opt, while its public executables use /usr/local/bin. Set only a missing
+// built-in default; npm's environment, CLI, user and global config still take precedence.
+export const TERMINAL_NODE_NPM_PREFIX_SCRIPT = [
+  'const fs = require("node:fs");',
+  'const file = process.argv[1];',
+  'let existing = "";',
+  'try { existing = fs.readFileSync(file, "utf8"); } catch (error) { if (error.code !== "ENOENT") throw error; }',
+  'if (!/^[\\t ]*prefix[\\t ]*=/m.test(existing)) fs.appendFileSync(file, "\\nprefix=/usr/local\\n");'
+].join(" ");
+
 /** Unkeyed runtime prerequisite for stock Linux desktops. No apt repository refresh (#674). */
 export const TERMINAL_NODE_BOOTSTRAP_COMMAND = [
   "set -eu",
@@ -36,6 +47,9 @@ export const TERMINAL_NODE_BOOTSTRAP_COMMAND = [
   "for executable in node npm npx; do",
   `  sudo -n ln -sfn "$node_target/bin/$executable" "/usr/local/bin/$executable"`,
   "done",
+  // Keep global product executables on the existing ordinary/sudo PATH (#679). The new
+  // versioned distribution is the only config we modify; no user/global npmrc or profile.
+  `sudo -n "$node_target/bin/node" -e '${TERMINAL_NODE_NPM_PREFIX_SCRIPT}' "$node_target/lib/node_modules/npm/npmrc"`,
   "hash -r",
   `node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)' && npm --version >/dev/null`,
   // Product installation already uses sudo; detect a template whose sudo PATH cannot see Node

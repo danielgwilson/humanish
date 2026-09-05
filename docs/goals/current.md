@@ -29,7 +29,7 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.80.0`)
+## Current Program Truth (source `0.81.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
@@ -470,6 +470,23 @@ Stop and correct course if:
 - public-safety gates become optional.
 
 ## Best Next Work
+
+**2026-09-05 (0.81.0).** First use now distinguishes the free evidence preview
+from a live participant study, with concise successful setup output and complete JSON details
+(#660). The website has runnable docs and a generated CLI reference (#661, #668). Retained participant
+reports survive automatic stops. Supported providers with retained history can add one closing
+report when time and known budget remain; clean reports such as “no confusion or hesitation”
+stay clean (#658, #670, #671). Desktop startup cleanup retains acquired handles and records
+confirmed or unknown reclamation. The SDK's detached screenshot-file cleanup rejection is
+handled (#665, #666).
+Terminal output reconciles SDK callbacks with returned aggregates, preserving legitimate
+repeated lines and usage turns while avoiding doubled capture (#672). Opt-in `openai-egress`
+auth keeps the raw OpenAI runtime key outside the sandbox; every sandbox process can still
+spend through the proxy, so this is not a provider spending limit (#663). Stock terminal
+startup installs a checksum-verified Node archive without refreshing unrelated package mirrors
+and gives newly installed npm a default global prefix on the standard PATH (#677, #680). Mobile studies warn that desktop pointer-to-touch conversion can change repeated-tap
+behavior; gesture failures require direct or native touch confirmation before app attribution
+(#678).
 
 **2026-09-04, night (0.80.0).** The observation window reaches every desktop route: the
 sequential and concurrent shared-world seats forward `dwell` the way they forward `stopWhen`

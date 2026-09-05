@@ -192,8 +192,12 @@ export interface CuaProvider {
 export interface CuaExecutor {
   /** Capture the current desktop frame and its state signature. */
   observe(): Promise<CuaObservation>;
-  /** Perform one action against the desktop. */
-  execute(action: CuaAction): Promise<void>;
+  /**
+   * Perform one action. The optional signal ends with this action's loop wait; honor it
+   * before dispatching after async preparation. Wrappers must forward it. Cancellation
+   * does not imply an already-dispatched desktop operation can be stopped.
+   */
+  execute(action: CuaAction, signal?: AbortSignal): Promise<void>;
 }
 
 export interface CuaLoopOptions {
@@ -1217,13 +1221,29 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         // Record the action as completed only AFTER execute() resolves: a failed
         // action must not appear as a plainly-completed ui_action (#248). On
         // failure the error notice below captures the failing action + phase.
+        const executeAction = async (idleBound?: number): Promise<void> => {
+          const actionController = new AbortController();
+          const onAbort = (): void => actionController.abort();
+          if (signal?.aborted) actionController.abort();
+          else signal?.addEventListener("abort", onAbort, { once: true });
+          try {
+            const pending = executor.execute(action, actionController.signal);
+            if (idleBound === undefined) await raceSettle(pending, remaining(), signal);
+            else await raceBounded(`idle action ${actionTitle}`, pending, remaining(), idleBound, signal);
+          } finally {
+            signal?.removeEventListener("abort", onAbort);
+            // A deadline also closes async executor preparation, so a late pointer read
+            // cannot actuate after the loop stopped waiting for this action.
+            actionController.abort();
+          }
+        };
         try {
           if (isIdleAction(action)) {
             // Observation actions only look (#480). A `wait` that hangs inside the SDK has, by
             // definition, waited; skipping it with a notice loses nothing the participant chose.
             const idleBound = observationTimeoutMs + (action.kind === "wait" ? (action.ms ?? 0) : 0);
             try {
-              await raceBounded(`idle action ${actionTitle}`, executor.execute(action), remaining(), idleBound, signal);
+              await executeAction(idleBound);
             } catch (error) {
               if (!(error instanceof CuaStallError)) throw error;
               record({
@@ -1236,7 +1256,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
               });
             }
           } else {
-            await raceSettle(executor.execute(action), remaining(), signal);
+            await executeAction();
           }
         } catch (error) {
           // RECOVERY at the loop boundary (covers ALL action kinds uniformly):

@@ -70,8 +70,14 @@ describe("llms.txt documents the CLI that actually ships (#513)", () => {
       "utf8"
     );
     // #495 measured an agent handed a human-shaped job and neither half of the handoff worked.
-    const tuiSection = text.slice(text.indexOf("humanish tui"));
-    expect(tuiSection).toMatch(/human/i);
-    expect(tuiSection).toMatch(/non-TTY|hand them|for a human/i);
+    const tuiRow = text.split("\n").find((line) => line.startsWith("- `humanish tui`:"))!;
+    expect(tuiRow).toMatch(/human/i);
+    expect(tuiRow).toMatch(/refuses detected agent sessions/i);
+    expect(tuiRow).toContain("non-TTY");
+    for (const command of ["humanish lab list --json", "humanish lab inspect <lab> --json", "humanish runs --json"]) {
+      expect(tuiRow).toContain(command);
+    }
+    expect(text).toContain("HUMANISH_TUI_AGENT_SESSION");
+    expect(text).toContain("HUMANISH_TUI_REQUIRES_TTY");
   });
 });

@@ -28,7 +28,7 @@ This is the "plural harnesses / transport-agnostic" intent of
 ```ts
 interface CuaExecutor {
   observe(): Promise<CuaObservation>;   // capture current state
-  execute(action: CuaAction): Promise<void>; // perform one action
+  execute(action: CuaAction, signal?: AbortSignal): Promise<void>; // perform one action
 }
 
 interface CuaObservation {
@@ -37,6 +37,15 @@ interface CuaObservation {
   appState?: Record<string, unknown>;  // structured state; preferred for progress
 }
 ```
+
+The loop aborts an action's optional signal when its wait ends, including cancellation or a
+deadline. An executor that prepares asynchronously should check the signal before dispatching
+an input; wrappers must forward it (`execute: (...args) => inner.execute(...args)`). Existing
+one-argument executors remain compatible. This does not cancel already-dispatched substrate
+operations. The desktop executor uses this boundary while reading the current cursor before
+left/double clicks: an exact integer match avoids redundant movement; uncertain or fractional
+coordinates retain the original SDK path. The cursor read adds at most 500 ms of preparation
+wait and does not cache a previous action's position.
 
 - **`screenshot` is optional.** A non-vision (state) executor omits it. The loop
   persists no screenshot that turn; `counts.screenshots` stays 0, so the trace's

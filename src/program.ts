@@ -752,7 +752,7 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
   parent
     .command("tui")
     .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
-    .summary("Open the interactive terminal surface.")
+    .summary("Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)

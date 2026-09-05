@@ -2,6 +2,11 @@
 
 Date: 2026-09-05. Fix for [issue #674](https://github.com/danielgwilson/humanish/issues/674).
 
+Follow-up: the full release dogfood subsequently exposed a global npm executable
+PATH regression introduced by this versioned installation. The runtime-only
+checks below remain valid; the [separate global-prefix receipt](2026-09-05-global-npm-prefix.md)
+records the additional failure and correction.
+
 The unmodified release dogfood gate failed before its participant could start:
 `terminal-2026-09-05T02-33-30-831Z-994e29e1` reached the Node/npm bootstrap deadline
 in 300,004ms. The original bundle was retained. It recorded no model usage, and

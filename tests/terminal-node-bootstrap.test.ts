@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../src/terminal-node-bootstrap.js";
+import { TERMINAL_NODE_BOOTSTRAP_COMMAND, TERMINAL_NODE_NPM_PREFIX_SCRIPT } from "../src/terminal-node-bootstrap.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -52,6 +52,36 @@ describe("terminal Node bootstrap", () => {
     expect(await stat(path.join(root, "privilege.log")).catch(() => undefined)).toBeUndefined();
     expect(await stat(path.join(root, "extraction.log")).catch(() => undefined)).toBeUndefined();
   }
+
+  it("sets the installed npm distribution default once without replacing its other settings", async () => {
+    const config = path.join(root, "npmrc");
+    const original = "fund=false\naudit=false";
+    await writeFile(config, original);
+    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    expect(await readFile(config, "utf8")).toBe(`${original}\nprefix=/usr/local\n`);
+  });
+
+  it("creates a missing built-in config without requiring a user/global config file", async () => {
+    const config = path.join(root, "npmrc");
+    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    expect(await readFile(config, "utf8")).toBe("\nprefix=/usr/local\n");
+  });
+
+  it("preserves an existing distribution prefix and all original file bytes", async () => {
+    const config = path.join(root, "npmrc");
+    const original = "# distribution settings\n\t prefix = /custom/distribution\nfund=false\n";
+    await writeFile(config, original);
+    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    expect(await readFile(config, "utf8")).toBe(original);
+  });
+
+  it("does not treat a commented prefix as an active distribution default", async () => {
+    const config = path.join(root, "npmrc");
+    await writeFile(config, "# prefix=/old/example\n");
+    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    expect(await readFile(config, "utf8")).toContain("\nprefix=/usr/local\n");
+  });
 
   it("reuses working Node >=20 and npm without network or privilege", async () => {
     expect((await run({ nodeMajor: 22 })).code).toBe(0);
