@@ -2263,8 +2263,40 @@ function stripNegatedReportLanguage(text: string): string {
 }
 
 function completionReasonContradictsGoal(reason: string): boolean {
-  const text = stripQuotedSpans(stripNegatedReportLanguage(stripNegatedNonBlockerPhrases(reason.toLowerCase())));
+  const text = stripQuotedSpans(stripNegatedReportLanguage(stripNegatedNonBlockerPhrases(stripCodeExamples(reason).toLowerCase())));
   return hasBlockerLanguage(text) || REPORTED_DEFECT_LANGUAGE.test(text);
+}
+
+/** Code/documentation excerpts are quoted material, not participant observations. */
+function stripCodeExamples(text: string): string {
+  return text
+    // Include an unterminated fence: copied text is not promoted just because its closing fence
+    // was omitted. Match the same marker so backticks inside a tilde fence cannot end it early.
+    .replace(/^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm, " ")
+    .replace(/(`+)[^`\n]*\1/g, " ");
+}
+
+/** Interim messages also contain plans and hypotheses. Admit observed-report clauses only;
+ * the established closing-report scan remains separate. This is a conservative text heuristic,
+ * not an assertion that every mention of a defect is evidence that one happened. */
+function interimMessageReportsFriction(message: string): boolean {
+  const prose = stripQuotedSpans(stripCodeExamples(message).toLowerCase());
+  const clauses = prose.split(/(?<=[.!?])\s+|[;\n]+|,\s*(?:but|so|however|yet)\s+|\s+so\s+(?=i\b|we\b)/);
+  return clauses.some((clause) => {
+    // A condition, question, intention, or conjecture does not assert an observed result.
+    // Clause splitting above keeps "Save did nothing, so I will try Enter" observable.
+    if (/\?|\b(?:if|unless|whether|maybe|perhaps|suppose|hypothetically|might|may|would|should)\b|\bcould\b(?!\s+not\b)/.test(clause)
+      || /\b(?:i|we)(?:['’]ll|\s+(?:will|plan|intend|want|hope|suspect|wonder))\b|\bgoing to\b|\blet['’]s\b/.test(clause)
+      || /\b(?:task|goal|mission|objective|plan)\s+(?:(?:is|was)\s+)?to\b|^\s*(?:check|test|look|checking|testing)\b/.test(clause)) return false;
+
+    // A topic is not a defect ("the accessibility guide is open", "shows error-handling docs").
+    // Actual friction in those surfaces still qualifies: "the error guide was confusing".
+    const observation = clause
+      .replace(/\baccessibilit(?:y|ies)\b/g, " ")
+      .replace(/\berror[- ]handling\b|\berror\s+(?:documentation|docs?|guides?|reference|examples?)\b/g, " ");
+    const assertsObservation = /\b(?:is|are|was|were|has|had|did|does|shows?|showed|seems?|seemed|looks?|looked|found|noticed|saw|hit|encountered|felt|got|failed|returned|cannot|can['’]?t|unable|could not)\b|\b(?:overlap(?:ped|ping|s)?|truncat(?:ed|es)|cut off|nothing happened|no (?:visible )?focus)\b/.test(observation);
+    return assertsObservation && completionReasonContradictsGoal(observation);
+  });
 }
 
 /** The verdict scan (strict): like the friction scan, but resolved-arc segments are stripped
@@ -2378,20 +2410,34 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
 }
 
 /**
- * The friction read of the same narrative (#453): everything the verdict scan counts PLUS
- * resolved arcs — a participant who hit a wall, got past it, and said so has reported friction
- * worth a tally count and a feedback candidate, without costing the lane its pass. Same
- * quoted-copy and stopWhen discipline as the verdict resolver. Exported for testing.
+ * Friction is independent of how a completed session ended (#657). Read the participant's
+ * redacted messages, including earlier reports, rather than the harness-owned reason that
+ * stopWhen/dwell writes. Reasoning, observations, and notices are not participant reports.
+ * Resolved arcs still count (#453); quoted copy and negated reports still do not. This read
+ * never changes the verdict. Exported for testing.
  */
 export function resolveSelfReportedFriction(session: CuaLoopResult | undefined): string | undefined {
+  if (session?.completionReason !== "goal_satisfied") return undefined;
   // Friction stays a read of the narrative even when the outcome was declared: a participant who
   // reached the goal and described what was hard on the way has reported friction.
-  if (session?.trace.declaredOutcome === "blocked" && session.completionReason === "goal_satisfied") return session.reason;
-  return session?.completionReason === "goal_satisfied"
-    && completionReasonContradictsGoal(session.reason)
-    && !traceHasStopWhenMatch(session)
-    ? session.reason
-    : undefined;
+  if (session.trace.declaredOutcome === "blocked") return session.reason;
+  const messages = session.trace.items
+    .filter((item) => item.kind === "message")
+    .map((item) => item.text?.trim() ?? "")
+    .filter((text) => text.length > 0);
+  // A custom session may keep its closing report only in reason even when earlier messages exist.
+  // Structured stop/dwell reasons are controller text and never enter this closing-report path.
+  const closingReport = traceHasStopWhenMatch(session) ? undefined : session.reason.trim();
+  // One candidate per participant, with exact repeats removed (the closing report often repeats
+  // a prior turn). Earlier turns require observed-report clauses, not arbitrary defect mentions.
+  const reports = [...new Set(messages.filter((message) => message === closingReport
+    ? completionReasonContradictsGoal(message)
+    : interimMessageReportsFriction(message)))];
+  if (closingReport && completionReasonContradictsGoal(closingReport) && !reports.includes(closingReport)) {
+    reports.push(closingReport);
+  }
+  if (reports.length > 0) return reports.join("\n\n");
+  return undefined;
 }
 
 /**
@@ -5170,8 +5216,8 @@ function desktopSpanToMinutes(desktopDurationMs: number | undefined): number | u
  * trying. A clean pass files nothing here — feedback exists to carry findings, and a run without
  * any falls back to an honest live summary in the draft layer instead of a template.
  *
- * Everything quoted is already scrub+redacted — `session.reason` passes through redactNarration in
- * the loop before it ever lands on a trace — and passes redactText again here as defense-in-depth.
+ * Everything quoted is already scrub+redacted — participant messages and `session.reason` pass
+ * through redactNarration in the loop — and passes redactText again here as defense-in-depth.
  */
 export function participantFeedbackCandidates(args: {
   runId: string;

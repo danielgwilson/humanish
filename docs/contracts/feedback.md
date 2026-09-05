@@ -52,6 +52,20 @@ setup-quality gap, ceremonial/absent study quality, target-app blocker, or
 Humanish CLI blocker. The OSS
 meta-lab is one maintainer dogfood example, not the only candidate source.
 
+For completed computer-use sessions, participant-reported friction comes from
+the redacted closing report and observed-report clauses in earlier messages.
+Matching `stopWhen` or ending a dwell window does not discard an earlier
+report or change the successful completion verdict. Exact repeated reports
+appear once in the lane's candidate. Harness notices, reasoning, and observed
+page content do not become participant findings; quoted app copy and negated
+reports retain the existing exclusions. Code excerpts are treated as quoted
+material. Interim matching requires an observation-shaped clause and filters
+common plans, questions, and hypotheticals; a report followed by a retry plan
+can still qualify. This text
+heuristic does not establish that a reported defect is real or independently
+confirmed. A custom session's closing `reason` remains eligible even when it
+was not repeated in the message trace.
+
 ### `draft`
 
 Builds structured feedback from the strongest run candidate first. If no
