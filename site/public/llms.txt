@@ -45,6 +45,7 @@ only needs `humanish`.
 - Quickstart: https://humanish.dev/docs
 - Your own app: https://humanish.dev/docs/your-app
 - Results and feedback: https://humanish.dev/docs/read-results
+- Paired Save-button study: https://humanish.dev/docs/save-button-study
 - Budgets and privacy: https://humanish.dev/docs/budgets-and-privacy
 - Lab manifests: https://humanish.dev/docs/lab-manifests
 - Computer-use controls: https://humanish.dev/docs/computer-use
