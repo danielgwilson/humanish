@@ -75,13 +75,17 @@ export interface E2BNetworkOptions {
   allowOut?: string[];
   /** Denied traffic. `["0.0.0.0/0"]` with a populated allowOut is the deny-all-but shape. */
   denyOut?: string[];
+  /** Static per-host HTTPS header transforms (E2B network rules). Header values override the
+   *  outbound request's values. These may contain secrets: never persist or log this object.
+   *  This is a structural subset of the installed SDK's SandboxNetworkRules contract. */
+  rules?: Record<string, { transform?: { headers?: Record<string, string> } }[]>;
 }
 
 export interface E2BDesktopCreateOptions {
   apiKey: string;
   dpi?: number;
   envs?: Record<string, string>;
-  /** Absent means unrestricted egress, which is the historical behavior and stays the default. */
+  /** Routing and optional header transforms; absent allowOut/denyOut retains unrestricted egress. */
   network?: E2BNetworkOptions;
   lifecycle?: {
     onTimeout: "kill" | "pause";
