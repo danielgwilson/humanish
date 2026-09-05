@@ -4249,13 +4249,22 @@ function formatInitHuman(result: InitResult): string {
   const title = result.ok
     ? `humanish init ${result.mode}`
     : `humanish init ${result.mode} blocked`;
-  const lines = [
-    title,
-    `cwd: ${result.cwd}`,
-    "",
-    "changes:",
-    ...result.changes.map(formatInitChange)
-  ];
+  const lines = [title, `cwd: ${result.cwd}`];
+  if (result.ok && result.mode === "applied") {
+    // A successful setup should leave its next action on the first terminal screen.
+    // Dry-runs and refusals retain their full plan; JSON always retains every change.
+    const counts = new Map<InitChange["action"], number>();
+    for (const change of result.changes) {
+      counts.set(change.action, (counts.get(change.action) ?? 0) + 1);
+    }
+    const labels: Record<InitChange["action"], string> = {
+      create: "created", mkdir: "directories prepared", update: "updated", skip: "preserved"
+    };
+    lines.push("", `changes: ${[...counts].map(([action, count]) => `${count} ${labels[action]}`).join(", ")}`,
+      "Use humanish init --dry-run --json to inspect all files.");
+  } else {
+    lines.push("", "changes:", ...result.changes.map(formatInitChange));
+  }
 
   if (result.warnings.length > 0) {
     lines.push("", "warnings:", ...result.warnings.map((warning) => `- ${warning}`));

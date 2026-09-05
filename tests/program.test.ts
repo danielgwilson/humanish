@@ -279,6 +279,38 @@ describe("humanish CLI scaffold", () => {
     });
   });
 
+  it("keeps the next action visible after setup while JSON and dry-run retain the file inventory", async () => {
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app" })
+    }, async (cwd) => {
+      const plan = await runCli(["init", "--dry-run", "--cwd", cwd]);
+      expect(plan.stdout).toContain("humanish/personas/synthetic-new-user.yaml");
+      const applied = await runCli(["init", "--yes", "--cwd", cwd]);
+      expect(applied.exitCode).toBe(0);
+      const firstScreen = applied.stdout.split("\n").slice(0, 20).join("\n");
+      expect(firstScreen).toContain("humanish run first-run");
+      expect(firstScreen).toContain("evidence preview: no browser or model runs");
+      expect(applied.stdout).not.toContain("humanish/personas/synthetic-new-user.yaml");
+      const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
+      expect(JSON.parse(details.stdout).changes).toContainEqual(expect.objectContaining({
+        path: "humanish/personas/synthetic-new-user.yaml", action: "skip"
+      }));
+    });
+  });
+
+  it("keeps preservation warnings visible in compact setup output", async () => {
+    await withTempApp({
+      "package.json": JSON.stringify({ name: "fixture-app", scripts: { humanish: "custom command" } }),
+      "humanish/README.md": "# Existing harness\n"
+    }, async (cwd) => {
+      const result = await runCli(["init", "--yes", "--cwd", cwd]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Skipped existing humanish/README.md");
+      expect(result.stdout).toContain("Preserved existing script values");
+      expect(await readFile(path.join(cwd, "humanish/README.md"), "utf8")).toBe("# Existing harness\n");
+    });
+  });
+
   it("does not overwrite existing starter files or conflicting scripts", async () => {
     await withTempApp({
       "package.json": JSON.stringify({ name: "fixture-app", scripts: { humanish: "custom command" } }, null, 2),
