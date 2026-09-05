@@ -7,9 +7,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
-  type LabConfig
+  type LabConfig,
+  type LabRuntimeAuth
 } from "../src/lab-config.js";
 import { resolveTerminalPersona, runTerminalProductLab, type TerminalProductLabHooks } from "../src/e2b-terminal-lab.js";
+import type { E2BNetworkOptions } from "../src/e2b-desktop-launch.js";
+import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "../src/terminal-runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import { verifyRun } from "../src/run.js";
 
@@ -27,6 +30,7 @@ const FAKE_RUNTIME_KEY = "FAKEKEY-terminal-slice2-do-not-leak-1234567890";
 interface RecordedCreate {
   envs?: Record<string, string>;
   metadata?: Record<string, string>;
+  network?: E2BNetworkOptions;
 }
 interface RecordedRun {
   command: string;
@@ -37,6 +41,7 @@ interface RecordedRun {
 function makeFakeModule(opts: {
   codexBehavior: (cmd: string, run: RecordedRun) => { exitCode: number; stdout?: string; emit?: (onStdout: (d: string) => void) => void };
   creates: RecordedCreate[];
+  createError?: Error;
   runs: RecordedRun[];
   killed: string[];
   /** Records every Sandbox.list(id) call. Teardown must NEVER call it (by-id proof only, never
@@ -72,12 +77,13 @@ function makeFakeModule(opts: {
       // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts). The terminal
       // route never passes a template, but the fake must accept the overload to type-check.
       async create(
-        templateOrOptions: string | { envs?: Record<string, string>; metadata?: Record<string, string> },
-        maybeOptions?: { envs?: Record<string, string>; metadata?: Record<string, string> }
+        templateOrOptions: string | RecordedCreate,
+        maybeOptions?: RecordedCreate
       ) {
         const options = typeof templateOrOptions === "string" ? (maybeOptions ?? {}) : templateOrOptions;
         counter += 1;
-        opts.creates.push({ ...(options.envs ? { envs: options.envs } : {}), ...(options.metadata ? { metadata: options.metadata } : {}) });
+        opts.creates.push({ ...(options.envs ? { envs: options.envs } : {}), ...(options.metadata ? { metadata: options.metadata } : {}), ...(options.network ? { network: options.network } : {}) });
+        if (opts.createError) throw opts.createError;
         const sandboxId = `fake-sandbox-${counter}`;
         return {
           sandboxId,
@@ -168,7 +174,7 @@ function nonceFrom(command: string): string {
   return m?.[1] ?? "unknown-nonce";
 }
 
-function liveConfig(overrides?: { caps?: Record<string, number> | null }): LabConfig {
+function liveConfig(overrides?: { caps?: Record<string, number> | null; runtimeAuth?: LabRuntimeAuth; egressAllow?: string[] }): LabConfig {
   const raw: Record<string, unknown> = {
     schema: LAB_CONFIG_SCHEMA,
     id: "terminal-live-proof",
@@ -178,7 +184,7 @@ function liveConfig(overrides?: { caps?: Record<string, number> | null }): LabCo
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] }
     },
     actors: [{ type: "codex-exec", persona: "autonomous-creative-agent", mission: "Discover widgetsmith-cli from public surfaces." }],
-    execution: { target: "e2b-terminal", runtimeAuth: "openai-env", timeoutMs: 600_000, terminal: { transport: "exec-stream", stdin: "disabled" } },
+    execution: { target: "e2b-terminal", runtimeAuth: overrides?.runtimeAuth ?? "openai-env", ...(overrides?.egressAllow ? { egressAllow: overrides.egressAllow } : {}), timeoutMs: 600_000, terminal: { transport: "exec-stream", stdin: "disabled" } },
     scenario: { mode: "live", ...(overrides && "caps" in overrides ? (overrides.caps ? { caps: overrides.caps } : {}) : { caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } }) },
     policies: { allowPrivateRepoAccess: false, allowProviderCredentials: false, allowPaymentCredentials: false, allowGitHubMutation: false }
   };
@@ -202,6 +208,71 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   let cwd: string;
   beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-live-")); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+  it.each([undefined, ["api.openai.com", "example.com"]])("openai-egress keeps the raw key outside sandbox commands and preserves routing %j", async (egressAllow) => {
+    const creates: RecordedCreate[] = [];
+    const runs: RecordedRun[] = [];
+    const killed: string[] = [];
+    const config = liveConfig({ runtimeAuth: "openai-egress", ...(egressAllow ? { egressAllow } : {}) });
+    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, hooks: {
+      env: { ...baseEnv(), OPENAI_BASE_URL: "https://example.com/custom-provider" },
+      now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed, codexBehavior: (cmd) => ({
+        exitCode: 0,
+        // Output echoes a known value to exercise literal scrubbing even with external placement.
+        stdout: `I used the public docs. echoed value: ${FAKE_RUNTIME_KEY}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`
+      }) })
+    } });
+    expect(result.ok).toBe(true);
+    expect(creates).toHaveLength(1);
+    expect(creates[0]?.envs).toBeUndefined();
+    expect(creates[0]?.network).toEqual({
+      ...(egressAllow ? { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] } : {}),
+      rules: { "api.openai.com": [{ transform: { headers: { Authorization: `Bearer ${FAKE_RUNTIME_KEY}` } } }] }
+    });
+    expect(JSON.stringify(creates[0]?.metadata)).not.toContain(FAKE_RUNTIME_KEY);
+    const codexRun = runs.find((r) => r.command.includes("codex"));
+    expect(codexRun?.envs).toEqual({ CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE, HUMANISH_STUDY_PARTICIPANT: "1" });
+    expect(codexRun?.command).toContain(`-c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`);
+    expect(JSON.stringify(runs)).not.toContain(FAKE_RUNTIME_KEY);
+    expect(JSON.stringify(runs)).not.toContain("https://example.com/custom-provider");
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json", "events.ndjson", "review.json", "review.md"]) {
+      expect(await readFile(path.join(runDir, file), "utf8")).not.toContain(FAKE_RUNTIME_KEY);
+    }
+    const trace = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
+    expect(trace.capabilities.keyPlacement).toBe("external");
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.redaction.notes).toContain("Runtime auth openai-egress");
+    expect(bundle.redaction.notes).toContain("spendable OpenAI proxy capability");
+    expect(result.warnings.join("\n")).toContain("extra provider calls may be absent");
+    expect(killed).toHaveLength(1);
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it("scrubs the external runtime key from a sandbox-creation failure", async () => {
+    const creates: RecordedCreate[] = [];
+    const runs: RecordedRun[] = [];
+    const killed: string[] = [];
+    const result = await runTerminalProductLab({ cwd, config: liveConfig({ runtimeAuth: "openai-egress" }), dryRun: false, open: false, hooks: {
+      env: baseEnv(), now: () => 1_000,
+      loadModule: async () => makeFakeModule({ creates, runs, killed,
+        createError: new Error(`request rejected: Authorization: Bearer ${FAKE_RUNTIME_KEY}`),
+        codexBehavior: () => { throw new Error("must not execute"); }
+      })
+    } });
+    expect(result.ok).toBe(false);
+    expect(JSON.stringify(result)).not.toContain(FAKE_RUNTIME_KEY);
+    expect(runs).toHaveLength(0);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json", "events.ndjson", "review.json", "review.md"]) {
+      expect(await readFile(path.join(runDir, file), "utf8")).not.toContain(FAKE_RUNTIME_KEY);
+    }
+    expect(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8")).toContain("[REDACTED_SECRET]");
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.redaction.notes).toContain("Codex was not launched.");
+    expect(bundle.redaction.notes).not.toContain("Codex received");
+  });
 
   it("injects the runtime key ONLY command-scoped, never into Sandbox.create or metadata or the bundle", async () => {
     const creates: RecordedCreate[] = [];

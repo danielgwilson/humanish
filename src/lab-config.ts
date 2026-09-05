@@ -511,12 +511,12 @@ export interface LabExecutionTerminal {
 }
 
 /**
- * The runtime-auth channel for the in-sandbox agent (terminal route). "openai-env" declares that
- * OPENAI_API_KEY/CODEX_API_KEY is the runtime key — to be injected ONLY into the command-scoped
- * `codex` invocation (keyPlacement "in-sandbox-command-scoped"), never sandbox-global. The live
- * engine enforces that placement before sandbox creation; dry-run only records names.
+ * The terminal agent's runtime-auth channel. "openai-env" (the default) passes the raw runtime
+ * key command-scoped. "openai-egress" keeps it in an E2B outbound header transform for the default
+ * OpenAI endpoint and passes an inert placeholder to Codex. The latter still gives every sandbox
+ * process a spendable OpenAI proxy capability; it is not a spend cap or an egress restriction.
  */
-export type LabRuntimeAuth = "openai-env";
+export type LabRuntimeAuth = "openai-env" | "openai-egress";
 
 export type LabDesktopBrowser = "default" | "chrome" | "chromium" | "firefox";
 
@@ -614,17 +614,14 @@ export interface LabExecution {
   caps?: LabScenarioCaps;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: LabExecutionTerminal;
-  /** `terminal-product` route: the in-sandbox agent's runtime-auth channel. Live runs inject the
-   *  key command-scoped; dry-runs record names only. Inert on other routes. */
+  /** `terminal-product` route: runtime key placement, defaulting to openai-env. openai-egress
+   *  uses an external header transform; dry-runs record declarations only. Inert on other routes. */
   runtimeAuth?: LabRuntimeAuth;
   /**
-   * `terminal-product` route: hosts the sandbox may reach. Declaring it denies all other egress.
-   *
-   * The lane injects the operator's runtime LLM key command-scoped, and codex spawns the
-   * participant's shell as a child, so the participant inherits that key and can spend it against
-   * any endpoint it likes, outside every declared cap (#538). An egress allowlist is the bound
-   * that does not depend on the participant's cooperation: it cannot reach an endpoint that is
-   * not on this list.
+   * `terminal-product` route: outbound routing allowlist passed to E2B with a deny-all fallback.
+   * Domain filtering is a routing control, not strict destination isolation on shared hosting.
+   * It does not constrain spending through an allowed runtime provider (#538), including when
+   * openai-egress keeps the raw runtime key outside the sandbox.
    *
    * Absent means unrestricted, which is the historical behavior and stays the default, because a
    * wrong host list fails studies in ways that look like product bugs. Opt in per lab.
@@ -2826,8 +2823,8 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
   if (terminalResult.value) execution.terminal = terminalResult.value;
   if (raw.runtimeAuth !== undefined) {
     const runtimeAuth = str(raw.runtimeAuth);
-    if (runtimeAuth !== "openai-env") {
-      return invalid("`execution.runtimeAuth` must be openai-env (the in-sandbox agent's command-scoped runtime-auth channel).");
+    if (runtimeAuth !== "openai-env" && runtimeAuth !== "openai-egress") {
+      return invalid("`execution.runtimeAuth` must be openai-env or openai-egress (the terminal agent's runtime-auth channel).");
     }
     execution.runtimeAuth = runtimeAuth;
   }

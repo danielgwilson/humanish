@@ -1,6 +1,6 @@
 # Terminal-product real-agent lane (issue #154)
 
-Date: 2026-06-16 (current-state note updated 2026-07-14)
+Date: 2026-06-16 (runtime-auth contract updated 2026-09-05)
 
 Status: live terminal-product route shipped in `0.8.0`. The in-sandbox backend,
 command-scoped credential placement, exact-id cleanup proof, an interventions ledger,
@@ -16,8 +16,8 @@ for the full slice plan and the safety contract.
 
 A lab lane for **terminal-product real-agent studies**: a real autonomous coding
 agent (Codex) discovering and using a CLI/product from its **public surfaces
-only**, running **inside an E2B shell** with command-scoped runtime auth, capped
-at no-spend, emitting durable terminal/substrate/cost/no-spend/cleanup/
+only**, running **inside an E2B shell** with declared runtime-auth placement and
+spend/time caps, emitting durable terminal/substrate/cost/no-spend/cleanup/
 intervention proof that verifies fail-closed. This is distinct from the browser
 lanes: it is not testing whether a browser can click a local web app — it tests
 whether an autonomous agent can discover and use a CLI/product surface from
@@ -36,7 +36,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `subject.product` | `{ name, publicSurfaces[] }` — the only world the agent sees |
 | `execution.target` | `e2b-terminal` (or absent → implied) |
 | `execution.terminal` | `{ transport: exec-stream, stdin: disabled }` |
-| `execution.runtimeAuth` | `openai-env` (names-only durable evidence) |
+| `execution.runtimeAuth` | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence |
 | `scenario.caps` | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget |
 | `policies` | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
 | `actors[0].type` | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`) |
@@ -46,9 +46,77 @@ Routing is `routesToTerminalProduct(config)` — the single source of truth that
 both `selectLabBackend` and the forward-declared-warning logic consume, mirroring
 `routesToComputerUse` / `routesToScriptedBrowser`.
 
-## The safety contract (the lane's reason to exist)
+## Runtime auth: raw-key placement and remaining provider access
 
-This lane **inverts** the credential-placement default of every other E2B route.
+`execution.runtimeAuth: openai-env` remains the compatible default. It supplies
+`CODEX_API_KEY` command-scoped to Codex, with `OPENAI_API_KEY` also supplied when
+that was the host source. Child processes can read and use the raw key.
+
+Opt in to keeping the raw key outside the sandbox:
+
+```yaml
+execution:
+  target: e2b-terminal
+  runtimeAuth: openai-egress
+  terminal:
+    transport: exec-stream
+    stdin: disabled
+```
+
+`openai-egress` resolves the same host key (`CODEX_API_KEY` first, otherwise
+`OPENAI_API_KEY`) and supplies it only to E2B's host-side network rule for
+`api.openai.com`. The rule sets the HTTPS `Authorization` header. The sandbox's
+Codex command receives the nonsecret value `humanish-egress-auth-placeholder`
+under `CODEX_API_KEY`, plus `CODEX_CA_CERTIFICATE` pointing at E2B's existing
+system CA bundle (`/etc/ssl/certs/ca-certificates.crt`) so TLS verification trusts
+the platform's proxy CA. Humanish does not disable TLS verification or download
+an unauthenticated CA. The sandbox receives no raw runtime key in command env, sandbox env,
+files, metadata, or captured evidence. The host still scrubs the actual key from
+output and errors, including errors during sandbox creation.
+
+This mode supports the default OpenAI endpoint only. Humanish explicitly sets
+Codex's built-in `openai` provider and `openai_base_url` to
+`https://api.openai.com/v1` for that invocation. It does not support a custom
+provider, proxy base URL, or regional endpoint under this mode. `openai-env`
+retains its existing command behavior. E2B header rules are a public-beta
+capability; the local contract is checked against the installed Desktop SDK
+(`@e2b/desktop` 2.3.3, resolving `e2b` 2.46.1).
+
+**The sandbox still has a spendable OpenAI proxy capability.** Every process can
+make authenticated requests to that host from sandbox creation until teardown,
+including bootstrap/setup commands and commands launched outside Codex. Calls
+made outside Codex may be absent from its usage ledger. This mode does not impose
+a provider-side spending limit, restrict models/API paths, or make
+`scenario.caps.maxUsd` a preventive provider budget. A hard provider budget needs
+a separately enforced control; do not infer zero spend from an unmeasured ledger
+line.
+
+Public internet discovery stays unrestricted unless the lab already declares
+`execution.egressAllow`. The mode preserves that allowlist and its deny-all
+fallback without adding hosts. If an allowlist omits `api.openai.com`, provider
+requests can fail. E2B domain allowlists are routing controls rather than strict
+destination isolation on shared infrastructure. An existing exact OpenAI host
+rule is rejected instead of silently overwritten.
+
+Evidence records the selected auth mode and the residual proxy capability.
+Resolved live actor traces use `keyPlacement: external` in `openai-egress`; the
+actor registry continues to describe the default `in-sandbox-command-scoped`
+placement. Dry runs record declarations and prove no live proxy behavior.
+
+The upstream contracts are documented in [E2B internet access and network
+rules](https://docs.e2b.dev/network/internet-access) and [Codex advanced
+configuration](https://developers.openai.com/codex/config-advanced),
+[Codex custom CA bundles](https://developers.openai.com/codex/auth#custom-ca-bundles),
+and [E2B's CA installer](https://github.com/e2b-dev/infra/blob/main/packages/envd/internal/host/cacerts.go).
+E2B's installed
+SDK documents that transformed headers override request headers. Deterministic
+request/redaction tests do not establish live wire behavior. The [2026-09-05
+transport receipt](../goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
+records the controlled live header/auth checks and their scope.
+
+## The original command-scoped safety contract
+
+The default mode **inverts** the credential-placement default of every other E2B route.
 On the computer-use route the model's key stays *outside* the sandbox; here the
 agent-under-test runs *inside* with a real `OPENAI_API_KEY`/`CODEX_API_KEY` and
 is **presumed exfiltratable**. The doctrine (invariants-and-defaults.md, the

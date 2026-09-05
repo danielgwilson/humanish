@@ -1,5 +1,5 @@
 // The terminal-product lab backend: a real autonomous agent (Codex) studying a CLI/product from
-// PUBLIC SURFACES ONLY, running INSIDE an E2B shell with command-scoped runtime auth, capturing
+// PUBLIC SURFACES ONLY, running INSIDE an E2B shell with explicit runtime-auth placement, capturing
 // its non-interactive exec output (stdin disabled) as a redacted event stream + normalized
 // transcript, capped at no-spend, emitting durable terminal/substrate/cost/no-spend/cleanup/
 // intervention proof. Mirrors cua-actor-lab.ts / scripted-browser-lab.ts.
@@ -12,10 +12,10 @@
 //
 // THE SAFETY CONTRACT (docs/goals/terminal-product-lane/goal.md) is enforced BY CONSTRUCTION here
 // and CHECKED by the verifier (run.ts validateTerminalProductEvidence):
-//   1. COMMAND-SCOPED KEY. The runtime LLM key is injected ONLY into the per-command `envs` of the
-//      `codex exec` invocation (commands.run({envs})), NEVER Sandbox.create({envs}) — driven off
-//      the registered actor's keyPlacement: "in-sandbox-command-scoped" capability (engine-
-//      enforced: a terminal actor lacking that metadata FAILS CLOSED before any sandbox exists).
+//   1. EXPLICIT KEY PLACEMENT. openai-env (default) injects the raw runtime key command-scoped,
+//      NEVER Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
+//      header transform and passes an inert command placeholder. The proxy is spendable by every
+//      sandbox process from creation; this protects the raw key, not provider spending.
 //   2. FAIL-CLOSED CAP. The live key is never exercised without scenario.caps in force: maxUsd
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).
 //   3. PUBLIC SURFACES ONLY. The mission references only subject.product.publicSurfaces + the
@@ -50,7 +50,8 @@ import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunSt
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
-import type { LabConfig, LabScenarioCaps } from "./lab-config.js";
+import { buildOpenAiEgressNetwork, E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "./terminal-runtime-auth.js";
+import type { LabConfig, LabScenarioCaps, LabRuntimeAuth } from "./lab-config.js";
 import {
   isSandboxNotFoundError,
   loadE2BDesktopModule,
@@ -113,7 +114,8 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 // The runtime-bootstrap step (ensure Node/npm) can run an apt-get install; the SDK's commands.run
 // timeoutMs default (60s) is far too short for that, so this step gets an explicit generous budget.
 const RUNTIME_BOOTSTRAP_TIMEOUT_MS = 300_000;
-// UNKEYED (no envs) shell command that ensures Node/npm are present before the keyed codex exec.
+// No runtime env: ensures Node/npm are present before Codex. In openai-egress the proxy is
+// already available to every process from sandbox creation.
 // Reuses the oss-meta-lab.ts ensure_node() shape: check node's major version, else install
 // Node 22 via NodeSource plus passwordless sudo (the stock @e2b/desktop image ships neither codex
 // nor a recent Node, per issue #159). A final presence check makes the whole command exit non-zero
@@ -180,7 +182,7 @@ export interface TerminalProductLabHooks {
   /**
    * The operator environment the lane reads the runtime key from (and from which it asserts no
    * banned credential is requested). Defaults to process.env. The runtime key is injected ONLY
-   * into the command-scoped `codex` invocation — NEVER Sandbox.create envs (the credential
+   * into command-scoped `codex` env or an external header transform — NEVER Sandbox.create envs (the credential
    * boundary); tests plant a fake key here and assert it never reaches metadata/global env/artifacts.
    */
   env?: Record<string, string | undefined>;
@@ -807,23 +809,18 @@ function roundUsd(value: number): number {
 }
 
 /**
- * Build the per-command runtime-auth env from a DENY-BY-DEFAULT ALLOWLIST containing ONLY the
- * declared runtime key (safety contract item 4). The key NAME is derived from the actor's
- * keyPlacement capability plus the declared runtimeAuth channel, not a hardcoded string the caller
- * can widen. Banned credential names (GitHub/payment/deploy/db/media) are excluded by construction
- * AND guarded: if a banned name is ever requested the lane fails closed. Returns the allowlisted
- * env (values from `env`) and the resolved key name, or a structured failure.
- *
- * Engine-enforced placement (safety contract item 1): the key is only ever returned as a
- * COMMAND-scoped env here; the caller passes it to commands.run({envs}), never Sandbox.create.
+ * Resolve the runtime key on the host. Legacy openai-env passes it command-scoped; openai-egress
+ * returns an inert command env while retaining the actual value for the external transform and
+ * literal redaction. Only CODEX_API_KEY/OPENAI_API_KEY are accepted as sources. No other operator
+ * credential is forwarded. The real value must never be logged or persisted in either mode.
  */
-function buildCommandScopedRuntimeEnv(args: {
-  /** The runtimeAuth channel the lab declared ("openai-env"), or undefined if absent. */
-  runtimeAuth: string | undefined;
+function buildRuntimeAuth(args: {
+  /** Undefined retains the historical openai-env default. */
+  runtimeAuth: LabRuntimeAuth | undefined;
   /** The operator environment the key value is read from (process.env or a test fake). */
   env: Record<string, string | undefined>;
 }):
-  | { ok: true; envs: Record<string, string>; keyName: string; keyValue: string }
+  | { ok: true; mode: LabRuntimeAuth; envs: Record<string, string>; keyName: string; keyValue: string }
   | { ok: false; code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"; message: string } {
   // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key SOURCE
   // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
@@ -856,7 +853,7 @@ function buildCommandScopedRuntimeEnv(args: {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
-      message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the value is injected ONLY into the command-scoped codex invocation and is never persisted).`
+      message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`
     };
   }
   const keyValue = args.env[keyName] as string;
@@ -864,10 +861,15 @@ function buildCommandScopedRuntimeEnv(args: {
   // GITHUB_TOKEN/GH_TOKEN, no payment/deploy/db/media key, excluded by construction. When the
   // SOURCE was OPENAI_API_KEY, the SAME value is also injected as CODEX_API_KEY so codex exec's
   // documented single-invocation auth channel is populated either way (see the comment above).
-  const envs: Record<string, string> =
-    keyName === "OPENAI_API_KEY" ? { CODEX_API_KEY: keyValue, OPENAI_API_KEY: keyValue } : { [keyName]: keyValue };
+  const mode = args.runtimeAuth ?? "openai-env";
+  const envs: Record<string, string> = mode === "openai-egress"
+    // Codex documents this verified-TLS trust channel. The stock image's default OpenSSL CA
+    // file can be absent even though E2B has installed its proxy CA in the system bundle.
+    ? { CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE }
+    : keyName === "OPENAI_API_KEY" ? { CODEX_API_KEY: keyValue, OPENAI_API_KEY: keyValue } : { [keyName]: keyValue };
   return {
     ok: true,
+    mode,
     envs,
     keyName,
     keyValue
@@ -948,16 +950,15 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const now = hooks.now ?? (() => Date.now());
   const nowIso = (): string => new Date(now()).toISOString();
 
-  // --- Safety contract item 1: ENGINE-ENFORCED command-scoped key placement. ---
-  // Drive the placement off the registered actor's keyPlacement CAPABILITY, not a code convention.
-  // A terminal actor that does not declare in-sandbox-command-scoped placement FAILS CLOSED here,
-  // before any sandbox exists — the engine refuses to guess where the key goes.
+  // Check the registered terminal actor's default placement contract before launching. The
+  // explicit openai-egress mode overrides the resolved trace's placement to external; registry
+  // metadata continues to describe the compatible openai-env default.
   const descriptor = actorRegistry[descriptorId as keyof typeof actorRegistry];
   const keyPlacement = descriptor?.capabilities.keyPlacement;
   if (keyPlacement !== "in-sandbox-command-scoped") {
     return failed(
       "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID",
-      `Terminal actor "${descriptorId}" must declare keyPlacement "in-sandbox-command-scoped" for the live lane (got "${String(keyPlacement)}"). The engine routes the runtime key by this capability; without it the lane cannot place the key safely and fails closed.`,
+      `Terminal actor "${descriptorId}" must declare keyPlacement "in-sandbox-command-scoped" for the live lane (got "${String(keyPlacement)}"). The engine requires this registered default before applying the declared runtime-auth mode.`,
       { actor: descriptorId }
     );
   }
@@ -969,7 +970,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0) {
     return failed(
       "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
-      "A live terminal-product run passes a real key to the in-sandbox agent command and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
+      "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
       { actor: descriptorId }
     );
   }
@@ -985,7 +986,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   }
 
   // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
-  const runtimeEnv = buildCommandScopedRuntimeEnv({ runtimeAuth: config.execution?.runtimeAuth, env });
+  const runtimeEnv = buildRuntimeAuth({ runtimeAuth: config.execution?.runtimeAuth, env });
   if (!runtimeEnv.ok) {
     return failed(runtimeEnv.code, runtimeEnv.message, { actor: descriptorId });
   }
@@ -1082,49 +1083,51 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   try {
     sandboxModule = await (hooks.loadModule ?? loadE2BDesktopModule)();
     await validatePreparedRunArtifactPaths(runPaths);
-    // SAFETY CONTRACT ITEM 1 (enforced HERE): Sandbox.create carries metadata (positive allowlist)
-    // + lifecycle kill-on-timeout, and DELIBERATELY NO `envs` — the runtime key is NEVER passed
-    // sandbox-global. It is injected ONLY into the per-command codex `envs` below.
+    // No sandbox-global env in either mode. In openai-egress, only this host-side SDK request
+    // carries the real runtime key; participant commands receive an inert placeholder. The proxy
+    // capability is available from sandbox creation, including during bootstrap/product setup.
+    const routing = egressAllow === undefined ? undefined : { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] };
+    const network = runtimeEnv.mode === "openai-egress"
+      ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
+      : routing;
     sandbox = await sandboxModule.Sandbox.create({
       apiKey: e2bApiKey,
       requestTimeoutMs,
       timeoutMs: sandboxTimeoutMs,
       metadata,
-      // Egress allowlist when the lab declares one (#538). This is the ONE bound on the injected
-      // runtime key that does not depend on the participant's cooperation: codex spawns the
-      // participant's shell as a child, so it inherits that key and can spend it anywhere it can
-      // reach. It cannot reach a host that is not on this list. Absent means unrestricted, the
-      // historical default, because a wrong host list fails studies in confusing ways.
-      ...(egressAllow === undefined
-        ? {}
-        : { network: { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] } }),
+      ...(network === undefined ? {} : { network }),
       lifecycle: { onTimeout: "kill" }
-      // NOTE: no `envs` key — see the credential boundary above. (A sandbox-global key would leak
-      // into every process in the sandbox; command-scoped bounds it to the codex invocation.)
     });
     await validatePreparedRunArtifactPaths(runPaths);
     sandboxId = sandbox.sandboxId;
     // #358 salvage: durable id receipt the moment the sandbox exists (reclaim by exact id).
     await appendSandboxReceipt(runPaths, { at: nowIso(), laneId: "terminal", sandboxId, timeoutMs: sandboxTimeoutMs });
-    recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env (runtime key is command-scoped).`);
+    recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.`);
     // The allowlist is evidence: a reader of the ledger can see exactly what the participant was
     // able to reach, without the ledger carrying any secret.
     recordLifecycle(
       "terminal-lab.egress.policy",
       egressAllow === undefined
-        ? "Egress UNRESTRICTED (no execution.egressAllow declared): the injected runtime key can reach any host."
-        : `Egress DENIED except ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}.`
+        ? "Egress UNRESTRICTED (no execution.egressAllow declared)."
+        : `Egress routing allowlist: ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}; deny-all fallback. Domain routing is not strict destination isolation on shared infrastructure.`
     );
 
-    // Readiness: a tiny in-sandbox probe (no key) confirms the shell answers before the keyed run.
+    recordLifecycle("terminal-lab.runtime-auth", runtimeEnv.mode === "openai-egress"
+      ? "Runtime auth openai-egress: raw key remains outside the sandbox in the api.openai.com HTTPS Authorization transform; Codex receives an inert CODEX_API_KEY placeholder and the default OpenAI endpoint. Every sandbox process, including bootstrap/setup, can spend via this proxy; no added routing restriction or provider spending limit."
+      : `Runtime auth openai-env: raw key from ${runtimeEnv.keyName} is passed command-scoped to Codex and inherited by its child processes.`);
+    if (runtimeEnv.mode === "openai-egress") {
+      warnings.push("openai-egress keeps the raw runtime key outside the sandbox, but every sandbox process can spend through the api.openai.com proxy from creation until teardown. It adds no egress restriction or provider-enforced budget; extra provider calls may be absent from the Codex usage ledger.");
+    }
+
+    // Readiness: a tiny probe receives no runtime env; openai-egress's proxy is already available.
     const ready = await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR} && echo HUMANISH_SHELL_READY`, { requestTimeoutMs });
     recordLifecycle("terminal-lab.sandbox.ready", `Shell readiness probe exit=${ready.exitCode ?? "null"}; workdir ${SANDBOX_WORKDIR} prepared.`);
 
-    // --- Runtime bootstrap: ensure Node/npm are present (UNKEYED, no envs) before the keyed exec. ---
+    // --- Runtime bootstrap: no runtime env; openai-egress proxy capability is already available. ---
     // The stock @e2b/desktop image does not ship a recent Node (issue #159); codex is now invoked
     // via `npx` (buildCodexExecCommand), which needs Node/npm on PATH. Reuses the proven
     // oss-meta-lab.ts ensure_node() shape: a node major-version check, else install Node 22 via
-    // NodeSource plus passwordless sudo. UNKEYED: no runtime key touches this step. An apt-get
+    // NodeSource plus passwordless sudo. No raw runtime key touches this step. An apt-get
     // install can exceed the SDK's default 60s commands.run timeout, so this step gets an
     // explicit, generous timeoutMs (requestTimeoutMs is passed through unchanged, as everywhere else).
     const bootstrapStartedAt = now();
@@ -1157,7 +1160,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       sessionError = sanitize(bootstrapError);
       sessionReason = `runtime bootstrap could not ensure Node/npm before codex exec: ${sessionError}`;
     } else if (await (async (): Promise<boolean> => {
-      // --- Optional product setup (UNKEYED, no envs), before the keyed exec. ---
+      // --- Optional product setup (no runtime env), before the Codex exec. ---
       // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
       // and a failure fails the lane closed rather than handing the agent a half-built world. It
       // exists so a study can put the participant IN a prepared project — asking an agent what
@@ -1196,7 +1199,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
           uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD='${destination.replace(/'/g, "'\\''")}'; `;
           recordLifecycle(
             "terminal-lab.product.uploaded",
-            `Uploaded ${info.size} bytes to the sandbox in ${Math.max(0, now() - uploadStartedAt)}ms (UNKEYED).`
+            `Uploaded ${info.size} bytes to the sandbox in ${Math.max(0, now() - uploadStartedAt)}ms (no runtime env; declared egress auth may already be available).`
           );
         } catch (error) {
           sessionStatus = "failed";
@@ -1227,7 +1230,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
         "terminal-lab.product.prepared",
         setupError
           ? `Product setup FAILED after ${Math.max(0, now() - setupStartedAt)}ms: ${sanitize(setupError)}`
-          : `Product setup completed in ${Math.max(0, now() - setupStartedAt)}ms (UNKEYED).`
+          : `Product setup completed in ${Math.max(0, now() - setupStartedAt)}ms (no runtime env; declared egress auth may already be available).`
       );
       if (setupError) {
         sessionStatus = "failed";
@@ -1239,21 +1242,21 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       return true;
     })()) {
       // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
-      // The runtime key is injected ONLY here, command-scoped (safety contract item 1). stdin is
+      // openai-env passes the real key here; openai-egress passes an inert placeholder. stdin is
       // never wired (safety contract item 7) — commands.run takes no stdin channel. The command's
       // wall-clock is bounded by maxMinutes (safety contract item 2): commands.run timeoutMs +
       // an injected-clock guard so a mock/real run that exceeds it is killed and fails closed.
-      const codexCommand = buildCodexExecCommand({ workdir: SANDBOX_WORKDIR, prompt: composedPrompt });
+      const codexCommand = buildCodexExecCommand({ workdir: SANDBOX_WORKDIR, prompt: composedPrompt, runtimeAuth: runtimeEnv.mode });
       const commandDigest = digestText(codexCommand);
       const startedAt = now();
-      recordLifecycle("terminal-lab.exec.started", `Launching codex exec (command-scoped runtime key ${runtimeEnv.keyName}); wall-clock bound ${wallClockMs}ms.`);
+      recordLifecycle("terminal-lab.exec.started", `Launching codex exec (runtime auth ${runtimeEnv.mode}; command env names: ${Object.keys(runtimeEnv.envs).join(", ")}); wall-clock bound ${wallClockMs}ms.`);
 
       let exitCode: number | undefined;
       let runError: string | undefined;
       try {
         const result = await runWithWallClock(
           sandbox.commands.run(codexCommand, {
-            // <-- THE command-scoped key channel. The ONLY place the key goes. The participant
+            // The selected command env (raw key or inert placeholder). The participant
             // marker rides the same command: humanish telemetry from inside a study reads as a new
             // adopter otherwise. #546 added the flag and nothing set it; the 0.66.0 dogfood
             // participant's twelve commands arrived unmarked.
@@ -1357,6 +1360,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     terminalEvents,
     commandLog,
     transcriptTail: tailOf(normalizedTranscript),
+    runtimeAuth: runtimeEnv.mode,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage })
   });
 
@@ -1432,6 +1436,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     publicSurfaces: product.publicSurfaces,
     caps,
     runtimeAuthKeyName: runtimeEnv.keyName,
+    runtimeAuth: runtimeEnv.mode,
     policies: {
       allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
       allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
@@ -1863,7 +1868,7 @@ async function runWithWallClock<T>(
 }
 
 /** Build the in-sandbox `codex exec` command (non-interactive, JSON, stdin disabled by mechanism). */
-function buildCodexExecCommand(args: { workdir: string; prompt: string }): string {
+function buildCodexExecCommand(args: { workdir: string; prompt: string; runtimeAuth: LabRuntimeAuth }): string {
   // The prompt is passed via a heredoc on stdin of a wrapper? NO, stdin is DISABLED (item 7), so
   // the prompt rides as the final positional arg, shell-quoted. codex exec --json runs once and
   // exits (no interactive loop). --skip-git-repo-check: the workdir is a fresh scratch dir.
@@ -1876,7 +1881,13 @@ function buildCodexExecCommand(args: { workdir: string; prompt: string }): strin
   // The E2B sandbox is the trust boundary (the disposable machine); the sibling
   // oss-meta-lab lane carries the same flag at both live call sites for the
   // same reason, and exec mode has no interactive approval channel at all.
-  return `cd ${args.workdir} && npm_config_update_notifier=false npx -y @openai/codex@latest exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check --json ${quotedPrompt}`;
+  // The egress transform protects only the default OpenAI host. Pin the effective built-in
+  // provider/base URL above config-file settings so setup-written custom endpoints cannot make
+  // this invocation silently claim protection for another provider. openai-env is unchanged.
+  const providerConfig = args.runtimeAuth === "openai-egress"
+    ? ` -c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`
+    : "";
+  return `cd ${args.workdir} && npm_config_update_notifier=false npx -y @openai/codex@latest exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check${providerConfig} --json ${quotedPrompt}`;
 }
 
 /** Compose the live prompt: PUBLIC surfaces + author mission + the verdict-nonce marker contract. */
@@ -1920,6 +1931,7 @@ function buildTerminalActorTrace(args: {
   terminalEvents: TerminalEventRecord[];
   commandLog: CommandLogRecord[];
   transcriptTail: string;
+  runtimeAuth: LabRuntimeAuth;
   /** Per-turn provider token usage parsed from the exec stream (#531). Absent when the stream
    *  carried no usage record, which stays distinct from a measured zero. */
   tokenUsage?: ActorTokenUsage;
@@ -1970,7 +1982,9 @@ function buildTerminalActorTrace(args: {
       terminalEvents: args.terminalEvents.length
     },
     items,
-    capabilities: TERMINAL_AGENT_CAPABILITIES
+    capabilities: args.runtimeAuth === "openai-egress"
+      ? { ...TERMINAL_AGENT_CAPABILITIES, keyPlacement: "external" }
+      : TERMINAL_AGENT_CAPABILITIES
   };
 }
 
@@ -2081,7 +2095,7 @@ export function buildTerminalProductBundle(args: {
       type: "terminal-lab.credentials.declared",
       // Names-only evidence (invariant 1): the runtime-auth CHANNEL is declared; no value is ever
       // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
-      message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; command-scoped injection is enforced by the shipped live engine, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
+      message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
       simId: "sim-001",
       streamId: "stream-001"
     },
@@ -2099,7 +2113,7 @@ export function buildTerminalProductBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.contract.ready",
-      message: "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and command-scoped credential boundary.",
+      message: "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
       simId: "sim-001",
       streamId: "stream-001"
     }
@@ -2187,6 +2201,7 @@ export function buildLiveTerminalProductBundle(args: {
   publicSurfaces: string[];
   caps?: LabScenarioCaps;
   runtimeAuthKeyName: string;
+  runtimeAuth?: LabRuntimeAuth;
   policies: {
     allowPrivateRepoAccess: boolean;
     allowProviderCredentials: boolean;
@@ -2335,7 +2350,7 @@ export function buildLiveTerminalProductBundle(args: {
     events: lifecycleEvents,
     redaction: {
       status: "passed",
-      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. The runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence. Subject provenance is UNPINNED (public-surface study).`
+      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`
     },
     artifacts: {
       run: "run.json",

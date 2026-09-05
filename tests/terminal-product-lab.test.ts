@@ -30,6 +30,7 @@ function terminalConfig(overrides?: {
   target?: "e2b-terminal" | undefined;
   publicSurfaces?: string[];
   caps?: Record<string, number>;
+  runtimeAuth?: string;
 }): unknown {
   return {
     schema: LAB_CONFIG_SCHEMA,
@@ -49,7 +50,7 @@ function terminalConfig(overrides?: {
     }],
     execution: {
       ...(overrides && "target" in overrides ? (overrides.target ? { target: overrides.target } : {}) : { target: "e2b-terminal" }),
-      runtimeAuth: "openai-env",
+      runtimeAuth: overrides?.runtimeAuth ?? "openai-env",
       timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" }
     },
@@ -105,6 +106,15 @@ describe("terminal actor registration + keyPlacement metadata", () => {
 // ---------------------------------------------------------------------------
 
 describe("terminal-product parse matrix", () => {
+  it("accepts opt-in openai-egress and rejects unknown runtime auth modes", () => {
+    const parsed = parseLabConfig(terminalConfig({ runtimeAuth: "openai-egress" }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.config.execution?.runtimeAuth).toBe("openai-egress");
+    const invalid = parseLabConfig(terminalConfig({ runtimeAuth: "custom-proxy" }));
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.error.message).toContain("openai-env or openai-egress");
+  });
+
   it("terminal-product + terminal actor parses, consumes product/caps/mission/runtimeAuth (no inert warnings), routes to terminal", () => {
     const parsed = parseLabConfig(terminalConfig());
     expect(parsed.ok).toBe(true);
