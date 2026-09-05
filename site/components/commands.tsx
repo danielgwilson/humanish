@@ -10,8 +10,8 @@ export default function Commands() {
           <p>Scaffold a lab in YAML: personas, missions, and the app under test, either a repo to clone or a URL you own. <code>--yes</code> takes the defaults.</p>
         </div>
         <div className="cmd-row">
-          <code>humanish watch</code>
-          <p>Run every lane on hosted sandbox desktops. Your app does not need to be deployed or already running: the sandbox clones your repo, builds it, and serves it. Watch live in Observer; replay any lane after.</p>
+          <code>{"humanish watch <lab>"}</code>
+          <p>Run a live lab on hosted sandbox desktops. With a clone-based lab, your app does not need to be deployed or already running: the sandbox clones your repo, builds it, and serves it. Watch live in Observer; replay any lane after.</p>
         </div>
         <div className="cmd-row">
           <code>humanish verify</code>

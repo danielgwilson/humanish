@@ -23,13 +23,13 @@ export default function Hero() {
             <code><span className="ps">$</span>npx humanish<span className="caret" aria-hidden="true"></span></code>
             <CopyButton text="npx humanish" />
           </div>
-          <div className="c-bar"><span>First run, in order</span><CopyButton text={"npm i -D humanish\nnpx humanish init --yes\nnpx humanish watch"} label="copy all" /></div>
+          <div className="c-bar"><span>Keyless evidence preview</span><CopyButton text={"npm i -D humanish\nnpx humanish init --yes\nnpx humanish watch"} label="copy all" /></div>
           <div className="c-lines">
             <code>npm i -D humanish</code>
             <code>npx humanish init --yes</code>
             <code>npx humanish watch</code>
           </div>
-          <div className="c-foot">npx humanish prints the commands · MIT licensed</div>
+          <div className="c-foot">No actors or app interaction · no provider spend<br /><a href="/docs">Run a live study →</a></div>
         </div>
         <p className="agent-line rev" style={{ "--d": ".24s" } as React.CSSProperties}>For coding agents: <code>npx skills add danielgwilson/humanish</code></p>
       </div>

@@ -39,7 +39,7 @@ export default function Trust() {
           <a className="btn btn-primary" href="/docs">Get started</a>
           <a className="btn btn-ghost" href={GITHUB}>View on GitHub</a>
         </div>
-        <p className="cmdline rev" style={{ "--d": ".14s" } as React.CSSProperties}><code>npm i -D humanish</code> · <code>npx humanish init --yes</code> · <code>npx humanish watch</code> — then open <code>.humanish/</code> and read what your personas saw.</p>
+        <p className="cmdline rev" style={{ "--d": ".14s" } as React.CSSProperties}><code>npm i -D humanish</code> · <code>npx humanish init --yes</code> · <code>npx humanish watch</code> — open a keyless evidence preview in Observer. No actors run.</p>
       </div>
     </section>
   );
