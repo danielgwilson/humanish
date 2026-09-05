@@ -2263,8 +2263,38 @@ function stripNegatedReportLanguage(text: string): string {
 }
 
 function completionReasonContradictsGoal(reason: string): boolean {
-  const text = stripQuotedSpans(stripNegatedReportLanguage(stripNegatedNonBlockerPhrases(reason.toLowerCase())));
+  const text = stripQuotedSpans(stripNegatedReportLanguage(stripNegatedNonBlockerPhrases(stripCodeExamples(reason).toLowerCase())));
   return hasBlockerLanguage(text) || REPORTED_DEFECT_LANGUAGE.test(text);
+}
+
+/** Code/documentation excerpts are quoted material, not participant observations. */
+function stripCodeExamples(text: string): string {
+  return text
+    // Include an unterminated fence: copied text is not promoted just because its closing fence
+    // was omitted. Match the same marker so backticks inside a tilde fence cannot end it early.
+    .replace(/^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm, " ")
+    .replace(/(`+)[^`\n]*\1/g, " ");
+}
+
+/** Interim messages also contain plans and hypotheses. Admit observed-report clauses only;
+ * the established closing-report scan remains separate. This is a conservative text heuristic,
+ * not an assertion that every mention of a defect is evidence that one happened. */
+function interimMessageReportsFriction(message: string): boolean {
+  const prose = stripQuotedSpans(stripCodeExamples(message).toLowerCase());
+  const clauses = prose.split(/(?<=[.!?])\s+|[;\n]+|,\s*(?:but|so|however|yet)\s+|\s+so\s+(?=i\b|we\b)/);
+  return clauses.some((clause) => {
+    // A condition, question, intention, or conjecture does not assert an observed result.
+    // Clause splitting above keeps "Save did nothing, so I will try Enter" observable.
+    if (/\?|\b(?:if|unless|whether|maybe|perhaps|suppose|hypothetically|might|may|would|should)\b|\bcould\b(?!\s+not\b)/.test(clause)
+      || /\b(?:i|we)(?:['’]ll|\s+(?:will|plan|intend|want|hope|suspect|wonder))\b|\bgoing to\b|\blet['’]s\b/.test(clause)
+      || /\b(?:task|goal|mission|objective|plan)\s+(?:(?:is|was)\s+)?to\b|^\s*(?:check|test|look|checking|testing)\b/.test(clause)) return false;
+
+    // Accessibility by itself names a topic ("the accessibility guide is open"). A narrated
+    // defect still qualifies through "defects", "no visible focus", "not ... accessible", etc.
+    const observation = clause.replace(/\baccessibilit(?:y|ies)\b/g, " ");
+    const assertsObservation = /\b(?:is|are|was|were|has|had|did|does|shows?|showed|seems?|seemed|looks?|looked|found|noticed|saw|hit|encountered|felt|got|failed|returned|cannot|can['’]?t|unable|could not)\b|\b(?:overlap(?:ped|ping|s)?|truncat(?:ed|es)|cut off|nothing happened|no (?:visible )?focus)\b/.test(observation);
+    return assertsObservation && completionReasonContradictsGoal(observation);
+  });
 }
 
 /** The verdict scan (strict): like the friction scan, but resolved-arc segments are stripped
@@ -2393,18 +2423,19 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
     .filter((item) => item.kind === "message")
     .map((item) => item.text?.trim() ?? "")
     .filter((text) => text.length > 0);
+  // A custom session may keep its closing report only in reason even when earlier messages exist.
+  // Structured stop/dwell reasons are controller text and never enter this closing-report path.
+  const closingReport = traceHasStopWhenMatch(session) ? undefined : session.reason.trim();
   // One candidate per participant, with exact repeats removed (the closing report often repeats
-  // a prior turn). Scan each message separately so a quoted span cannot swallow another turn.
-  const reports = [...new Set(messages.filter(completionReasonContradictsGoal))];
+  // a prior turn). Earlier turns require observed-report clauses, not arbitrary defect mentions.
+  const reports = [...new Set(messages.filter((message) => message === closingReport
+    ? completionReasonContradictsGoal(message)
+    : interimMessageReportsFriction(message)))];
+  if (closingReport && completionReasonContradictsGoal(closingReport) && !reports.includes(closingReport)) {
+    reports.push(closingReport);
+  }
   if (reports.length > 0) return reports.join("\n\n");
-
-  // Older/custom sessions may expose only a closing reason. Preserve that contract, but never
-  // reinterpret a structured stop/dwell notice as participant text when no messages exist.
-  return messages.length === 0
-    && !traceHasStopWhenMatch(session)
-    && completionReasonContradictsGoal(session.reason)
-    ? session.reason
-    : undefined;
+  return undefined;
 }
 
 /**
