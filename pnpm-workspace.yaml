@@ -4,3 +4,6 @@ packages:
   - tui
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - fumadocs-core@16.15.7
+  - fumadocs-ui@16.15.7

@@ -737,6 +737,8 @@ pnpm humanish:lab:list
 
 ## Docs
 
+[Humanish docs](https://humanish.dev/docs) — runnable quickstart, your own app, results, budgets, and the generated [CLI reference](https://humanish.dev/docs/cli).
+
 Start with the current safety and capability state. Dated design documents may
 preserve historical mechanisms and carry explicit amendments near the top.
 

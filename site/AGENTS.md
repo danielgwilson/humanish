@@ -1,8 +1,9 @@
 # site/ — humanish.dev
 
 The humanish.dev landing page: a Next.js 16 (App Router, Turbopack) port of the approved
-single-page design. Two statically prerendered routes — `/` and `/failure-modes` (the
-cited limits page, built from the same band vocabulary) — with `robots.txt`,
+single-page design. Two marketing routes — `/` and `/failure-modes` (the
+cited limits page, built from the same band vocabulary) — plus Fumadocs 16 at
+`/docs`, with `robots.txt`,
 `sitemap.xml`, an OG image route, and `public/llms.txt` alongside.
 
 ## Commands
@@ -23,8 +24,9 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 
 ## Layout
 
+- `content/docs/` — the focused user guides in MDX; `cli.mdx` is generated from Commander metadata.
 - `app/` — root layout (fonts via next/font, theme-init inline script, JSON-LD),
-  the homepage, `failure-modes/page.tsx`, `robots.ts`, `sitemap.ts`,
+  the homepage, `failure-modes/page.tsx`, `docs/`, `api/search/`, `robots.ts`, `sitemap.ts`,
   `opengraph-image.tsx`, `icon.svg`
 - `components/` — server-rendered sections plus client islands: hero crowd canvas,
   resolve covers, pinned replay, theme toggle, copy buttons, scroll reveals
@@ -36,14 +38,18 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
   `https://humanish.dev/r/<name>.json`. `registry/css/` and `public/r/` are committed
   build outputs — regenerate with `registry:build`, never edit by hand
 - `public/study/` — the four Excalidraw study keyframes
-- `public/llms.txt` — hand-curated agent briefing
+- `public/llms.txt` — agent briefing with a generated command index
+- `lib/docs-source.ts` — Fumadocs MDX source shared by pages, navigation, sitemap, and search
+- `pnpm docs:generate` / `pnpm docs:check` (repo root) — generate/check CLI reference and llms command coverage; CI rejects drift
 
 ## Rules
 
-- Design and copy are locked; treat both as fixtures. Copy must stay verbatim,
-  punctuation included. Design tokens live once in `app/globals.css` (`:root` plus the
+- Existing marketing design and copy are fixtures. Preserve the approved hero and
+  section vocabulary. Documentation must match the current CLI and runnable examples.
+  Design tokens live once in `app/globals.css` (`:root` plus the
   two dark blocks) — both themes must stay in sync.
-- Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, and the shadcn
+- Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, Fumadocs UI/Core/MDX
+  (docs only), its schema peer, and the shadcn
   toolchain (`clsx`, `tailwind-merge`, `shadcn` as a dev dependency). No motion
   libraries, no committed font binaries.
 - `app/globals.css` stays the single source of truth for all styling. The registry's

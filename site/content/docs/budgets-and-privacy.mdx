@@ -1,0 +1,94 @@
+---
+title: Budgets and privacy
+description: Control study spend, understand where credentials live, and decide what evidence is safe to share.
+---
+
+Humanish is an MIT-licensed CLI. Live studies use your provider accounts; the hosted desktops and model calls have their own costs.
+
+## Set a study budget
+
+For the computer-use route, declare both the study budget and a per-participant backstop:
+
+```yaml
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+  caps:
+    maxTotalUsd: 4
+    maxUsd: 2
+```
+
+- `maxTotalUsd` tracks estimated model spend across the study.
+- `maxUsd` applies to each participant. Without a study cap, four participants at `$2` each can use about `$8` in model spend.
+- Caps are checked at turn boundaries. An in-flight model call and concurrent participants can cross a threshold before stopping. They are not hard provider billing limits.
+- E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.
+- A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
+
+The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task.
+
+```bash
+npx humanish stats --lab try-live --json
+```
+
+Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A no-key `first-run` preview makes no provider calls.
+
+## Store credentials
+
+```bash
+npx humanish keys set e2b
+npx humanish keys set openai
+npx humanish keys list
+npx humanish doctor
+```
+
+The hidden prompts write keys to the Humanish user store with mode `0600`. `keys list` prints names only. Environment variables work too: `E2B_API_KEY` and `OPENAI_API_KEY` for the default live path. An explicit ignored env file can be passed through `--env-file` on commands that support it.
+
+Keep env files and credentials out of version control. Humanish records provisioned variable names, not their values, and scrubs known secret values from persisted text. The computer-use model's API key stays on the host; the desktop receives actions, not that key.
+
+## Use a signed-in coding agent
+
+The computer-use route can use a locally signed-in Codex or Claude Code as the participant's model by setting `actors[0].type: local-agent`. `humanish doctor` reports installed and signed-in local agents.
+
+That uses your existing plan and its limits. It is slower than a direct model API call, and model usage can be unpriced in the evidence. E2B still needs its own key and still bills for desktops. Do not carry a priced API-model cap over and assume it bounds subscription usage.
+
+Read the [local-agent setup and limitations](https://github.com/danielgwilson/humanish/blob/main/README.md#a-first-live-run-without-a-provider-api-key) before choosing this route.
+
+## Review evidence before sharing
+
+Run evidence lives under gitignored `.humanish/`. No feedback command publishes it for you. Live screenshots are full fidelity by default and can contain anything the app displayed.
+
+Use synthetic accounts and data. Keep private targets and local experiments in ignored lab files. Before sharing an artifact, run `verify` and review the actual content, including pixels.
+
+`verify` detects secret and path patterns. Free-form personal or sensitive information is not fully detected. A `share_ready` grade makes a bundle eligible for feedback; it does not remove the need for human review.
+
+For a study intended to produce share-as-is screenshots, `policies.redactScreenshots: true` blurs persisted frames at capture. That trades visual detail for safer evidence and is not a universal sensitive-data detector. See the [public-safety boundary](https://github.com/danielgwilson/humanish/blob/main/README.md#public-safety-boundary).
+
+## Recover after an interruption
+
+After a crash, inspect the interrupted run and its resource receipt:
+
+```bash
+npx humanish runs
+npx humanish cleanup --run latest --json
+```
+
+Once you have identified the interrupted run, reclaim its sandboxes:
+
+```bash
+npx humanish reclaim --run YOUR_RUN_ID --json
+```
+
+`reclaim` immediately attempts to stop the sandboxes recorded for that run. `reclaim` uses journaled exact IDs and needs `E2B_API_KEY`; it does not sweep unrelated resources in your provider account. See [`reclaim`](/docs/cli#humanish-reclaim) for the full flags.
+
+`humanish cleanup` writes an inspection receipt. It does not itself authorize provider-resource deletion. Check your provider console if cleanup cannot be confirmed.
+
+## Choose telemetry
+
+Humanish collects anonymous command usage by default. It does not send labs, subjects, personas, paths, or evidence.
+
+```bash
+npx humanish telemetry status
+npx humanish telemetry disable
+```
+
+`DO_NOT_TRACK=1` also disables telemetry. The [telemetry document](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) describes the collected fields.

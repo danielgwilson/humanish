@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 /* ============================================================
    humanish.dev — "Mineral Ledger" token system.
@@ -165,7 +167,9 @@
   --font-mono: var(--mono);
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box }
+@layer base {
+  * { margin: 0; padding: 0; box-sizing: border-box }
+}
 /* No global smooth scroll. Three of the four nav targets sit past the study
    band's 588vh pinned track, so `html { scroll-behavior: smooth }` turned the
    Commands jump into a 6,860px, ~1.4s animated flight (measured at 1440×900):
@@ -185,9 +189,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 ::selection { background: var(--sel) }
-a { color: inherit }
+@layer base { a { color: inherit } }
 img { display: block; max-width: 100% }
-button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer }
+@layer base { button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer } }
 :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 2px }
 code, kbd { font-family: var(--mono) }
 #study, #commands, #trust { scroll-margin-top: 18px }
@@ -256,7 +260,7 @@ code, kbd { font-family: var(--mono) }
   align-items: center;
   min-height: min(80vh, 780px);
 }
-h1 {
+h1:where(:not(.humanish-docs h1)) {
   font-family: var(--serif); font-weight: 300;
   font-size: clamp(2.45rem, 5vw, 4.15rem);
   line-height: 1.05; letter-spacing: -.016em;
@@ -369,7 +373,7 @@ h1 {
 .band { padding: clamp(72px, 10vh, 128px) var(--gutter) }
 .band-mineral { background: var(--mineral) }
 .band-dark { background: var(--dz); color: var(--dz-ink) }
-h2 {
+h2:where(:not(.humanish-docs h2)) {
   font-family: var(--serif); font-weight: 300;
   font-size: clamp(2rem, 3.9vw, 3.15rem);
   line-height: 1.06; letter-spacing: -.014em;
@@ -688,3 +692,43 @@ h1 em { font-style: italic; font-weight: 400 }
 .band-dark .cite { color: var(--dz-label) }
 .band-dark .cite a { text-decoration-color: var(--accent-dz-dim) }
 .band-dark .cite a:hover { color: var(--accent-dz) }
+
+/* Documentation uses the existing site palette, including system and stored themes.
+   Keep these aliases out of the exported component-registry tokens. */
+@layer docs-theme {
+  @theme inline {
+    --color-fd-background: var(--paper);
+    --color-fd-foreground: var(--ink);
+    --color-fd-muted: var(--mineral);
+    --color-fd-muted-foreground: var(--muted);
+    --color-fd-popover: var(--panel);
+    --color-fd-popover-foreground: var(--ink);
+    --color-fd-card: var(--panel);
+    --color-fd-card-foreground: var(--ink);
+    --color-fd-border: var(--line);
+    --color-fd-primary: var(--accent);
+    --color-fd-primary-foreground: var(--paper);
+    --color-fd-secondary: var(--mineral);
+    --color-fd-secondary-foreground: var(--ink);
+    --color-fd-accent: var(--accent-wash);
+    --color-fd-accent-foreground: var(--accent-ink);
+    --color-fd-ring: var(--accent);
+  }
+}
+.humanish-docs { --fd-layout-width: 1380px; min-height: 100svh; }
+.humanish-docs h1 { font: 500 clamp(30px, 4vw, 42px)/1.15 var(--sans); letter-spacing: -.04em; }
+.humanish-docs h2 { font-family: var(--sans); letter-spacing: -.025em; }
+.humanish-docs h3 { font-family: var(--sans); }
+.humanish-docs .prose { font-size: 15px; line-height: 1.8; color: var(--body-c); }
+.humanish-docs .prose :is(h2, h3) { color: var(--ink); }
+.humanish-docs .prose a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.humanish-docs .prose :is(pre, code) { font-family: var(--mono); font-size: 12px; }
+.humanish-docs .prose pre { line-height: 1.75; }
+.humanish-docs .prose table { font-size: 13px; }
+.humanish-docs .docs-edit { color: var(--muted); font: 11px var(--mono); }
+.humanish-docs .docs-edit:hover { color: var(--accent); }
+.humanish-docs .tbtn { margin-inline: 4px; }
+:where(:root[data-theme="dark"]) .humanish-docs .shiki code span { color: var(--shiki-dark); font-style: var(--shiki-dark-font-style); }
+@media (prefers-color-scheme: dark) {
+  :where(:root:not([data-theme="light"])) .humanish-docs .shiki code span { color: var(--shiki-dark); font-style: var(--shiki-dark-font-style); }
+}

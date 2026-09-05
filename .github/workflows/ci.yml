@@ -58,6 +58,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm docs:check
       - run: pnpm --filter humanish-site typecheck
       - run: pnpm --filter humanish-site registry:check
       - run: pnpm --filter humanish-site build

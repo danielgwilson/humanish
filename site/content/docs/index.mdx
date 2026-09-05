@@ -1,0 +1,98 @@
+---
+title: Run your first study
+description: Install Humanish, send a synthetic participant into a real app, and inspect what happened.
+---
+
+Humanish runs synthetic user research. Participants use an app on hosted desktops and leave screenshots, action traces, and their own account of what worked or got confusing.
+
+Start with the included drawDB study. It runs against a public open-source diagram editor, so you can see real evidence before configuring your app. Then [study your own app](/docs/your-app).
+
+## Install
+
+Use **Node.js 20 or newer**, in a project directory:
+
+```bash
+node --version
+npm install --save-dev humanish @e2b/desktop
+npx humanish init --yes
+```
+
+`humanish` is the CLI. `@e2b/desktop` is its optional peer for live hosted desktops. Install them together in the project; a one-shot `npx humanish@latest` can miss the desktop dependency even if you installed it elsewhere.
+
+`init` creates editable labs and personas under `humanish/`, adds package scripts, and ignores `.humanish/`, where run evidence goes. It tells you the next command for your machine.
+
+## Connect a desktop and a model
+
+A live run uses E2B for the desktop and OpenAI for the default participant. Set your keys with the hidden prompts:
+
+```bash
+npx humanish keys set e2b
+npx humanish keys set openai
+npx humanish doctor
+```
+
+Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work. `doctor` reports what it found without printing values. See [budgets and privacy](/docs/budgets-and-privacy) for storage, costs, and using a signed-in local coding agent.
+
+## Run a real participant
+
+```bash
+npx humanish lab inspect try-live
+npx humanish lab preflight try-live
+npx humanish run try-live
+```
+
+The included lab clones drawDB, builds it inside a hosted desktop, and asks one newcomer to add and name two tables. **It studies drawDB, not your project.** drawDB is the application studied, not a Humanish adopter or endorser.
+
+Allow a few minutes for the app to build and the participant to work. The lab sets a **$2 estimated model-spend cap**. Desktop time is billed separately; estimates and turn-boundary checks are not a provider billing ceiling. Read [how budgets work](/docs/budgets-and-privacy#set-a-study-budget) before increasing the panel.
+
+For context, three fresh installs measured on September 1, 2026 completed this study in 108–111 seconds at about $0.16 per run. Those are [dated observations](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md), not a promise about your next run.
+
+`preflight` checks configuration by default. It does not prove the app will build or complete a task. A participant who gets stuck can still produce the most useful result: a concrete place to investigate.
+
+## Read the result
+
+```bash
+npx humanish runs
+npx humanish observe --run latest --open
+```
+
+Observer opens the finished run in your browser. Read the participant's closing report, replay their actions, and inspect the screenshot at the point they hesitated. The loopback server stays attached until Ctrl-C.
+
+In another terminal, check the evidence and cost summary:
+
+```bash
+npx humanish verify --run latest --json
+npx humanish review --run latest --json
+npx humanish stats --lab try-live
+```
+
+[Read results and draft feedback](/docs/read-results) explains the outcome, verification grade, and what you can share.
+
+## Preview without keys
+
+If you want to inspect the evidence format before setting up providers:
+
+```bash
+npx humanish run first-run
+npx humanish observe --run latest --open
+```
+
+This creates a **synthetic preview with no provider spend**. It does not open your app or send real actors into a browser. Installing `humanish` alone is enough for this path.
+
+Running `humanish run` or `humanish watch` without a lab also creates a synthetic preview. To watch a real study while it runs, name the lab:
+
+```bash
+npx humanish watch try-live
+```
+
+## Set up your own study
+
+[Your own app](/docs/your-app) gives you a complete lab for a preview or staging URL, plus an isolated two-participant clone-and-build path.
+
+If a coding agent is setting up Humanish for you, install the companion skill:
+
+```bash
+npx skills add danielgwilson/humanish --skill humanish
+```
+
+Agents should use the CLI and `--json` outputs. `npx humanish tui` is the interactive terminal to hand to a human; it requires a TTY.

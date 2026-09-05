@@ -1,10 +1,8 @@
 import { Wordmark } from "./wordmark";
 
 const GITHUB = "https://github.com/danielgwilson/humanish";
-// The README's "## Docs" section — a curated index; unique heading, slug #docs.
-const DOCS = `${GITHUB}#docs`;
-// The README's "## Commands" heading — GitHub slugs it to #commands.
-const CLI_REFERENCE = `${GITHUB}#commands`;
+const DOCS = "/docs";
+const CLI_REFERENCE = "/docs/cli";
 
 /**
  * `base` prefixes the homepage section anchors so subpages link back to them
@@ -22,7 +20,7 @@ export default function Footer({ base = "" }: { base?: string }) {
         <div className="foot-cols">
           <nav className="foot-block" aria-label="Product">
             <span className="fl">Product</span>
-            <a href={`${base}#install`}>Install</a>
+            <a href="/docs#install">Install</a>
             <a href={DOCS}>Docs</a>
             <a href={CLI_REFERENCE}>CLI reference</a>
           </nav>
