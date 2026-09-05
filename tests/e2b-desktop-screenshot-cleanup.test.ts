@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import {
   desktopScreenshotCleanupFailures,
   protectDesktopScreenshotCleanup
@@ -25,9 +25,13 @@ async function sdkProbe(options: {
   capture?: () => Promise<void>;
   read?: (path: string) => Promise<Uint8Array>;
   remove?: (path: string) => Promise<void>;
+  fromLoader?: boolean;
 } = {}) {
   const paths: { capture: string[]; read: string[]; remove: string[] } = { capture: [], read: [], remove: [] };
-  class ProbeSandbox extends SdkDesktop {
+  const Base = options.fromLoader
+    ? (await loadE2BDesktopModule()).Sandbox as unknown as typeof SdkDesktop
+    : SdkDesktop;
+  class ProbeSandbox extends Base {
     constructor(...args: ConstructorParameters<typeof SdkDesktop>) {
       super(...args);
       this.commands.run = (async (command: string) => {
@@ -59,11 +63,12 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     const script = `
       import { Sandbox } from '@e2b/desktop';
       import { protectDesktopScreenshotCleanup, desktopScreenshotCleanupFailures } from ${JSON.stringify(helper)};
+      let screenshotPath;
       class Probe extends Sandbox {
         constructor(...args) {
           super(...args);
           this.commands.run = async () => ({exitCode:0,stdout:'',stderr:'',pid:1,disconnect:async()=>{}});
-          this.files.read = async () => new Uint8Array([137,80,78,71]);
+          this.files.read = async (path) => { screenshotPath = path; return new Uint8Array([137,80,78,71]); };
           this.files.remove = () => new Promise((_, reject) => setTimeout(() => reject(new Error('synthetic-cleanup-failure')), 10));
         }
       }
@@ -71,12 +76,13 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
       if (process.env.PROTECT_SCREENSHOT === '1') protectDesktopScreenshotCleanup(desktop);
       const image = await desktop.screenshot();
       console.log('image-bytes=' + image.length);
+      if (process.env.UNRELATED_REMOVE === '1') desktop.files.remove(screenshotPath);
       await new Promise(resolve => setTimeout(resolve, 30));
       console.log('cleanup-failures=' + desktopScreenshotCleanupFailures(desktop));
     `;
-    const run = (protect: boolean) => spawnSync(process.execPath, [
+    const run = (protect: boolean, unrelated = false) => spawnSync(process.execPath, [
       "--unhandled-rejections=strict", "--import", "tsx", "--input-type=module", "--eval", script
-    ], { encoding: "utf8", env: { ...process.env, PROTECT_SCREENSHOT: protect ? "1" : "0" }, timeout: 10_000 });
+    ], { encoding: "utf8", env: { ...process.env, PROTECT_SCREENSHOT: protect ? "1" : "0", UNRELATED_REMOVE: unrelated ? "1" : "0" }, timeout: 10_000 });
     const original = run(false);
     expect(original.status).toBe(1);
     expect(original.stdout).toContain("image-bytes=4");
@@ -87,6 +93,21 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     expect(protectedRun.stdout).toContain("cleanup-failures=1");
     expect(protectedRun.stderr).toContain("screenshot temporary-file cleanup failed (1)");
     expect(protectedRun.stderr).not.toContain("synthetic-cleanup-failure");
+    // Even the SAME path outside the screenshot's async scope remains an ordinary rejection.
+    const unrelated = run(true, true);
+    expect(unrelated.status).toBe(1);
+    expect(unrelated.stderr).toContain("synthetic-cleanup-failure");
+  });
+
+  it("guards direct create calls from the production loader, including derived SDK classes", async () => {
+    const pending = deferred<void>();
+    const warning = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const { desktop } = await sdkProbe({ fromLoader: true, remove: () => pending.promise });
+    expect(await desktop.screenshot()).toBe(bytes);
+    pending.reject(new Error("synthetic-loader-cleanup-failure"));
+    await Promise.resolve();
+    expect(desktopScreenshotCleanupFailures(desktop)).toBe(1);
+    expect(warning).toHaveBeenCalledTimes(1);
   });
 
   it("preserves exact SDK capture/read/remove paths, returned bytes, receiver, and idempotency", async () => {
