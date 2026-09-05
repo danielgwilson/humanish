@@ -602,9 +602,11 @@ gpt-6-astra is priced. #548 closed on the benchmark receipts.
 they are in the repo with run ids: planted-defect recall 43 of 45 over three benchmark runs and
 12 clean runs with nothing invented (`bench/`; 58 of 60 and 15 clean runs after the 09-04 rerun), 5 of 6 findings confirmed on TodoMVC and 11 of 12
 on drawDB against the source (20 participants on apps we did not write, 0 false reports), and the
-persona question answered on two apps: every keyboard-first participant hit a defect no
+comparison of keyboard and pointer use on two apps: every keyboard-first participant hit a defect no
 mouse-driving participant met (drawDB's mouse-only database modal, TodoMVC's double-click-only
-rename), receipts under `docs/goals/computer-use-actor/receipts/`. Five cold installs of two
+rename), receipts under `docs/goals/computer-use-actor/receipts/`. These observations show
+sensitivity to explicit keyboard-versus-pointer instructions; they do not establish incremental
+benefit from persona prompting over a matched generic tester. Five cold installs of two
 published versions reached the goal in under three minutes each. On the way the runs found and
 the releases fixed: telemetry that never said what a study was (and stored IPs), a refused lane
 written up as a pass (#476), a blocker regex that refused five of five finished runs (#565, then
