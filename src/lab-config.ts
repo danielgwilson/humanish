@@ -2615,7 +2615,6 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
       return invalid(`Unknown \`actors[${actorIndex}].lanes[${laneIndex}]\` field(s): ${unknownKeys.join(", ")}. Known lane fields: ${[...LANE_KEYS].join(", ")}.`);
     }
     const lane: LabActorLane = {};
-    if (entry.maxOutputTokens !== undefined) return invalid("maxOutputTokens is actor-level only; set actors[0].maxOutputTokens instead of a lane or roster override.");
     const id = str(entry.id);
     if (id !== undefined) {
       if (!LANE_ID_PATTERN.test(id) || id.length > LANE_ID_MAX_CHARS) {

@@ -317,7 +317,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     config.actors[0]!.maxOutputTokens = 16;
     const { hooks, killed, sandbox } = baseHooks({ worldVersion: 0 });
     delete hooks.runSession;
-    sandbox.screenshot = async () => PNG.sync.write(new PNG(FAKE_SCREEN_GEOMETRY));
+    sandbox.screenshot = async () => PNG.sync.write(new PNG({ ...FAKE_SCREEN_GEOMETRY }));
     const wire = JSON.parse(await readFile(new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url), "utf8"));
     const seen: Array<number | undefined> = [];
     vi.stubGlobal("fetch", async (_url: unknown, init: { body: string }) => {
@@ -336,6 +336,15 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("maxOutputTokens");
+    expect(created).toHaveLength(0);
+  });
+
+  it("refuses a custom session before allocating a desktop when an output limit is declared", async () => {
+    const config = sharedWorldConfig();
+    config.actors[0]!.maxOutputTokens = 16;
+    const { hooks, created } = baseHooks({ worldVersion: 0 });
+    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+    expect(result.error?.message).toContain("custom runSession");
     expect(created).toHaveLength(0);
   });
   it("dry-run produces a verified contract bundle with the sharedWorld block + attributionClass + limits, no sandbox", async () => {

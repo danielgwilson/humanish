@@ -415,6 +415,18 @@ describe("runCuaActorLab", () => {
     expect(result.error?.message).toContain("maxOutputTokens");
     expect(allocations).toBe(0);
   });
+
+  it("rejects custom session hooks that could bypass a declared output limit", async () => {
+    const config = cuaConfig();
+    config.actors[0]!.maxOutputTokens = 16;
+    let called = 0;
+    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
+      runSession: async () => { called += 1; throw new Error("must not dispatch"); },
+      loadDesktopModule: async () => { called += 1; throw new Error("must not allocate"); }
+    } });
+    expect(result.error?.message).toContain("custom runSession");
+    expect(called).toBe(0);
+  });
   let cwd: string;
 
   beforeEach(async () => {

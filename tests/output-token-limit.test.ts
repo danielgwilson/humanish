@@ -68,7 +68,7 @@ describe("declared per-response output limit", () => {
   });
   it.each([16, 4096, undefined])("closing request respects the smaller bound; declared=%s", async maxOutputTokens => {
     const bodies: Record<string, unknown>[] = [];
-    const provider = createOpenAiResponsesProvider({ apiKey: "synthetic", maxOutputTokens, fetchFn: async (_url, init) => {
+    const provider = createOpenAiResponsesProvider({ apiKey: "synthetic", ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }), fetchFn: async (_url, init) => {
       bodies.push(JSON.parse(init.body));
       return ok(bodies.length === 1 ? pending : maxOutputTokens === 16 ? incomplete : report);
     } });
