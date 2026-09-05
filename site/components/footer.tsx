@@ -28,6 +28,7 @@ export default function Footer({ base = "" }: { base?: string }) {
             <span className="fl">Evidence</span>
             <a href={`${base}#study`}>Excalidraw study</a>
             <a href="/docs/save-button-study">Save-button study</a>
+            <a href="/docs/todomvc-edit-study">TodoMVC keyboard repair</a>
             <a href={`${base}#study`}>Verify checks</a>
             <a href="/failure-modes">Known failure modes</a>
           </nav>
