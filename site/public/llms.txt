@@ -25,7 +25,7 @@ How an agent calls it: `npx humanish init --yes`, then `npx humanish run try-liv
 cap and separately billed desktop time). `npx humanish run first-run` is a synthetic evidence
 preview with no keys or spend; it does not study an app. Read results with
 `npx humanish runs --json` and `npx humanish review --run latest --json`; draft feedback with
-`npx humanish feedback issue --run latest`. `--json` is available where supported; `tui` requires an interactive terminal.
+`npx humanish feedback issue --run latest --repo owner/repo`. `--json` is available where supported; `tui` is a human surface and refuses detected agent sessions.
 
 ## Install
 
@@ -46,6 +46,10 @@ only needs `humanish`.
 - Your own app: https://humanish.dev/docs/your-app
 - Results and feedback: https://humanish.dev/docs/read-results
 - Budgets and privacy: https://humanish.dev/docs/budgets-and-privacy
+- Lab manifests: https://humanish.dev/docs/lab-manifests
+- Computer-use controls: https://humanish.dev/docs/computer-use
+- Local coding agents: https://humanish.dev/docs/local-agents
+- Observer, TUI, and JSON alternatives: https://humanish.dev/docs/review-surfaces
 - CLI reference: https://humanish.dev/docs/cli
 
 For coding agents: `npx skills add danielgwilson/humanish --skill humanish`
@@ -58,7 +62,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 
 - `humanish init`: Set up humanish/ source and .humanish/ runtime state.
 - `humanish doctor`: Explain project readiness and missing setup.
-- `humanish tui`: Open the interactive terminal surface.
+- `humanish tui`: Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.
 - `humanish telemetry`: Show or change anonymous usage collection.
 - `humanish telemetry status`: What is collected, and whether it is on.
 - `humanish telemetry enable`: Turn anonymous usage collection on.
@@ -99,8 +103,16 @@ This command index is generated from the shipped CLI. Full arguments and options
 
 <!-- humanish-cli:end -->
 
-`humanish tui` is for a human, not a coding agent: it takes over the screen and refuses a non-TTY.
-Use the CLI's JSON outputs for automation, and hand the TUI to a human who wants to browse studies.
+`humanish tui` is for a human: Node 22+, interactive stdin and stdout. It refuses
+detected coding-agent sessions even with a TTY (`HUMANISH_TUI_AGENT_SESSION`), or
+non-TTY input/output (`HUMANISH_TUI_REQUIRES_TTY`); both return exit code 2.
+`--json` reports that refusal; it does not make the TUI usable by an agent.
+Use `humanish lab list --json`, `humanish lab inspect <lab> --json`, and
+`humanish runs --json` for read-only browsing. `humanish review --run latest --json`
+reads an existing result. `humanish lab run <lab> --json` starts a run and may
+incur provider spend; it is not a browsing command. `--force` is only for a person
+actually at the keyboard; it does not bypass TTY or Node requirements.
+Details: https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts
 
 ## Credentials
 
@@ -113,9 +125,10 @@ A live study needs two things in the environment:
   `E2B_API_KEY` is still required.
 
 `humanish doctor --json` reports which of these were found and names the exact command to fix
-each missing one. Values are never printed or persisted into run artifacts.
+each missing one without printing key values. Persisted text is scrubbed for known
+secret values and patterns; this is not a guarantee that all sensitive content is detected.
 
-Node 20 or newer throughout.
+Node 20 or newer for the CLI; the human TUI requires Node 22 or newer.
 
 ## Worked example: the Excalidraw study
 

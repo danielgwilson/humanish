@@ -1,0 +1,118 @@
+---
+title: Observer and terminal
+description: Browse studies as a person, read results through JSON as an agent, or serve the run library.
+---
+
+## Browse in a human terminal
+
+Every other humanish command is built so an agent can drive it. `humanish tui`
+takes the screen and waits for a person.
+
+```bash
+npx humanish tui
+```
+
+Arrow keys move, `enter` opens, `esc` goes back, `q` quits. There are three
+screens, and you move between objects rather than between states: the set of
+labs, one lab, one run. A run's lifecycle
+renders in place, so a run you are watching changes from running to its verdict
+without the screen moving under you.
+
+- **labs**: every lab in the project, whether or not it has ever run. Labs with
+  something running now sort first. Each row carries what to expect from a live
+  run of it; a lab with no live history says `no live runs yet` and does not
+  quote a median from dry runs, which spend nothing and take no time.
+- **lab**: that lab's history, and two ways to start it. A dry run starts on one
+  keypress because it cannot cost anything; a live run is armed by the first
+  `enter` and committed by the second, restating the cost in between.
+- **run**: who is in the run, what they are currently thinking, and how far they
+  have got, with time and money underneath. A terminal cannot show screenshots,
+  so the run's self-contained Observer artifact is named for you to open.
+
+A run you start from the surface is detached: it keeps going if you quit the
+TUI, and it survives losing the SSH session you started it over. The surface
+follows it by reading `.humanish/runs/<id>/status.json`, holding no handle on
+it, so you can quit mid-run, reopen, and find it still there.
+
+## For coding agents and scripts
+
+`tui` requires Node 22 or newer and interactive stdin **and** stdout. It also
+refuses detected coding-agent sessions, even when the runner allocates a TTY.
+The other commands support Node 20 or newer.
+
+| Situation | JSON `error.code` | Exit code |
+| --- | --- | --- |
+| A recognized coding-agent session | `HUMANISH_TUI_AGENT_SESSION` | `2` |
+| Non-interactive stdin or stdout, with no agent marker | `HUMANISH_TUI_REQUIRES_TTY` | `2` |
+| Interactive human terminal on Node older than 22 | `HUMANISH_TUI_UNSUPPORTED_NODE` | `2` |
+
+`--json` returns the refusal envelope; it does not turn the TUI into a JSON browser.
+Agent detection uses runner environment markers; absence of a marker does not
+prove a human is present. `--force` bypasses only the agent-session guard and is
+for a person actually at the keyboard. The TTY and Node requirements still apply.
+
+Use these read-only commands to answer the same browsing questions:
+
+```bash
+npx humanish lab list --json
+npx humanish lab inspect first-run --json
+npx humanish runs --json
+npx humanish review --run latest --json
+npx humanish stats --json
+```
+
+`lab list` shows available studies, `lab inspect` shows a study's source,
+`runs` lists run history, and `review` reads an existing run. If there are no runs
+yet, create the [keyless evidence preview](/docs#preview-without-keys)
+before asking for `latest`.
+
+Starting a run is a separate action. `npx humanish lab run first-run --json --no-open`
+creates a keyless preview; replacing `first-run` with a live lab can launch providers
+and incur spend. See the [CLI reference](/docs/cli) for all flags.
+
+## Serve the run library
+
+`humanish watch` follows one attached run; `humanish serve` serves the whole
+local run library under `.humanish/runs/`, a library index plus every run's
+Observer page:
+
+```bash
+npx humanish serve
+npx humanish serve --expose --tunnel ngrok --oauth google --allow-email you@example.com
+npx humanish serve --safe --expose --tunnel ngrok
+npx humanish serve --expose --public-url https://observer.example.com
+```
+
+The first serves the library on loopback only. The second is the phone path:
+ngrok's edge authenticates viewers with Google OAuth (restricted to your
+`--allow-email`/`--allow-domain` allow rules) before any request reaches the
+loopback server; humanish carries no in-process auth. The third is a secretless
+safe observer: no login, but only runs whose `humanish verify` shareSafety is
+`share_ready` exist at all; everything else is absent and 404s. The fourth
+trusts an edge you already secure (Cloudflare Access, Tailscale, a proxy you own)
+and just binds loopback behind it.
+
+In every mode the server binds `127.0.0.1`. Remote access requires an edge
+forwarding to that loopback port; public access without authentication is
+available only for the `--safe` library filter. Exposure is fail-closed:
+`--expose` always needs a reachable public origin (a `--tunnel` or a `--public-url`,
+even under `--safe`), and then requires either edge auth (`--oauth` on the tunnel,
+or a `--public-url` you secure) or `--safe`. `--oauth google` with no allow rule
+lets any Google account in and warns loudly.
+
+## Watch a live run from your phone
+
+`humanish watch <cua-lab> --expose --tunnel ngrok --oauth google --allow-email
+you@example.com` streams the live desktop of a computer-use run to an
+edge-authenticated remote viewer while it plays. The attached server comes up
+during the run and survives a timed-out/failed run, so you can inspect a failed
+run's evidence too. A live run is never `share_ready`, so `watch --expose` always
+requires edge auth; `--safe` is a `serve` library filter and is rejected on watch
+(`HUMANISH_WATCH_SAFE_NOT_APPLICABLE`). An exposed watch serves only the attached
+run (its history lists just that run and every other run id 404s), so a remote
+viewer can never reach your other runs' raw evidence.
+
+Live E2B desktop stream URLs are served only on `watch --expose`, and only behind
+edge auth; `serve` never injects them (remote viewers of the library see only
+persisted evidence: screenshots, events, terminal tails). See
+[Serve architecture](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/serve.md).

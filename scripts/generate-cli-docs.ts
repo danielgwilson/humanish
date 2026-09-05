@@ -59,7 +59,7 @@ const reference = [
   "",
   "Start with the [quickstart](/docs). The examples below use the installed `humanish` binary; prefix them with `npx` from your project if it is not on your PATH.",
   "",
-  "`--json` returns machine-readable responses where supported. `tui` is an interactive surface for a human and refuses a non-TTY; coding agents should use the command outputs.",
+  "`--json` returns machine-readable responses where supported. `tui` requires a human terminal and refuses detected agent sessions, including agents with a TTY. See [TUI refusals and read-only JSON alternatives](/docs/review-surfaces#for-coding-agents-and-scripts).",
   "",
   "## humanish",
   "",
