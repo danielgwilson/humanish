@@ -14,6 +14,8 @@
 import { sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { protectDesktopScreenshotCleanup } from "./e2b-desktop-screenshot-cleanup.js";
+
 export interface E2BDesktopModule {
   Sandbox: {
     /** Default `desktop` template (no custom image). The historical, byte-stable call shape. */
@@ -219,7 +221,9 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
       }
       try {
         const args = typeof templateOrOptions === "string" ? [templateOrOptions, options] : [templateOrOptions];
-        return await Reflect.apply(SdkSandbox.create, AttemptSandbox, args) as E2BDesktopSandbox;
+        const desktop = await Reflect.apply(SdkSandbox.create, AttemptSandbox, args) as E2BDesktopSandbox;
+        // The loader also serves direct Sandbox.create callers (terminal/legacy meta routes).
+        return protectDesktopScreenshotCleanup(desktop);
       } catch (error) {
         if (cleanupOwned === undefined) throw error;
         const createOptions = typeof templateOrOptions === "string" ? options : templateOrOptions;
