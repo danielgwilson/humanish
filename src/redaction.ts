@@ -54,16 +54,25 @@ export function containsSensitive(text: string): boolean {
   );
 }
 
+// A local-path match may end in the backslashes escaping its closing quote in
+// serialized JSON (including JSON nested inside a terminal event). Keep that
+// suffix so redaction cannot turn a string's contents into JSON delimiters.
+// This also works when the closing quote arrives in a later stream callback.
+function redactLocalPaths(text: string, label?: string): string {
+  return LOCAL_PATH_PATTERNS.reduce(
+    (current, [pattern, replacement]) => current.replace(pattern, (match: string) =>
+      (label ?? replacement) + (match.match(/\\+$/)?.[0] ?? "")),
+    text
+  );
+}
+
 /** Redact secrets to [REDACTED_SECRET] and local paths to their path labels. */
 export function redactText(text: string): string {
   const withoutSecrets = SECRET_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
     text
   );
-  return LOCAL_PATH_PATTERNS.reduce(
-    (current, [pattern, replacement]) => current.replace(pattern, replacement),
-    withoutSecrets
-  );
+  return redactLocalPaths(withoutSecrets);
 }
 
 /** Redact every sensitive match (secrets and paths) to a single [REDACTED_SECRET] label. */
@@ -72,10 +81,7 @@ export function redactToSecretLabel(text: string): string {
     (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
     text
   );
-  return LOCAL_PATH_PATTERNS.reduce(
-    (current, [pattern]) => current.replace(pattern, "[REDACTED_SECRET]"),
-    withoutSecrets
-  );
+  return redactLocalPaths(withoutSecrets, "[REDACTED_SECRET]");
 }
 
 function canonicalizePath(value: string): string {
