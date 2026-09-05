@@ -83,6 +83,29 @@ async function readJson(filePath: string): Promise<unknown> {
 }
 
 describe("humanish CLI scaffold", () => {
+  it.each([
+    ["run", "lanes"], ["run", "roster"], ["lab run", "lanes"], ["lab run", "roster"]
+  ] as const)("%s rejects unknown %s fields in JSON before creating run evidence (#343)", async (command, field) => {
+    const manifest = {
+      schema: "humanish.lab.v2", id: "typo",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", [field]: [
+        { id: "reader", runtme: "different", ...(field === "roster" ? { count: 2 } : {}) }
+      ] }], execution: { target: "e2b-desktop" }
+    };
+    await withTempApp({ "humanish/labs/typo.yaml": JSON.stringify(manifest) }, async (cwd) => {
+      // A regression can only reach a dry backend; this contract test never permits paid work.
+      const result = await runCli([...command.split(" "), "typo", "--dry-run", "--no-open", "--json", "--cwd", cwd]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toBe("");
+      const envelope = JSON.parse(result.stdout);
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(envelope.error.message).toContain(`Unknown \`actors[0].${field}[0]\` field(s): runtme`);
+      expect(await readdir(cwd)).not.toContain(".humanish");
+    });
+  });
+
   it("cleans up attached Observer watches on package-manager style termination signals", async () => {
     let exitCode = 0;
     const stdout: string[] = [];

@@ -477,6 +477,43 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     });
 
     describe("multi-lane fan-out (#163)", () => {
+      it.each(["misson", "runtme", "count", "constructor"])("rejects an unknown lane field %s before it can disappear (#343)", (key) => {
+        const result = parseLabConfig({ ...validCua, actors: [{ type: "openai-computer-use", lanes: [{ id: "reader", [key]: "different" }] }] });
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(result.error.message).toContain("Unknown `actors[0].lanes[0]` field(s): " + key);
+      });
+
+      it("names all unknown roster fields at the declared group index before expansion (#343)", () => {
+        const result = parseLabConfig({ ...validCua, actors: [{ type: "openai-computer-use", roster: [
+          { id: "reader", count: 2 }, { id: "reviewer", count: 2, misson: "Review", runtme: null }
+        ] }] });
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(result.error.message).toContain("Unknown `actors[0].roster[1]` field(s): misson, runtme");
+        expect(result.error.message).not.toContain("lanes[2]");
+      });
+
+      it.each(["lanes", "roster"] as const)("keeps supported optional %s fields after closing the key set", (field) => {
+        const shared = {
+          actorType: "reader", surface: "queue", caseGroup: "case-01", persona: "curious-reviewer",
+          device: "desktop", instruction: "Read the queue.", reasoningEffort: "low",
+          stopWhen: { any: [{ textIncludes: "Done" }] },
+          dwell: { ms: 1000, everyMs: 1000, then: "continue" }, entry: "/queue", host: false
+        };
+        const result = parseLabConfig({ ...validCua, execution: { target: "e2b-desktop", timeoutMs: 120000 }, actors: [{ type: "openai-computer-use", [field]: [
+          { ...shared, id: "reader", ...(field === "roster" ? { count: 2 } : {}) }
+        ] }] });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        const { host: _host, ...preserved } = shared;
+        expect(result.config.actors[0]?.lanes).toEqual(field === "lanes"
+          ? [{ ...preserved, id: "reader" }]
+          : [{ ...preserved, id: "reader-01" }, { ...preserved, id: "reader-02" }]);
+      });
+
       it("ACCEPTS a homogeneous count > 1 on the cua route (lifted rejection), default concurrency min(N,3)", () => {
         const result = parseLabConfig({ ...validCua, actors: [{ type: "openai-computer-use", count: 4 }] });
         expect(result.ok).toBe(true);
