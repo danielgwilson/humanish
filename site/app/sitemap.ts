@@ -1,7 +1,13 @@
 import type { MetadataRoute } from "next";
+import { docsSource } from "@/lib/docs-source";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
+    ...docsSource.getPages().map((page) => ({
+      url: `https://humanish.dev${page.url}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.8
+    })),
     {
       url: "https://humanish.dev",
       lastModified: new Date(),

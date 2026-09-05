@@ -73,7 +73,9 @@
     "tui:typecheck": "pnpm --filter humanish-tui typecheck",
     "tui:smoke": "node scripts/tui-smoke.mjs",
     "tui:test": "pnpm --filter humanish-tui test",
-    "release:dogfood": "node scripts/release-dogfood.mjs"
+    "release:dogfood": "node scripts/release-dogfood.mjs",
+    "docs:generate": "tsx scripts/generate-cli-docs.ts",
+    "docs:check": "tsx scripts/generate-cli-docs.ts --check"
   },
   "repository": {
     "type": "git",

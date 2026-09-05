@@ -36,7 +36,7 @@ export default function Trust() {
       <div className="closer">
         <h2 className="rev">Test the build you have <em>open.</em></h2>
         <div className="cta-row rev" style={{ "--d": ".08s" } as React.CSSProperties}>
-          <a className="btn btn-primary" href={GITHUB}>Get started</a>
+          <a className="btn btn-primary" href="/docs">Get started</a>
           <a className="btn btn-ghost" href={GITHUB}>View on GitHub</a>
         </div>
         <p className="cmdline rev" style={{ "--d": ".14s" } as React.CSSProperties}><code>npm i -D humanish</code> · <code>npx humanish init --yes</code> · <code>npx humanish watch</code> — then open <code>.humanish/</code> and read what your personas saw.</p>

@@ -1,0 +1,102 @@
+---
+title: Study your own app
+description: Give a participant one concrete job on a preview URL, or build your app inside an isolated sandbox.
+---
+
+You have a preview build and want to know where a newcomer gets stuck. Give participants one concrete job, let them try it, and keep the evidence for the next change.
+
+Finish the [installation and provider setup](/docs#install) first. Use an app you own or have permission to study, with synthetic accounts and data.
+
+## Create a lab for your preview URL
+
+Create `.humanish/labs/your-app.yaml`. This ignored directory is a good place for local preview URLs and experiments. Replace the example URL and mission with your app and a task it actually supports.
+
+```yaml title=".humanish/labs/your-app.yaml"
+schema: humanish.lab.v2
+id: your-app
+title: First project, a newcomer
+subject:
+  source: app-url
+  appUrl: https://preview.example.com/
+actors:
+  - type: openai-computer-use
+    persona: synthetic-new-user
+    count: 1
+    mission: >-
+      You are trying this project-management app for the first time.
+      Create a project named Weekend plan, then find it again and
+      rename it Saturday plan. Stop when you finish or get stuck.
+      Say what happened and what confused you.
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+  caps:
+    maxTotalUsd: 4
+    maxUsd: 2
+scenario:
+  mode: live
+policies:
+  allowPublicTargets: true
+defaults:
+  open: true
+```
+
+This sends one participant into your deployed app. For a second observation, reset the test data or use a separate test account, then run the lab again. Keep both run IDs so the first result is not lost behind `latest`.
+
+A single public URL is limited to one participant per independent-world run. A simultaneous multi-user study needs the explicit shared-world route. To give multiple newcomers separate copies of the app, use the clone route below.
+
+The `$4` study budget and `$2` per-participant backstop are checked for each run; budgets do not carry across separate invocations. E2B desktop time is additional. See [budget limits](/docs/budgets-and-privacy#set-a-study-budget).
+
+Keep the mission in the participant's language. “Create a project and find it again” leaves room for discovery. “Click the plus icon in the top right” tells the participant the answer and hides the navigation problem you wanted to study.
+
+## Check, then run
+
+```bash
+npx humanish lab inspect .humanish/labs/your-app.yaml
+npx humanish lab preflight .humanish/labs/your-app.yaml --reachability public-preview
+npx humanish run .humanish/labs/your-app.yaml
+npx humanish observe --run latest --open
+```
+
+`public-preview` probes the URL from this machine without model calls or a hosted desktop. It does not prove reachability from E2B, authenticate through preview protection, or verify the app's behavior. Make the test deployment reachable from the hosted desktop before running it.
+
+To watch the desktop during the study, use this instead of `run`:
+
+```bash
+npx humanish watch .humanish/labs/your-app.yaml
+```
+
+For an agent or CI job, use `run ... --json`. [Read the result](/docs/read-results) before changing the app or expanding the panel.
+
+## Build the app inside the sandbox
+
+A public deployment is optional. The starter `humanish/labs/cua-browser.yaml` shows how to clone a repository, install dependencies, build, and start the app inside each sandbox.
+
+Replace the `subject` block in your lab with your public repository and its real commands:
+
+```yaml
+subject:
+  source: clone
+  repos: [your-org/your-app]
+  serve:
+    install: npm ci
+    build: npm run build
+    start: npm run start -- --hostname 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+```
+
+The example start command fits a Next.js app. Use the command your project supports and a readiness URL on its actual port. Remove `policies.allowPublicTargets` when the app is served only on sandbox loopback. For a two-participant panel, change `actors[0].count` to `2`: each participant now gets its own clone and desktop, with the existing `$4` shared model budget. Shared external databases still need isolated test accounts or data.
+
+Two participants can reveal repeatable friction; they cannot establish population-wide usability.
+
+When editing the scaffolded `cua-browser.yaml` directly, also change `scenario.mode` from `dry-run` to `live` and add your study budget. Leaving it in dry-run produces contract evidence, not a real app study.
+
+For uncommitted code, `subject.source: local-tree` can package a selected working tree with a content pin. For environment allowlists, state seeding, local-tree configuration, and other subject routes, use the [source guide](https://github.com/danielgwilson/humanish/blob/main/README.md#computer-use-labs) and [lab schema and parser](https://github.com/danielgwilson/humanish/blob/main/src/lab-config.ts).
+
+## Make a useful comparison
+
+Keep the task, personas, app state, and model settings stable between runs. Record the before and after app revisions. Look for the specific friction to disappear, then inspect whether a new one replaced it.
+
+Report denominators: “2 of 2 completed; 1 reported friction.” A run finishing, a participant claiming success, and independent task evidence are different observations. The [results guide](/docs/read-results) explains how to read them together.
+
+Move a lab into committed `humanish/labs/` only when its URLs, personas, tasks, and examples are safe to publish. Leave generated evidence in `.humanish/`.

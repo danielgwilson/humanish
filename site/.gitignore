@@ -7,3 +7,6 @@
 
 # typescript
 *.tsbuildinfo
+
+# Fumadocs generated entries
+.source/

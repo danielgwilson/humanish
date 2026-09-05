@@ -21,84 +21,86 @@ the answer needs evidence rather than a prediction:
 Not the tool for load testing, pixel diffing, or a decision about people that needs people; the
 limits page below says where simulated users diverge from real ones.
 
-How an agent calls it: `npx humanish init --yes`, then `npx humanish run first-run` (no keys, no
-spend), then `npx humanish run try-live` (a real study, capped at $2). Read results with
+How an agent calls it: `npx humanish init --yes`, then `npx humanish run try-live` (a real drawDB study, with a $2 estimated model-spend
+cap and separately billed desktop time). `npx humanish run first-run` is a synthetic evidence
+preview with no keys or spend; it does not study an app. Read results with
 `npx humanish runs --json` and `npx humanish review --run latest --json`; draft feedback with
-`npx humanish feedback issue --run latest`. Every command has `--json`.
+`npx humanish feedback issue --run latest`. `--json` is available where supported; `tui` requires an interactive terminal.
 
 ## Install
 
 ```
-npm i -D humanish
+npm i -D humanish @e2b/desktop
 npx humanish init --yes
-npx humanish watch
+npx humanish keys set e2b
+npx humanish keys set openai
+npx humanish doctor
+npx humanish run try-live
 ```
 
-For coding agents: `npx skills add danielgwilson/humanish`
+Node 20 or newer. Install `humanish` and `@e2b/desktop` in the same project for live runs;
+a one-shot `npx humanish@latest` can miss the optional desktop peer. The keyless preview
+only needs `humanish`.
+
+- Quickstart: https://humanish.dev/docs
+- Your own app: https://humanish.dev/docs/your-app
+- Results and feedback: https://humanish.dev/docs/read-results
+- Budgets and privacy: https://humanish.dev/docs/budgets-and-privacy
+- CLI reference: https://humanish.dev/docs/cli
+
+For coding agents: `npx skills add danielgwilson/humanish --skill humanish`
 
 ## Commands
 
-Every command below exists in the shipped CLI. `tests/llms-txt-commands.test.ts` builds the
-command table from the program itself and fails if this list drifts.
+<!-- humanish-cli:start -->
 
-Getting started:
+This command index is generated from the shipped CLI. Full arguments and options: https://humanish.dev/docs/cli
 
-- `humanish init`: scaffold `humanish/` source files (personas, labs) and the ignored
-  `.humanish/` runtime directory; `--yes` takes the defaults.
-- `humanish doctor`: report project readiness and what setup is missing, including which
-  provider keys were found and where. Run this first when something will not start.
-- `humanish run <lab>`: run a lab. The everyday command. With no lab it renders a synthetic
-  dry-run bundle locally, without keys or provider spend.
-- `humanish watch`: run and keep the shell attached, with Observer open.
+- `humanish init`: Set up humanish/ source and .humanish/ runtime state.
+- `humanish doctor`: Explain project readiness and missing setup.
+- `humanish tui`: Open the interactive terminal surface.
+- `humanish telemetry`: Show or change anonymous usage collection.
+- `humanish telemetry status`: What is collected, and whether it is on.
+- `humanish telemetry enable`: Turn anonymous usage collection on.
+- `humanish telemetry disable`: Turn anonymous usage collection off.
+- `humanish keys`: Manage the user-level provider key store.
+- `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input.
+- `humanish keys unset`: Remove one key from the user store.
+- `humanish keys list`: List the NAMES stored in the user store. Values are never printed.
+- `humanish run`: Run a persona/scenario simulation or dry-run bundle.
+- `humanish verify`: Validate a run bundle and public-safety gates.
+- `humanish cleanup`: Write a resource cleanup inspection receipt.
+- `humanish review`: Build a review packet from verified run evidence.
+- `humanish runs`: List local Humanish runs and latest pointers.
+- `humanish stats`: Roll up cost, outcomes, and durations across runs.
+- `humanish export`: Export one run as a single shareable .html file.
+- `humanish comms`: Off-app comms surfaces.
+- `humanish comms catch`: Run the adopter-hosted email catch.
+- `humanish reclaim`: Reclaim an interrupted run's sandboxes by recorded id.
+- `humanish watch`: Run sims, open the observer, keep the shell attached.
+- `humanish observe`: Serve a finished run's Observer over loopback http.
+- `humanish serve`: Serve the run library; optional tunnel-edge exposure.
+- `humanish codex`: Run Codex-native Humanish integration surfaces.
+- `humanish codex app-server`: Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.
+- `humanish lab`: List, inspect, and run Humanish lab manifests.
+- `humanish lab list`: List committed and ignored Humanish lab manifests.
+- `humanish lab inspect`: Inspect a Humanish lab manifest without running it.
+- `humanish lab preflight`: Check a lab manifest and optional target reachability before actor/model spend.
+- `humanish lab cleanup`: Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.
+- `humanish lab run`: Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.
+- `humanish lab oss`: Alias: run the bundled OSS meta-lab dry-run contract.
+- `humanish lab oss-smoke`: Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.
+- `humanish feedback`: Create public-safe feedback drafts, no GitHub API.
+- `humanish feedback list`: List feedback draft state for a run.
+- `humanish feedback draft`: Generate a public-safe feedback draft from verified evidence.
+- `humanish feedback verify`: Verify the feedback draft for public issue eligibility.
+- `humanish feedback issue`: Print Markdown for a public GitHub issue. Does not mutate GitHub.
+- `humanish feedback issue-url`: Print a prefilled public issue URL. Does not mutate GitHub.
 
-Authoring and inspecting labs:
+<!-- humanish-cli:end -->
 
-- `humanish lab list`: list committed and ignored lab manifests.
-- `humanish lab inspect <lab>`: read a manifest without running it.
-- `humanish lab preflight <lab>`: check the manifest and target reachability before any actor
-  or model spend. Run this before a first live study.
-- `humanish lab run <lab>`: same as `humanish run <lab>`, grouped under `lab`.
-- `humanish lab cleanup`: sweep stale provider resources left by a crashed process.
-
-Evidence:
-
-- `humanish verify --run latest`: grade the bundle against public-safety gates, fail-closed:
-  `share_ready`, `local_only`, or `blocked`.
-- `humanish review`: build a review packet from verified evidence.
-- `humanish runs`: list local runs and the latest pointers.
-- `humanish export --run <id>`: one self-contained `.html` of the run's Observer with screenshots inlined; refuses a bundle that is not share_ready unless `--local-only` (watermarked).
-- `humanish stats`: cost, outcome, and duration roll-ups across run history (`--lab`, `--since`, `--json`); unknown costs count as unknown, never $0.
-- `humanish observe`: serve a finished run's Observer over loopback instead of a file URL.
-- `humanish serve`: serve the whole local run library over loopback, with optional
-  tunnel-edge auth.
-- `humanish cleanup`: inspect recorded resource evidence and write `cleanup.json`.
-- `humanish reclaim`: kill an interrupted run's sandboxes by their journaled exact ids.
-
-Feedback, without mutating GitHub:
-
-- `humanish feedback draft --run latest`: generate a public-safe draft from verified evidence.
-- `humanish feedback verify`: check the draft for public-issue eligibility.
-- `humanish feedback issue`: print Markdown for a public issue.
-- `humanish feedback issue-url`: print a prefilled issue URL.
-- `humanish feedback list`: show draft state for a run.
-
-Keys and configuration:
-
-- `humanish keys set <provider>`: store one provider key in the user store at mode 0600,
-  prompted with hidden input. `humanish keys list` prints NAMES only, never values.
-  `humanish keys unset <provider>` removes one.
-- `humanish telemetry status`: what is collected, and whether it is on.
-  `humanish telemetry enable` and `humanish telemetry disable` change it. `DO_NOT_TRACK=1`
-  also turns it off.
-
-Other surfaces:
-
-- `humanish tui`: the interactive terminal surface for browsing labs and runs. **This one is
-  for a human, not for you.** It takes over the screen and waits for keystrokes, so it will
-  refuse a non-TTY with a structured error. If you are setting humanish up on someone's behalf,
-  this is the command to hand them.
-- `humanish comms catch`: run the email catch on this host, to study an app that sends mail.
-- `humanish codex app-server`: a Codex-native actor surface.
+`humanish tui` is for a human, not a coding agent: it takes over the screen and refuses a non-TTY.
+Use the CLI's JSON outputs for automation, and hand the TUI to a human who wants to browse studies.
 
 ## Credentials
 
