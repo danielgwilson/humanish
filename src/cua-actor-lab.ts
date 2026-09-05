@@ -2592,14 +2592,12 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       dpi: 96,
       lifecycle: { onTimeout: "kill" }
     }, config.execution?.desktop?.template, {
-      // One retry on a transient provider error (a sandbox whose envd was not routable yet, an
-      // API reply without a body). The failed attempt may have allocated a sandbox this process
-      // never learned the id of; its own timeoutMs is what reclaims it, so the warning says so.
+      // The default loader reclaims an acquired handle before retrying failed desktop startup.
+      // Its error names the cleanup outcome; pre-construction allocation failures remain unowned.
       onRetry: (reason) => {
         const named = redactText(deps.scrubKnownValues(reason));
         warnings.push(
-          `Sandbox create for lane ${spec.laneId} retried once after a transient provider error (${named}); ` +
-            `a sandbox the first attempt may have allocated is not known to this run and expires on the provider's ${Math.round(deps.perLaneSandboxMs / 60_000)}-minute timeout.`
+          `Sandbox create for lane ${spec.laneId} retried once after a transient provider error (${named}).`
         );
         onSubjectPhase({ at: new Date(deps.now()).toISOString(), type: "cua-lab.sandbox.create.retry", message: `sandbox create retried once (${named})` });
       }
