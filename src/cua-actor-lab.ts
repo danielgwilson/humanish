@@ -2256,12 +2256,15 @@ const REPORTED_DEFECT_LANGUAGE =
 // reporting no problem. Only the report-shaped adjectives are negatable here: "no visible focus",
 // "not keyboard-accessible" and "did nothing" are defects and stay.
 const NEGATED_REPORT_ITEM = String.raw`(?:confus(?:ed|ing|ion)|unclear(?:\s+error\s+output)?|unexpected(?:ly)?|hesitat(?:ed|ion|ions)|surpris(?:ed|ing|es)|defects?|bugs?|overlap(?:ped|ping|s)?|truncat(?:ed|es|ion)|hard to (?:find|tell|see|read|reach)|blockers?|blocking issues?|errors?(?:\s+output)?|failures?|problems?|issues?)`;
+const NEGATED_REPORT_QUALIFIERS = String.raw`(?:(?:really|particularly|especially|major|minor|real|actual|remaining|functional|obvious|noticeable|significant|any|a|an)\s+)*`;
 const NEGATED_REPORT_MODIFIERS = String.raw`(?:(?:was|were|felt|seemed|really|particularly|especially|major|minor|real|actual|remaining|functional|obvious|noticeable|significant|any|a|an|encounter(?:ed)?|experience(?:d)?|notice(?:d)?|observe(?:d)?|feel|find|found|have|had)\s+)*`;
 const NEGATED_REPORT_LANGUAGE = new RegExp(
   String.raw`\b(?:nothing|no|not|never|without|none|(?:did|do|does|was|were|has|have|had)n['’]t)\s+${NEGATED_REPORT_MODIFIERS}${NEGATED_REPORT_ITEM}\b`
     // Negation scopes over a coordinated report list, not the rest of the sentence. In
     // particular, leave "but the label was confusing" and "and Save did nothing" intact.
-    + String.raw`(?:\s*,?\s+(?:or|nor|and)\s+${NEGATED_REPORT_MODIFIERS}${NEGATED_REPORT_ITEM}\b)*`,
+    + String.raw`(?:\s*,?\s+(?:or|nor|and)\s+${NEGATED_REPORT_QUALIFIERS}${NEGATED_REPORT_ITEM}\b)*`
+    // Keep the predicate inside its negation: "No errors blocked me" reports no blocker.
+    + String.raw`(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it)\b)?`,
   "g"
 );
 
