@@ -1,0 +1,131 @@
+---
+title: Lab manifest reference
+description: Choose a subject route, keep private labs local, and understand scripted browser and maintainer manifests.
+---
+
+Start with the complete [own-app lab](/docs/your-app) and use this reference when changing its source, route, or execution controls.
+
+## Where labs live
+
+Labs are authored as `.yaml` source:
+
+```text
+humanish/labs/*.yaml          committed public-safe labs
+.humanish/labs/*.yaml         ignored local labs
+.humanish/local/labs/*.yaml   ignored private or machine-specific labs
+```
+
+Committed labs should be useful to anyone who clones the project. Private repo
+targets, token-backed provider settings, and local-only dogfood variants belong
+in ignored `.humanish/` lab manifests and can be run explicitly:
+
+```bash
+npx humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
+npx humanish lab run .humanish/labs/local-dogfood.yaml --json --no-open
+```
+
+`--env-file` loads values for the current process only. Humanish reports loaded
+env var names, never values, and does not persist those values into run bundles
+or Observer data.
+
+## Inspect the route before running
+
+```bash
+npx humanish lab list --json
+npx humanish lab inspect first-run --json
+npx humanish lab preflight first-run --json
+```
+
+A lab's subject, execution target, actor, and scenario jointly determine its route.
+Declaring a field does not make every route support it. Read preflight warnings;
+unsupported compositions fail closed or identify inert fields.
+
+| Subject source | Use |
+| --- | --- |
+| `clone` | Clone and serve a repository inside a hosted desktop. |
+| `local-tree` | Package the selected local working tree and serve it inside a hosted desktop. |
+| `app-url` | Study a reachable app URL; a public target requires explicit policy permission. |
+| `local-app` | Library integration with a custom state-driven executor and provider. |
+| `terminal-product` | Exercise a CLI product in the terminal route. |
+| `desktop-cli` | Give a computer-use participant a hosted terminal product task. |
+| `this-repo` | Contract preview; live execution is unavailable for this source. |
+
+[Computer-use controls](/docs/computer-use) cover hosted browsers, screenshots,
+devices, stopping, and reruns. For the complete schema and route validation, read
+[the lab parser](https://github.com/danielgwilson/humanish/blob/main/src/lab-config.ts)
+and [schema contracts](https://github.com/danielgwilson/humanish/blob/main/docs/contracts/schemas.md).
+
+## Scripted browser scenarios
+
+`humanish run --app-url http://127.0.0.1:3000` looks for executable browser
+steps in committed `humanish/scenarios/*.yaml`. If none are present, Humanish
+falls back to the built-in two-step browser persona proof. Browser steps are
+public-safe source, so use synthetic fixture values and committed relative app
+paths only.
+
+```yaml
+schema: humanish.scenario.v1
+id: todo-onboarding
+title: Todo onboarding
+persona: synthetic-new-user
+goal: Create the first synthetic todo and verify the list updates.
+mode: browser
+browser:
+  startPath: /
+  steps:
+    - id: open-home
+      label: Open the todo app
+      action: goto
+      path: /
+      expect:
+        text: Add todo
+    - id: enter-todo
+      label: Enter synthetic todo text
+      action: fill
+      selector: input[name="todo"]
+      value: Synthetic onboarding task
+    - id: create-todo
+      label: Create the todo
+      action: click
+      selector: button[type="submit"]
+      expect:
+        text: Synthetic onboarding task
+        stateChanged: true
+```
+
+Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
+and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
+`urlIncludes`, and `stateChanged`. Generated traces are stored as JSON under
+`.humanish/runs/<run>/traces/` and summarized in the Observer.
+
+## Maintainer OSS meta-lab example
+
+This repository includes a contract-only authorized-repo dogfood lab:
+
+```bash
+pnpm humanish -- lab run oss --dry-run --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
+```
+
+Default lab targets are intentionally app/tool-like repos with visible,
+locally runnable user surfaces. Avoid libraries and frameworks for public
+dogfood unless the scenario is explicitly testing developer experience.
+
+The bundled manifest defaults to dry-run and creates contract evidence without
+cloning repos, launching a provider sandbox, or forwarding credentials. Use:
+
+```bash
+pnpm humanish -- lab run oss --dry-run --json --no-open
+```
+
+Live OSS meta-lab execution is unavailable until repository-derived instructions
+have an isolated credential boundary. A live manifest fails closed with
+`HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED` before callbacks, filesystem writes,
+network access, or provider launch.
+
+The `oss` lab accepts GitHub `owner/repo` slugs. A CLI `--repos` override redacts
+repo labels in durable artifacts by default; pass `--no-redact-repos` only for a
+public-safe selection. Dry-run does not access or clone repositories and does
+not need or use private-repository credentials. Private-repository execution
+remains unavailable while the live lane is disabled. Local bundles remain
+ignored under `.humanish/`; do not publish private screenshots, logs, or
+upstream details.

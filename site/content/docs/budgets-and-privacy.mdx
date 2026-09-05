@@ -32,6 +32,39 @@ npx humanish stats --lab try-live --json
 
 Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A no-key `first-run` preview makes no provider calls.
 
+## How cost estimates work
+
+Computer-use bundles carry a per-participant model estimate and an aggregate
+E2B desktop-time estimate. Model estimates multiply recorded token usage by a
+dated rate table; desktop estimates use measured lifetime and a per-minute
+assumption. Every amount is advisory, not an invoice.
+
+The [rate table](https://github.com/danielgwilson/humanish/blob/main/src/pricing.ts)
+records its date, source, and whether a rate is a placeholder. The desktop rate
+is currently a placeholder. Inspect those fields alongside the amount.
+An unknown model rate or missing token usage produces `estimatedCostUsd: null`
+with a reason; it is never silently counted as zero. Previews invent no spend.
+
+Where the model has separate cache or long-context rates, per-request usage
+lets the estimator apply them. Missing usage limits what can be priced; a
+complete-looking total is not proof that every provider charge was observed.
+
+## Choose a model
+
+The default computer-use model is `gpt-5.6-sol`. Set `actors[0].model` in the lab
+to pin another supported model. The checked-in rate table also prices models
+such as `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`; consult the table in your
+installed version instead of assuming a newly available model is priced.
+
+A declared computer-use cap (`maxUsd` or `maxTotalUsd`) on an unpriced model is
+refused at preflight with `HUMANISH_CUA_LAB_UNPRICED_CAP`. Set a budget whose
+estimate Humanish can enforce. An absent cap is uncapped; `maxUsd: 0` is the
+no-model-spend boundary, not a promise that desktop provisioning is free.
+
+The terminal route uses `scenario.caps.maxUsd` for its run budget. The
+computer-use route uses `execution.caps`; `scenario.caps.maxTotalUsd` is not a
+terminal study budget. Check route warnings before relying on a field.
+
 ## Store credentials
 
 ```bash
@@ -51,7 +84,7 @@ The computer-use route can use a locally signed-in Codex or Claude Code as the p
 
 That uses your existing plan and its limits. It is slower than a direct model API call, and model usage can be unpriced in the evidence. E2B still needs its own key and still bills for desktops. Do not carry a priced API-model cap over and assume it bounds subscription usage.
 
-Read the [local-agent setup and limitations](https://github.com/danielgwilson/humanish/blob/main/README.md#a-first-live-run-without-a-provider-api-key) before choosing this route.
+Read the [local-agent setup and limitations](/docs/local-agents) before choosing this route.
 
 ## Review evidence before sharing
 

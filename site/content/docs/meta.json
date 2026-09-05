@@ -1,4 +1,14 @@
 {
   "title": "Humanish docs",
-  "pages": ["index", "your-app", "read-results", "budgets-and-privacy", "cli"]
+  "pages": [
+    "index",
+    "your-app",
+    "read-results",
+    "budgets-and-privacy",
+    "lab-manifests",
+    "computer-use",
+    "local-agents",
+    "review-surfaces",
+    "cli"
+  ]
 }
