@@ -6,7 +6,7 @@
 // mode-blind, so even after candidates exist, a clean live run must still get a draft describing
 // THE RUN THAT HAPPENED rather than the dry-run letter.
 
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -16,6 +16,7 @@ import type { CuaLoopResult } from "../src/computer-use.js";
 import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
 import { draftFeedback, listFeedback } from "../src/feedback.js";
 import { runDryRun } from "../src/run.js";
+import { syntheticPng1x1 } from "./image-fixtures.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -213,6 +214,17 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
       bundle.mode = "live";
       bundle.feedbackCandidates = candidates;
       await writeFile(runJsonPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      // The fixture's findings must retain the evidence they declare, just as a real run does.
+      for (const candidate of candidates) {
+        for (const evidence of candidate.evidence) {
+          const target = path.join(path.dirname(runJsonPath), evidence.path);
+          await mkdir(path.dirname(target), { recursive: true });
+          await writeFile(target, evidence.kind === "screenshot" ? syntheticPng1x1()
+            : JSON.stringify(evidence.kind === "trace"
+              ? fakeSession("passed", "goal_satisfied", "Synthetic fixture observation.").trace
+              : { note: "Synthetic comms digest." }));
+        }
+      }
 
       const listed = await listFeedback(cwd, "candidate-test");
       expect(listed.ok).toBe(true);

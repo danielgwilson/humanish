@@ -3092,7 +3092,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
         })
       });
       await mkdir(path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots"), { recursive: true });
-      await writeFile(path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots/turn-00-start.png"), "fake-png", "utf8");
+      await writeFile(path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots/turn-00-start.png"), PNG_1X1);
 
       const verify = await verifyRun(cwd, "stopwhen-observed-live");
       expect(verify.ok).toBe(true);
