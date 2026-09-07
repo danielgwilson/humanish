@@ -25,6 +25,8 @@ import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
+
+import { feedbackProofCommands } from "./feedback-proof.js";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
@@ -5478,8 +5480,8 @@ export function participantFeedbackCandidates(args: {
       idempotency_key: `humanish:${args.runId}:${lane.laneId}:participant-report`,
       proposed_next_state: "study-quality-review",
       acceptance_proof: [
-        `pnpm humanish -- verify --run ${args.runId} --json`,
-        `pnpm humanish -- watch --run ${args.runId} --no-open`
+        feedbackProofCommands(args.runId).verify,
+        feedbackProofCommands(args.runId).watch
       ]
     });
   }

@@ -1779,6 +1779,12 @@ describe("OSS lab command", () => {
       kind: "filesystem"
     });
     expect(bundle.feedbackCandidates).toHaveLength(3);
+    for (const candidate of bundle.feedbackCandidates) {
+      expect(candidate.acceptance_proof).toContain(`humanish verify --run ${bundle.runId} --json`);
+      expect(candidate.acceptance_proof.some((proof) => proof.startsWith("pnpm humanish"))).toBe(false);
+    }
+    expect(bundle.feedbackCandidates[0]?.acceptance_proof).toContain(`humanish watch --run ${bundle.runId} --no-open`);
+    expect(bundle.feedbackCandidates[2]?.acceptance_proof).toContain(`humanish watch --run ${bundle.runId} --no-open`);
     expect(bundle.feedbackCandidates[0]).toMatchObject({
       schema: "humanish.feedback-candidate.v1",
       failure_owner: "actor",
