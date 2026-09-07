@@ -36,6 +36,8 @@ points:
 
 **Readable evidence and shareable feedback, 2026-09-07 (#136).** `export --format bundle --redact-screenshots` creates a separate verified workspace while retaining the readable original. Four real operator-run recordings preserved all measured findings and costs through export and ordinary feedback commands; all 31 frames played in both bundle and HTML views. Static Observer grades now reflect their actual verification result. See the [retained workflow receipt](computer-use-actor/receipts/redacted-evidence-workflow-2026-09-07.md). External maintainer use and acceptance remain unproven.
 
+**Declared evidence verification (#715).** Ordinary verification checks final/partial actor frame references and feedback candidate files. Explicit raw frame declarations keep partial traces `local_only`; valid zero-event terminal logs remain supported. Missing or unknown per-frame redaction metadata retains existing compatibility behavior, and unreferenced files are outside this check.
+
 **Narrow desktop and shared-study correction, 2026-09-07.** A minimum-width Chrome window can remain outside a 500px desktop after move/resize. A state-checked fullscreen fallback now proves physical containment before participant entry. Concurrent shared-world actors share the declared model-study budget, and a host ending before lobby handoff retains its actual failure rather than being reported as a timeout. See [bounded desktop receipt](computer-use-actor/receipts/narrow-desktop-containment-2026-09-07.md). This does not establish physical mobile fidelity or external adoption.
 
 **Mobile input correction, 2026-09-05 (#676).** The historical 4/4 TodoMVC phone-lane rename
