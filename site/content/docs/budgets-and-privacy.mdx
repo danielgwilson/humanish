@@ -132,6 +132,8 @@ Use synthetic accounts and data. Keep private targets and local experiments in i
 
 For a study intended to produce share-as-is screenshots, `policies.redactScreenshots: true` blurs persisted frames at capture. That trades visual detail for safer evidence and is not a universal sensitive-data detector. See the [public-safety boundary](https://github.com/danielgwilson/humanish/blob/main/README.md#public-safety-boundary).
 
+To keep readable local evidence and share a copy afterward, use `humanish export --run YOUR_RUN_ID --format bundle --redact-screenshots --out ./shared-study`. This creates a separately verified workspace with blurred PNG screenshots and a derivation receipt. It preserves the original, refuses unsupported or invalid evidence, and makes no provider calls. Review the copied text and findings before sharing; blur is not a personal-information detector. [Complete workflow](/docs/read-results#draft-an-issue).
+
 ## Recover after an interruption
 
 After a crash, inspect the interrupted run and its resource receipt:

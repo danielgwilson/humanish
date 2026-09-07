@@ -1189,20 +1189,24 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
 function registerExportCommand(parent: Command, io: CliIo): void {
   parent
     .command("export")
-    .description("Write one self-contained .html of a run's Observer with screenshots inlined (#471). Verify and the share_ready gate run inside; a local_only bundle exports only with --local-only, watermarked.")
-    .summary("Export one run as a single shareable .html file.")
+    .description("Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.")
+    .summary("Export Observer HTML or a redacted bundle workspace.")
     .option("--run <id>", "Run id or 'latest'.", "latest")
-    .option("--out <path>", "Where to write the file. Defaults to .humanish/exports/<runId>.html.")
+    .addOption(new Option("--format <format>", "Output format; bundle creates a new standalone workspace.").choices(["html", "bundle"]).default("html"))
+    .option("--redact-screenshots", "Bundle only: blur PNG screenshots in a verified copy; keep original evidence unchanged.")
+    .option("--out <path>", "HTML file or new bundle workspace. Default: .humanish/exports/<runId>.html or <runId>-redacted/.")
     .option("--local-only", "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.")
     .option("--max-bytes <n>", "Refuse an export larger than this.", String(DEFAULT_EXPORT_MAX_BYTES))
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string; out?: string; localOnly?: boolean; maxBytes: string }, command) => {
-      const maxBytes = Number.parseInt(options.maxBytes, 10);
+    .action(async (options: { cwd: string; json?: boolean; run: string; out?: string; localOnly?: boolean; maxBytes: string; format: "html" | "bundle"; redactScreenshots?: boolean }, command) => {
+      const maxBytes = options.format === "bundle" ? Number(options.maxBytes) : Number.parseInt(options.maxBytes, 10);
       const result = await exportRun(options.cwd, options.run, {
+        format: options.format,
+        ...(options.redactScreenshots === undefined ? {} : { redactScreenshots: options.redactScreenshots }),
         ...(options.out === undefined ? {} : { out: options.out }),
         ...(options.localOnly === undefined ? {} : { localOnly: options.localOnly }),
-        ...(Number.isFinite(maxBytes) && maxBytes > 0 ? { maxBytes } : {})
+        ...(options.format === "bundle" || (Number.isFinite(maxBytes) && maxBytes > 0) ? { maxBytes } : {})
       });
       writeResult(command, io, result, formatExportHuman);
       io.setExitCode(result.ok ? 0 : 2);

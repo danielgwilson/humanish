@@ -34,6 +34,12 @@ safe. A verified run bundle is not automatically public-promotable: feedback
 commands also require `humanish verify` to report
 `shareSafety.status: share_ready`.
 
+For an otherwise valid run whose only sharing restriction is raw screenshots,
+`humanish export --run RUN --format bundle --redact-screenshots --out ./shared-study`
+produces a separate, reverified workspace. Feedback commands use
+`--cwd ./shared-study --run RUN`; the source retains its original local-only grade
+and readable frames. Exported thumbnails do not replace local visual adjudication.
+
 ## Command Stages
 
 ```bash

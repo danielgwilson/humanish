@@ -23,8 +23,8 @@ certify (see the conformance suite).
    scan additionally blocks them from commit; downstream projects do not get that scan — their
    protection is the init-scaffolded `.gitignore` plus their own review. To share a bundle
    as-is, set `policies.redactScreenshots: true` (blurs
-   at capture); a redact-on-export step for already-captured raw bundles is planned, not yet
-   shipped. (See "the capture-vs-publish rule" below — blurring frames at *capture* was a
+   at capture), or use `humanish export --format bundle --redact-screenshots` to create a
+   separately verified copy while preserving readable local evidence. (See "the capture-vs-publish rule" below — blurring frames at *capture* was a
    default mistaken for this invariant.)
    - Scope note: the literal scrub of KNOWN provisioned values runs on harness log-tails,
      errors, AND model-authored narration (reasoning/message) before it persists; secret-SHAPED
@@ -85,7 +85,7 @@ silently drifting from one is not.
 | Per-lane worlds | Isolation, attribution, reproducibility | `subject.topology: shared-world` — N seats against ONE provisioned, mutable plane for scenarios that ARE about interaction between roles (#164). `execution.concurrency: 1` (an explicit choice) = SEQUENTIAL turns (one sandbox); higher = CONCURRENT — and since #350 an omitted concurrency fills to the seat count, so every declared seat runs live at once by default (one getHost-exposed subject sandbox + N actor sandboxes driving it at once, synthetic-subject only). The bundle declares the weaker `attributionClass: shared-world` + a verify-enforced `attributionLimits` ceiling (the concurrent set drops `sequential-only` and adds `best-effort-causal-attribution` etc.), so the looser per-role attribution is honest, not hidden. |
 | External key placement | Smallest blast radius: when the keyed process (e.g. a computer-use provider loop) runs outside the sandbox, its key never enters | In-sandbox placement when the keyed process runs inside (an agent harness under test); declared per actor type, with a spend budget |
 | Loopback entry URLs | Public-safety: never drive third-party sites unbidden | `policies.allowPublicTargets` for an owner-declared deployment/preview (a Vercel preview of your own app). Multi-lane public/preview fan-out needs explicit `actors[0].lanes[].target` for every lane, so the adapter-owned topology is declared rather than inferred. Provisioned clone subjects always serve in-sandbox on loopback |
-| Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.humanish/` (this repo's CI adds a binary-asset commit scan; downstream projects rely on the scaffolded `.gitignore` and their own review) | `policies.redactScreenshots: true` blurs at capture for share-as-is bundles (a redact-on-export step for raw bundles is planned) |
+| Full-fidelity screenshots, local | The common case is watching a sim of your OWN app locally; blur destroys the deliverable. Raw frames live in gitignored `.humanish/` (this repo's CI adds a binary-asset commit scan; downstream projects rely on the scaffolded `.gitignore` and their own review) | `policies.redactScreenshots: true` blurs at capture; `export --format bundle --redact-screenshots` produces a separate verified copy of a completed run |
 | Synthetic, seeded state | Pinned provenance; no real user data in evidence paths | Declared external state, recorded as UNPINNED in provenance |
 | Single lane | Cost + evidence simplicity | Declared fan-out where the backend supports it — `actors[0].count: N` (homogeneous), explicit `actors[0].lanes[]` (differentiated persona/device/instruction), or compact `actors[0].roster[]` groups that normalize into lanes on the computer-use E2B route (per-lane worlds, cap 16; `execution.concurrency` bounds concurrent paid lanes) |
 | Stock `desktop` template | The stock E2B desktop image is right for most subjects; absent `execution.desktop.template` keeps `Sandbox.create(opts)` byte-stable | `execution.desktop.template` names a custom E2B desktop image (any name/id, no allowlist) for a subject needing baked-in runtimes the stock image lacks (e.g. node/bun/a local Postgres) — threaded to `Sandbox.create(template, opts)` on every desktop-creating route and recorded in the bundle as `desktopTemplate` (public-safe) |
@@ -140,8 +140,9 @@ threat. The corrected principle:
 Consequences:
 
 - Screenshots are retained **raw and full-fidelity** by default, in gitignored `.humanish/`.
-  `policies.redactScreenshots: true` blurs at capture for a share-as-is bundle; a
-  redact-on-export step for already-captured raw bundles is planned (not yet shipped). The
+  `policies.redactScreenshots: true` blurs at capture for a share-as-is bundle;
+  `humanish export --format bundle --redact-screenshots` blurs a separately verified
+  copy of a completed raw bundle without changing the original. The
   frame sent to the provider is always raw regardless — the model must see the screen to act.
 - The loopback wall and the synthetic-data stance were the same error: enforcing at
   capture/runtime (rejecting a public target outright; banning realistic local input) what

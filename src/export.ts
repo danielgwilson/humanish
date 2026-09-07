@@ -14,6 +14,7 @@ import path from "node:path";
 
 import { renderObserver } from "./observer.js";
 import { resolveRunPath, verifyRun, type VerifyResult } from "./run.js";
+import { exportRedactedBundle } from "./export-bundle.js";
 
 export const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */
@@ -33,6 +34,7 @@ export interface ExportResult {
   ok: true;
   cwd: string;
   runId: string;
+  format?: "bundle";
   /** Repo-relative path of the file written. */
   path: string;
   bytes: number;
@@ -55,12 +57,17 @@ export interface ExportFailure {
       | "HUMANISH_EXPORT_VERIFY_FAILED"
       | "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED"
       | "HUMANISH_EXPORT_NO_OBSERVER"
-      | "HUMANISH_EXPORT_TOO_LARGE";
+      | "HUMANISH_EXPORT_TOO_LARGE"
+      | "HUMANISH_EXPORT_INVALID_OPTIONS"
+      | "HUMANISH_EXPORT_OUTPUT_EXISTS"
+      | "HUMANISH_EXPORT_BUNDLE_REFUSED";
     message: string;
   };
 }
 
 export interface ExportOptions {
+  format?: "html" | "bundle";
+  redactScreenshots?: boolean;
   out?: string;
   localOnly?: boolean;
   maxBytes?: number;
@@ -101,7 +108,11 @@ export async function exportRun(
   options: ExportOptions = {},
   deps: ExportDeps = {}
 ): Promise<ExportResult | ExportFailure> {
+  if (options.format === "bundle") return exportRedactedBundle(cwdInput, runInput, options);
   const cwd = path.resolve(cwdInput);
+  if (options.redactScreenshots === true) {
+    return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput, error: { code: "HUMANISH_EXPORT_INVALID_OPTIONS", message: "--redact-screenshots requires --format bundle. HTML export does not transform its source." } };
+  }
   const runPaths = await resolveRunPath(cwd, runInput).catch(() => null);
   if (runPaths === null) {
     return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput, error: { code: "HUMANISH_EXPORT_RUN_NOT_FOUND", message: `No run resolves from "${runInput}" under ${cwd}.` } };
@@ -234,6 +245,16 @@ export async function exportRun(
 
 export function formatExportHuman(result: ExportResult | ExportFailure): string {
   if (!result.ok) return `${result.error.code}: ${result.error.message}\n`;
+  if (result.format === "bundle") {
+    return [
+      `humanish export ${result.runId}`,
+      `workspace: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${result.embeddedImages} blurred image(s))`,
+      `share safety: ${result.shareSafety.status}`,
+      `verify: humanish verify --cwd ${shellArgument(result.path)} --run ${shellArgument(result.runId)}`,
+      `feedback: humanish feedback draft --cwd ${shellArgument(result.path)} --run ${shellArgument(result.runId)}`,
+      ...result.warnings.map((warning) => `warning: ${warning}`), ""
+    ].join("\n");
+  }
   const lines = [
     `humanish export ${result.runId}`,
     `file: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${result.embeddedImages} image(s) embedded)`,
@@ -241,4 +262,8 @@ export function formatExportHuman(result: ExportResult | ExportFailure): string 
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ];
   return `${lines.join("\n")}\n`;
+}
+
+function shellArgument(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
 }

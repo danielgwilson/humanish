@@ -79,7 +79,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish review`: Build a review packet from verified run evidence.
 - `humanish runs`: List local Humanish runs and latest pointers.
 - `humanish stats`: Roll up cost, outcomes, and durations across runs.
-- `humanish export`: Export one run as a single shareable .html file.
+- `humanish export`: Export Observer HTML or a redacted bundle workspace.
 - `humanish comms`: Off-app comms surfaces.
 - `humanish comms catch`: Run the adopter-hosted email catch.
 - `humanish reclaim`: Reclaim an interrupted run's sandboxes by recorded id.
