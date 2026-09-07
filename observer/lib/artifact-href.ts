@@ -16,6 +16,17 @@ export function runArtifactHref(artifactPath: string): string | null {
   return `../${artifactPath}`;
 }
 
+/** Screenshot rendering additionally accepts the raster data URIs emitted by HTML
+ * export. Keep this separate from artifact links: SVG, HTML and arbitrary schemes
+ * must never become navigable content through the screenshot exception. */
+export function screenshotHref(screenshotPath: string): string | null {
+  if (/^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(screenshotPath)) {
+    return screenshotPath;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(screenshotPath)) return null;
+  return runArtifactHref(screenshotPath);
+}
+
 /** A lane's recorded trace items: the finished actor's, else the mid-run `liveActor`
  *  partial's (#441 incremental flush) — one accessor so every reader grows live. */
 export function traceItems(stream: ObserverStream): NonNullable<NonNullable<ObserverStream["actor"]>["items"]> {
@@ -27,7 +38,7 @@ export function keyframeHref(stream: ObserverStream): string | null {
   const items = traceItems(stream);
   for (let i = items.length - 1; i >= 0; i -= 1) {
     const ref = items[i]?.screenshotRef;
-    if (ref) return runArtifactHref(ref.path);
+    if (ref) return screenshotHref(ref.path);
   }
   return null;
 }

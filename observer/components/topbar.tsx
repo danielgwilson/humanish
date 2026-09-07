@@ -118,7 +118,7 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
           // An exported file carries what verify said at export time (#584); the chip says that.
           <span
             className={`chip chip-dot ${data.publicSafety.share.status === "share_ready" ? "" : "chip-mute"}`}
-            title={`verify at export, ${data.publicSafety.share.verifiedAt}${data.publicSafety.share.reasons.length > 0 ? `: ${data.publicSafety.share.reasons.join(", ")}` : ""}`}
+            title={`verified ${data.publicSafety.share.verifiedAt}${data.publicSafety.share.reasons.length > 0 ? `: ${data.publicSafety.share.reasons.join(", ")}` : ""}`}
           >
             {data.publicSafety.share.status}
           </span>

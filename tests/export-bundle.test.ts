@@ -85,6 +85,10 @@ describe("redacted bundle export", () => {
     const shared = path.join(cwd, "shared");
     const derivativeDir = path.join(shared, ".humanish", "runs", RUN);
     const derivative = JSON.parse(await readFile(path.join(derivativeDir, "run.json"), "utf8")) as RunBundle;
+    const observer = JSON.parse(await readFile(path.join(derivativeDir, "observer/observer-data.json"), "utf8"));
+    expect(observer.publicSafety.share).toMatchObject({ status: "share_ready", reasons: [] });
+    const observerHtml = await readFile(path.join(derivativeDir, "observer/index.html"), "utf8");
+    expect(observerHtml).toContain('"status":"share_ready"');
     for (const key of ["runId", "mode", "createdAt", "source", "subject", "persona", "scenario", "review", "feedbackCandidates", "cost", "rerun"] as const) {
       expect(derivative[key]).toEqual(original[key]);
     }

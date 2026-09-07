@@ -166,6 +166,11 @@ export async function renderObserver(
 
   const observerPath = path.join(preparedRunPaths.physicalRunRoot, "observer", "index.html");
   const observerData = buildObserverData(loaded.bundle);
+  observerData.publicSafety.share = {
+    status: verified.shareSafety.status,
+    verifiedAt: new Date().toISOString(),
+    reasons: verified.shareSafety.reasons.map((reason) => reason.code)
+  };
 
   await writeContainedOutputFile(
     preparedRunPaths,

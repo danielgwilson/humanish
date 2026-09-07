@@ -1,4 +1,4 @@
-import { runArtifactHref, traceItems } from "./artifact-href";
+import { screenshotHref, traceItems } from "./artifact-href";
 import type { ObserverStream } from "./observer-data";
 
 // The player's view of a lane: the recorded screenshots as an ordered frame timeline,
@@ -59,7 +59,7 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
 
   for (const item of items) {
     if (item.kind === "screenshot" && item.screenshotRef) {
-      const href = runArtifactHref(item.screenshotRef.path);
+      const href = screenshotHref(item.screenshotRef.path);
       if (href !== null) {
         const atMs = item.at === undefined ? Number.NaN : Date.parse(item.at);
         frames.push({
