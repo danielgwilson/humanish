@@ -277,7 +277,7 @@ h1:where(:not(.humanish-docs h1)) {
   background: var(--panel); overflow: hidden;
 }
 .c-run {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; column-gap: 12px; row-gap: 4px; flex-wrap: wrap;
   padding: 16px 18px; border-bottom: 1px solid var(--console-line-soft);
 }
 .c-run code { font-size: 19px; color: var(--ink); letter-spacing: -.01em }
@@ -295,8 +295,14 @@ h1:where(:not(.humanish-docs h1)) {
 }
 .js .copy { display: inline }
 .copy:hover { text-decoration: underline }
+.copy:disabled { cursor: wait }
+.copy-control { display: contents }
+.copy-feedback {
+  flex-basis: 100%; font-family: var(--mono); font-size: 10.5px; line-height: 1.4;
+  letter-spacing: normal; text-transform: none; color: var(--body-c);
+}
 .c-bar {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 4px;
   padding: 8px 18px 0;
   font-family: var(--mono); font-size: 10px; letter-spacing: .15em;
   text-transform: uppercase; color: var(--label);
