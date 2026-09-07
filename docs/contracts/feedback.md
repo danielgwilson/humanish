@@ -156,6 +156,15 @@ Generating a public issue draft is blocked when:
 
 ## GitHub Issue Semantics
 
+Generated acceptance commands use the installed `humanish` CLI from the workspace
+containing the evidence. They require no repository package script or manifest.
+When regenerating feedback from a retained first-party candidate, exact legacy
+`pnpm humanish -- verify/watch` templates for the same run are projected to direct
+CLI commands. Recognition checks the existing candidate/stream identity and
+idempotency conventions; it is a compatibility rule, not provenance attestation.
+Custom candidates and instructions remain unchanged. Source bundles, candidates
+and receipts are never rewritten by this projection.
+
 GitHub issues filed from feedback should say `contributes to` unless the
 acceptance proof closes the full product claim. The public issue should include
 only redacted evidence pointers and reproduction instructions that a maintainer

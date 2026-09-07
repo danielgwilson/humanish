@@ -29,10 +29,12 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.84.0`)
+## Current Program Truth (source `0.84.1`)
 
 The package source and repository implementation in this tree agree on these
 points:
+
+**Portable feedback acceptance commands, 2026-09-07 (#720).** Generated proof commands use the installed CLI from the evidence workspace, including standalone exports without a package manifest. Redrafting recognized first-party candidates projects exact legacy command templates without rewriting source candidates or receipts. Custom instructions remain unchanged. See the [0.84.1 release note](../release/0.84.1-portable-feedback.md).
 
 **Readable evidence and shareable feedback, 2026-09-07 (#136).** `export --format bundle --redact-screenshots` creates a separate verified workspace while retaining the readable original. Four real operator-run recordings preserved all measured findings and costs through export and ordinary feedback commands; all 31 frames played in both bundle and HTML views. Static Observer grades now reflect their actual verification result. See the [retained workflow receipt](computer-use-actor/receipts/redacted-evidence-workflow-2026-09-07.md). External maintainer use and acceptance remain unproven.
 

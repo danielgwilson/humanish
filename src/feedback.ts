@@ -1,6 +1,8 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
+import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./feedback-proof.js";
+
 import { formatParticipantOutcomes, formatStudyTaskFunnel, loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
 import {
@@ -416,7 +418,7 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
       },
       idempotency_key: candidate.idempotency_key,
       proposed_next_state: candidate.proposed_next_state,
-      acceptance_proof: candidate.acceptance_proof
+      acceptance_proof: projectFeedbackAcceptanceProof(bundle, candidate)
     };
   }
 
@@ -469,8 +471,8 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
       idempotency_key: `humanish:${bundle.runId}:live-run-summary`,
       proposed_next_state: "study-quality-review",
       acceptance_proof: [
-        `pnpm humanish -- verify --run ${bundle.runId} --json`,
-        `pnpm humanish -- watch --run ${bundle.runId} --no-open`
+        feedbackProofCommands(bundle.runId).verify,
+        feedbackProofCommands(bundle.runId).watch
       ]
     };
   }
@@ -507,8 +509,8 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
     idempotency_key: `humanish:${bundle.runId}:dry-run-contract-proof`,
     proposed_next_state: "watch",
     acceptance_proof: [
-      `pnpm humanish -- verify --run ${bundle.runId} --json`,
-      `pnpm humanish -- watch --run ${bundle.runId} --no-open`
+      feedbackProofCommands(bundle.runId).verify,
+      feedbackProofCommands(bundle.runId).watch
     ]
   };
 }

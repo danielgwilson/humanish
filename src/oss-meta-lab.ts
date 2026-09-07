@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { lstat, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { feedbackProofCommands } from "./feedback-proof.js";
+
 import { runDesktopCommandOrThrow } from "./command-failure.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
 import { promisify } from "node:util";
@@ -2339,8 +2341,8 @@ function buildMetaFeedbackCandidates(args: {
         idempotency_key: `humanish:${args.runId}:${assignment.streamId}:setup-quality`,
         proposed_next_state: "setup-quality-review",
         acceptance_proof: [
-          `pnpm humanish -- verify --run ${args.runId} --json`,
-          `pnpm humanish -- watch --run ${args.runId} --no-open`
+          feedbackProofCommands(args.runId).verify,
+          feedbackProofCommands(args.runId).watch
         ]
       });
     }
@@ -2371,7 +2373,7 @@ function buildMetaFeedbackCandidates(args: {
         acceptance_proof: [
           "npm view humanish version",
           "npx --yes --package humanish humanish run --help | grep -- --app-url",
-          `pnpm humanish -- verify --run ${args.runId} --json`
+          feedbackProofCommands(args.runId).verify
         ]
       });
     }
@@ -2406,8 +2408,8 @@ function buildMetaFeedbackCandidates(args: {
         idempotency_key: `humanish:${args.runId}:${assignment.streamId}:study-quality`,
         proposed_next_state: "study-quality-review",
         acceptance_proof: [
-          `pnpm humanish -- verify --run ${args.runId} --json`,
-          `pnpm humanish -- watch --run ${args.runId} --no-open`,
+          feedbackProofCommands(args.runId).verify,
+          feedbackProofCommands(args.runId).watch,
           "Study-quality rating is useful or high_leverage, or the remaining ceremonial state is explicitly explained."
         ]
       });

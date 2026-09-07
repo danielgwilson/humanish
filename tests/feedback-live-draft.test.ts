@@ -82,6 +82,9 @@ describe("participantFeedbackCandidates (#392)", () => {
 
     expect(candidates).toHaveLength(1);
     const candidate = candidates[0]!;
+    expect(candidate.acceptance_proof).toEqual([
+      "humanish verify --run run-1 --json", "humanish watch --run run-1 --no-open"
+    ]);
     expect(candidate.actor).toBe("computer-use");
     expect(candidate.failure_owner).toBe("target-app");
     expect(candidate.summary).toContain("reported friction");
