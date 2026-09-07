@@ -419,6 +419,13 @@ may be an empty regular file, consistent with feedback verification, but that
 permission cannot relax another consumer's nonempty-file requirement. The
 qualified zero-event terminal-log exception remains unchanged.
 
+An explicit `screenshotRef.redaction: none` on either final or live actor items
+contributes the existing `RAW_SCREENSHOTS` reason and keeps otherwise valid
+evidence `local_only`. Either an aggregate raw declaration or a raw frame wins
+over a blurred declaration. Missing or unknown per-frame metadata retains the
+existing permissive compatibility behavior; verification does not infer pixel
+privacy from that absence.
+
 ## Redacted Derivative Workspace
 
 `humanish export --run RUN --format bundle --redact-screenshots --out DIRECTORY`

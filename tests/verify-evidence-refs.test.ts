@@ -61,7 +61,7 @@ describe("verify declared evidence references", () => {
       await save();
       const result = await verifyRun(cwd, RUN);
       expect(result.ok).toBe(true);
-      if (field === "actor") expect(result.shareSafety.status).toBe("local_only");
+      expect(result.shareSafety.status).toBe("local_only");
     });
 
     it.each([
@@ -89,7 +89,40 @@ describe("verify declared evidence references", () => {
       setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG" } }]);
       await expectFailure("expected PNG signature");
     });
+
+    it.each(["none", "blurred", "ocr_scrubbed"])(`uses an explicit %s frame declaration from ${field}`, async (redaction) => {
+      setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
+      if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
+      else {
+        // The official partial shape carries items and a timestamp, not an aggregate
+        // redaction summary; a raw frame must be enough to retain local-only posture.
+        bundle.streams[0]!.liveActor = { schema: "humanish.live-actor.v1", updatedAt: "2026-09-01T00:00:00Z",
+          items: bundle.streams[0]!.liveActor!.items };
+      }
+      await save();
+      const result = await verifyRun(cwd, RUN);
+      expect(result.ok).toBe(true);
+      expect(result.shareSafety.status).toBe(redaction === "none" ? "local_only" : "share_ready");
+      expect(result.shareSafety.reasons.some((reason) => reason.code === "RAW_SCREENSHOTS")).toBe(redaction === "none");
+      expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(redaction === "none");
+      if (redaction === "none") expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
+    });
+
+    it.each([undefined, "legacy-unknown"])(`preserves absent/unknown ${field} frame-metadata compatibility: %s`, async (redaction) => {
+      setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
+      if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
+      await save();
+      expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
+    });
   }
+
+  it("keeps an aggregate raw declaration authoritative over a blurred frame", async () => {
+    setActor("actor", [{ screenshotRef: { path: "screenshots/frame.PNG", redaction: "blurred" } }]);
+    await save();
+    const result = await verifyRun(cwd, RUN);
+    expect(result.ok).toBe(true);
+    expect(result.shareSafety.status).toBe("local_only");
+  });
 
   it.each(["symlink", "hardlink"])("refuses a %s referenced only by an actor", async (kind) => {
     const external = path.join(cwd, "external.png");

@@ -5499,8 +5499,8 @@ function isZeroEventTerminalTrace(value: unknown): boolean {
     && isRecord(value.counts) && value.counts.terminalEvents === 0;
 }
 
-function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: string; path: unknown }> {
-  const references: Array<{ label: string; path: unknown }> = [];
+function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: string; path: unknown; redaction: unknown }> {
+  const references: Array<{ label: string; path: unknown; redaction: unknown }> = [];
   for (const field of ["actor", "liveActor"] as const) {
     const trace: unknown = stream[field];
     if (!isRecord(trace) || !Array.isArray(trace.items)) continue;
@@ -5508,7 +5508,8 @@ function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: st
       if (!isRecord(item) || !Object.hasOwn(item, "screenshotRef")) return;
       references.push({
         label: `${stream.id} ${field}.items[${index}].screenshotRef`,
-        path: isRecord(item.screenshotRef) ? item.screenshotRef.path : undefined
+        path: isRecord(item.screenshotRef) ? item.screenshotRef.path : undefined,
+        redaction: isRecord(item.screenshotRef) ? item.screenshotRef.redaction : undefined
       });
     });
   }
@@ -5920,7 +5921,11 @@ function rawScreenshotStreamIds(bundle: RunBundle): string[] {
   const rawStreamIds: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
-    if (isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw") {
+    const aggregateRaw = isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
+    // Partial live traces have no final actor summary. An explicit raw frame must also
+    // retain local-only posture, including when it contradicts an aggregate blur claim.
+    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) => reference.redaction === "none");
+    if (aggregateRaw || frameRaw) {
       rawStreamIds.push(stream.id);
     }
   }
