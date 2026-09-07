@@ -5448,11 +5448,29 @@ async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths,
     if (stream.ui?.nestedObserverPath && isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)) {
       addRequiredPath(stream.ui.nestedObserverPath);
     }
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (isRunRootEvidenceReference(reference.path)) {
+        addRequiredPath(reference.path, { screenshot: true });
+      }
+    }
   }
 
   for (const artifact of bundle.adapterArtifacts ?? []) {
     if (isLocalEvidenceArtifactPath(artifact.path)) {
       addRequiredPath(artifact.path, { screenshot: artifact.kind === "screenshot" });
+    }
+  }
+
+  for (const candidate of bundle.feedbackCandidates ?? []) {
+    for (const evidence of candidate.evidence) {
+      if (isRunRootEvidenceReference(evidence.path)) {
+        addRequiredPath(evidence.path, {
+          screenshot: evidence.kind === "screenshot",
+          // Feedback accepts an existing empty nonimage file. The conjunctive merge above
+          // keeps any stricter stream, actor, or adapter requirement in force.
+          allowEmpty: evidence.kind !== "screenshot"
+        });
+      }
     }
   }
 
@@ -5481,6 +5499,29 @@ function isZeroEventTerminalTrace(value: unknown): boolean {
     && isRecord(value.counts) && value.counts.terminalEvents === 0;
 }
 
+function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: string; path: unknown; redaction: unknown }> {
+  const references: Array<{ label: string; path: unknown; redaction: unknown }> = [];
+  for (const field of ["actor", "liveActor"] as const) {
+    const trace: unknown = stream[field];
+    if (!isRecord(trace) || !Array.isArray(trace.items)) continue;
+    trace.items.forEach((item: unknown, index: number) => {
+      if (!isRecord(item) || !Object.hasOwn(item, "screenshotRef")) return;
+      references.push({
+        label: `${stream.id} ${field}.items[${index}].screenshotRef`,
+        path: isRecord(item.screenshotRef) ? item.screenshotRef.path : undefined,
+        redaction: isRecord(item.screenshotRef) ? item.screenshotRef.redaction : undefined
+      });
+    });
+  }
+  return references;
+}
+
+function isRunRootEvidenceReference(value: unknown): value is string {
+  return typeof value === "string" && isLocalEvidenceArtifactPath(value)
+    && !path.win32.isAbsolute(value) && !value.includes("\0")
+    && !/^[a-z][a-z\d+.-]*:/i.test(value);
+}
+
 function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
   const findings: string[] = [];
   if (path.isAbsolute(bundle.cwd)) {
@@ -5495,6 +5536,13 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
     adapterArtifactKeys.add(key);
     if (!isLocalEvidenceArtifactPath(artifact.path)) {
       findings.push(`adapter artifact ${artifact.namespace}:${artifact.kind} nonlocal artifact ${artifact.path}`);
+    }
+  }
+  for (const candidate of bundle.feedbackCandidates ?? []) {
+    for (const evidence of candidate.evidence) {
+      if (!isRunRootEvidenceReference(evidence.path)) {
+        findings.push(`feedback candidate ${candidate.id} nonlocal evidence ${evidence.path}`);
+      }
     }
   }
   for (const stream of bundle.streams) {
@@ -5518,6 +5566,11 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
     }
     if (stream.ui?.screenshotUrl && !normalizeLocalEvidenceReference(stream.ui.screenshotUrl)) {
       findings.push(`${stream.id} nonlocal screenshot reference ${stream.ui.screenshotUrl}`);
+    }
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (!isRunRootEvidenceReference(reference.path)) {
+        findings.push(`${reference.label} is malformed or nonlocal`);
+      }
     }
   }
   return findings.slice(0, 50);
@@ -5868,7 +5921,11 @@ function rawScreenshotStreamIds(bundle: RunBundle): string[] {
   const rawStreamIds: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
-    if (isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw") {
+    const aggregateRaw = isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
+    // Partial live traces have no final actor summary. An explicit raw frame must also
+    // retain local-only posture, including when it contradicts an aggregate blur claim.
+    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) => reference.redaction === "none");
+    if (aggregateRaw || frameRaw) {
       rawStreamIds.push(stream.id);
     }
   }

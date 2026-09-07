@@ -346,8 +346,21 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     await missing();
     await writeFile(tracePath, originalTrace);
 
-    for (const mutation of ["positive-count", "missing-count", "nonterminal", "screenshot", "other-log", "shared-reference"]) {
-      const bundle = JSON.parse(originalBundle);
+    const candidateBundle = JSON.parse(originalBundle);
+    candidateBundle.feedbackCandidates = [{
+      schema: "humanish.feedback-candidate.v1", id: "empty-terminal-log", run_id: result.runId,
+      adapter_id: "synthetic-terminal", scenario_id: candidateBundle.scenario.id, persona_id: candidateBundle.persona.id,
+      actor: "synthetic-dry-run", substrate: "local-filesystem", failure_owner: "harness",
+      summary: "A silent terminal process", expected: "Retain its empty event stream.", actual: "No output was recorded.",
+      evidence: [{ path: "terminal-events.ndjson", kind: "log", note: "Existing zero-record event stream." }],
+      redaction: { status: "passed", notes: "Synthetic evidence." }, idempotency_key: "empty-terminal-log",
+      proposed_next_state: "watch", acceptance_proof: ["Inspect the retained terminal trace."]
+    }];
+    await writeFile(bundlePath, JSON.stringify(candidateBundle));
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+
+    for (const mutation of ["positive-count", "missing-count", "nonterminal", "screenshot", "other-log", "shared-reference", "candidate-screenshot"]) {
+      const bundle = structuredClone(candidateBundle);
       const stream = bundle.streams[0];
       const artifact = stream.artifacts.find((entry: { path: string }) => entry.path === "terminal-events.ndjson");
       if (mutation === "positive-count") stream.actor.counts.terminalEvents = 1;
@@ -356,6 +369,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       if (mutation === "screenshot") artifact.kind = "screenshot";
       if (mutation === "other-log") { artifact.path = "other-empty.log"; await writeFile(path.join(runDir, artifact.path), ""); }
       if (mutation === "shared-reference") bundle.adapterArtifacts = [{ schema: "humanish.adapter-artifact.v1", namespace: "synthetic", label: "other consumer", path: "terminal-events.ndjson", kind: "log", note: "Requires nonempty evidence." }];
+      if (mutation === "candidate-screenshot") bundle.feedbackCandidates[0].evidence[0].kind = "screenshot";
       await writeFile(bundlePath, JSON.stringify(bundle));
       await missing(mutation === "other-log" ? "other-empty.log" : undefined);
     }
