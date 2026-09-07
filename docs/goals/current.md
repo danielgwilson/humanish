@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-09-07 (rev 21)
+Status date: 2026-09-07 (rev 22)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -29,10 +29,12 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.83.2`)
+## Current Program Truth (source `0.84.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
+
+**Readable evidence and shareable feedback, 2026-09-07 (#136).** `export --format bundle --redact-screenshots` creates a separate verified workspace while retaining the readable original. Four real operator-run recordings preserved all measured findings and costs through export and ordinary feedback commands; all 31 frames played in both bundle and HTML views. Static Observer grades now reflect their actual verification result. See the [retained workflow receipt](computer-use-actor/receipts/redacted-evidence-workflow-2026-09-07.md). External maintainer use and acceptance remain unproven.
 
 **Narrow desktop and shared-study correction, 2026-09-07.** A minimum-width Chrome window can remain outside a 500px desktop after move/resize. A state-checked fullscreen fallback now proves physical containment before participant entry. Concurrent shared-world actors share the declared model-study budget, and a host ending before lobby handoff retains its actual failure rather than being reported as a timeout. See [bounded desktop receipt](computer-use-actor/receipts/narrow-desktop-containment-2026-09-07.md). This does not establish physical mobile fidelity or external adoption.
 
