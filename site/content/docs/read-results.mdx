@@ -60,7 +60,18 @@ npx humanish feedback issue --run latest --repo your-org/your-app --format markd
 
 These commands generate and check a draft. They do not publish it or call GitHub to create an issue. Read the rendered Markdown, reproduce the finding, and edit it before posting.
 
-If verification says `local_only` or `blocked`, public feedback generation refuses the bundle. You can still inspect local evidence in Observer. Do not change a stored grade to force it through.
+If verification says `local_only` or `blocked`, public feedback generation refuses the bundle. You can still inspect local evidence in Observer. For a valid run whose only sharing restriction is raw screenshots, create a redacted copy:
+
+```bash
+npx humanish export --run YOUR_RUN_ID --format bundle --redact-screenshots --out ./shared-study
+npx humanish verify --cwd ./shared-study --run YOUR_RUN_ID --json
+npx humanish feedback draft --cwd ./shared-study --run YOUR_RUN_ID
+npx humanish feedback issue --cwd ./shared-study --run YOUR_RUN_ID --repo your-org/your-app --format markdown
+```
+
+The new directory contains a standalone `.humanish/runs/YOUR_RUN_ID/` bundle. Your original keeps its readable screenshots; the copy contains blurred thumbnails and a `derivation.json` receipt. The copied study retains its identity and outcomes. It is not another participant or a new attempt in your original run history.
+
+Export rebuilds Observer and independently verifies the copy before publishing it. It refuses an existing destination, incomplete or invalid evidence, unsupported image formats and embedded image payloads. PNG screenshots are supported; the copy's text and findings still need your review before sharing. A `blocked` bundle must be corrected at its source. Do not change a stored grade to force it through.
 
 ## Export or compare evidence
 
@@ -69,7 +80,7 @@ npx humanish export --run latest
 npx humanish stats --json
 ```
 
-`export` writes a self-contained Observer HTML file with its screenshots. It requires `share_ready`; `--local-only` permits a watermarked local export, which still needs review before sharing.
+By default, `export` writes a self-contained Observer HTML file with its screenshots. It requires `share_ready`; `--local-only` permits a watermarked local export, which still needs review before sharing. Use `--format bundle --redact-screenshots` for the separate redacted workspace shown above.
 
 `stats` summarizes outcomes, duration, and estimated costs. Unknown cost is reported as unknown. Use `--lab your-app` to focus on one lab and `--since` to select a period; the [CLI reference](/docs/cli#humanish-stats) lists accepted flags.
 

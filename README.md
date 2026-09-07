@@ -91,7 +91,9 @@ npx humanish feedback issue --run latest --repo owner/repo --format markdown
 
 `feedback issue` prints a draft and requires `share_ready` evidence. A live run
 with raw screenshots can be valid local evidence and still fail that sharing
-gate. [Read results](https://humanish.dev/docs/read-results) explains the
+gate. `humanish export --run latest --format bundle --redact-screenshots` creates
+a separately verified copy while preserving the readable original.
+[Read results](https://humanish.dev/docs/read-results) explains the
 participant's report, task outcomes, costs, and how to turn a finding into an issue.
 
 ## Public-Safety Boundary

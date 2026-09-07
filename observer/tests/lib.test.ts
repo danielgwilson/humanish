@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDuration, runArtifactHref } from "../lib/artifact-href";
+import { formatDuration, runArtifactHref, screenshotHref, keyframeHref } from "../lib/artifact-href";
 import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel, frameHoldMs, parseClickCoord } from "../lib/player-model";
@@ -20,6 +20,27 @@ describe("runArtifactHref containment", () => {
     expect(runArtifactHref("https://example.com/x.png")).toBeNull();
     expect(runArtifactHref("data:image/png;base64,AAAA")).toBeNull();
     expect(runArtifactHref("")).toBeNull();
+  });
+});
+
+describe("exported screenshot rendering", () => {
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1sAAAAASUVORK5CYII=";
+  it("retains exported frames in the player and grid keyframe", () => {
+    const stream = { actor: { items: [
+      { id: "f1", kind: "screenshot", title: "first", screenshotRef: { path: png } },
+      { id: "f2", kind: "screenshot", title: "last", screenshotRef: { path: png } }
+    ] } } as unknown as ObserverStream;
+    expect(buildPlayerModel(stream)?.frames.map((frame) => frame.href)).toEqual([png, png]);
+    expect(keyframeHref(stream)).toBe(png);
+    expect(runArtifactHref(png)).toBeNull();
+  });
+  it("keeps ordinary relative screenshots and refuses unsafe inline content", () => {
+    expect(screenshotHref("screenshots/frame.png")).toBe("../screenshots/frame.png");
+    for (const ref of [
+      "data:image/svg+xml;base64,PHN2Zz4=", "data:text/html;base64,AAAA",
+      "data:image/png,raw", "data:image/png;base64,AAAA<script>",
+      "javascript:alert(1)", "https://example.com/frame.png", "../outside.png"
+    ]) expect(screenshotHref(ref)).toBeNull();
   });
 });
 

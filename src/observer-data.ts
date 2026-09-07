@@ -64,10 +64,9 @@ export interface ObserverData {
     publishable: false;
     note: string;
     /**
-     * ADDITIVE + OPTIONAL (#584): what `verify` said when this artifact was exported, written by
-     * `humanish export` and by nothing else. A run directory's Observer never carries it (the
-     * artifact is local evidence until something gates it); an exported file does, so its chrome
-     * can say `share_ready` instead of the run directory's `local_only`.
+     * ADDITIVE + OPTIONAL (#584): the result of verification at static render or
+     * export time. Unverified projections omit this field. The timestamp records
+     * that check; it is not an assertion about subsequent file changes.
      */
     share?: {
       status: "share_ready" | "local_only" | "blocked";

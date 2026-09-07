@@ -410,6 +410,37 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 - `local_only`: keep the run local or generate a redacted replacement bundle;
 - `blocked`: fix the verification or public-safety failure first.
 
+## Redacted Derivative Workspace
+
+`humanish export --run RUN --format bundle --redact-screenshots --out DIRECTORY`
+creates a new workspace at `DIRECTORY/.humanish/runs/RUN/`. The source remains
+unchanged, including its latest pointer and statistics. The derivative retains the
+original run ID and measured outcomes; it is not a new attempt. Standard commands
+select it with `--cwd DIRECTORY --run RUN`.
+
+Its `derivation.json` uses schema `humanish.redacted-derivation.v1` and records:
+
+- `sourceRunId`, `createdAt` (export time), and `transformation` (`png-blur-at-export-v1`);
+- `sourceInventorySha256`: SHA256 of the JSON array of `[path, byteLength, sha256]`
+  rows, sorted by path using JavaScript string order;
+- `files[]`: source-relative `path`, `sourceSha256`, action (`copied`, `updated`,
+  `blurred`, or `omitted`), and `outputSha256` for retained files or a reason for
+  omission;
+- `generated[]`: paths and SHA256s of rebuilt Observer projections.
+
+The receipt describes the transformation; it does not attest that a participant's
+finding is true. Its own bytes are not included in its hash inventory. Feedback
+commands can subsequently generate new derivative-local artifacts.
+
+PNG files are re-encoded as blurred thumbnails, including unreferenced images.
+Known actor screenshot declarations describe export-time blur while retaining the
+original redaction notes. Observer is rebuilt; old feedback outputs, local process
+status and the operational sandbox journal are omitted and inventoried. A derivative
+does not inherit resource cleanup authority. Unsupported images, binary formats,
+inline image payloads, invalid evidence and references to omitted files are refused.
+The original and derivative are independently verified. Text still requires human
+review before sharing; screenshot blur does not certify natural-language privacy.
+
 ## Contract Fixture Proof
 
 The core fixture proves:
