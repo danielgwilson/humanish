@@ -156,14 +156,14 @@ describe("redacted bundle export", () => {
     expect((await exportRun(cwd, RUN, OPTIONS)).ok).toBe(false);
   });
 
-  it.each(["screenshots/missing.png", "https://example.test/untransformed.png", "../../outside.png"])("refuses unbacked actor frame reference %s even when ordinary verify passes", async (ref) => {
+  it.each(["screenshots/missing.png", "https://example.test/untransformed.png", "../../outside.png"])("refuses unbacked actor frame reference %s in ordinary verify and export", async (ref) => {
     original.streams[0]!.actor!.items[0]!.screenshotRef!.path = ref;
     await writeFile(path.join(runDir, "run.json"), JSON.stringify(original));
     await writeFile(path.join(runDir, "actor.json"), JSON.stringify(original.streams[0]!.actor));
-    expect((await verifyRun(cwd, RUN)).ok).toBe(true);
+    expect((await verifyRun(cwd, RUN)).ok).toBe(false);
     const result = await exportRun(cwd, RUN, OPTIONS);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).toContain("screenshot reference");
+    if (!result.ok) expect(result.error.message).toContain("Source evidence failed");
     await expect(stat(path.join(cwd, "shared"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -171,6 +171,7 @@ describe("redacted bundle export", () => {
     original.feedbackCandidates[0]!.evidence = [{ path: ref, kind: "log", note: "Synthetic reference." }];
     await writeFile(path.join(runDir, "run.json"), JSON.stringify(original));
     await writeFile(path.join(runDir, "sandbox-receipts.ndjson"), "{}");
+    expect((await verifyRun(cwd, RUN)).ok).toBe(ref === "sandbox-receipts.ndjson");
     const result = await exportRun(cwd, RUN, OPTIONS);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toMatch(/Feedback evidence|Source evidence failed/);
