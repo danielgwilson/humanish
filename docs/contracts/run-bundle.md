@@ -410,6 +410,15 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 - `local_only`: keep the run local or generate a redacted replacement bundle;
 - `blocked`: fix the verification or public-safety failure first.
 
+The local-evidence check includes screenshots declared only by
+`streams[].actor.items[].screenshotRef` or `streams[].liveActor.items[].screenshotRef`,
+as well as every feedback candidate's evidence. Actor frame paths are relative
+to the run root; missing, malformed or nonlocal references fail verification.
+Screenshots use the existing bounded PNG decoder. Nonimage candidate evidence
+may be an empty regular file, consistent with feedback verification, but that
+permission cannot relax another consumer's nonempty-file requirement. The
+qualified zero-event terminal-log exception remains unchanged.
+
 ## Redacted Derivative Workspace
 
 `humanish export --run RUN --format bundle --redact-screenshots --out DIRECTORY`
