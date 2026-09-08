@@ -34,6 +34,23 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
   const stageRef = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState<Size>({ width: 640, height: 480 });
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const captureHref = live ? frame?.href : undefined;
+  const [liveCapture, setLiveCapture] = useState<(Size & { label: string }) | null>(null);
+  useEffect(() => {
+    if (!captureHref) return;
+    const image = new Image();
+    let active = true;
+    const measured = () => {
+      if (!active || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
+      setLiveCapture({ label, width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onload = measured;
+    image.src = captureHref;
+    if (image.complete) measured();
+    // Keep the previous known proportions while the next capture loads or fails.
+    // A late image response must not change another participant or an unmounted stage.
+    return () => { active = false; image.onload = null; image.onerror = null; };
+  }, [captureHref, label]);
   useEffect(() => {
     const node = stageRef.current;
     if (!node) return;
@@ -46,7 +63,10 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
     window.addEventListener("resize", measure);
     return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
-  const liveSize = fittedSize(viewport ?? { width: 1280, height: 800 }, available, "fit");
+  // Mid-run bundles may omit desktopGeometry/viewport. The recorded raster still
+  // establishes the actual screen proportions, including redacted/downscaled images.
+  const liveDimensions = liveCapture?.label === label ? liveCapture : viewport;
+  const liveSize = fittedSize(liveDimensions ?? { width: 1280, height: 800 }, available, "fit");
   return <div className="stage evidence-stage" ref={stageRef} tabIndex={zoom === "fit" || live ? -1 : 0}
     aria-label={zoom === "fit" || live ? "Evidence stage" : "Zoomed evidence; scroll or drag to pan"}
     onPointerDown={(event) => {
@@ -61,6 +81,7 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
       event.currentTarget.scrollTop = drag.current.top + drag.current.y - event.clientY;
     }}
     onPointerUp={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}>
+    {live && !liveDimensions ? <p className="live-size-note" role="status">Preview proportions are provisional until a captured screen is available.</p> : null}
     <div className="evidence-canvas">
       {live ? <div className="stage-live" style={liveSize}>
         <iframe key={streamRevision} sandbox={sandbox} src={live} title={`Live view — ${label}`} tabIndex={-1} aria-hidden="true" referrerPolicy="no-referrer" />

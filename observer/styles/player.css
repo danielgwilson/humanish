@@ -93,3 +93,5 @@
   .evidence-player .player-heading { padding-block: 7px; }
   .evidence-player .player-evidence-note { padding-block: 4px; }
 }
+
+.evidence-player .live-size-note { position: absolute; z-index: 1; left: 12px; right: 12px; bottom: 6px; width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--muted); font: 11px/1.4 var(--sans); }
