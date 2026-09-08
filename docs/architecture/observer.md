@@ -173,6 +173,9 @@ between an active study and its provisional evidence outcome.
 
 ## UI Shape
 
+See [Watching and reviewing evidence](observer-review.md) for current controls,
+entry-point capabilities, timing limits and browser acceptance commands.
+
 The Observer shell has:
 
 - top mission-control band with run status and metrics;
