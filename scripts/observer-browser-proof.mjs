@@ -479,6 +479,11 @@ try {
     const slider = page.getByRole("slider", { name: /Seek recording/ }); await slider.focus(); await slider.press("End");
     await page.locator('.stage-box img[src$="portrait-4.png"]').waitFor(); await slider.press("Home");
     await page.locator('.stage-box img[src$="portrait-1.png"]').waitFor();
+    await slider.press("ArrowRight");
+    await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
+    await slider.press("ArrowLeft");
+    await page.locator('.stage-box img[src$="portrait-1.png"]').waitFor();
+    record.checks.focusedScrubberKeys = ["End", "Home", "ArrowRight", "ArrowLeft"];
     const next = page.getByRole("button", { name: "Next frame", exact: true }); await next.focus(); await next.press("Space");
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
     assert.equal(await page.getByRole("button", { name: "Pause", exact: true }).count(), 0, "Space on focused button also started playback");
