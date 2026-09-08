@@ -1,5 +1,12 @@
 import type { PlayerModel } from "./player-model";
 
+/** Actual player selection, independent of the last browser URL write. */
+export interface PlayerView {
+  frame: number | null;
+  mode: "live" | "replay";
+  playing: boolean;
+}
+
 export interface PlaybackState {
   mode: "live" | "replay";
   frameId: string | null;

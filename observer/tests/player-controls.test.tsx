@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import firstRun from "../../tests/golden/observer-data/first-run.json";
@@ -13,7 +13,7 @@ let container: HTMLDivElement;
 let stream: ObserverStream;
 let model: PlayerModel;
 
-async function render(props: { initialFrame?: number | null; initialMode?: "live" | "replay" | null } = {}) {
+async function render(props: Omit<ComponentProps<typeof Player>, "data" | "stream" | "model"> = {}) {
   await act(async () => root.render(<Player data={data} stream={stream} model={model} {...props} />));
 }
 async function click(label: string) {
@@ -75,6 +75,49 @@ describe("player review controls", () => {
       await act(async () => { vi.advanceTimersByTime(2100); });
       expect(counter()).toBe("2 / 3");
     } finally { vi.useRealTimers(); }
+  });
+  it("reports actual selection during playback and does not repeat unchanged snapshot updates", async () => {
+    const onViewChange = vi.fn();
+    vi.useFakeTimers();
+    try {
+      await render({ initialFrame: 0, onViewChange });
+      expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: false });
+      await click("Play");
+      expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: true });
+      await act(async () => { vi.advanceTimersByTime(7100); });
+      expect(onViewChange).toHaveBeenLastCalledWith({ frame: 1, mode: "replay", playing: true });
+      expect(window.location.hash).toBe("#/lane/participant/f/1");
+      const calls = onViewChange.mock.calls.length;
+      model = structuredClone(model);
+      await render({ initialFrame: 0, onViewChange });
+      expect(onViewChange).toHaveBeenCalledTimes(calls);
+      await click("Pause");
+      expect(onViewChange).toHaveBeenLastCalledWith({ frame: 1, mode: "replay", playing: false });
+    } finally { vi.useRealTimers(); }
+  });
+  it("reports a missing addressed frame as null", async () => {
+    const onViewChange = vi.fn();
+    await render({ initialFrame: 100, onViewChange });
+    expect(onViewChange).toHaveBeenLastCalledWith({ frame: null, mode: "replay", playing: false });
+  });
+  it("keeps offline running snapshots historical and freezes a source that becomes static", async () => {
+    const onViewChange = vi.fn();
+    await render({ updating: true, onViewChange });
+    expect(onViewChange).toHaveBeenLastCalledWith({ frame: 2, mode: "live", playing: false });
+    await render({ updating: false, onViewChange });
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.querySelector(".player-mode strong")?.textContent).toBe("Offline recording");
+    expect(container.textContent).toContain("participant status at capture");
+    expect(container.querySelector('[aria-label="Jump to live"]')).toBeNull();
+    expect(onViewChange).toHaveBeenLastCalledWith({ frame: 2, mode: "replay", playing: false });
+    appendFrame(); await render({ updating: false, onViewChange });
+    expect(counter()).toBe("3 / 4");
+  });
+  it("does not attach a desktop through an explicit live address on an offline snapshot", async () => {
+    await render({ updating: false, initialMode: "live" });
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(counter()).toBe("3 / 3");
+    expect(window.location.hash).toBe("#/lane/participant/f/3");
   });
   it("does not steal native control or editable keyboard actions", async () => {
     await render({ initialFrame: 1 });

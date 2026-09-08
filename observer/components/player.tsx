@@ -5,7 +5,7 @@ import { formatDuration } from "@/lib/artifact-href";
 import { liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel } from "@/lib/player-model";
-import { openPlayback, playbackIndex, seekPlayback } from "@/lib/player-state";
+import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
@@ -44,20 +44,32 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, updating = true, onViewChange }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
+  /** Source capability, not the most recent poll result; transient failures stay updating. */
+  updating?: boolean;
+  onViewChange?: (view: PlayerView) => void;
 }) {
   const preparing = stream.status === "queued" || stream.status === "preparing";
-  const active = stream.status === "running" || preparing;
+  const active = updating && (stream.status === "running" || preparing);
   const lifecycle = preparing ? "Preparing" : "Running";
-  const [state, setState] = useState(() => openPlayback(model, active, initialFrame, initialMode));
+  const sourcePlayback = useCallback((addressed: number | null, mode: "live" | "replay" | null) => openPlayback(
+    model, active, !updating && mode === "live" && addressed === null ? Math.max(0, model.frames.length - 1) : addressed,
+    updating ? mode : "replay"
+  ), [model, active, updating]);
+  const [state, setState] = useState(() => sourcePlayback(initialFrame, initialMode));
+  const [previousUpdating, setPreviousUpdating] = useState(updating);
+  if (previousUpdating !== updating) {
+    setPreviousUpdating(updating);
+    if (!updating && state.mode === "live") setState(seekPlayback(model, playbackIndex(state, model)));
+  }
   // A URL navigation is a new instruction even in the same participant. Adjust before
   // commit so a stale frame cannot overwrite the incoming address in a later effect.
   const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}`;
   const [previousAddress, setPreviousAddress] = useState(address);
   if (address !== previousAddress) {
     setPreviousAddress(address);
-    setState(openPlayback(model, active, initialFrame, initialMode));
+    setState(sourcePlayback(initialFrame, initialMode));
   }
   const [preferences, setPreferences] = useState(readPreferences);
   const [zoom, setZoom] = useState<Zoom>("fit");
@@ -80,6 +92,13 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const following = state.mode === "live";
   const live = following && active ? liveEmbedUrl(stream) : null;
   const playing = state.playing;
+  const viewMode: PlayerView["mode"] = following && active ? "live" : "replay";
+  const selectedFrame = current?.index ?? null;
+  const onViewChangeRef = useRef(onViewChange);
+  useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
+  useEffect(() => {
+    onViewChangeRef.current?.({ frame: selectedFrame, mode: viewMode, playing });
+  }, [selectedFrame, viewMode, playing]);
   const actor = stream.actor;
   const viewport = stream.viewport;
   // Computer-use actions use desktop pixels, not the browser CSS layout viewport.
@@ -133,13 +152,13 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     const navigate = () => {
       const route = parseHash(window.location.hash);
       if (route.laneId !== stream.id) return;
-      setState(openPlayback(model, active, route.frame, route.mode ?? null));
+      setState(sourcePlayback(route.frame, route.mode ?? null));
       setFeedPage(null);
     };
     window.addEventListener("hashchange", navigate);
     window.addEventListener("popstate", navigate);
     return () => { window.removeEventListener("hashchange", navigate); window.removeEventListener("popstate", navigate); };
-  }, [model, active, stream.id]);
+  }, [sourcePlayback, stream.id]);
   useEffect(() => {
     // Keep following intent in the address, including before the first capture.
     if (following && active) replaceHash(formatHash(stream.id, null, "live"));
@@ -226,7 +245,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const nextFinding = rowIndex.findings.find((index) => index > frame);
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
-  const modeLabel = active
+  const modeLabel = !updating ? "Offline recording" : active
     ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
     : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
 
@@ -234,7 +253,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     <div className="viewer" ref={viewerRef}>
       <div className="player-heading">
         <div className="player-mode"><strong>{modeLabel}</strong>
-          <span>{live ? "Read-only desktop; connection health is managed by the provider." : following && active && current
+          <span>{!updating ? `Saved snapshot · participant status at capture: ${stream.statusLabel || stream.status}${current?.atMs !== undefined ? ` · ${new Date(current.atMs).toISOString()}` : ""}` : live ? "Read-only desktop; connection health is managed by the provider." : following && active && current
             ? captureAge === null ? "Capture time unavailable" : `Captured ${formatDuration(captureAge)} ago`
             : current?.atMs !== undefined ? `Captured ${new Date(current.atMs).toISOString()}` : "Capture timestamps unavailable"}</span>
         </div>
@@ -244,7 +263,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div>
       <PlayerStage frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} label={stream.label}
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
-          : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
+          : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
       <div className="transport">
         <button type="button" className="tbtn" aria-label={playing ? "Pause" : "Play"} onClick={togglePlay} disabled={frames.length === 0}>{playing ? "❚❚" : "▶"}</button>
         <button type="button" className="tbtn" aria-label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}>‹</button>
