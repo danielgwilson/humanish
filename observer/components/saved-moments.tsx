@@ -1,3 +1,4 @@
+import { ReviewIcon } from "./review-icon";
 import { Popover } from "./ui/popover";
 import type { SavedMoment } from "@/lib/preferences";
 
@@ -5,7 +6,7 @@ export function SavedMoments({ moments, canSave, stored, message, onSave, onOpen
   moments: SavedMoment[]; canSave: boolean; stored: boolean; message: string;
   onSave: () => void; onOpen: (moment: SavedMoment) => void; onRemove: (moment: SavedMoment) => void;
 }) {
-  return <Popover triggerClassName="review-tool" label="Saved moments" trigger={<>Saved moments{moments.length ? ` (${moments.length})` : ""}</>}>
+  return <Popover triggerClassName="filter-btn saved-trigger" label="Saved moments" trigger={<><ReviewIcon name="bookmark" />{moments.length ? <span className="filter-count">{moments.length}</span> : null}</>}>
     <div className="saved-moments">
       <p>Keep moments from this study in this browser.</p>
       {canSave ? <button className="review-tool" type="button" onClick={onSave}>Save current moment</button> : <p>Open a participant and pause on a frame to save it.</p>}

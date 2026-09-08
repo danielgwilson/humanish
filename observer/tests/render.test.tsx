@@ -63,7 +63,7 @@ describe("the filter funnel (second Base UI adoption: popover/sheet)", () => {
   it("filters live behind the funnel; the badge counts active filters", async () => {
     await mount(<App data={data} />);
     expect(container.querySelector(".pop-panel")).toBeNull();
-    await click(container.querySelector('[aria-label="Filter participants"]') as Element);
+    await click(container.querySelector('[aria-label="View and filter participants"]') as Element);
     const panel = document.querySelector(".pop-panel");
     expect(panel).not.toBeNull();
     const search = panel?.querySelector('input[type="search"]') as HTMLInputElement;
@@ -152,10 +152,13 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(container.querySelectorAll(".card")).toHaveLength(4);
     const tally = container.querySelector(".countline")?.textContent ?? "";
     expect(tally).toContain("4 participants");
-    expect(container.querySelectorAll(".card-warnings")).toHaveLength(4);
+    expect(container.querySelectorAll(".card-warnings")).toHaveLength(0);
     expect(tally).toContain("dry run");
-    // every card carries exactly one signal line
-    expect(container.querySelectorAll(".card .sig-label")).toHaveLength(4);
+    // Details remain reachable without repeating them underneath every screen.
+    expect(container.querySelectorAll(".card .sig-label")).toHaveLength(0);
+    await click(container.querySelector('[aria-label^="Participant details:"]') as Element);
+    expect(document.querySelector(".pop-panel .card-warnings")).not.toBeNull();
+    expect(document.querySelector(".pop-panel .sig-label")).not.toBeNull();
   });
 
   it("register toggle writes data-theme and persists the explicit choice", async () => {
@@ -258,6 +261,24 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
 }
 
 describe("observer scaffold rendering a live-shaped lane", () => {
+  it("keeps a notable completion visible even when its reason is empty", async () => {
+    const snapshot = liveShapedData();
+    snapshot.streams[0]!.actor!.reason = "";
+    await mount(<App data={snapshot} />);
+    expect(container.querySelector(".card-outcome")?.textContent).toBe("budget cap");
+  });
+
+  it("uses persona identities for generated labels and distinguishes repeated personas", async () => {
+    const snapshot = structuredClone(data);
+    snapshot.streams = snapshot.streams.slice(0, 2).map((stream, index) => ({
+      ...stream, label: `CUA lane lane-${index} — synthetic study`, laneId: `lane-${index}`,
+      sim: { ...stream.sim, personaId: "careful-reader" }
+    }));
+    await mount(<App data={snapshot} />);
+    expect([...container.querySelectorAll(".card-name")].map((node) => node.textContent)).toEqual(["Careful reader · lane-0", "Careful reader · lane-1"]);
+    expect(container.querySelector('[aria-label="Pin participant Careful reader · lane-0"]')).not.toBeNull();
+  });
+
   it("shows the keyframe thumb (last screenshot) and the ⚑ notable reason verbatim", async () => {
     await mount(<App data={liveShapedData()} />);
     const img = container.querySelector(".card .keyframe");
@@ -265,9 +286,10 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(img?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
     const card = container.querySelector(".card");
     expect(card?.textContent).toContain("budget cap");
-    expect(card?.textContent).toContain("crossed execution.caps.maxUsd=$5");
-    // Duration rides the thumb as an overlay pill, not a meta line.
-    expect(card?.querySelector(".th-dur")?.textContent).toBe("3m 12s");
+    expect(card?.textContent).not.toContain("crossed execution.caps.maxUsd=$5");
+    await click(card!.querySelector('[aria-label^="Participant details:"]') as Element);
+    expect(document.querySelector(".card-details")?.textContent).toContain("crossed execution.caps.maxUsd=$5");
+    expect(document.querySelector(".card-details")?.textContent).toContain("3m 12s");
   });
 
   it("opens into the review player: stage, filmstrip seek, pins, tabs", async () => {
@@ -343,25 +365,18 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelector(".t-meta")?.textContent).toContain("2 thoughts");
   });
 
-  it("live card ticker (#427 stage 2): the decide-line is the newest thought while the lane runs", async () => {
-    const data = liveShapedData({ live: true });
-    await mount(<App data={data} />);
-    const ticker = container.querySelector(".csig.ticker");
-    expect(ticker).not.toBeNull();
-    // Newest thought wins, markdown bold leads flatten, and the line is labeled as thinking.
-    expect(ticker?.textContent).toContain("thinking");
-    expect(ticker?.textContent).toContain("A confirm dialog appeared");
-    expect(ticker?.textContent).not.toContain("**");
-    expect(ticker?.getAttribute("title")).toContain("Reported thinking");
-
-    // A finished lane keeps the signal line — the ticker is a live-only surface.
-    await mount(<App data={liveShapedData()} />);
-    expect(container.querySelector(".csig.ticker")).toBeNull();
+  it("keeps the newest reported thought in the live participant details", async () => {
+    await mount(<App data={liveShapedData({ live: true })} />);
+    expect(container.querySelector(".card")?.textContent).not.toContain("A confirm dialog appeared");
+    await click(container.querySelector('[aria-label^="Participant details:"]') as Element);
+    const details = document.querySelector(".card-details");
+    expect(details?.textContent).toContain("Reported thinking");
+    expect(details?.textContent).toContain("A confirm dialog appeared");
   });
 
   it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {
     await mount(<App data={liveShapedData({ live: true })} />);
-    expect(container.querySelector(".card .chip")?.textContent).toBe("Running");
+    expect(container.querySelector(".card .card-outcome")?.textContent).toBe("Running");
     await click(container.querySelector(".open-overlay") as Element);
 
     const iframe = () => container.querySelector(".stage-live iframe");
@@ -409,7 +424,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     }));
     await mount(<App data={data} />);
     expect(container.querySelectorAll(".thumb-live")).toHaveLength(4);
-    expect(container.querySelectorAll(".chip-dot").length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelectorAll(".card-outcome.active")).toHaveLength(5);
   });
 
   it("a lane whose sandbox ended falls back to recorded evidence (#357)", async () => {

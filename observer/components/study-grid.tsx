@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { isServedOrigin, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import type { GridDensity } from "@/lib/preferences";
+import { participantLabels } from "@/lib/participant-label";
 import { ParticipantCard } from "./participant-card";
 
 export function buildTally(data: ObserverData): string {
@@ -20,7 +21,9 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
   density?: GridDensity; pinnedIds?: string[]; compareIds?: string[];
   onPin?: (id: string) => void; onCompare?: (id: string) => void; now?: number;
 }) {
+  const labels = participantLabels(data.streams);
   const [page, setPage] = useState(0);
+  const [priorityId, setPriorityId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const grid = useRef<HTMLDivElement>(null);
   const pageCount = Math.max(1, Math.ceil(streams.length / PAGE_SIZE));
@@ -46,11 +49,14 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
     // The ids are the structural dependency; poll snapshots do not reconnect streams.
   }, [shownKey]);
   const liveThumbIds = new Set(isServedOrigin(window.location.protocol)
-    ? visibleIds.filter((id) => shown.some((s) => s.id === id && liveEmbedUrl(s) !== null)).slice(0, 4) : []);
+    ? [...visibleIds].sort((a, b) => Number(b === priorityId) - Number(a === priorityId)).filter((id) => shown.some((s) => s.id === id && liveEmbedUrl(s) !== null)).slice(0, 4) : []);
   return <section aria-label="Study grid">
     <p className="countline">{buildTally(data)}</p>
     {streams.length === 0 ? <p className="countline">No participants match the current filters.</p>
-      : <div className={`gallery density-${density}`} ref={grid}>{shown.map((stream) => <ParticipantCard key={stream.id} stream={stream} onOpen={onOpen}
+      : <div className={`gallery density-${density}`} ref={grid}
+        onPointerOver={(event) => { const id = (event.target as Element).closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
+        onFocusCapture={(event) => { const id = event.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
+      >{shown.map((stream) => <ParticipantCard key={stream.id} stream={stream} name={labels.get(stream.id) ?? stream.label} onOpen={onOpen}
         liveThumb={liveThumbIds.has(stream.id)} pinned={pinnedIds.includes(stream.id)} compared={compareIds.includes(stream.id)} onPin={onPin} onCompare={onCompare} now={now} />)}</div>}
     {pageCount > 1 ? <nav className="grid-pages" aria-label="Participant pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
       <span>Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, streams.length)} of {streams.length} participants</span>
