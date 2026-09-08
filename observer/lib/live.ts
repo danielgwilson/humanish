@@ -52,7 +52,7 @@ export async function fetchHistoryIndex(fetchImpl: typeof fetch, signal?: AbortS
         status: typeof candidate.status === "string" ? candidate.status : "unknown",
         mode: typeof candidate.mode === "string" ? candidate.mode : null,
         streamCount: typeof candidate.streamCount === "number" && Number.isFinite(candidate.streamCount) ? candidate.streamCount : 0,
-        ...(["running", "finished", "interrupted", "unknown"].includes(String(candidate.runtimeState)) ? { runtimeState: candidate.runtimeState as NonNullable<HistoryRun["runtimeState"]> } : {}),
+        ...(typeof candidate.runtimeState === "string" && ["running", "finished", "interrupted", "unknown"].includes(candidate.runtimeState) ? { runtimeState: candidate.runtimeState as NonNullable<HistoryRun["runtimeState"]> } : {}),
         ...(typeof candidate.createdAt === "string" ? { createdAt: candidate.createdAt } : {}) });
     }
     return { latestRunId: typeof raw.latestRunId === "string" ? raw.latestRunId : null, runs };

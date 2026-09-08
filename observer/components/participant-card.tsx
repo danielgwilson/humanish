@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
 import { ageLabel, frameUpdatedAt, isActiveStream, isServedOrigin, liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
@@ -21,7 +21,16 @@ export function ParticipantCard({ stream, onOpen, liveThumb = false, pinned = fa
   const thought = active ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text) : undefined;
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
-  const viewport = dimensions ?? stream.viewport;
+  useEffect(() => {
+    if (!liveThumb || !liveUrl || !keyframe) return;
+    // A live iframe hides the poster element. Read its raster dimensions anyway:
+    // older and in-progress snapshots may omit declared viewport geometry.
+    const image = new Image();
+    image.onload = () => { if (image.naturalWidth && image.naturalHeight) setDimensions({ width: image.naturalWidth, height: image.naturalHeight }); };
+    image.src = keyframe;
+    return () => { image.onload = null; };
+  }, [liveThumb, liveUrl, keyframe]);
+  const viewport = dimensions ?? stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? stream.viewport;
   const warnings = stream.timeline.filter((event) => event.level === "warn" || event.level === "error");
   const label = stream.laneId ?? stream.label;
   const failed = keyframe !== null && keyframe === failedImage;
@@ -43,7 +52,7 @@ export function ParticipantCard({ stream, onOpen, liveThumb = false, pinned = fa
       <button type="button" className="cname" title={label} onClick={() => onOpen(stream.id)}>{label}</button>
       <span className={`chip${active ? " chip-dot" : " chip-mute"}`}>{statusLabel}</span>
     </div>
-    <div className="card-meta">{stream.viewport ? `${stream.viewport.width} × ${stream.viewport.height} · ` : ""}{stream.kindLabel}</div>
+    <div className="card-meta">{viewport ? `${viewport.width} × ${viewport.height} · ` : ""}{stream.kindLabel}</div>
     <p className={`csig${thought?.text ? " ticker" : ""}`} title={thought?.text ? `Reported thinking: ${thought.text}` : undefined}>{thought?.text ? <><span className="sig-label">Reported thinking</span> {thought.text.replace(/\*\*([^*]+)\*\*/g, "$1")}</>
       : <><span className="sig-label">{signal.label}</span> {signal.text}</>}</p>
     <div className="card-tools">

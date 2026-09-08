@@ -12,6 +12,7 @@
     { "id": "same-lane-route", "goal": "Same-participant links select the actual visible moment" },
     { "id": "invalid-snapshot", "goal": "Malformed snapshot preserves evidence and announces recovery state" },
     { "id": "network-recovery", "goal": "Failed polls are visible and recovery receives new evidence" },
+    { "id": "live-raster-geometry", "goal": "Live views learn actual screenshot shape when an in-progress snapshot omits geometry" },
     { "id": "stream-capacity", "goal": "Large grids bound desktop connections and allocate visible later lanes" },
     { "id": "large-trace", "goal": "Long traces bound the DOM while keeping final evidence reachable" },
     { "id": "image-retry", "goal": "Missing and corrupt image requests recover through a real retry" },

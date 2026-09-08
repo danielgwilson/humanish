@@ -289,6 +289,17 @@ try {
       record.checks.recovery = await stateProof(page); await snap("recovered");
     });
   }
+  await runCase("live-raster-geometry", { running: true, live: true, laneCount: 2, prepare() {
+    for (const stream of data.streams) { delete stream.viewport; delete stream.desktopGeometry; }
+  } }, async ({ page, record, snap }) => {
+    const nativeRatio = 390 / 844;
+    const grid = page.locator('[data-stream-id="lane-1"] .thumb');
+    await until(async () => { const box = await grid.boundingBox(); return box && Math.abs(box.width / box.height - nativeRatio) < .01; }, "Live portrait grid did not learn its raster aspect ratio");
+    record.checks.grid = await grid.boundingBox(); await snap("live-grid-native-raster");
+    await openLane(page);
+    await until(async () => { const box = await page.locator(".stage-live").boundingBox(); return box && Math.abs(box.width / box.height - nativeRatio) < .01; }, "Live portrait player did not learn its raster aspect ratio");
+    record.checks.player = await page.locator(".stage-live").boundingBox(); await snap("live-player-native-raster");
+  });
   await runCase("stream-capacity", { running: true, live: true, laneCount: 24 }, async ({ page, record, snap }) => {
     await wait(600); record.checks.initial = await page.locator(".thumb iframe").count();
     assert(record.checks.initial > 0 && record.checks.initial <= 4, "Grid must bound attached desktop previews to four");

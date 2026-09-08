@@ -2,7 +2,7 @@ import { Tabs } from "@base-ui-components/react/tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDuration } from "@/lib/artifact-href";
-import { liveEmbedUrl } from "@/lib/live";
+import { liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel } from "@/lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
@@ -106,7 +106,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   // Older browser recordings lack desktopGeometry and retain their viewport mapping.
   const coordinateSpace = stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? viewport;
   const raw = current?.redaction === "none" || actor?.redaction.screenshots === "raw";
-  const notableEnd = actor !== undefined && NOTABLE_COMPLETION[actor.completionReason] !== undefined;
+  const notableEnd = actor !== undefined && Object.hasOwn(NOTABLE_COMPLETION, actor.completionReason);
   const elapsed = frameElapsedMs(model, Math.max(0, frame));
   const duration = frameElapsedMs(model, Math.max(0, frames.length - 1));
   const timing = model.paced === "recorded" ? "recorded pace" : "avg-paced";
@@ -266,7 +266,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <button type="button" className="tbtn" aria-label={preferences.inspector ? "Hide inspector" : "Show inspector"} aria-expanded={preferences.inspector}
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
       </div>
-      <PlayerStage frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
+      <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
           : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
       <div className="transport">
@@ -411,7 +411,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
               <span className="o-label">Outcome</span>
               <p className="verbatim">
                 {stream.statusLabel}
-                {actor && NOTABLE_COMPLETION[actor.completionReason] !== undefined
+                {actor && Object.hasOwn(NOTABLE_COMPLETION, actor.completionReason)
                   ? ` · ⚑ ${NOTABLE_COMPLETION[actor.completionReason]}`
                   : ""}
               </p>

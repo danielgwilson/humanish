@@ -80,7 +80,7 @@ button:disabled { opacity: .45; cursor: default; }
   .rail { width: 42px; }
   .rail button { min-height: 38px; }
   .topbar .right .pager-word { display: none; }
-  .topbar .right { flex-basis: auto; margin-left: auto; }
+  .topbar .right { max-width: 100%; min-width: 0; flex-basis: auto; margin-left: auto; }
   .topbar { gap: 8px; }
   .topbar .wm { display: none; }
   .crumbs .trunc { max-width: 85px; }
