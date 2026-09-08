@@ -20,7 +20,7 @@ import {
 import {
   writeContainedOutputFile
 } from "./selected-output-paths.js";
-import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
+import { buildArtifactSecurityHeaders, buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
 import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
@@ -605,7 +605,7 @@ export async function serveRunPath(
       return;
     }
     response.writeHead(200, {
-      "cache-control": "no-store",
+      ...buildArtifactSecurityHeaders(),
       "content-type": contentTypeForPath(filePath)
     });
     response.end(body);

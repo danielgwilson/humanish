@@ -21,6 +21,14 @@ export function buildServeSecurityHeaders(): Record<string, string> {
   };
 }
 
+/** Saved artifacts may contain active HTML, SVG or XML. Give raw documents an
+ * opaque origin even on direct navigation, while preserving self-contained scripts.
+ * Generated Observer pages use buildServeSecurityHeaders instead. */
+export function buildArtifactSecurityHeaders(): Record<string, string> {
+  const headers = buildServeSecurityHeaders();
+  return { ...headers, "content-security-policy": `${headers["content-security-policy"]}; sandbox allow-scripts` };
+}
+
 export function hostAllowed(hostHeader: string | undefined, allowlist: ReadonlySet<string>): boolean {
   return typeof hostHeader === "string" && allowlist.has(hostHeader.trim().toLowerCase());
 }

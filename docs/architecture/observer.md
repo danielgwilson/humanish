@@ -166,6 +166,15 @@ origin without a fixed provider allowlist that becomes stale as desktops start.
 The underlying standards are [iframe sandbox permissions](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
 and [CSP frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors).
 
+Raw artifact responses also carry `sandbox allow-scripts` in their CSP. Opening
+a saved HTML or SVG document directly gives its scripts an opaque origin, so
+they cannot read the Observer's other evidence or browser storage. The policy
+applies to every raw file, including unknown extensions, alongside `nosniff`.
+Generated Observer HTML and JSON routes retain normal same-origin access for
+updates. The generic static helper serves raw documents under the sandbox;
+origin-dependent scripts and modules in those artifacts may require independent
+hosting. See the [CSP sandbox standard](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/sandbox).
+
 History entries may include `runtimeState` from the same contained local status
 read as the Observer. Their existing `status` remains the recorded verdict.
 Running filters should use runtime state when present, preserving the difference

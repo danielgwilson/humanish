@@ -4,7 +4,7 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { buildServeSecurityHeaders } from "./serve-http.js";
+import { buildArtifactSecurityHeaders } from "./serve-http.js";
 
 // Loopback-only host for the Observer static server. We never bind 0.0.0.0:
 // the Observer surfaces local run evidence and must stay reachable only from
@@ -214,7 +214,7 @@ async function respondToPinnedObserverStaticRequest(
 }
 
 function applySecurityHeaders(response: ServerResponse): void {
-  for (const [name, value] of Object.entries(buildServeSecurityHeaders())) response.setHeader(name, value);
+  for (const [name, value] of Object.entries(buildArtifactSecurityHeaders())) response.setHeader(name, value);
 }
 
 /** Static serving is recorded evidence. Neither JSON files nor inline HTML snapshots

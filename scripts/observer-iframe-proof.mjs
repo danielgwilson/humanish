@@ -7,6 +7,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { renderObserver, serveObserver } from "../dist/observer.js";
+import { serveObserverLibrary } from "../dist/observer-serve.js";
+import { serveObserverStatic } from "../dist/observer-static.js";
 import { runDryRun } from "../dist/run.js";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -17,6 +19,8 @@ for (const candidate of candidates) { try { await access(candidate); executableP
 assert.ok(executablePath, "Chromium is required for the iframe isolation proof");
 const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-iframe-proof-"));
 let observer;
+let library;
+let staticObserver;
 let provider;
 let browser;
 let requestedModule = 0;
@@ -25,6 +29,7 @@ const checks = {};
 try {
   await cp(path.join(repo, "fixtures", "minimal-app"), cwd, { recursive: true });
   assert.equal((await runDryRun({ cwd, dryRun: true, runId: "synthetic-iframe-study" })).ok, true);
+  assert.equal((await runDryRun({ cwd, dryRun: true, runId: "synthetic-sibling-study" })).ok, true);
   const rendered = await renderObserver(cwd, "synthetic-iframe-study", { open: false });
   observer = await serveObserver(rendered, { open: false });
   const attackUrl = new URL("../synthetic-frame.html", observer.url).href;
@@ -96,6 +101,64 @@ try {
     checks[`${label}BackToObserverBlocked`] = true;
   }
   assert.equal(requestedAttack, 2);
+
+  // A person can open an artifact in its own tab. Framing denial alone must not
+  // leave a saved HTML/SVG document with access to the Observer's origin.
+  const runRoot = path.join(cwd, ".humanish", "runs", "synthetic-iframe-study");
+  const marker = "SYNTHETIC_EVIDENCE_MARKER";
+  await writeFile(path.join(cwd, ".humanish", "runs", "synthetic-sibling-study", "marker.txt"), marker);
+  await writeFile(path.join(runRoot, "marker.txt"), marker);
+  const probe = (target) => `window.artifactScriptExecuted=true;
+    try { localStorage.setItem('synthetic-artifact-probe','true'); window.artifactStorage='allowed'; } catch { window.artifactStorage='blocked'; }
+    fetch(${JSON.stringify(target)}).then(r=>r.text()).then(text=>{window.artifactRead=text;},()=>{window.artifactRead='blocked';});`;
+  const siblingPath = "/_humanish/runs/synthetic-sibling-study/marker.txt";
+  await writeFile(path.join(runRoot, "raw.html"), `<!doctype html><body>synthetic artifact<script>${probe(siblingPath)}</script>`);
+  await writeFile(path.join(runRoot, "static.html"), `<!doctype html><body>synthetic artifact<script>${probe("/marker.txt")}</script>`);
+  await writeFile(path.join(runRoot, "active.svg"), `<svg xmlns="http://www.w3.org/2000/svg"><script><![CDATA[${probe("/marker.txt")}]]></script><text y="20">synthetic SVG</text></svg>`);
+  const libraryResult = await serveObserverLibrary(cwd, { port: 0, safe: false, expose: false, edgeAuthed: false });
+  assert.equal(libraryResult.ok, true);
+  library = libraryResult.server;
+  staticObserver = await serveObserverStatic({ root: runRoot, port: 0 });
+  for (const [label, url] of [
+    ["attachedRawHtml", new URL("/raw.html", observer.url).href],
+    ["attachedEncodedAlias", new URL("/%72aw.html", observer.url).href],
+    ["libraryRawHtml", new URL("/_humanish/runs/synthetic-iframe-study/raw.html", library.url).href],
+    ["libraryEncodedAlias", new URL("/_humanish/runs/synthetic-iframe-study/%72aw.html", library.url).href],
+    ["staticRawHtml", new URL("/static.html", staticObserver.url).href],
+    ["staticActiveSvg", new URL("/active.svg", staticObserver.url).href]
+  ]) {
+    const artifactPage = await browser.newPage();
+    const response = await artifactPage.goto(url);
+    assert.equal(response.headers()["content-security-policy"], "frame-ancestors 'none'; sandbox allow-scripts");
+    assert.equal(response.headers()["x-content-type-options"], "nosniff");
+    await artifactPage.waitForFunction(() => typeof window.artifactRead === "string");
+    assert.deepEqual(await artifactPage.evaluate(() => ({
+      scripts: window.artifactScriptExecuted,
+      read: window.artifactRead,
+      storage: window.artifactStorage
+    })), { scripts: true, read: "blocked", storage: "blocked" });
+    checks[`${label}Isolated`] = true;
+    await artifactPage.close();
+  }
+  for (const [label, base, artifactPath] of [
+    ["attached", observer.url, "/active.svg"],
+    ["library", library.url, "/_humanish/runs/synthetic-iframe-study/active.svg"]
+  ]) {
+    const artifactPage = await browser.newPage();
+    const response = await artifactPage.goto(new URL(artifactPath, base).href);
+    assert.equal(response.headers()["content-type"], "text/plain; charset=utf-8");
+    assert.equal(await artifactPage.evaluate(() => window.artifactScriptExecuted), undefined);
+    checks[`${label}SvgRemainsInert`] = true;
+    await artifactPage.close();
+  }
+  for (const [label, url] of [["attached", observer.url], ["library", new URL("/_humanish/runs/synthetic-iframe-study/observer//index.html", library.url).href]]) {
+    const generatedPage = await browser.newPage();
+    const response = await generatedPage.goto(url);
+    assert.equal(response.headers()["content-security-policy"], "frame-ancestors 'none'");
+    assert.equal(await generatedPage.evaluate(async (target) => (await fetch(target)).text(), siblingPath), marker);
+    checks[`${label}GeneratedObserverRetainsOrigin`] = true;
+    await generatedPage.close();
+  }
   const receipt = { schema: "humanish.observer-iframe-proof.v1", checkedAt: new Date().toISOString(), checks,
     limits: ["Synthetic cross-origin module/redirect fixture; actual hosted desktop compatibility is a separate provider proof."] };
   const output = path.join(repo, ".humanish", "review", "observer-iframe-proof.json");
@@ -106,5 +169,7 @@ try {
   await browser?.close();
   if (provider) await new Promise((resolve) => { provider.close(resolve); provider.closeAllConnections(); });
   await observer?.close();
+  await library?.close();
+  await staticObserver?.close();
   await rm(cwd, { recursive: true, force: true });
 }

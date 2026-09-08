@@ -95,7 +95,8 @@ describe("runtime desktop iframe authority", () => {
     for (const pathname of ["/", "/observer/index.html", "/observer/observer-data.json", "/synthetic.html", "/missing", "/_humanish/runs/attached/synthetic.html"]) {
       const response = await fetch(new URL(pathname, server.url), { redirect: "manual" });
       expect(response.headers.get("x-frame-options")).toBe("DENY");
-      expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+      expect(response.headers.get("content-security-policy")).toBe(pathname.endsWith("synthetic.html")
+        ? "frame-ancestors 'none'; sandbox allow-scripts" : "frame-ancestors 'none'");
     }
   });
 
@@ -114,6 +115,29 @@ describe("runtime desktop iframe authority", () => {
     const html = await (await fetch(new URL("/observer//index.html", server.url))).text();
     expect(html).toContain('id="observer-data"');
     expect(html).not.toContain("OBSOLETE_RENDERER_SENTINEL");
+  });
+
+  it("isolates every raw artifact document while keeping generated Observer routes usable", async () => {
+    const { cwd, runRoot, server } = await fixture();
+    const library = await serveObserverLibrary(cwd, { port: 0, safe: false, expose: false, edgeAuthed: false });
+    if (!library.ok) throw new Error(library.error.message);
+    servers.push(library.server);
+    for (const extension of ["html", "htm", "svg", "xml", "xhtml", "txt"]) {
+      await writeFile(path.join(runRoot, `active.${extension}`), '<!doctype html><script>window.synthetic=1</script>');
+      for (const url of [new URL(`/active.${extension}`, server.url), new URL(`/_humanish/runs/attached/%61ctive.${extension}`, library.server.url)]) {
+        const response = await fetch(url);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'; sandbox allow-scripts");
+        expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+        if (extension !== "html") expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+        await response.arrayBuffer();
+      }
+    }
+    for (const url of [new URL("/observer//index.html", server.url), new URL("/_humanish/runs/attached/observer//index.html", library.server.url)]) {
+      const response = await fetch(url);
+      expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+      expect(await response.text()).toContain('id="observer-data"');
+    }
   });
 
   it("keeps a selected-run viewer scoped while leaving library viewers unchanged", async () => {

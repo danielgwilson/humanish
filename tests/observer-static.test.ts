@@ -284,7 +284,7 @@ describe("observer static server", () => {
       try {
         for (const [pathname, method] of [["/", "GET"], [`/${ENTRY}`, "GET"], ["/observer/observer-data.json", "GET"], ["/missing", "GET"], [`/${ENTRY}`, "HEAD"], [`/${ENTRY}`, "DELETE"]]) {
           const response = await fetch(new URL(pathname!, server.url), { method: method!, redirect: "manual" });
-          expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+          expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'; sandbox allow-scripts");
           expect(response.headers.get("x-frame-options")).toBe("DENY");
           expect(response.headers.get("referrer-policy")).toBe("no-referrer");
           await response.arrayBuffer();
