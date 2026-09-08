@@ -104,6 +104,14 @@ describe("player review controls", () => {
     expect(iframe?.getAttribute("allow")).toBeNull();
     expect(container.textContent).toContain("connection health is managed by the provider");
   });
+  it("keeps a preparing participant distinct from a finished recording", async () => {
+    stream = { ...stream, status: "preparing", embed: { kind: "placeholder" } };
+    model = { ...model, frames: [] };
+    await render();
+    expect(container.textContent).toContain("Preparing · Latest capture");
+    expect(container.textContent).toContain("participant is preparing");
+    expect(container.textContent).not.toContain("Finished");
+  });
   it("names unavailable addresses and ended screenshot-free streams honestly", async () => {
     await render({ initialFrame: 100 });
     expect(container.textContent).toContain("addressed frame is unavailable");

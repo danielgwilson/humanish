@@ -47,7 +47,9 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
 export function Player({ data, stream, model, initialFrame = null, initialMode = null }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
 }) {
-  const active = stream.status === "running";
+  const preparing = stream.status === "queued" || stream.status === "preparing";
+  const active = stream.status === "running" || preparing;
+  const lifecycle = preparing ? "Preparing" : "Running";
   const [state, setState] = useState(() => openPlayback(model, active, initialFrame, initialMode));
   // A URL navigation is a new instruction even in the same participant. Adjust before
   // commit so a stale frame cannot overwrite the incoming address in a later effect.
@@ -225,8 +227,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
   const modeLabel = active
-    ? live ? "Running · Live desktop" : following ? "Running · Latest capture" : `Running · Replay at ${formatElapsed(elapsed)}`
-    : `${stream.status === "failed" || stream.status === "blocked" ? "Stopped" : "Finished"} · Recording`;
+    ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
+    : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
 
   return <div className="player evidence-player" data-inspector={preferences.inspector ? "open" : "closed"}>
     <div className="viewer" ref={viewerRef}>
@@ -242,7 +244,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div>
       <PlayerStage frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} label={stream.label}
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
-          : active ? "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
+          : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
       <div className="transport">
         <button type="button" className="tbtn" aria-label={playing ? "Pause" : "Play"} onClick={togglePlay} disabled={frames.length === 0}>{playing ? "❚❚" : "▶"}</button>
         <button type="button" className="tbtn" aria-label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}>‹</button>
@@ -280,7 +282,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
-      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? "Still running · awaiting the first recorded frame" : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} actions{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} thoughts` : ""} · {timing}</span>
+      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} actions{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} thoughts` : ""} · {timing}</span>
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
         {stream.liveEnded === true ? <span>Desktop stream ended · recorded evidence</span> : null}
