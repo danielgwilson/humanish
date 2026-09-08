@@ -38,7 +38,7 @@ humanish [options] [command]
 - [humanish comms](#humanish-comms): Off-app comms surfaces.
 - [humanish reclaim](#humanish-reclaim): Reclaim an interrupted run's sandboxes by recorded id.
 - [humanish watch](#humanish-watch): Run sims, open the observer, keep the shell attached.
-- [humanish observe](#humanish-observe): Serve a finished run's Observer over loopback http.
+- [humanish observe](#humanish-observe): Follow a run's saved evidence over loopback http.
 - [humanish serve](#humanish-serve): Serve the run library; optional tunnel-edge exposure.
 - [humanish codex](#humanish-codex): Run Codex-native Humanish integration surfaces.
 - [humanish lab](#humanish-lab): List, inspect, and run Humanish lab manifests.
@@ -413,7 +413,7 @@ humanish watch [options] [lab]
 
 ## humanish observe
 
-Serve a finished run's Observer over loopback http://127.0.0.1 instead of a file:// path.
+Follow a run's saved evidence in Observer over loopback http://127.0.0.1.
 
 ```text
 humanish observe [options]

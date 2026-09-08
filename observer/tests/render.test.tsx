@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { App } from "../app";
+import { Sidebar } from "../components/sidebar";
 import type { ObserverData } from "../lib/observer-data";
 
 // The golden is schema-proven at the repo root (tests/observer-data-contract.test.ts);
@@ -77,6 +78,21 @@ describe("the filter funnel (second Base UI adoption: popover/sheet)", () => {
 });
 
 describe("the run library control (D6: first Base UI adoption)", () => {
+  it("uses the current run's completion while the library snapshot is older", async () => {
+    const finished: ObserverData = { ...data, runtime: { state: "finished", observedAt: "2026-09-08T20:00:00Z", source: "local-run-status" } };
+    await mount(<Sidebar data={finished} history={{ latestRunId: data.run.runId, runs: [{ runId: data.run.runId, status: "running", runtimeState: "running", href: "", mode: "live", streamCount: 4 }] }} onRuns={() => {}} />);
+    expect(container.querySelector(".dot.active")).toBeNull();
+    expect(container.querySelector(".run-entry small")?.textContent).not.toContain("Running");
+    await click(container.querySelector('input[type="checkbox"]') as Element);
+    expect(container.textContent).toContain("No matching runs.");
+  });
+
+  it("does not animate an active dot when a formerly running study is unconfirmed", async () => {
+    await mount(<Sidebar data={data} history={{ latestRunId: "other-study", runs: [{ runId: "other-study", status: "running", runtimeState: "unknown", href: "", mode: "live", streamCount: 2 }] }} onRuns={() => {}} />);
+    expect(container.querySelector(".dot.active")).toBeNull();
+    expect(container.querySelector(".run-entry small")?.textContent).toContain("Status unconfirmed");
+  });
+
   it("desktop: collapses and restores the static sidebar, persisted", async () => {
     window.localStorage.removeItem("humanish-sidebar");
     await mount(<App data={data} />);
@@ -136,8 +152,8 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(container.querySelectorAll(".card")).toHaveLength(4);
     const tally = container.querySelector(".countline")?.textContent ?? "";
     expect(tally).toContain("4 participants");
-    expect(tally).toContain("4 warnings");
-    expect(tally).toContain("dry-run");
+    expect(container.querySelectorAll(".card-warnings")).toHaveLength(4);
+    expect(tally).toContain("dry run");
     // every card carries exactly one signal line
     expect(container.querySelectorAll(".card .sig-label")).toHaveLength(4);
   });
@@ -345,7 +361,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
 
   it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {
     await mount(<App data={liveShapedData({ live: true })} />);
-    expect(container.querySelector(".card .chip")?.textContent).toBe("Live");
+    expect(container.querySelector(".card .chip")?.textContent).toBe("Running");
     await click(container.querySelector(".open-overlay") as Element);
 
     const iframe = () => container.querySelector(".stage-live iframe");
@@ -431,5 +447,28 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+
+describe("Frame-free review remains useful", () => {
+  it("preparing browser lanes get a live-aware empty player before their first screenshot", async () => {
+    const copy = structuredClone(data);
+    copy.streams = [{ ...copy.streams[0]!, status: "preparing", statusLabel: "Preparing" }];
+    await mount(<App data={copy} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".player")).not.toBeNull();
+    expect(container.querySelector(".player-heading")?.textContent).toContain("Preparing");
+  });
+  it("all terminal lines remain reachable in bounded pages", async () => {
+    const copy = structuredClone(data);
+    copy.streams = [{ ...copy.streams[1]!, terminalPlain: Array.from({ length: 123 }, (_, i) => `Synthetic output line ${i + 1}`).join("\n") }];
+    await mount(<App data={copy} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 123");
+    const previous = () => Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Earlier output")!;
+    await click(previous()); await click(previous());
+    expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 1");
+    expect(container.querySelector(".stub-term")?.textContent).not.toContain("Synthetic output line 123");
   });
 });

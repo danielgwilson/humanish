@@ -13,6 +13,12 @@ export interface ObserverData {
   schema: typeof OBSERVER_DATA_SCHEMA;
   schemaVersion: 1;
   generatedAt: string;
+  /** Served-only liveness observation. Never a replacement for the recorded evidence verdict. */
+  runtime?: {
+    state: "running" | "finished" | "interrupted" | "unknown";
+    observedAt: string;
+    source: "local-run-status";
+  };
   run: {
     runId: string;
     mode: RunBundle["mode"];
@@ -81,6 +87,8 @@ export interface ObserverData {
 }
 
 export interface ObserverStream extends RunStream {
+  /** Only the attached server may grant provider-origin access for a live desktop iframe. */
+  embed?: NonNullable<RunStream["embed"]> & { runtimeDesktop?: true };
   /** Participant-facing status. The actor and simulation retain their original protocol status. */
   status: RunStream["status"];
   sim: RunSimulation;
@@ -88,6 +96,13 @@ export interface ObserverStream extends RunStream {
   statusLabel: string;
   terminalPlain: string;
   timeline: RunEvent[];
+}
+
+/** Discard a forged or stale runtime grant before projecting persisted evidence. */
+export function recordedStreamEmbed(embed: NonNullable<RunStream["embed"]>): NonNullable<RunStream["embed"]> {
+  if (!embed) return embed;
+  const { runtimeDesktop: _runtimeGrant, ...recorded } = embed as NonNullable<RunStream["embed"]> & { runtimeDesktop?: unknown };
+  return recorded;
 }
 
 export interface ObserverLaneGroup {
@@ -119,6 +134,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
 
     return {
       ...stream,
+      ...(stream.embed === undefined ? {} : { embed: recordedStreamEmbed(stream.embed) }),
       status,
       sim,
       kindLabel: kindLabel(stream.kind),

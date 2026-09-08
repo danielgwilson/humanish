@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Command, Option } from "commander";
@@ -64,7 +64,6 @@ import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-l
 import type { LabConfig } from "./lab-config.js";
 import { openTarget, renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
-import { serveObserverStatic } from "./observer-static.js";
 import {
   SERVE_SCHEMA,
   serveObserverLibrary
@@ -98,7 +97,7 @@ import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
 import { readLabSummary } from "./lab-summary.js";
 import { readProjectState } from "./tui-project.js";
-import { openObserverArtifact, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
+import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
 import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule} from "./tui-contract.js";
@@ -824,40 +823,46 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
         return;
       }
 
-      const exitCode = await loaded.startTui({
-        cwd: resolve(options.cwd),
-        version: { cli: CLI_VERSION },
-        capabilities: {
-          // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
-          // run tree each tick is the cost this index exists to avoid.
-          readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
-          listLabs: listLabManifests,
-          startRun: launchRun,
-          readLaunchLog: readLaunchLogTail,
-          readRunDetail,
-          readLabSummary,
-          readProjectState,
-          openObserver: openObserverArtifact,
-          reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
-          stopRun,
-          initProject: async (target: string) => {
-            const result = await runInit({ cwd: target, yes: true });
-            return result.ok
-              ? {
-                  schema: TUI_ACTION_SCHEMA,
-                  ok: true as const,
-                  message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
-                }
-              : {
-                  schema: TUI_ACTION_SCHEMA,
-                  ok: false as const,
-                  message: result.error?.message ?? "humanish init could not set this directory up"
-                };
-          }
-        },
-        stdin,
-        stdout
-      });
+      const observerSession = createTuiObserverSession(resolve(options.cwd));
+      let exitCode: number;
+      try {
+        exitCode = await loaded.startTui({
+          cwd: resolve(options.cwd),
+          version: { cli: CLI_VERSION },
+          capabilities: {
+            // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
+            // run tree each tick is the cost this index exists to avoid.
+            readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
+            listLabs: listLabManifests,
+            startRun: launchRun,
+            readLaunchLog: readLaunchLogTail,
+            readRunDetail,
+            readLabSummary,
+            readProjectState,
+            openObserver: (target, observerPath) => observerSession.open(target, observerPath),
+            reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
+            stopRun,
+            initProject: async (target: string) => {
+              const result = await runInit({ cwd: target, yes: true });
+              return result.ok
+                ? {
+                    schema: TUI_ACTION_SCHEMA,
+                    ok: true as const,
+                    message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
+                  }
+                : {
+                    schema: TUI_ACTION_SCHEMA,
+                    ok: false as const,
+                    message: result.error?.message ?? "humanish init could not set this directory up"
+                  };
+            }
+          },
+          stdin,
+          stdout
+        });
+      } finally {
+        await observerSession.close();
+      }
       // The surface owned the screen; it has already told the operator whatever there was to say.
       markInvocationEnvelopeWritten(command);
       io.setExitCode(exitCode);
@@ -1741,8 +1746,8 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
 function registerObserveCommand(parent: Command, io: CliIo): void {
   parent
     .command("observe")
-    .description("Serve a finished run's Observer over loopback http://127.0.0.1 instead of a file:// path.")
-    .summary("Serve a finished run's Observer over loopback http.")
+    .description("Follow a run's saved evidence in Observer over loopback http://127.0.0.1.")
+    .summary("Follow a run's saved evidence over loopback http.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--port <port>", "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.", "0")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -1795,14 +1800,8 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
         return;
       }
 
-      // Serve the run's bundle directory so the Observer's relative artifact
-      // links (../run.json, ../review.json, ../events.ndjson) resolve, then land
-      // visitors on observer/index.html. The loopback root is the run dir; the
-      // traversal guard still refuses anything above it (sibling runs, the
-      // .humanish/runs/ parent, etc.).
-      const observerIndexAbs = join(resolve(options.cwd), rendered.observerPath);
-      const runDir = dirname(dirname(observerIndexAbs));
-
+      // Reuse the contained current-data projection, scoped to this run. A raw static
+      // server would miss runtime status and could replay stored iframe grants.
       const wantsMachine = wantsJson(command);
       const shouldOpen = options.open === false
         ? false
@@ -1810,7 +1809,7 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
           ? true
           : !wantsMachine && process.stdout.isTTY === true;
 
-      const server = await serveObserverStatic({ root: runDir, port, entryPath: "observer/index.html" });
+      const server = await serveObserver(rendered, { open: false, port, scope: "run" });
       const openResult: { opened: boolean; command?: string; warning?: string } =
         shouldOpen ? openTarget(server.url) : { opened: false };
 

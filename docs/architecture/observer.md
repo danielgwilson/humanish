@@ -65,6 +65,42 @@ The browser polls `observer-data.json` with `no-store` caching. Static
 operator path. Agents and CI should use `humanish watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
 
+### Reopening a run
+
+The TUI's **Open Observer** action opens an HTTP view that follows saved captures
+as the run writes them. One loopback evidence server is shared by the session's
+browser tabs; exiting the TUI closes it, including when the UI fails. Opening a
+run does not launch a study. The URL is always shown for manual opening or SSH
+port forwarding, and only contained run paths in the TUI's project are accepted.
+
+| Entry point | What updates | Lifetime |
+| --- | --- | --- |
+| `watch` during a study | Saved evidence and available in-memory desktop streams | Until the attached command exits |
+| `observe --run <id>` | Saved evidence from the selected run | Until the command exits |
+| TUI Open Observer | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits |
+| `serve` | Saved evidence across the project's library | Until the server command exits |
+| Static HTML or `file://` | The exported snapshot | Independent of a server |
+
+`observe` uses the same current-data projection as the attached viewer, scoped
+to the selected run. Its history cannot enumerate other runs. HTML exports use
+the installed Observer renderer around the recording's saved data and embedded
+images, so older recordings get UI improvements without changing their source.
+
+Reopening an active run follows its saved captures; it cannot recover a live
+desktop URL held by another process. Stream credentials are never recovered
+from disk or added to the TUI/library server. Original `watch` attachment is
+what enables a live desktop stream. The loopback library retains its Host
+allowlist, contained file reads, read-only routes and no-store security headers.
+
+Served data may also include `runtime` with `state`, `observedAt`, and
+`source: "local-run-status"`. This is a current observation of a contained,
+matching `status.json`; it never changes the run's recorded verdict or participant
+outcomes. A fresh heartbeat means running, an explicitly finalized record means
+finished, and stale or invalid timing means unknown. Missing, malformed, or
+mismatched records omit the observation. A stale heartbeat alone does not prove
+interruption, and stored PIDs are neither probed nor returned. Static rendering
+and export do not create this served-only observation.
+
 Local `codex-exec` actor runs now publish an initial running `run.json` and
 `observer/observer-data.json` before actor completion, then refresh both after
 sanitized transcripts, traces, and verdict events are available. This gives a
@@ -81,13 +117,15 @@ stream URLs in any mode; remote viewers see persisted evidence only. See
 ### Exposed hardening and `watch --expose`
 
 The live `serveObserver` server binds `127.0.0.1` and, by default, is a
-permissive local-dev server (no Host allowlist, no security headers). Under its
+local-dev server without a Host allowlist. Every response carries security
+headers, including `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`.
+Under its
 `exposed` option — set by `watch --expose` — it enforces the SAME
 DNS-rebinding defense as the library surface: a strict Host allowlist (loopback
 names at bind, extended by `addPublicOrigin(tunnel.url | public-url)`, `421
 Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
 every response (both live in `src/serve-http.ts`, shared without a module cycle).
-Loopback (non-exposed) behavior is byte-identical to before.
+The Host allowlist applies in exposed mode; frame-denial headers apply in both modes.
 
 Exposed mode also SCOPES the surface to the attached live run (`result.run`): the
 `/_humanish/history.json` index is filtered to that one run, and `/_humanish/runs/<id>/…`
@@ -108,7 +146,44 @@ attached server comes up DURING the run and survives a `timed_out`/`failed` run
 to Ctrl-C. `serve` still never injects stream URLs. See
 [Serve: the run library surface](serve.md).
 
+### Live desktop iframe authority
+
+Only a URL in the attached server's in-memory runtime map receives
+`stream.embed.runtimeDesktop: true`. Persisted markers are removed when building
+Observer data and again when reading served fallback projections. Cross-run
+library routes do not inherit the attached run's runtime URLs, even when their
+stream ids match. Ended or invalid runtime entries do not receive the grant.
+The generic static-server helper strips this marker and saved `runtime` state
+from Observer JSON and inline data. Static responses carry the same framing
+denial headers; they never grant active desktop attachment.
+
+The browser can preserve a cross-origin provider's origin for its desktop viewer
+modules only with this grant. Ordinary stored embeds remain isolated. Every
+Observer/library response, including raw run HTML, refuses framing, so a provider
+redirect or scripted navigation back to an Observer-origin document cannot load
+it inside the iframe and gain access to the parent. This protects the receiving
+origin without a fixed provider allowlist that becomes stale as desktops start.
+The underlying standards are [iframe sandbox permissions](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
+and [CSP frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors).
+
+Raw artifact responses also carry `sandbox allow-scripts` in their CSP. Opening
+a saved HTML or SVG document directly gives its scripts an opaque origin, so
+they cannot read the Observer's other evidence or browser storage. The policy
+applies to every raw file, including unknown extensions, alongside `nosniff`.
+Generated Observer HTML and JSON routes retain normal same-origin access for
+updates. The generic static helper serves raw documents under the sandbox;
+origin-dependent scripts and modules in those artifacts may require independent
+hosting. See the [CSP sandbox standard](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/sandbox).
+
+History entries may include `runtimeState` from the same contained local status
+read as the Observer. Their existing `status` remains the recorded verdict.
+Running filters should use runtime state when present, preserving the difference
+between an active study and its provisional evidence outcome.
+
 ## UI Shape
+
+See [Watching and reviewing evidence](observer-review.md) for current controls,
+entry-point capabilities, timing limits and browser acceptance commands.
 
 The Observer shell has:
 

@@ -1,5 +1,5 @@
 // Shared HTTP hardening primitives for the serve surfaces. Extracted here so BOTH the live
-// Observer server (src/observer.ts, exposed mode) and the run-library server
+// Observer server (src/observer.ts) and the run-library server
 // (src/observer-serve.ts) can enforce the identical Host allowlist + security-header posture
 // without a module cycle. This file imports nothing from the serve modules.
 
@@ -16,8 +16,17 @@ export function buildServeSecurityHeaders(): Record<string, string> {
     "referrer-policy": "no-referrer",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
+    "content-security-policy": "frame-ancestors 'none'",
     "x-robots-tag": "noindex, nofollow"
   };
+}
+
+/** Saved artifacts may contain active HTML, SVG or XML. Give raw documents an
+ * opaque origin even on direct navigation, while preserving self-contained scripts.
+ * Generated Observer pages use buildServeSecurityHeaders instead. */
+export function buildArtifactSecurityHeaders(): Record<string, string> {
+  const headers = buildServeSecurityHeaders();
+  return { ...headers, "content-security-policy": `${headers["content-security-policy"]}; sandbox allow-scripts` };
 }
 
 export function hostAllowed(hostHeader: string | undefined, allowlist: ReadonlySet<string>): boolean {

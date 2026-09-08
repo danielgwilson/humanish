@@ -12,7 +12,8 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { renderObserver } from "./observer.js";
+import { renderObserver, renderObserverHtml } from "./observer.js";
+import type { ObserverData } from "./observer-data.js";
 import { resolveRunPath, verifyRun, type VerifyResult } from "./run.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 
@@ -78,15 +79,6 @@ export interface ExportDeps {
   verify?: (cwd: string, run: string) => Promise<VerifyResult>;
   /** Injected in tests: renders observer/index.html for a run that has none. Defaults to renderObserver. */
   render?: (cwd: string, run: string) => Promise<{ ok: boolean }>;
-}
-
-function escapeJsonScript(json: string): string {
-  return json
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029");
 }
 
 /** The banner a --local-only export carries. Plain HTML, before the app root, so it renders with JS off. */
@@ -200,6 +192,18 @@ export async function exportRun(
     return node;
   };
   const inlined = await walk(data) as Record<string, unknown>;
+  // Export is a recording, even if a saved input HTML once carried a server observation.
+  // Runtime iframe authority and liveness cannot survive into a portable document.
+  delete inlined.runtime;
+  if (Array.isArray(inlined.streams)) {
+    for (const stream of inlined.streams) {
+      if (stream === null || typeof stream !== "object" || Array.isArray(stream)) continue;
+      const embed: unknown = (stream as Record<string, unknown>).embed;
+      if (embed !== null && typeof embed === "object" && !Array.isArray(embed)) {
+        delete (embed as Record<string, unknown>).runtimeDesktop;
+      }
+    }
+  }
   // What verify said, in the file, so the chrome can agree with the result envelope (#584).
   const publicSafety = (inlined.publicSafety ?? {}) as Record<string, unknown>;
   inlined.publicSafety = {
@@ -211,7 +215,9 @@ export async function exportRun(
     }
   };
 
-  let output = html.replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(JSON.stringify(inlined))}</script>`);
+  // Evidence survives upgrades; obsolete renderer code does not. Use this installation
+  // of the Observer rather than copying script/style bytes from the saved source HTML.
+  let output = renderObserverHtml(inlined as unknown as ObserverData);
   const watermarked = !shareReady;
   if (watermarked) {
     const banner = localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code));

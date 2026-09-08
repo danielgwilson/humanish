@@ -1,0 +1,42 @@
+{
+  "schema": "humanish.observer-browser-coverage.v1",
+  "scope": "Built Observer renderer over controlled HTTP snapshots; synthetic pixels; no provider or CLI launch claim",
+  "cases": [
+    { "id": "grid-desktop", "goal": "See every portrait and landscape corner in the desktop grid" },
+    { "id": "grid-phone", "goal": "See complete mixed screens and contain long names at 390px" },
+    { "id": "player-desktop", "goal": "Open a participant and inspect uncropped stage and filmstrip" },
+    { "id": "player-phone", "goal": "Inspect the player and transport without horizontal page overflow" },
+    { "id": "live-arrow", "goal": "Arrow seek leaves the desktop and shows the addressed recording" },
+    { "id": "live-refresh", "goal": "Reload preserves the explicit intent to watch live" },
+    { "id": "paused-growth", "goal": "A paused newest frame stays paused when evidence grows" },
+    { "id": "same-lane-route", "goal": "Same-participant links select the actual visible moment" },
+    { "id": "playing-refresh", "goal": "Reload during recorded playback preserves the displayed capture" },
+    { "id": "invalid-snapshot", "goal": "Malformed snapshot preserves evidence and announces recovery state" },
+    { "id": "network-recovery", "goal": "Failed polls are visible and recovery receives new evidence" },
+    { "id": "live-raster-geometry", "goal": "Live views learn actual screenshot shape when an in-progress snapshot omits geometry" },
+    { "id": "stream-capacity", "goal": "Large grids bound desktop connections and allocate visible later lanes" },
+    { "id": "large-trace", "goal": "Long traces bound the DOM while keeping final evidence reachable" },
+    { "id": "image-retry", "goal": "Missing and corrupt image requests recover through a real retry" },
+    { "id": "zoom-fullscreen", "goal": "Native size, zoom and browser fullscreen preserve usable evidence" },
+    { "id": "native-permission-denial", "goal": "Browser-enforced fullscreen and clipboard denial retain useful fallbacks" },
+    { "id": "view-preferences", "goal": "Density and filtering survive reload and show an honest empty result" },
+    { "id": "pin-pages-monitor", "goal": "Later participant pages remain reachable and pins survive monitor/reload" },
+    { "id": "saved-moments", "goal": "Save, recall and delete an exact moment without storing evidence or URLs" },
+    { "id": "comparison-capture-clock", "goal": "Aligned participants show prior captures, age and missing coverage" },
+    { "id": "comparison-other-run", "goal": "A second real HTTP recording has explicit elapsed alignment and clock limits" },
+    { "id": "comparison-unknown-clock", "goal": "Older unstamped recordings never claim known simultaneous coverage" },
+    { "id": "keyboard-phone", "goal": "Phone navigation, slider and focused-button keyboard actions remain coherent" },
+    { "id": "review-controls", "goal": "Action/finding navigation, thinking/wait filters and inspector preferences retain evidence" },
+    { "id": "missing-moment", "goal": "Unavailable and malformed moment addresses degrade without misleading images" },
+    { "id": "offline-recording", "goal": "Saved single-file evidence plays with raster data and no HTTP updates" },
+    { "id": "http-poll-cleanup", "goal": "Leaving Observer closes a pending real HTTP update and stops polling" },
+    { "id": "terminal-recording", "goal": "Screenshot-free terminal evidence stays useful without a fabricated player" },
+    { "id": "desktop-isolation", "goal": "An embedded desktop cannot execute script against its parent Observer" }
+  ],
+  "externalAcceptance": [
+    { "id": "real-provider", "status": "external", "reason": "N>1 actual provider connection/reconnect and cleanup receipts required separately" },
+    { "id": "entrypoints", "status": "external", "reason": "watch, observe, TUI attachment and library routing need CLI integration proof separately" },
+    { "id": "offline-export", "status": "external", "reason": "Actual export command, verifier grades and bundle contents need production integration proof; local file rendering is covered here" },
+    { "id": "other-engines-devices", "status": "out-of-scope", "reason": "This finite matrix targets Chromium desktop and 390px rendering; WebKit and physical assistive technology are not certified" }
+  ]
+}

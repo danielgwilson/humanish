@@ -6,14 +6,6 @@ import type { ObserverStream } from "./observer-data";
 // arrive in recorded order; an action belongs to the most recent screenshot before it
 // (frame 0 for anything before the first screenshot).
 //
-// Two honest degradations until the capture side records structured fields (#426
-// follow-up): click coordinates are parsed from recorded action titles of the form
-// "click (700, 420)" — presentation-only parsing of evidence text, never invented —
-// and playback paces frames at the lane's AVERAGE rate (durationMs / frames) because
-// per-item timestamps do not exist anywhere in the trace yet. The transport labels
-// itself avg-paced so nobody mistakes it for real timing; pauses become data the day
-// timestamps land.
-
 export interface PlayerFrame {
   /** Recording stamp in epoch ms, when the capture stamped this frame (#441). */
   atMs?: number;
@@ -21,6 +13,7 @@ export interface PlayerFrame {
   itemId: string;
   title: string;
   href: string;
+  redaction?: string;
 }
 
 export interface PlayerRow {
@@ -28,9 +21,11 @@ export interface PlayerRow {
   kind: string;
   title: string;
   text?: string;
+  status?: string;
   frameIndex: number;
   /** Set when this row IS a frame (clicking it seeks exactly; frames highlight). */
   isFrame: boolean;
+  atMs?: number;
   coord?: { x: number; y: number };
 }
 
@@ -67,9 +62,10 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
           itemId: item.id,
           title: item.title,
           href,
+          redaction: item.screenshotRef.redaction,
           ...(Number.isFinite(atMs) ? { atMs } : {})
         });
-        rows.push({ id: item.id, kind: item.kind, title: item.title, frameIndex: frames.length - 1, isFrame: true });
+        rows.push({ id: item.id, kind: item.kind, title: item.title, frameIndex: frames.length - 1, isFrame: true, ...(Number.isFinite(atMs) ? { atMs } : {}) });
         continue;
       }
     }
@@ -81,8 +77,10 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
       kind: item.kind,
       title: item.title,
       ...(item.text !== undefined ? { text: item.text } : {}),
+      ...(item.status !== undefined ? { status: item.status } : {}),
       frameIndex: Math.max(0, frames.length - 1),
       isFrame: false,
+      ...(item.at !== undefined && Number.isFinite(Date.parse(item.at)) ? { atMs: Date.parse(item.at) } : {}),
       ...(coord !== null ? { coord } : {})
     });
   }
@@ -110,4 +108,78 @@ export function frameHoldMs(model: PlayerModel, index: number): number {
   const next = model.frames[index + 1]?.atMs;
   if (current === undefined || next === undefined) return model.avgFrameMs;
   return Math.max(0, next - current);
+}
+
+/** Original evidence time, never the speed-adjusted/compressed playback clock. */
+export function frameElapsedMs(model: PlayerModel, index: number): number {
+  const first = model.frames[0]?.atMs;
+  const current = model.frames[index]?.atMs;
+  return model.paced === "recorded" && first !== undefined && current !== undefined
+    ? Math.max(0, current - first)
+    : Math.max(0, index) * model.avgFrameMs;
+}
+
+/** Last captured frame at/before a moment. No interpolation of missing images. */
+export function frameAtElapsedMs(model: PlayerModel, elapsedMs: number): number {
+  let low = 0;
+  let high = model.frames.length - 1;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (frameElapsedMs(model, mid) <= elapsedMs) low = mid;
+    else high = mid - 1;
+  }
+  return Math.max(0, low);
+}
+
+export function isWaitRow(row: PlayerRow): boolean {
+  return row.kind === "ui_action" && !isFindingRow(row) && /^wait(?:\s|$)/i.test(row.title);
+}
+
+export function isActionRow(row: PlayerRow): boolean {
+  return ["ui_action", "command", "tool_call", "file_change", "approval"].includes(row.kind)
+    && !isWaitRow(row) && !isFindingRow(row);
+}
+
+/** Explicit evidence categories only; ordinary prose is never inferred to be a finding. */
+export function isFindingRow(row: PlayerRow): boolean {
+  return row.kind === "finding" || row.kind === "warning" || row.kind === "error"
+    || row.status === "warn" || row.status === "warning" || row.status === "error" || row.status === "failed";
+}
+
+export interface PlayerRowGroup {
+  first: PlayerRow;
+  last: PlayerRow;
+  count: number;
+}
+
+/** Collapse consecutive waits in the projection while preserving every source row. */
+export function groupPlayerRows(rows: readonly PlayerRow[], groupWaits = true): PlayerRowGroup[] {
+  const groups: PlayerRowGroup[] = [];
+  for (const row of rows) {
+    const previous = groups.at(-1);
+    if (groupWaits && isWaitRow(row) && previous && isWaitRow(previous.first)) {
+      previous.last = row;
+      previous.count += 1;
+    } else groups.push({ first: row, last: row, count: 1 });
+  }
+  return groups;
+}
+
+export function formatElapsed(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+}
+
+/** Index window for bounded interactive DOM; every item remains reachable. */
+export function boundedWindow(length: number, center: number, limit: number): { start: number; end: number } {
+  const start = Math.max(0, Math.min(Math.max(0, length - limit), center - Math.floor(limit / 2)));
+  return { start, end: Math.min(length, start + limit) };
+}
+
+/** A trace event can occur between screenshots; preserve its own recorded time. */
+export function rowElapsedMs(model: PlayerModel, row: PlayerRow): number {
+  const start = model.frames[0]?.atMs;
+  return model.paced === "recorded" && start !== undefined && row.atMs !== undefined
+    ? Math.max(0, row.atMs - start)
+    : frameElapsedMs(model, row.frameIndex);
 }

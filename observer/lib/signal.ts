@@ -21,18 +21,16 @@ export interface SignalLine {
 }
 
 // The card answers one question — "open this participant?" — with ONE signal line:
-// notable completion (reason verbatim) → warn event → the lane's final recorded message
-// (the closest thing the bundle has to a report first line) → the lane summary.
+// notable completion → final recorded message → unresolved error → lane summary.
+// Recoverable warnings remain available in the card’s notices.
 export function signalFor(stream: ObserverStream): SignalLine {
   const actor = stream.actor;
   if (actor) {
-    const notable = NOTABLE_COMPLETION[actor.completionReason];
+    const notable = Object.hasOwn(NOTABLE_COMPLETION, actor.completionReason) ? NOTABLE_COMPLETION[actor.completionReason] : undefined;
     if (notable !== undefined && actor.reason !== "") {
       return { flagged: true, label: notable, text: actor.reason };
     }
   }
-  const warn = stream.timeline.find((event) => event.level === "warn");
-  if (warn) return { flagged: true, label: warn.type, text: warn.message };
   const items = actor?.items ?? [];
   for (let i = items.length - 1; i >= 0; i -= 1) {
     const item = items[i];
@@ -40,5 +38,7 @@ export function signalFor(stream: ObserverStream): SignalLine {
       return { flagged: false, label: "final message", text: item.text };
     }
   }
+  const warn = stream.timeline.find((event) => event.level === "error");
+  if (warn) return { flagged: true, label: "Needs attention", text: warn.message };
   return { flagged: false, label: "summary", text: stream.sim.summary };
 }

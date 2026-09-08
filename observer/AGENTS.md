@@ -1,11 +1,9 @@
 # observer/ — the rebuilt Observer (#426)
 
-Stage-2 scaffold of the Observer v2 rebuild: a Vite + React + TypeScript-strict
-workspace that renders `humanish.observer-data.v1` as a durable single-file
-artifact, built on `@humanish` registry components reskinned from
-`humanish-tokens`. The interaction model is the review-player spec in #426
-(study grid → participant player); this workspace currently ships the chrome,
-the study grid, and an honest player stub — the player itself is stage 3.
+The Observer is a Vite + React + TypeScript workspace that renders
+`humanish.observer-data.v1` as a durable single-file artifact using the
+`@humanish` registry tokens. It includes the participant grid, live/recorded
+player, evidence inspector, local saved moments and comparison views.
 
 ## Commands
 
@@ -23,8 +21,8 @@ From the repo root (pnpm workspace):
 
 - `index.html` — app shell, pre-paint register init, and the `observer-data`
   slot the CLI fills per run
-- `main.tsx` / `app.tsx` — boot (inline snapshot → dev fixtures) and the frame
-- `components/` — chrome, grid cards, player stub; plus vendored registry
+- `main.tsx` / `app.tsx` — boot (validated inline snapshot → polling → dev fixtures) and the frame
+- `components/` — chrome, grid cards, review player and comparison; plus vendored registry
   components (see `PROVENANCE.md`)
 - `lib/` — type-only bridge to `src/observer-data.ts`, slot reading, dev fixtures
 - `styles/globals.css` — chrome styles; `styles/humanish/` — vendored registry CSS

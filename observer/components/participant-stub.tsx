@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatDuration, keyframeHref } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 
@@ -7,7 +8,6 @@ function evidenceLines(plain: string): TerminalLine[] {
   return plain
     .split("\n")
     .filter((line) => line.trim() !== "")
-    .slice(0, 30)
     .map((text): TerminalLine => {
       if (text.startsWith("$ ")) return { kind: "cmd", text };
       if (text.startsWith("ok ")) return { kind: "ok", text: text.slice(3) };
@@ -15,11 +15,14 @@ function evidenceLines(plain: string): TerminalLine[] {
     });
 }
 
-// Stage-2 stub of the review player: the recorded evidence renders honestly (details,
-// terminal tail, event timeline), and what is NOT built yet says so instead of
-// pretending. The full player — stage, click pins, scrubber, filmstrip, tabs — is
-// the stage-3 parity build (#426).
+// Frame-free lanes retain readable terminal output and their recorded events.
 export function ParticipantStub({ data, stream }: { data: ObserverData; stream: ObserverStream }) {
+  const terminal = evidenceLines(stream.terminalPlain);
+  const [terminalPage, setTerminalPage] = useState<number | null>(null);
+  const [eventPage, setEventPage] = useState(0);
+  const terminalPages = Math.max(1, Math.ceil(terminal.length / 50));
+  const page = Math.min(terminalPage ?? terminalPages - 1, terminalPages - 1);
+  const events = Math.min(eventPage, Math.max(0, Math.ceil(stream.timeline.length / 100) - 1));
   const keyframe = keyframeHref(stream);
   const actor = stream.actor;
   const affordance = actor?.affordanceUse;
@@ -93,9 +96,10 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
       </div>
       {stream.terminalPlain !== "" ? (
         <div className="blk">
-          <span className="o-label">Recorded terminal tail</span>
+          <span className="o-label">Recorded terminal output · lines {page * 50 + 1}–{Math.min((page + 1) * 50, terminal.length)} of {terminal.length}</span>
+          {terminalPages > 1 ? <nav className="stub-pages" aria-label="Terminal output pages"><button className="review-tool" type="button" disabled={page === 0} onClick={() => setTerminalPage(page - 1)}>Earlier output</button><button className="review-tool" type="button" disabled={page >= terminalPages - 1} onClick={() => setTerminalPage(page + 1)}>Later output</button></nav> : null}
           <div className="stub-term">
-            <TerminalCast lines={evidenceLines(stream.terminalPlain)} />
+            <TerminalCast lines={terminal.slice(page * 50, (page + 1) * 50)} />
           </div>
         </div>
       ) : null}
@@ -109,8 +113,9 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
       ) : null}
       <div className="blk">
         <span className="o-label">Timeline</span>
+        {stream.timeline.length > 100 ? <nav className="stub-pages" aria-label="Event pages"><button className="review-tool" type="button" disabled={events === 0} onClick={() => setEventPage(events - 1)}>Earlier events</button><span>{events * 100 + 1}–{Math.min((events + 1) * 100, stream.timeline.length)} of {stream.timeline.length}</span><button className="review-tool" type="button" disabled={(events + 1) * 100 >= stream.timeline.length} onClick={() => setEventPage(events + 1)}>Later events</button></nav> : null}
         <div className="acts">
-          {stream.timeline.map((event) => (
+          {stream.timeline.slice(events * 100, (events + 1) * 100).map((event) => (
             <div key={event.id} className={event.level === "warn" ? "arow ev warn" : "arow ev"}>
               <span className="tc">{event.level}</span>
               <span>

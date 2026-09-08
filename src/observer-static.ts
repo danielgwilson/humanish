@@ -4,6 +4,8 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
+import { buildArtifactSecurityHeaders } from "./serve-http.js";
+
 // Loopback-only host for the Observer static server. We never bind 0.0.0.0:
 // the Observer surfaces local run evidence and must stay reachable only from
 // the machine that owns the run bundle.
@@ -90,6 +92,7 @@ export async function respondToObserverStaticRequest(
   request: Pick<IncomingMessage, "method" | "url">,
   response: ServerResponse
 ): Promise<void> {
+  applySecurityHeaders(response);
   try {
     const root = await pinStaticRoot(options.root);
     await respondToPinnedObserverStaticRequest(root, options, request, response);
@@ -108,6 +111,7 @@ async function respondToPinnedObserverStaticRequest(
   request: Pick<IncomingMessage, "method" | "url">,
   response: ServerResponse
 ): Promise<void> {
+  applySecurityHeaders(response);
   const indexRelative = options.indexPath ?? "index.html";
 
   try {
@@ -183,7 +187,8 @@ async function respondToPinnedObserverStaticRequest(
       }
     }
 
-    const body = await readContainedRegularFile(root, filePath);
+    const rawBody = await readContainedRegularFile(root, filePath);
+    const body = rawBody ? recordedObserverStaticBody(filePath, rawBody) : null;
     if (!body) {
       writeText(response, 404, "Not Found");
       return;
@@ -206,6 +211,48 @@ async function respondToPinnedObserverStaticRequest(
     }
     writeText(response, 500, "Observer request failed");
   }
+}
+
+function applySecurityHeaders(response: ServerResponse): void {
+  for (const [name, value] of Object.entries(buildArtifactSecurityHeaders())) response.setHeader(name, value);
+}
+
+/** Static serving is recorded evidence. Neither JSON files nor inline HTML snapshots
+ * can carry a live process observation or grant provider-origin access. */
+function recordedObserverStaticBody(filePath: string, body: Buffer): Buffer {
+  const strip = (text: string): string | null => {
+    try {
+      const data: unknown = JSON.parse(text);
+      if (!data || typeof data !== "object" || Array.isArray(data)
+        || (data as Record<string, unknown>).schema !== "humanish.observer-data.v1") return null;
+      const projection = data as Record<string, unknown>;
+      delete projection.runtime;
+      if (Array.isArray(projection.streams)) {
+        for (const stream of projection.streams) {
+          if (!stream || typeof stream !== "object" || Array.isArray(stream)) continue;
+          const embed: unknown = (stream as Record<string, unknown>).embed;
+          if (embed && typeof embed === "object" && !Array.isArray(embed)) delete (embed as Record<string, unknown>).runtimeDesktop;
+        }
+      }
+      return JSON.stringify(projection).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
+    } catch { return null; }
+  };
+  if (path.basename(filePath) === "observer-data.json") {
+    const stripped = strip(body.toString("utf8"));
+    return stripped === null ? body : Buffer.from(stripped);
+  }
+  if (/\.html?$/i.test(filePath)) {
+    const html = body.toString("utf8");
+    // Identify Observer JSON by its schema, not an attribute spelling: HTML permits
+    // encoded ids and '>' inside quoted attributes. Other scripts remain byte-identical.
+    const sanitized = html.replace(/(<script\b(?:[^>"']|"[^"]*"|'[^']*')*>)([\s\S]*?)(<\/script\s*>)/gi,
+      (match, start: string, json: string, end: string) => {
+        const stripped = strip(json);
+        return stripped === null ? match : `${start}${stripped}${end}`;
+      });
+    return sanitized === html ? body : Buffer.from(sanitized);
+  }
+  return body;
 }
 
 async function readContainedRegularFile(root: PinnedStaticRoot, filePathInput: string): Promise<Buffer | null> {
@@ -254,6 +301,7 @@ export function createObserverStaticHandler(
 ): (request: IncomingMessage, response: ServerResponse) => void {
   let rootPromise: Promise<PinnedStaticRoot> | undefined;
   return (request, response) => {
+    applySecurityHeaders(response);
     rootPromise ??= pinStaticRoot(options.root);
     void rootPromise
       .then((root) => respondToPinnedObserverStaticRequest(root, options, request, response))

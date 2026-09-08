@@ -4,16 +4,39 @@ import type { ObserverStream } from "./observer-data";
 // the run root — the same containment rule the legacy client applies: run-root-relative
 // paths only; nothing absolute, no traversal, no URL schemes.
 export function runArtifactHref(artifactPath: string): string | null {
-  if (
-    artifactPath === "" ||
-    artifactPath.startsWith("/") ||
-    artifactPath.includes("..") ||
-    artifactPath.includes("://") ||
-    artifactPath.startsWith("data:")
-  ) {
-    return null;
+  if (!safePath(artifactPath)) return null;
+  return `../${artifactPath.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+/** Validate before URL normalization can turn an encoded name into traversal.
+ * Filenames remain filesystem names: encode once when constructing the URL. */
+function safePath(value: string): boolean {
+  if (!value || value.length > 8192) return false;
+  try { encodeURIComponent(value); } catch { return false; }
+  let checked = value;
+  for (let n = 0; n < 5; n++) {
+    if (/^[\\/]|[\\\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked)
+      || checked.split("/").some((part) => part === "." || part === ".." || part === "")) return false;
+    let decoded: string;
+    try { decoded = decodeURIComponent(checked); } catch { return !/%[0-9a-f]{2}/i.test(checked); }
+    if (decoded === checked) return true;
+    if (decoded.split("/").length !== checked.split("/").length) return false;
+    checked = decoded;
   }
-  return `../${artifactPath}`;
+  return false;
+}
+
+/** Observer-generated links may step up exactly once, into this run's root.
+ * Arbitrary schemes and history routes are not artifact links. */
+export function observerArtifactHref(value: string): string | null {
+  if (value.startsWith("../")) return runArtifactHref(value.slice(3));
+  if (!safePath(value)) return null;
+  return value.split("/").map(encodeURIComponent).join("/");
+}
+
+export function historyRunHref(runId: string): string | null {
+  if (!runId || runId.length > 256 || /[\\/\u0000-\u001f\u007f]/.test(runId) || runId === "." || runId === "..") return null;
+  try { return `/_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`; } catch { return null; }
 }
 
 /** Screenshot rendering additionally accepts the raster data URIs emitted by HTML
@@ -38,7 +61,10 @@ export function keyframeHref(stream: ObserverStream): string | null {
   const items = traceItems(stream);
   for (let i = items.length - 1; i >= 0; i -= 1) {
     const ref = items[i]?.screenshotRef;
-    if (ref) return screenshotHref(ref.path);
+    if (ref) {
+      const href = screenshotHref(ref.path);
+      if (href !== null) return href;
+    }
   }
   return null;
 }

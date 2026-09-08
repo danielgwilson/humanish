@@ -1,4 +1,5 @@
 import type { ObserverData } from "./observer-data";
+import { isObserverData } from "./validate";
 
 // Kept as a literal (not imported as a value) so the artifact never bundles CLI code.
 // tests/contract-lock.test.ts asserts it equals src/observer-data.ts's exported const.
@@ -17,13 +18,7 @@ export function readInlineObserverData(doc: Document): ObserverData | null {
   if (!text.trim() || text.includes(OBSERVER_DATA_PLACEHOLDER)) return null;
   try {
     const parsed: unknown = JSON.parse(text);
-    if (
-      parsed !== null &&
-      typeof parsed === "object" &&
-      (parsed as { schema?: unknown }).schema === OBSERVER_DATA_SCHEMA
-    ) {
-      return parsed as ObserverData;
-    }
+    if (isObserverData(parsed)) return parsed;
   } catch {
     // Malformed inline data renders the honest empty state instead of crashing.
   }

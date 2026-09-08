@@ -703,7 +703,7 @@ function identityOf(
   if (screen.name === "lab") {
     const item = itemsForLab(data, screen.labKey).items[selected];
     if (item === undefined) return undefined;
-    return item.kind === "start" ? "start" : `run:${item.run.runId}`;
+    return item.kind === "start" ? `start:${item.mode}` : `run:${item.run.runId}`;
   }
   return undefined;
 }
@@ -722,7 +722,7 @@ function indexOfIdentity(
   }
   if (screen.name === "lab") {
     return itemsForLab(data, screen.labKey).items.findIndex((item) =>
-      item.kind === "start" ? identity === "start" : `run:${item.run.runId}` === identity
+      item.kind === "start" ? identity === `start:${item.mode}` : `run:${item.run.runId}` === identity
     );
   }
   return -1;

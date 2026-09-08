@@ -64,7 +64,7 @@ export interface TuiCapabilities {
   /** Whether this directory is a humanish project — an empty project and a wrong directory are
    *  different problems and must not share a screen. */
   readProjectState(cwd: string): TuiProjectState;
-  /** Hand off to the Observer: a terminal cannot show screenshots, and that surface can. */
+  /** Open the selected run in the session-owned local evidence server; closes when the TUI exits. */
   openObserver(cwd: string, observerPath: string): Promise<TuiActionResult>;
   /** Stop the sandboxes an interrupted run left behind, keeping its evidence. */
   reclaimRun(cwd: string, runId: string): Promise<ReclaimResult>;

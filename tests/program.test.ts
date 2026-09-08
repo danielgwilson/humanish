@@ -186,7 +186,7 @@ describe("humanish CLI scaffold", () => {
       review: "Build a review packet from verified run evidence.",
       runs: "List local Humanish runs and latest pointers.",
       watch: "Run sims, open the observer, keep the shell attached.",
-      observe: "Serve a finished run's Observer over loopback http.",
+      observe: "Follow a run's saved evidence over loopback http.",
       codex: "Run Codex-native Humanish integration surfaces.",
       lab: "List, inspect, and run Humanish lab manifests.",
       feedback: "Create public-safe feedback drafts, no GitHub API."
@@ -206,7 +206,7 @@ describe("humanish CLI scaffold", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Set up humanish/ source and .humanish/ runtime state.");
     expect(result.stdout).toContain("Write a resource cleanup inspection receipt.");
-    expect(result.stdout).toContain("Serve a finished run's Observer over loopback http.");
+    expect(result.stdout).toContain("Follow a run's saved evidence over loopback http.");
     expect(result.stdout).toContain("Create public-safe feedback drafts, no GitHub API.");
   });
 
