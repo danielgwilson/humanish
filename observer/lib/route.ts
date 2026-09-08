@@ -9,22 +9,27 @@ export interface HashRoute {
   laneId: string | null;
   /** 0-based frame index, converted from the 1-based hash form. */
   frame: number | null;
+  /** Explicit following intent; legacy frame links remain unchanged. */
+  mode?: "live" | "replay";
 }
 
-const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/f\/(\d+))?$/;
+const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/(live)|\/f\/(\d+))?$/;
 
 export function parseHash(hash: string): HashRoute {
   const match = LANE_ROUTE.exec(hash);
   if (!match || match[1] === undefined) return { laneId: null, frame: null };
-  const laneId = decodeURIComponent(match[1]);
-  if (match[2] === undefined) return { laneId, frame: null };
-  const oneBased = Number(match[2]);
-  return { laneId, frame: oneBased >= 1 ? oneBased - 1 : null };
+  let laneId: string;
+  try { laneId = decodeURIComponent(match[1]); } catch { return { laneId: null, frame: null }; }
+  if (match[2] === "live") return { laneId, frame: null, mode: "live" };
+  if (match[3] === undefined) return { laneId, frame: null };
+  const oneBased = Number(match[3]);
+  return { laneId, frame: Number.isSafeInteger(oneBased) && oneBased >= 1 ? oneBased - 1 : null };
 }
 
-export function formatHash(laneId: string | null, frame: number | null): string {
+export function formatHash(laneId: string | null, frame: number | null, mode?: "live" | "replay" | null): string {
   if (laneId === null) return "";
   const base = `#/lane/${encodeURIComponent(laneId)}`;
+  if (mode === "live") return `${base}/live`;
   return frame === null ? base : `${base}/f/${frame + 1}`;
 }
 
