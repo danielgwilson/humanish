@@ -200,6 +200,18 @@ export async function exportRun(
     return node;
   };
   const inlined = await walk(data) as Record<string, unknown>;
+  // Export is a recording, even if a saved input HTML once carried a server observation.
+  // Runtime iframe authority and liveness cannot survive into a portable document.
+  delete inlined.runtime;
+  if (Array.isArray(inlined.streams)) {
+    for (const stream of inlined.streams) {
+      if (stream === null || typeof stream !== "object" || Array.isArray(stream)) continue;
+      const embed: unknown = (stream as Record<string, unknown>).embed;
+      if (embed !== null && typeof embed === "object" && !Array.isArray(embed)) {
+        delete (embed as Record<string, unknown>).runtimeDesktop;
+      }
+    }
+  }
   // What verify said, in the file, so the chrome can agree with the result envelope (#584).
   const publicSafety = (inlined.publicSafety ?? {}) as Record<string, unknown>;
   inlined.publicSafety = {

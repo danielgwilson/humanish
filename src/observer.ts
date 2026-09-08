@@ -6,7 +6,7 @@ import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { buildObserverData } from "./observer-data.js";
+import { buildObserverData, recordedStreamEmbed } from "./observer-data.js";
 import type { ObserverData } from "./observer-data.js";
 import { listRuns, loadRunBundle, verifyRun } from "./run.js";
 import {
@@ -55,7 +55,7 @@ export interface ObserverServeOptions {
   // Exposed mode: when true, the live server enforces the same DNS-rebinding defense as the
   // run-library surface — a strict Host allowlist (loopback names seeded at bind, extended by
   // addPublicOrigin, 421 otherwise) plus the shared security headers on every response. Loopback
-  // default (false) keeps the permissive local-dev behavior byte-identical.
+  // default (false) keeps local Host handling permissive. Frame-denial headers always apply.
   exposed?: boolean;
 }
 
@@ -297,10 +297,12 @@ export async function serveObserver(
   const hostAllowlist = new Set<string>();
   const server = createServer(async (request, response) => {
     try {
+      // Every response, including run HTML artifacts, must refuse framing. A provider iframe
+      // with its own origin intact must not navigate back here and gain the Observer's origin.
+      for (const [name, value] of Object.entries(buildServeSecurityHeaders())) {
+        response.setHeader(name, value);
+      }
       if (exposed) {
-        for (const [name, value] of Object.entries(buildServeSecurityHeaders())) {
-          response.setHeader(name, value);
-        }
         if (!hostAllowed(request.headers.host, hostAllowlist)) {
           writeResponse(response, 421, "Misdirected Request", "text/plain; charset=utf-8");
           return;
@@ -355,7 +357,7 @@ export async function serveObserver(
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runtimeStreamUrls());
+        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runRoute.runId === result.run ? runtimeStreamUrls() : []);
         return;
       }
 
@@ -674,43 +676,46 @@ async function withLocalRunStatus(runRoot: PinnedDirectory, input: ObserverData)
 
 /** internal: exported for the #357 lifecycle tests (consumed by observer-serve). */
 export function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRuntimeStreamUrl[]): ObserverData {
-  if (runtimeStreamUrls.length === 0) {
-    return data;
-  }
-
   const byStream = new Map(runtimeStreamUrls.map((stream) => [stream.streamId, stream]));
   return {
     ...data,
-    streams: data.streams.map((stream) => {
+    streams: data.streams.map((input) => {
+      // JSON projections are untrusted, including fallback observer-data.json. A marker saved in
+      // a bundle is never authority; only this process's attached runtime map grants it again.
+      const stream = input.embed === undefined ? input : { ...input, embed: recordedStreamEmbed(input.embed) };
       const runtime = byStream.get(stream.id);
-      if (!runtime) {
-        return stream;
-      }
-      if (runtime.ended) {
-        // The sandbox is gone: a live iframe here renders the provider's "sandbox not found" page,
-        // which is pixel-identical to a crash. Fall back to the recorded evidence the tile already
-        // renders when no live URL is advertised, and mark WHY the live view ended (#357).
-        return { ...stream, liveEnded: true };
-      }
-
+      if (!runtime) return stream;
+      if (runtime.ended) return { ...stream, liveEnded: true };
+      const url = runtimeDesktopUrl(runtime.url);
+      if (!url) return stream;
       return {
         ...stream,
+        ...(stream.liveEnded === true ? { liveEnded: false } : {}),
         embed: {
           ...(stream.embed ?? { title: stream.label }),
           kind: "iframe",
-          url: runtime.url
+          url,
+          runtimeDesktop: true
         },
         transport: "sse",
-        url: runtime.url
+        url
       };
     })
   };
 }
 
+function runtimeDesktopUrl(value: string): string | null {
+  if (!value || value.length > 16_384 || /[\u0000-\u0020\u007f\\]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
+
 /** internal: consumed by observer-serve */
 export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   latestRunId: string | null;
-  runs: Array<{ runId: string; createdAt: string | null; mode: string | null; href: string; status: string; streamCount: number; estimatedCostUsd: number | null; costRatesAsOf: string | null; costPlaceholder: boolean }>;
+  runs: Array<{ runId: string; createdAt: string | null; mode: string | null; href: string; status: string; runtimeState?: NonNullable<ObserverData["runtime"]>["state"]; streamCount: number; estimatedCostUsd: number | null; costRatesAsOf: string | null; costPlaceholder: boolean }>;
 }> {
   await assertPinnedDirectory(proofRoot);
   const physicalCwd = path.dirname(path.dirname(proofRoot.physicalPath));
@@ -725,6 +730,7 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
         mode: run.mode,
         href: `/_humanish/runs/${encodeURIComponent(run.runId)}/observer/index.html`,
         status: data?.run.status ?? "unknown",
+        ...(data?.runtime ? { runtimeState: data.runtime.state } : {}),
         streamCount: data?.streams.length ?? 0,
         // Labeled run-total cost estimate (advisory; null when the run carries no cost summary).
         estimatedCostUsd: data?.cost?.estimatedTotalUsd ?? null,

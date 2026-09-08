@@ -70,6 +70,26 @@ describe("humanish export", () => {
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });
 
+  it("removes saved runtime grants and liveness from portable HTML", async () => {
+    const index = path.join(runDir, "observer", "index.html");
+    const html = await readFile(index, "utf8");
+    const replaced = html.replace(/(<script id="observer-data" type="application\/json">)([\s\S]*?)(<\/script>)/, (_slot, start: string, json: string, end: string) => {
+      const data = JSON.parse(json);
+      data.runtime = { state: "running", source: "local-run-status", observedAt: "2026-09-08T00:00:00Z" };
+      data.streams[0].embed = { kind: "iframe", url: "https://desktop.example/view", runtimeDesktop: true };
+      return `${start}${JSON.stringify(data)}${end}`;
+    });
+    await writeFile(index, replaced);
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = await readFile(path.join(cwd, result.path), "utf8");
+    expect(exported).not.toContain("runtimeDesktop");
+    expect(exported).not.toContain('"runtime":');
+    expect(exported).toContain("https://desktop.example/view");
+    // The source recording remains untouched; export produces the portable projection.
+    expect(await readFile(index, "utf8")).toBe(replaced);
+  });
+
   it("refuses a bundle that is not share_ready, and says how to get one", async () => {
     const result = await exportRun(cwd, RUN, {}, { verify: verified("local_only") });
     expect(result.ok).toBe(false);

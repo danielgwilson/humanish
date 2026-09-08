@@ -112,13 +112,15 @@ stream URLs in any mode; remote viewers see persisted evidence only. See
 ### Exposed hardening and `watch --expose`
 
 The live `serveObserver` server binds `127.0.0.1` and, by default, is a
-permissive local-dev server (no Host allowlist, no security headers). Under its
+local-dev server without a Host allowlist. Every response carries security
+headers, including `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`.
+Under its
 `exposed` option — set by `watch --expose` — it enforces the SAME
 DNS-rebinding defense as the library surface: a strict Host allowlist (loopback
 names at bind, extended by `addPublicOrigin(tunnel.url | public-url)`, `421
 Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
 every response (both live in `src/serve-http.ts`, shared without a module cycle).
-Loopback (non-exposed) behavior is byte-identical to before.
+The Host allowlist applies in exposed mode; frame-denial headers apply in both modes.
 
 Exposed mode also SCOPES the surface to the attached live run (`result.run`): the
 `/_humanish/history.json` index is filtered to that one run, and `/_humanish/runs/<id>/…`
@@ -138,6 +140,28 @@ attached server comes up DURING the run and survives a `timed_out`/`failed` run
 (serving is not gated on pass/fail), so a failed run's evidence stays inspectable
 to Ctrl-C. `serve` still never injects stream URLs. See
 [Serve: the run library surface](serve.md).
+
+### Live desktop iframe authority
+
+Only a URL in the attached server's in-memory runtime map receives
+`stream.embed.runtimeDesktop: true`. Persisted markers are removed when building
+Observer data and again when reading served fallback projections. Cross-run
+library routes do not inherit the attached run's runtime URLs, even when their
+stream ids match. Ended or invalid runtime entries do not receive the grant.
+
+The browser can preserve a cross-origin provider's origin for its desktop viewer
+modules only with this grant. Ordinary stored embeds remain isolated. Every
+Observer/library response, including raw run HTML, refuses framing, so a provider
+redirect or scripted navigation back to an Observer-origin document cannot load
+it inside the iframe and gain access to the parent. This protects the receiving
+origin without a fixed provider allowlist that becomes stale as desktops start.
+The underlying standards are [iframe sandbox permissions](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
+and [CSP frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors).
+
+History entries may include `runtimeState` from the same contained local status
+read as the Observer. Their existing `status` remains the recorded verdict.
+Running filters should use runtime state when present, preserving the difference
+between an active study and its provisional evidence outcome.
 
 ## UI Shape
 
