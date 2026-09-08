@@ -19,7 +19,7 @@ export function pinPosition(coord: { x: number; y: number }, viewport: Size): CS
   return { left: `${100 * coord.x / viewport.width}%`, top: `${100 * coord.y / viewport.height}%` };
 }
 
-export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, emptyText }: {
+export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, emptyText, sandbox = "allow-scripts", streamRevision = 0 }: {
   frame: PlayerFrame | undefined;
   count: number;
   viewport: Size | undefined;
@@ -28,6 +28,8 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
   live: string | null;
   label: string;
   emptyText: string;
+  sandbox?: string;
+  streamRevision?: number;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState<Size>({ width: 640, height: 480 });
@@ -61,8 +63,8 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
     onPointerUp={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}>
     <div className="evidence-canvas">
       {live ? <div className="stage-live" style={liveSize}>
-        <iframe src={live} title={`Live view — ${label}`} tabIndex={-1} aria-hidden="true" referrerPolicy="no-referrer" />
-        <span className="live-badge">Live desktop · read-only</span>
+        <iframe key={streamRevision} sandbox={sandbox} src={live} title={`Live view — ${label}`} tabIndex={-1} aria-hidden="true" referrerPolicy="no-referrer" />
+
       </div> : frame ? <RecordedImage key={frame.href} frame={frame} count={count} viewport={viewport} available={available} zoom={zoom} pins={pins} />
         : <p className="evidence-empty" role="status">{emptyText}</p>}
     </div>
@@ -99,7 +101,12 @@ function RecordedImage({ frame, count, viewport, available, zoom, pins }: {
     {viewport ? <div className="pins" aria-hidden="true" style={{ visibility: status === "ready" ? "visible" : "hidden" }}>
       {pins.map((row) => {
         const position = row.coord ? pinPosition(row.coord, viewport) : null;
-        return position ? <span key={row.id} className="spin" style={position}><span className="tip">{row.title}</span></span> : null;
+        const fraction = (row.coord?.x ?? 0) / viewport.width;
+        const side = fraction > 0.5 ? "left" : "right";
+        const room = Math.max(32, (side === "left" ? fraction : 1 - fraction) * size.width - 20);
+        return position ? <span key={row.id} className="spin" data-tip-side={side} data-tip-vertical={(row.coord?.y ?? 0) / viewport.height > 0.75 ? "above" : "below"} style={position}>
+          <span className="tip" style={{ maxWidth: Math.min(180, room) }}>{row.title}</span>
+        </span> : null;
       })}
     </div> : null}
   </div>;

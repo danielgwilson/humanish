@@ -82,6 +82,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const [manualLink, setManualLink] = useState<string | null>(null);
   const [scrubPreview, setScrubPreview] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now);
+  const [streamRevision, setStreamRevision] = useState(0);
   const viewerRef = useRef<HTMLDivElement>(null);
   const filmRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -257,11 +258,15 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
             ? captureAge === null ? "Capture time unavailable" : `Captured ${formatDuration(captureAge)} ago`
             : current?.atMs !== undefined ? `Captured ${new Date(current.atMs).toISOString()}` : "Capture timestamps unavailable"}</span>
         </div>
+        {live ? <button type="button" className="tbtn" onClick={() => {
+          setStreamRevision((value) => value + 1);
+          setNotice("Reloading the read-only desktop connection. This does not restart the participant; connection health is managed by the provider.");
+        }}>Reload stream</button> : null}
         {active && !following ? <button type="button" className="tbtn live-jump" aria-label="Jump to live" onClick={jumpToLive}>Go live</button> : null}
         <button type="button" className="tbtn" aria-label={preferences.inspector ? "Hide inspector" : "Show inspector"} aria-expanded={preferences.inspector}
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
       </div>
-      <PlayerStage frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} label={stream.label}
+      <PlayerStage frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
           : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
       <div className="transport">

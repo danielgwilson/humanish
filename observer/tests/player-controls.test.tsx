@@ -140,6 +140,19 @@ describe("player review controls", () => {
     expect(container.textContent).toContain("Fullscreen is unavailable");
     expect(counter()).toBe("1 / 3");
   });
+  it("reloads only the desktop iframe and retains the recorded selection", async () => {
+    await render();
+    const before = container.querySelector("iframe");
+    const address = window.location.hash;
+    await click("Reload stream");
+    const after = container.querySelector("iframe");
+    expect(after).not.toBe(before);
+    expect(after?.getAttribute("src")).toBe(before?.getAttribute("src"));
+    expect(after?.getAttribute("sandbox")).toBe("allow-scripts");
+    expect(counter()).toBe("3 / 3");
+    expect(window.location.hash).toBe(address);
+    expect(container.textContent).toContain("does not restart the participant");
+  });
   it("does not grant clipboard access or keyboard focus to read-only desktop iframes", async () => {
     await render();
     const iframe = container.querySelector("iframe");
@@ -186,6 +199,15 @@ describe("player review controls", () => {
     const pin = container.querySelector<HTMLElement>(".pins .spin");
     expect(pin?.style.left).toBe("50%");
     expect(pin?.style.top).toBe("50%");
+  });
+  it("places edge click labels toward the available image area", async () => {
+    stream = { ...stream, viewport: { width: 390, height: 844 } };
+    model = { ...model, rows: [{ id: "click-edge", title: "click (380, 820)", kind: "ui_action", isFrame: false, frameIndex: 0, coord: { x: 380, y: 820 } }] };
+    await render({ initialFrame: 0 });
+    const pin = container.querySelector<HTMLElement>(".pins .spin");
+    expect(pin?.dataset.tipSide).toBe("left");
+    expect(pin?.dataset.tipVertical).toBe("above");
+    expect(pin?.textContent).toContain("click (380, 820)");
   });
   it("projects legacy unstamped evidence without requiring new schema fields", () => {
     const legacy = { ...stream, actor: { items: [{ id: "a", kind: "screenshot", lifecycle: "completed", title: "Capture", screenshotRef: { path: "screenshots/old.png", redaction: "none" } }], durationMs: 5000 } } as ObserverStream;
