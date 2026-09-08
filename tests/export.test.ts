@@ -102,9 +102,12 @@ describe("humanish export", () => {
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     const exported = await readFile(path.join(cwd, result.path), "utf8");
-    expect(exported).not.toContain("runtimeDesktop");
-    expect(exported).not.toContain('"runtime":');
-    expect(exported).toContain("https://desktop.example/view");
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    expect(slot).not.toBeNull();
+    const data = JSON.parse(slot![1]!) as ObserverData;
+    expect(data).not.toHaveProperty("runtime");
+    expect(data.streams[0]?.embed).not.toHaveProperty("runtimeDesktop");
+    expect(data.streams[0]?.embed?.url).toBe("https://desktop.example/view");
     // The source recording remains untouched; export produces the portable projection.
     expect(await readFile(index, "utf8")).toBe(replaced);
   });
