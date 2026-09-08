@@ -15,6 +15,7 @@ import { isActiveStream, isServedOrigin, liveEmbedUrl } from "./lib/live";
 import type { ObserverData } from "./lib/observer-data";
 import type { PlayerView } from "./lib/player-state";
 import { buildPlayerModel } from "./lib/player-model";
+import { participantLabels } from "./lib/participant-label";
 import { isDensity, isMoments, isStringList, usePreference, type SavedMoment } from "./lib/preferences";
 import { formatHash, parseHash, pushHash } from "./lib/route";
 import { useObserverFeed } from "./lib/use-observer-feed";
@@ -82,10 +83,11 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   const model = useMemo(() => selected ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected]);
   const viewChanged = useCallback((view: PlayerView) => { if (selected) setPlayerView({ ...view, streamId: selected.id }); }, [selected?.id]);
   if (!data) return <EmptyState />;
+  const labels = participantLabels(streams);
   const visible = streams.filter((s) => {
     if (filters.status === "__active" ? !isActiveStream(s) : filters.status && s.statusLabel !== filters.status) return false;
     if (filters.kind && s.kindLabel !== filters.kind) return false;
-    return `${s.label} ${s.id} ${s.laneId ?? ""} ${s.sim.personaId}`.toLowerCase().includes(filters.query.toLowerCase());
+    return `${labels.get(s.id)} ${s.label} ${s.id} ${s.laneId ?? ""} ${s.sim.personaId}`.toLowerCase().replace(/[-_]+/g, " ").includes(filters.query.toLowerCase().replace(/[-_]+/g, " "));
   });
   const togglePin = (id: string) => setPinnedByRun(pinnedByRun.includes(id) ? pinnedByRun.filter((v) => v !== id) : [...pinnedByRun.slice(-49), id]);
   const toggleCompare = (id: string) => setCompareIds((old) => old.includes(id) ? old.filter((v) => v !== id) : old.length < 3 ? [...old, id] : old);
@@ -113,17 +115,13 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
     {!selected && !comparison && sideOpen && !monitoring ? <Sidebar data={data} history={history} onRuns={toGrid} /> : null}
     <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} label="Run library"><Sidebar data={data} history={history} onRuns={() => { toGrid(); setDrawerOpen(false); }} /></Drawer>
     <div className="main">
-      <Topbar data={data} selected={selected} filters={filters} onFilters={setFilters} onRuns={toGrid} onStep={stepParticipant} onLibrary={toggleLibrary} sideOpen={phone ? drawerOpen : sideOpen} reviewControl={selected || comparison ? savedControl : null} />
-      <RunStatus data={data} connection={connection} now={now} onRetry={retry} />
-      <div className={`study-tools${selected || comparison ? " empty-tools" : ""}`}>
-        {!selected && !comparison ? <>
-          <input type="search" className="participant-search" aria-label="Search participants" placeholder="Find a participant…" value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} />
-          <label>Size <select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>
-          <button type="button" className="review-tool" aria-pressed={monitoring} onClick={() => setMonitoring(!monitoring)}>{monitoring ? "Exit monitor" : "Monitor"}</button>
-          {compareIds.length ? <button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button> : <span className="tool-hint">Select up to 3 participants to compare</span>}
-        </> : null}
-        {!selected && !comparison ? savedControl : null}
-      </div>
+      <Topbar data={data} selected={selected} filters={filters} onFilters={setFilters} onRuns={toGrid} onStep={stepParticipant} onLibrary={toggleLibrary} sideOpen={phone ? drawerOpen : sideOpen} reviewControl={savedControl}
+        gridControl={!selected && !comparison ? <label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label> : null}
+        {...(!selected && !comparison ? { onMonitor: () => setMonitoring(true) } : {})} />
+      <RunStatus data={data} connection={connection} now={now} onRetry={retry} actions={<>
+        {monitoring ? <button type="button" className="review-tool" onClick={() => setMonitoring(false)}>Exit monitor</button> : null}
+        {!selected && !comparison && compareIds.length ? <button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button> : null}
+      </>} />
       <main id="observer-content" tabIndex={-1} className={selected && model ? "content player-host" : "content"}>
         {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} />
           : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} />

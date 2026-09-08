@@ -41,12 +41,20 @@ cancelled when the viewer closes.
 
 Previews share a height and wrap into rows; desktop cards are wider and portrait
 cards narrower. Complete screens remain contained when the available width is
-smaller than a preview. Sparse rows keep their chosen size. Use **Size** to change
-preview height, **Pin** to keep selected participants at
-the beginning, or **Monitor** for a larger evidence area. Ordering changes only
+smaller than a preview. Sparse rows keep their chosen size. Open **View and filter
+participants** in the top right to search, change **Preview size**, or enter
+**Monitor** for a larger evidence area. **Exit monitor** stays beside the run status.
+The card's **Pin** icon keeps selected participants at the beginning. Ordering changes only
 when the researcher changes it. Large studies have reachable participant pages.
 At most four desktop previews attach in the grid; allocation prioritizes screens
-that are actually visible. Other cards show their latest saved capture.
+that are actually visible, with the hovered or keyboard-focused participant taking
+priority. Other cards show their latest saved capture.
+
+Each card keeps one compact participant/outcome caption. Pin, Compare and details
+icons appear on hover or keyboard focus and remain visible on touch devices.
+The details popover contains final messages, notices, duration and dimensions.
+Notice indicators and exceptional outcomes stay visible without opening it.
+The bookmark icon in the top bar opens **Saved moments**.
 
 Opening a participant provides elapsed-time seeking, the original frame number,
 playback speed, **Fit**, **Actual size**, zoom/pan and fullscreen. The inspector can
@@ -101,6 +109,7 @@ claim physical-device or non-Chromium coverage. Actual provider checks and their
 resource-cleanup receipts are separate acceptance evidence.
 
 Interaction references rechecked September 8, 2026:
+[Base UI popover](https://base-ui.com/react/components/popover),
 [React state structure](https://react.dev/learn/choosing-the-state-structure),
 [WAI-ARIA tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/),
 [iframe sandboxing](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe),

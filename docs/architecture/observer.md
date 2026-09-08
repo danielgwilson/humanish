@@ -194,6 +194,16 @@ The Observer shell has:
 - terminal/TUI transcript stage;
 - right evidence rail for events, artifacts, and known gaps.
 
+The participant grid uses equal-height previews and a compact identity/outcome
+caption. Generated computer-use lane labels display the recorded persona identity;
+repeated identities gain a lane or stream qualifier. Card actions appear on hover
+or keyboard focus and remain visible on touch devices. Notices and exceptional
+outcomes remain visible; final messages, dimensions, duration and exact identifiers
+live in the participant details popover. Search, preview size and monitor mode
+share the view/filter popover. Monitor mode keeps its exit beside the run status.
+Live previews remain bounded to four visible cards, with the hovered or focused
+participant taking priority when the grid shows more than four eligible cards.
+
 ## Codex UI Contract
 
 `codex-ui` streams are normalized session/event projections. Public artifacts

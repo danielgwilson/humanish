@@ -10,20 +10,24 @@ export function Popover({
   trigger,
   triggerClassName,
   label,
-  children
+  children,
+  open,
+  onOpenChange
 }: {
   trigger: ReactNode;
   triggerClassName: string;
   label: string;
   children: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <BasePopover.Root>
+    <BasePopover.Root {...(open === undefined ? {} : { open })} {...(onOpenChange ? { onOpenChange } : {})}>
       <BasePopover.Trigger className={triggerClassName} aria-label={label}>
         {trigger}
       </BasePopover.Trigger>
       <BasePopover.Portal>
-        <BasePopover.Positioner sideOffset={8} align="end">
+        <BasePopover.Positioner className="observer-popover-positioner" sideOffset={8} align="end">
           <BasePopover.Popup className="pop-panel" aria-label={label}>
             <span className="pop-grabber" aria-hidden="true" />
             {children}

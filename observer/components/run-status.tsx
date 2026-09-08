@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import { ageLabel, isActiveStream, sourceUpdatedAt } from "@/lib/live";
 import type { ObserverData } from "@/lib/observer-data";
 import type { ObserverConnection } from "@/lib/use-observer-feed";
 
-export function RunStatus({ data, connection, now, onRetry }: { data: ObserverData; connection: ObserverConnection; now: number; onRetry: () => void }) {
+export function RunStatus({ data, connection, now, onRetry, actions }: { data: ObserverData; connection: ObserverConnection; now: number; onRetry: () => void; actions?: ReactNode }) {
   const runtime = data.runtime;
   const active = data.streams.filter(isActiveStream).length;
   const staleProcess = runtime?.state === "unknown" || runtime?.state === "interrupted";
@@ -18,6 +19,7 @@ export function RunStatus({ data, connection, now, onRetry }: { data: ObserverDa
       <strong>{status}</strong><span>{active > 0 && !offline && !ended && !staleProcess && !failed ? `${active} of ${data.streams.length} participants active` : `Recorded ${recordedDate}`}</span>
       {data.run.mode === "dry-run" ? <span className="chip chip-mute">Dry run</span> : null}
     </div>
+    {actions}
     <div className="run-status-update" role="status" aria-live="off">
       {offline ? "Saved evidence · no updates" : failed ? <>Updates unavailable · last received {ageLabel(connection.lastReceivedAt, now)} <button type="button" onClick={onRetry}>Retry</button></>
         : connection.state === "connecting" ? "Checking for updates…"

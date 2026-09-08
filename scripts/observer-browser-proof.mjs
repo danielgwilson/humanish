@@ -229,10 +229,38 @@ try {
       record.checks.width = await pageWidth(page); await snap("complete-screens");
       assertFullFrames(record.checks.geometry);
       assert(record.checks.width.page <= record.checks.width.viewport + 1, "Grid page overflows horizontally");
+      record.checks.cardChrome = await page.locator(".card").evaluateAll((cards) => cards.map((card) => ({
+        footer: card.getBoundingClientRect().height - card.querySelector(".card-preview").getBoundingClientRect().height,
+        outcomeHeight: card.querySelector(".card-outcome").getBoundingClientRect().height,
+      })));
+      assert(record.checks.cardChrome.every((card) => card.footer <= 42 && card.outcomeHeight < 20), "Card footer grew or its outcome wrapped");
+      assert.equal(await page.getByLabel("Preview size").count(), 0, "View controls consume default grid space");
+      const first = page.locator(".card").first(); await first.hover();
+      await first.getByRole("button", { name: /^Participant details:/ }).click();
+      await page.locator(".card-details").getByText("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE").waitFor();
+      await snap("participant-details"); await page.keyboard.press("Escape");
+      await first.hover(); await first.getByRole("button", { name: /^Add to comparison:/ }).click();
+      await page.getByRole("button", { name: "Compare selected (1/3)", exact: true }).waitFor();
+      await first.getByRole("button", { name: /^Remove from comparison:/ }).click();
+      assert.equal(await page.locator(".player").count(), 0, "An icon action opened the player");
+      await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
+      await page.getByLabel("Search participants").fill("Avery");
+      await page.keyboard.press("Escape");
+      assert.equal(await page.locator(".card").count(), 1, "Dismissing the menu erased the filter");
+      await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
+      await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+      await snap("view-menu");
+      await page.getByRole("button", { name: "Monitor", exact: true }).click();
+      await page.locator(".frame.monitoring").waitFor();
+      await page.locator(".pop-panel").waitFor({ state: "hidden" });
+      await page.getByRole("button", { name: "Exit monitor", exact: true }).click();
+      assert.equal(await page.locator(".frame.monitoring").count(), 0, "Monitor exit is unreachable");
       if (!phone) {
         record.checks.rows = [];
         for (const [density, expectedHeight] of [["compact", 200], ["comfortable", 280], ["large", 360]]) {
+          await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
           await page.getByLabel("Preview size").selectOption(density);
+          await page.keyboard.press("Escape");
           const images = await inspectImages(page.locator(".thumb .keyframe"));
           assertFullFrames(images);
           const sizes = images.map((image) => {
@@ -243,8 +271,10 @@ try {
           assert(sizes[0].width < sizes[1].width * .6, "Phone preview grew as wide as the desktop");
           record.checks.rows.push({ density, sizes });
         }
+        await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
         await page.getByLabel("Preview size").selectOption("comfortable");
         await page.getByLabel("Search participants").fill("Avery");
+        await page.keyboard.press("Escape");
         await until(async () => await page.locator(".card").count() === 1, "Portrait-only filter did not settle");
         const only = (await inspectImages(page.locator(".thumb .keyframe")))[0];
         assert(Math.abs(only.box[1] - 280) < 1, "A sparse portrait row enlarged to fill the width");
@@ -339,7 +369,7 @@ try {
   await runCase("stream-capacity", { running: true, live: true, laneCount: 24 }, async ({ page, record, snap }) => {
     await wait(600); record.checks.initial = await page.locator(".thumb iframe").count();
     assert(record.checks.initial > 0 && record.checks.initial <= 4, "Grid must bound attached desktop previews to four");
-    const last = page.locator(".card").last(); await last.scrollIntoViewIfNeeded();
+    const last = page.locator(".card").last(); await last.scrollIntoViewIfNeeded(); await last.hover();
     await until(async () => await last.locator("iframe").count() === 1, "Visible later participant never received preview allocation");
     record.checks.afterScroll = await page.locator(".thumb iframe").count();
     assert(record.checks.afterScroll <= 4, "Scrolling exceeded desktop preview capacity"); await snap("later-visible-participant");
@@ -415,10 +445,12 @@ try {
     await snap("clipboard-manual-fallback");
   });
   await runCase("view-preferences", {}, async ({ page, record, snap }) => {
+    await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
     await page.getByLabel("Preview size").selectOption("compact");
     await page.getByRole("searchbox", { name: "Search participants", exact: true }).fill("participant 2");
     await until(async () => await page.locator(".card").count() === 1, "Search did not filter participants");
     await page.reload();
+    await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
     assert.equal(await page.getByLabel("Preview size").inputValue(), "compact");
     assert.equal(await page.getByRole("searchbox", { name: "Search participants", exact: true }).inputValue(), "participant 2");
     assert.equal(await page.locator(".card").count(), 1); await snap("preserved-size-and-search");
@@ -431,11 +463,13 @@ try {
     assert.equal(await page.locator(".card").count(), 36, "Large grid did not bound one page");
     await page.getByRole("button", { name: "Next page", exact: true }).click();
     const pin = page.getByRole("button", { name: "Pin participant Synthetic participant 40", exact: true }); await pin.waitFor();
+    await pin.locator("xpath=ancestor::article").hover();
     await pin.click();
     assert.equal(await page.locator(".player").count(), 0, "Pin control unexpectedly opened participant");
     await page.getByRole("button", { name: "Previous page", exact: true }).click();
     assert.equal(await page.locator(".card").first().getAttribute("data-stream-id"), "lane-40");
     await page.reload(); assert.equal(await page.locator(".card").first().getAttribute("data-stream-id"), "lane-40");
+    await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
     await page.getByRole("button", { name: "Monitor", exact: true }).click();
     await page.locator(".frame.monitoring").waitFor(); await snap("pinned-monitor");
     await page.getByRole("button", { name: "Exit monitor", exact: true }).click();
@@ -478,6 +512,7 @@ try {
     otherData = fixture({ laneCount: 1, origin }); otherData.run.runId = "synthetic-other-study";
     otherData.streams[0].actor.items.forEach((item) => { if (item.at) item.at = new Date(Date.parse(item.at) + 300_000).toISOString(); });
   } }, async ({ page, record, snap }) => {
+    await page.locator(".card").first().hover();
     await page.getByRole("button", { name: /^Add to comparison:/ }).first().click();
     await page.getByRole("button", { name: /^Compare selected/ }).click();
     const select = page.getByLabel("Comparison run"); await select.waitFor(); await select.selectOption("synthetic-other-study");
