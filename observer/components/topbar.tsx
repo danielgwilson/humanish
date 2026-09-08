@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 
 import { Popover } from "./ui/popover";
@@ -18,11 +19,12 @@ export interface TopbarProps {
   onStep: (delta: number) => void;
   onLibrary: () => void;
   sideOpen: boolean;
+  reviewControl?: ReactNode;
 }
 
 // Frame.io-style chrome: wordmark first, then breadcrumbs with a caret on the leaf.
 // Grid view carries the working filters; the participant view swaps them for a pager.
-export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onLibrary, sideOpen }: TopbarProps) {
+export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onLibrary, sideOpen, reviewControl }: TopbarProps) {
   const statuses = [...new Set(data.streams.map((s) => s.statusLabel))];
   const kinds = [...new Set(data.streams.map((s) => s.kindLabel))];
   const activeFilters = (filters.status === "" ? 0 : 1) + (filters.kind === "" ? 0 : 1) + (filters.query === "" ? 0 : 1);
@@ -49,21 +51,22 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
             ‹
           </button>
         ) : null}
-        <button type="button" className="crumb-link" onClick={onRuns}>runs</button>
+        <button type="button" className="crumb-link" onClick={onRuns}>study</button>
         <span className="sep">/</span>
-        <span className="trunc">{data.run.runId}</span>
+        <span className="trunc" title={`${data.run.scenario.title} · ${data.run.runId}`}>{data.run.scenario.title}</span>
         <span className="sep">/</span>
         {selected ? (
-          <span className="here">{selected.laneId ?? selected.label} ⌄</span>
+          <span className="here" title={selected.laneId ?? selected.label}>{selected.laneId ?? selected.label}</span>
         ) : (
-          <span className="here">participants ⌄</span>
+          <span className="here">participants</span>
         )}
       </nav>
       <div className="right">
+        {reviewControl}
         {selected ? (
           <span className="pager">
             <button type="button" aria-label="Previous participant" onClick={() => onStep(-1)}>‹</button>
-            participant {index + 1} / {data.streams.length}
+            <span className="pager-word">participant </span>{index + 1} / {data.streams.length}
             <button type="button" aria-label="Next participant" onClick={() => onStep(1)}>›</button>
           </span>
         ) : (
@@ -83,6 +86,7 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
               <span className="o-label">Status</span>
               <select value={filters.status} onChange={(e) => onFilters({ ...filters, status: e.target.value })}>
                 <option value="">All</option>
+                <option value="__active">Running / preparing</option>
                 {statuses.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}

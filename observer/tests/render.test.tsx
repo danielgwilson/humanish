@@ -136,8 +136,8 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(container.querySelectorAll(".card")).toHaveLength(4);
     const tally = container.querySelector(".countline")?.textContent ?? "";
     expect(tally).toContain("4 participants");
-    expect(tally).toContain("4 warnings");
-    expect(tally).toContain("dry-run");
+    expect(container.querySelectorAll(".card-warnings")).toHaveLength(4);
+    expect(tally).toContain("dry run");
     // every card carries exactly one signal line
     expect(container.querySelectorAll(".card .sig-label")).toHaveLength(4);
   });
@@ -345,7 +345,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
 
   it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {
     await mount(<App data={liveShapedData({ live: true })} />);
-    expect(container.querySelector(".card .chip")?.textContent).toBe("Live");
+    expect(container.querySelector(".card .chip")?.textContent).toBe("Running");
     await click(container.querySelector(".open-overlay") as Element);
 
     const iframe = () => container.querySelector(".stage-live iframe");

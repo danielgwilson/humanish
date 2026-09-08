@@ -1,123 +1,55 @@
+import { useState } from "react";
 import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
-import { liveEmbedUrl } from "@/lib/live";
+import { ageLabel, frameUpdatedAt, isActiveStream, isServedOrigin, liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
 import { signalFor } from "@/lib/signal";
-
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
 
-const PASS = new Set<string>(["passed", "complete"]);
-const MUTED = new Set<string>(["abandoned", "incomplete", "blocked", "timed_out", "failed"]);
-
 function terminalLines(plain: string): TerminalLine[] {
-  return plain
-    .split("\n")
-    .filter((line) => line.trim() !== "")
-    .slice(0, 6)
-    .map((text): TerminalLine => {
-      if (text.startsWith("$ ")) return { kind: "cmd", text };
-      if (text.startsWith("ok ")) return { kind: "ok", text: text.slice(3) };
-      return { kind: "dim", text };
-    });
+  return plain.split("\n").filter(Boolean).slice(-6).map((text) => text.startsWith("$ ") ? { kind: "cmd", text } : { kind: "dim", text });
 }
 
-function statusChip(stream: ObserverStream) {
-  if (liveEmbedUrl(stream) !== null) return <span className="chip chip-dot">Live</span>;
-  if (PASS.has(stream.status)) return <span className="chip chip-pass">{stream.statusLabel}</span>;
-  if (MUTED.has(stream.status)) return <span className="chip chip-dot chip-mute">{stream.statusLabel}</span>;
-  return <span className="chip chip-dot">{stream.statusLabel}</span>;
-}
-
-// The card is a mini viewport plus one decide-line (#426). The thumb dominates; the
-// only overlays are what a stakeholder needs before clicking: duration, live state,
-// and a play affordance. One row names the lane and its status. One line carries the
-// signal: a flag with the recorded reason, or the lane's closest report line. Kind,
-// mode, viewport, and the study name live in the player and the breadcrumb, not here.
-export function ParticipantCard({
-  stream,
-  onOpen,
-  liveThumb = false
-}: {
-  stream: ObserverStream;
-  onOpen: (id: string) => void;
-  /** Mount the live stream as the thumb (#331). The grid caps how many cards get
-   *  this at once — every live socket is a real connection to a real desktop. */
-  liveThumb?: boolean;
+export function ParticipantCard({ stream, onOpen, liveThumb = false, pinned = false, compared = false, onPin, onCompare, now = Date.now() }: {
+  stream: ObserverStream; onOpen: (id: string) => void; liveThumb?: boolean;
+  pinned?: boolean; compared?: boolean; onPin?: ((id: string) => void) | undefined; onCompare?: ((id: string) => void) | undefined; now?: number | undefined;
 }) {
-  const idx = String(stream.sim.index).padStart(2, "0");
   const keyframe = keyframeHref(stream);
   const signal = signalFor(stream);
-  const liveUrl = liveEmbedUrl(stream);
-  const live = liveUrl !== null;
-  // The live ticker (#427 stage 2): while the lane runs, the decide-line is the
-  // participant's newest reported thought, updated by the poll as the incremental
-  // flush (#441) lands new items. Reported thinking, not ground truth — same
-  // register discipline as the player's thought rows; markdown bold leads flatten
-  // to plain text on this one-line surface. Finished lanes keep the signal line.
-  const latestThought = live
-    ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text !== undefined && item.text !== "")
-    : undefined;
-  const tickerText = latestThought?.text?.replace(/\*\*([^*]+)\*\*/g, "$1");
-  const showTerminal = (stream.kind === "terminal" || stream.kind === "tui") && stream.terminalPlain !== "";
-
-  return (
-    <article className={MUTED.has(stream.status) ? "panel card gaveup" : "panel card"}>
-      <button
-        type="button"
-        className="open-overlay"
-        aria-label={`Open participant ${stream.laneId ?? stream.label}`}
-        onClick={() => onOpen(stream.id)}
-      />
-      <div className="thumb">
-        {liveThumb && liveUrl !== null ? (
-          /* The mini viewport is the doctrine; during a live run the truest thumb is
-             the stream itself. pointer-events never reach it — the card's overlay
-             button owns the click, and read-only stays by construction. */
-          <iframe
-            className="thumb-live"
-            src={liveUrl}
-            title={`Live thumb — ${stream.laneId ?? stream.label}`}
-            referrerPolicy="no-referrer"
-            aria-hidden="true"
-            tabIndex={-1}
-          />
-        ) : keyframe !== null ? (
-          <img className="keyframe" src={keyframe} alt={`Keyframe from lane ${stream.laneId ?? stream.label}`} loading="lazy" />
-        ) : showTerminal ? (
-          <div className="thumb-term">
-            <TerminalCast lines={terminalLines(stream.terminalPlain)} />
-          </div>
-        ) : (
-          <div className="thumb-ph">
-            {stream.ui ? <span className="ph-route">{stream.ui.route}</span> : null}
-            <span className="ph-state">{stream.ui?.state ?? stream.transport}</span>
-          </div>
-        )}
-        {stream.actor ? <span className="th-pill th-dur">{formatDuration(stream.actor.durationMs)}</span> : null}
-        {live ? <span className="th-pill th-live">● live</span> : null}
-        {keyframe !== null ? (
-          <span className="th-play" aria-hidden="true">
-            ▶
-          </span>
-        ) : null}
-      </div>
-      <div className="cbar">
-        <b className="pidx">{idx}</b>
-        <span className="cname">{stream.laneId ?? stream.label}</span>
-        {statusChip(stream)}
-      </div>
-      {tickerText !== undefined ? (
-        <p className="csig ticker" title="Reported thinking — the participant's own narration, not ground truth">
-          <span className="sig-label">thinking</span> <q>{tickerText}</q>
-        </p>
-      ) : (
-        <p className="csig">
-          <span className={signal.flagged ? "sig-label sig-flag" : "sig-label"}>
-            {signal.flagged ? "⚑ " : ""}
-            {signal.label}
-          </span>{" "}
-          <q>{signal.text}</q>
-        </p>
-      )}
-    </article>
-  );
+  const liveUrl = isServedOrigin(window.location.protocol) ? liveEmbedUrl(stream) : null;
+  const active = isActiveStream(stream);
+  const thought = active ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text) : undefined;
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const viewport = dimensions ?? stream.viewport;
+  const warnings = stream.timeline.filter((event) => event.level === "warn" || event.level === "error");
+  const label = stream.laneId ?? stream.label;
+  const failed = keyframe !== null && keyframe === failedImage;
+  const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : "Recorded";
+  return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id}>
+    <div className="thumb" style={{ aspectRatio: viewport ? `${viewport.width} / ${viewport.height}` : "16 / 10" }}>
+      {liveThumb && liveUrl ? <iframe sandbox={liveEmbedSandbox(stream)} className="thumb-live" src={liveUrl} title={`Live thumb — ${label}`} referrerPolicy="no-referrer" aria-hidden="true" tabIndex={-1} />
+        : keyframe && !failed ? <img className="keyframe" src={keyframe} alt={`Recorded screen from ${label}`} loading="lazy"
+          onLoad={(event) => { const i = event.currentTarget; if (i.naturalWidth && i.naturalHeight) setDimensions({ width: i.naturalWidth, height: i.naturalHeight }); }}
+          onError={() => setFailedImage(keyframe)} />
+          : stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
+            : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
+      <button type="button" className="open-overlay" aria-label={`Open participant ${label}`} onClick={() => onOpen(stream.id)} />
+      <span className="th-pill th-source">{previewLabel}</span>
+      {stream.actor ? <span className="th-pill th-dur">{formatDuration(stream.actor.durationMs)}</span> : null}
+      {liveThumb && liveUrl ? <span className="th-connection">Read-only · connection unverified</span> : null}
+    </div>
+    <div className="cbar"><b className="pidx">{String(stream.sim.index).padStart(2, "0")}</b>
+      <button type="button" className="cname" title={label} onClick={() => onOpen(stream.id)}>{label}</button>
+      <span className={`chip${active ? " chip-dot" : " chip-mute"}`}>{stream.statusLabel}</span>
+    </div>
+    <div className="card-meta">{stream.viewport ? `${stream.viewport.width} × ${stream.viewport.height} · ` : ""}{stream.kindLabel}</div>
+    <p className={`csig${thought?.text ? " ticker" : ""}`} title={thought?.text ? `Reported thinking: ${thought.text}` : undefined}>{thought?.text ? <><span className="sig-label">Reported thinking</span> {thought.text.replace(/\*\*([^*]+)\*\*/g, "$1")}</>
+      : <><span className="sig-label">{signal.label}</span> {signal.text}</>}</p>
+    <div className="card-tools">
+      {onPin ? <button type="button" aria-pressed={pinned} aria-label={`${pinned ? "Unpin" : "Pin"} participant ${label}`} onClick={() => onPin(stream.id)}>{pinned ? "Pinned" : "Pin"}</button> : null}
+      {onCompare ? <button type="button" aria-pressed={compared} aria-label={`${compared ? "Remove from" : "Add to"} comparison: ${label}`} onClick={() => onCompare(stream.id)}>{compared ? "Selected" : "Compare"}</button> : null}
+      {failed ? <button type="button" onClick={() => setFailedImage(null)}>Retry frame</button> : null}
+      {warnings.length ? <details className="card-warnings"><summary>{warnings.length} {warnings.length === 1 ? "notice" : "notices"}</summary><ul>{warnings.map((event) => <li key={event.id}>{event.message}</li>)}</ul></details> : null}
+    </div>
+  </article>;
 }

@@ -3,6 +3,7 @@ import "@fontsource-variable/geist-mono";
 import "@fontsource-variable/newsreader";
 import "@fontsource-variable/newsreader/wght-italic.css";
 import "./styles/globals.css";
+import "./styles/observer-qol.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
