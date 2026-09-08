@@ -76,7 +76,8 @@
     "tui:test": "pnpm --filter humanish-tui test",
     "release:dogfood": "node scripts/release-dogfood.mjs",
     "docs:generate": "tsx scripts/generate-cli-docs.ts",
-    "docs:check": "tsx scripts/generate-cli-docs.ts --check"
+    "docs:check": "tsx scripts/generate-cli-docs.ts --check",
+    "observer:browser:proof": "node scripts/observer-browser-proof.mjs"
   },
   "repository": {
     "type": "git",
