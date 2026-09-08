@@ -174,10 +174,10 @@ describe("live helpers", () => {
     expect(liveEmbedUrl(stream({}))).toBeNull();
   });
 
-  it("fetchObserverData accepts only ok responses carrying the schema", async () => {
+  it("fetchObserverData rejects incomplete snapshots even with a matching schema", async () => {
     const ok = (body: unknown) =>
       (async () => ({ ok: true, json: async () => body })) as unknown as typeof fetch;
-    expect(await fetchObserverData(ok({ schema: "humanish.observer-data.v1", streams: [] }))).not.toBeNull();
+    expect(await fetchObserverData(ok({ schema: "humanish.observer-data.v1", streams: [] }))).toBeNull();
     expect(await fetchObserverData(ok({ schema: "something.else" }))).toBeNull();
     expect(await fetchObserverData((async () => ({ ok: false })) as unknown as typeof fetch)).toBeNull();
     expect(
