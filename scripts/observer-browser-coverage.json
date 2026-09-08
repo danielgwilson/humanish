@@ -1,0 +1,26 @@
+{
+  "schema": "humanish.observer-browser-coverage.v1",
+  "scope": "Built Observer renderer over controlled HTTP snapshots; synthetic pixels; no provider or CLI launch claim",
+  "cases": [
+    { "id": "grid-desktop", "goal": "See every portrait and landscape corner in the desktop grid" },
+    { "id": "grid-phone", "goal": "See complete mixed screens and contain long names at 390px" },
+    { "id": "player-desktop", "goal": "Open a participant and inspect uncropped stage and filmstrip" },
+    { "id": "player-phone", "goal": "Inspect the player and transport without horizontal page overflow" },
+    { "id": "live-arrow", "goal": "Arrow seek leaves the desktop and shows the addressed recording" },
+    { "id": "live-refresh", "goal": "Reload preserves the explicit intent to watch live" },
+    { "id": "paused-growth", "goal": "A paused newest frame stays paused when evidence grows" },
+    { "id": "same-lane-route", "goal": "Same-participant links select the actual visible moment" },
+    { "id": "invalid-snapshot", "goal": "Malformed snapshot preserves evidence and announces recovery state" },
+    { "id": "network-recovery", "goal": "Failed polls are visible and recovery receives new evidence" },
+    { "id": "stream-capacity", "goal": "Large grids bound desktop connections and allocate visible later lanes" },
+    { "id": "large-trace", "goal": "Long traces bound the DOM while keeping final evidence reachable" }
+  ],
+  "externalAcceptance": [
+    { "id": "real-provider", "status": "external", "reason": "N>1 actual provider connection/reconnect and cleanup receipts required separately" },
+    { "id": "entrypoints", "status": "external", "reason": "watch, observe, TUI attachment and library routing need CLI integration proof separately" },
+    { "id": "offline-export", "status": "external", "reason": "Self-contained export and no-network behavior need export integration proof separately" },
+    { "id": "comparison-bookmarks", "status": "uncovered", "reason": "New comparison/bookmark semantics require integrated UI acceptance after implementation" },
+    { "id": "review-controls", "status": "uncovered", "reason": "Zoom, pinning, wall mode, filters, wait grouping, findings and inspector require integrated UI acceptance" },
+    { "id": "failure-accessibility", "status": "uncovered", "reason": "Missing images, denied fullscreen, keyboard dialogs, reduced motion and WebKit require integrated acceptance" }
+  ]
+}
