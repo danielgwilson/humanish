@@ -129,7 +129,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
 describe("the share chip (#584)", () => {
   it("an unverified projection says local_only; a verified artifact shows its recorded grade", async () => {
     await mount(<App data={data} />);
-    expect(container.querySelector(".chip-mute")?.textContent).toBe("local_only");
+    expect(container.querySelector(".chip-mute")?.textContent).toBe("Local only");
     await act(async () => {
       root.unmount();
     });
@@ -138,11 +138,11 @@ describe("the share chip (#584)", () => {
       publicSafety: { ...data.publicSafety, share: { status: "share_ready", verifiedAt: "2026-09-01T20:30:00.000Z", reasons: [] } }
     };
     await mount(<App data={exported} />);
-    const chip = [...container.querySelectorAll(".chip")].find((el) => el.textContent === "share_ready");
+    const chip = [...container.querySelectorAll(".chip")].find((el) => el.textContent === "Share-ready");
     expect(chip).toBeDefined();
     expect(chip?.getAttribute("title")).toContain("verified 2026-09-01T20:30:00.000Z");
     expect(chip?.classList.contains("chip-mute")).toBe(false);
-    expect(container.textContent).not.toContain("local_only");
+    expect(container.textContent).not.toContain("Local only");
   });
 });
 
@@ -163,7 +163,7 @@ describe("observer scaffold rendering the first-run golden", () => {
 
   it("register toggle writes data-theme and persists the explicit choice", async () => {
     await mount(<App data={data} />);
-    const toggle = container.querySelector('button[aria-label="Toggle color register"]');
+    const toggle = container.querySelector('button[aria-label="Toggle theme"]');
     expect(toggle).not.toBeNull();
     await click(toggle as Element);
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
@@ -276,7 +276,8 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     }));
     await mount(<App data={snapshot} />);
     expect([...container.querySelectorAll(".card-name")].map((node) => node.textContent)).toEqual(["Careful reader · lane-0", "Careful reader · lane-1"]);
-    expect(container.querySelector('[aria-label="Pin participant Careful reader · lane-0"]')).not.toBeNull();
+    await click(container.querySelector('[aria-label="Participant details: Careful reader · lane-0"]') as Element);
+    expect(document.querySelector('[aria-label="Pin participant Careful reader · lane-0"]')).not.toBeNull();
   });
 
   it("shows the keyframe thumb (last screenshot) and the ⚑ notable reason verbatim", async () => {
@@ -376,7 +377,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
 
   it("watching live: read-only stream stage, scrub-back replay, jump-to-live", async () => {
     await mount(<App data={liveShapedData({ live: true })} />);
-    expect(container.querySelector(".card .card-outcome")?.textContent).toBe("Running");
+    expect(container.querySelector(".card .card-outcome")?.textContent).toBe("Live");
     await click(container.querySelector(".open-overlay") as Element);
 
     const iframe = () => container.querySelector(".stage-live iframe");

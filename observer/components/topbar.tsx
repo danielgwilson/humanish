@@ -1,6 +1,9 @@
 import { useState, type ReactNode } from "react";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 
+import { IconButton } from "./ui/icon-button";
+import { ReviewIcon } from "./review-icon";
+import { participantLabels } from "@/lib/participant-label";
 import { Popover } from "./ui/popover";
 import { Wordmark } from "./wordmark";
 
@@ -28,6 +31,7 @@ export interface TopbarProps {
 // Grid view carries the working filters; the participant view swaps them for a pager.
 export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onLibrary, sideOpen, reviewControl, gridControl, onMonitor }: TopbarProps) {
   const [viewOpen, setViewOpen] = useState(false);
+  const selectedName = selected ? participantLabels(data.streams).get(selected.id) ?? selected.label : null;
   const statuses = [...new Set(data.streams.map((s) => s.statusLabel))];
   const kinds = [...new Set(data.streams.map((s) => s.kindLabel))];
   const activeFilters = (filters.status === "" ? 0 : 1) + (filters.kind === "" ? 0 : 1) + (filters.query === "" ? 0 : 1);
@@ -35,31 +39,18 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
 
   return (
     <div className="topbar">
-      <button
-        type="button"
-        className="side-toggle"
-        aria-label="Toggle run library"
-        aria-expanded={sideOpen}
-        onClick={onLibrary}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <rect x="1" y="1.5" width="12" height="11" rx="2" stroke="currentColor" />
-          <line x1="5.2" y1="1.5" x2="5.2" y2="12.5" stroke="currentColor" />
-        </svg>
-      </button>
+      <IconButton className="side-toggle" label="Toggle run library" hint="Run library" aria-expanded={sideOpen} onClick={onLibrary}><ReviewIcon name="library" /></IconButton>
       <Wordmark label="humanish Observer" />
       <nav className="crumbs" aria-label="Breadcrumbs">
         {selected ? (
-          <button type="button" className="crumb-back" aria-label="Back to participants" onClick={onRuns}>
-            ‹
-          </button>
+          <IconButton className="crumb-back" label="Back to participants" onClick={onRuns}><ReviewIcon name="previous" /></IconButton>
         ) : null}
         <button type="button" className="crumb-link" onClick={onRuns}>study</button>
         <span className="sep">/</span>
         <span className="trunc" title={`${data.run.scenario.title} · ${data.run.runId}`}>{data.run.scenario.title}</span>
         <span className="sep">/</span>
         {selected ? (
-          <span className="here" title={selected.laneId ?? selected.label}>{selected.laneId ?? selected.label}</span>
+          <span className="here" title={selectedName ?? ""}>{selectedName}</span>
         ) : (
           <span className="here">participants</span>
         )}
@@ -68,20 +59,18 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
         {reviewControl}
         {selected ? (
           <span className="pager">
-            <button type="button" aria-label="Previous participant" onClick={() => onStep(-1)}>‹</button>
+            <IconButton label="Previous participant" onClick={() => onStep(-1)}><ReviewIcon name="previous" /></IconButton>
             <span className="pager-word">participant </span>{index + 1} / {data.streams.length}
-            <button type="button" aria-label="Next participant" onClick={() => onStep(1)}>›</button>
+            <IconButton label="Next participant" onClick={() => onStep(1)}><ReviewIcon name="next" /></IconButton>
           </span>
         ) : (
           <Popover
             triggerClassName="filter-btn"
-            label="View and filter participants"
+            label="View and filter participants" title="View options"
             open={viewOpen} onOpenChange={setViewOpen}
             trigger={
               <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z" />
-                </svg>
+                <ReviewIcon name="options" />
                 {activeFilters > 0 ? <span className="filter-count">{activeFilters}</span> : null}
               </>
             }
@@ -135,10 +124,10 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
             className={`chip chip-dot ${data.publicSafety.share.status === "share_ready" ? "" : "chip-mute"}`}
             title={`verified ${data.publicSafety.share.verifiedAt}${data.publicSafety.share.reasons.length > 0 ? `: ${data.publicSafety.share.reasons.join(", ")}` : ""}`}
           >
-            {data.publicSafety.share.status}
+            {{ share_ready: "Share-ready", local_only: "Local only", blocked: "Sharing blocked" }[data.publicSafety.share.status]}
           </span>
         ) : data.publicSafety.publishable === false ? (
-          <span className="chip chip-dot chip-mute" title={data.publicSafety.note}>local_only</span>
+          <span className="chip chip-dot chip-mute" title={data.publicSafety.note}>Local only</span>
         ) : null}
       </div>
     </div>

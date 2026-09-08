@@ -1,3 +1,4 @@
+import { Tooltip } from "@base-ui-components/react/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Comparison } from "./components/comparison";
 import { EmptyState } from "./components/empty-state";
@@ -71,6 +72,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest("input,select,textarea,[contenteditable=true],[role=dialog],[role=menu]")) return;
       if (event.key === "Escape" && !document.fullscreenElement) {
@@ -103,13 +105,14 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   const openMoment = (moment: SavedMoment) => {
     const stream = streams.find((s) => s.id === moment.streamId);
     const frame = stream ? buildPlayerModel(stream)?.frames.find((f) => f.itemId === moment.itemId) : null;
-    if (!frame) { setSavedMessage("This saved frame is no longer in the available recording."); return; }
+    if (!frame) { setSavedMessage("This saved frame is no longer in the available recording."); return false; }
     openParticipant(moment.streamId, frame.index);
+    return true;
   };
   const currentMoments = savedMoments.filter((m) => m.runId === data.run.runId);
-  const savedControl = <SavedMoments moments={currentMoments} canSave={!!selected && playerView?.streamId === selected.id && playerView.mode === "replay" && playerView.frame !== null} stored={momentsStored} message={savedMessage} onSave={saveMoment} onOpen={openMoment}
+  const savedControl = <SavedMoments labels={labels} moments={currentMoments} canSave={!!selected && playerView?.streamId === selected.id && playerView.mode === "replay" && playerView.frame !== null} stored={momentsStored} message={savedMessage} onSave={saveMoment} onOpen={openMoment}
           onRemove={(moment) => setSavedMoments(savedMoments.filter((m) => !(m.runId === moment.runId && m.streamId === moment.streamId && m.itemId === moment.itemId)))} />;
-  return <div className={`frame${monitoring ? " monitoring" : ""}`}>
+  return <Tooltip.Provider delay={350}><div className={`frame${monitoring ? " monitoring" : ""}`}>
     <a className="skip-observer" href="#observer-content" onClick={(event) => { event.preventDefault(); document.getElementById("observer-content")?.focus(); }}>Skip to evidence</a>
     <IconRail runsActive={!selected && !comparison && filters.status !== "__active"} liveActive={!selected && filters.status === "__active"} onRuns={() => { setFilters(NO_FILTERS); toGrid(); }} onLive={() => { setFilters({ ...NO_FILTERS, status: "__active" }); toGrid(); }} />
     {!selected && !comparison && sideOpen && !monitoring ? <Sidebar data={data} history={history} onRuns={toGrid} /> : null}
@@ -120,7 +123,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
         {...(!selected && !comparison ? { onMonitor: () => setMonitoring(true) } : {})} />
       <RunStatus data={data} connection={connection} now={now} onRetry={retry} actions={<>
         {monitoring ? <button type="button" className="review-tool" onClick={() => setMonitoring(false)}>Exit monitor</button> : null}
-        {!selected && !comparison && compareIds.length ? <button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button> : null}
+        {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
       </>} />
       <main id="observer-content" tabIndex={-1} className={selected && model ? "content player-host" : "content"}>
         {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} />
@@ -129,5 +132,5 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
       </main>
       <div className="statusbar"><span title={data.run.runId}>Study <b>{data.run.runId}</b></span><span className="links">{data.artifactLinks.map((link) => { const href = observerArtifactHref(link.href); return href ? <a key={link.href} href={href}>{link.label}</a> : null; })}</span></div>
     </div>
-  </div>;
+  </div></Tooltip.Provider>;
 }

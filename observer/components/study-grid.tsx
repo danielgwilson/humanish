@@ -57,7 +57,7 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
         onPointerOver={(event) => { const id = (event.target as Element).closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
         onFocusCapture={(event) => { const id = event.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
       >{shown.map((stream) => <ParticipantCard key={stream.id} stream={stream} name={labels.get(stream.id) ?? stream.label} onOpen={onOpen}
-        liveThumb={liveThumbIds.has(stream.id)} pinned={pinnedIds.includes(stream.id)} compared={compareIds.includes(stream.id)} onPin={onPin} onCompare={onCompare} now={now} />)}</div>}
+        liveThumb={liveThumbIds.has(stream.id)} pinned={pinnedIds.includes(stream.id)} compared={compareIds.includes(stream.id)} comparisonFull={compareIds.length >= 3} onPin={onPin} onCompare={onCompare} now={now} />)}</div>}
     {pageCount > 1 ? <nav className="grid-pages" aria-label="Participant pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
       <span>Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, streams.length)} of {streams.length} participants</span>
       <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>Next page</button></nav> : null}

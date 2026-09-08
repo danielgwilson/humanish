@@ -44,17 +44,30 @@ cards narrower. Complete screens remain contained when the available width is
 smaller than a preview. Sparse rows keep their chosen size. Open **View and filter
 participants** in the top right to search, change **Preview size**, or enter
 **Monitor** for a larger evidence area. **Exit monitor** stays beside the run status.
-The card's **Pin** icon keeps selected participants at the beginning. Ordering changes only
+Open a card's **Participant details** to **Pin** it at the beginning. Ordering changes only
 when the researcher changes it. Large studies have reachable participant pages.
 At most four desktop previews attach in the grid; allocation prioritizes screens
 that are actually visible, with the hovered or keyboard-focused participant taking
 priority. Other cards show their latest saved capture.
 
-Each card keeps one compact participant/outcome caption. Pin, Compare and details
-icons appear on hover or keyboard focus and remain visible on touch devices.
-The details popover contains final messages, notices, duration and dimensions.
-Notice indicators and exceptional outcomes stay visible without opening it.
-The bookmark icon in the top bar opens **Saved moments**.
+Each card follows its screen's aspect ratio without a minimum width that adds
+portrait gutters. Its 44px caption holds the participant name, a short preview
+source (**Live**, **Capture**, or **Snapshot**) or finished outcome, and a stable
+**Participant details** button. Labels and controls never cover captured pixels.
+Details contains labeled **Pin** and **Compare** toggles, the full source and
+freshness, final messages, recorded notices, duration and dimensions. Historical
+notices do not turn the details control into a warning; exceptional outcomes
+remain in the caption. Comparison permits three participants and explains the
+limit while keeping selected participants removable.
+
+Icon buttons use Lucide glyphs, accessible names, hover/focus hints and visible
+keyboard focus. Touch targets expand to 44px. Popovers have explicit close buttons;
+Escape dismisses a hint without navigating the player. These conventions follow
+[Carbon icon usage](https://carbondesignsystem.com/elements/icons/usage/),
+[ARIA toggle-button semantics](https://www.w3.org/WAI/ARIA/apg/patterns/button/),
+and [WCAG target sizing](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
+The bookmark icon in the top bar opens **Saved moments**; recalling an available
+moment closes the popover, while an unavailable moment leaves the error visible.
 
 Opening a participant provides elapsed-time seeking, the original frame number,
 playback speed, **Fit**, **Actual size**, zoom/pan and fullscreen. The inspector can

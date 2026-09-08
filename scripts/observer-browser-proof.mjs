@@ -165,6 +165,23 @@ function assertFullFrames(measurements) {
 async function pageWidth(page) {
   return page.evaluate(() => ({ viewport: innerWidth, page: document.documentElement.scrollWidth }));
 }
+async function assertClearGridScreens(page) {
+  const screens = await page.locator(".card").evaluateAll((cards) => cards.map((card) => {
+    const area = card.querySelector(".card-preview").getBoundingClientRect();
+    const screen = card.querySelector(".thumb").getBoundingClientRect();
+    const caption = card.querySelector(".card-caption").getBoundingClientRect();
+    return { gutter: Math.abs(area.width - screen.width), left: Math.abs(area.left - screen.left),
+      captionBelow: caption.top >= area.bottom - 1, captionHeight: caption.height,
+      badgesOrControlsInScreen: card.querySelectorAll(".card-preview .th-pill, .card-preview .th-connection, .card-preview .icon-button").length };
+  }));
+  assert(screens.length > 0);
+  for (const screen of screens) {
+    assert(screen.gutter < 1 && screen.left < 1, "The card adds horizontal padding beside the captured screen");
+    assert(screen.captionBelow && screen.captionHeight <= 44, "Caption covers the screen or expanded the card footer");
+    assert.equal(screen.badgesOrControlsInScreen, 0, "UI chrome covers captured pixels");
+  }
+  return screens;
+}
 async function displayedFrame(page) { return page.locator(".stage-box img").first().getAttribute("src"); }
 async function openLane(page, index = 1) {
   await page.goto(`${origin}/observer/index.html#/lane/lane-${index}`);
@@ -183,7 +200,7 @@ async function runCase(id, options, action) {
   if (options.prepare) options.prepare();
   const requestStart = requests.length;
   const directory = path.join(output, id); await mkdir(directory);
-  const context = await browser.newContext({ viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 } });
+  const context = await browser.newContext({ viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 }, ...(options.touch ? { hasTouch: true, isMobile: true } : {}) });
   const unexpectedNetwork = [];
   await context.route("**/*", (route) => {
     const target = new URL(route.request().url());
@@ -233,15 +250,16 @@ try {
         footer: card.getBoundingClientRect().height - card.querySelector(".card-preview").getBoundingClientRect().height,
         outcomeHeight: card.querySelector(".card-outcome").getBoundingClientRect().height,
       })));
-      assert(record.checks.cardChrome.every((card) => card.footer <= 42 && card.outcomeHeight < 20), "Card footer grew or its outcome wrapped");
+      assert(record.checks.cardChrome.every((card) => card.footer <= 46 && card.outcomeHeight < 20), "Card footer grew or its outcome wrapped");
       assert.equal(await page.getByLabel("Preview size").count(), 0, "View controls consume default grid space");
       const first = page.locator(".card").first(); await first.hover();
       await first.getByRole("button", { name: /^Participant details:/ }).click();
       await page.locator(".card-details").getByText("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE").waitFor();
-      await snap("participant-details"); await page.keyboard.press("Escape");
-      await first.hover(); await first.getByRole("button", { name: /^Add to comparison:/ }).click();
+      await snap("participant-details");
+      await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).click();
       await page.getByRole("button", { name: "Compare selected (1/3)", exact: true }).waitFor();
-      await first.getByRole("button", { name: /^Remove from comparison:/ }).click();
+      await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).click();
+      await page.getByRole("button", { name: "Close participant details", exact: true }).click();
       assert.equal(await page.locator(".player").count(), 0, "An icon action opened the player");
       await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
       await page.getByLabel("Search participants").fill("Avery");
@@ -444,6 +462,81 @@ try {
     assert(!record.checks.manualLink.includes("/desktop/"), "Moment link leaked live desktop URL");
     await snap("clipboard-manual-fallback");
   });
+  await runCase("grid-control-semantics", { laneCount: 4, prepare: () => {
+    data.streams[0].timeline.push({ id: "setup-recovery", at: new Date(START).toISOString(), type: "warning", level: "warn", message: "Synthetic browser bounds were corrected before participant entry." });
+  } }, async ({ page, record, snap }) => {
+    const details = page.getByRole("button", { name: /^Participant details:/ });
+    assert.equal(await details.locator("svg.lucide-info").count(), 4, "Recorded notices changed the Details action icon");
+    record.checks.screens = await assertClearGridScreens(page);
+    for (let i = 0; i < 3; i += 1) {
+      await details.nth(i).click();
+      await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).click();
+      await page.getByRole("button", { name: "Close participant details", exact: true }).click();
+    }
+    await page.getByRole("button", { name: "Compare selected (3/3)", exact: true }).waitFor();
+    await details.nth(3).click();
+    assert(await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).isDisabled(), "A fourth selection silently appears enabled");
+    await snap("comparison-limit"); await page.getByRole("button", { name: "Close participant details", exact: true }).click();
+    await details.first().click();
+    const selected = page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ });
+    assert.equal(await selected.getAttribute("aria-pressed"), "true");
+    assert.equal((await selected.innerText()).trim(), "Compare", "Toggle label changes meaning when selected");
+    assert(!(await selected.isDisabled()), "Full comparison cannot remove a selected participant");
+    await selected.click(); await page.getByRole("button", { name: "Close participant details", exact: true }).click();
+    await details.nth(3).click();
+    assert(!(await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).isDisabled()));
+    await page.getByRole("button", { name: "Close participant details", exact: true }).click();
+    await openLane(page);
+    const next = page.getByRole("button", { name: "Next frame", exact: true });
+    await next.focus(); await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
+    await page.locator(".observer-tooltip").getByText("Next frame", { exact: true }).waitFor();
+    const route = page.url(), before = await displayedFrame(page);
+    await page.keyboard.press("Escape");
+    await page.locator(".observer-tooltip").waitFor({ state: "hidden" });
+    assert.equal(page.url(), route, "Dismissing a tooltip navigated away from the player");
+    assert.equal(await displayedFrame(page), before, "Dismissing a tooltip changed the frame");
+    assert(await next.evaluate((button) => button === document.activeElement), "Tooltip dismissal lost focus");
+    await page.keyboard.press("Enter");
+    await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
+    await snap("keyboard-hint-dismissed"); record.checks.keyboardHint = "Focus label, Escape, and one Enter action passed";
+  });
+  await runCase("grid-touch-controls", { phone: true, touch: true, laneCount: 2 }, async ({ page, record, snap }) => {
+    record.checks.pointer = await page.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches, noHover: matchMedia("(hover: none)").matches, touch: navigator.maxTouchPoints }));
+    assert(record.checks.pointer.coarse && record.checks.pointer.noHover && record.checks.pointer.touch > 0, "Phone proof lacks actual touch emulation");
+    record.checks.screens = await assertClearGridScreens(page);
+    assertFullFrames(await inspectImages(page.locator(".thumb .keyframe")));
+    const details = page.getByRole("button", { name: /^Participant details:/ }).first();
+    const target = await details.boundingBox(); assert(target.width >= 44 && target.height >= 44, "Touch target is smaller than 44px");
+    await details.tap();
+    const pin = page.locator(".pop-panel").getByRole("button", { name: /^Pin participant/ });
+    await pin.tap();
+    assert.equal(await pin.getAttribute("aria-pressed"), "true");
+    assert.equal((await pin.innerText()).trim(), "Pin", "Visible and accessible toggle labels disagree");
+    await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).tap();
+    const close = page.getByRole("button", { name: "Close participant details", exact: true });
+    const closeTarget = await close.boundingBox(); assert(closeTarget.width >= 44 && closeTarget.height >= 44);
+    await snap("touch-labeled-actions"); await close.tap();
+    await page.locator(".pop-panel").waitFor({ state: "hidden" });
+    await page.getByRole("button", { name: "View and filter participants", exact: true }).tap();
+    await page.getByLabel("Preview size").selectOption("compact");
+    await page.getByRole("button", { name: "Close view options", exact: true }).tap();
+    record.checks.compactScreens = await assertClearGridScreens(page);
+    const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
+    await snap("touch-compact-grid");
+  });
+  await runCase("grid-live-surfaces", { running: true, live: true, laneCount: 4 }, async ({ page, record, snap }) => {
+    await until(async () => await page.locator(".thumb-live").count() === 4, "Live fixture previews did not attach");
+    record.checks.screens = await assertClearGridScreens(page);
+    assert.equal(await page.locator(".card-outcome").getByText("Live", { exact: true }).count(), 4);
+    await snap("live-labels-outside-screens");
+    await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
+    await page.getByLabel("Preview size").selectOption("compact");
+    await page.getByRole("button", { name: "Close view options", exact: true }).click();
+    record.checks.compactScreens = await assertClearGridScreens(page);
+    await page.getByRole("button", { name: /^Participant details:/ }).first().click();
+    await page.locator(".card-details").getByText(/Live desktop preview/).waitFor();
+    await snap("live-source-details");
+  });
   await runCase("view-preferences", {}, async ({ page, record, snap }) => {
     await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
     await page.getByLabel("Preview size").selectOption("compact");
@@ -462,8 +555,8 @@ try {
   await runCase("pin-pages-monitor", { laneCount: 40 }, async ({ page, record, snap }) => {
     assert.equal(await page.locator(".card").count(), 36, "Large grid did not bound one page");
     await page.getByRole("button", { name: "Next page", exact: true }).click();
+    await page.getByRole("button", { name: "Participant details: Synthetic participant 40", exact: true }).click();
     const pin = page.getByRole("button", { name: "Pin participant Synthetic participant 40", exact: true }); await pin.waitFor();
-    await pin.locator("xpath=ancestor::article").hover();
     await pin.click();
     assert.equal(await page.locator(".player").count(), 0, "Pin control unexpectedly opened participant");
     await page.getByRole("button", { name: "Previous page", exact: true }).click();
@@ -483,11 +576,12 @@ try {
     await page.getByText("Moment saved.", { exact: true }).waitFor(); await snap("saved-moment");
     await page.keyboard.press("Escape"); await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/4`);
     await page.getByRole("button", { name: "Saved moments", exact: true }).click();
-    await page.getByRole("button", { name: "lane-1 · frame 2", exact: true }).click();
+    await page.getByRole("button", { name: `${data.streams[0].label} · frame 2`, exact: true }).click();
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
     record.checks.stored = await page.evaluate(() => JSON.parse(localStorage.getItem("humanish-observer-moments")));
     assert.deepEqual(Object.keys(record.checks.stored[0]).sort(), ["frame", "itemId", "runId", "savedAt", "streamId"].sort(), "Saved moment stored more than bounded evidence identifiers");
-    await page.getByRole("button", { name: "Remove saved frame 2 from lane-1", exact: true }).click();
+    await page.getByRole("button", { name: "Saved moments", exact: true }).click();
+    await page.getByRole("button", { name: `Remove saved frame 2 from ${data.streams[0].label}`, exact: true }).click();
     await page.getByText("No saved moments yet.", { exact: true }).waitFor(); await snap("removed-moment");
     assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("humanish-observer-moments"))), []);
   });
@@ -512,8 +606,9 @@ try {
     otherData = fixture({ laneCount: 1, origin }); otherData.run.runId = "synthetic-other-study";
     otherData.streams[0].actor.items.forEach((item) => { if (item.at) item.at = new Date(Date.parse(item.at) + 300_000).toISOString(); });
   } }, async ({ page, record, snap }) => {
-    await page.locator(".card").first().hover();
-    await page.getByRole("button", { name: /^Add to comparison:/ }).first().click();
+    await page.getByRole("button", { name: /^Participant details:/ }).first().click();
+    await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).click();
+    await page.getByRole("button", { name: "Close participant details", exact: true }).click();
     await page.getByRole("button", { name: /^Compare selected/ }).click();
     const select = page.getByLabel("Comparison run"); await select.waitFor(); await select.selectOption("synthetic-other-study");
     await page.getByText("Other run loaded as recorded evidence.", { exact: true }).waitFor();
