@@ -284,6 +284,19 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           </div>
           <input className="scrub" type="range" min={0} max={Math.max(1, duration)} step={1} value={elapsed} disabled={frames.length < 2}
             aria-label="Seek recording time" aria-valuetext={`${formatElapsed(elapsed)} of ${formatElapsed(duration)}, frame ${Math.max(0, frame + 1)} of ${frames.length}`}
+            onKeyDown={(event) => {
+              if (event.altKey || event.ctrlKey || event.metaKey) return;
+              const next = event.key === "ArrowRight" || event.key === "ArrowUp" ? frame + 1
+                : event.key === "ArrowLeft" || event.key === "ArrowDown" ? frame - 1
+                : event.key === "Home" ? 0 : event.key === "End" ? frames.length - 1
+                : event.key === "PageUp" ? frame + Math.max(1, Math.ceil(frames.length / 10))
+                : event.key === "PageDown" ? frame - Math.max(1, Math.ceil(frames.length / 10)) : null;
+              if (next === null) return;
+              // Native millisecond steps snap back to the same sparse capture. Move
+              // between recorded boundaries so both arrow directions remain usable.
+              event.preventDefault();
+              seek(next);
+            }}
             onPointerMove={(event) => {
               const bounds = event.currentTarget.getBoundingClientRect();
               if (bounds.width > 0) setScrubPreview(frameAtElapsedMs(model, Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)) * duration));

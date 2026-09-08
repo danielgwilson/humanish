@@ -122,10 +122,26 @@ describe("player review controls", () => {
   it("does not steal native control or editable keyboard actions", async () => {
     await render({ initialFrame: 1 });
     await key("ArrowLeft", container.querySelector('input[type="range"]')!);
+    expect(counter()).toBe("1 / 3");
+    await key("ArrowRight", container.querySelector('input[type="range"]')!);
+    expect(counter()).toBe("2 / 3");
     await key(" ", container.querySelector('button[aria-label="Play"]')!);
     const editor = document.createElement("div"); editor.contentEditable = "true"; editor.setAttribute("contenteditable", "true"); container.appendChild(editor);
     await key("ArrowLeft", editor);
     expect(counter()).toBe("2 / 3");
+  });
+  it("moves the focused time scrubber through real captures in both directions", async () => {
+    await render({ initialFrame: 0 });
+    const slider = container.querySelector('input[type="range"]')!;
+    await key("ArrowRight", slider);
+    expect(counter()).toBe("2 / 3");
+    await key("ArrowLeft", slider);
+    expect(counter()).toBe("1 / 3");
+    await key("End", slider);
+    expect(counter()).toBe("3 / 3");
+    await key("Home", slider);
+    expect(counter()).toBe("1 / 3");
+    expect(window.location.hash).toBe("#/lane/participant/f/1");
   });
   it("handles missing images, clipboard refusal, and fullscreen refusal without hiding evidence", async () => {
     await render({ initialFrame: 0 });
