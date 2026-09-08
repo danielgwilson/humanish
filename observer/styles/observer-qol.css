@@ -26,11 +26,15 @@
 button:disabled { opacity: .45; cursor: default; }
 .review-tool[aria-pressed=true], .card-tools button[aria-pressed=true] { color: var(--accent-ink); border-color: var(--accent-dim); background: var(--accent-wash); }
 .tool-hint { color: var(--muted); font-size: 11px; }
-.gallery { align-items: start; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
-.gallery.density-compact { grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 12px; }
-.gallery.density-large { grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); }
-.card { min-width: 0; overflow: hidden; }
-.thumb { aspect-ratio: 16 / 10; border-bottom: 1px solid var(--line-soft); }
+.gallery { --preview-height: 280px; display: flex; flex-wrap: wrap; align-items: stretch; }
+.gallery.density-compact { --preview-height: 200px; gap: 12px; }
+.gallery.density-large { --preview-height: 360px; }
+/* Equal-height screens form rows. A minimum card width keeps metadata usable;
+   the screen itself retains its ratio, without enlarging a sparse final row. */
+.gallery .card { flex: 0 0 auto; width: min(100%, max(168px, calc(var(--preview-height) * var(--preview-ratio) + 2px))); }
+.card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.card-preview { display: flex; align-items: center; justify-content: center; height: calc(var(--preview-height, 280px) + 1px); flex: none; background: var(--mineral); border-bottom: 1px solid var(--line-soft); }
+.thumb { width: min(100%, calc(var(--preview-height, 280px) * var(--preview-ratio, 1.6))); aspect-ratio: 16 / 10; flex: none; }
 .thumb .keyframe { object-fit: contain; object-position: center; }
 .card.gaveup .thumb { opacity: 1; filter: none; }
 .th-pill { background: var(--panel); color: var(--ink); border: 1px solid var(--line); max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -39,8 +43,11 @@ button:disabled { opacity: .45; cursor: default; }
 .th-play { color: var(--ink); background: var(--panel); border: 1px solid var(--line); }
 .thumb:focus-within .th-play { opacity: 1; }
 .th-connection { position: absolute; bottom: 7px; left: 8px; padding: 2px 6px; border-radius: 5px; font-size: 9px; color: var(--muted); background: var(--panel); max-width: calc(100% - 16px); }
-.card-meta { display: flex; gap: 10px; padding: 4px 13px 0; font: 10px var(--mono); color: var(--muted); }
-.card-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 0 12px 12px; }
+.card .cbar { flex-wrap: wrap; gap: 4px 7px; }
+.card .cname { flex: 1 1 75px; min-width: 0; text-align: left; }
+.card .cbar .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.card-meta { padding: 4px 13px 0; font: 10px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.card-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: auto; padding: 0 12px 12px; }
 .card-tools > button { padding: 4px 8px; min-height: 28px; font-size: 10px; }
 .card-tools details { width: 100%; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .card-tools summary { cursor: pointer; padding: 6px 0; }
@@ -93,8 +100,7 @@ button:disabled { opacity: .45; cursor: default; }
   .participant-search { flex: 1 1 100%; width: auto; }
   .tool-hint { flex-basis: 100%; }
   .study-tools select, .compare-toolbar select, .review-tool, .card-tools > button, .grid-pages button { min-height: 36px; }
-  .gallery, .gallery.density-large, .gallery.density-compact { grid-template-columns: minmax(0, 1fr); padding: 12px; }
-  .monitoring .gallery.density-compact { grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); }
+  .gallery, .gallery.density-large, .gallery.density-compact { padding: 12px; }
   .comparison { padding: 12px; }
   .compare-toolbar label { flex-wrap: wrap; }
   .compare-toolbar select { max-width: 100%; }

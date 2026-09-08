@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
 import { ageLabel, frameUpdatedAt, isActiveStream, isServedOrigin, liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
@@ -35,18 +35,21 @@ export function ParticipantCard({ stream, onOpen, liveThumb = false, pinned = fa
   const label = stream.laneId ?? stream.label;
   const failed = keyframe !== null && keyframe === failedImage;
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : "Recorded";
-  return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id}>
-    <div className="thumb" style={{ aspectRatio: viewport ? `${viewport.width} / ${viewport.height}` : "16 / 10" }}>
-      {liveThumb && liveUrl ? <iframe sandbox={liveEmbedSandbox(stream)} className="thumb-live" src={liveUrl} title={`Live thumb — ${label}`} referrerPolicy="no-referrer" aria-hidden="true" tabIndex={-1} />
-        : keyframe && !failed ? <img className="keyframe" src={keyframe} alt={`Recorded screen from ${label}`} loading="lazy"
-          onLoad={(event) => { const i = event.currentTarget; if (i.naturalWidth && i.naturalHeight) setDimensions({ width: i.naturalWidth, height: i.naturalHeight }); }}
-          onError={() => setFailedImage(keyframe)} />
-          : stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
-            : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
-      <button type="button" className="open-overlay" aria-label={`Open participant ${label}`} onClick={() => onOpen(stream.id)} />
-      <span className="th-pill th-source">{previewLabel}</span>
-      {stream.actor ? <span className="th-pill th-dur">{formatDuration(stream.actor.durationMs)}</span> : null}
-      {liveThumb && liveUrl ? <span className="th-connection">Read-only · connection unverified</span> : null}
+  return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id}
+    style={{ "--preview-ratio": viewport ? viewport.width / viewport.height : 1.6 } as CSSProperties}>
+    <div className="card-preview">
+      <div className="thumb" style={{ aspectRatio: viewport ? `${viewport.width} / ${viewport.height}` : "16 / 10" }}>
+        {liveThumb && liveUrl ? <iframe sandbox={liveEmbedSandbox(stream)} className="thumb-live" src={liveUrl} title={`Live thumb — ${label}`} referrerPolicy="no-referrer" aria-hidden="true" tabIndex={-1} />
+          : keyframe && !failed ? <img className="keyframe" src={keyframe} alt={`Recorded screen from ${label}`} loading="lazy"
+            onLoad={(event) => { const i = event.currentTarget; if (i.naturalWidth && i.naturalHeight) setDimensions({ width: i.naturalWidth, height: i.naturalHeight }); }}
+            onError={() => setFailedImage(keyframe)} />
+            : stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
+              : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
+        <button type="button" className="open-overlay" aria-label={`Open participant ${label}`} onClick={() => onOpen(stream.id)} />
+        <span className="th-pill th-source">{previewLabel}</span>
+        {stream.actor ? <span className="th-pill th-dur">{formatDuration(stream.actor.durationMs)}</span> : null}
+        {liveThumb && liveUrl ? <span className="th-connection">Read-only · connection unverified</span> : null}
+      </div>
     </div>
     <div className="cbar"><b className="pidx">{String(stream.sim.index).padStart(2, "0")}</b>
       <button type="button" className="cname" title={label} onClick={() => onOpen(stream.id)}>{label}</button>

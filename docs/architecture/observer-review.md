@@ -39,7 +39,10 @@ cancelled when the viewer closes.
 
 ## Work through a study
 
-Use **Size** to change preview density, **Pin** to keep selected participants at
+Previews share a height and wrap into rows; desktop cards are wider and portrait
+cards narrower. Complete screens remain contained when the available width is
+smaller than a preview. Sparse rows keep their chosen size. Use **Size** to change
+preview height, **Pin** to keep selected participants at
 the beginning, or **Monitor** for a larger evidence area. Ordering changes only
 when the researcher changes it. Large studies have reachable participant pages.
 At most four desktop previews attach in the grid; allocation prioritizes screens
