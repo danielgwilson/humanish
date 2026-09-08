@@ -3,7 +3,9 @@
 This checks the **built Observer renderer** in Chromium against synthetic
 recordings and a controlled local HTTP snapshot endpoint. It covers cropping,
 phone overflow, live/replay navigation, polling failure and recovery, stream
-allocation, and long recordings. It does not substitute for actual provider
+allocation, long recordings, saved moments, comparison clocks, zoom, native
+permission failures, keyboard navigation, local storage and offline rendering.
+The finite ledger contains 28 local Chromium cases. It does not substitute for actual provider
 connection/cleanup, CLI/TUI attachment, or export integration acceptance.
 
 ```bash
@@ -34,8 +36,9 @@ node scripts/observer-browser-proof.mjs --artifact observer/dist/index.html --ca
 
 `scripts/observer-browser-coverage.json` is the declared coverage ledger. Every
 local case must produce one result; errors fail the command while retaining
-evidence. `localCasesPass` describes only those cases. `coverageComplete` remains
-false while the manifest lists uncovered or externally required acceptance.
+evidence. `localCasesPass` describes only the selected cases and
+`localCoverageComplete` requires all 28 cases to pass in the same invocation.
+`coverageComplete` remains false while the manifest lists externally required acceptance.
 Do not describe a local green report as complete Observer release acceptance.
 
 The intentionally malformed/failed HTTP snapshots exercise the real production
@@ -44,6 +47,19 @@ surface, so its presence proves viewing transitions and allocation only. Actual
 provider reconnection and desktop read-only behavior need separate retained
 receipts. The generated fixture is an Observer projection contract fixture,
 not a purported capture of a provider wire response.
+
+Browser permission denial is exercised with a real iframe Permissions Policy,
+not replaced clipboard/fullscreen methods. Desktop isolation uses a harmless
+synthetic child script that attempts to mark its parent's DOM: the parent must
+remain untouched while the child confirms browser-enforced isolation. Image
+failure and retry use actual 404/corrupt PNG responses. Cross-run comparison
+loads a separate recording from the ordinary history route over HTTP.
+
+Current headless Chromium does not perform native fullscreen exit for a
+CDP-generated Escape key, reproduced independently on a minimal two-button
+HTML page. The harness records whether Escape exited, checks frame keyboard
+controls while fullscreen, and verifies the product's native exit button.
+Physical browser-chrome Escape behavior remains an explicit environment limit.
 
 Geometry checks use decoded image dimensions, computed object fitting, and
 clipping ancestors; screenshots contain distinct colored markers at all four
