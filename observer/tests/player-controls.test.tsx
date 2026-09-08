@@ -64,6 +64,18 @@ describe("player review controls", () => {
     await render({ initialFrame: null, initialMode: "live" });
     expect(container.querySelector("iframe")).not.toBeNull();
   });
+  it("does not restart recorded playback timing on every unchanged data poll", async () => {
+    vi.useFakeTimers();
+    try {
+      await render({ initialFrame: 0 });
+      await click("Play");
+      await act(async () => { vi.advanceTimersByTime(5000); });
+      model = structuredClone(model);
+      await render({ initialFrame: 0 });
+      await act(async () => { vi.advanceTimersByTime(2100); });
+      expect(counter()).toBe("2 / 3");
+    } finally { vi.useRealTimers(); }
+  });
   it("does not steal native control or editable keyboard actions", async () => {
     await render({ initialFrame: 1 });
     await key("ArrowLeft", container.querySelector('input[type="range"]')!);

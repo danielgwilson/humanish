@@ -172,3 +172,11 @@ export function boundedWindow(length: number, center: number, limit: number): { 
   const start = Math.max(0, Math.min(Math.max(0, length - limit), center - Math.floor(limit / 2)));
   return { start, end: Math.min(length, start + limit) };
 }
+
+/** A trace event can occur between screenshots; preserve its own recorded time. */
+export function rowElapsedMs(model: PlayerModel, row: PlayerRow): number {
+  const start = model.frames[0]?.atMs;
+  return model.paced === "recorded" && start !== undefined && row.atMs !== undefined
+    ? Math.max(0, row.atMs - start)
+    : frameElapsedMs(model, row.frameIndex);
+}

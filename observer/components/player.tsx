@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDuration } from "@/lib/artifact-href";
 import { liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
-import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, type PlayerModel } from "@/lib/player-model";
+import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel } from "@/lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback } from "@/lib/player-state";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
@@ -143,12 +143,15 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     if (following && active) replaceHash(formatHash(stream.id, null, "live"));
     else if (!playing && current) replaceHash(formatHash(stream.id, current.index));
   }, [following, active, playing, current, stream.id]);
+  const nextFrameId = frames[frame + 1]?.itemId ?? null;
   useEffect(() => {
     if (!playing || frame < 0) return;
-    if (frame >= frames.length - 1) { setState(seekPlayback(model, frame)); return; }
-    const timer = setTimeout(() => setState(seekPlayback(model, frame + 1, true)), Math.max(120, (hold - skipDuration) / preferences.speed));
+    if (nextFrameId === null) { setState((value) => ({ ...value, playing: false })); return; }
+    // An unchanged evidence poll must not reset a seven-second capture interval every
+    // five seconds. Depend on the actual transition, never the snapshot object identity.
+    const timer = setTimeout(() => setState({ mode: "replay", frameId: nextFrameId, requestedFrame: frame + 1, playing: true }), Math.max(120, (hold - skipDuration) / preferences.speed));
     return () => clearTimeout(timer);
-  }, [playing, frame, frames.length, model, hold, skipDuration, preferences.speed]);
+  }, [playing, frame, nextFrameId, hold, skipDuration, preferences.speed]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -279,7 +282,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div>
       <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? "Still running · awaiting the first recorded frame" : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} actions{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} thoughts` : ""} · {timing}</span>
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
-          ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of recorded waiting.` : ""}</span> : null}
+          ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
         {stream.liveEnded === true ? <span>Desktop stream ended · recorded evidence</span> : null}
       </div>
       {notice ? <p className="player-notice" role="status">{notice}</p> : null}
@@ -316,7 +319,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
             {groups.length === 0 ? <p className="feed-empty">No recorded entries match this filter.</p> : null}
             {feedWindow.start > 0 ? <button type="button" className="tbtn feed-page" onClick={() => setFeedPage(Math.max(0, feedWindow.start - Math.floor(FEED_LIMIT / 2)))}>Earlier entries</button> : null}
             {groups.slice(feedWindow.start, feedWindow.end).map(({ first: row, last, count }) => {
-              const stamp = formatElapsed(frameElapsedMs(model, row.frameIndex));
+              const stamp = formatElapsed(rowElapsedMs(model, row));
               const text = row.text || row.title;
               const attrs = { ...(row.isFrame ? { "data-frame-row": row.frameIndex } : {}), ...(row.frameIndex <= frame && last.frameIndex >= frame ? { "data-on": "" } : {}) };
               return row.kind === "reasoning" ? <details className="thought-detail" key={row.id}>
@@ -324,7 +327,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
                   <span className="tc">{stamp}</span><span className="atext">{renderThoughtText(text).map((part, index) => typeof part === "string" ? part : <strong key={index}>{part.bold}</strong>)}</span>
                 </summary><p className="thought-full">{text}</p>
               </details> : <button key={row.id} type="button" className={row.isFrame ? "arow shot" : "arow"} {...attrs} onClick={() => seek(row.frameIndex)}>
-                <span className="tc">{stamp}</span><span className="atext">{count > 1 ? `${count} recorded waits · ${stamp}–${formatElapsed(frameElapsedMs(model, last.frameIndex))}` : `${row.title}${row.text ? ` — ${row.text}` : ""}`}</span>
+                <span className="tc">{stamp}</span><span className="atext">{count > 1 ? `${count} recorded waits · ${stamp}–${formatElapsed(rowElapsedMs(model, last))}` : `${row.title}${row.text ? ` — ${row.text}` : ""}`}</span>
               </button>;
             })}
             {feedWindow.end < groups.length ? <button type="button" className="tbtn feed-page" onClick={() => setFeedPage(feedWindow.end + Math.floor(FEED_LIMIT / 2))}>Later entries</button> : null}
