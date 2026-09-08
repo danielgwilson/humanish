@@ -13,6 +13,12 @@ export interface ObserverData {
   schema: typeof OBSERVER_DATA_SCHEMA;
   schemaVersion: 1;
   generatedAt: string;
+  /** Served-only liveness observation. Never a replacement for the recorded evidence verdict. */
+  runtime?: {
+    state: "running" | "finished" | "interrupted" | "unknown";
+    observedAt: string;
+    source: "local-run-status";
+  };
   run: {
     runId: string;
     mode: RunBundle["mode"];

@@ -65,6 +65,37 @@ The browser polls `observer-data.json` with `no-store` caching. Static
 operator path. Agents and CI should use `humanish watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
 
+### Reopening a run
+
+The TUI's **Open Observer** action opens an HTTP view that follows saved captures
+as the run writes them. One loopback evidence server is shared by the session's
+browser tabs; exiting the TUI closes it, including when the UI fails. Opening a
+run does not launch a study. The URL is always shown for manual opening or SSH
+port forwarding, and only contained run paths in the TUI's project are accepted.
+
+| Entry point | What updates | Lifetime |
+| --- | --- | --- |
+| `watch` during a study | Saved evidence and available in-memory desktop streams | Until the attached command exits |
+| `observe --run <id>` | Saved evidence from the selected run | Until the command exits |
+| TUI Open Observer | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits |
+| `serve` | Saved evidence across the project's library | Until the server command exits |
+| Static HTML or `file://` | The exported snapshot | Independent of a server |
+
+Reopening an active run follows its saved captures; it cannot recover a live
+desktop URL held by another process. Stream credentials are never recovered
+from disk or added to the TUI/library server. Original `watch` attachment is
+what enables a live desktop stream. The loopback library retains its Host
+allowlist, contained file reads, read-only routes and no-store security headers.
+
+Served data may also include `runtime` with `state`, `observedAt`, and
+`source: "local-run-status"`. This is a current observation of a contained,
+matching `status.json`; it never changes the run's recorded verdict or participant
+outcomes. A fresh heartbeat means running, an explicitly finalized record means
+finished, and stale or invalid timing means unknown. Missing, malformed, or
+mismatched records omit the observation. A stale heartbeat alone does not prove
+interruption, and stored PIDs are neither probed nor returned. Static rendering
+and export do not create this served-only observation.
+
 Local `codex-exec` actor runs now publish an initial running `run.json` and
 `observer/observer-data.json` before actor completion, then refresh both after
 sanitized transcripts, traces, and verdict events are available. This gives a

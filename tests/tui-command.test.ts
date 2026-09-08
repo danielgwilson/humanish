@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { cp, mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { describe, expect, it, vi } from "vitest";
+
+import * as observer from "../src/observer.js";
+import { runDryRun } from "../src/run.js";
 
 import { createProgram, type TuiRuntime } from "../src/program.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule, type TuiOptions } from "../src/tui-contract.js";
@@ -107,6 +113,30 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
     // The surface owned the screen and has already said whatever there was to say; the CLI must not
     // print an envelope over the top of it.
     expect(result.stdout).toBe("");
+  });
+
+  it.each([false, true])("closes its real Observer listener when the TUI exits (throws=%s)", async (throws) => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-lifetime-"));
+    let url = "";
+    vi.spyOn(observer, "openTarget").mockImplementation((target) => { url = target; return { opened: false }; });
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), root, { recursive: true });
+      expect((await runDryRun({ cwd: root, dryRun: true, runId: "lifetime-run" })).ok).toBe(true);
+      const runtime = workingRuntime({ loadTui: async () => ({ startTui: async (options) => {
+        const action = await options.capabilities.openObserver(options.cwd, ".humanish/runs/lifetime-run/observer/index.html");
+        expect(action.ok).toBe(true);
+        expect((await fetch(url)).status).toBe(200);
+        if (throws) throw new Error("synthetic TUI failure");
+        return 0;
+      } }) });
+      const invocation = runCli(["tui", "--cwd", root], runtime);
+      if (throws) expect(await invocation).toMatchObject({ exitCode: 2, stderr: expect.stringContaining("synthetic TUI failure") });
+      else expect((await invocation).exitCode).toBe(0);
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:/);
+      await expect(fetch(url)).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("propagates a non-zero exit from the surface", async () => {

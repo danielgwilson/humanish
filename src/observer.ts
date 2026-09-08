@@ -21,6 +21,7 @@ import {
   writeContainedOutputFile
 } from "./selected-output-paths.js";
 import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
+import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -620,7 +621,7 @@ async function readObserverData(
     const bundleBytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, "run.json"));
     if (!bundleBytes) throw new Error("run.json unavailable");
     const bundle = JSON.parse(bundleBytes.toString("utf8")) as Parameters<typeof buildObserverData>[0];
-    return withRuntimeStreamUrls(buildObserverData(bundle), runtimeStreamUrls);
+    return withRuntimeStreamUrls(await withLocalRunStatus(runRoot, buildObserverData(bundle)), runtimeStreamUrls);
   } catch {}
 
   try {
@@ -630,12 +631,45 @@ async function readObserverData(
     );
     if (!observerBytes) throw new Error("observer-data.json unavailable");
     return withRuntimeStreamUrls(
-      JSON.parse(observerBytes.toString("utf8")) as ObserverData,
+      await withLocalRunStatus(runRoot, JSON.parse(observerBytes.toString("utf8")) as ObserverData),
       runtimeStreamUrls
     );
   } catch {}
 
   return null;
+}
+
+/**
+ * Liveness is a current read of a contained local status record, separate from run evidence.
+ * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
+ * process died (the evidence may have been copied from another machine). No PID is served/probed.
+ */
+async function withLocalRunStatus(runRoot: PinnedDirectory, input: ObserverData): Promise<ObserverData> {
+  // A served observation must never be inherited from a persisted projection or export.
+  const { runtime: _persistedRuntime, ...data } = input;
+  try {
+    const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, RUN_STATUS_FILE));
+    if (!bytes) return data;
+    const record: unknown = JSON.parse(bytes.toString("utf8"));
+    if (!isRunStatusRecord(record) || record.runId !== data.run.runId || record.mode !== data.run.mode
+      || record.runId !== path.basename(runRoot.physicalPath)) return data;
+    const now = Date.now();
+    const started = Date.parse(record.startedAt);
+    const updated = Date.parse(record.updatedAt);
+    const timestampsValid = Number.isFinite(started) && Number.isFinite(updated)
+      && started <= updated && updated <= now;
+    let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
+    if (timestampsValid) {
+      if (record.state === "finished") {
+        state = "finished";
+      } else if (now - updated <= RUN_STATUS_STALE_MS) {
+        state = "running";
+      }
+    }
+    return { ...data, runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" } };
+  } catch {
+    return data;
+  }
 }
 
 /** internal: exported for the #357 lifecycle tests (consumed by observer-serve). */
@@ -880,6 +914,9 @@ export function openTarget(target: string): { opened: boolean; command?: string;
       detached: true,
       stdio: "ignore"
     });
+    // Missing desktop openers fail asynchronously (ENOENT), especially over SSH or in a
+    // minimal container. The served URL remains usable; an opener must never crash its server.
+    child.on("error", () => {});
     child.unref();
     return { opened: true, command: [command, ...args].join(" ") };
   } catch (error) {

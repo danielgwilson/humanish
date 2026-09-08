@@ -98,7 +98,7 @@ import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
 import { readLabSummary } from "./lab-summary.js";
 import { readProjectState } from "./tui-project.js";
-import { openObserverArtifact, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
+import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
 import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule} from "./tui-contract.js";
@@ -824,40 +824,46 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
         return;
       }
 
-      const exitCode = await loaded.startTui({
-        cwd: resolve(options.cwd),
-        version: { cli: CLI_VERSION },
-        capabilities: {
-          // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
-          // run tree each tick is the cost this index exists to avoid.
-          readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
-          listLabs: listLabManifests,
-          startRun: launchRun,
-          readLaunchLog: readLaunchLogTail,
-          readRunDetail,
-          readLabSummary,
-          readProjectState,
-          openObserver: openObserverArtifact,
-          reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
-          stopRun,
-          initProject: async (target: string) => {
-            const result = await runInit({ cwd: target, yes: true });
-            return result.ok
-              ? {
-                  schema: TUI_ACTION_SCHEMA,
-                  ok: true as const,
-                  message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
-                }
-              : {
-                  schema: TUI_ACTION_SCHEMA,
-                  ok: false as const,
-                  message: result.error?.message ?? "humanish init could not set this directory up"
-                };
-          }
-        },
-        stdin,
-        stdout
-      });
+      const observerSession = createTuiObserverSession(resolve(options.cwd));
+      let exitCode: number;
+      try {
+        exitCode = await loaded.startTui({
+          cwd: resolve(options.cwd),
+          version: { cli: CLI_VERSION },
+          capabilities: {
+            // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
+            // run tree each tick is the cost this index exists to avoid.
+            readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
+            listLabs: listLabManifests,
+            startRun: launchRun,
+            readLaunchLog: readLaunchLogTail,
+            readRunDetail,
+            readLabSummary,
+            readProjectState,
+            openObserver: (target, observerPath) => observerSession.open(target, observerPath),
+            reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
+            stopRun,
+            initProject: async (target: string) => {
+              const result = await runInit({ cwd: target, yes: true });
+              return result.ok
+                ? {
+                    schema: TUI_ACTION_SCHEMA,
+                    ok: true as const,
+                    message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
+                  }
+                : {
+                    schema: TUI_ACTION_SCHEMA,
+                    ok: false as const,
+                    message: result.error?.message ?? "humanish init could not set this directory up"
+                  };
+            }
+          },
+          stdin,
+          stdout
+        });
+      } finally {
+        await observerSession.close();
+      }
       // The surface owned the screen; it has already told the operator whatever there was to say.
       markInvocationEnvelopeWritten(command);
       io.setExitCode(exitCode);

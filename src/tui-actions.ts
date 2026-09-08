@@ -5,12 +5,14 @@
 // and nothing else. `Share…` waits for the export contract (#471) rather than appearing as a
 // control that fails.
 
-import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { RUN_STATUS_FILE, isRunStatusRecord } from "./run-status.js";
 import { resolveRunPath } from "./run.js";
+import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "./run-paths.js";
+import { openTarget } from "./observer.js";
+import { serveObserverLibrary, type ServeLibraryServer } from "./observer-serve.js";
 
 export const TUI_ACTION_SCHEMA = "humanish.tui-action.v1";
 
@@ -21,59 +23,82 @@ export interface TuiActionResult {
   message: string;
 }
 
-/** The platform's "open this file" command. */
-function opener(): { command: string; args: string[] } | null {
-  if (process.platform === "darwin") return { command: "open", args: [] };
-  if (process.platform === "win32") return { command: "cmd", args: ["/c", "start", ""] };
-  if (process.platform === "linux") return { command: "xdg-open", args: [] };
-  return null;
+/** A TUI owns one evidence server, shared by its open browser tabs and closed when it exits. */
+export interface TuiObserverSession {
+  open(cwd: string, observerPath: string): Promise<TuiActionResult>;
+  close(): Promise<void>;
 }
 
 /**
- * Open a run's self-contained Observer artifact in whatever the machine uses for HTML.
- *
- * A terminal cannot show screenshots, and this is the handoff to the surface that can. It fails
- * SOFTLY and usefully: over SSH there is no desktop to open anything, which is not an error — it
- * just means the answer is the path, so the operator can forward the port, scp the file, or open it
- * on the machine it lives on.
+ * The library server projects the latest contained bundle on each browser poll. It can follow
+ * captures written by another process without starting a study or recovering desktop credentials.
+ * Keeping it in this process avoids detached viewers accumulating each time Open Observer is used.
  */
-export async function openObserverArtifact(cwd: string, observerPath: string): Promise<TuiActionResult> {
-  const absolute = path.isAbsolute(observerPath) ? observerPath : path.join(path.resolve(cwd), observerPath);
-  try {
-    await access(absolute);
-  } catch {
-    return {
-      schema: TUI_ACTION_SCHEMA,
-      ok: false,
-      message: `no Observer artifact at ${observerPath} — this run may not have finished writing one`
-    };
-  }
+export function createTuiObserverSession(
+  cwdInput: string,
+  options: { openTarget?: typeof openTarget } = {}
+): TuiObserverSession {
+  const cwd = path.resolve(cwdInput);
+  const open = options.openTarget ?? openTarget;
+  let serverPromise: Promise<ServeLibraryServer> | undefined;
+  let closed = false;
+  let closePromise: Promise<void> | undefined;
 
-  const open = opener();
-  if (open === null) {
-    return { schema: TUI_ACTION_SCHEMA, ok: true, message: absolute };
-  }
-  try {
-    const child = spawn(open.command, [...open.args, absolute], { detached: true, stdio: "ignore" });
-    child.on("error", () => {
-      // Swallowed deliberately: see below — the message already tells the operator the path, which
-      // is the useful half whether or not a desktop existed to open it.
-    });
-    child.unref();
-    return {
-      schema: TUI_ACTION_SCHEMA,
-      ok: true,
-      // Says the path REGARDLESS. On a headless box `xdg-open` reports success and nothing appears,
-      // so a message that only said "opened" would be a lie the operator cannot check.
-      message: `opening ${observerPath} — if nothing appeared, open it yourself (headless or over SSH)`
-    };
-  } catch (cause) {
-    return {
-      schema: TUI_ACTION_SCHEMA,
-      ok: false,
-      message: `could not open it (${cause instanceof Error ? cause.message : String(cause)}) — the file is at ${absolute}`
-    };
-  }
+  const result = (ok: boolean, message: string): TuiActionResult => ({ schema: TUI_ACTION_SCHEMA, ok, message });
+
+  return {
+    async open(targetCwd, observerPath) {
+      if (closed) return result(false, "this terminal session has closed — reopen humanish tui to view the run");
+      if (path.resolve(targetCwd) !== cwd) return result(false, "Observer can only open runs from this terminal session's project");
+
+      // The capability takes the run-card path, not an arbitrary file, URL, or second project.
+      // Validate the exact shape before using its id, then enforce the existing physical storage
+      // boundary (including descendant symlinks). An index.html need not exist during an active
+      // run: the HTTP server renders it from the contained run.json or observer-data.json.
+      const relative = path.relative(cwd, path.resolve(cwd, observerPath));
+      const segments = relative.split(path.sep);
+      const runId = segments[2];
+      if (segments.length !== 5 || segments[0] !== ".humanish" || segments[1] !== "runs"
+        || !runId || !isSafeRunIdSegment(runId) || segments[3] !== "observer" || segments[4] !== "index.html") {
+        return result(false, "Observer requires a run under this project's .humanish/runs directory");
+      }
+      try {
+        await bindExistingRunArtifactPaths(cwd, runId);
+      } catch {
+        return result(false, "this run's evidence directory is missing or unsafe to open");
+      }
+      if (closed) return result(false, "this terminal session has closed — reopen humanish tui to view the run");
+
+      try {
+        // Share the pending start too: two quick selections must not create two listeners.
+        serverPromise ??= serveObserverLibrary(cwd, {
+          port: 0, safe: false, expose: false, edgeAuthed: false
+        }).then((started) => {
+          if (!started.ok) throw new Error(started.error.message);
+          return started.server;
+        }).catch((error: unknown) => {
+          serverPromise = undefined;
+          throw error;
+        });
+        const server = await serverPromise;
+        if (closed) return result(false, "this terminal session has closed — reopen humanish tui to view the run");
+        const url = new URL(`_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`, server.url).href;
+        const opened = open(url);
+        return result(true, `${url} — follows saved captures; keep this TUI open.${opened.warning ? ` ${opened.warning}` : " If no browser appeared, open this URL on this machine or forward its port over SSH."}`);
+      } catch {
+        return result(false, "Observer could not start — try humanish observe --run with this run's id in another terminal");
+      }
+    },
+    close() {
+      closed = true;
+      closePromise ??= (async () => {
+        // A close racing startup still awaits and releases the listener it owns.
+        const server = await serverPromise?.catch(() => undefined);
+        await server?.close();
+      })();
+      return closePromise;
+    }
+  };
 }
 
 
