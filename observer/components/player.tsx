@@ -1,3 +1,5 @@
+import { IconButton } from "./ui/icon-button";
+import { ReviewIcon } from "./review-icon";
 import { Tabs } from "@base-ui-components/react/tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -270,9 +272,9 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
           : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
       <div className="transport">
-        <button type="button" className="tbtn" aria-label={playing ? "Pause" : "Play"} onClick={togglePlay} disabled={frames.length === 0}>{playing ? "❚❚" : "▶"}</button>
-        <button type="button" className="tbtn" aria-label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}>‹</button>
-        <button type="button" className="tbtn" aria-label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}>›</button>
+        <IconButton className="tbtn" label={playing ? "Pause" : "Play"} hint={playing ? "Pause playback" : "Play recording"} onClick={togglePlay} disabled={frames.length === 0}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
+        <IconButton className="tbtn" label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}><ReviewIcon name="previous-frame" /></IconButton>
+        <IconButton className="tbtn" label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}><ReviewIcon name="next-frame" /></IconButton>
         <span className="elapsed">{formatElapsed(elapsed)} <span>/ {formatElapsed(duration)}</span></span>
         <div className="scrubwrap" onPointerLeave={() => setScrubPreview(null)}>
           {scrubPreview !== null && frames[scrubPreview] ? <div className="scrub-preview" aria-hidden="true">
@@ -305,7 +307,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         </div>
         <span className="counter">{Math.max(0, frame + 1)} / {frames.length}</span>
         <button type="button" className="tbtn speed" aria-label="Playback speed" onClick={() => setPreferences((value) => ({ ...value, speed: SPEEDS[(SPEEDS.indexOf(value.speed as 1) + 1) % SPEEDS.length] ?? 1 }))}>{preferences.speed}×</button>
-        <button type="button" className="tbtn" aria-label="Fullscreen" onClick={() => { void toggleFullscreen(); }}>⛶</button>
+        <IconButton className="tbtn" label="Fullscreen" onClick={() => { void toggleFullscreen(); }}><ReviewIcon name="fullscreen" /></IconButton>
       </div>
       <div className="player-review-tools">
         <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>
