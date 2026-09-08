@@ -1,8 +1,7 @@
 import { ThemeToggle } from "./theme-toggle";
 
 // Left icon rail (#426): Runs + Live only, register control at the bottom.
-// Live is rendered but inert until the live poll path lands at parity (stage 3) —
-// an honest disabled control beats a hidden one for discoverability.
+// Live selects running/preparing participants; the library remains separately reachable.
 export function IconRail({ onRuns, runsActive, onLive, liveActive = false }: { onRuns: () => void; runsActive: boolean; onLive?: () => void; liveActive?: boolean }) {
   return (
     <div className="rail">

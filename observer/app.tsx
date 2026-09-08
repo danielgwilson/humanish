@@ -79,7 +79,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
     };
     window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
   }, [selected, comparison, monitoring]);
-  const model = useMemo(() => selected ? buildPlayerModel(selected) ?? (selected.viewport || isActiveStream(selected) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected]);
+  const model = useMemo(() => selected ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected]);
   const viewChanged = useCallback((view: PlayerView) => { if (selected) setPlayerView({ ...view, streamId: selected.id }); }, [selected?.id]);
   if (!data) return <EmptyState />;
   const visible = streams.filter((s) => {

@@ -16,7 +16,8 @@ export function ParticipantCard({ stream, onOpen, liveThumb = false, pinned = fa
   const keyframe = keyframeHref(stream);
   const signal = signalFor(stream);
   const liveUrl = isServedOrigin(window.location.protocol) ? liveEmbedUrl(stream) : null;
-  const active = isActiveStream(stream);
+  const active = isServedOrigin(window.location.protocol) && isActiveStream(stream);
+  const statusLabel = !isServedOrigin(window.location.protocol) && isActiveStream(stream) ? `Captured while ${stream.status}` : stream.statusLabel;
   const thought = active ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text) : undefined;
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export function ParticipantCard({ stream, onOpen, liveThumb = false, pinned = fa
     </div>
     <div className="cbar"><b className="pidx">{String(stream.sim.index).padStart(2, "0")}</b>
       <button type="button" className="cname" title={label} onClick={() => onOpen(stream.id)}>{label}</button>
-      <span className={`chip${active ? " chip-dot" : " chip-mute"}`}>{stream.statusLabel}</span>
+      <span className={`chip${active ? " chip-dot" : " chip-mute"}`}>{statusLabel}</span>
     </div>
     <div className="card-meta">{stream.viewport ? `${stream.viewport.width} × ${stream.viewport.height} · ` : ""}{stream.kindLabel}</div>
     <p className={`csig${thought?.text ? " ticker" : ""}`} title={thought?.text ? `Reported thinking: ${thought.text}` : undefined}>{thought?.text ? <><span className="sig-label">Reported thinking</span> {thought.text.replace(/\*\*([^*]+)\*\*/g, "$1")}</>

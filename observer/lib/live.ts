@@ -32,7 +32,7 @@ export async function fetchObserverData(fetchImpl: typeof fetch, url = "observer
   } catch { return null; }
 }
 
-export interface HistoryRun { runId: string; href: string; status: string; mode: string | null; streamCount: number; createdAt?: string; }
+export interface HistoryRun { runId: string; href: string; status: string; mode: string | null; streamCount: number; createdAt?: string; runtimeState?: "running" | "finished" | "interrupted" | "unknown"; }
 export interface HistoryIndex { latestRunId: string | null; runs: HistoryRun[]; }
 export async function fetchHistoryIndex(fetchImpl: typeof fetch, signal?: AbortSignal): Promise<HistoryIndex | null> {
   try {
@@ -52,6 +52,7 @@ export async function fetchHistoryIndex(fetchImpl: typeof fetch, signal?: AbortS
         status: typeof candidate.status === "string" ? candidate.status : "unknown",
         mode: typeof candidate.mode === "string" ? candidate.mode : null,
         streamCount: typeof candidate.streamCount === "number" && Number.isFinite(candidate.streamCount) ? candidate.streamCount : 0,
+        ...(["running", "finished", "interrupted", "unknown"].includes(String(candidate.runtimeState)) ? { runtimeState: candidate.runtimeState as NonNullable<HistoryRun["runtimeState"]> } : {}),
         ...(typeof candidate.createdAt === "string" ? { createdAt: candidate.createdAt } : {}) });
     }
     return { latestRunId: typeof raw.latestRunId === "string" ? raw.latestRunId : null, runs };
@@ -90,7 +91,7 @@ export function ageLabel(at: number | null, now = Date.now()): string {
  * markers, adds this one to attached runtime URLs, and refuses to be framed itself. */
 export function liveEmbedSandbox(stream: ObserverStream, observerOrigin = window.location.origin): string {
   const url = liveEmbedUrl(stream);
-  const trusted = (stream.embed as { runtimeDesktop?: boolean } | undefined)?.runtimeDesktop === true;
+  const trusted = stream.embed?.runtimeDesktop === true;
   if (url && trusted && observerOrigin !== "null" && new URL(url).origin !== observerOrigin) return "allow-scripts allow-same-origin";
   return "allow-scripts";
 }

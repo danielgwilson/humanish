@@ -12,6 +12,7 @@ export function runArtifactHref(artifactPath: string): string | null {
  * Filenames remain filesystem names: encode once when constructing the URL. */
 function safePath(value: string): boolean {
   if (!value || value.length > 8192) return false;
+  try { encodeURIComponent(value); } catch { return false; }
   let checked = value;
   for (let n = 0; n < 5; n++) {
     if (/^[\\/]|[\\\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked)
@@ -35,7 +36,7 @@ export function observerArtifactHref(value: string): string | null {
 
 export function historyRunHref(runId: string): string | null {
   if (!runId || runId.length > 256 || /[\\/\u0000-\u001f\u007f]/.test(runId) || runId === "." || runId === "..") return null;
-  return `/_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`;
+  try { return `/_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`; } catch { return null; }
 }
 
 /** Screenshot rendering additionally accepts the raster data URIs emitted by HTML

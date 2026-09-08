@@ -28,7 +28,9 @@ export function parseHash(hash: string): HashRoute {
 
 export function formatHash(laneId: string | null, frame: number | null, mode?: "live" | "replay" | null): string {
   if (laneId === null) return "";
-  const base = `#/lane/${encodeURIComponent(laneId)}`;
+  let encoded: string;
+  try { encoded = encodeURIComponent(laneId); } catch { return ""; }
+  const base = `#/lane/${encoded}`;
   if (mode === "live") return `${base}/live`;
   return frame === null ? base : `${base}/f/${frame + 1}`;
 }

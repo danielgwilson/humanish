@@ -433,3 +433,26 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     }
   });
 });
+
+
+describe("Frame-free review remains useful", () => {
+  it("preparing browser lanes get a live-aware empty player before their first screenshot", async () => {
+    const copy = structuredClone(data);
+    copy.streams = [{ ...copy.streams[0]!, status: "preparing", statusLabel: "Preparing" }];
+    await mount(<App data={copy} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".player")).not.toBeNull();
+    expect(container.querySelector(".player-heading")?.textContent).toContain("Preparing");
+  });
+  it("all terminal lines remain reachable in bounded pages", async () => {
+    const copy = structuredClone(data);
+    copy.streams = [{ ...copy.streams[1]!, terminalPlain: Array.from({ length: 123 }, (_, i) => `Synthetic output line ${i + 1}`).join("\n") }];
+    await mount(<App data={copy} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 123");
+    const previous = () => Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Earlier output")!;
+    await click(previous()); await click(previous());
+    expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 1");
+    expect(container.querySelector(".stub-term")?.textContent).not.toContain("Synthetic output line 123");
+  });
+});

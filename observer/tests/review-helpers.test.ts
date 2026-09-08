@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import live from "../../tests/golden/observer-data/live.json";
 import { historyRunHref, observerArtifactHref, runArtifactHref, screenshotHref } from "../lib/artifact-href";
 import { comparisonFrame, frameTimes } from "../lib/comparison";
-import { ageLabel, liveEmbedUrl, sourceUpdatedAt } from "../lib/live";
+import { ageLabel, liveEmbedSandbox, liveEmbedUrl, sourceUpdatedAt } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel } from "../lib/player-model";
 import { isMoments, isStringList } from "../lib/preferences";
+import { formatHash } from "../lib/route";
 import { signalFor } from "../lib/signal";
 
 const data = live as unknown as ObserverData;
@@ -20,6 +21,20 @@ describe("Review links preserve filenames without permitting navigation escapes"
     expect(observerArtifactHref("data:text/html,hello")).toBeNull();
     expect(historyRunHref("../other")).toBeNull();
     expect(historyRunHref("run 1")).toBe("/_humanish/runs/run%201/observer/index.html");
+  });
+  it("rejects ill-formed Unicode identifiers without throwing", () => {
+    expect(runArtifactHref("screenshots/\ud800.png")).toBeNull();
+    expect(historyRunHref("\ud800")).toBeNull();
+    expect(formatHash("\ud800", 0)).toBe("");
+    expect(runArtifactHref("screenshots/🌿.png")).toBe("../screenshots/%F0%9F%8C%BF.png");
+  });
+  it("keeps origin access restricted to cross-origin runtime desktops", () => {
+    const stream = { ...data.streams[0]!, embed: { kind: "iframe" as const, title: "Desktop", url: "https://desktop.example.test/" } };
+    expect(liveEmbedSandbox(stream, "https://observer.example.test")).toBe("allow-scripts");
+    const attached = { ...stream, embed: { ...stream.embed, runtimeDesktop: true as const } };
+    expect(liveEmbedSandbox(attached, "https://observer.example.test")).toBe("allow-scripts allow-same-origin");
+    expect(liveEmbedSandbox(attached, "https://desktop.example.test")).toBe("allow-scripts");
+    expect(liveEmbedSandbox(attached, "null")).toBe("allow-scripts");
   });
   it("permits only raster exports and HTTP desktop sources", () => {
     expect(screenshotHref("data:image/png;base64,YQ==")).toBe("data:image/png;base64,YQ==");
