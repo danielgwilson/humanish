@@ -28,8 +28,8 @@ snapshot. A stale process heartbeat does not prove that the process died.
 
 A player's **Live desktop** label identifies what it displays. An iframe loading
 is not a connection-health signal: the provider owns that connection. **Reload
-stream** reconnects the viewer without restarting a participant. **Latest capture**
-means saved screenshots are arriving without a desktop stream. **Replay** means
+stream** reloads the desktop viewer without restarting a participant. **Latest capture**
+follows the latest saved screenshot without a desktop stream. **Replay** means
 the researcher has chosen a recorded moment. Offline exports say so explicitly.
 
 Freshness uses recorded activity and capture timestamps, not the time the server

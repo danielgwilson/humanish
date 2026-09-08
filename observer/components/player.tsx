@@ -163,7 +163,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   useEffect(() => {
     // Keep following intent in the address, including before the first capture.
     if (following && active) replaceHash(formatHash(stream.id, null, "live"));
-    else if (!playing && current) replaceHash(formatHash(stream.id, current.index));
+    else if (current) replaceHash(formatHash(stream.id, current.index));
   }, [following, active, playing, current, stream.id]);
   const nextFrameId = frames[frame + 1]?.itemId ?? null;
   useEffect(() => {

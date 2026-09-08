@@ -10,6 +10,7 @@
     { "id": "live-refresh", "goal": "Reload preserves the explicit intent to watch live" },
     { "id": "paused-growth", "goal": "A paused newest frame stays paused when evidence grows" },
     { "id": "same-lane-route", "goal": "Same-participant links select the actual visible moment" },
+    { "id": "playing-refresh", "goal": "Reload during recorded playback preserves the displayed capture" },
     { "id": "invalid-snapshot", "goal": "Malformed snapshot preserves evidence and announces recovery state" },
     { "id": "network-recovery", "goal": "Failed polls are visible and recovery receives new evidence" },
     { "id": "live-raster-geometry", "goal": "Live views learn actual screenshot shape when an in-progress snapshot omits geometry" },

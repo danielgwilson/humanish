@@ -275,6 +275,20 @@ try {
     await page.locator('.stage-box img[src$="portrait-4.png"]').waitFor();
     record.checks.frame = await displayedFrame(page); await snap("moment-four");
   });
+  await runCase("playing-refresh", {}, async ({ page, record, snap }) => {
+    await openLane(page);
+    await page.getByRole("button", { name: "Playback speed", exact: true }).click();
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
+    assert.equal(await page.getByRole("button", { name: "Pause", exact: true }).count(), 1, "Playback stopped before the reload check");
+    record.checks.before = await displayedFrame(page);
+    assert(page.url().endsWith("/f/2"), "Playing frame was missing from the address");
+    await page.reload();
+    await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
+    record.checks.after = await displayedFrame(page);
+    assert.equal(record.checks.after, record.checks.before, "Reload returned to an earlier addressed frame");
+    await snap("reload-keeps-playing-moment");
+  });
   for (const invalid of [true, false]) {
     await runCase(invalid ? "invalid-snapshot" : "network-recovery", { running: true }, async ({ page, record, snap }) => {
       await openLane(page); const before = await displayedFrame(page); const polls = pollCount;

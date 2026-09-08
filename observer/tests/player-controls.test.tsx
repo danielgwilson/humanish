@@ -86,7 +86,7 @@ describe("player review controls", () => {
       expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: true });
       await act(async () => { vi.advanceTimersByTime(7100); });
       expect(onViewChange).toHaveBeenLastCalledWith({ frame: 1, mode: "replay", playing: true });
-      expect(window.location.hash).toBe("#/lane/participant/f/1");
+      expect(window.location.hash).toBe("#/lane/participant/f/2");
       const calls = onViewChange.mock.calls.length;
       model = structuredClone(model);
       await render({ initialFrame: 0, onViewChange });

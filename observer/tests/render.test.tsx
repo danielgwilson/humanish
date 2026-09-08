@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { App } from "../app";
+import { Sidebar } from "../components/sidebar";
 import type { ObserverData } from "../lib/observer-data";
 
 // The golden is schema-proven at the repo root (tests/observer-data-contract.test.ts);
@@ -77,6 +78,21 @@ describe("the filter funnel (second Base UI adoption: popover/sheet)", () => {
 });
 
 describe("the run library control (D6: first Base UI adoption)", () => {
+  it("uses the current run's completion while the library snapshot is older", async () => {
+    const finished: ObserverData = { ...data, runtime: { state: "finished", observedAt: "2026-09-08T20:00:00Z", source: "local-run-status" } };
+    await mount(<Sidebar data={finished} history={{ latestRunId: data.run.runId, runs: [{ runId: data.run.runId, status: "running", runtimeState: "running", href: "", mode: "live", streamCount: 4 }] }} onRuns={() => {}} />);
+    expect(container.querySelector(".dot.active")).toBeNull();
+    expect(container.querySelector(".run-entry small")?.textContent).not.toContain("Running");
+    await click(container.querySelector('input[type="checkbox"]') as Element);
+    expect(container.textContent).toContain("No matching runs.");
+  });
+
+  it("does not animate an active dot when a formerly running study is unconfirmed", async () => {
+    await mount(<Sidebar data={data} history={{ latestRunId: "other-study", runs: [{ runId: "other-study", status: "running", runtimeState: "unknown", href: "", mode: "live", streamCount: 2 }] }} onRuns={() => {}} />);
+    expect(container.querySelector(".dot.active")).toBeNull();
+    expect(container.querySelector(".run-entry small")?.textContent).toContain("Status unconfirmed");
+  });
+
   it("desktop: collapses and restores the static sidebar, persisted", async () => {
     window.localStorage.removeItem("humanish-sidebar");
     await mount(<App data={data} />);
