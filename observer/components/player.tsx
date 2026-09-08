@@ -102,7 +102,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       if (isFindingRow(row)) findings.add(row.frameIndex);
       if (isWaitRow(row)) waits.add(row.frameIndex);
       if (row.kind === "reasoning") thoughtCount += 1;
-      else if (!row.isFrame) actionCount += 1;
+      else if (isActionRow(row) || isWaitRow(row)) actionCount += 1;
     }
     if (notableEnd && frames.length > 0) findings.add(frames.length - 1);
     return { pins, actions: [...actions], findings: [...findings], waits, thoughtCount, actionCount };

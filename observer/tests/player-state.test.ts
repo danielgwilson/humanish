@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundedWindow, frameAtElapsedMs, frameElapsedMs, groupPlayerRows, type PlayerModel, type PlayerRow } from "../lib/player-model";
+import { boundedWindow, frameAtElapsedMs, frameElapsedMs, groupPlayerRows, isFindingRow, isActionRow, rowElapsedMs, type PlayerModel, type PlayerRow } from "../lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback } from "../lib/player-state";
 import { formatHash, parseHash } from "../lib/route";
 import { fittedSize, pinPosition } from "../components/player-stage";
@@ -49,6 +49,13 @@ describe("recorded geometry and time", () => {
     expect(frameAtElapsedMs(data, 8000)).toBe(2);
     expect(frameAtElapsedMs(data, 9000)).toBe(3);
     expect(frameAtElapsedMs(data, -10)).toBe(0);
+  });
+  it("uses typed warning status and event stamps without guessing findings from prose", () => {
+    const row: PlayerRow = { id: "notice", kind: "notice", title: "Observation stalled", isFrame: false, frameIndex: 0, status: "warn", atMs: 12_500 };
+    expect(isFindingRow(row)).toBe(true);
+    expect(isActionRow(row)).toBe(false);
+    expect(rowElapsedMs(model(), row)).toBe(2500);
+    expect(isFindingRow({ ...row, kind: "reasoning", status: "ok", title: "There might be a bug" })).toBe(false);
   });
   it("groups waits without changing evidence and bounds large projections", () => {
     const rows: PlayerRow[] = Array.from({ length: 291 }, (_, index) => ({ id: `wait-${index}`, kind: "ui_action", title: "wait 1s", isFrame: false, frameIndex: 2 }));

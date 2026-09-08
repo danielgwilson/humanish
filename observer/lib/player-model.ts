@@ -21,6 +21,7 @@ export interface PlayerRow {
   kind: string;
   title: string;
   text?: string;
+  status?: string;
   frameIndex: number;
   /** Set when this row IS a frame (clicking it seeks exactly; frames highlight). */
   isFrame: boolean;
@@ -76,6 +77,7 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
       kind: item.kind,
       title: item.title,
       ...(item.text !== undefined ? { text: item.text } : {}),
+      ...(item.status !== undefined ? { status: item.status } : {}),
       frameIndex: Math.max(0, frames.length - 1),
       isFrame: false,
       ...(item.at !== undefined && Number.isFinite(Date.parse(item.at)) ? { atMs: Date.parse(item.at) } : {}),
@@ -130,17 +132,18 @@ export function frameAtElapsedMs(model: PlayerModel, elapsedMs: number): number 
 }
 
 export function isWaitRow(row: PlayerRow): boolean {
-  return row.kind === "ui_action" && /^wait(?:\s|$)/i.test(row.title);
+  return row.kind === "ui_action" && !isFindingRow(row) && /^wait(?:\s|$)/i.test(row.title);
 }
 
 export function isActionRow(row: PlayerRow): boolean {
-  return !row.isFrame && row.kind !== "reasoning" && !isWaitRow(row)
-    && row.kind !== "warning" && row.kind !== "error" && row.kind !== "finding";
+  return ["ui_action", "command", "tool_call", "file_change", "approval"].includes(row.kind)
+    && !isWaitRow(row) && !isFindingRow(row);
 }
 
 /** Explicit evidence categories only; ordinary prose is never inferred to be a finding. */
 export function isFindingRow(row: PlayerRow): boolean {
-  return row.kind === "finding" || row.kind === "warning" || row.kind === "error";
+  return row.kind === "finding" || row.kind === "warning" || row.kind === "error"
+    || row.status === "warn" || row.status === "warning" || row.status === "error" || row.status === "failed";
 }
 
 export interface PlayerRowGroup {
