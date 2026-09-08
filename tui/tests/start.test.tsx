@@ -53,6 +53,24 @@ async function openLab(options: TuiOptions) {
 }
 
 describe("starting a run", () => {
+  it("keeps live and dry start rows distinct through a project refresh", async () => {
+    let reads = 0;
+    const { started, options } = harness({
+      readRunIndex: async () => { reads++; return { schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }; }
+    });
+    const { surface } = await openLab(options);
+    try {
+      await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
+      const deadline = Date.now() + 3000;
+      while (reads < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(reads).toBeGreaterThanOrEqual(2);
+      // Let the observed refresh commit before the human's next keypress.
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
+      expect(started).toHaveLength(0);
+    } finally { surface.unmount(); }
+  });
+
   it("a dry run starts on one keypress, because it cannot cost anything", async () => {
     const { started, options } = harness();
     const { surface } = await openLab(options);
