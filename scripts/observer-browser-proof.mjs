@@ -229,6 +229,28 @@ try {
       record.checks.width = await pageWidth(page); await snap("complete-screens");
       assertFullFrames(record.checks.geometry);
       assert(record.checks.width.page <= record.checks.width.viewport + 1, "Grid page overflows horizontally");
+      if (!phone) {
+        record.checks.rows = [];
+        for (const [density, expectedHeight] of [["compact", 200], ["comfortable", 280], ["large", 360]]) {
+          await page.getByLabel("Preview size").selectOption(density);
+          const images = await inspectImages(page.locator(".thumb .keyframe"));
+          assertFullFrames(images);
+          const sizes = images.map((image) => {
+            const scale = Math.min(image.box[0] / image.natural[0], image.box[1] / image.natural[1]);
+            return { width: image.natural[0] * scale, height: image.natural[1] * scale };
+          });
+          assert(sizes.every((size) => Math.abs(size.height - expectedHeight) < 1), "Mixed screens do not share the selected preview height");
+          assert(sizes[0].width < sizes[1].width * .6, "Phone preview grew as wide as the desktop");
+          record.checks.rows.push({ density, sizes });
+        }
+        await page.getByLabel("Preview size").selectOption("comfortable");
+        await page.getByLabel("Search participants").fill("Avery");
+        await until(async () => await page.locator(".card").count() === 1, "Portrait-only filter did not settle");
+        const only = (await inspectImages(page.locator(".thumb .keyframe")))[0];
+        assert(Math.abs(only.box[1] - 280) < 1, "A sparse portrait row enlarged to fill the width");
+        await page.locator(".content").evaluate((element) => { element.scrollTop = 0; });
+        await snap("portrait-row-keeps-its-height");
+      }
     });
     await runCase(phone ? "player-phone" : "player-desktop", { phone }, async ({ page, record, snap }) => {
       // Exercise the real grid-to-player user path, then inspect every saved frame.
