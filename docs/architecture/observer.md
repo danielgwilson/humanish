@@ -81,6 +81,11 @@ port forwarding, and only contained run paths in the TUI's project are accepted.
 | `serve` | Saved evidence across the project's library | Until the server command exits |
 | Static HTML or `file://` | The exported snapshot | Independent of a server |
 
+`observe` uses the same current-data projection as the attached viewer, scoped
+to the selected run. Its history cannot enumerate other runs. HTML exports use
+the installed Observer renderer around the recording's saved data and embedded
+images, so older recordings get UI improvements without changing their source.
+
 Reopening an active run follows its saved captures; it cannot recover a live
 desktop URL held by another process. Stream credentials are never recovered
 from disk or added to the TUI/library server. Original `watch` attachment is
@@ -148,6 +153,9 @@ Only a URL in the attached server's in-memory runtime map receives
 Observer data and again when reading served fallback projections. Cross-run
 library routes do not inherit the attached run's runtime URLs, even when their
 stream ids match. Ended or invalid runtime entries do not receive the grant.
+The generic static-server helper strips this marker and saved `runtime` state
+from Observer JSON and inline data. Static responses carry the same framing
+denial headers; they never grant active desktop attachment.
 
 The browser can preserve a cross-origin provider's origin for its desktop viewer
 modules only with this grant. Ordinary stored embeds remain isolated. Every

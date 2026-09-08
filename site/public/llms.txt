@@ -84,7 +84,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish comms catch`: Run the adopter-hosted email catch.
 - `humanish reclaim`: Reclaim an interrupted run's sandboxes by recorded id.
 - `humanish watch`: Run sims, open the observer, keep the shell attached.
-- `humanish observe`: Serve a finished run's Observer over loopback http.
+- `humanish observe`: Follow a run's saved evidence over loopback http.
 - `humanish serve`: Serve the run library; optional tunnel-edge exposure.
 - `humanish codex`: Run Codex-native Humanish integration surfaces.
 - `humanish codex app-server`: Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.

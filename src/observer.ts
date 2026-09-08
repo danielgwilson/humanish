@@ -52,6 +52,8 @@ export interface ObserverOptions {
 export interface ObserverServeOptions {
   open?: boolean;
   port?: number;
+  /** Restrict history and evidence routes to the selected run. Exposed viewers always do this. */
+  scope?: "run" | "library";
   // Exposed mode: when true, the live server enforces the same DNS-rebinding defense as the
   // run-library surface — a strict Host allowlist (loopback names seeded at bind, extended by
   // addPublicOrigin, 421 otherwise) plus the shared security headers on every response. Loopback
@@ -291,6 +293,7 @@ export async function serveObserver(
   }
   const runtimeStreamUrls = () => observerRuntimeStreamUrls.get(result) ?? [];
   const exposed = options.exposed === true;
+  const scopedToRun = exposed || options.scope === "run";
   // Host allowlist for exposed mode (DNS-rebinding defense, identical to the run-library surface).
   // Seeded with the loopback names after bind; addPublicOrigin extends it with the tunnel/public-url
   // host. Never consulted in loopback (non-exposed) mode.
@@ -319,10 +322,9 @@ export async function serveObserver(
 
       if (url.pathname === "/_humanish/history.json") {
         const history = await buildHistoryIndex(proofRoot);
-        // Exposed watch serves ONLY the attached live run: filter the library index down to that one
-        // run so an edge-authed remote viewer cannot enumerate (or reach) any prior run's raw,
-        // unverified evidence. Loopback (local-dev) mode keeps the full-library index byte-identical.
-        if (exposed) {
+        // Exposed watch and selected-run viewers cannot enumerate other runs. Full-library
+        // loopback viewers retain the complete project index.
+        if (scopedToRun) {
           const attachedRuns = history.runs.filter((entry) => entry.runId === result.run);
           writeResponse(
             response,
@@ -346,9 +348,8 @@ export async function serveObserver(
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }
-        // Exposed watch reaches only the attached run: any other run id 404s byte-identically to a
-        // nonexistent run (no cross-run access, no existence oracle). Loopback mode is unchanged.
-        if (exposed && runRoute.runId !== result.run) {
+        // Scoped viewers cannot distinguish another run from a nonexistent one.
+        if (scopedToRun && runRoute.runId !== result.run) {
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }
@@ -550,11 +551,12 @@ function newestSourceMtime(dir: string): number {
 
 function renderObserverAppHtml(data: ObserverData): string {
   return loadObserverArtifact()
-    .replace(OBSERVER_DATA_SLOT, `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
-    .replace(/<title>[^<]*<\/title>/, `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
+    .replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
+    .replace(/<title>[^<]*<\/title>/, () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
 }
 
-function renderObserverHtml(data: ObserverData): string {
+/** Render current packaged UI around a validated/projected Observer snapshot. */
+export function renderObserverHtml(data: ObserverData): string {
   return renderObserverAppHtml(data);
 }
 
@@ -566,14 +568,16 @@ export async function serveRunPath(
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = []
 ): Promise<void> {
   const root = runRoot.physicalPath;
-  const cleanedRelativePath = relativePath === "" ? "observer/index.html" : relativePath;
-  const filePath = path.resolve(root, cleanedRelativePath);
+  const filePath = path.resolve(root, relativePath === "" ? "observer/index.html" : relativePath);
 
   if (!isPathInside(root, filePath)) {
     writeResponse(response, 403, "Forbidden", "text/plain; charset=utf-8");
     return;
   }
 
+  // Alias spellings such as observer//observer-data.json must use the same projection,
+  // not fall through to a raw persisted file and inherit a forged runtime grant.
+  const cleanedRelativePath = path.relative(root, filePath).split(path.sep).join("/");
   if (cleanedRelativePath === "observer/index.html") {
     const observerData = await readObserverData(runRoot, runtimeStreamUrls);
     if (!observerData) {

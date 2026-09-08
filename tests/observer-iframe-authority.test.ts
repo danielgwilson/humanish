@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildObserverData, type ObserverData } from "../src/observer-data.js";
-import { attachObserverRuntimeStreamUrls, renderObserver, serveObserver, withRuntimeStreamUrls, type ObserverServer } from "../src/observer.js";
+import { attachObserverRuntimeStreamUrls, renderObserver, renderObserverHtml, serveObserver, withRuntimeStreamUrls, type ObserverServer } from "../src/observer.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../src/observer-serve.js";
 import { runDryRun } from "../src/run.js";
 import { RUN_STATUS_SCHEMA } from "../src/run-status.js";
@@ -34,6 +34,21 @@ async function fixture() {
 const served = async (url: URL) => await (await fetch(url)).json() as ObserverData;
 
 describe("runtime desktop iframe authority", () => {
+  it("preserves evidence replacement metacharacters without expanding the HTML template", async () => {
+    const { bundle } = await fixture();
+    const data = buildObserverData(bundle);
+    const literal = "$& $$ $` $' </script><script>window.synthetic=1</script>";
+    data.run.title = literal;
+    data.run.runId = literal;
+    data.streams[0]!.label = literal;
+    const html = renderObserverHtml(data);
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+    expect(slot).not.toBeNull();
+    expect(JSON.parse(slot![1]!)).toEqual(data);
+    expect(html).not.toContain("<script>window.synthetic=1</script>");
+    expect(html).toContain("<title>Humanish Observer — $&amp; $$ $` $");
+  });
+
   it("discards persisted grants in static projections and only grants valid active runtime URLs", async () => {
     const { bundle, streamId } = await fixture();
     bundle.streams[0].embed = { kind: "iframe", url: "https://untrusted.example/", runtimeDesktop: true };
@@ -82,6 +97,34 @@ describe("runtime desktop iframe authority", () => {
       expect(response.headers.get("x-frame-options")).toBe("DENY");
       expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
     }
+  });
+
+  it("projects duplicate-slash aliases instead of exposing stored authority", async () => {
+    const { runRoot, bundle, server } = await fixture();
+    const data = buildObserverData(bundle);
+    data.runtime = { state: "running", source: "local-run-status", observedAt: "2026-09-08T00:00:00Z" };
+    data.streams[0]!.embed = { kind: "iframe", url: "https://untrusted.example/view", runtimeDesktop: true };
+    await writeFile(path.join(runRoot, "observer", "observer-data.json"), JSON.stringify(data));
+    await writeFile(path.join(runRoot, "observer", "index.html"), '<!doctype html><title>OBSOLETE_RENDERER_SENTINEL</title>');
+    for (const pathname of ["/observer//observer-data.json", "/_humanish/runs/attached/observer//observer-data.json"]) {
+      const projected = await served(new URL(pathname, server.url));
+      expect(projected.streams[0]?.embed?.runtimeDesktop).toBeUndefined();
+      expect(projected.runtime?.state).toBe("finished");
+    }
+    const html = await (await fetch(new URL("/observer//index.html", server.url))).text();
+    expect(html).toContain('id="observer-data"');
+    expect(html).not.toContain("OBSOLETE_RENDERER_SENTINEL");
+  });
+
+  it("keeps a selected-run viewer scoped while leaving library viewers unchanged", async () => {
+    const { rendered, server } = await fixture();
+    const scoped = await serveObserver(rendered, { open: false, port: 0, scope: "run" });
+    servers.push(scoped);
+    const history = await (await fetch(new URL("/_humanish/history.json", scoped.url))).json() as { runs: Array<{ runId: string }> };
+    expect(history.runs.map((run) => run.runId)).toEqual(["attached"]);
+    expect((await fetch(new URL("/_humanish/runs/other/observer/observer-data.json", scoped.url))).status).toBe(404);
+    expect((await fetch(new URL("/_humanish/runs/attached/observer/observer-data.json", scoped.url))).status).toBe(200);
+    expect((await fetch(new URL("/_humanish/runs/other/observer/observer-data.json", server.url))).status).toBe(200);
   });
 
   it("keeps history's outcome while adding the current runtime state for running filters", async () => {

@@ -1,4 +1,4 @@
-import { link, mkdtemp, mkdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { link, mkdtemp, mkdir, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -62,11 +62,15 @@ async function callHandler(runDir: string, url: string, method = "GET"): Promise
   const captured: CapturedResponse = { statusCode: 0, headers: {}, body: "" };
   const response = {
     headersSent: false,
+    setHeader(name: string, value: string) {
+      captured.headers[name.toLowerCase()] = String(value);
+      return this;
+    },
     writeHead(status: number, headers: Record<string, string>) {
       captured.statusCode = status;
-      captured.headers = Object.fromEntries(
+      captured.headers = { ...captured.headers, ...Object.fromEntries(
         Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
-      );
+      ) };
       this.headersSent = true;
       return this;
     },
@@ -91,11 +95,15 @@ async function callCreatedHandler(
     const captured: CapturedResponse = { statusCode: 0, headers: {}, body: "" };
     const response = {
       headersSent: false,
+      setHeader(name: string, value: string) {
+        captured.headers[name.toLowerCase()] = String(value);
+        return this;
+      },
       writeHead(status: number, headers: Record<string, string>) {
         captured.statusCode = status;
-        captured.headers = Object.fromEntries(
+        captured.headers = { ...captured.headers, ...Object.fromEntries(
           Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
-        );
+        ) };
         this.headersSent = true;
         return this;
       },
@@ -270,6 +278,56 @@ describe("observer static request handler", () => {
 });
 
 describe("observer static server", () => {
+  it("denies framing on HTML, data, redirects, errors and HEAD responses", async () => {
+    await withRunDir(async ({ runDir }) => {
+      const server = await serveObserverStatic({ root: runDir, port: 0, entryPath: ENTRY });
+      try {
+        for (const [pathname, method] of [["/", "GET"], [`/${ENTRY}`, "GET"], ["/observer/observer-data.json", "GET"], ["/missing", "GET"], [`/${ENTRY}`, "HEAD"], [`/${ENTRY}`, "DELETE"]]) {
+          const response = await fetch(new URL(pathname!, server.url), { method: method!, redirect: "manual" });
+          expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+          expect(response.headers.get("x-frame-options")).toBe("DENY");
+          expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+          await response.arrayBuffer();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it("strips saved Observer runtime authority from JSON and inline HTML without changing disk evidence", async () => {
+    await withRunDir(async ({ runDir }) => {
+      const data = {
+        schema: "humanish.observer-data.v1",
+        runtime: { state: "running", source: "local-run-status", observedAt: "2026-09-08T00:00:00Z" },
+        streams: [{ embed: { kind: "iframe", url: "https://desktop.example/view", runtimeDesktop: true } }]
+      };
+      const json = JSON.stringify(data);
+      const jsonPath = path.join(runDir, "observer", "observer-data.json");
+      const htmlPath = path.join(runDir, ENTRY);
+      const html = `<!doctype html><script data-note='>' type='application/json' id='ob&#115;erver-data'>${json}</script><script>window.synthetic=1</script>`;
+      await writeFile(jsonPath, json);
+      await writeFile(htmlPath, html);
+      const server = await serveObserverStatic({ root: runDir, port: 0, entryPath: ENTRY });
+      try {
+        for (const pathname of [`/${ENTRY}`, "/observer/observer-data.json", "/observer//observer-data.json"]) {
+          const response = await fetch(new URL(pathname, server.url));
+          const body = await response.text();
+          expect(response.status).toBe(200);
+          expect(body).not.toContain('"runtime"');
+          expect(body).not.toContain("runtimeDesktop");
+          expect(body).toContain("https://desktop.example/view");
+          expect(Number(response.headers.get("content-length"))).toBe(Buffer.byteLength(body));
+          if (pathname.endsWith(".html")) expect(body).toContain("<script>window.synthetic=1</script>");
+        }
+        expect(await readFile(jsonPath, "utf8")).toBe(json);
+        expect(await readFile(htmlPath, "utf8")).toBe(html);
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
   it("binds 127.0.0.1 on an ephemeral port and serves the run over loopback http", async () => {
     await withRunDir(async ({ runDir }) => {
       const server = await serveObserverStatic({ root: runDir, port: 0, entryPath: ENTRY });

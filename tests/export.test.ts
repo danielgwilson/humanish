@@ -5,6 +5,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { exportRun, formatExportHuman, localOnlyBanner } from "../src/export.js";
+import { renderObserverHtml } from "../src/observer.js";
+import type { ObserverData } from "../src/observer-data.js";
 import type { VerifyResult } from "../src/run.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 import { writeFixtureRun } from "./helpers/run-fixtures.js";
@@ -37,6 +39,7 @@ describe("humanish export", () => {
     await mkdir(path.join(runDir, "observer"), { recursive: true });
     const data = {
       schema: "humanish.observer-data.v1",
+      run: { runId: RUN },
       streams: [{ id: "s1", frames: [{ href: "screenshots/lane-01/turn-01.png", title: "t1" }, { href: "screenshots/lane-01/missing.png", title: "gone" }] }],
       links: [{ href: "../run.json", kind: "bundle" }, { href: "https://example.test/x.png", kind: "remote" }]
     };
@@ -68,6 +71,22 @@ describe("humanish export", () => {
     expect(formatExportHuman(result)).toContain("1 image(s) embedded");
     // The file says what verify said, so its chrome can agree with the result envelope (#584).
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
+  });
+
+  it("renders old recordings with the current packaged UI without changing the source", async () => {
+    const index = path.join(runDir, "observer", "index.html");
+    const oldHtml = (await readFile(index, "utf8")).replace("<body>", '<body><script>window.OBSOLETE_RENDERER_SENTINEL=true</script>');
+    await writeFile(index, oldHtml);
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = await readFile(path.join(cwd, result.path), "utf8");
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    expect(slot).not.toBeNull();
+    const data = JSON.parse(slot![1]!) as ObserverData;
+    expect(exported).toBe(renderObserverHtml(data));
+    expect(exported).not.toContain("OBSOLETE_RENDERER_SENTINEL");
+    expect(exported).toContain(`data:image/png;base64,${PNG.toString("base64")}`);
+    expect(await readFile(index, "utf8")).toBe(oldHtml);
   });
 
   it("removes saved runtime grants and liveness from portable HTML", async () => {
@@ -132,7 +151,7 @@ describe("humanish export", () => {
     let rendered = 0;
     const render = async () => {
       rendered += 1;
-      await writeFile(path.join(runDir, "observer", "index.html"), `<!doctype html><html><head><script id="observer-data" type="application/json">{"streams":[{"frames":[{"href":"screenshots/lane-01/turn-01.png"}]}]}</script></head><body></body></html>`, "utf8");
+      await writeFile(path.join(runDir, "observer", "index.html"), `<!doctype html><html><head><script id="observer-data" type="application/json">{"run":{"runId":"r-export"},"streams":[{"frames":[{"href":"screenshots/lane-01/turn-01.png"}]}]}</script></head><body></body></html>`, "utf8");
       return { ok: true };
     };
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready"), render });
