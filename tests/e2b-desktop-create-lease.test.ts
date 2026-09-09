@@ -68,18 +68,14 @@ function sdkProbe(config: {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("desktop allocation ownership survives startup failure (#581)", () => {
-  it("demonstrates the SDK leak, then reclaims its constructed instance through the guarded public create", async () => {
+  it("reclaims its constructed instance once through the guarded public create", async () => {
     const probe = sdkProbe({ command: async () => { throw new Error("Sandbox is probably not running anymore"); } });
-    await expect(probe.ProbeSandbox.create(options)).rejects.toThrow("probably not running");
-    expect(probe.instances).toHaveLength(1);
-    expect(probe.killed).toEqual([]); // The unguarded installed SDK leaves its allocated handle behind.
-
     await expect(probe.module.Sandbox.create(options)).rejects.toMatchObject({
       name: "E2BDesktopStartupError", cleanup: "killed"
     });
-    expect(probe.instances).toHaveLength(2);
-    expect(probe.killed).toEqual([2]); // Only THIS attempt's acquired handle is cleanup authority.
-    expect(probe.events).toEqual(["construct-1", "command-1", "construct-2", "command-2", "kill-2"]);
+    expect(probe.instances).toHaveLength(1);
+    expect(probe.killed).toEqual([1]); // Internal SDK cleanup and our fallback share THIS handle.
+    expect(probe.events).toEqual(["construct-1", "command-1", "kill-1"]);
     expect(probe.list).not.toHaveBeenCalled();
     expect(probe.allocation).not.toHaveBeenCalled();
   });
