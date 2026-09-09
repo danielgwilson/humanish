@@ -96,6 +96,10 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   });
   const togglePin = (id: string) => setPinnedByRun(pinnedByRun.includes(id) ? pinnedByRun.filter((v) => v !== id) : [...pinnedByRun.slice(-49), id]);
   const toggleCompare = (id: string) => setCompareIds((old) => old.includes(id) ? old.filter((v) => v !== id) : old.length < 3 ? [...old, id] : old);
+  const returnToComparison = () => {
+    pushHash(comparisonLocation.current); setCompareIds(routeCompareIds());
+    setComparison(true); setRoute(parseHash(""));
+  };
   const openComparison = () => {
     const ids = compareIds.filter((id) => streams.some((s) => s.id === id));
     if (!ids.length) return;
@@ -134,7 +138,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
         {...(!selected && !comparison ? { onMonitor: () => setMonitoring(true) } : {})} />
       <RunStatus data={data} connection={connection} now={now} onRetry={retry} actions={<>
         {monitoring ? <button type="button" className="review-tool" onClick={() => setMonitoring(false)}>Exit monitor</button> : null}
-        {selected && comparisonLocation.current ? <button type="button" className="review-tool" onClick={openComparison}>Back to comparison</button> : null}
+        {selected && comparisonLocation.current ? <button type="button" className="review-tool" onClick={returnToComparison}>Back to comparison</button> : null}
         {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
       </>} />
       <main id="observer-content" tabIndex={-1} className={selected && model ? "content player-host" : "content"}>

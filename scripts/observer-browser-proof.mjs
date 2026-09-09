@@ -665,6 +665,18 @@ try {
     await page.goBack(); await page.getByLabel("Seek comparison").waitFor();
     assert.equal(await page.getByLabel("Seek comparison").inputValue(), "9000");
     await snap("browser-back-retains-comparison");
+    await page.getByRole("button", { name: "Back to participants", exact: true }).click();
+    for (const name of ["Synthetic new user", "Skeptical power user"]) {
+      await page.getByRole("button", { name: `Participant details: ${name}`, exact: true }).click();
+      await page.getByRole("button", { name: `Compare participant ${name}`, exact: true }).click();
+      await page.getByRole("button", { name: "Close participant details", exact: true }).click();
+    }
+    assert.equal(await page.getByRole("button", { name: /^Compare selected/ }).count(), 0);
+    await page.getByRole("button", { name: "Open participant Synthetic new user", exact: true }).click();
+    await page.getByRole("button", { name: "Back to comparison", exact: true }).click();
+    await panels.nth(1).waitFor();
+    assert.equal(new URL(page.url()).hash, comparisonHash);
+    await snap("return-restores-cleared-selection");
   });
   await runCase("comparison-capacity", { laneCount: 3, prepare: () => {
     otherData = fixture({ laneCount: 1, origin }); otherData.run.runId = "synthetic-other-study";
