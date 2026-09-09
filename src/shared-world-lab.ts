@@ -83,6 +83,7 @@ import {
 } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
+import { participantAssignment } from "./participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./selected-output-paths.js";
 import type { LocalTreeArchive } from "./source-archive.js";
@@ -292,6 +293,9 @@ interface RoleSpec {
   streamId: string;
   persona: ActorPersonaRef;
   instructions: string;
+  /** Redacted original composed prompt for legacy study context; execution uses instructions. */
+  evidenceInstructions?: string;
+  assignment?: RunStream["assignment"];
   /** The role's declared device (a PROMPT SIGNAL — see the file's FIDELITY NOTE). */
   deviceName: string;
   /** Lane override, then actor default; omitted preserves the provider default. */
@@ -559,6 +563,7 @@ function buildRoleSpecs(
       streamId: `stream-${String(i + 1).padStart(3, "0")}`,
       persona: composed.persona,
       instructions: composed.instructions,
+      assignment: { mission, ...(lane.instruction === undefined ? {} : { focus: lane.instruction }) },
       deviceName: device.name,
       ...((lane.reasoningEffort ?? actor?.reasoningEffort) === undefined
         ? {}
@@ -650,6 +655,10 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   ].filter((value) => value.length >= 4);
   const scrubKnownValues = (text: string): string =>
     knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+  for (const spec of roleSpecs) {
+    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
+    spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+  }
 
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo = redactRepoLabel ? "repo-01" : subjectRepo;
@@ -1377,6 +1386,7 @@ export function buildSharedWorldBundle(args: {
     streams.push({
       id: spec.streamId,
       simId: spec.simId,
+      ...(spec.assignment === undefined ? {} : { assignment: participantAssignment(spec.assignment) }),
       kind: "browser",
       label: `Shared-world role ${spec.roleId} — ${config.id}`,
       status,
@@ -1613,7 +1623,7 @@ export function buildSharedWorldBundle(args: {
     scenario: {
       id: `shared-world-${config.id}`,
       title: config.title ?? `Shared-world: ${config.id}`,
-      goal: redactText(roleSpecs[0]?.instructions ?? "Shared-world sequential interaction."),
+      goal: redactText(roleSpecs[0]?.evidenceInstructions ?? roleSpecs[0]?.instructions ?? "Shared-world sequential interaction."),
       source: `lab:${config.id}`,
       sourceDigest: roleSpecs[0]?.persona.promptDigest ?? seedDigest
     },

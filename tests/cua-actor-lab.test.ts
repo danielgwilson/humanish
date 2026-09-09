@@ -1860,6 +1860,10 @@ describe("runCuaActorLab", () => {
     // And the wait steering, because a mid-flow model reads "we emailed you" as a blocker and ends
     // its session — the exact give-up a live run documented.
     expect(prompt.toLowerCase()).toContain("waiting for an email is normal");
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.streams[0].assignment).toEqual({ mission: config.actors[0]!.mission });
+    expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain("signup-a@example.test");
+    expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
   });
 
   it("comms:email:fake — does NOT tell a lane about an inbox it could never receive into", async () => {
@@ -4434,9 +4438,13 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   });
 
   it("flushes liveActor items into the in-progress bundle mid-run, and the final write replaces them (#441)", async () => {
+    const secret = "synthetic-live-assignment-secret";
+    const config = cuaConfig();
+    config.actors[0]!.mission = `Explore with ${secret}.`;
+    config.actors[0]!.tasks = [{ id: "settings", goal: `Save with ${secret}.`, success: { any: [{ textIncludes: "hidden-success-marker" }] } }];
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    type MidRunBundle = { streams: Array<{ status: string; liveActor?: { schema: string; items: Array<{ kind: string; at?: string }> } }> };
+    type MidRunBundle = { streams: Array<{ status: string; assignment?: unknown; liveActor?: { schema: string; items: Array<{ kind: string; at?: string }> } }> };
     let midRunBundle: MidRunBundle | undefined;
 
     // Two material turns then done. Turn 2's nextTurn polls the persisted run.json for the
@@ -4467,20 +4475,27 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
               if (midRunBundle === undefined) await new Promise((resolve) => setTimeout(resolve, 10));
             }
           }
-          if (turn >= 3) return { actions: [], pendingSafetyChecks: [], done: true, message: "Done." };
+          if (turn >= 3) return { actions: [], pendingSafetyChecks: [], done: true, message: "The settings button is hard to find." };
           return { actions: [{ kind: "type", text: `t${turn}` }], pendingSafetyChecks: [], done: false };
         }
       };
     }
 
-    const outcome = await runLab(cuaConfig(), {
+    const outcome = await runLab(config, {
       cwd,
       runId: "run-flush",
-      onObserverReady: async () => {},
+      onObserverReady: async () => {
+        const initial = await readFile(runJsonPath(), "utf8");
+        expect(initial).not.toContain(secret);
+        expect(JSON.parse(initial).streams[0].assignment.mission).toBe("Explore with [REDACTED_SECRET].");
+      },
       cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        env: { OPENAI_API_KEY: secret, E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) => {
+          expect(options.instructions).toContain(secret);
+          expect(options.instructions).toContain(`Save with ${secret}.`);
+          expect(options.instructions).not.toContain("hidden-success-marker");
           const clock = { t: 0 };
           return runCuaActorSession({
             ...options,
@@ -4499,8 +4514,10 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     // Mid-run: the persisted in-progress bundle carried the partial — schema'd, stamped items,
     // on a stream still honestly marked running (no completion claims anywhere).
     expect(midRunBundle).toBeTruthy();
+    expect(JSON.stringify(midRunBundle)).not.toContain(secret);
     const liveStream = midRunBundle?.streams.find((stream) => stream.liveActor !== undefined);
     expect(liveStream?.status).toBe("running");
+    expect(liveStream?.assignment).toEqual({ mission: "Explore with [REDACTED_SECRET].", focus: "Focus on the landing page.", tasks: [{ id: "settings", goal: "Save with [REDACTED_SECRET]." }] });
     const live = liveStream?.liveActor;
     expect(live?.schema).toBe("humanish.live-actor.v1");
     expect(live?.items.some((item) => item.kind === "ui_action")).toBe(true);
@@ -4508,8 +4525,13 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 
     // Final: the real actor replaces the partial; liveActor never survives completion.
     const finalBundle = JSON.parse(await readFile(runJsonPath(), "utf8")) as {
-      streams: Array<{ status: string; actor?: { items: unknown[] }; liveActor?: unknown }>;
+      streams: Array<{ status: string; assignment?: unknown; actor?: { items: unknown[] }; liveActor?: unknown }>;
+      feedbackCandidates: unknown[];
     };
+    expect(finalBundle.streams[0]?.assignment).toEqual(liveStream?.assignment);
+    expect(finalBundle.feedbackCandidates.length).toBeGreaterThan(0);
+    expect(JSON.stringify(finalBundle)).not.toContain(secret);
+    expect(await readFile(path.join(path.dirname(runJsonPath()), "observer", "observer-data.json"), "utf8")).not.toContain(secret);
     expect(finalBundle.streams.every((stream) => stream.status !== "running")).toBe(true);
     expect(finalBundle.streams.every((stream) => stream.liveActor === undefined)).toBe(true);
     expect(finalBundle.streams.some((stream) => (stream.actor?.items.length ?? 0) > 0)).toBe(true);

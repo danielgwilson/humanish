@@ -108,6 +108,7 @@ import {
   type ObserverRuntimeStreamUrl
 } from "./observer.js";
 import { containsSensitive, digestText, redactedTail, redactText } from "./redaction.js";
+import { participantAssignment } from "./participant-assignment.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -652,6 +653,10 @@ export interface CuaLaneSpec {
   streamId: string;
   persona: ActorPersonaRef;
   instructions: string;
+  /** Redacted original composed prompt for legacy study context; execution uses instructions. */
+  evidenceInstructions?: string;
+  /** Original declarative assignment, separate from runtime-composed instructions. */
+  assignment?: RunStream["assignment"];
   /** App-url fan-out only: this lane's explicit browser target; absent falls back to deps.appUrl. */
   targetUrl?: string;
   /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
@@ -943,6 +948,12 @@ function laneSpecsAndPlan(
       streamId,
       persona: composed.persona,
       instructions: composed.instructions,
+      assignment: {
+        mission,
+        ...((roster ? lane?.instruction : actor?.laneFocus?.instruction) === undefined
+          ? {} : { focus: (roster ? lane?.instruction : actor?.laneFocus?.instruction)! }),
+        ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) })
+      },
       ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
       ...((lane?.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
       ...((lane?.dwell ?? actor?.dwell) === undefined ? {} : { dwell: (lane?.dwell ?? actor?.dwell) as DwellWindow }),
@@ -3926,6 +3937,11 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   ].filter((value) => value.length >= 4);
   const scrubKnownValues = (text: string): string =>
     knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+  // Sanitize the declarative snapshot before initial, partial, or final bundle construction.
+  for (const spec of laneSpecs) {
+    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
+    spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+  }
 
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
@@ -4709,7 +4725,8 @@ function buildSingleLaneBundle(args: {
     dryRun: args.dryRun,
     labId: config.id,
     ...(config.title ? { labTitle: config.title } : {}),
-    mission: spec.instructions,
+    mission: spec.evidenceInstructions ?? spec.instructions,
+    ...(spec.assignment === undefined ? {} : { assignment: spec.assignment }),
     persona: spec.persona,
     resolution: spec.resolution,
     desktopRoute: !args.inProcessRoute,
@@ -5502,6 +5519,7 @@ export function buildCuaBundle(args: {
   labId: string;
   labTitle?: string;
   mission: string;
+  assignment?: RunStream["assignment"];
   persona: ActorPersonaRef;
   resolution: [number, number];
   /** False only for the custom in-process route, which has no hosted screen/window to claim. */
@@ -5619,6 +5637,7 @@ export function buildCuaBundle(args: {
     id: "stream-001",
     simId: "sim-001",
     laneId: args.laneId ?? "lane-01",
+    ...(args.assignment === undefined ? {} : { assignment: participantAssignment(args.assignment) }),
     ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
     ...(args.surface === undefined ? {} : { surface: args.surface }),
     ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
@@ -6056,6 +6075,7 @@ export function buildCuaFanoutBundle(args: {
       id: spec.streamId,
       simId: spec.simId,
       laneId: spec.laneId,
+      ...(spec.assignment === undefined ? {} : { assignment: participantAssignment(spec.assignment) }),
       ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
       ...(spec.surface === undefined ? {} : { surface: spec.surface }),
       ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
@@ -6373,7 +6393,7 @@ export function buildCuaFanoutBundle(args: {
       // this writer produced. The only adopter-side workaround was scanner evasion (#412).
       //
       // The instructions the model actually receives are untouched; only the persisted copy changes.
-      goal: redactText(specs[0]!.instructions),
+      goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
       source: `lab:${config.id}`,
       sourceDigest: specs[0]!.persona.promptDigest
     },
@@ -6412,7 +6432,7 @@ export function buildCuaFanoutBundle(args: {
           runId: args.runId,
           scenarioId: `cua-${config.id}`,
           adapterId: config.id,
-          goal: redactText(specs[0]!.instructions),
+          goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
           substrate: "e2b-desktop",
           lanes: specs.map((spec, index) => {
             const outcome = outcomes?.[index];

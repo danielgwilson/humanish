@@ -187,6 +187,7 @@ export type {
   RunMeaningfulUseScore,
   RunCleanupHooks,
   RunOptions,
+  RunParticipantAssignment,
   RunProviderResource,
   RunResult,
   RunScorerProvenance,

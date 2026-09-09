@@ -485,6 +485,12 @@ describe("host-first handoff barrier + convergence", () => {
     // HYGIENE: the raw code + the raw origin never land in the bundle.
     const runText = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8");
     expect(runText).not.toContain("AB2CD9");
+    const assigned = (JSON.parse(runText) as RunBundle).streams.map((stream) => stream.assignment);
+    const actor = parseExternal().actors[0]!;
+    expect(assigned).toEqual(actor.lanes!.map((lane) => ({
+      mission: actor.mission, ...(lane.instruction === undefined ? {} : { focus: lane.instruction })
+    })));
+    expect(JSON.stringify(assigned)).not.toContain("multiplayer lobby code");
     expect(runText).not.toContain("lobby-trivia.example.test");
 
     const verify = await verifyRun(cwd, result.runId);

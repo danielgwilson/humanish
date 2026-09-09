@@ -432,6 +432,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." }
       ]
     });
+    config.actors[0]!.mission = "Explore with test-openai-key.";
     const runId = "cua-fanout-live-observer";
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
@@ -444,6 +445,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     const hooks = passingHooks(handle);
     hooks.runSession = async (options: CuaActorSessionOptions) => {
+      expect(options.instructions).toContain("Explore with test-openai-key.");
       actorSessionsStarted += 1;
       if (actorSessionsStarted >= 2) {
         resolveActorsStarted();
@@ -468,10 +470,16 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       await waitForCondition("both actor sessions started", () => actorSessionsStarted === 2);
 
       const persistedRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
+      expect((JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment)).toEqual([
+        { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role A." },
+        { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role B." }
+      ]);
+      expect(persistedRunText).not.toContain("test-openai-key");
       expect(persistedRunText).not.toContain("fake-auth-key");
       expect(persistedRunText).not.toContain("stream.invalid");
 
       const persistedObserverDataText = await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8");
+      expect(persistedObserverDataText).not.toContain("test-openai-key");
       expect(persistedObserverDataText).not.toContain("fake-auth-key");
       expect(persistedObserverDataText).not.toContain("stream.invalid");
       const persistedObserverData = JSON.parse(persistedObserverDataText) as {
@@ -502,12 +510,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       expect(outcome.result.ok).toBe(true);
 
       const finalRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
+      expect(finalRunText).not.toContain("test-openai-key");
       expect(finalRunText).not.toContain("fake-auth-key");
       expect(finalRunText).not.toContain("stream.invalid");
       const finalObserverData = JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as {
         summary: { active: number };
         streams: Array<{ status: string; transport: string }>;
       };
+      expect(JSON.stringify(finalObserverData)).not.toContain("test-openai-key");
       expect(finalObserverData.summary.active).toBe(0);
       expect(finalObserverData.streams.map((stream) => stream.status)).toEqual(["passed", "passed"]);
       expect(finalObserverData.streams.map((stream) => stream.transport)).toEqual(["snapshot", "snapshot"]);

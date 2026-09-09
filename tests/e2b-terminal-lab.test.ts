@@ -776,7 +776,9 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       })
     };
 
-    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks });
+    const config = liveConfig();
+    config.actors[0]!.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
+    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, hooks });
 
     // Sandbox created + killed; cleanup proven BY EXACT ID (getInfo(id) confirms
     // SandboxNotFoundError). Sandbox.list is NEVER called on the teardown path.
@@ -792,6 +794,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     // The codex command run carried the key in its OWN envs (command-scoped) — and ONLY the runtime key.
     const codexRun = runs.find((r) => r.command.includes(" exec "));
+    expect(codexRun?.command).toContain(config.actors[0]!.mission);
     // Pinned via npx, never an ambient/preinstalled `codex` binary (issue #159).
     expect(codexRun?.command).toContain("npx -y @openai/codex@0.153.3 exec");
     expect(codexRun?.command).not.toContain("codex exec"); // never the bare ambient-binary form
@@ -813,6 +816,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simulations[0]?.progress).toBe(100);
+    expect(bundle.streams[0].assignment).toEqual({ mission: "Discover widgetsmith-cli using [REDACTED_SECRET]." });
     expect(bundle.streams[0].actor.runtime).toMatchObject({ requestedVersion: "latest", observedVersion: "0.153.3", versionStatus: "verified", modelStatus: "runtime_default_unobserved" });
     expect(bundle.streams[0].actor.ids.model).toBeUndefined();
     for (const file of ["run.json", "terminal-events.ndjson", "terminal-transcript.txt", "terminal-ledgers.json", "actor.json", "events.ndjson"]) {

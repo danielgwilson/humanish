@@ -83,6 +83,39 @@ Persisted `run.json` files must not contain absolute local target paths. Runtime
 commands may return the caller's working directory in process-local JSON
 responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 
+## Participant Assignment
+
+`streams[].assignment` optionally records the original participant-facing assignment:
+
+```yaml
+assignment:
+  mission: "Try the settings screen."
+  focus: "Use the keyboard."
+  tasks:
+    - id: save-setting
+      goal: "Save a setting."
+```
+
+`mission` is the authored mission, or the runner's default when omitted. `focus` is the
+original lane/role instruction when one was supplied. `tasks` contains only the IDs and
+goals actually composed into participant instructions; hidden success criteria are excluded.
+Computer-use single/fan-out, sequential/concurrent shared-world, and terminal-product
+runners record assignments in dry-run and live bundles. Current shared-world and terminal
+prompts do not consume task protocols, so their assignments omit `tasks`.
+
+The snapshot precedes runtime inbox URLs, multiplayer lobby grants, and other access
+details. Known provisioned values and secret/path patterns are redacted before persistence,
+including initial and incremental live bundles where that runner produces them. It is
+assignment evidence, not a copy of the full system prompt, a participant report, or proof
+that the participant completed its mission. Dry-run assignments describe what would be sent.
+
+Older bundles and uninstrumented routes may omit `assignment`; consumers must preserve
+that absence rather than reconstructing it from `scenario.goal`, `ui.intent`, or narration.
+The study-level scenario and actor trace retain their existing meanings. The legacy
+first-participant scenario goal and feedback goal copies receive the same known-value
+redaction; the actual execution prompt is unchanged. Verification
+accepts absence and rejects malformed assignment fields or extra task fields such as criteria.
+
 ## Hosted Desktop Geometry
 
 Hosted browser streams may carry additive `desktopGeometry` evidence. Its fields keep five
