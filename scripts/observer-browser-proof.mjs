@@ -622,6 +622,12 @@ try {
     await page.locator(".compare-participant").nth(1).waitFor();
     assert.equal(await page.getByRole("button", { name: "View and filter participants", exact: true }).count(), 0);
     assert.equal(await page.locator(".crumbs .here").innerText(), "comparison");
+    if (phone) {
+      const preview = await page.locator(".compare-stage").first().boundingBox();
+      const open = await page.locator(".compare-open").first().boundingBox();
+      assert(preview && preview.height <= 240, "Phone comparison must keep previews compact");
+      assert(open && open.height >= 44, "Comparison frame links need a 44px touch target");
+    }
     if (phone) await library.tap(); else await library.click();
     await drawer.getByRole("searchbox", { name: "Find a run" }).waitFor(); await snap("library-from-comparison");
     await page.keyboard.press("Escape"); await drawer.waitFor({ state: "hidden" });
