@@ -63,7 +63,7 @@ async function sdkProbe(options: {
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe("SDK screenshot cleanup compatibility (#662)", () => {
-  it("proves the installed SDK's detached rejection crashes strict Node, then the guarded path exits cleanly", () => {
+  it("keeps screenshot cleanup safe in strict Node without swallowing unrelated removal failures", () => {
     const helper = fileURLToPath(new URL("../src/e2b-desktop-screenshot-cleanup.ts", import.meta.url));
     const script = `
       import { Sandbox } from '@e2b/desktop';
@@ -89,10 +89,6 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     const run = (protect: boolean, unrelated = false) => spawnSync(process.execPath, [
       "--unhandled-rejections=strict", "--import", "tsx", "--input-type=module", "--eval", script
     ], { encoding: "utf8", env: { ...process.env, PROTECT_SCREENSHOT: protect ? "1" : "0", UNRELATED_REMOVE: unrelated ? "1" : "0" }, timeout: 10_000 });
-    const original = run(false);
-    expect(original.status).toBe(1);
-    expect(original.stdout).toContain("image-bytes=4");
-    expect(original.stderr).toContain("synthetic-cleanup-failure");
     const protectedRun = run(true);
     expect(protectedRun.status).toBe(0);
     expect(protectedRun.stdout).toContain("image-bytes=4");

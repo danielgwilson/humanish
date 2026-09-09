@@ -202,7 +202,10 @@ export class E2BDesktopStartupError extends Error {
 
 /**
  * Preserve ownership before the desktop SDK starts Xvfb/XFCE (#581). Its public generic create
- * constructs `new this(...)` through the base SDK, then awaits desktop startup without a catch.
+ * constructs `new this(...)` through the base SDK, then awaits desktop startup. Newer SDKs
+ * attempt their own kill before rejecting create; older SDKs leave cleanup to the caller.
+ * Both paths share one bounded cleanup result so an internal kill cannot delay our deadline
+ * or cause a second cleanup request. Successful creation restores normal kill semantics.
  * Each call gets a separate subclass/closure so concurrent attempts cannot exchange handles.
  *
  * This deliberately depends on SDK construction order, not a copied private `_start` method.
@@ -217,27 +220,44 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
       templateOrOptions: string | E2BDesktopCreateOptions,
       options?: E2BDesktopCreateOptions
     ): Promise<E2BDesktopSandbox> {
-      let cleanupOwned: OwnedDesktop["kill"] | undefined;
+      const createOptions = typeof templateOrOptions === "string" ? options : templateOrOptions;
+      const requestedTimeout = createOptions?.requestTimeoutMs;
+      const timeoutMs = requestedTimeout !== undefined && Number.isFinite(requestedTimeout) && requestedTimeout > 0
+        ? Math.min(requestedTimeout, DESKTOP_CREATE_CLEANUP_TIMEOUT_MS)
+        : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
+      let cleanupOwned: (() => Promise<DesktopCreateCleanup>) | undefined;
+      let restoreKill: (() => void) | undefined;
       const CallingSandbox = this;
       class AttemptSandbox extends CallingSandbox {
         constructor(...args: unknown[]) {
           super(...args);
-          cleanupOwned = this.kill.bind(this);
+          const kill = this.kill.bind(this);
+          const ownKill = Object.getOwnPropertyDescriptor(this, "kill");
+          let receipt: Promise<DesktopCreateCleanup> | undefined;
+          const reclaim = () => receipt ??= reclaimFailedDesktopCreate(kill, timeoutMs);
+          cleanupOwned = reclaim;
+          // SDK 2.4 calls this method before create rejects. Keep its boolean contract while
+          // recording unconfirmed cleanup independently of the SDK's catch-and-discard path.
+          this.kill = async () => {
+            const cleanup = await reclaim();
+            if (cleanup === "unconfirmed") throw new Error("Desktop startup cleanup was not confirmed");
+            return cleanup === "killed";
+          };
+          restoreKill = () => {
+            if (ownKill) Object.defineProperty(this, "kill", ownKill);
+            else Reflect.deleteProperty(this, "kill");
+          };
         }
       }
       try {
         const args = typeof templateOrOptions === "string" ? [templateOrOptions, options] : [templateOrOptions];
         const desktop = await Reflect.apply(SdkSandbox.create, AttemptSandbox, args) as E2BDesktopSandbox;
+        restoreKill?.();
         // The loader also serves direct Sandbox.create callers (terminal/legacy meta routes).
         return protectDesktopScreenshotCleanup(desktop);
       } catch (error) {
         if (cleanupOwned === undefined) throw error;
-        const createOptions = typeof templateOrOptions === "string" ? options : templateOrOptions;
-        const requestedTimeout = createOptions?.requestTimeoutMs;
-        const timeoutMs = requestedTimeout !== undefined && Number.isFinite(requestedTimeout) && requestedTimeout > 0
-          ? Math.min(requestedTimeout, DESKTOP_CREATE_CLEANUP_TIMEOUT_MS)
-          : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
-        const cleanup = await reclaimFailedDesktopCreate(cleanupOwned, timeoutMs);
+        const cleanup = await cleanupOwned();
         throw new E2BDesktopStartupError(error, cleanup);
       }
     }

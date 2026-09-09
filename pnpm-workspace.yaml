@@ -7,3 +7,6 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - fumadocs-core@16.15.7
   - fumadocs-ui@16.15.7
+  # Reviewed public-peer compatibility: real-SDK startup/cleanup conformance (#734).
+  - '@e2b/desktop@2.4.0'
+  - e2b@2.49.0
