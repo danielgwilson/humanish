@@ -9,6 +9,7 @@ import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel } from "@/lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
+import { participantLabels } from "@/lib/participant-label";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import "@/styles/player.css";
@@ -378,7 +379,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <Tabs.Panel value="details" className="ipanel">
             <div className="kv">
               <span className="k">Persona</span>
-              <span className="v">{data.run.persona.name}</span>
+              <span className="v">{participantLabels(data.streams).get(stream.id) ?? stream.label}</span>
               <span className="k">Scenario</span>
               <span className="v">{data.run.scenario.title}</span>
               <span className="k">Lane</span>

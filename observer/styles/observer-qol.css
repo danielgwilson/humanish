@@ -82,6 +82,8 @@ button:disabled { opacity: .45; cursor: default; }
 .compare-stage img { display: block; width: 100%; height: auto; max-height: 65vh; object-fit: contain; }
 .compare-stage p { padding: 30px 15px; text-align: center; color: var(--muted); }
 .compare-caption { color: var(--muted); font: 10px var(--mono); margin-top: 10px; }
+.compare-open { display: inline-flex; align-items: center; margin-top: 10px; }
+@media (pointer: coarse) { .compare-open { min-height: 44px; } }
 @media (max-width: 880px) {
   .rail { width: 42px; }
   .rail button { min-height: 38px; }

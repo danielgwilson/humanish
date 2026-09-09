@@ -602,6 +602,84 @@ try {
     assert.equal(await panels.nth(1).locator("img").count(), 0); await snap("before-first-capture");
     await page.goto(comparisonUrl(28)); await panels.nth(1).getByText(/Past recording end/).waitFor(); await snap("past-recording-end");
   });
+  for (const phone of [false, true]) await runCase(`review-library-${phone ? "phone" : "desktop"}`, { phone, touch: phone }, async ({ page, record, snap }) => {
+    await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/2`);
+    const selectedFrame = await displayedFrame(page);
+    const library = page.getByRole("button", { name: "Toggle run library", exact: true });
+    assert.equal(await library.getAttribute("aria-expanded"), "false");
+    if (phone) await library.tap(); else await library.click();
+    const drawer = page.getByRole("dialog", { name: "Run library", exact: true });
+    await drawer.getByRole("searchbox", { name: "Find a run" }).waitFor();
+    await snap("library-from-player");
+    await page.keyboard.press("Escape"); await drawer.waitFor({ state: "hidden" });
+    assert.equal(await displayedFrame(page), selectedFrame);
+    await page.goto(`${origin}/observer/index.html#/compare?lane=lane-1&lane=lane-2&clock=elapsed&at=9000`);
+    await page.locator(".compare-participant").nth(1).waitFor();
+    assert.equal(await page.getByRole("button", { name: "View and filter participants", exact: true }).count(), 0);
+    assert.equal(await page.locator(".crumbs .here").innerText(), "comparison");
+    if (phone) await library.tap(); else await library.click();
+    await drawer.getByRole("searchbox", { name: "Find a run" }).waitFor(); await snap("library-from-comparison");
+    await page.keyboard.press("Escape"); await drawer.waitFor({ state: "hidden" });
+    assert.equal(await page.getByLabel("Seek comparison").inputValue(), "9000");
+    record.checks.width = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: innerWidth }));
+    assert(record.checks.width.page <= record.checks.width.viewport);
+  });
+  await runCase("comparison-evidence-handoff", { laneCount: 2, prepare: () => {
+    data.run.persona.name = "Synthetic fan-out placeholder";
+    for (const [index, stream] of data.streams.entries()) {
+      stream.label = `CUA lane ${index + 1}`; stream.laneId = index ? "landscape" : "portrait";
+      stream.sim.personaId = index ? "skeptical-power-user" : "synthetic-new-user";
+    }
+  } }, async ({ page, record, snap }) => {
+    await page.goto(`${origin}/observer/index.html#/compare?lane=lane-1&lane=lane-2&clock=elapsed&at=9000`);
+    const panels = page.locator(".compare-participant"); await panels.nth(1).waitFor();
+    assert.equal(await panels.first().getByRole("heading").innerText(), "Synthetic new user");
+    assert.equal(await panels.nth(1).getByRole("heading").innerText(), "Skeptical power user");
+    const capture = await panels.first().locator("img").getAttribute("src");
+    const comparisonHash = new URL(page.url()).hash;
+    const open = panels.first().getByRole("link", { name: "Open frame 2 from Synthetic new user", exact: true });
+    assert.equal(await open.getAttribute("href"), "#/lane/lane-1/f/2");
+    await snap("named-comparison"); await open.click();
+    await page.locator(".stage-box img").waitFor();
+    assert.equal(await displayedFrame(page), capture);
+    await page.getByRole("tab", { name: "details", exact: true }).click();
+    assert((await page.locator(".kv").innerText()).includes("Synthetic new user"));
+    assert(!(await page.locator(".kv").innerText()).includes("fan-out placeholder"));
+    await page.getByRole("button", { name: "Saved moments", exact: true }).click();
+    await page.getByRole("button", { name: "Save current moment", exact: true }).click();
+    await page.getByText("Moment saved.", { exact: true }).waitFor(); await page.keyboard.press("Escape");
+    await snap("opened-and-saved-evidence");
+    await page.getByRole("button", { name: "Back to comparison", exact: true }).click();
+    await page.getByLabel("Seek comparison").waitFor();
+    assert.equal(new URL(page.url()).hash, comparisonHash);
+    await page.getByRole("button", { name: "Back to participants", exact: true }).click();
+    await page.getByRole("button", { name: /^Compare selected/ }).click();
+    await page.getByLabel("Seek comparison").waitFor();
+    assert.equal(new URL(page.url()).hash, comparisonHash);
+    await page.reload(); await page.getByLabel("Seek comparison").waitFor();
+    assert.equal(await page.getByLabel("Seek comparison").inputValue(), "9000");
+    await page.getByRole("button", { name: "Saved moments", exact: true }).click();
+    await page.getByRole("button", { name: "Synthetic new user · frame 2", exact: true }).click();
+    await page.locator(".stage-box img").waitFor(); assert.equal(await displayedFrame(page), capture);
+    record.checks.moments = await page.evaluate(() => JSON.parse(localStorage.getItem("humanish-observer-moments")));
+    await page.goBack(); await page.getByLabel("Seek comparison").waitFor();
+    assert.equal(await page.getByLabel("Seek comparison").inputValue(), "9000");
+    await snap("browser-back-retains-comparison");
+  });
+  await runCase("comparison-capacity", { laneCount: 3, prepare: () => {
+    otherData = fixture({ laneCount: 1, origin }); otherData.run.runId = "synthetic-other-study";
+  } }, async ({ page, record, snap }) => {
+    await page.goto(`${origin}/observer/index.html#/compare?lane=lane-1&lane=lane-2&lane=lane-3`);
+    await page.locator(".compare-participant").nth(2).waitFor();
+    assert(await page.getByLabel("Comparison run").isDisabled());
+    await page.getByText(/Comparison holds up to three participants/).waitFor();
+    await page.goto(`${origin}/observer/index.html#/compare?lane=lane-1&lane=lane-2&lane=lane-3&run=synthetic-other-study`);
+    await page.getByText(/Keep at most two participants/).waitFor();
+    assert.equal(await page.locator(".compare-participant").count(), 3);
+    record.checks.names = await page.locator(".compare-participant h2").allTextContents();
+    assert.deepEqual(record.checks.names, data.streams.map((stream) => stream.label));
+    await snap("selection-preserved-at-capacity");
+  });
   await runCase("comparison-other-run", { laneCount: 2, prepare: () => {
     otherData = fixture({ laneCount: 1, origin }); otherData.run.runId = "synthetic-other-study";
     otherData.streams[0].actor.items.forEach((item) => { if (item.at) item.at = new Date(Date.parse(item.at) + 300_000).toISOString(); });
