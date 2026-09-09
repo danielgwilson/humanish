@@ -599,7 +599,10 @@ try {
     record.checks.within = await panels.evaluateAll((nodes) => nodes.map((node) => ({ image: node.querySelector("img")?.getAttribute("src"), caption: node.querySelector(".compare-caption")?.textContent })));
     assert(record.checks.within[0].image.endsWith("portrait-2.png")); assert(record.checks.within[1].image.endsWith("landscape-1.png"));
     assert(record.checks.within[0].caption.includes("0:02 before cursor")); assert(record.checks.within[1].caption.includes("0:07 before cursor"));
-    assertFullFrames(await inspectImages(page.locator(".compare-stage img"))); await snap("prior-capture-and-age");
+    assertFullFrames(await inspectImages(page.locator(".compare-stage img")));
+    record.checks.previewHeights = await page.locator(".compare-stage").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+    assert(Math.max(...record.checks.previewHeights) - Math.min(...record.checks.previewHeights) < 1, "Comparison previews must share a height across screen shapes");
+    await snap("prior-capture-and-age");
     await page.goto(comparisonUrl(2)); await panels.nth(1).getByText("Outside recorded coverage", { exact: true }).waitFor();
     assert.equal(await panels.nth(1).locator("img").count(), 0); await snap("before-first-capture");
     await page.goto(comparisonUrl(28)); await panels.nth(1).getByText(/Past recording end/).waitFor(); await snap("past-recording-end");
