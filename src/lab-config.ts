@@ -452,6 +452,7 @@ export interface LabActor {
    * The two halves belong to different people. `goal` reaches the participant's prompt; `success`
    * never does — a moderator does not read the success criterion aloud, because telling someone how
    * they will be judged changes what they do. See src/tasks.ts.
+   * Supported only on the first actor of per-lane CUA routes; other routes fail preflight.
    */
   tasks?: LabTask[];
   /** Provider model override. Consumed on the app-url route. */
@@ -1221,6 +1222,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     return invalid("terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route.");
   }
 
+  const tasksReason = taskProtocolValidationReason(config);
+  if (tasksReason) return invalid(tasksReason);
+
   return { ok: true, config, warnings: forwardDeclaredWarnings(config) };
 }
 
@@ -1467,6 +1471,24 @@ export function routesToComputerUse(config: LabConfig): boolean {
   return (config.subject.source === "clone" || config.subject.source === "local-tree")
     && config.execution?.target === "e2b-desktop"
     && actorResolvesToComputerUse(config.actors[0]?.type);
+}
+
+/** Refuse task declarations that the selected execution path would discard (#737).
+ * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
+export function taskProtocolValidationReason(
+  config: LabConfig,
+  supportsTasks = routesToComputerUse(config) && !routesToSharedWorld(config)
+): string | null {
+  for (const [index, actor] of config.actors.entries()) {
+    if (actor.tasks === undefined) continue;
+    if (index > 0) {
+      return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's supported CUA lanes for a task protocol.`;
+    }
+    if (!supportsTasks) {
+      return "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser, synthetic, smoke and meta routes do not consume them. Remove tasks only if a mission-only study is intended.";
+    }
+  }
+  return null;
 }
 
 /** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */

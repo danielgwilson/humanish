@@ -313,10 +313,9 @@ afterEach(async () => {
 });
 
 describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () => {
-  it.each([true, false])("preserves distinct role assignments without claiming unsupported task protocols (dryRun %s)", async (dryRun) => {
+  it.each([true, false])("preserves distinct role assignments for mission-only studies (dryRun %s)", async (dryRun) => {
     const config = sharedWorldConfig();
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";
-    config.actors[0]!.tasks = [{ id: "unconsumed", goal: "Not sent by this route.", success: { any: [{ textIncludes: "hidden-check" }] } }];
     const { hooks } = baseHooks({ worldVersion: 0 });
     const seen: string[] = [];
     const runSession = hooks.runSession!;
@@ -332,7 +331,6 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       expect(seen.every((prompt) => prompt.includes("test-openai-key"))).toBe(true);
       expect(seen[0]).toContain("Create a note.");
       expect(seen[1]).toContain("Review the note.");
-      expect(seen.join(" ")).not.toContain("Not sent by this route.");
     }
     expect(JSON.stringify(bundle)).not.toContain("test-openai-key");
     expect(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8")).not.toContain("test-openai-key");

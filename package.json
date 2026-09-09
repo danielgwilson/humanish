@@ -50,8 +50,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm cli:startup:test && pnpm tui:smoke",
+    "check": "pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
+    "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "humanish": "tsx src/cli.ts",
     "pack:dry-run": "npm pack --dry-run",
     "prepack": "pnpm build",

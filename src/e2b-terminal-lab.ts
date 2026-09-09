@@ -37,6 +37,7 @@
 //      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
+import { taskProtocolValidationReason } from "./lab-config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
@@ -272,6 +273,7 @@ export interface TerminalProductLabResult {
   warnings: string[];
   error?: {
     code:
+      | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_TERMINAL_LAB_FAILED"
       | "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED"
       | "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID"
@@ -326,6 +328,9 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   // Resolve the actor through the registry — the parse layer already validated this, but the
   // engine fails closed rather than trusting a config that arrived through another door
   // (runTerminalProductLab is itself exported npm surface).
+  const tasksReason = taskProtocolValidationReason(config, false);
+  if (tasksReason) return failed("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isTerminalActorDescriptor(descriptor)) {
     return failed(

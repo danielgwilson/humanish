@@ -21,6 +21,7 @@
 // (composed into its persona context) — physical per-role screen geometry is the concurrent
 // topology's job. Each role records its measured browser viewport separately from that screen.
 
+import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -228,6 +229,7 @@ export interface RunSharedWorldLabOptions {
 }
 
 export type SharedWorldLabErrorCode =
+  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
   | "HUMANISH_SHARED_WORLD_LAB_FAILED"
   | "HUMANISH_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
   | "HUMANISH_SHARED_WORLD_LAB_INVALID"
@@ -616,6 +618,9 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
 
   // Resolve the actor through the registry — the parser validated this, but the engine fails closed
   // rather than trusting a config that arrived through the library door (this fn is npm surface).
+  const tasksReason = taskProtocolValidationReason(config, false);
+  if (tasksReason) return fail("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {
     return fail("HUMANISH_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
