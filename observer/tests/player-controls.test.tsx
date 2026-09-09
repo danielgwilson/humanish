@@ -129,6 +129,14 @@ describe("player review controls", () => {
     await render({ initialFrame: null, initialMode: "live" });
     expect(container.querySelector("iframe")).not.toBeNull();
   });
+  it("revisits the original saved address after local seeking without remounting", async () => {
+    await render({ initialFrame: 1, navigationRevision: 0 });
+    await click("Next frame");
+    expect(counter()).toBe("3 / 3");
+    await render({ initialFrame: 1, navigationRevision: 1 });
+    expect(counter()).toBe("2 / 3");
+    expect(window.location.hash).toBe("#/lane/participant/f/2");
+  });
   it("does not restart recorded playback timing on every unchanged data poll", async () => {
     vi.useFakeTimers();
     try {

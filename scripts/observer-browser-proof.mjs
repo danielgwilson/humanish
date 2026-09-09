@@ -574,7 +574,9 @@ try {
     await page.getByRole("button", { name: "Saved moments", exact: true }).click();
     await page.getByRole("button", { name: "Save current moment", exact: true }).click();
     await page.getByText("Moment saved.", { exact: true }).waitFor(); await snap("saved-moment");
-    await page.keyboard.press("Escape"); await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/4`);
+    await page.keyboard.press("Escape"); await page.reload();
+    await page.getByRole("button", { name: "Next frame", exact: true }).click();
+    await page.locator('.stage-box img[src$="portrait-3.png"]').waitFor();
     await page.getByRole("button", { name: "Saved moments", exact: true }).click();
     await page.getByRole("button", { name: `${data.streams[0].label} · frame 2`, exact: true }).click();
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();

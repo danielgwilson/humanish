@@ -48,8 +48,10 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null, updating = true, onViewChange }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, navigationRevision = 0, updating = true, onViewChange }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
+  /** An explicit in-app navigation may repeat the original address after local seeking. */
+  navigationRevision?: number;
   /** Source capability, not the most recent poll result; transient failures stay updating. */
   updating?: boolean;
   onViewChange?: (view: PlayerView) => void;
@@ -69,7 +71,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   }
   // A URL navigation is a new instruction even in the same participant. Adjust before
   // commit so a stale frame cannot overwrite the incoming address in a later effect.
-  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}`;
+  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}:${navigationRevision}`;
   const [previousAddress, setPreviousAddress] = useState(address);
   if (address !== previousAddress) {
     setPreviousAddress(address);

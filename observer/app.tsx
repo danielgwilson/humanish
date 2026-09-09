@@ -29,6 +29,7 @@ const routeCompareIds = () => new URLSearchParams(window.location.hash.split("?"
 export function App({ data: initialData }: { data: ObserverData | null }) {
   const { data, history, connection, retry } = useObserverFeed(initialData);
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
+  const [navigationRevision, setNavigationRevision] = useState(0);
   const [comparison, setComparison] = useState(compareRoute);
   const [compareIds, setCompareIds] = useState<string[]>(routeCompareIds);
   const comparisonLocation = useRef(compareRoute() ? window.location.hash : "");
@@ -61,6 +62,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   const libraryAsDrawer = phone || !!selected || comparison;
   const openParticipant = (id: string | null, frame: number | null = null) => {
     pushHash(formatHash(id, frame)); setRoute(parseHash(window.location.hash)); setComparison(false); setSavedMessage("");
+    setNavigationRevision((value) => value + 1);
   };
   const toGrid = () => openParticipant(null);
   const toggleLibrary = () => {
@@ -143,7 +145,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
       </>} />
       <main id="observer-content" tabIndex={-1} className={selected && model ? "content player-host" : "content"}>
         {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={openParticipant} onLocationChange={rememberComparison} />
-          : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} />
+          : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} />
             : <StudyGrid data={data} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} />}
       </main>
       <div className="statusbar"><span title={data.run.runId}>Study <b>{data.run.runId}</b></span><span className="links">{data.artifactLinks.map((link) => { const href = observerArtifactHref(link.href); return href ? <a key={link.href} href={href}>{link.label}</a> : null; })}</span></div>
