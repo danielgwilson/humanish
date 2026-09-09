@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-09-09 (rev 23)
+Status date: 2026-09-09 (rev 24)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -29,10 +29,12 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.85.0`)
+## Current Program Truth (source `0.85.1`)
 
 The package source and repository implementation in this tree agree on these
 points:
+
+**Observer review continuity, 2026-09-09 (#731).** The run library opens during player/comparison review. Comparison frames link into the player and return to the saved alignment and cursor; participant names stay consistent. Explicit thinking filters reveal narration, and run/setup notices remain inspectable separately from frame-linked findings. See the [0.85.1 release note](../release/0.85.1-observer-continuity.md).
 
 **Observer watching and review, 2026-09-09 (#723, #724, #726, #728).** Grid previews preserve complete screens at a shared height, with compact captions and controls below the evidence. Run activity, live viewing, recorded replay and update freshness are distinct. Seeking, refresh and incoming captures preserve the selected viewing intent. The player adds elapsed-time review, zoom, saved moments and participant/cross-run comparison. The built TUI and observe serve existing evidence; exports contain no runtime desktop grants. See the [0.85.0 release note](../release/0.85.0-observer-review.md) for capabilities, acceptance evidence and limits.
 
