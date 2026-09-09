@@ -427,6 +427,13 @@ export interface RunDesktopGeometry {
   warnings?: string[];
 }
 
+/** The original participant-facing assignment, before runtime access/coordination details. */
+export interface RunParticipantAssignment {
+  mission: string;
+  focus?: string;
+  tasks?: Array<{ id: string; goal: string }>;
+}
+
 export interface RunStream {
   id: string;
   simId: string;
@@ -438,6 +445,9 @@ export interface RunStream {
   surface?: string;
   /** Adapter-owned scenario/case grouping label. */
   caseGroup?: string;
+  /** Authored/default mission and lane focus, redacted before persistence. Missing on older
+   * bundles and uninstrumented routes; never reconstructed from study context or narration. */
+  assignment?: RunParticipantAssignment;
   kind: RunStreamKind;
   label: string;
   status: RunSimulationStatus;
@@ -7313,11 +7323,24 @@ function isRunStream(value: unknown): value is RunStream {
     && isRunSimulationStatus(value.status)
     && (value.transport === "snapshot" || value.transport === "polling" || value.transport === "sse" || value.transport === "pty" || value.transport === "app-server")
     && typeof value.updatedAt === "string"
+    && (value.assignment === undefined || isRunParticipantAssignment(value.assignment))
     && (value.viewport === undefined || isRunViewport(value.viewport))
     && (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry))
     && hasConsistentStreamGeometry(value)
     && Array.isArray(value.artifacts)
     && value.artifacts.every(isRunStreamArtifact);
+}
+
+function isRunParticipantAssignment(value: unknown): value is RunParticipantAssignment {
+  return isRecord(value)
+    && Object.keys(value).every((key) => key === "mission" || key === "focus" || key === "tasks")
+    && typeof value.mission === "string"
+    && (value.focus === undefined || typeof value.focus === "string")
+    && (value.tasks === undefined || (Array.isArray(value.tasks) && value.tasks.every((task) =>
+      isRecord(task)
+      && Object.keys(task).every((key) => key === "id" || key === "goal")
+      && typeof task.id === "string"
+      && typeof task.goal === "string")));
 }
 
 function isRunViewport(value: unknown): value is NonNullable<RunStream["viewport"]> {

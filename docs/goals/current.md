@@ -29,10 +29,12 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.85.1`)
+## Current Program Truth (source `0.86.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
+
+**Participant evidence context, 2026-09-09 (#733).** New runs preserve each participant's authored mission and lane focus. The Observer distinguishes individual actions within a capture interval, including links and saved moments, and labels the capture's time relative to the action. Supported desktop SDK startup cleanup shares a bounded result between SDK-internal cleanup and Humanish's fallback (#734). See the [0.86.0 release note](../release/0.86.0-participant-evidence.md).
 
 **Observer review continuity, 2026-09-09 (#731).** The run library opens during player/comparison review. Comparison frames link into the player and return to the saved alignment and cursor; participant names stay consistent. Explicit thinking filters reveal narration, and run/setup notices remain inspectable separately from frame-linked findings. See the [0.85.1 release note](../release/0.85.1-observer-continuity.md).
 

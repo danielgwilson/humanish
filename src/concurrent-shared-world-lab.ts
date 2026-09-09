@@ -97,6 +97,7 @@ import {
   type ObserverRuntimeStreamUrl
 } from "./observer.js";
 import { redactText } from "./redaction.js";
+import { participantAssignment } from "./participant-assignment.js";
 import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
@@ -604,6 +605,7 @@ function buildActorSpec(
     streamId,
     persona: composed.persona,
     instructions: composed.instructions,
+    assignment: { mission, ...(role.instruction === undefined ? {} : { focus: role.instruction }) },
     ...((role.reasoningEffort ?? config.actors[0]?.reasoningEffort) === undefined
       ? {} : { reasoningEffort: (role.reasoningEffort ?? config.actors[0]?.reasoningEffort)! }),
     ...(config.actors[0]?.maxOutputTokens === undefined ? {} : { maxOutputTokens: config.actors[0].maxOutputTokens }),
@@ -844,6 +846,10 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
   // Compile committed personas so each seat's prompt carries real behavioral directives (#381).
   const personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(config));
   const actorSpecs = roles.map((role, i) => buildActorSpec(config, role, i, personaResolution.personas));
+  for (const spec of actorSpecs) {
+    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
+    spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+  }
   let actorResults: ActorLaneResult[] = [];
   let subjectCommit: string | undefined;
   let subjectSandboxId: string | undefined;
@@ -2075,6 +2081,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     streams.push({
       id: spec.streamId,
       simId: spec.simId,
+      ...(spec.assignment === undefined ? {} : { assignment: participantAssignment(spec.assignment) }),
       kind: "browser",
       label: `Concurrent persona ${spec.laneId}${taxonomy} — ${config.id}`,
       status,
@@ -2350,7 +2357,7 @@ export function buildConcurrentSharedWorldBundle(args: {
     scenario: {
       id: `concurrent-shared-world-${config.id}`,
       title: config.title ?? `Concurrent shared-world: ${config.id}`,
-      goal: redactText(actorSpecs[0]?.instructions ?? "Concurrent shared-world interaction."),
+      goal: redactText(actorSpecs[0]?.evidenceInstructions ?? actorSpecs[0]?.instructions ?? "Concurrent shared-world interaction."),
       source: `lab:${config.id}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest
     },

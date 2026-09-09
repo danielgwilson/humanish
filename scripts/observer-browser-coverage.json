@@ -38,7 +38,10 @@
     {"id": "review-library-desktop", "goal": "Open and dismiss the run library from player and comparison without losing a moment"},
     {"id": "review-library-phone", "goal": "Touch navigation reaches the library from review without horizontal overflow"},
     {"id": "comparison-evidence-handoff", "goal": "Open, save and return to the exact comparison capture with consistent persona identity"},
-    {"id": "comparison-capacity", "goal": "Adding another run never silently drops a selected participant"}
+    {"id": "comparison-capacity", "goal": "Adding another run never silently drops a selected participant"},
+    { "id": "event-context-desktop", "goal": "Select, link, save and recall distinct actions within one screenshot interval" },
+    { "id": "event-context-phone", "goal": "Touch review keeps event identity and timing distinct at 390px" },
+    { "id": "participant-assignment", "goal": "Show lane-specific authored assignment and explicitly unrecorded older assignments" }
   ],
   "externalAcceptance": [
     { "id": "real-provider", "status": "external", "reason": "N>1 actual provider connection/reconnect and cleanup receipts required separately" },

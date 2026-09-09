@@ -25,6 +25,10 @@ describe("Observer admission at the untrusted JSON boundary", () => {
   });
 
   it.each([
+    ["streams.0.assignment", null],
+    ["streams.0.assignment", { mission: {} }],
+    ["streams.0.assignment", { mission: "Add a task", focus: {} }],
+    ["streams.0.assignment", { mission: "Add a task", tasks: [{ id: "create", goal: {} }] }],
     ["streams.0.desktopGeometry", {}],
     ["streams.0.desktopGeometry", { screen: {} }],
     ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 }, verified: null } }],
@@ -68,6 +72,7 @@ describe("Observer admission at the untrusted JSON boundary", () => {
   });
 
   it.each([
+    ["streams.0.assignment", { mission: "Add a task", focus: "Use the keyboard", tasks: [{ id: "create", goal: "Create one task" }] }],
     ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 } } }],
     ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 }, verified: { width: 360, height: 800, source: "xdpyinfo" } } }],
     ["streams.0.actor.affordanceUse", { counts: {}, shortcutTotal: 0 }],

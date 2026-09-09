@@ -65,6 +65,7 @@ import {
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { digestText, redactedTail, redactText } from "./redaction.js";
+import { participantAssignment } from "./participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import {
   prepareSelectedOutputDirectory,
@@ -361,6 +362,12 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   }
 
   const mission = config.actors[0]?.mission ?? defaultMission(product.name);
+  const env = hooks.env ?? process.env;
+  const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
+    .map((value) => value?.trim() ?? "").filter((value) => value.length >= 4);
+  const evidenceMission = participantAssignment({ mission }, (text) =>
+    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text)
+  ).mission;
   const personaId = config.actors[0]?.persona ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(cwd);
   // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
@@ -405,7 +412,7 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
     dryRun,
     labId: config.id,
     ...(config.title ? { labTitle: config.title } : {}),
-    mission,
+    mission: evidenceMission,
     persona,
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
@@ -1519,7 +1526,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     createdAt,
     labId: config.id,
     ...(config.title ? { labTitle: config.title } : {}),
-    mission,
+    mission: sanitize(mission),
     persona,
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
@@ -2196,6 +2203,7 @@ export function buildTerminalProductBundle(args: {
   const stream: RunStream = {
     id: "stream-001",
     simId: "sim-001",
+    assignment: participantAssignment({ mission: args.mission }),
     kind: "terminal",
     label: `Terminal agent — ${args.labId}`,
     status: "contract_proof_only",
@@ -2399,6 +2407,7 @@ export function buildLiveTerminalProductBundle(args: {
   const stream: RunStream = {
     id: "stream-001",
     simId: "sim-001",
+    assignment: participantAssignment({ mission: args.mission }),
     kind: "terminal",
     label: `Terminal agent — ${args.labId}`,
     status: simStatus,

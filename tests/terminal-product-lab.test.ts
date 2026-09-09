@@ -351,6 +351,21 @@ describe("runTerminalProductLab (dry-run)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
+  it.each(["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY"])("redacts a known %s value from dry-run assignment and study context", async (keyName) => {
+    const secret = "synthetic-opaque-terminal-secret";
+    const config = parsedTerminalConfig({ mission: `Discover the product using ${secret}.` });
+    const result = await runTerminalProductLab({ cwd, config, dryRun: true, hooks: { env: { [keyName]: secret } } });
+    expect(result.ok).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    for (const file of ["run.json", "observer/observer-data.json"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      expect(text).not.toContain(secret);
+      expect(JSON.parse(text).streams[0].assignment).toEqual({ mission: "Discover the product using [REDACTED_SECRET]." });
+    }
+    expect(config.actors[0]!.mission).toContain(secret);
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
   it("dry-run produces a VERIFIED contract bundle: terminal stream, UNPINNED subject, caps/policies/auth declared", async () => {
     const outcome = await runLab(parsedTerminalConfig(), { cwd, dryRun: true });
     expect(outcome.backend).toBe("terminal");
@@ -372,6 +387,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(bundle.simulations[0].streamKind).toBe("terminal");
     // The terminal stream is an honest CONTRACT placeholder: stdin disabled, empty tail, NOT pty.
     const stream = bundle.streams[0];
+    expect(stream.assignment).toEqual({ mission: "Discover widgetsmith-cli from public surfaces and stay within no-spend caps." });
     expect(stream.kind).toBe("terminal");
     expect(stream.transport).toBe("snapshot");
     expect(stream.transport).not.toBe("pty");

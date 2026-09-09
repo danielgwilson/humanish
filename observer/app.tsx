@@ -19,6 +19,7 @@ import { buildPlayerModel } from "./lib/player-model";
 import { participantLabels } from "./lib/participant-label";
 import { isDensity, isMoments, isStringList, usePreference, type SavedMoment } from "./lib/preferences";
 import { formatHash, parseHash, pushHash } from "./lib/route";
+import { savedEntryLabels } from "./lib/saved-entry-labels";
 import { useObserverFeed } from "./lib/use-observer-feed";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
@@ -58,10 +59,11 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
     return () => { window.removeEventListener("hashchange", navigate); window.removeEventListener("popstate", navigate); };
   }, []);
   const streams = data?.streams ?? [];
+  const entryLabels = useMemo(() => savedEntryLabels(streams), [streams]);
   const selected = streams.find((s) => s.id === route.laneId) ?? null;
   const libraryAsDrawer = phone || !!selected || comparison;
-  const openParticipant = (id: string | null, frame: number | null = null) => {
-    pushHash(formatHash(id, frame)); setRoute(parseHash(window.location.hash)); setComparison(false); setSavedMessage("");
+  const openParticipant = (id: string | null, frame: number | null = null, eventId?: string) => {
+    pushHash(formatHash(id, frame, null, eventId)); setRoute(parseHash(window.location.hash)); setComparison(false); setSavedMessage("");
     setNavigationRevision((value) => value + 1);
   };
   const toGrid = () => openParticipant(null);
@@ -116,19 +118,28 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
     if (!selected || !model || !current || current.streamId !== selected.id || current.frame === null || current.mode === "live") { setSavedMessage("Pause on a recorded frame before saving a moment."); return; }
     const frame = model.frames[current.frame];
     if (!frame) { setSavedMessage("That frame is no longer available."); return; }
-    const moment: SavedMoment = { runId: data.run.runId, streamId: selected.id, itemId: frame.itemId, frame: frame.index, savedAt: new Date().toISOString() };
-    setSavedMoments([...savedMoments.filter((m) => !(m.runId === moment.runId && m.streamId === moment.streamId && m.itemId === moment.itemId)).slice(-49), moment]); setSavedMessage("Moment saved.");
+    if (current.eventId && !model.rows.some((row) => row.id === current.eventId && !row.isFrame && row.frameIndex === current.frame)) {
+      setSavedMessage("That recorded entry is no longer available."); return;
+    }
+    const moment: SavedMoment = { runId: data.run.runId, streamId: selected.id, itemId: frame.itemId, frame: frame.index, savedAt: new Date().toISOString(),
+      ...(current.eventId ? { eventId: current.eventId } : {}) };
+    setSavedMoments([...savedMoments.filter((m) => !(m.runId === moment.runId && m.streamId === moment.streamId && m.itemId === moment.itemId && m.eventId === moment.eventId)).slice(-49), moment]); setSavedMessage("Moment saved.");
   };
   const openMoment = (moment: SavedMoment) => {
     const stream = streams.find((s) => s.id === moment.streamId);
     const frame = stream ? buildPlayerModel(stream)?.frames.find((f) => f.itemId === moment.itemId) : null;
     if (!frame) { setSavedMessage("This saved frame is no longer in the available recording."); return false; }
-    openParticipant(moment.streamId, frame.index);
+    if (moment.eventId && !buildPlayerModel(stream!)?.rows.some((row) => row.id === moment.eventId && !row.isFrame && row.frameIndex === frame.index)) {
+      setSavedMessage("This saved entry is no longer in its recorded capture interval."); return false;
+    }
+    openParticipant(moment.streamId, frame.index, moment.eventId);
     return true;
   };
   const currentMoments = savedMoments.filter((m) => m.runId === data.run.runId);
-  const savedControl = <SavedMoments labels={labels} moments={currentMoments} canSave={!!selected && playerView?.streamId === selected.id && playerView.mode === "replay" && playerView.frame !== null} stored={momentsStored} message={savedMessage} onSave={saveMoment} onOpen={openMoment}
-          onRemove={(moment) => setSavedMoments(savedMoments.filter((m) => !(m.runId === moment.runId && m.streamId === moment.streamId && m.itemId === moment.itemId)))} />;
+  const canSaveMoment = !!selected && playerView?.streamId === selected.id && playerView.mode === "replay" && playerView.frame !== null
+    && (!playerView.eventId || !!model?.rows.some((row) => row.id === playerView.eventId && !row.isFrame && row.frameIndex === playerView.frame));
+  const savedControl = <SavedMoments labels={labels} entryLabels={entryLabels} moments={currentMoments} canSave={canSaveMoment} stored={momentsStored} message={savedMessage} onSave={saveMoment} onOpen={openMoment}
+          onRemove={(moment) => setSavedMoments(savedMoments.filter((m) => !(m.runId === moment.runId && m.streamId === moment.streamId && m.itemId === moment.itemId && m.eventId === moment.eventId)))} />;
   return <Tooltip.Provider delay={350}><div className={`frame${monitoring ? " monitoring" : ""}`}>
     <a className="skip-observer" href="#observer-content" onClick={(event) => { event.preventDefault(); document.getElementById("observer-content")?.focus(); }}>Skip to evidence</a>
     <IconRail runsActive={!selected && !comparison && filters.status !== "__active"} liveActive={!selected && !comparison && filters.status === "__active"} onRuns={() => { setFilters(NO_FILTERS); toGrid(); }} onLive={() => { setFilters({ ...NO_FILTERS, status: "__active" }); toGrid(); }} />
@@ -145,7 +156,7 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
       </>} />
       <main id="observer-content" tabIndex={-1} className={selected && model ? "content player-host" : "content"}>
         {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={openParticipant} onLocationChange={rememberComparison} />
-          : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} />
+          : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} />
             : <StudyGrid data={data} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} />}
       </main>
       <div className="statusbar"><span title={data.run.runId}>Study <b>{data.run.runId}</b></span><span className="links">{data.artifactLinks.map((link) => { const href = observerArtifactHref(link.href); return href ? <a key={link.href} href={href}>{link.label}</a> : null; })}</span></div>

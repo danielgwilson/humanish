@@ -7,9 +7,24 @@ import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel } from "../lib/player-model";
 import { isMoments, isStringList } from "../lib/preferences";
 import { formatHash } from "../lib/route";
+import { savedEntryLabels } from "../lib/saved-entry-labels";
 import { signalFor } from "../lib/signal";
 
 const data = live as unknown as ObserverData;
+it("saved entries distinguish repeated actions even with identical or unavailable timestamps", () => {
+  const stream = structuredClone(data.streams[0]!);
+  const original = stream.actor!.items[0]!;
+  stream.actor!.items = [
+    { ...original, id: "a", title: "keypress TAB", at: "2026-09-09T06:26:37.760Z" },
+    { ...original, id: "b", title: "keypress TAB", at: "2026-09-09T06:26:37.760Z" },
+    { ...original, id: "c", title: "keypress TAB", at: "invalid" },
+    { ...original, id: "d", title: "keypress TAB", at: "invalid" },
+  ];
+  const labels = savedEntryLabels([stream]);
+  expect(new Set(labels.values()).size).toBe(4);
+  expect(labels.get(`${stream.id}/a`)).toBe("keypress TAB · 06:26:37.760 UTC · entry 1");
+  expect(labels.get(`${stream.id}/c`)).toBe("keypress TAB · time unavailable · entry 3");
+});
 describe("Review links preserve filenames without permitting navigation escapes", () => {
   it.each(["../secret", "x/../../secret", "/secret", "//example.test/x", "https://example.test/x", "javascript:alert(1)", "x\\y", "%2e%2e/secret", "%252e%252e/secret", "x%2fy", "x/%00y", "x/./y", "x//y"])("rejects %s", (path) => {
     expect(runArtifactHref(path)).toBeNull();

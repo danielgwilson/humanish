@@ -313,6 +313,22 @@ beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-concu
 afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
 describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous latch, $0)", () => {
+  it.each([true, false])("preserves each role's authored focus (dryRun %s)", async (dryRun) => {
+    const config = concurrentConfig();
+    config.actors[0]!.lanes!.forEach((lane, i) => { lane.instruction = `Review section ${i + 1}.`; });
+    config.actors[0]!.mission = "Use the shared app with test-openai-key.";
+    config.actors[0]!.tasks = [{ id: "unconsumed", goal: "Not sent by this route." }];
+    const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun, hooks });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.streams.map((stream) => stream.assignment)).toEqual([1, 2, 3].map((i) => ({
+      mission: "Use the shared app with [REDACTED_SECRET].", focus: `Review section ${i}.`
+    })));
+    expect(JSON.stringify(bundle)).not.toContain("test-openai-key");
+    expect(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8")).not.toContain("test-openai-key");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
   it("shares one actor budget on the provisioned plane", async () => {
     const config = concurrentConfig();
     config.actors[0]!.model = "gpt-5.5";
@@ -639,6 +655,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   it("publishes an attached live Observer while concurrent actors are still running", async () => {
     const state = { worldVersion: 0 };
     const { hooks, sandboxes } = baseHooks(state, async () => {});
+    const config = concurrentConfig(3, 3);
+    config.actors[0]!.mission = "Use the shared app with test-openai-key.";
     const runId = "concurrent-shared-world-live-observer";
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
@@ -662,7 +680,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     const runPromise = runConcurrentSharedWorld({
       cwd,
-      config: concurrentConfig(3, 3),
+      config,
       dryRun: false,
       hooks,
       onObserverReady: async (observer) => {
@@ -683,10 +701,15 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       expect(streamStarts.every(([, options]) => (options as { windowId?: string }).windowId === "424242")).toBe(true);
 
       const persistedRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
+      expect((JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment)).toEqual([
+        { mission: "Use the shared app with [REDACTED_SECRET]." }, { mission: "Use the shared app with [REDACTED_SECRET]." }, { mission: "Use the shared app with [REDACTED_SECRET]." }
+      ]);
+      expect(persistedRunText).not.toContain("test-openai-key");
       expect(persistedRunText).not.toContain("fake-auth-key");
       expect(persistedRunText).not.toContain("stream.invalid");
 
       const persistedObserverDataText = await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8");
+      expect(persistedObserverDataText).not.toContain("test-openai-key");
       expect(persistedObserverDataText).not.toContain("fake-auth-key");
       expect(persistedObserverDataText).not.toContain("stream.invalid");
       const persistedObserverData = JSON.parse(persistedObserverDataText) as {
