@@ -13,6 +13,11 @@ export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 // smoke test pins that count.
 export const OBSERVER_DATA_PLACEHOLDER = ["__HUMANISH", "OBSERVER_DATA__"].join("_");
 
+/** Export renderer metadata, never inferred from a run's status or JSON fields. */
+export function isSnapshotArtifact(doc: Document): boolean {
+  return doc.querySelector('meta[name="humanish-observer-mode"]')?.getAttribute("content") === "snapshot";
+}
+
 export function readInlineObserverData(doc: Document): ObserverData | null {
   const text = doc.getElementById("observer-data")?.textContent ?? "";
   if (!text.trim() || text.includes(OBSERVER_DATA_PLACEHOLDER)) return null;

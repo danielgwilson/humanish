@@ -18,7 +18,7 @@ function evidenceLines(plain: string): TerminalLine[] {
 }
 
 // Frame-free lanes retain readable terminal output and their recorded events.
-export function ParticipantStub({ data, stream }: { data: ObserverData; stream: ObserverStream }) {
+export function ParticipantStub({ data, stream, updating = true }: { data: ObserverData; stream: ObserverStream; updating?: boolean }) {
   const terminal = evidenceLines(stream.terminalPlain);
   const [terminalPage, setTerminalPage] = useState<number | null>(null);
   const [eventPage, setEventPage] = useState(0);
@@ -50,7 +50,7 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
         <span className="v">{stream.label}</span>
         <span className="k">Kind</span>
         <span className="v">{stream.kindLabel}</span>
-        <span className="k">Status</span>
+        <span className="k">{updating ? "Status" : "Status at capture"}</span>
         <span className="v">{stream.statusLabel}</span>
         <span className="k">Transport</span>
         <span className="v">{stream.transport}</span>

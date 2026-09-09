@@ -9,7 +9,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app";
-import { readInlineObserverData } from "./lib/data";
+import { isSnapshotArtifact, readInlineObserverData } from "./lib/data";
 import type { ObserverData } from "./lib/observer-data";
 
 async function boot(): Promise<void> {
@@ -31,7 +31,7 @@ async function boot(): Promise<void> {
   if (!root) throw new Error("observer: #root missing");
   createRoot(root).render(
     <StrictMode>
-      <App data={data} />
+      <App data={data} snapshot={isSnapshotArtifact(document)} />
     </StrictMode>
   );
 }

@@ -861,12 +861,12 @@ try {
     const count = requests.length; await page.goto(pathToFileURL(file).href);
     const offlineRequests = [];
     page.on("request", (request) => { if (!request.url().startsWith("data:")) offlineRequests.push(request.url()); });
-    await page.getByText("Offline recording", { exact: true }).waitFor();
+    await page.getByText("Saved recording", { exact: true }).waitFor();
     await page.getByRole("button", { name: /^Open participant/ }).first().click();
     await page.locator('.stage-box[data-image-state="ready"]').waitFor();
     record.checks.offline = await displayedFrame(page); assert(record.checks.offline.startsWith("data:image/png;base64,"));
-    await wait(5500); assert.equal(requests.length, count, "Offline recording attempted HTTP updates");
-    record.checks.offlineRequests = offlineRequests; assert.equal(offlineRequests.length, 0, "Offline recording fetched non-inlined resources");
+    await wait(5500); assert.equal(requests.length, count, "Saved recording attempted HTTP updates");
+    record.checks.offlineRequests = offlineRequests; assert.equal(offlineRequests.length, 0, "Saved recording fetched non-inlined resources");
     await snap("self-contained-offline-recording");
   });
   await runCase("http-poll-cleanup", { running: true }, async ({ page, record, snap }) => {

@@ -12,15 +12,16 @@ function terminalLines(plain: string): TerminalLine[] {
   return plain.split("\n").filter(Boolean).slice(-6).map((text) => text.startsWith("$ ") ? { kind: "cmd", text } : { kind: "dim", text });
 }
 
-export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now() }: {
+export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now(), updating = true }: {
   stream: ObserverStream; name: string; onOpen: (id: string) => void; liveThumb?: boolean;
-  pinned?: boolean; compared?: boolean; comparisonFull?: boolean; onPin?: ((id: string) => void) | undefined; onCompare?: ((id: string) => void) | undefined; now?: number | undefined;
+  pinned?: boolean; compared?: boolean; comparisonFull?: boolean; onPin?: ((id: string) => void) | undefined; onCompare?: ((id: string) => void) | undefined; now?: number | undefined; updating?: boolean;
 }) {
   const keyframe = keyframeHref(stream);
   const signal = signalFor(stream);
-  const liveUrl = isServedOrigin(window.location.protocol) ? liveEmbedUrl(stream) : null;
-  const active = isServedOrigin(window.location.protocol) && isActiveStream(stream);
-  const statusLabel = !isServedOrigin(window.location.protocol) && isActiveStream(stream) ? `Captured while ${stream.status}` : stream.statusLabel;
+  const canUpdate = updating && isServedOrigin(window.location.protocol);
+  const liveUrl = canUpdate ? liveEmbedUrl(stream) : null;
+  const active = canUpdate && isActiveStream(stream);
+  const statusLabel = !canUpdate && isActiveStream(stream) ? `Captured while ${stream.status}` : stream.statusLabel;
   const thought = active ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text) : undefined;
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const outcome = isActiveStream(stream) ? statusLabel : notable ?? (signal.flagged ? signal.label : statusLabel);
   const detailsLabel = `Participant details: ${name}`;
   const failed = keyframe !== null && keyframe === failedImage;
-  const sourceLabel = liveThumb && liveUrl ? "Live" : active ? "Capture" : !isServedOrigin(window.location.protocol) && isActiveStream(stream) ? "Snapshot" : null;
+  const sourceLabel = liveThumb && liveUrl ? "Live" : active ? "Capture" : !canUpdate && isActiveStream(stream) ? "Snapshot" : null;
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : null;
   return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id} aria-label={name} data-compared={compared || undefined}
     style={{ "--preview-ratio": viewport ? viewport.width / viewport.height : 1.6 } as CSSProperties}>

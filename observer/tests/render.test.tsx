@@ -146,6 +146,53 @@ describe("the share chip (#584)", () => {
   });
 });
 
+describe("portable snapshot feed mode", () => {
+  it("keeps captured running participants historical in the grid and frameless player", async () => {
+    const captured = structuredClone(data);
+    captured.streams = [{ ...captured.streams[0]!, status: "running", statusLabel: "Running",
+      embed: { kind: "iframe", url: "https://desktop.example.test/recorded-preview" } }];
+    await mount(<App data={captured} snapshot />);
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.querySelector(".card-outcome.active")).toBeNull();
+    expect(container.querySelector(".card-outcome")?.textContent).toBe("Snapshot");
+    expect(container.textContent).not.toContain("Waiting for the first capture");
+    await click(container.querySelector(".card-details-trigger") as Element);
+    expect(document.querySelector(".card-details")?.textContent).toContain("Captured while running");
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.textContent).toContain("This saved snapshot contains no recorded screenshots");
+    expect(container.textContent).toContain("participant status at capture: Running");
+  });
+
+  it("renders recorded evidence over HTTP without feed or history requests, including refresh events", async () => {
+    const fetch = vi.fn(async () => ({ ok: false }));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      await mount(<App data={data} snapshot />);
+      await act(async () => {
+        window.dispatchEvent(new Event("online"));
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      expect(container.querySelector(".run-status-update")?.textContent).toBe("Saved evidence · no updates");
+      expect(container.querySelector(".run-status-main")?.textContent).toContain("Recorded");
+      expect(container.textContent).not.toContain("Updates unavailable");
+      expect(container.querySelector(".run-status-update button")).toBeNull();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("does not infer snapshot mode from a completed run or data-controlled fields", async () => {
+    const fetch = vi.fn(async () => ({ ok: false }));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      await mount(<App data={{ ...data, snapshot: true } as ObserverData} />);
+      expect(fetch).toHaveBeenCalledWith("observer-data.json", expect.any(Object));
+      expect(container.querySelector(".run-status-update")?.textContent).toContain("Updates unavailable");
+      expect(container.querySelector(".run-status-update button")?.textContent).toBe("Retry");
+    } finally { vi.unstubAllGlobals(); }
+  });
+});
+
 describe("observer scaffold rendering the first-run golden", () => {
   it("renders the study grid: tally line + one card per participant", async () => {
     await mount(<App data={data} />);

@@ -29,10 +29,12 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.86.0`)
+## Current Program Truth (source `0.86.1`)
 
 The package source and repository implementation in this tree agree on these
 points:
+
+**Declared tasks and saved recordings, 2026-09-09 (#737, #738).** Task declarations now fail preflight when the execution path cannot consume them, before hooks, processes or paid allocation. Portable HTML exports stay saved recordings over HTTP, including snapshots captured while a participant was running. Ordinary served runs still report real update failures. See the [0.86.1 release note](../release/0.86.1-task-preflight-saved-recordings.md).
 
 **Participant evidence context, 2026-09-09 (#733).** New runs preserve each participant's authored mission and lane focus. The Observer distinguishes individual actions within a capture interval, including links and saved moments, and labels the capture's time relative to the action. Supported desktop SDK startup cleanup shares a bounded result between SDK-internal cleanup and Humanish's fallback (#734). See the [0.86.0 release note](../release/0.86.0-participant-evidence.md).
 

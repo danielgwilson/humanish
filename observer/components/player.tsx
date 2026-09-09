@@ -267,7 +267,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const nextFinding = rowIndex.findings.find((index) => index > frame);
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
-  const modeLabel = !updating ? "Offline recording" : active
+  const modeLabel = !updating ? "Saved recording" : active
     ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
     : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
 
