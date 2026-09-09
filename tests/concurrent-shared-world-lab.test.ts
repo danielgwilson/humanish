@@ -317,7 +317,6 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const config = concurrentConfig();
     config.actors[0]!.lanes!.forEach((lane, i) => { lane.instruction = `Review section ${i + 1}.`; });
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";
-    config.actors[0]!.tasks = [{ id: "unconsumed", goal: "Not sent by this route." }];
     const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun, hooks });
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
