@@ -68,6 +68,7 @@ describe("humanish export", () => {
     expect(html).toContain("https://example.test/x.png");
     expect(html).toContain("../run.json");
     expect(html).not.toContain("humanish-local-only");
+    expect(html).toContain('<meta name="humanish-observer-mode" content="snapshot">');
     expect(formatExportHuman(result)).toContain("1 image(s) embedded");
     // The file says what verify said, so its chrome can agree with the result envelope (#584).
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
@@ -83,7 +84,8 @@ describe("humanish export", () => {
     const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
     expect(slot).not.toBeNull();
     const data = JSON.parse(slot![1]!) as ObserverData;
-    expect(exported).toBe(renderObserverHtml(data));
+    expect(exported).toBe(renderObserverHtml(data, { snapshot: true }));
+    expect(renderObserverHtml(data)).not.toContain('<meta name="humanish-observer-mode"');
     expect(exported).not.toContain("OBSOLETE_RENDERER_SENTINEL");
     expect(exported).toContain(`data:image/png;base64,${PNG.toString("base64")}`);
     expect(await readFile(index, "utf8")).toBe(oldHtml);

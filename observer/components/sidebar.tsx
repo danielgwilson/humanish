@@ -3,7 +3,7 @@ import { historyRunHref, observerArtifactHref } from "@/lib/artifact-href";
 import type { HistoryIndex } from "@/lib/live";
 import type { ObserverData } from "@/lib/observer-data";
 
-export function Sidebar({ data, history, onRuns }: { data: ObserverData; history: HistoryIndex | null; onRuns: () => void }) {
+export function Sidebar({ data, history, onRuns, updating = true }: { data: ObserverData; history: HistoryIndex | null; onRuns: () => void; updating?: boolean }) {
   const [query, setQuery] = useState("");
   const [onlyRunning, setOnlyRunning] = useState(false);
   const [limit, setLimit] = useState(30);
@@ -19,8 +19,8 @@ export function Sidebar({ data, history, onRuns }: { data: ObserverData; history
     <label className="library-running"><input type="checkbox" checked={onlyRunning} onChange={(e) => { setOnlyRunning(e.target.checked); setLimit(30); }} /> Running only</label>
     {matches.slice(0, limit).map((run) => {
       const href = historyRunHref(run.runId);
-      const content = <><span className={`dot${isRunning(run) ? " active" : ["pass", "passed", "complete"].includes(run.status) ? " ok" : " bad"}`} />
-        <span className="run-entry"><span className="mono-id">{run.runId}</span><small>{run.runtimeState === "running" ? "Running" : run.runtimeState === "unknown" || run.runtimeState === "interrupted" ? "Status unconfirmed" : run.status}{run.createdAt && Number.isFinite(Date.parse(run.createdAt)) ? ` · ${new Date(run.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</small></span></>;
+      const content = <><span className={`dot${isRunning(run) ? updating ? " active" : "" : ["pass", "passed", "complete"].includes(run.status) ? " ok" : " bad"}`} />
+        <span className="run-entry"><span className="mono-id">{run.runId}</span><small>{!updating && isRunning(run) ? `Captured while ${run.status}` : run.runtimeState === "running" ? "Running" : run.runtimeState === "unknown" || run.runtimeState === "interrupted" ? "Status unconfirmed" : run.status}{run.createdAt && Number.isFinite(Date.parse(run.createdAt)) ? ` · ${new Date(run.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</small></span></>;
       return run.runId === data.run.runId ? <button key={run.runId} type="button" className="item" data-on="" onClick={onRuns} title={run.runId}>{content}</button>
         : href ? <a key={run.runId} className="item" href={href} title={run.runId}>{content}</a> : null;
     })}

@@ -27,8 +27,8 @@ const isFilters = (v: unknown): v is GridFilters => !!v && typeof v === "object"
 const compareRoute = () => window.location.hash.startsWith("#/compare");
 const routeCompareIds = () => new URLSearchParams(window.location.hash.split("?")[1]).getAll("lane").slice(0, 3);
 
-export function App({ data: initialData }: { data: ObserverData | null }) {
-  const { data, history, connection, retry } = useObserverFeed(initialData);
+export function App({ data: initialData, snapshot = false }: { data: ObserverData | null; snapshot?: boolean }) {
+  const { data, history, connection, retry } = useObserverFeed(initialData, snapshot);
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [comparison, setComparison] = useState(compareRoute);
@@ -143,8 +143,8 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
   return <Tooltip.Provider delay={350}><div className={`frame${monitoring ? " monitoring" : ""}`}>
     <a className="skip-observer" href="#observer-content" onClick={(event) => { event.preventDefault(); document.getElementById("observer-content")?.focus(); }}>Skip to evidence</a>
     <IconRail runsActive={!selected && !comparison && filters.status !== "__active"} liveActive={!selected && !comparison && filters.status === "__active"} onRuns={() => { setFilters(NO_FILTERS); toGrid(); }} onLive={() => { setFilters({ ...NO_FILTERS, status: "__active" }); toGrid(); }} />
-    {!selected && !comparison && sideOpen && !monitoring ? <Sidebar data={data} history={history} onRuns={toGrid} /> : null}
-    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} label="Run library"><Sidebar data={data} history={history} onRuns={() => { toGrid(); setDrawerOpen(false); }} /></Drawer>
+    {!selected && !comparison && sideOpen && !monitoring ? <Sidebar data={data} history={history} onRuns={toGrid} updating={connection.state !== "offline"} /> : null}
+    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} label="Run library"><Sidebar data={data} history={history} onRuns={() => { toGrid(); setDrawerOpen(false); }} updating={connection.state !== "offline"} /></Drawer>
     <div className="main">
       <Topbar data={data} selected={selected} comparison={comparison} filters={filters} onFilters={setFilters} onRuns={toGrid} onStep={stepParticipant} onLibrary={toggleLibrary} sideOpen={libraryAsDrawer ? drawerOpen : sideOpen} reviewControl={savedControl}
         gridControl={!selected && !comparison ? <label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label> : null}
@@ -156,8 +156,8 @@ export function App({ data: initialData }: { data: ObserverData | null }) {
       </>} />
       <main id="observer-content" tabIndex={-1} className={selected && model ? "content player-host" : "content"}>
         {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={openParticipant} onLocationChange={rememberComparison} />
-          : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} />
-            : <StudyGrid data={data} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} />}
+          : selected ? model ? <Player key={selected.id} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} updating={connection.state !== "offline"} />
+            : <StudyGrid data={data} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
       </main>
       <div className="statusbar"><span title={data.run.runId}>Study <b>{data.run.runId}</b></span><span className="links">{data.artifactLinks.map((link) => { const href = observerArtifactHref(link.href); return href ? <a key={link.href} href={href}>{link.label}</a> : null; })}</span></div>
     </div>

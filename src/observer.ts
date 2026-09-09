@@ -549,15 +549,18 @@ function newestSourceMtime(dir: string): number {
   return newest;
 }
 
-function renderObserverAppHtml(data: ObserverData): string {
-  return loadObserverArtifact()
+function renderObserverAppHtml(data: ObserverData, snapshot: boolean): string {
+  const artifact = loadObserverArtifact();
+  // A renderer-owned boot marker, outside the untrusted run-data contract. Only
+  // portable HTML exports opt out of a live feed; ordinary served pages still poll.
+  return (snapshot ? artifact.replace("</head>", '<meta name="humanish-observer-mode" content="snapshot"></head>') : artifact)
     .replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
     .replace(/<title>[^<]*<\/title>/, () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
 }
 
 /** Render current packaged UI around a validated/projected Observer snapshot. */
-export function renderObserverHtml(data: ObserverData): string {
-  return renderObserverAppHtml(data);
+export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean } = {}): string {
+  return renderObserverAppHtml(data, options.snapshot === true);
 }
 
 /** internal: consumed by observer-serve */

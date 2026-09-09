@@ -267,7 +267,7 @@ describe("player review controls", () => {
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: 2, mode: "live", playing: false });
     await render({ updating: false, onViewChange });
     expect(container.querySelector("iframe")).toBeNull();
-    expect(container.querySelector(".player-mode strong")?.textContent).toBe("Offline recording");
+    expect(container.querySelector(".player-mode strong")?.textContent).toBe("Saved recording");
     expect(container.textContent).toContain("participant status at capture");
     expect(container.querySelector('[aria-label="Jump to live"]')).toBeNull();
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: 2, mode: "replay", playing: false });

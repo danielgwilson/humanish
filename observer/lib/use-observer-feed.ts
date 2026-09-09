@@ -7,14 +7,14 @@ export interface ObserverConnection {
   lastReceivedAt: number | null;
 }
 
-export function useObserverFeed(initial: ObserverData | null) {
+export function useObserverFeed(initial: ObserverData | null, snapshot = false) {
   const [data, setData] = useState(initial);
   const [history, setHistory] = useState<HistoryIndex | null>(null);
-  const [connection, setConnection] = useState<ObserverConnection>({ state: isServedOrigin(window.location.protocol) ? "connecting" : "offline", lastReceivedAt: null });
+  const [connection, setConnection] = useState<ObserverConnection>({ state: !snapshot && isServedOrigin(window.location.protocol) ? "connecting" : "offline", lastReceivedAt: null });
   const [revision, setRevision] = useState(0);
   const retry = useCallback(() => setRevision((v) => v + 1), []);
   useEffect(() => {
-    if (!isServedOrigin(window.location.protocol)) return;
+    if (snapshot || !isServedOrigin(window.location.protocol)) return;
     let disposed = false;
     let runId = initial?.run.runId;
     let inFlight = false;
@@ -51,6 +51,6 @@ export function useObserverFeed(initial: ObserverData | null) {
     document.addEventListener("visibilitychange", refresh);
     window.addEventListener("online", refresh);
     return () => { disposed = true; clearTimeout(timer); controller?.abort(); document.removeEventListener("visibilitychange", refresh); window.removeEventListener("online", refresh); };
-  }, [initial, revision]);
+  }, [initial, revision, snapshot]);
   return { data, history, connection, retry };
 }

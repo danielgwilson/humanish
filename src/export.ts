@@ -217,7 +217,7 @@ export async function exportRun(
 
   // Evidence survives upgrades; obsolete renderer code does not. Use this installation
   // of the Observer rather than copying script/style bytes from the saved source HTML.
-  let output = renderObserverHtml(inlined as unknown as ObserverData);
+  let output = renderObserverHtml(inlined as unknown as ObserverData, { snapshot: true });
   const watermarked = !shareReady;
   if (watermarked) {
     const banner = localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code));
