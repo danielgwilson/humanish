@@ -278,7 +278,10 @@ try {
         for (const [density, expectedHeight] of [["compact", 200], ["comfortable", 280], ["large", 360]]) {
           await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
           await page.getByLabel("Preview size").selectOption(density);
-          await page.keyboard.press("Escape");
+          // selectOption does not move focus from the auto-focused close icon.
+          // Escape can dismiss that icon's tooltip first, leaving the menu open.
+          await page.getByRole("button", { name: "Close view options", exact: true }).click();
+          await page.locator(".pop-panel").waitFor({ state: "hidden" });
           const images = await inspectImages(page.locator(".thumb .keyframe"));
           assertFullFrames(images);
           const sizes = images.map((image) => {
