@@ -1,6 +1,6 @@
 # Current Goals
 
-Status date: 2026-09-07 (rev 22)
+Status date: 2026-09-09 (rev 23)
 
 This page is the current public-safe operating goal for `humanish`. Keep it
 short enough to reread before a coding session and concrete enough that future
@@ -29,10 +29,12 @@ study completed, reproduced, and produced a real accessibility finding via a
 keyboard-first participant
 ([docs/goals/email-gated-signup/receipts/](email-gated-signup/receipts/)).
 
-## Current Program Truth (source `0.84.1`)
+## Current Program Truth (source `0.85.0`)
 
 The package source and repository implementation in this tree agree on these
 points:
+
+**Observer watching and review, 2026-09-09 (#723, #724, #726, #728).** Grid previews preserve complete screens at a shared height, with compact captions and controls below the evidence. Run activity, live viewing, recorded replay and update freshness are distinct. Seeking, refresh and incoming captures preserve the selected viewing intent. The player adds elapsed-time review, zoom, saved moments and participant/cross-run comparison. The built TUI and observe serve existing evidence; exports contain no runtime desktop grants. See the [0.85.0 release note](../release/0.85.0-observer-review.md) for capabilities, acceptance evidence and limits.
 
 **Portable feedback acceptance commands, 2026-09-07 (#720).** Generated proof commands use the installed CLI from the evidence workspace, including standalone exports without a package manifest. Redrafting recognized first-party candidates projects exact legacy command templates without rewriting source candidates or receipts. Custom instructions remain unchanged. See the [0.84.1 release note](../release/0.84.1-portable-feedback.md).
 
