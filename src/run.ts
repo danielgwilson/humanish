@@ -1233,6 +1233,7 @@ export interface RunResult {
   warnings: string[];
   error?: {
     code:
+      | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_ACTOR_FANOUT_UNIMPLEMENTED"
       | "HUMANISH_APP_URL_OPTION_CONFLICT"
       | "HUMANISH_BROWSER_APP_CAPTURE_FAILED"

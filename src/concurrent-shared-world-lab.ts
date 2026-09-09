@@ -33,6 +33,7 @@
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
 // gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
 
+import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -194,6 +195,7 @@ export interface RunConcurrentSharedWorldLabOptions {
 }
 
 export type ConcurrentSharedWorldLabErrorCode =
+  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID"
@@ -744,6 +746,9 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     warnings: [],
     error: { code, message }
   });
+
+  const tasksReason = taskProtocolValidationReason(config, false);
+  if (tasksReason) return fail("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
 
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {

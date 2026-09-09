@@ -20,6 +20,7 @@
 // digest instead. Provisioned clone runs persist structured commit/env-name/state provenance
 // plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
+import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -179,6 +180,7 @@ export interface ScriptedBrowserLabResult {
   warnings: string[];
   error?: {
     code:
+      | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_SCRIPTED_LAB_FAILED"
       | "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
       | "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"
@@ -199,6 +201,13 @@ export interface ScriptedBrowserLabResult {
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
+  const tasksReason = taskProtocolValidationReason(options.config, false);
+  if (tasksReason) return {
+    schema: SCRIPTED_BROWSER_LAB_SCHEMA, ok: false, cwd: path.resolve(options.cwd), labId: options.config.id,
+    actor: options.config.actors[0]?.type ?? "", dryRun: options.dryRun,
+    runId: options.runId ?? "not-created", appUrl: options.config.subject.appUrl ?? "", sessions: [], warnings: [],
+    error: { code: "HUMANISH_LAB_TASKS_UNSUPPORTED", message: tasksReason }
+  };
   return withRunStatusScope(() => runScriptedBrowserLabInScope(options));
 }
 

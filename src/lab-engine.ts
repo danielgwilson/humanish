@@ -7,6 +7,7 @@
 // and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
+import path from "node:path";
 import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "./cua-actor-lab.js";
 import {
   runScriptedBrowserLab,
@@ -32,7 +33,7 @@ import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import { withRunStatusScope, type RunLabProvenance } from "./run-status.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
-import { routesToComputerUse, routesToConcurrentSharedWorld, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
+import { taskProtocolValidationReason, routesToComputerUse, routesToConcurrentSharedWorld, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
 
 export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "terminal" | "shared-world" | "concurrent-shared-world";
 
@@ -177,6 +178,26 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
 
 async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   const backend = selectLabBackend(config);
+  const tasksReason = taskProtocolValidationReason(config);
+  if (tasksReason && (backend === "synthetic" || backend === "smoke" || backend === "meta")) {
+    const cwd = path.resolve(options.cwd);
+    const error = { code: "HUMANISH_LAB_TASKS_UNSUPPORTED" as const, message: tasksReason };
+    if (backend === "synthetic") return { backend, result: {
+      schema: "humanish.run-result.v1", ok: false, cwd, warnings: [], error
+    } };
+    if (backend === "meta") return { backend, result: {
+      schema: "humanish.oss-meta-lab-result.v1", ok: false, cwd, warnings: [], error,
+      dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
+      liveRequested: resolveLabDryRun(config, options.dryRun, true) === false,
+      assignments: [], repos: [], sandboxes: []
+    } };
+    const at = new Date().toISOString();
+    return { backend, result: {
+      schema: "humanish.oss-lab-result.v1", ok: false, cwd, warnings: [], error,
+      runId: options.runId ?? "not-created", startedAt: at, completedAt: at,
+      sandboxPath: "", repos: [], cleanup: { kept: false, sandboxRemoved: false }
+    } };
+  }
   const fanout = config.subject.clone?.fanout ?? config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
 
   switch (backend) {

@@ -1,0 +1,723 @@
+[
+  {
+    "name": "shared-clone-sequential",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "clone",
+        "topology": "shared-world",
+        "repos": [
+          "example-org/collab-app"
+        ],
+        "serve": {
+          "install": "pnpm install",
+          "start": "pnpm start --host 0.0.0.0",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "state": {
+          "checkpoint": [
+            {
+              "name": "state",
+              "command": "printf synthetic-state"
+            }
+          ]
+        }
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture.",
+          "lanes": [
+            {
+              "id": "author",
+              "instruction": "Create a note."
+            },
+            {
+              "id": "reviewer",
+              "instruction": "Review the note."
+            }
+          ]
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000,
+        "concurrency": 1
+      }
+    },
+    "supported": false,
+    "backend": "shared-world"
+  },
+  {
+    "name": "shared-clone-concurrent",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "clone",
+        "topology": "shared-world",
+        "repos": [
+          "example-org/collab-app"
+        ],
+        "serve": {
+          "install": "pnpm install",
+          "start": "pnpm start --host 0.0.0.0",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "state": {
+          "checkpoint": [
+            {
+              "name": "state",
+              "command": "printf synthetic-state"
+            }
+          ]
+        },
+        "exposure": "synthetic"
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture.",
+          "lanes": [
+            {
+              "id": "author",
+              "instruction": "Create a note."
+            },
+            {
+              "id": "reviewer",
+              "instruction": "Review the note."
+            }
+          ]
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000,
+        "concurrency": 2
+      }
+    },
+    "supported": false,
+    "backend": "concurrent-shared-world"
+  },
+  {
+    "name": "shared-local-tree-sequential",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "local-tree",
+        "topology": "shared-world",
+        "serve": {
+          "install": "pnpm install",
+          "start": "pnpm start --host 0.0.0.0",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "state": {
+          "checkpoint": [
+            {
+              "name": "state",
+              "command": "printf synthetic-state"
+            }
+          ]
+        }
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture.",
+          "lanes": [
+            {
+              "id": "author",
+              "instruction": "Create a note."
+            },
+            {
+              "id": "reviewer",
+              "instruction": "Review the note."
+            }
+          ]
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000,
+        "concurrency": 1
+      }
+    },
+    "supported": false,
+    "backend": "shared-world"
+  },
+  {
+    "name": "shared-local-tree-concurrent",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "local-tree",
+        "topology": "shared-world",
+        "serve": {
+          "install": "pnpm install",
+          "start": "pnpm start --host 0.0.0.0",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "state": {
+          "checkpoint": [
+            {
+              "name": "state",
+              "command": "printf synthetic-state"
+            }
+          ]
+        },
+        "exposure": "synthetic"
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture.",
+          "lanes": [
+            {
+              "id": "author",
+              "instruction": "Create a note."
+            },
+            {
+              "id": "reviewer",
+              "instruction": "Review the note."
+            }
+          ]
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000,
+        "concurrency": 2
+      }
+    },
+    "supported": false,
+    "backend": "concurrent-shared-world"
+  },
+  {
+    "name": "shared-external-public",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "app-url",
+        "topology": "shared-world",
+        "appUrl": "https://example.com/collab",
+        "publicTarget": {
+          "owner": "synthetic-operator",
+          "authorized": true
+        }
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture.",
+          "lanes": [
+            {
+              "id": "author",
+              "instruction": "Create a note.",
+              "host": true
+            },
+            {
+              "id": "reviewer",
+              "instruction": "Review the note."
+            }
+          ]
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000,
+        "concurrency": 2
+      },
+      "policies": {
+        "allowPublicTargets": true
+      }
+    },
+    "supported": false,
+    "backend": "concurrent-shared-world"
+  },
+  {
+    "name": "terminal",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live",
+        "caps": {
+          "maxUsd": 1,
+          "maxJobs": 1,
+          "maxMinutes": 1
+        }
+      },
+      "subject": {
+        "source": "terminal-product",
+        "product": {
+          "name": "synthetic-widget-cli",
+          "publicSurfaces": [
+            "https://example.com/widget"
+          ]
+        }
+      },
+      "actors": [
+        {
+          "type": "codex-exec",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-terminal",
+        "runtimeAuth": "openai-env",
+        "timeoutMs": 60000,
+        "terminal": {
+          "transport": "exec-stream",
+          "stdin": "disabled"
+        }
+      }
+    },
+    "supported": false,
+    "backend": "terminal"
+  },
+  {
+    "name": "scripted-app-url",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live",
+        "ref": "scripted-first-run"
+      },
+      "subject": {
+        "source": "app-url",
+        "appUrl": "http://127.0.0.1:3000/"
+      },
+      "actors": [
+        {
+          "type": "scripted-browser",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "local",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": false,
+    "backend": "scripted"
+  },
+  {
+    "name": "scripted-clone",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live",
+        "ref": "scripted-first-run"
+      },
+      "subject": {
+        "source": "clone",
+        "repos": [
+          "example-org/collab-app"
+        ],
+        "exposure": "synthetic",
+        "serve": {
+          "start": "pnpm start --host 0.0.0.0",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "state": {
+          "seed": [
+            {
+              "name": "seed",
+              "command": "printf synthetic-seed"
+            }
+          ]
+        }
+      },
+      "actors": [
+        {
+          "type": "scripted-browser",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": false,
+    "backend": "scripted"
+  },
+  {
+    "name": "synthetic",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "dry-run"
+      },
+      "subject": {
+        "source": "this-repo"
+      },
+      "actors": [
+        {
+          "type": "synthetic-persona"
+        }
+      ]
+    },
+    "supported": false,
+    "backend": "synthetic"
+  },
+  {
+    "name": "smoke",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "clone",
+        "repos": [
+          "example-org/collab-app"
+        ]
+      },
+      "actors": [
+        {
+          "type": "synthetic-persona"
+        }
+      ]
+    },
+    "supported": false,
+    "backend": "smoke"
+  },
+  {
+    "name": "meta",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "clone",
+        "repos": [
+          "example-org/collab-app"
+        ]
+      },
+      "actors": [
+        {
+          "type": "humanish-setup"
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop"
+      }
+    },
+    "supported": false,
+    "backend": "meta"
+  },
+  {
+    "name": "cua-openai-computer-use-app-url",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "app-url",
+        "appUrl": "http://127.0.0.1:3000/"
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-openai-computer-use-clone",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "clone",
+        "serve": {
+          "start": "pnpm start",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "repos": [
+          "example-org/collab-app"
+        ]
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-openai-computer-use-local-tree",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "local-tree",
+        "serve": {
+          "start": "pnpm start",
+          "url": "http://127.0.0.1:3000/"
+        }
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-openai-computer-use-local-app",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "local-app",
+        "appUrl": "http://127.0.0.1:3000/"
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "local",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-openai-computer-use-desktop-cli",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "desktop-cli",
+        "product": {
+          "name": "synthetic-widget-cli",
+          "publicSurfaces": [
+            "https://example.com/widget"
+          ]
+        }
+      },
+      "actors": [
+        {
+          "type": "openai-computer-use",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-local-agent-app-url",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "app-url",
+        "appUrl": "http://127.0.0.1:3000/"
+      },
+      "actors": [
+        {
+          "type": "local-agent",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-local-agent-clone",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "clone",
+        "serve": {
+          "start": "pnpm start",
+          "url": "http://127.0.0.1:3000/"
+        },
+        "repos": [
+          "example-org/collab-app"
+        ]
+      },
+      "actors": [
+        {
+          "type": "local-agent",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-local-agent-local-tree",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "local-tree",
+        "serve": {
+          "start": "pnpm start",
+          "url": "http://127.0.0.1:3000/"
+        }
+      },
+      "actors": [
+        {
+          "type": "local-agent",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-local-agent-local-app",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "local-app",
+        "appUrl": "http://127.0.0.1:3000/"
+      },
+      "actors": [
+        {
+          "type": "local-agent",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "local",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  },
+  {
+    "name": "cua-local-agent-desktop-cli",
+    "config": {
+      "schema": "humanish.lab.v2",
+      "id": "task-route-preflight",
+      "scenario": {
+        "mode": "live"
+      },
+      "subject": {
+        "source": "desktop-cli",
+        "product": {
+          "name": "synthetic-widget-cli",
+          "publicSurfaces": [
+            "https://example.com/widget"
+          ]
+        }
+      },
+      "actors": [
+        {
+          "type": "local-agent",
+          "mission": "Explore the synthetic study fixture."
+        }
+      ],
+      "execution": {
+        "target": "e2b-desktop",
+        "timeoutMs": 60000
+      }
+    },
+    "supported": true,
+    "backend": "cua"
+  }
+]

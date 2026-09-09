@@ -21,6 +21,7 @@
 //   conformant humanish.actor-trace.v1 projection, whose `redaction.screenshots` records the
 //   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
+import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { readFile, realpath, rm } from "node:fs/promises";
@@ -526,6 +527,7 @@ export interface CuaLaneSummary {
 }
 
 export type CuaActorLabErrorCode =
+  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_FAILED"
   | "HUMANISH_CUA_LAB_KEYS_MISSING"
   | "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING"
@@ -3678,6 +3680,13 @@ function subjectProvenanceArg(
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+  const tasksReason = taskProtocolValidationReason(options.config, true);
+  if (tasksReason) return {
+    schema: CUA_ACTOR_LAB_SCHEMA, ok: false, cwd: path.resolve(options.cwd), labId: options.config.id,
+    actor: options.config.actors[0]?.type ?? "", dryRun: options.dryRun,
+    runId: options.runId ?? "not-created", appUrl: options.config.subject.appUrl ?? options.config.subject.serve?.url ?? "", lanes: [], warnings: [],
+    error: { code: "HUMANISH_LAB_TASKS_UNSUPPORTED", message: tasksReason }
+  };
   return withRunStatusScope(() => runCuaActorLabInScope(options));
 }
 
