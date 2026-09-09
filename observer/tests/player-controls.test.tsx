@@ -25,6 +25,10 @@ async function key(value: string, target: EventTarget = window) {
   await act(async () => target.dispatchEvent(new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true })));
 }
 function counter() { return container.querySelector(".counter")?.textContent; }
+async function filterActivity(value: string) {
+  const select = container.querySelector<HTMLSelectElement>('[aria-label="Filter activity"]')!;
+  await act(async () => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); });
+}
 function appendFrame() {
   model = { ...model, frames: [...model.frames, { index: model.frames.length, itemId: `frame-${model.frames.length}`, title: "Later capture", href: `../screenshots/later-${model.frames.length}.png`, atMs: 30_000 }] };
 }
@@ -38,6 +42,67 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); localStorage.clear(); window.history.replaceState(null, "", "/"); vi.restoreAllMocks(); });
 
 describe("player review controls", () => {
+  it("shows explicitly requested thinking while retaining the All evidence preference", async () => {
+    model = { ...model, rows: [
+      { id: "narration", kind: "reasoning", title: "Recorded narration", text: "I will inspect the next screen.", isFrame: false, frameIndex: 0 },
+      { id: "action", kind: "ui_action", title: "click (100, 100)", isFrame: false, frameIndex: 0 }
+    ] };
+    await render({ initialFrame: 0 });
+    const thinking = [...container.querySelectorAll("label")].find((label) => label.textContent?.trim() === "Thinking")!.querySelector<HTMLInputElement>("input")!;
+    await act(async () => thinking.click());
+    expect(container.querySelector(".thought-detail")).toBeNull();
+    await filterActivity("thoughts");
+    expect(container.querySelector(".thought-detail")?.textContent).toContain("I will inspect the next screen.");
+    expect(container.querySelector(".feed-empty")).toBeNull();
+    expect([...container.querySelectorAll("label")].some((label) => label.textContent?.trim() === "Thinking")).toBe(false);
+    await filterActivity("all");
+    expect(container.querySelector(".thought-detail")).toBeNull();
+    expect(container.querySelector(".arow")?.textContent).toContain("click (100, 100)");
+    expect(counter()).toBe("1 / 3");
+  });
+  it("shows run/setup warnings separately without inventing a capture or timestamp", async () => {
+    stream = { ...stream, timeline: [
+      { id: "setup", at: "2026-09-09T00:00:00.000Z", type: "setup.warning", level: "warn", message: "Browser bounds were corrected before participant entry." },
+      { id: "legacy", at: "unknown", type: "run.error", level: "error", message: "A run notice with no usable timestamp." },
+      { id: "informational", at: "2026-09-09T00:00:00.000Z", type: "run.info", level: "info", message: "An ordinary progress update." }
+    ] };
+    await render({ initialFrame: 1 });
+    const address = window.location.hash;
+    await filterActivity("findings");
+    const notices = container.querySelector('[aria-label="Run and setup notices"]')!;
+    expect(notices.textContent).toContain("Run and setup notices (2)");
+    expect(notices.textContent).toContain("separate from participant trace findings");
+    expect(notices.textContent).toContain("Browser bounds were corrected");
+    expect(notices.textContent).toContain("Time unavailable");
+    expect(notices.textContent).not.toContain("An ordinary progress update");
+    expect(notices.querySelector("time")?.dateTime).toBe("2026-09-09T00:00:00.000Z");
+    expect(notices.querySelectorAll("button, a")).toHaveLength(0);
+    expect(container.querySelector(".feed-empty")).toBeNull();
+    expect(container.querySelector<HTMLButtonElement>('button[title^="Frame-linked trace findings"]')?.disabled).toBe(true);
+    expect(model.rows).toHaveLength(0);
+    expect(window.location.hash).toBe(address);
+    expect(counter()).toBe("2 / 3");
+  });
+  it("pages long run notices without moving the recorded frame or losing notices", async () => {
+    stream = { ...stream, timeline: Array.from({ length: 95 }, (_, index) => ({
+      id: `setup-${index}`, at: "unknown", type: "setup.warning", level: "warn" as const, message: `Recorded setup notice ${index + 1}.`
+    })) };
+    await render({ initialFrame: 1 });
+    await filterActivity("findings");
+    const entries = () => [...container.querySelectorAll(".player-run-notices li")].map((entry) => entry.textContent);
+    expect(entries()).toHaveLength(40);
+    expect(entries()[0]).toContain("Recorded setup notice 1.");
+    await click("Next notices");
+    expect(entries()).toHaveLength(40);
+    expect(entries()[0]).toContain("Recorded setup notice 41.");
+    await click("Next notices");
+    expect(entries()).toHaveLength(15);
+    expect(entries().at(-1)).toContain("Recorded setup notice 95.");
+    await click("Previous notices");
+    expect(entries()[0]).toContain("Recorded setup notice 41.");
+    expect(counter()).toBe("2 / 3");
+    expect(window.location.hash).toBe("#/lane/participant/f/2");
+  });
   it("all seeks leave live; pausing the newest capture stays paused when frames arrive", async () => {
     await render();
     expect(container.querySelector("iframe")).not.toBeNull();
