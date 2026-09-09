@@ -5,6 +5,7 @@ import type { ObserverStream } from "@/lib/observer-data";
 import { NOTABLE_COMPLETION, signalFor } from "@/lib/signal";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
+import { ParticipantAssignment } from "./participant-assignment";
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
 
 function terminalLines(plain: string): TerminalLine[] {
@@ -62,6 +63,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
         <div className="card-details">
           <h3 className="participant-detail-name">{name}</h3>
+          <ParticipantAssignment stream={stream} />
           <div className="card-detail-actions">
             {onPin ? <button type="button" className="review-tool" aria-pressed={pinned} aria-label={`Pin participant ${name}`} onClick={() => onPin(stream.id)}><ReviewIcon name="pin" />Pin</button> : null}
             {onCompare ? <button type="button" className="review-tool" aria-pressed={compared} aria-label={`Compare participant ${name}`} disabled={!compared && comparisonFull} onClick={() => onCompare(stream.id)}><ReviewIcon name={compared ? "check" : "compare"} />Compare</button> : null}

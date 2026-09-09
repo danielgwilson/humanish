@@ -766,7 +766,8 @@ try {
     items.splice(6, 0, { id: "synthetic-finding", kind: "notice", status: "warning", lifecycle: "completed", title: "Synthetic recorded warning", text: "SYNTHETIC EXPLICIT FINDING", at: new Date(START + 22_000).toISOString() });
   } }, async ({ page, directory, record, snap }) => {
     await openLane(page); await page.getByRole("button", { name: "Next action", exact: true }).click();
-    assert((await displayedFrame(page)).endsWith("portrait-2.png"));
+    assert((await displayedFrame(page)).endsWith("portrait-1.png"));
+    assert(page.url().includes("/e/lane-1-action-1"));
     await page.getByRole("button", { name: "Next finding", exact: true }).click();
     await page.getByLabel("Filter activity").selectOption("findings");
     await page.locator(".acts").getByText(/SYNTHETIC EXPLICIT FINDING/).waitFor(); await snap("recorded-finding-filter");
@@ -785,6 +786,64 @@ try {
     const downloading = page.waitForEvent("download"); await page.getByRole("link", { name: "Original frame", exact: true }).click();
     const download = await downloading; record.checks.originalDownload = download.suggestedFilename();
     assert(/^portrait-\d+\.png$/.test(record.checks.originalDownload)); await download.saveAs(path.join(directory, "downloaded-original.png"));
+  });
+  for (const phone of [false, true]) await runCase(phone ? "event-context-phone" : "event-context-desktop", { phone, touch: phone, prepare() {
+    const items = data.streams[0].actor.items;
+    items.splice(2, 0, { id: "second-click", kind: "ui_action", lifecycle: "completed", title: "click (240, 480)", at: new Date(START + 8000).toISOString(), coord: { x: 240, y: 480 } });
+  } }, async ({ page, record, snap }) => {
+    await openLane(page);
+    const captured = await displayedFrame(page);
+    await page.locator('[data-entry-id="lane-1-action-1"]').click();
+    assert.equal(await page.locator(".pins .spin").count(), 1);
+    await page.locator('[data-entry-id="second-click"]').click();
+    assert.equal(await displayedFrame(page), captured);
+    assert.equal(await page.locator(".pins .spin").count(), 1);
+    assert.equal(await page.locator('.pins .tip').innerText(), "click (240, 480)");
+    assert.equal(await page.locator('[aria-current="true"]').count(), 1);
+    assert((await page.getByLabel("Selected evidence").innerText()).includes("1s before entry"));
+    assert(page.url().endsWith("/f/1/e/second-click"));
+    await page.getByLabel("Selected evidence").scrollIntoViewIfNeeded();
+    await snap("selected-second-action");
+    await page.reload();
+    await page.locator('[data-selected][data-entry-id="second-click"]').waitFor();
+    assert.equal(await displayedFrame(page), captured);
+    await page.getByRole("button", { name: "Saved moments", exact: true }).click();
+    await page.getByRole("button", { name: "Save current moment", exact: true }).click();
+    await page.getByRole("button", { name: "Close saved moments", exact: true }).click();
+    await page.getByRole("button", { name: "Next frame", exact: true }).click();
+    await page.getByRole("button", { name: "Saved moments", exact: true }).click();
+    await page.getByRole("button", { name: /frame 1 · click \(240, 480\)/ }).click();
+    await page.locator('[data-selected][data-entry-id="second-click"]').waitFor();
+    assert.equal(await displayedFrame(page), captured);
+    assert(page.url().endsWith("/f/1/e/second-click"));
+    const entries = JSON.parse(await page.evaluate(() => localStorage.getItem("humanish-observer-moments") ?? "[]"));
+    record.checks.savedEntries = entries;
+    await page.getByRole("button", { name: "Show capture interval", exact: true }).click();
+    assert(!page.url().includes("/e/"));
+    assert.equal(await page.locator(".pins .spin").count(), 2);
+    const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
+    record.checks = { ...record.checks, captured, eventId: "second-click", width };
+    await snap("capture-interval-restored");
+  });
+  await runCase("participant-assignment", { phone: true, touch: true, prepare() {
+    data.streams[0].assignment = { mission: "Create a short task list.", focus: "Use the keyboard throughout.", tasks: [{ id: "rename", goal: "Rename the first task." }] };
+    data.streams[1].assignment = { mission: "Create a short task list.", focus: "Use the visible pointer controls." };
+    data.run.scenario.goal = "FIRST PARTICIPANT COMPILED PROMPT MUST NOT BECOME ANOTHER ASSIGNMENT";
+  } }, async ({ page, record, snap }) => {
+    await openLane(page);
+    await page.locator('.participant-assignment summary').click();
+    assert((await page.locator('.assignment-body').innerText()).includes("Rename the first task."));
+    await snap("first-participant-assignment");
+    await page.getByRole("button", { name: "Next participant", exact: true }).click();
+    await page.locator('.participant-assignment summary').click();
+    assert((await page.locator('.assignment-body').innerText()).includes("Use the visible pointer controls."));
+    assert(!(await page.locator('main').innerText()).includes("Use the keyboard throughout."));
+    await page.getByRole("button", { name: "Next participant", exact: true }).click();
+    assert((await page.locator('.assignment-missing').innerText()).includes("not recorded"));
+    assert(!(await page.locator('main').innerText()).includes("FIRST PARTICIPANT COMPILED PROMPT"));
+    const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
+    record.checks = { distinctAssignments: true, legacyUnrecorded: true, width };
+    await snap("older-assignment-absent");
   });
   await runCase("missing-moment", {}, async ({ page, record, snap }) => {
     await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/999`);

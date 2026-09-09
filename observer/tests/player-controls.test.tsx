@@ -42,6 +42,94 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); localStorage.clear(); window.history.replaceState(null, "", "/"); vi.restoreAllMocks(); });
 
 describe("player review controls", () => {
+  it("shows only this participant's recorded assignment and keeps older absence explicit", async () => {
+    stream = { ...stream, assignment: { mission: "Add two tasks <script>not markup</script>", focus: "Use only the keyboard", tasks: [{ id: "rename", goal: "Rename the first task" }] } };
+    await render({ initialFrame: 0 });
+    const assignment = container.querySelector(".participant-assignment")!;
+    expect(assignment.textContent).toContain("Use only the keyboard");
+    expect(assignment.textContent).toContain("Rename the first task");
+    expect(assignment.querySelector("script")).toBeNull();
+    await act(async () => assignment.querySelector("summary")!.click());
+    expect(assignment.hasAttribute("open")).toBe(true);
+    await click("Hide inspector");
+    expect(container.querySelector(".participant-assignment")?.hasAttribute("open")).toBe(true);
+    delete stream.assignment;
+    await render({ initialFrame: 0 });
+    expect(container.querySelector(".participant-assignment")).toBeNull();
+    expect(container.querySelector(".assignment-missing")?.textContent).toBe("Assigned task not recorded for this participant.");
+    expect(container.querySelector(".assignment-missing")?.textContent).not.toContain(data.run.scenario.goal);
+  });
+  function intervalEntries() {
+    // The two-click shape was captured in a retained drawDB run: two distinct
+    // actions share one preceding screenshot and require distinct selections.
+    model = { ...model, rows: [
+      { id: "capture", kind: "screenshot", title: "Capture", frameIndex: 0, isFrame: true, atMs: 10_000 },
+      { id: "ui_action-016", kind: "ui_action", title: "click (720, 348)", frameIndex: 0, isFrame: false, atMs: 15_000, coord: { x: 720, y: 348 } },
+      { id: "ui_action-017", kind: "ui_action", title: "click (999, 686)", frameIndex: 0, isFrame: false, atMs: 15_500, coord: { x: 999, y: 686 } },
+      { id: "thought", kind: "reasoning", title: "Reported plan", text: "I will open the menu.", frameIndex: 1, isFrame: false, atMs: 20_000 }
+    ] };
+    stream = { ...stream, viewport: { width: 1280, height: 800 } };
+  }
+  async function entry(id: string) {
+    const row = container.querySelector<HTMLElement>(`[data-entry-id="${id}"]`)!;
+    await act(async () => row.click());
+  }
+  it("distinguishes two actions after one capture and retains the chosen action across polls", async () => {
+    intervalEntries();
+    await render({ initialFrame: 0 });
+    expect(container.querySelectorAll(".pins .spin")).toHaveLength(2);
+    await entry("ui_action-016");
+    expect(counter()).toBe("1 / 3");
+    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain("Recorded action · 00:05click (720, 348)");
+    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain("Capture 00:00 · 5s before entry");
+    expect(container.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+    expect(container.querySelector(".pins .spin .tip")?.textContent).toBe("click (720, 348)");
+    await entry("ui_action-017");
+    expect(counter()).toBe("1 / 3");
+    expect(container.querySelectorAll(".pins .spin")).toHaveLength(1);
+    expect(container.querySelector(".pins .spin .tip")?.textContent).toBe("click (999, 686)");
+    expect(window.location.hash).toBe("#/lane/participant/f/1/e/ui_action-017");
+    model = structuredClone(model);
+    await render({ initialFrame: 0 });
+    expect(container.querySelector('[aria-current="true"]')?.getAttribute("data-entry-id")).toBe("ui_action-017");
+    await click("Show capture interval");
+    expect(container.querySelectorAll(".pins .spin")).toHaveLength(2);
+    expect(window.location.hash).toBe("#/lane/participant/f/1");
+  });
+  it("Next action visits each recorded action within one capture interval", async () => {
+    intervalEntries();
+    await render({ initialFrame: 0 });
+    await click("Next action");
+    expect(window.location.hash).toContain("/e/ui_action-016");
+    await click("Next action");
+    expect(window.location.hash).toContain("/e/ui_action-017");
+    expect([...container.querySelectorAll("button")].find((button) => button.textContent === "Next action")?.disabled).toBe(true);
+    await click("Next frame");
+    expect(window.location.hash).toBe("#/lane/participant/f/2");
+    expect(container.querySelectorAll('[aria-current="true"]')).toHaveLength(0);
+  });
+  it("restores event addresses and does not substitute another event when evidence disappears", async () => {
+    intervalEntries();
+    await render({ initialFrame: 0, initialEventId: "ui_action-017" });
+    expect(container.querySelector(".pins .tip")?.textContent).toBe("click (999, 686)");
+    model = { ...model, rows: model.rows.filter((row) => row.id !== "ui_action-017") };
+    await render({ initialFrame: 0, initialEventId: "ui_action-017" });
+    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain("selected entry is unavailable");
+    expect(container.querySelectorAll(".pins .spin")).toHaveLength(0);
+    expect(container.querySelectorAll('[data-on]')).toHaveLength(1); // filmstrip only
+    expect(window.location.hash).toContain("/e/ui_action-017");
+    await render({ initialFrame: 0, initialEventId: null, navigationRevision: 1 });
+    expect(window.location.hash).toBe("#/lane/participant/f/1");
+  });
+  it("labels selected narration and unknown event time without inventing action coordinates", async () => {
+    intervalEntries();
+    delete model.rows[3]!.atMs;
+    await render({ initialFrame: 1, initialEventId: "thought" });
+    const context = container.querySelector('[aria-label="Selected evidence"]')!;
+    expect(context.textContent).toContain("Reported thinking · Time unavailable");
+    expect(context.textContent).toContain("I will open the menu.");
+    expect(container.querySelectorAll(".pins .spin")).toHaveLength(0);
+  });
   it("shows explicitly requested thinking while retaining the All evidence preference", async () => {
     model = { ...model, rows: [
       { id: "narration", kind: "reasoning", title: "Recorded narration", text: "I will inspect the next screen.", isFrame: false, frameIndex: 0 },

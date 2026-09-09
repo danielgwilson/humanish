@@ -1,0 +1,20 @@
+.participant-assignment { flex: none; min-width: 0; border-bottom: 1px solid var(--line-soft); color: var(--ink); }
+.participant-assignment summary { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 6px 16px; cursor: pointer; }
+.participant-assignment summary::after { content: "+"; margin-left: auto; flex: none; font: 14px var(--mono); color: var(--muted); }
+.participant-assignment[open] summary::after { content: "−"; }
+.participant-assignment summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.assignment-label { flex: none; font: 11px var(--mono); color: var(--muted); }
+.assignment-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 13px/1.5 var(--sans); }
+.assignment-body { max-height: 220px; overflow: auto; padding: 0 16px 12px; font: 14px/1.6 var(--sans); overflow-wrap: anywhere; }
+.assignment-body p { margin: 0 0 10px; white-space: pre-wrap; }
+.assignment-body h3 { margin: 12px 0 4px; font: 11px var(--mono); color: var(--muted); }
+.assignment-body ol { padding-left: 22px; margin: 4px 0; }
+.assignment-body li { margin: 4px 0; white-space: pre-wrap; }
+.assignment-missing { flex: none; margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--line-soft); font: 11px/1.5 var(--sans); color: var(--muted); }
+.card-details .participant-assignment summary, .card-details .assignment-missing { padding-inline: 0; }
+.card-details .assignment-body { padding-inline: 0; }
+@media (max-width: 880px) {
+  .participant-assignment summary { min-height: 44px; gap: 8px; }
+  .assignment-preview { font-size: 12px; }
+  .assignment-body { font-size: 15px; }
+}

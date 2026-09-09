@@ -6,13 +6,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDuration } from "@/lib/artifact-href";
 import { liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
-import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel } from "@/lib/player-model";
+import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel, type PlayerRow } from "@/lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
 import { participantLabels } from "@/lib/participant-label";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
+import { ParticipantAssignment } from "./participant-assignment";
 import "@/styles/player.css";
 
 type Tab = "actions" | "details" | "report";
@@ -48,8 +49,9 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null, navigationRevision = 0, updating = true, onViewChange }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
+  initialEventId?: string | null;
   /** An explicit in-app navigation may repeat the original address after local seeking. */
   navigationRevision?: number;
   /** Source capability, not the most recent poll result; transient failures stay updating. */
@@ -59,11 +61,11 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const preparing = stream.status === "queued" || stream.status === "preparing";
   const active = updating && (stream.status === "running" || preparing);
   const lifecycle = preparing ? "Preparing" : "Running";
-  const sourcePlayback = useCallback((addressed: number | null, mode: "live" | "replay" | null) => openPlayback(
+  const sourcePlayback = useCallback((addressed: number | null, mode: "live" | "replay" | null, eventId?: string | null) => openPlayback(
     model, active, !updating && mode === "live" && addressed === null ? Math.max(0, model.frames.length - 1) : addressed,
-    updating ? mode : "replay"
+    updating ? mode : "replay", eventId
   ), [model, active, updating]);
-  const [state, setState] = useState(() => sourcePlayback(initialFrame, initialMode));
+  const [state, setState] = useState(() => sourcePlayback(initialFrame, initialMode, initialEventId));
   const [previousUpdating, setPreviousUpdating] = useState(updating);
   if (previousUpdating !== updating) {
     setPreviousUpdating(updating);
@@ -71,11 +73,11 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   }
   // A URL navigation is a new instruction even in the same participant. Adjust before
   // commit so a stale frame cannot overwrite the incoming address in a later effect.
-  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}:${navigationRevision}`;
+  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}:${initialEventId ?? "none"}:${navigationRevision}`;
   const [previousAddress, setPreviousAddress] = useState(address);
   if (address !== previousAddress) {
     setPreviousAddress(address);
-    setState(sourcePlayback(initialFrame, initialMode));
+    setState(sourcePlayback(initialFrame, initialMode, initialEventId));
   }
   const [preferences, setPreferences] = useState(readPreferences);
   const [zoom, setZoom] = useState<Zoom>("fit");
@@ -96,6 +98,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const frames = model.frames;
   const frame = playbackIndex(state, model);
   const current = frame >= 0 ? frames[frame] : undefined;
+  const selectedRow = state.eventId ? model.rows.find((row) => row.id === state.eventId && !row.isFrame && row.frameIndex === frame) : undefined;
   const following = state.mode === "live";
   const live = following && active ? liveEmbedUrl(stream) : null;
   const playing = state.playing;
@@ -104,8 +107,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   useEffect(() => {
-    onViewChangeRef.current?.({ frame: selectedFrame, mode: viewMode, playing });
-  }, [selectedFrame, viewMode, playing]);
+    onViewChangeRef.current?.({ frame: selectedFrame, mode: viewMode, playing, ...(state.eventId ? { eventId: state.eventId } : {}) });
+  }, [selectedFrame, viewMode, playing, state.eventId]);
   const actor = stream.actor;
   const viewport = stream.viewport;
   // Computer-use actions use desktop pixels, not the browser CSS layout viewport.
@@ -135,10 +138,15 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     if (notableEnd && frames.length > 0) findings.add(frames.length - 1);
     return { pins, actions: [...actions], findings: [...findings], waits, thoughtCount, actionCount };
   }, [model, notableEnd, frames.length]);
-  const currentPins = rowIndex.pins.get(frame) ?? [];
+  const currentPins = state.eventId ? selectedRow?.coord ? [selectedRow] : [] : rowIndex.pins.get(frame) ?? [];
   const skipDuration = preferences.skipWaits && rowIndex.waits.has(frame) && !rowIndex.actions.includes(frame) ? Math.max(0, hold - 1000) : 0;
   const seek = useCallback((index: number) => {
     setState(seekPlayback(model, index));
+    setFeedPage(null);
+    setNotice(null);
+  }, [model]);
+  const seekEntry = useCallback((row: PlayerRow) => {
+    setState(seekPlayback(model, row.frameIndex, false, row.isFrame ? undefined : row.id));
     setFeedPage(null);
     setNotice(null);
   }, [model]);
@@ -159,7 +167,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     const navigate = () => {
       const route = parseHash(window.location.hash);
       if (route.laneId !== stream.id) return;
-      setState(sourcePlayback(route.frame, route.mode ?? null));
+      setState(sourcePlayback(route.frame, route.mode ?? null, route.eventId));
       setFeedPage(null);
     };
     window.addEventListener("hashchange", navigate);
@@ -169,8 +177,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   useEffect(() => {
     // Keep following intent in the address, including before the first capture.
     if (following && active) replaceHash(formatHash(stream.id, null, "live"));
-    else if (current) replaceHash(formatHash(stream.id, current.index));
-  }, [following, active, playing, current, stream.id]);
+    else if (current) replaceHash(formatHash(stream.id, current.index, null, state.eventId));
+  }, [following, active, playing, current, stream.id, state.eventId]);
   const nextFrameId = frames[frame + 1]?.itemId ?? null;
   useEffect(() => {
     if (!playing || frame < 0) return;
@@ -210,7 +218,12 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   }), [model.rows, filter, showThoughts]);
   const runNotices = useMemo(() => stream.timeline.filter((event) => event.level === "warn" || event.level === "error"), [stream.timeline]);
   const groups = useMemo(() => groupPlayerRows(filteredRows, groupWaits), [filteredRows, groupWaits]);
-  const activeGroup = Math.max(0, groups.findIndex((group) => group.first.frameIndex <= frame && group.last.frameIndex >= frame));
+  const rowPositions = useMemo(() => new Map(model.rows.map((row, index) => [row.id, index])), [model.rows]);
+  const selectedPosition = selectedRow ? rowPositions.get(selectedRow.id) : undefined;
+  const groupSelected = (first: PlayerRow, last: PlayerRow) => selectedPosition !== undefined
+    && selectedPosition >= (rowPositions.get(first.id) ?? -1) && selectedPosition <= (rowPositions.get(last.id) ?? -1);
+  const activeGroup = Math.max(0, groups.findIndex((group) => selectedRow ? groupSelected(group.first, group.last)
+    : group.first.frameIndex <= frame && group.last.frameIndex >= frame));
   const feedWindow = boundedWindow(groups.length, feedPage ?? activeGroup, FEED_LIMIT);
   const filmWindow = boundedWindow(frames.length, Math.max(0, frame), FILMSTRIP_LIMIT);
   useEffect(() => {
@@ -228,8 +241,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       }
     };
     revealWithin(filmRef.current, '[data-on]', true);
-    revealWithin(feedRef.current, '[data-on]', false);
-  }, [frame, feedPage, tab]);
+    revealWithin(feedRef.current, selectedRow ? '[data-selected]' : '[data-on]', false);
+  }, [frame, feedPage, tab, selectedRow?.id]);
 
   const toggleFullscreen = async () => {
     try {
@@ -242,14 +255,15 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const copyMoment = async () => {
     if (!current) return;
     // Deliberately copies a replay address, even while following the live desktop.
-    const link = `${window.location.href.split("#")[0] ?? ""}${formatHash(stream.id, current.index)}`;
+    const link = `${window.location.href.split("#")[0] ?? ""}${formatHash(stream.id, current.index, null, selectedRow?.id)}`;
     try {
       if (!navigator.clipboard?.writeText) throw new Error("unavailable");
       await navigator.clipboard.writeText(link);
       setManualLink(null); setNotice("Link copied to this recorded moment.");
     } catch { setManualLink(link); setNotice("Copy this moment link below. Clipboard access is unavailable."); }
   };
-  const nextAction = rowIndex.actions.find((index) => index > frame);
+  const nextAction = model.rows.find((row, index) => isActionRow(row)
+    && (selectedPosition === undefined ? row.frameIndex >= frame : index > selectedPosition));
   const nextFinding = rowIndex.findings.find((index) => index > frame);
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
@@ -260,7 +274,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   return <div className="player evidence-player" data-inspector={preferences.inspector ? "open" : "closed"}>
     <div className="viewer" ref={viewerRef}>
       <div className="player-heading">
-        <div className="player-mode"><strong>{modeLabel}</strong>
+        <div className="player-mode"><b className="player-participant">{participantLabels(data.streams).get(stream.id) ?? stream.label}</b><strong>{modeLabel}</strong>
           <span>{!updating ? `Saved snapshot · participant status at capture: ${stream.statusLabel || stream.status}${current?.atMs !== undefined ? ` · ${new Date(current.atMs).toISOString()}` : ""}` : live ? "Read-only desktop; connection health is managed by the provider." : following && active && current
             ? captureAge === null ? "Capture time unavailable" : `Captured ${formatDuration(captureAge)} ago`
             : current?.atMs !== undefined ? `Captured ${new Date(current.atMs).toISOString()}` : "Capture timestamps unavailable"}</span>
@@ -272,6 +286,23 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         {active && !following ? <button type="button" className="tbtn live-jump" aria-label="Jump to live" onClick={jumpToLive}>Go live</button> : null}
         <button type="button" className="tbtn" aria-label={preferences.inspector ? "Hide inspector" : "Show inspector"} aria-expanded={preferences.inspector}
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
+      </div>
+      <ParticipantAssignment stream={stream} />
+      <div className="player-entry-context" aria-label="Selected evidence">
+        {selectedRow ? <>
+          <span className="entry-label">{selectedRow.kind === "reasoning" ? "Reported thinking" : isActionRow(selectedRow) ? "Recorded action" : isWaitRow(selectedRow) ? "Recorded wait" : "Recorded entry"}
+            {selectedRow.atMs !== undefined ? ` · ${model.paced === "recorded" ? formatElapsed(rowElapsedMs(model, selectedRow)) : new Date(selectedRow.atMs).toISOString()}` : " · Time unavailable"}
+          </span>
+          <span className="entry-title">{selectedRow.title}</span>
+          {selectedRow.text ? <details className="entry-text"><summary>Read entry</summary><p>{selectedRow.text}</p></details> : null}
+          <span className="entry-capture">{current?.atMs !== undefined ? `Capture ${model.paced === "recorded" ? formatElapsed(elapsed) : new Date(current.atMs).toISOString()}` : `Capture ${frame + 1} · time unavailable`}
+            {current?.atMs !== undefined && selectedRow.atMs !== undefined
+              ? current.atMs === selectedRow.atMs ? " · same recorded time"
+                : ` · ${formatDuration(Math.abs(selectedRow.atMs - current.atMs))} ${selectedRow.atMs > current.atMs ? "before" : "after"} entry`
+              : " · associated by trace order"}</span>
+          <button type="button" className="tbtn" onClick={() => seek(frame)}>Show capture interval</button>
+        </> : state.eventId ? <span>The selected entry is unavailable in this capture interval. Choose an entry from the activity list.</span>
+          : <span>{live ? "Live desktop · select recorded activity to inspect an entry." : `${currentPins.length ? `${currentPins.length} recorded ${currentPins.length === 1 ? "pin" : "pins"} in this capture interval. ` : ""}Select an activity entry to inspect its time and location.`}</span>}
       </div>
       <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
@@ -316,12 +347,12 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div>
       <div className="player-review-tools">
         <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>
-        <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seek(nextAction); }}>Next action</button>
+        <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seekEntry(nextAction); }}>Next action</button>
         <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next finding</button>
         <label className="zoom-control">View <select aria-label="Image zoom" value={String(zoom)} disabled={live !== null} onChange={(event) => setZoom(event.target.value === "fit" || event.target.value === "actual" ? event.target.value : Number(event.target.value))}>
           <option value="fit">Fit</option><option value="actual">Actual size</option><option value="0.5">50%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
         </select></label>
-        <button type="button" className="tbtn" disabled={!current} onClick={() => { void copyMoment(); }}>Copy moment link</button>
+        <button type="button" className="tbtn" disabled={!current || (!!state.eventId && !selectedRow)} onClick={() => { void copyMoment(); }}>Copy moment link</button>
         {current ? <a className="tbtn" href={current.href} target="_blank" rel="noopener noreferrer" download>Original frame</a> : null}
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
@@ -367,12 +398,14 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
             {groups.slice(feedWindow.start, feedWindow.end).map(({ first: row, last, count }) => {
               const stamp = formatElapsed(rowElapsedMs(model, row));
               const text = row.text || row.title;
-              const attrs = { ...(row.isFrame ? { "data-frame-row": row.frameIndex } : {}), ...(row.frameIndex <= frame && last.frameIndex >= frame ? { "data-on": "" } : {}) };
+              const attrs = { "data-entry-id": row.id, ...(row.isFrame ? { "data-frame-row": row.frameIndex } : {}),
+                ...(selectedRow ? groupSelected(row, last) ? { "data-on": "", "data-selected": "", "aria-current": "true" as const } : {}
+                  : !state.eventId && row.frameIndex <= frame && last.frameIndex >= frame ? { "data-on": "" } : {}) };
               return row.kind === "reasoning" ? <details className="thought-detail" key={row.id}>
-                <summary className="arow thought" {...attrs} title="Reported thinking — the participant's own narration, not ground truth" onClick={() => seek(row.frameIndex)}>
+                <summary className="arow thought" {...attrs} title="Reported thinking — the participant's own narration, not ground truth" onClick={() => seekEntry(row)}>
                   <span className="tc">{stamp}</span><span className="atext">{renderThoughtText(text).map((part, index) => typeof part === "string" ? part : <strong key={index}>{part.bold}</strong>)}</span>
                 </summary><p className="thought-full">{text}</p>
-              </details> : <button key={row.id} type="button" className={row.isFrame ? "arow shot" : "arow"} {...attrs} onClick={() => seek(row.frameIndex)}>
+              </details> : <button key={row.id} type="button" className={row.isFrame ? "arow shot" : "arow"} {...attrs} onClick={() => seekEntry(row)}>
                 <span className="tc">{stamp}</span><span className="atext">{count > 1 ? `${count} recorded waits · ${stamp}–${formatElapsed(rowElapsedMs(model, last))}` : `${row.title}${row.text ? ` — ${row.text}` : ""}`}</span>
               </button>;
             })}
@@ -445,7 +478,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
             ) : null}
             {data.run.knownGaps.length > 0 ? (
               <div className="blk">
-                <span className="o-label">Known gaps</span>
+                <span className="o-label">Study-level gaps</span>
                 {data.run.knownGaps.map((gap) => (
                   <p key={gap} className="verbatim dim">{gap}</p>
                 ))}

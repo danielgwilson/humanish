@@ -20,10 +20,11 @@ export function usePreference<T>(key: string, fallback: T, accepts: (value: unkn
 export type GridDensity = "comfortable" | "compact" | "large";
 export const isDensity = (v: unknown): v is GridDensity => v === "comfortable" || v === "compact" || v === "large";
 export const isStringList = (v: unknown): v is string[] => Array.isArray(v) && v.length <= 50 && v.every((id) => typeof id === "string" && id.length <= 256);
-export interface SavedMoment { runId: string; streamId: string; itemId: string; frame: number; savedAt: string; }
+export interface SavedMoment { runId: string; streamId: string; itemId: string; frame: number; savedAt: string; eventId?: string; }
 export const isMoments = (v: unknown): v is SavedMoment[] => Array.isArray(v) && v.length <= 50 && v.every((entry: unknown) => {
   if (!entry || typeof entry !== "object") return false;
   const e = entry as Record<string, unknown>;
   return ["runId", "streamId", "itemId", "savedAt"].every((key) => typeof e[key] === "string" && (e[key] as string).length <= 256)
-    && typeof e.frame === "number" && Number.isInteger(e.frame) && e.frame >= 0 && e.frame < 100_000;
+    && typeof e.frame === "number" && Number.isInteger(e.frame) && e.frame >= 0 && e.frame < 100_000
+    && (e.eventId === undefined || typeof e.eventId === "string" && e.eventId.length > 0 && e.eventId.length <= 256);
 });

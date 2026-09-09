@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { formatDuration, keyframeHref } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
+import { participantLabels } from "@/lib/participant-label";
+import { ParticipantAssignment } from "./participant-assignment";
 
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
 
@@ -28,6 +30,7 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
   const affordance = actor?.affordanceUse;
   return (
     <div className="stub">
+      <ParticipantAssignment stream={stream} />
       <p className="stub-note o-mono">
         This lane recorded no screenshot frames, so the review player has no timeline to run. Below is
         the recorded evidence it carries.
@@ -40,7 +43,7 @@ export function ParticipantStub({ data, stream }: { data: ObserverData; stream: 
       ) : null}
       <div className="kv">
         <span className="k">Persona</span>
-        <span className="v">{data.run.persona.name}</span>
+        <span className="v">{participantLabels(data.streams).get(stream.id) ?? stream.sim.personaId}</span>
         <span className="k">Scenario</span>
         <span className="v">{data.run.scenario.title}</span>
         <span className="k">Lane</span>

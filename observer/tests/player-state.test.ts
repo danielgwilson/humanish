@@ -9,6 +9,16 @@ function model(count = 3): PlayerModel {
 }
 
 describe("explicit playback intent", () => {
+  it("round-trips an encoded event address while preserving legacy frame links", () => {
+    expect(parseHash(formatHash("lane/one", 4, null, "action/a b"))).toEqual({ laneId: "lane/one", frame: 4, eventId: "action/a b" });
+    expect(parseHash("#/lane/example/f/1/e/%E0%A4%A")).toEqual({ laneId: null, frame: null });
+    expect(parseHash("#/lane/example/f/0/e/action")).toEqual({ laneId: null, frame: null });
+    expect(parseHash(`#/lane/example/f/1/e/${"a".repeat(257)}`)).toEqual({ laneId: null, frame: null });
+    expect(formatHash("example", 0, "live", "action")).toBe("#/lane/example/live");
+    expect(openPlayback(model(), false, 0, "replay", "action").eventId).toBe("action");
+    expect(seekPlayback(model(), 1).eventId).toBeUndefined();
+    expect(seekPlayback(model(), 1, true, "action").eventId).toBeUndefined();
+  });
   it("keeps paused latest evidence stable while a following viewer advances", () => {
     const before = model();
     const paused = seekPlayback(before, 2);

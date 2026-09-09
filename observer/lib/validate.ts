@@ -61,6 +61,9 @@ function validStream(value: unknown): boolean {
   if (embed !== undefined && (!object(embed) || typeof embed.kind !== "string" || !optionalStrings(embed, ["url", "title"]))) return false;
   const ui = value.ui;
   if (ui !== undefined && (!object(ui) || !optionalStrings(ui, ["route", "state", "intent"]))) return false;
+  const assignment = value.assignment;
+  if (assignment !== undefined && (!object(assignment) || !strings(assignment, ["mission"]) || !optionalString(assignment.focus)
+    || (assignment.tasks !== undefined && !list(assignment.tasks, (task) => object(task) && strings(task, ["id", "goal"]))))) return false;
   const actor = value.actor;
   if (actor !== undefined && (!object(actor) || !strings(actor, ["provider", "reason", "completionReason"])
     || !finite(actor.durationMs) || !object(actor.ids) || !optionalString(actor.ids.model) || !object(actor.redaction)

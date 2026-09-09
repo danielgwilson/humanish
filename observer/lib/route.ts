@@ -11,9 +11,11 @@ export interface HashRoute {
   frame: number | null;
   /** Explicit following intent; legacy frame links remain unchanged. */
   mode?: "live" | "replay";
+  /** Optional recorded trace entry within the addressed capture interval. */
+  eventId?: string;
 }
 
-const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/(live)|\/f\/(\d+))?$/;
+const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/(live)|\/f\/(\d+)(?:\/e\/([^/]+))?)?$/;
 
 export function parseHash(hash: string): HashRoute {
   const match = LANE_ROUTE.exec(hash);
@@ -23,16 +25,25 @@ export function parseHash(hash: string): HashRoute {
   if (match[2] === "live") return { laneId, frame: null, mode: "live" };
   if (match[3] === undefined) return { laneId, frame: null };
   const oneBased = Number(match[3]);
-  return { laneId, frame: Number.isSafeInteger(oneBased) && oneBased >= 1 ? oneBased - 1 : null };
+  const frame = Number.isSafeInteger(oneBased) && oneBased >= 1 ? oneBased - 1 : null;
+  let eventId: string | undefined;
+  if (match[4] !== undefined) {
+    try { eventId = decodeURIComponent(match[4]); } catch { return { laneId: null, frame: null }; }
+    if (!eventId || eventId.length > 256 || frame === null) return { laneId: null, frame: null };
+  }
+  return { laneId, frame, ...(eventId === undefined ? {} : { eventId }) };
 }
 
-export function formatHash(laneId: string | null, frame: number | null, mode?: "live" | "replay" | null): string {
+export function formatHash(laneId: string | null, frame: number | null, mode?: "live" | "replay" | null, eventId?: string | null): string {
   if (laneId === null) return "";
   let encoded: string;
   try { encoded = encodeURIComponent(laneId); } catch { return ""; }
   const base = `#/lane/${encoded}`;
   if (mode === "live") return `${base}/live`;
-  return frame === null ? base : `${base}/f/${frame + 1}`;
+  if (frame === null) return base;
+  let entry = "";
+  try { if (eventId && eventId.length <= 256) entry = `/e/${encodeURIComponent(eventId)}`; } catch { /* Keep the usable capture address. */ }
+  return `${base}/f/${frame + 1}${entry}`;
 }
 
 /** Write the hash without growing history (frame scrubs); no-op when unchanged. */
