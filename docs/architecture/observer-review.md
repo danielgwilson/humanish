@@ -128,3 +128,17 @@ Interaction references rechecked September 8, 2026:
 [iframe sandboxing](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe),
 [Playwright Trace Viewer](https://playwright.dev/docs/trace-viewer), and
 [PostHog recording controls](https://posthog.com/docs/session-replay/how-to-watch-recordings).
+
+### Moving between review views
+
+The library button opens a drawer while reviewing a participant or comparison,
+including on desktop. Comparison panels use the same participant names as the
+grid. **Open frame** opens the displayed capture in the player, where it can be
+saved; **Back to comparison** restores that comparison's selection, alignment and
+cursor. Browser Back also returns to the addressed comparison. Comparing another
+run needs a free slot within the three-participant limit.
+
+**Reported thinking** is an explicit filter; the Thinking checkbox controls only
+All evidence. **Warnings & findings** includes a separate Run and setup notices
+section. These recorded operational notices retain their source timestamps and
+are not assigned invented screenshot positions or counted as participant findings.

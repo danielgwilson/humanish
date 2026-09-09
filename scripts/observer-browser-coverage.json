@@ -34,7 +34,11 @@
     { "id": "offline-recording", "goal": "Saved single-file evidence plays with raster data and no HTTP updates" },
     { "id": "http-poll-cleanup", "goal": "Leaving Observer closes a pending real HTTP update and stops polling" },
     { "id": "terminal-recording", "goal": "Screenshot-free terminal evidence stays useful without a fabricated player" },
-    { "id": "desktop-isolation", "goal": "An embedded desktop cannot execute script against its parent Observer" }
+    { "id": "desktop-isolation", "goal": "An embedded desktop cannot execute script against its parent Observer" },
+    {"id": "review-library-desktop", "goal": "Open and dismiss the run library from player and comparison without losing a moment"},
+    {"id": "review-library-phone", "goal": "Touch navigation reaches the library from review without horizontal overflow"},
+    {"id": "comparison-evidence-handoff", "goal": "Open, save and return to the exact comparison capture with consistent persona identity"},
+    {"id": "comparison-capacity", "goal": "Adding another run never silently drops a selected participant"}
   ],
   "externalAcceptance": [
     { "id": "real-provider", "status": "external", "reason": "N>1 actual provider connection/reconnect and cleanup receipts required separately" },

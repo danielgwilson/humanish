@@ -9,8 +9,10 @@ import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel } from "@/lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
+import { participantLabels } from "@/lib/participant-label";
 import { NOTABLE_COMPLETION } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
+import { PlayerRunNotices } from "./player-run-notices";
 import "@/styles/player.css";
 
 type Tab = "actions" | "details" | "report";
@@ -46,8 +48,10 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null, updating = true, onViewChange }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, navigationRevision = 0, updating = true, onViewChange }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
+  /** An explicit in-app navigation may repeat the original address after local seeking. */
+  navigationRevision?: number;
   /** Source capability, not the most recent poll result; transient failures stay updating. */
   updating?: boolean;
   onViewChange?: (view: PlayerView) => void;
@@ -67,7 +71,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   }
   // A URL navigation is a new instruction even in the same participant. Adjust before
   // commit so a stale frame cannot overwrite the incoming address in a later effect.
-  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}`;
+  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}:${navigationRevision}`;
   const [previousAddress, setPreviousAddress] = useState(address);
   if (address !== previousAddress) {
     setPreviousAddress(address);
@@ -200,10 +204,11 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   }, [frames, frame]);
 
   const filteredRows = useMemo(() => model.rows.filter((row) => {
-    if (!showThoughts && row.kind === "reasoning") return false;
+    if (filter === "all" && !showThoughts && row.kind === "reasoning") return false;
     return filter === "all" || (filter === "thoughts" && row.kind === "reasoning")
       || (filter === "actions" && isActionRow(row)) || (filter === "findings" && isFindingRow(row));
   }), [model.rows, filter, showThoughts]);
+  const runNotices = useMemo(() => stream.timeline.filter((event) => event.level === "warn" || event.level === "error"), [stream.timeline]);
   const groups = useMemo(() => groupPlayerRows(filteredRows, groupWaits), [filteredRows, groupWaits]);
   const activeGroup = Math.max(0, groups.findIndex((group) => group.first.frameIndex <= frame && group.last.frameIndex >= frame));
   const feedWindow = boundedWindow(groups.length, feedPage ?? activeGroup, FEED_LIMIT);
@@ -312,7 +317,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       <div className="player-review-tools">
         <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>
         <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seek(nextAction); }}>Next action</button>
-        <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Recorded warnings, findings, or notable completion; not inferred from narration">Next finding</button>
+        <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next finding</button>
         <label className="zoom-control">View <select aria-label="Image zoom" value={String(zoom)} disabled={live !== null} onChange={(event) => setZoom(event.target.value === "fit" || event.target.value === "actual" ? event.target.value : Number(event.target.value))}>
           <option value="fit">Fit</option><option value="actual">Actual size</option><option value="0.5">50%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
         </select></label>
@@ -355,9 +360,9 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           <div className="feed-controls"><label>Show <select aria-label="Filter activity" value={filter} onChange={(event) => { setFilter(event.target.value as FeedFilter); setFeedPage(null); }}>
             <option value="all">All evidence</option><option value="actions">Actions</option><option value="thoughts">Reported thinking</option><option value="findings">Warnings & findings</option>
           </select></label><label><input type="checkbox" checked={groupWaits} onChange={(event) => setGroupWaits(event.target.checked)} /> Group waits</label>
-            <label><input type="checkbox" checked={showThoughts} onChange={(event) => setShowThoughts(event.target.checked)} /> Thinking</label></div>
+            {filter === "all" ? <label><input type="checkbox" checked={showThoughts} onChange={(event) => setShowThoughts(event.target.checked)} /> Thinking</label> : null}</div>
           <div className="ipanel acts" ref={feedRef}>
-            {groups.length === 0 ? <p className="feed-empty">No recorded entries match this filter.</p> : null}
+            {groups.length === 0 && !(filter === "findings" && runNotices.length > 0) ? <p className="feed-empty">No recorded entries match this filter.</p> : null}
             {feedWindow.start > 0 ? <button type="button" className="tbtn feed-page" onClick={() => setFeedPage(Math.max(0, feedWindow.start - Math.floor(FEED_LIMIT / 2)))}>Earlier entries</button> : null}
             {groups.slice(feedWindow.start, feedWindow.end).map(({ first: row, last, count }) => {
               const stamp = formatElapsed(rowElapsedMs(model, row));
@@ -373,12 +378,13 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
             })}
             {feedWindow.end < groups.length ? <button type="button" className="tbtn feed-page" onClick={() => setFeedPage(feedWindow.end + Math.floor(FEED_LIMIT / 2))}>Later entries</button> : null}
             {groups.length > FEED_LIMIT ? <p className="feed-window">Entries {feedWindow.start + 1}–{feedWindow.end} of {groups.length} · original events retained</p> : null}
+            {filter === "findings" && runNotices.length > 0 ? <PlayerRunNotices notices={runNotices} /> : null}
           </div>
         </Tabs.Panel>
         <Tabs.Panel value="details" className="ipanel">
             <div className="kv">
               <span className="k">Persona</span>
-              <span className="v">{data.run.persona.name}</span>
+              <span className="v">{participantLabels(data.streams).get(stream.id) ?? stream.label}</span>
               <span className="k">Scenario</span>
               <span className="v">{data.run.scenario.title}</span>
               <span className="k">Lane</span>

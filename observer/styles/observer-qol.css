@@ -78,10 +78,12 @@ button:disabled { opacity: .45; cursor: default; }
 .compare-participant { min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--panel); }
 .compare-participant h2 { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
 .compare-run { color: var(--muted); font: 10px var(--mono); overflow-wrap: anywhere; margin: 3px 0 10px; }
-.compare-stage { display: flex; align-items: center; justify-content: center; min-height: 120px; background: var(--mineral); border-radius: 6px; overflow: hidden; }
-.compare-stage img { display: block; width: 100%; height: auto; max-height: 65vh; object-fit: contain; }
+.compare-stage { display: flex; align-items: center; justify-content: center; height: clamp(200px, 40vh, 360px); background: var(--mineral); border-radius: 6px; overflow: hidden; }
+.compare-stage img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .compare-stage p { padding: 30px 15px; text-align: center; color: var(--muted); }
 .compare-caption { color: var(--muted); font: 10px var(--mono); margin-top: 10px; }
+.compare-open { display: inline-flex; align-items: center; margin-top: 10px; }
+@media (pointer: coarse) { .compare-open.review-tool { min-height: 44px; } }
 @media (max-width: 880px) {
   .rail { width: 42px; }
   .rail button { min-height: 38px; }
@@ -101,7 +103,7 @@ button:disabled { opacity: .45; cursor: default; }
   .compare-toolbar label { flex-wrap: wrap; }
   .compare-toolbar select { max-width: 100%; }
   .compare-grid { grid-template-columns: minmax(0, 1fr); }
-  .compare-stage img { max-height: 70vh; }
+  .compare-stage { height: clamp(200px, 30vh, 240px); }
   .card-icon { width: 32px; height: 32px; }
   .card-details { max-width: 100%; }
   .saved-moments { max-width: 100%; }

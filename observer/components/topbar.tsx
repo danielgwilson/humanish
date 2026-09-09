@@ -16,6 +16,7 @@ export interface GridFilters {
 export interface TopbarProps {
   data: ObserverData;
   selected: ObserverStream | null;
+  comparison?: boolean;
   filters: GridFilters;
   onFilters: (next: GridFilters) => void;
   onRuns: () => void;
@@ -29,7 +30,7 @@ export interface TopbarProps {
 
 // Frame.io-style chrome: wordmark first, then breadcrumbs with a caret on the leaf.
 // Grid view carries the working filters; the participant view swaps them for a pager.
-export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onLibrary, sideOpen, reviewControl, gridControl, onMonitor }: TopbarProps) {
+export function Topbar({ data, selected, comparison = false, filters, onFilters, onRuns, onStep, onLibrary, sideOpen, reviewControl, gridControl, onMonitor }: TopbarProps) {
   const [viewOpen, setViewOpen] = useState(false);
   const selectedName = selected ? participantLabels(data.streams).get(selected.id) ?? selected.label : null;
   const statuses = [...new Set(data.streams.map((s) => s.statusLabel))];
@@ -52,7 +53,7 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
         {selected ? (
           <span className="here" title={selectedName ?? ""}>{selectedName}</span>
         ) : (
-          <span className="here">participants</span>
+          <span className="here">{comparison ? "comparison" : "participants"}</span>
         )}
       </nav>
       <div className="right">
@@ -63,7 +64,7 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
             <span className="pager-word">participant </span>{index + 1} / {data.streams.length}
             <IconButton label="Next participant" onClick={() => onStep(1)}><ReviewIcon name="next" /></IconButton>
           </span>
-        ) : (
+        ) : !comparison ? (
           <Popover
             triggerClassName="filter-btn"
             label="View and filter participants" title="View options"
@@ -117,7 +118,7 @@ export function Topbar({ data, selected, filters, onFilters, onRuns, onStep, onL
               </button>
             ) : null}
           </Popover>
-        )}
+        ) : null}
         {data.publicSafety.share ? (
           // An exported file carries what verify said at export time (#584); the chip says that.
           <span

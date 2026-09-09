@@ -60,6 +60,14 @@
 .evidence-player .thought-full { margin: 0; padding: 4px 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--sans); color: var(--muted); }
 .evidence-player .feed-empty, .evidence-player .feed-window { color: var(--muted); font: 11px/1.6 var(--sans); padding: 12px 0; }
 .evidence-player .feed-page { width: 100%; }
+.evidence-player .player-run-notices { padding: 12px; color: var(--muted); font: 11px/1.6 var(--sans); overflow-wrap: anywhere; }
+.evidence-player .player-run-notices h3 { color: var(--ink); font-weight: 550; margin-bottom: 6px; }
+.evidence-player .player-run-notices li { padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.evidence-player .run-notice-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.evidence-player .run-notice-heading strong { color: var(--ink); font-weight: 500; }
+.evidence-player .run-notice-heading time { font-variant-numeric: tabular-nums; }
+.evidence-player .run-notice-message { white-space: pre-wrap; margin-top: 4px; }
+.evidence-player .run-notices-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding-top: 8px; }
 .evidence-player .viewer:fullscreen { height: 100dvh; width: 100vw; background: var(--mineral); display: flex; }
 @media (max-width: 880px) {
   .evidence-player .player-heading { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
