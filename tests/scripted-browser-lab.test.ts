@@ -422,6 +422,8 @@ describe("runScriptedBrowserLab", () => {
         GITHUB_TOKEN: "github-token-test"
       },
       loadDesktopModule: async () => fakeE2B.module,
+      // The injected session writes synthetic captures; it does not launch a host browser.
+      browserCommand: "/synthetic/browser",
       runSession: async (options) => {
         rawSessionUrls.push(options.appUrl);
         expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
