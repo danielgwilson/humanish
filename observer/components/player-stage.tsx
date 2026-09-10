@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { PlayerFrame, PlayerRow } from "@/lib/player-model";
 
 export type Zoom = "fit" | "actual" | number;
@@ -35,14 +35,15 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
   const [available, setAvailable] = useState<Size>({ width: 640, height: 480 });
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const captureHref = live ? frame?.href : undefined;
-  const [liveCapture, setLiveCapture] = useState<(Size & { label: string }) | null>(null);
+  const [captureDimensions, setCaptureDimensions] = useState<(Size & { label: string }) | null>(null);
+  const recordDimensions = useCallback((size: Size) => setCaptureDimensions({ ...size, label }), [label]);
   useEffect(() => {
     if (!captureHref) return;
     const image = new Image();
     let active = true;
     const measured = () => {
       if (!active || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
-      setLiveCapture({ label, width: image.naturalWidth, height: image.naturalHeight });
+      setCaptureDimensions({ label, width: image.naturalWidth, height: image.naturalHeight });
     };
     image.onload = measured;
     image.src = captureHref;
@@ -65,9 +66,13 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
   }, []);
   // Mid-run bundles may omit desktopGeometry/viewport. The recorded raster still
   // establishes the actual screen proportions, including redacted/downscaled images.
-  const liveDimensions = liveCapture?.label === label ? liveCapture : viewport;
+  const liveDimensions = captureDimensions?.label === label ? captureDimensions : viewport;
+  const fitDimensions = liveDimensions ?? { width: 1280, height: 800 };
+  const fitHeight = available.width * fitDimensions.height / fitDimensions.width + 24;
   const liveSize = fittedSize(liveDimensions ?? { width: 1280, height: 800 }, available, "fit");
-  return <div className="stage evidence-stage" ref={stageRef} tabIndex={zoom === "fit" || live ? -1 : 0}
+  return <div className="stage evidence-stage" ref={stageRef}
+    data-fit-recording={!live && zoom === "fit" && frame ? "" : undefined}
+    style={{ "--fit-stage-height": `${fitHeight}px` } as CSSProperties} tabIndex={zoom === "fit" || live ? -1 : 0}
     aria-label={zoom === "fit" || live ? "Evidence stage" : "Zoomed evidence; scroll or drag to pan"}
     onPointerDown={(event) => {
       if (zoom === "fit" || live || event.pointerType !== "mouse" || event.button !== 0) return;
@@ -86,14 +91,14 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
       {live ? <div className="stage-live" style={liveSize}>
         <iframe key={streamRevision} sandbox={sandbox} src={live} title={`Live view — ${label}`} tabIndex={-1} aria-hidden="true" referrerPolicy="no-referrer" />
 
-      </div> : frame ? <RecordedImage key={frame.href} frame={frame} count={count} viewport={viewport} available={available} zoom={zoom} pins={pins} />
+      </div> : frame ? <RecordedImage key={frame.href} frame={frame} count={count} viewport={viewport} available={available} zoom={zoom} pins={pins} onDimensions={recordDimensions} />
         : <p className="evidence-empty" role="status">{emptyText}</p>}
     </div>
   </div>;
 }
 
-function RecordedImage({ frame, count, viewport, available, zoom, pins }: {
-  frame: PlayerFrame; count: number; viewport: Size | undefined; available: Size; zoom: Zoom; pins: PlayerRow[];
+function RecordedImage({ frame, count, viewport, available, zoom, pins, onDimensions }: {
+  frame: PlayerFrame; count: number; viewport: Size | undefined; available: Size; zoom: Zoom; pins: PlayerRow[]; onDimensions: (size: Size) => void;
 }) {
   const [natural, setNatural] = useState<Size | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -104,7 +109,9 @@ function RecordedImage({ frame, count, viewport, available, zoom, pins }: {
   const size = fittedSize(dimensions, available, zoom);
   const loaded = (image: HTMLImageElement) => {
     if (image.naturalWidth <= 0 || image.naturalHeight <= 0) { setStatus("error"); return; }
-    setNatural({ width: image.naturalWidth, height: image.naturalHeight });
+    const size = { width: image.naturalWidth, height: image.naturalHeight };
+    setNatural(size);
+    onDimensions(size);
     setStatus("ready");
   };
   useEffect(() => {

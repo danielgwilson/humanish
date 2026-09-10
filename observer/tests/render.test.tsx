@@ -161,7 +161,7 @@ describe("portable snapshot feed mode", () => {
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector("iframe")).toBeNull();
     expect(container.textContent).toContain("This saved snapshot contains no recorded screenshots");
-    expect(container.textContent).toContain("participant status at capture: Running");
+    expect(container.textContent).toContain("Participant status: Running");
   });
 
   it("renders recorded evidence over HTTP without feed or history requests, including refresh events", async () => {
@@ -174,7 +174,8 @@ describe("portable snapshot feed mode", () => {
         document.dispatchEvent(new Event("visibilitychange"));
       });
       expect(fetch).not.toHaveBeenCalled();
-      expect(container.querySelector(".run-status-update")?.textContent).toBe("Saved evidence · no updates");
+      expect(container.querySelector(".run-status-update")).toBeNull();
+      expect(container.querySelector(".run-status-main")?.textContent).toContain("no updates");
       expect(container.querySelector(".run-status-main")?.textContent).toContain("Recorded");
       expect(container.textContent).not.toContain("Updates unavailable");
       expect(container.querySelector(".run-status-update button")).toBeNull();
