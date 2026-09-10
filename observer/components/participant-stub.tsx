@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatDuration, keyframeHref } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
+import { completionLabel } from "@/lib/signal";
 import { participantLabels } from "@/lib/participant-label";
 import { ParticipantAssignment } from "./participant-assignment";
 
@@ -51,7 +52,7 @@ export function ParticipantStub({ data, stream, updating = true }: { data: Obser
         <span className="k">Kind</span>
         <span className="v">{stream.kindLabel}</span>
         <span className="k">{updating ? "Status" : "Status at capture"}</span>
-        <span className="v">{stream.statusLabel}</span>
+        <span className="v">{stream.statusLabel}{completionLabel(stream) ? ` · ${completionLabel(stream)}` : ""}</span>
         <span className="k">Transport</span>
         <span className="v">{stream.transport}</span>
         <span className="k">Mode</span>
@@ -97,6 +98,7 @@ export function ParticipantStub({ data, stream, updating = true }: { data: Obser
           </>
         ) : null}
       </div>
+      {actor ? <div className="blk"><span className="o-label">Recorded reason, verbatim</span><p className="verbatim">{actor.reason}</p></div> : null}
       {stream.terminalPlain !== "" ? (
         <div className="blk">
           <span className="o-label">Recorded terminal output · lines {page * 50 + 1}–{Math.min((page + 1) * 50, terminal.length)} of {terminal.length}</span>

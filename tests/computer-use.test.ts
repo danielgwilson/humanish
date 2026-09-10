@@ -774,6 +774,7 @@ describe("runComputerUseLoop", () => {
 
     expect(result.completionReason).toBe("timed_out");
     expect(result.status).toBe("timed_out");
+    expect(result.trace.stopCause).toBe("time_limit");
     expect(result.trace.items.some((item) => item.title === "action skipped: desktop command failed")).toBe(false);
   });
 
@@ -1099,6 +1100,7 @@ describe("runComputerUseLoop", () => {
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
+    expect(result.trace.stopCause).toBe("time_limit");
     expect(result.reason).toContain("time budget after productive activity");
     expect(result.trace.counts.turns).toBe(1);
   });
@@ -1131,6 +1133,7 @@ describe("runComputerUseLoop", () => {
 
     expect(result.completionReason).toBe("timed_out");
     expect(result.status).toBe("timed_out");
+    expect(result.trace.stopCause).toBe("time_limit");
     expect(result.trace.counts.materialActions).toBe(0);
     expect(result.reason).toContain("no material progress");
   });
@@ -1156,6 +1159,7 @@ describe("runComputerUseLoop", () => {
 
     expect(result.completionReason).toBe("timed_out");
     expect(result.status).toBe("timed_out");
+    expect(result.trace.stopCause).toBe("time_limit");
     expect(result.trace.counts.materialActions).toBe(0);
   });
 
@@ -1598,6 +1602,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     // budget → budget_reached (passed), with the estimate + cap cited in the detail.
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
+    expect(result.trace.stopCause).toBe("spend_limit");
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0.35");
     expect(result.reason).toContain("after productive activity");
     expect(result.trace.counts.materialActions).toBeGreaterThan(0);
@@ -1634,6 +1639,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(result.completionReason).toBe("gave_up");
     expect(result.status).toBe("abandoned");
     expect(result.trace.counts.materialActions).toBe(0);
+    expect(result.trace.stopCause).toBe("spend_limit");
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0");
     expect(result.reason).toContain("no material progress");
     // Tripped on turn 1, before a second provider turn was ever requested.

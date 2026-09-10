@@ -288,7 +288,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   // Responses can exhaust output/context tokens before producing any visible answer. Empty
   // actions on that wire status are an interrupted generation, never a natural endpoint.
   const interruption = root.status === "incomplete"
-    ? (asRecord(root.incomplete_details).reason === "max_output_tokens" ? "token_limit" : "incomplete")
+    ? (asRecord(root.incomplete_details).reason === "max_output_tokens" ? "output_limit" : "incomplete")
     : root.status !== undefined && root.status !== "completed" ? "unexpected_status" : undefined;
 
   const turn: CuaTurn = {

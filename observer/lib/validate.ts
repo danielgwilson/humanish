@@ -64,6 +64,7 @@ function validStream(value: unknown): boolean {
   const assignment = value.assignment;
   if (assignment !== undefined && (!object(assignment) || !strings(assignment, ["mission"]) || !optionalString(assignment.focus)
     || (assignment.tasks !== undefined && !list(assignment.tasks, (task) => object(task) && strings(task, ["id", "goal"]))))) return false;
+  if (value.ending !== undefined && (!object(value.ending) || !strings(value.ending, ["cause", "label"]))) return false;
   const actor = value.actor;
   if (actor !== undefined && (!object(actor) || !strings(actor, ["provider", "reason", "completionReason"])
     || !finite(actor.durationMs) || !object(actor.ids) || !optionalString(actor.ids.model) || !object(actor.redaction)

@@ -1,18 +1,21 @@
 import type { ObserverStream } from "./observer-data";
 
-// Typed notable outcomes (#426 card spec): when a lane completed one of these ways, the
-// card's one signal line is a ⚑ badge plus the RECORDED reason, verbatim. budget_reached
-// is deliberately here even though it maps to a passing status — hitting the recruiting
-// budget is a finding the researcher wants surfaced, not an error state.
+// Fallback labels for snapshots whose producer predates precise ending metadata.
 export const NOTABLE_COMPLETION: Record<string, string> = {
   gave_up: "gave up",
   blocked_approval: "blocked on approval",
-  timed_out: "timed out",
-  budget_reached: "budget cap",
+  timed_out: "time limit",
+  budget_reached: "limit reached",
   actor_error: "actor error",
   step_failed: "step failed",
   harness_error: "harness error"
 };
+
+export function completionLabel(stream: ObserverStream): string | undefined {
+  if (stream.ending) return stream.ending.label;
+  const reason = stream.actor?.completionReason;
+  return reason !== undefined && Object.hasOwn(NOTABLE_COMPLETION, reason) ? NOTABLE_COMPLETION[reason] : undefined;
+}
 
 export interface SignalLine {
   flagged: boolean;
@@ -26,7 +29,7 @@ export interface SignalLine {
 export function signalFor(stream: ObserverStream): SignalLine {
   const actor = stream.actor;
   if (actor) {
-    const notable = Object.hasOwn(NOTABLE_COMPLETION, actor.completionReason) ? NOTABLE_COMPLETION[actor.completionReason] : undefined;
+    const notable = completionLabel(stream);
     if (notable !== undefined && actor.reason !== "") {
       return { flagged: true, label: notable, text: actor.reason };
     }

@@ -48,6 +48,8 @@ describe("Observer admission at the untrusted JSON boundary", () => {
     ["streams.0.actor.items.0.text", {}],
     ["streams.0.actor.items.0.coord", { x: Infinity, y: 0 }],
     ["streams.0.actor.ids.model", {}],
+    ["streams.0.ending", { cause: "time_limit", label: {} }],
+    ["streams.0.ending", { cause: 3, label: "time limit" }],
     ["streams.0.actor.redaction.screenshots", {}],
     ["streams.0.sim.currentStep", {}],
     ["streams.0.sim.mode", {}],
@@ -82,6 +84,7 @@ describe("Observer admission at the untrusted JSON boundary", () => {
     ["streams.0.actor.items.0.screenshotRef", { path: "screenshots/frame.png" }],
     ["streams.0.actor.items.0.at", undefined],
     ["streams.0.actor.completionReason", "future-completion-reason"],
+    ["streams.0.ending", { cause: "time_limit", label: "time limit" }],
     ["streams.0.futureEvidence", { unrelated: [null, {}, "additive field"] }],
     ["runtime", { state: "unknown", observedAt: "2026-09-08T00:00:00Z", source: "local-run-status" }]
   ])("retains compatible optional and additive field %s (%j)", (field, value) => {

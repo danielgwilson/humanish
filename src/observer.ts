@@ -6,7 +6,7 @@ import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { buildObserverData, recordedStreamEmbed } from "./observer-data.js";
+import { buildObserverData, recordedStreamEmbed, withObserverEndings } from "./observer-data.js";
 import type { ObserverData } from "./observer-data.js";
 import { listRuns, loadRunBundle, verifyRun } from "./run.js";
 import {
@@ -560,7 +560,7 @@ function renderObserverAppHtml(data: ObserverData, snapshot: boolean): string {
 
 /** Render current packaged UI around a validated/projected Observer snapshot. */
 export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean } = {}): string {
-  return renderObserverAppHtml(data, options.snapshot === true);
+  return renderObserverAppHtml(withObserverEndings(data), options.snapshot === true);
 }
 
 /** internal: consumed by observer-serve */
@@ -640,7 +640,7 @@ async function readObserverData(
     );
     if (!observerBytes) throw new Error("observer-data.json unavailable");
     return withRuntimeStreamUrls(
-      await withLocalRunStatus(runRoot, JSON.parse(observerBytes.toString("utf8")) as ObserverData),
+      await withLocalRunStatus(runRoot, withObserverEndings(JSON.parse(observerBytes.toString("utf8")) as ObserverData)),
       runtimeStreamUrls
     );
   } catch {}

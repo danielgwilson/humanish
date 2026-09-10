@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
 import { ageLabel, frameUpdatedAt, isActiveStream, isServedOrigin, liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
-import { NOTABLE_COMPLETION, signalFor } from "@/lib/signal";
+import { completionLabel, signalFor } from "@/lib/signal";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
 import { ParticipantAssignment } from "./participant-assignment";
@@ -37,7 +37,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const viewport = dimensions ?? stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? stream.viewport;
   const warnings = stream.timeline.filter((event) => event.level === "warn" || event.level === "error");
   const label = stream.laneId ?? stream.label;
-  const notable = stream.actor && Object.hasOwn(NOTABLE_COMPLETION, stream.actor.completionReason) ? NOTABLE_COMPLETION[stream.actor.completionReason] : undefined;
+  const notable = completionLabel(stream);
   const flagged = !!notable || signal.flagged;
   const outcome = isActiveStream(stream) ? statusLabel : notable ?? (signal.flagged ? signal.label : statusLabel);
   const detailsLabel = `Participant details: ${name}`;

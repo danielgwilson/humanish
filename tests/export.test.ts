@@ -9,6 +9,9 @@ import { renderObserverHtml } from "../src/observer.js";
 import type { ObserverData } from "../src/observer-data.js";
 import type { VerifyResult } from "../src/run.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
+import liveBundle from "./golden/labs/live.json" with { type: "json" };
+import { buildObserverData } from "../src/observer-data.js";
+import { tallyParticipantOutcomes, type RunBundle } from "../src/run.js";
 import { writeFixtureRun } from "./helpers/run-fixtures.js";
 
 const PNG = syntheticPng1x1();
@@ -88,6 +91,34 @@ describe("humanish export", () => {
     expect(renderObserverHtml(data)).not.toContain('<meta name="humanish-observer-mode"');
     expect(exported).not.toContain("OBSOLETE_RENDERER_SENTINEL");
     expect(exported).toContain(`data:image/png;base64,${PNG.toString("base64")}`);
+    expect(await readFile(index, "utf8")).toBe(oldHtml);
+  });
+
+  it("refreshes an old interruption label from recorded notices without changing source evidence", async () => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    const stream = bundle.streams[0]!;
+    stream.status = "incomplete";
+    Object.assign(stream.actor!, { status: "incomplete", completionReason: "budget_reached", reason: "Synthetic recorded provider interruption.",
+      items: [{ id: "notice-003", kind: "notice", lifecycle: "completed", status: "warn", title: "provider token limit reached" }] });
+    delete stream.actor!.stopCause;
+    bundle.review.participants = tallyParticipantOutcomes(["incomplete"]);
+    const oldData = buildObserverData(bundle);
+    delete oldData.streams[0]!.ending;
+    oldData.streams[0]!.statusLabel = "Ran out of session";
+    oldData.run.participantsLine = "0/1 reached the goal, 1 ran out of session";
+    const oldHtml = `<html><script id="observer-data" type="application/json">${JSON.stringify(oldData)}</script></html>`;
+    const index = path.join(runDir, "observer", "index.html");
+    await writeFile(index, oldHtml);
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = await readFile(path.join(cwd, result.path), "utf8");
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    const refreshed = JSON.parse(slot![1]!) as ObserverData;
+    expect(refreshed.streams[0]!.ending?.label).toBe("provider token limit");
+    expect(refreshed.streams[0]!.statusLabel).toBe("Interrupted");
+    expect(refreshed.run.participantsLine).toBe("0/1 reached the goal, 1 interrupted (provider token limit)");
+    expect(refreshed.streams[0]!.actor).toEqual(oldData.streams[0]!.actor);
+    expect(refreshed.run.participants).toEqual(oldData.run.participants);
     expect(await readFile(index, "utf8")).toBe(oldHtml);
   });
 

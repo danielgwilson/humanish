@@ -4,6 +4,7 @@ import {
   type ActorCompletionReason,
   type ActorPersonaRef,
   type ActorStatus,
+  type ActorStopCause,
   type ActorTokenUsage,
   type ActorTrace,
   type ActorTraceItem,
@@ -154,7 +155,7 @@ export interface CuaTurn {
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
   /** Explicit provider interruption, independent of actions or participant intent. */
-  interruption?: "token_limit" | "incomplete" | "unexpected_status";
+  interruption?: "output_limit" | "token_limit" | "incomplete" | "unexpected_status";
   /** The participant's own word for how it ended, when its reply format carries one (#570). */
   outcome?: ParticipantDeclaredOutcome;
   /** Present only for an accepted structured closing account. */
@@ -861,6 +862,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   let completionReason: ActorCompletionReason = "goal_satisfied";
+  let stopCause: ActorStopCause | undefined;
   let declaredOutcome: ParticipantDeclaredOutcome | undefined;
   let reason = "computer-use loop completed";
   let stopConditionMatch: StopConditionMatch | undefined;
@@ -1017,9 +1019,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (signal?.aborted) {
         completionReason = "harness_error";
         reason = "run aborted by the harness";
+        stopCause = "harness_aborted";
         break;
       }
       if (now() - startedAtMs > timeoutMs) {
+        stopCause = "time_limit";
         if (materialActions > 0) {
           completionReason = "budget_reached";
           reason = `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${counts.turns} turn(s))`;
@@ -1091,7 +1095,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             title: `incomplete message turn ${turnNumber}`, text: redactNarration(turn.message) });
           bump("messages");
         }
-        const tokenLimit = turn.interruption === "token_limit";
+        const tokenLimit = turn.interruption === "token_limit" || turn.interruption === "output_limit";
+        stopCause = turn.interruption === "output_limit" ? "provider_output_limit"
+          : tokenLimit ? "provider_token_limit" : turn.interruption === "unexpected_status" ? "provider_status" : "provider_incomplete";
         const unexpectedStatus = turn.interruption === "unexpected_status";
         completionReason = tokenLimit ? "budget_reached" : "harness_error";
         reason = tokenLimit
@@ -1135,6 +1141,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           break;
         }
         if (running !== null && running > maxUsd) {
+          stopCause = "spend_limit";
           if (materialActions > 0) {
             completionReason = "budget_reached";
             reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${counts.turns} turn(s)); aborted fail-closed before the next model turn`;
@@ -1149,6 +1156,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       if (overRunBudget) {
         const runStop = overRunBudget(runningUsage());
         if (runStop !== null) {
+          stopCause = "study_spend_limit";
           completionReason = "budget_reached";
           reason = runStop;
           break;
@@ -1480,6 +1488,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     if (error instanceof CuaFrameGuardStop || error instanceof CuaStopWhenStop) {
       // completionReason/reason were already set by the frame guard or stopWhen guard.
     } else if (error instanceof CuaDeadlineError) {
+      stopCause = "time_limit";
       if (materialActions > 0) {
         completionReason = "budget_reached";
         reason = `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${counts.turns} turn(s))`;
@@ -1490,6 +1499,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     } else if (error instanceof CuaAbortError) {
       completionReason = "harness_error";
       reason = "run aborted by the harness";
+      stopCause = "harness_aborted";
     } else {
       completionReason = "actor_error";
       const rawMessage = error instanceof Error ? error.message : String(error);
@@ -1642,6 +1652,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     durationMs: completedAtMs - startedAtMs,
     status,
     completionReason,
+    ...(stopCause === undefined ? {} : { stopCause }),
     reason,
     ids,
     ...(provider.modelSettings === undefined
