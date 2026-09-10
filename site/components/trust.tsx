@@ -3,18 +3,18 @@ const GITHUB = "https://github.com/danielgwilson/humanish";
 export default function Trust() {
   return (
     <section id="trust" className="band band-dark">
-      <h2 className="rev">Four things humanish <em>cannot</em> do</h2>
+      <h2 className="rev">Before you <em>run or share</em></h2>
 
       <div className="trust-grid">
         <div className="tcard rev">
           <span className="tidx">01</span>
-          <h3>Keys never enter the sandbox</h3>
-          <p>The actor&rsquo;s API key stays on your machine; the sandbox desktop never holds it.</p>
+          <h3>Browser model keys stay on the host</h3>
+          <p>Computer-use actors call the model from your machine. Terminal actors receive a runtime key by default. <a href="/docs/budgets-and-privacy#store-credentials">See credential options.</a></p>
         </div>
         <div className="tcard rev" style={{ "--d": ".06s" } as React.CSSProperties}>
           <span className="tidx">02</span>
-          <h3>Bundles stay local</h3>
-          <p>Evidence lands in gitignored <code>.humanish/</code>; no command publishes it.</p>
+          <h3>Bundles stay local by default</h3>
+          <p>Evidence lands in gitignored <code>.humanish/</code>. Exposing Observer or sharing an export makes it accessible to others.</p>
         </div>
         <div className="tcard rev" style={{ "--d": ".12s" } as React.CSSProperties}>
           <span className="tidx">03</span>
