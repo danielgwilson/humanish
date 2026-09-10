@@ -1123,12 +1123,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // spending: the moment the running estimate crosses maxUsd the loop breaks with a terminal,
       // non-harness-error stop. A null estimate cannot trip it (preflight guaranteed a rate).
       //
-      // Classify the outcome HONESTLY, mirroring the wall-clock path above: budget_reached maps to
-      // "passed", a verdict only earned AFTER material progress (real work that then hit its cost
-      // budget). A zero-action runaway that crosses the cap is NOT a pass — it is the exact runaway
-      // the cap exists to catch (maxUsd:0 makes it deterministic: the first turn with any usage
-      // trips here before any action executes) — so it surfaces as "gave_up" (→ failed). Either way
-      // the running estimate + the cap are cited so the operator sees WHY the loop stopped.
+      // A harness spend cap interrupts the session regardless of prior activity. budget_reached
+      // maps to incomplete; zero executed actions do not establish that the participant gave up.
+      // Cite the running estimate, cap, and progress so the operator can inspect the interruption.
       if (maxUsd !== undefined && estimateTurnCostUsd) {
         const running = estimateTurnCostUsd(runningUsage());
         // Fail CLOSED and LOUD on a non-finite estimate: a stale positional estimator (the
@@ -1146,7 +1143,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             completionReason = "budget_reached";
             reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${counts.turns} turn(s)); aborted fail-closed before the next model turn`;
           } else {
-            completionReason = "gave_up";
+            completionReason = "budget_reached";
             reason = `estimated spend $${running} crossed execution.caps.maxUsd=$${maxUsd} with no material progress; aborted fail-closed before the next model turn`;
           }
           break;
