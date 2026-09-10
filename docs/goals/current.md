@@ -41,7 +41,7 @@ A participant does not see their hidden success criteria. Missing observation
 inputs remain unmeasured. Provider and session limits are safeguards, and a
 limit ending a session must not be presented as natural completion.
 
-## The Next Outcome To Establish
+## Best Next Work
 
 An independent maintainer uses the published package on their own app,
 adjudicates a useful finding, makes a repair and retains a comparable rerun.
@@ -84,10 +84,11 @@ not adopters or endorsements. An invitation is not activation.
 
 Capability proof also differs from replacing an adopter's bespoke harness.
 The [proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md)
-requires decision-equivalent retained evidence and a real deletion branch;
-that gate has not been satisfied by a public demonstration alone.
+requires decision-equivalent retained evidence and a real deletion branch.
+No first-party deletion branch has met that gate. Public demonstrations do not
+substitute for it.
 
-## Current Capabilities And Boundaries
+## Current Program Truth (source `0.86.1`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
@@ -114,7 +115,7 @@ Source behavior and required tests outrank stale status prose.
   disposable smoke harness do not open that gate.
 - [Multi-origin shared-world work](https://github.com/danielgwilson/humanish/issues/239)
   needs a real adopter's cross-origin requirement and a reviewed implementation
-  packet. The ratified design is not implementation authority.
+  packet. It has a ratified core-design direction, but the implementation gate is still closed.
 - [Nested provider grants](https://github.com/danielgwilson/humanish/pull/534)
   remain unmerged. Do not assume a nested provider-credential channel exists.
 - Paused adopter-deletion work stays paused until its current readiness and
