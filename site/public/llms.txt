@@ -149,10 +149,10 @@ Lanes and verbatim outcomes:
 
 Excalidraw is the application studied; it is not a Humanish adopter or endorser.
 
-## Guarantees (by construction)
+## Credentials and sharing
 
-- The actor's API key stays on your machine; the sandbox desktop never holds it.
-- Evidence lands in gitignored `.humanish/`; no command publishes it.
+- Computer-use model keys stay on the host. Terminal actors receive a command-scoped runtime key by default; opt-in `execution.runtimeAuth: openai-egress` keeps the raw key outside but still permits sandbox processes to spend through the proxy. See https://humanish.dev/docs/budgets-and-privacy#store-credentials.
+- Evidence lands in gitignored `.humanish/` by default. Exposing Observer or sharing an export makes it accessible to others.
 - `humanish feedback issue` renders a draft; no GitHub API call exists on that path.
 - Verify fails closed: a bundle that cannot pass every gate grades `local_only` or `blocked`, never `share_ready`.
 

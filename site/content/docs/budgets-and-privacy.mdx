@@ -114,6 +114,10 @@ The hidden prompts write keys to the Humanish user store with mode `0600`. `keys
 
 Keep env files and credentials out of version control. Humanish records provisioned variable names, not their values, and scrubs known secret values from persisted text. The computer-use model's API key stays on the host; the desktop receives actions, not that key.
 
+Terminal-product studies run Codex inside the sandbox. Their default `execution.runtimeAuth: openai-env` supplies the runtime key to that command, where the participant and its child processes can read and use it. Any credentials you declare for the subject app also enter its sandbox.
+
+For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenAI runtime key outside the sandbox and authenticates requests through E2B's proxy. Sandbox processes can still make paid requests through that proxy; this option does not impose a provider spending limit. Read the [terminal authentication setup and limits](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/terminal-product-lane.md#runtime-auth-raw-key-placement-and-remaining-provider-access) before choosing it.
+
 ## Use a signed-in coding agent
 
 The computer-use route can use a locally signed-in Codex or Claude Code as the participant's model by setting `actors[0].type: local-agent`. `humanish doctor` reports installed and signed-in local agents.
