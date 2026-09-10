@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.86.1` (2026-09-09). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
+Package/source version in this tree: `0.87.0` (2026-09-10). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority. The bundled OSS meta-lab is dry-run only until
@@ -46,6 +46,10 @@ flows.
 If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
+
+The [0.87.0 release note](../release/0.87.0-participant-endings-and-phone-review.md)
+describes recorded interruption causes, phone playback controls beside fitted
+captures, and credential and evidence-sharing guidance by execution route.
 
 The [0.86.1 release note](../release/0.86.1-task-preflight-saved-recordings.md)
 describes task preflight on unsupported execution paths and saved HTML recordings
