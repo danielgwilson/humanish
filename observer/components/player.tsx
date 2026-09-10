@@ -267,7 +267,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const nextFinding = rowIndex.findings.find((index) => index > frame);
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
-  const modeLabel = !updating ? "Saved recording" : active
+  const modeLabel = !updating ? `Participant status: ${stream.statusLabel || stream.status}` : active
     ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
     : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
 
@@ -275,7 +275,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     <div className="viewer" ref={viewerRef}>
       <div className="player-heading">
         <div className="player-mode"><b className="player-participant">{participantLabels(data.streams).get(stream.id) ?? stream.label}</b><strong>{modeLabel}</strong>
-          <span>{!updating ? `Saved snapshot · participant status at capture: ${stream.statusLabel || stream.status}${current?.atMs !== undefined ? ` · ${new Date(current.atMs).toISOString()}` : ""}` : live ? "Read-only desktop; connection health is managed by the provider." : following && active && current
+          <span>{live ? "Read-only desktop; connection health is managed by the provider." : following && active && current
             ? captureAge === null ? "Capture time unavailable" : `Captured ${formatDuration(captureAge)} ago`
             : current?.atMs !== undefined ? `Captured ${new Date(current.atMs).toISOString()}` : "Capture timestamps unavailable"}</span>
         </div>

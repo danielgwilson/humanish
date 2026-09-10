@@ -84,6 +84,9 @@
   .evidence-player .player-mode { flex-basis: 180px; }
   .evidence-player .player-mode .player-participant { display: block; overflow-wrap: anywhere; }
   .evidence-player .evidence-stage { height: 52dvh; min-height: 220px; flex: none; overflow: auto; }
+  /* Fit recordings need only the raster height plus the canvas inset. Zoomed
+     images and live streams retain their bounded, scrollable viewing area. */
+  .evidence-player .evidence-stage[data-fit-recording] { height: min(52dvh, var(--fit-stage-height)); min-height: 0; }
   .evidence-player .tbtn { min-height: 44px; min-width: 44px; }
   .evidence-player label, .evidence-player select { min-height: 44px; }
   .evidence-player .scrub { height: 44px; }

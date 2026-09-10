@@ -312,6 +312,23 @@ try {
       record.checks.width = await pageWidth(page); await snap("participant-recording");
       assertFullFrames(record.checks.stage); assertFullFrames(record.checks.filmstrip);
       assert(record.checks.width.page <= record.checks.width.viewport + 1, "Player page overflows horizontally");
+      if (phone) {
+        record.checks.frameToTransport = [];
+        for (const shape of ["portrait", "landscape"]) {
+          if (shape === "landscape") await page.getByRole("button", { name: "Next participant", exact: true }).click();
+          await page.locator('.stage-box[data-image-state="ready"]').waitFor();
+          await until(async () => {
+            const image = await page.locator(".stage-box").boundingBox();
+            const transport = await page.locator(".transport").boundingBox();
+            return image && transport && transport.y - image.y - image.height <= 14;
+          }, `${shape} fit recording leaves empty space before phone controls`);
+          const image = await page.locator(".stage-box").boundingBox();
+          const transport = await page.locator(".transport").boundingBox();
+          record.checks.frameToTransport.push({ shape, image, transport, gap: transport.y - image.y - image.height });
+          assertFullFrames(await inspectImages(page.locator(".stage-box img")));
+          await snap(`${shape}-frame-adjacent-controls`);
+        }
+      }
     });
   }
   await runCase("live-arrow", { running: true, live: true }, async ({ page, record, snap }) => {
