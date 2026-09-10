@@ -3,6 +3,10 @@ import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import liveBundle from "../../tests/golden/labs/live.json";
+import { buildObserverData } from "../../src/observer-data";
+import { tallyParticipantOutcomes, type RunBundle } from "../../src/run";
+import type { ActorStopCause } from "../../src/actor-contract";
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { App } from "../app";
 import { Sidebar } from "../components/sidebar";
@@ -257,6 +261,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
     stream.embed = { kind: "iframe", url: "https://live.example/desktop", title: "Live desktop" };
     if (options.ended) stream.liveEnded = true;
   }
+  stream.ending = { cause: "spend_limit", label: "estimated spend limit" };
   stream.actor = {
     provider: "computer-use-loop",
     durationMs: 191_864,
@@ -313,7 +318,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     const snapshot = liveShapedData();
     snapshot.streams[0]!.actor!.reason = "";
     await mount(<App data={snapshot} />);
-    expect(container.querySelector(".card-outcome")?.textContent).toBe("budget cap");
+    expect(container.querySelector(".card-outcome")?.textContent).toBe("estimated spend limit");
   });
 
   it("uses persona identities for generated labels and distinguishes repeated personas", async () => {
@@ -334,7 +339,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(img).not.toBeNull();
     expect(img?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
     const card = container.querySelector(".card");
-    expect(card?.textContent).toContain("budget cap");
+    expect(card?.textContent).toContain("estimated spend limit");
     expect(card?.textContent).not.toContain("crossed execution.caps.maxUsd=$5");
     await click(card!.querySelector('[aria-label^="Participant details:"]') as Element);
     expect(document.querySelector(".card-details")?.textContent).toContain("crossed execution.caps.maxUsd=$5");
@@ -534,5 +539,54 @@ describe("Frame-free review remains useful", () => {
     await click(previous()); await click(previous());
     expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 1");
     expect(container.querySelector(".stub-term")?.textContent).not.toContain("Synthetic output line 123");
+  });
+});
+
+
+describe("recorded interruption labels across the review surfaces", () => {
+  it.each([
+    ["provider_output_limit", "provider output limit"],
+    ["time_limit", "time limit"],
+    ["spend_limit", "estimated spend limit"],
+    ["provider_incomplete", "provider response incomplete"],
+    [undefined, "limit reached"]
+  ] as const)("keeps %s distinct on the card, rollup and report", async (stopCause, label) => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    bundle.streams = [bundle.streams[0]!];
+    const stream = bundle.streams[0]!;
+    stream.status = "incomplete";
+    Object.assign(stream.actor!, { status: "incomplete", completionReason: "budget_reached", reason: "The participant did not report completion.", items: stream.actor!.items.filter(item => item.kind === "screenshot") });
+    if (stopCause !== undefined) stream.actor!.stopCause = stopCause as ActorStopCause;
+    else delete stream.actor!.stopCause;
+    bundle.review.participants = tallyParticipantOutcomes(["incomplete"]);
+    const snapshot = buildObserverData(bundle);
+    await mount(<App data={snapshot} />);
+    expect(container.querySelector(".card-outcome")?.textContent).toBe(label);
+    expect(container.textContent).toContain(`0/1 reached the goal, 1 interrupted (${label})`);
+    expect(container.textContent).not.toContain("ran out of session");
+    await click(container.querySelector(".open-overlay") as Element);
+    const reportTab = [...container.querySelectorAll('[role="tab"]')].find(el => el.textContent === "report");
+    await click(reportTab!);
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain(label);
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain("Interrupted");
+    expect(container.querySelector('[role="tabpanel"]')?.textContent?.toLowerCase()).not.toContain("ran out of session");
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain("The participant did not report completion.");
+    expect(snapshot.streams[0]!.actor!.completionReason).toBe("budget_reached");
+  });
+
+  it("keeps the cause and recorded reason readable without screenshot frames", async () => {
+    const snapshot = liveShapedData();
+    snapshot.streams[0]!.actor!.items = [];
+    await mount(<App data={snapshot} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    expect(container.querySelector(".stub")?.textContent).toContain("estimated spend limit");
+    expect(container.querySelector(".stub")?.textContent).toContain(snapshot.streams[0]!.actor!.reason);
+  });
+
+  it("labels an older snapshot without cause metadata conservatively", async () => {
+    const snapshot = liveShapedData();
+    delete snapshot.streams[0]!.ending;
+    await mount(<App data={snapshot} />);
+    expect(container.querySelector(".card-outcome")?.textContent).toBe("limit reached");
   });
 });

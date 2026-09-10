@@ -114,6 +114,15 @@ describe("read-only participant debrief", () => {
     else expect(result.trace.debrief?.status).toBe("skipped");
   });
 
+  it("records a shared study spend stop before action or debrief", async () => {
+    const s = setup({ overRunBudget: () => "the study spend limit was reached" });
+    const result = await s.run();
+    expect(result.trace.stopCause).toBe("study_spend_limit");
+    expect(result.trace.status).toBe("incomplete");
+    expect(s.execute).not.toHaveBeenCalled();
+    expect(s.debrief).not.toHaveBeenCalled();
+  });
+
   it("refreshes shared budget after closing usage and preserves success on overage", async () => {
     const budget = vi.fn((usage: { input?: number }) => (usage.input ?? 0) >= 30 ? "spent" : null);
     const s = setup({ overRunBudget: budget }); const result = await s.run();

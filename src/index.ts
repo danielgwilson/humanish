@@ -9,6 +9,7 @@ export {
 export type {
   ActorCapabilities,
   ActorCompletionReason,
+  ActorStopCause,
   ActorLane,
   ActorPersonaRef,
   ActorProtocol,

@@ -1040,7 +1040,7 @@ export interface ParticipantOutcomes {
   reachedGoal: number;
   /** Stopped trying. A finding about the product. */
   abandoned: number;
-  /** Ran out of session or budget before reaching the goal. */
+  /** Interrupted before reaching the goal, including session, spend and provider limits. */
   ranOut: number;
   /** Needed an approval the run could not give. */
   blocked: number;
@@ -1189,16 +1189,31 @@ export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
 }
 
 /** One line a stakeholder can read, with the denominator attached to every number. */
-export function formatParticipantOutcomes(outcomes: ParticipantOutcomes): string {
+export function formatParticipantOutcomes(outcomes: ParticipantOutcomes,
+  terminalCauses: readonly { status: ActorStatus; label?: string }[] = []
+): string {
   if (outcomes.total === 0) return "no participants reached a terminal state";
   const parts: string[] = [`${outcomes.reachedGoal}/${outcomes.total} reached the goal`];
-  if (outcomes.abandoned > 0) parts.push(`${outcomes.abandoned} gave up`);
-  if (outcomes.ranOut > 0) parts.push(`${outcomes.ranOut} ran out of session`);
+  // Detail may explain a recorded outcome, but must never change its count or invent a match
+  // between a tally and an incomplete set of traces.
+  const append = (count: number, statuses: readonly ActorStatus[], fallback: string) => {
+    if (count === 0) return;
+    const matching = terminalCauses.filter((entry) => statuses.includes(entry.status));
+    if (matching.length !== count) { parts.push(`${count} ${fallback}`); return; }
+    const counts = new Map<string, number>();
+    for (const entry of matching) {
+      const description = entry.label === undefined ? fallback : `interrupted (${entry.label})`;
+      counts.set(description, (counts.get(description) ?? 0) + 1);
+    }
+    for (const [description, n] of counts) parts.push(`${n} ${description}`);
+  };
+  append(outcomes.abandoned, ["abandoned"], "gave up");
+  append(outcomes.ranOut, ["incomplete", "timed_out"], "interrupted (stop details unavailable)");
   // "blocked" covers an approval the run could not give AND a blocker the participant reported in
   // its own words (#476); the old "on an approval" read wrongly on a keyboard-first participant who
   // wrote "Blocked before diagram creation" about a mouse-only modal.
   if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked`);
-  if (outcomes.harnessFailed > 0) parts.push(`${outcomes.harnessFailed} lost to a harness failure`);
+  append(outcomes.harnessFailed, ["failed"], "lost to a harness failure");
   // Last, and separate, because it cuts across the outcomes rather than partitioning them: someone
   // can reach the goal and still have found the road there broken.
   if (outcomes.reportedFriction > 0) parts.push(`${outcomes.reportedFriction} reported friction`);

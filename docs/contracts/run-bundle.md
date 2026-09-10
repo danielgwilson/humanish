@@ -83,6 +83,23 @@ Persisted `run.json` files must not contain absolute local target paths. Runtime
 commands may return the caller's working directory in process-local JSON
 responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 
+## Recorded session stop causes
+
+An actor trace may include `stopCause` alongside its unchanged `status`,
+`completionReason` and verbatim `reason`. Computer-use sessions distinguish
+`provider_output_limit`, `provider_token_limit`, `time_limit`, `spend_limit`,
+`study_spend_limit`, `provider_incomplete`, `provider_status`, and
+`harness_aborted`. Absence means the route or recording did not retain this
+precise field; it does not mean the participant finished.
+
+Observer projects this as optional `streams[].ending` with a `cause` and readable
+`label`. Older `budget_reached` traces without a recognized machine notice say
+“limit reached.” An exact historical provider token-limit notice can
+establish a token limit, but cannot distinguish output from context exhaustion.
+Participant prose is never used to infer the cause. Study summaries retain the
+recorded outcome counts while explaining a cause only when the matching traces
+cover that outcome's count.
+
 ## Participant Assignment
 
 `streams[].assignment` optionally records the original participant-facing assignment:

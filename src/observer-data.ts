@@ -1,3 +1,4 @@
+import { actorEnding, type ActorEnding } from "./actor-stop-cause.js";
 import { formatParticipantOutcomes, formatStudyTaskFunnel } from "./run.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
 
@@ -91,6 +92,8 @@ export interface ObserverStream extends RunStream {
   embed?: NonNullable<RunStream["embed"]> & { runtimeDesktop?: true };
   /** Participant-facing status. The actor and simulation retain their original protocol status. */
   status: RunStream["status"];
+  /** Precise recorded interruption; absent when the source carries no cause. */
+  ending?: ActorEnding;
   sim: RunSimulation;
   kindLabel: string;
   statusLabel: string;
@@ -148,7 +151,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
   const blocked = streams.filter((stream) => stream.status === "blocked" || stream.status === "failed" || stream.status === "timed_out").length;
   const active = streams.filter((stream) => stream.status === "running" || stream.status === "preparing").length;
 
-  return {
+  return withObserverEndings({
     schema: OBSERVER_DATA_SCHEMA,
     schemaVersion: 1,
     generatedAt,
@@ -168,8 +171,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       ...(bundle.review.participants === undefined
         ? {}
         : {
-            participants: bundle.review.participants,
-            participantsLine: formatParticipantOutcomes(bundle.review.participants)
+            participants: bundle.review.participants
           }),
       ...(bundle.review.tasks === undefined
         ? {}
@@ -208,6 +210,30 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
     raw: {
       bundleSchema: bundle.schema,
       artifactRoot: bundle.artifactRoot
+    }
+  });
+}
+
+/** Refresh presentation from recorded actor evidence, including older exported snapshots. */
+export function withObserverEndings(data: ObserverData): ObserverData {
+  const streams = (data.streams ?? []).map(({ ending: _previousEnding, ...stream }) => {
+    const ending = actorEnding(stream.actor);
+    return {
+      ...stream,
+      ...(ending === undefined ? {} : { ending }),
+      ...(stream.status === "incomplete" || (ending !== undefined && stream.status === "abandoned")
+        ? { statusLabel: "Interrupted" } : {})
+    };
+  });
+  return {
+    ...data,
+    streams,
+    run: {
+      ...data.run,
+      ...(data.run.participants === undefined ? {} : {
+        participantsLine: formatParticipantOutcomes(data.run.participants, streams.flatMap((stream) => stream.actor === undefined ? []
+          : [{ status: stream.actor.status, ...(stream.ending === undefined ? {} : { label: stream.ending.label }) }]))
+      })
     }
   };
 }
@@ -286,7 +312,7 @@ function statusLabel(status: RunStream["status"]): string {
     case "abandoned":
       return "Gave up";
     case "incomplete":
-      return "Ran out of session";
+      return "Interrupted";
     case "complete":
       return "Complete";
     case "blocked":

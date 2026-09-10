@@ -47,6 +47,10 @@ export type ParticipantDeclaredOutcome = "reached" | "not_reached" | "blocked";
  *  because a persona gave up. */
 export const PARTICIPANT_OUTCOME_STATUSES: readonly ActorStatus[] = ["abandoned", "incomplete"];
 
+/** Optional precise interruption cause; completionReason and status retain their original meaning. */
+export type ActorStopCause = "provider_output_limit" | "provider_token_limit" | "time_limit" | "spend_limit"
+  | "study_spend_limit" | "provider_incomplete" | "provider_status" | "harness_aborted";
+
 export type ActorCompletionReason =
   | "goal_satisfied"
   | "turn_completed"
@@ -54,8 +58,8 @@ export type ActorCompletionReason =
   | "blocked_approval"
   | "timed_out"
   // A study or provider limit ended the session before a natural endpoint. The computer-use
-  // loop maps this to "incomplete", even after productive activity. trace.reason distinguishes
-  // wall-clock, estimated-spend, and provider output/context token limits.
+  // loop maps this to "incomplete", even after productive activity. Optional stopCause records
+  // the specific limit; older traces may carry only a verbatim reason.
   | "budget_reached"
   | "actor_error"
   // A deterministic scripted step or expectation evaluated false: the scenario predicate
@@ -201,6 +205,8 @@ export interface ActorTrace {
   durationMs: number;
   status: ActorStatus;
   completionReason: ActorCompletionReason;
+  /** Absent in older traces and on routes that do not record a precise interruption cause. */
+  stopCause?: ActorStopCause;
   reason: string;
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
   /**

@@ -36,7 +36,7 @@ async function runTurn(turn: CuaTurn) {
 describe("captured OpenAI incomplete responses", () => {
   it.each(["reasoning-only", "partial-message"] as const)("preserves the real %s limit and usage without claiming a natural endpoint", async (name) => {
     const parsed = parseOpenAiResponse(captured(name));
-    expect(parsed.turn.interruption).toBe("token_limit");
+    expect(parsed.turn.interruption).toBe("output_limit");
     expect(parsed.turn.done).toBe(false);
     expect(parsed.turn.actions).toEqual([]);
     expect(parsed.turn.usage).toEqual({ input: 36, output: name === "reasoning-only" ? 16 : 32, cachedInput: 0, cacheWriteInput: 0 });
@@ -44,6 +44,7 @@ describe("captured OpenAI incomplete responses", () => {
     const result = await runTurn(parsed.turn);
     expect(result.trace.status).toBe("incomplete");
     expect(result.trace.completionReason).toBe("budget_reached");
+    expect(result.trace.stopCause).toBe("provider_output_limit");
     expect(result.trace.reason).toContain("provider's output/context token limit");
     expect(result.trace.ids.turnId).toBe(parsed.turn.responseId);
     expect(result.trace.tokenUsage?.input).toBe(36);
@@ -53,6 +54,13 @@ describe("captured OpenAI incomplete responses", () => {
     if (name === "partial-message") {
       expect(result.trace.items.some(item => item.title === "incomplete message turn 1" && item.text === parsed.turn.message)).toBe(true);
     }
+  });
+
+  it("preserves a neutral provider's unspecified token limit without inventing an output limit", async () => {
+    const result = await runTurn({ actions: [], pendingSafetyChecks: [], done: false, interruption: "token_limit" });
+    expect(result.trace.stopCause).toBe("provider_token_limit");
+    expect(result.trace.completionReason).toBe("budget_reached");
+    expect(result.calls.actions).toBe(0);
   });
 
   it("never dispatches actions or safety acknowledgements on an interrupted neutral-provider turn", async () => {
@@ -74,6 +82,7 @@ describe("captured OpenAI incomplete responses", () => {
     const result = await runTurn(parsed.turn);
     expect(result.trace.status).toBe("failed");
     expect(result.trace.completionReason).toBe("harness_error");
+    expect(result.trace.stopCause).toBe("provider_incomplete");
     expect(result.trace.reason).toContain("explicitly incomplete response");
     expect(result.trace.tokenUsage?.output).toBe(16);
     expect(result.calls.provider).toBe(1);
@@ -99,6 +108,7 @@ describe("captured OpenAI incomplete responses", () => {
     const result = await runTurn(parsed.turn);
     expect(result.trace.status).toBe("failed");
     expect(result.trace.completionReason).toBe("harness_error");
+    expect(result.trace.stopCause).toBe("provider_status");
     expect(result.trace.reason).toContain("unexpected noncompleted response status");
     expect(result.trace.tokenUsage?.output).toBe(32);
     expect(result.calls).toEqual({ provider: 1, actions: 0, debrief: 0, narration: 0, sharedBudget: 1 });

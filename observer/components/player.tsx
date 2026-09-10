@@ -10,7 +10,7 @@ import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHo
 import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
 import { participantLabels } from "@/lib/participant-label";
-import { NOTABLE_COMPLETION } from "@/lib/signal";
+import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
@@ -115,7 +115,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   // Older browser recordings lack desktopGeometry and retain their viewport mapping.
   const coordinateSpace = stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? viewport;
   const raw = current?.redaction === "none" || actor?.redaction.screenshots === "raw";
-  const notableEnd = actor !== undefined && Object.hasOwn(NOTABLE_COMPLETION, actor.completionReason);
+  const endingLabel = completionLabel(stream);
+  const notableEnd = endingLabel !== undefined;
   const elapsed = frameElapsedMs(model, Math.max(0, frame));
   const duration = frameElapsedMs(model, Math.max(0, frames.length - 1));
   const timing = model.paced === "recorded" ? "recorded pace" : "avg-paced";
@@ -465,8 +466,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
               <span className="o-label">Outcome</span>
               <p className="verbatim">
                 {stream.statusLabel}
-                {actor && Object.hasOwn(NOTABLE_COMPLETION, actor.completionReason)
-                  ? ` · ⚑ ${NOTABLE_COMPLETION[actor.completionReason]}`
+                {endingLabel !== undefined
+                  ? ` · ⚑ ${endingLabel}`
                   : ""}
               </p>
             </div>
