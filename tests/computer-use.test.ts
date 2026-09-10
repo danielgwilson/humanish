@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
 
 import type { ActorCapabilities, ActorPersonaRef } from "../src/actor-contract.js";
@@ -15,6 +15,8 @@ import {
   declaredOutcomeFromClosingLine
 } from "../src/computer-use.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
+import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
+import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -605,6 +607,7 @@ describe("runComputerUseLoop", () => {
     expect(notReached.trace.declaredOutcome).toBe("not_reached");
     expect(notReached.completionReason).toBe("gave_up");
     expect(notReached.status).toBe("abandoned");
+    expect(tallyParticipantOutcomes([notReached.status])).toMatchObject({ abandoned: 1, ranOut: 0 });
     const blocked = await run("blocked");
     expect(blocked.trace.declaredOutcome).toBe("blocked");
     // The actor stopped on purpose; the LANE turns a declared blocker into a blocked participant.
@@ -1599,7 +1602,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
 
     // Cumulative estimate: turn1 $0.15, turn2 $0.30, turn3 $0.45 > $0.35 → break at turn 3.
     // Two material clicks executed BEFORE the cap tripped → a productive lane that hit its cost
-    // budget → budget_reached (passed), with the estimate + cap cited in the detail.
+    // budget → budget_reached (incomplete), with the estimate + cap cited in the detail.
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
     expect(result.trace.stopCause).toBe("spend_limit");
@@ -1617,12 +1620,12 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     ]);
   });
 
-  it("classifies a ZERO-action runaway that crosses the cap as FAILED (gave_up), not a passed budget stop", async () => {
-    // maxUsd:0 is deterministic: the first turn's usage accrues, then the cap check at the TOP of
-    // the loop trips BEFORE the turn's click is ever executed → materialActions is still 0. This is
-    // the exact runaway the cap exists to catch; it must surface as FAILED, never a passed lane.
+  it("interrupts a zero-action spend cap without attributing abandonment or feedback to the target app", async () => {
+    // maxUsd:0 deterministically trips after the first turn's usage accrues, before its click.
+    // This is a harness stop; no participant intent or target-app problem was established.
     const provider = new RepeatProvider(usageTurn);
     const executor = new SignatureExecutor(["s0", "s1"]);
+    const execute = vi.spyOn(executor, "execute");
 
     const result = await runComputerUseLoop({
       instructions: "Any token usage on the first turn must trip the $0 cap before any material action.",
@@ -1636,14 +1639,32 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
       estimateTurnCostUsd
     });
 
-    expect(result.completionReason).toBe("gave_up");
-    expect(result.status).toBe("abandoned");
+    expect(result.completionReason).toBe("budget_reached");
+    expect(result.status).toBe("incomplete");
     expect(result.trace.counts.materialActions).toBe(0);
+    expect(execute).not.toHaveBeenCalled();
     expect(result.trace.stopCause).toBe("spend_limit");
     expect(result.reason).toContain("crossed execution.caps.maxUsd=$0");
     expect(result.reason).toContain("no material progress");
     // Tripped on turn 1, before a second provider turn was ever requested.
     expect(provider.seen).toHaveLength(1);
+    expect(result.trace.tokenUsage).toMatchObject({
+      input: 100, output: 50, total: 150, turns: [{ input: 100, output: 50 }]
+    });
+    const outcomes = tallyParticipantOutcomes([result.status]);
+    expect(outcomes).toEqual({
+      total: 1, reachedGoal: 0, abandoned: 0, ranOut: 1, blocked: 0, harnessFailed: 0, reportedFriction: 0
+    });
+    expect(formatParticipantOutcomes(outcomes)).toBe("0/1 reached the goal, 1 interrupted (stop details unavailable)");
+    expect(participantFeedbackCandidates({
+      runId: "zero-action-spend-fixture",
+      scenarioId: "click-once",
+      adapterId: "internal-fixture",
+      goal: "Click once.",
+      substrate: "e2b-desktop",
+      lanes: [{ laneId: "lane-1", streamId: "stream-1", personaId: persona.id,
+        session: result, traceArtifactPath: "actors/stream-1.json", screenshots: [] }]
+    })).toEqual([]);
   });
 
   it("is a no-op when maxUsd is unset — the loop runs to its natural completion unchanged", async () => {
