@@ -111,6 +111,7 @@ import {
 } from "./observer.js";
 import { containsSensitive, digestText, redactedTail, redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";
+import { actorEnding } from "./actor-stop-cause.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -6344,6 +6345,10 @@ export function buildCuaFanoutBundle(args: {
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
   const studyTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
+  const participantEndings = terminalOutcomes.map((outcome) => {
+    const ending = actorEnding(outcome.session.trace);
+    return { status: outcome.session.status, ...(ending === undefined ? {} : { label: ending.label }) };
+  });
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
@@ -6353,7 +6358,7 @@ export function buildCuaFanoutBundle(args: {
       ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
       : args.dryRun
       ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
+      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
     gaps: args.inProgress === true
       ? ["Live fan-out session is still running."]
       : args.dryRun
