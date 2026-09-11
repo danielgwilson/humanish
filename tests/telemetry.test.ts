@@ -211,7 +211,7 @@ describe("study-participant marking (#546)", () => {
 describe("what a study reports about itself", () => {
   it("reads mode, starter lab, outcome, and brain off a single-lane computer-use result", () => {
     expect(deriveStudyFacts({
-      schema: "humanish.cua-actor-lab-result.v1",
+      schema: "humanish.cua-lab-result.v2",
       ok: true,
       labId: "try-live",
       actor: "openai-computer-use",
@@ -264,5 +264,36 @@ describe("what a study reports about itself", () => {
     expect(deriveStudyFacts({ schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] })).toEqual({});
     expect(deriveStudyFacts("not an object")).toEqual({});
     expect(deriveStudyFacts(null)).toEqual({});
+  });
+});
+
+
+describe("finite CUA diagnostics", () => {
+  it("labels successful N1/N2 previews honestly, failed previews as errors, and leaves live rollup unchanged", () => {
+    for (const total of [1, 2]) {
+      const base = { schema: "humanish.cua-lab-result.v2", dryRun: true, ok: true,
+        laneSummary: { total, passed: 0 }, diagnostics: { category: "preview" } };
+      expect(deriveStudyFacts(base).outcome).toBe("contract_proof_only");
+      expect(deriveStudyFacts({ ...base, ok: false, error: { code: "HUMANISH_CUA_LAB_FAILED" } }).outcome).toBe("error");
+      if (total > 1) expect(deriveStudyFacts({ ...base, dryRun: false, ok: false }).outcome).toBe("none_passed");
+    }
+  });
+
+  it("reads only the finite summary, never a first-lane cause or raw failure text", () => {
+    expect(deriveStudyFacts({ diagnostics: { category: "mixed", stopCause: "mixed" },
+      session: { stopCause: "provider_output_limit" }, reason: "private.example", lanes: [{ id: "secret" }] }))
+      .toEqual({ diagnosticCategory: "mixed", stopCause: "mixed" });
+    expect(deriveStudyFacts({ diagnostics: { category: "private.example", stopCause: "secret reason" } })).toEqual({});
+  });
+
+  it("rejects injected values again at the final payload boundary", () => {
+    const build = (diagnosticCategory: string, stopCause: string) => buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {},
+      properties: { diagnosticCategory, stopCause } }).properties;
+    expect(build("session_interrupted", "adapter_limit")).toMatchObject({ diagnostic_category: "session_interrupted", stop_cause: "adapter_limit" });
+    expect(build("mixed", "mixed")).toMatchObject({ diagnostic_category: "mixed", stop_cause: "mixed" });
+    const unknown = build("private.example", "private.example/secret");
+    expect(unknown.diagnostic_category).toBeUndefined();
+    expect(unknown.stop_cause).toBeUndefined();
+    expect(JSON.stringify(unknown)).not.toContain("private.example");
   });
 });

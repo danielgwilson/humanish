@@ -11,6 +11,7 @@
 // subject is the adopter's product and often unannounced; leaking a lab id would leak a roadmap.
 // The allowlist below is the whole vocabulary — anything not on it cannot be sent by construction.
 
+import { isCuaDiagnosticCategory, isCuaDiagnosticStopCause } from "./cua-diagnostics.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -44,6 +45,9 @@ export interface TelemetryProperties {
   /** One of humanish's OWN error codes (`HUMANISH_*`), never a message. Which failure ends a
    *  first run is the question the funnel exists to answer. */
   errorCode?: string;
+  /** Finite result categories and recorded stop causes; never raw errors or lane details. */
+  diagnosticCategory?: string;
+  stopCause?: string;
 }
 
 export interface TelemetryState {
@@ -235,6 +239,8 @@ export function buildPayload(args: {
   if (given.ok !== undefined) properties.ok = given.ok;
   if (given.exitCode !== undefined) properties.exit_code = given.exitCode;
   if (given.errorCode !== undefined && OWN_ERROR_CODE.test(given.errorCode)) properties.error_code = given.errorCode;
+  if (isCuaDiagnosticCategory(given.diagnosticCategory)) properties.diagnostic_category = given.diagnosticCategory;
+  if (isCuaDiagnosticStopCause(given.stopCause)) properties.stop_cause = given.stopCause;
   return { event: args.event, distinct_id: args.anonymousId, properties };
 }
 
@@ -296,10 +302,16 @@ export function deriveStudyFacts(result: unknown): TelemetryProperties {
   const error = asRecord(r.error);
   if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code)) facts.errorCode = error.code;
 
+  const diagnostics = asRecord(r.diagnostics);
+  if (isCuaDiagnosticCategory(diagnostics?.category)) facts.diagnosticCategory = diagnostics.category;
+  if (isCuaDiagnosticStopCause(diagnostics?.stopCause)) facts.stopCause = diagnostics.stopCause;
+
   const session = asRecord(r.session);
   const laneSummary = asRecord(r.laneSummary);
   let outcome: string | undefined;
-  if (laneSummary && typeof laneSummary.total === "number" && typeof laneSummary.passed === "number" && laneSummary.total > 1) {
+  if (r.schema === "humanish.cua-lab-result.v2" && facts.mode === "dry-run") {
+    outcome = r.ok === true ? "contract_proof_only" : "error";
+  } else if (laneSummary && typeof laneSummary.total === "number" && typeof laneSummary.passed === "number" && laneSummary.total > 1) {
     outcome = laneSummary.passed === laneSummary.total ? "all_passed"
       : laneSummary.passed === 0 ? "none_passed"
       : "some_passed";

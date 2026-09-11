@@ -159,7 +159,7 @@ npx humanish reclaim --run YOUR_RUN_ID --json
 
 ## Choose telemetry
 
-Humanish collects anonymous command usage by default. It does not send labs, subjects, personas, paths, or evidence.
+Humanish collects anonymous command usage by default, including finite CUA result categories and session stop causes when available. These can distinguish a preview, interruption, execution error or invalid evidence without sending raw errors or lane details. It does not send labs, subjects, personas, paths, or evidence.
 
 ```bash
 npx humanish telemetry status

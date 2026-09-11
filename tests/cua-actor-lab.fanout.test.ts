@@ -1,3 +1,4 @@
+import { deriveStudyFacts } from "../src/telemetry.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -24,7 +25,7 @@ import { DEVICE_PRESETS } from "../src/device-presets.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab } from "../src/lab-engine.js";
-import type { FetchLike } from "../src/openai-responses-cu.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES, type FetchLike } from "../src/openai-responses-cu.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import { verifyRun } from "../src/run.js";
@@ -234,6 +235,8 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
 
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
+    expect(result.diagnostics).toEqual({ category: "preview" });
+    expect(deriveStudyFacts(result).outcome).toBe("contract_proof_only");
     expect(result.lanes).toHaveLength(4);
     expect(result.laneSummary?.total).toBe(4);
 
@@ -790,6 +793,37 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(verified.ok).toBe(true);
+  });
+
+  it("projects each recorded interruption through real lane orchestration and summarizes divergent causes", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({ lanes: [
+      { id: "first", persona: "first-time-visitor" }, { id: "second", persona: "power-user" }
+    ] });
+    let sessions = 0;
+    const outcome = await runLab(config, { cwd, cuaHooks: {
+      ...passingHooks(handle),
+      runSession: async (options) => {
+        const interruption = sessions++ === 0 ? "output_limit" as const : "token_limit" as const;
+        // A provider CONTRACT fixture, not an invented HTTP wire response.
+        return runCuaActorSession({ ...options, provider: { id: "synthetic-interruption", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn: async () => ({
+          actions: [], pendingSafetyChecks: [], done: false, interruption
+        }) } });
+      }
+    } });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.ok).toBe(false);
+    expect(result.laneSummary).toMatchObject({ total: 2, passed: 0, harnessErrors: 0 });
+    expect(result.lanes?.map(lane => lane.session?.stopCause).sort()).toEqual(["provider_output_limit", "provider_token_limit"]);
+    expect(result.session?.stopCause).toBe(result.lanes?.[0]?.session?.stopCause);
+    expect(result.diagnostics).toEqual({ category: "mixed", stopCause: "mixed" });
+    expect(deriveStudyFacts(result)).toMatchObject({ outcome: "none_passed", diagnosticCategory: "mixed", stopCause: "mixed" });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.streams.map((stream: { actor: { stopCause: string } }) => stream.actor.stopCause)).toEqual(result.lanes?.map(lane => lane.session?.stopCause));
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
   });
 
   it("adapter fail score turns an otherwise green CUA fan-out run red while preserving the verified bundle", async () => {
