@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
-import { createProgram, followObserver, resolveBackendShouldOpen, studyFactsFor, writeResult } from "../src/program.js";
+import { createProgram, formatCuaLabHuman, followObserver, resolveBackendShouldOpen, studyFactsFor, writeResult } from "../src/program.js";
 import * as humanishIndex from "../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
@@ -1423,7 +1423,7 @@ describe("study facts ride the result seam", () => {
     const program = createProgram(io);
     const command = program.command("probe-study-facts");
     writeResult(command, io, {
-      schema: "humanish.cua-actor-lab-result.v1", ok: true, labId: "try-live", actor: "openai-computer-use",
+      schema: "humanish.cua-lab-result.v2", ok: true, labId: "try-live", actor: "openai-computer-use",
       dryRun: false, session: { status: "abandoned", completionReason: "gave_up", reason: "", screenshots: 3 }
     }, () => "");
     expect(studyFactsFor(command)).toEqual({ mode: "live", lab: "try-live", outcome: "abandoned", brain: "provider-key" });
@@ -1506,6 +1506,40 @@ describe("run writes the same bundle watch does (#597)", () => {
       const directEnvelope = JSON.parse(direct.stdout) as { ok: boolean; runId?: string };
       expect(directEnvelope.ok).toBe(true);
       await expect(stat(path.join(cwd, ".humanish", "runs", directEnvelope.runId!, "observer", "index.html"))).resolves.toBeTruthy();
+    });
+  });
+});
+
+
+describe("CUA ending output", () => {
+  it("shows distinct lane causes without calling the first lane the whole session", () => {
+    const output = formatCuaLabHuman({ schema: "humanish.cua-lab-result.v2", ok: false, cwd: "/synthetic", labId: "synthetic",
+      actor: "openai-computer-use", appUrl: "http://127.0.0.1:3000/", dryRun: false, runId: "synthetic", warnings: [],
+      diagnostics: { category: "mixed", stopCause: "mixed" },
+      session: { status: "incomplete", completionReason: "budget_reached", stopCause: "provider_output_limit", reason: "Synthetic", screenshots: 0 },
+      lanes: ["provider_output_limit", "time_limit"].map((stopCause, index) => ({
+        id: `lane-${index + 1}`, index: index + 1, persona: "synthetic", device: "desktop", resolution: [1440, 950] as [number, number],
+        status: "incomplete" as const, ok: false, subject: { source: "app-url" as const, state: { provenance: "undeclared" as const } },
+        diagnostics: { category: "session_interrupted" as const, stopCause: stopCause as "provider_output_limit" | "time_limit" }
+      }))
+    });
+    expect(output).toContain("diagnostic: mixed endings (mixed)");
+    expect(output).toContain("lane lane-1: incomplete · session interrupted (provider output limit)");
+    expect(output).toContain("lane lane-2: incomplete · session interrupted (time limit)");
+    expect(output).not.toContain("session: incomplete");
+  });
+
+  it("prints and verifies an actual N2 preview with no live participant verdict", async () => {
+    const manifest = { schema: "humanish.lab.v2", id: "preview", subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", count: 2 }], execution: { target: "e2b-desktop" } };
+    await withTempApp({ "humanish/labs/preview.yaml": JSON.stringify(manifest) }, async (cwd) => {
+      const result = await runCli(["lab", "run", "preview", "--dry-run", "--no-open", "--cwd", cwd]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("diagnostic: preview");
+      expect(result.stdout.match(/contract_proof_only · preview/g)).toHaveLength(2);
+      const verified = await runCli(["verify", "--run", "latest", "--cwd", cwd, "--json"]);
+      expect(verified.exitCode).toBe(0);
+      expect(JSON.parse(verified.stdout).ok).toBe(true);
     });
   });
 });

@@ -156,6 +156,30 @@ describe("participantFeedbackCandidates (#392)", () => {
 });
 
 describe("the live fallback draft describes the run that happened (#392)", () => {
+  it.each([undefined, null, {}, { items: null }, { items: [null] }])("keeps old counts and missing-detail fallback for optional actor %j", async (actor) => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-live-draft-"));
+    const cwd = path.join(tempRoot, "minimal-app");
+    try {
+      await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+      await runDryRun({ cwd, dryRun: true, runId: "legacy-draft-test" });
+      const runJsonPath = path.join(cwd, ".humanish/runs/legacy-draft-test/run.json");
+      const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
+      bundle.mode = "live";
+      bundle.review.participants = { total: 1, reachedGoal: 0, abandoned: 0, ranOut: 1,
+        blocked: 0, harnessFailed: 0, reportedFriction: 0 };
+      bundle.streams[0].actor = actor == null ? actor
+        : { status: "incomplete", completionReason: "budget_reached", ...actor };
+      const original = JSON.stringify(bundle, null, 2) + "\n";
+      await writeFile(runJsonPath, original);
+      const drafted = await draftFeedback(cwd, "legacy-draft-test");
+      expect(drafted.ok).toBe(true);
+      expect(drafted.draft?.actual).toContain("Participants: 0/1 reached the goal, 1 interrupted (stop details unavailable).");
+      expect(await readFile(runJsonPath, "utf8")).toBe(original);
+    } finally {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+
   it("never hands a live bundle the dry-run letter", async () => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-live-draft-"));
     const cwd = path.join(tempRoot, "minimal-app");

@@ -1,3 +1,6 @@
+import { deriveStudyFacts } from "../src/telemetry.js";
+import { CuaAdmissionLimitError } from "../src/cua-admission-limit.js";
+import { draftFeedback } from "../src/feedback.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -24,10 +27,10 @@ import { DEVICE_PRESETS } from "../src/device-presets.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab } from "../src/lab-engine.js";
-import type { FetchLike } from "../src/openai-responses-cu.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES, type FetchLike } from "../src/openai-responses-cu.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
-import { verifyRun } from "../src/run.js";
+import { readReview, verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()
@@ -234,6 +237,8 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
 
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
+    expect(result.diagnostics).toEqual({ category: "preview" });
+    expect(deriveStudyFacts(result).outcome).toBe("contract_proof_only");
     expect(result.lanes).toHaveLength(4);
     expect(result.laneSummary?.total).toBe(4);
 
@@ -790,6 +795,89 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(verified.ok).toBe(true);
+  });
+
+  it.each([1, 2])("keeps a recorded admission refusal in the %i-lane review and feedback without changing outcomes", async (count) => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({ concurrency: 1, lanes: Array.from({ length: count }, (_, index) => ({
+      id: `participant-${index + 1}`, persona: "first-time-visitor"
+    })) });
+    config.policies = { ...config.policies, redactScreenshots: true };
+    const outcome = await runLab(config, { cwd, cuaHooks: {
+      ...passingHooks(handle),
+      runSession: async (options) => {
+        let dispatched = 0;
+        // Exercise the real actor loop and bundle writers with a provider contract fixture.
+        // Each participant acts before the adapter refuses a subsequent dispatch.
+        return runCuaActorSession({ ...options, provider: {
+          id: "synthetic-admission", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+          nextTurn: async () => {
+            if (dispatched === 4) throw new CuaAdmissionLimitError();
+            dispatched += 1;
+            return { actions: [{ kind: "click", x: 10 + dispatched, y: 20 }],
+              pendingSafetyChecks: [], done: false,
+              usage: { input: 100 * dispatched, output: 10, cachedInput: 0, cacheWriteInput: 0 } };
+          }
+        } });
+      }
+    } });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.ok).toBe(false);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.review.participants).toEqual({ total: count, reachedGoal: 0, abandoned: 0,
+      ranOut: count, blocked: 0, harnessFailed: 0, reportedFriction: 0 });
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.review.summary).not.toContain("stop details unavailable");
+    expect(bundle.review.summary).toContain(count === 1 ? "local admission limit before provider dispatch"
+      : "0/2 reached the goal, 2 interrupted (adapter admission limit)");
+    for (const stream of bundle.streams) {
+      expect(stream.actor).toMatchObject({ status: "incomplete", completionReason: "budget_reached",
+        stopCause: "adapter_limit", counts: { turns: 4, actions: 4 }, tokenUsage: { input: 1000, output: 40 } });
+    }
+    expect(await readReview(cwd, result.runId)).toMatchObject({ summary: bundle.review.summary, participants: bundle.review.participants });
+    const original = await readFile(path.join(runDir, "run.json"), "utf8");
+    const drafted = await draftFeedback(cwd, result.runId);
+    expect(drafted.ok).toBe(true);
+    expect(drafted.draft?.actual).toContain(`Participants: 0/${count} reached the goal, ${count} interrupted (adapter admission limit).`);
+    expect(await readFile(path.join(runDir, "run.json"), "utf8")).toBe(original);
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
+  });
+
+  it("projects each recorded interruption through real lane orchestration and summarizes divergent causes", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({ lanes: [
+      { id: "first", persona: "first-time-visitor" }, { id: "second", persona: "power-user" }
+    ] });
+    let sessions = 0;
+    const outcome = await runLab(config, { cwd, cuaHooks: {
+      ...passingHooks(handle),
+      runSession: async (options) => {
+        const interruption = sessions++ === 0 ? "output_limit" as const : "token_limit" as const;
+        // A provider CONTRACT fixture, not an invented HTTP wire response.
+        return runCuaActorSession({ ...options, provider: { id: "synthetic-interruption", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn: async () => ({
+          actions: [], pendingSafetyChecks: [], done: false, interruption
+        }) } });
+      }
+    } });
+    expect(outcome.backend).toBe("cua");
+    if (outcome.backend !== "cua") return;
+    const result = outcome.result;
+    expect(result.ok).toBe(false);
+    expect(result.laneSummary).toMatchObject({ total: 2, passed: 0, harnessErrors: 0 });
+    expect(result.lanes?.map(lane => lane.session?.stopCause).sort()).toEqual(["provider_output_limit", "provider_token_limit"]);
+    expect(result.session?.stopCause).toBe(result.lanes?.[0]?.session?.stopCause);
+    expect(result.diagnostics).toEqual({ category: "mixed", stopCause: "mixed" });
+    expect(deriveStudyFacts(result)).toMatchObject({ outcome: "none_passed", diagnosticCategory: "mixed", stopCause: "mixed" });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(bundle.review.summary).toContain("1 interrupted (provider output limit), 1 interrupted (provider token limit)");
+    expect(bundle.review.summary).not.toContain("stop details unavailable");
+    expect(bundle.streams.map((stream: { actor: { stopCause: string } }) => stream.actor.stopCause)).toEqual(result.lanes?.map(lane => lane.session?.stopCause));
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
   });
 
   it("adapter fail score turns an otherwise green CUA fan-out run red while preserving the verified bundle", async () => {

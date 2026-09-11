@@ -28,6 +28,20 @@ cannot see its own activation is guessing about the thing that matters most.
   if it is one of the starter labs humanish itself ships** — which one
 - when a command fails: humanish's own error code (`HUMANISH_…`), never the
   message. Which failure ends a first run is the question this exists to answer.
+- for CUA results with diagnostics: `diagnostic_category` is exactly one of
+  `preview`, `participant_outcome`, `session_interrupted`, `execution_error`,
+  `evidence_invalid`, `mixed`, or `unknown`. These describe the study result;
+  a participant outcome does not establish a target-app defect.
+- when recorded or derivable from a typed session ending, `stop_cause` is exactly
+  one of `provider_output_limit`, `provider_token_limit`, `time_limit`,
+  `spend_limit`, `study_spend_limit`, `provider_incomplete`, `provider_status`,
+  `harness_aborted`, `adapter_limit`, `unspecified_limit`, `mixed`, or `unknown`.
+  Older limits stay broad. Different lane endings remain mixed. No raw error
+  message or lane detail is sent. Absent diagnostics stay absent.
+
+Successful CUA previews report `contract_proof_only`; no participant was run.
+Failed previews report `error`. Live `all_passed`/`some_passed`/`none_passed`
+values remain pass summaries, not explanations of why a session ended.
 
 See the exact document that would be sent, for your machine, right now:
 

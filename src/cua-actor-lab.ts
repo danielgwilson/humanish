@@ -27,11 +27,12 @@ import { describeMissingKeys } from "./key-resolution.js";
 import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 
+import { cuaLaneDiagnostics, summarizeCuaDiagnostics, type CuaDiagnostics } from "./cua-diagnostics.js";
 import { feedbackProofCommands } from "./feedback-proof.js";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 import { pathToFileURL } from "node:url";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTokenUsage, ActorTrace, ActorTraceItem } from "./actor-contract.js";
+import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorStopCause, ActorTokenUsage, ActorTrace, ActorTraceItem } from "./actor-contract.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
 import {
   adapterScoreFailureMessage,
@@ -110,6 +111,7 @@ import {
 } from "./observer.js";
 import { containsSensitive, digestText, redactedTail, redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";
+import { actorEnding } from "./actor-stop-cause.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -496,6 +498,8 @@ export interface CuaLaneResult {
   session?: {
     status: ActorStatus;
     completionReason: ActorCompletionReason;
+    /** Recorded control cause; absent on older or naturally completed sessions. */
+    stopCause?: ActorStopCause;
     reason: string;
     screenshots: number;
   };
@@ -505,6 +509,7 @@ export interface CuaLaneResult {
     streamUrlPresent: boolean;
   };
   subject: CuaSubjectProjection;
+  diagnostics?: CuaDiagnostics;
   /** Set when the lane was skipped (pinned reason string). */
   skippedReason?: string;
   error?: { code: CuaActorLabErrorCode; message: string };
@@ -597,8 +602,8 @@ export type CuaSubjectProvenanceArg =
 
 export interface CuaActorLabResult {
   schema: typeof CUA_ACTOR_LAB_SCHEMA;
-  /** True when the bundle verified AND (dry-run, or the session reached a terminal verdict
-   * without a harness error). The actor's pass/fail is evidence, not the lab's exit code. */
+  /** True when the Observer verified the bundle, all live lanes passed credibility checks
+   * (or this is a dry-run), and no declared adapter/scorer verdict failed. */
   ok: boolean;
   cwd: string;
   labId: string;
@@ -610,6 +615,8 @@ export interface CuaActorLabResult {
   session?: {
     status: ActorStatus;
     completionReason: ActorCompletionReason;
+    /** Recorded control cause; absent on older or naturally completed sessions. */
+    stopCause?: ActorStopCause;
     reason: string;
     screenshots: number;
   };
@@ -632,6 +639,7 @@ export interface CuaActorLabResult {
   /** Present when this run explicitly re-executes selected lanes from a prior CUA fan-out run. */
   rerun?: RunRerunLineage;
   observer?: ObserverResult;
+  diagnostics?: CuaDiagnostics;
   warnings: string[];
   error?: {
     code: CuaActorLabErrorCode;
@@ -3529,13 +3537,14 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
     subject
   };
   if (!outcome || dryRun) {
-    return { ...base, status: "contract_proof_only", ok: dryRun };
+    return { ...base, status: "contract_proof_only", ok: dryRun, diagnostics: cuaLaneDiagnostics({ dryRun }) };
   }
   if (outcome.skippedReason !== undefined) {
     return {
       ...base,
       status: "blocked",
       ok: false,
+      diagnostics: cuaLaneDiagnostics({ dryRun, skipped: true }),
       skippedReason: outcome.skippedReason,
       error: { code: "HUMANISH_CUA_LAB_FAILED", message: outcome.skippedReason }
     };
@@ -3547,11 +3556,17 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
     ...base,
     status,
     ok: laneOk,
+    diagnostics: cuaLaneDiagnostics({
+      dryRun, executionError: outcome.sessionError !== undefined, noEngagement: outcome.noEngagement,
+      ...(session ? { session: { status: session.status, completionReason: session.completionReason, ...
+        (session.trace.stopCause === undefined ? {} : { stopCause: session.trace.stopCause }) } } : {})
+    }),
     ...(session
       ? {
           session: {
             status: session.status,
             completionReason: session.completionReason,
+            ...(session.trace.stopCause === undefined ? {} : { stopCause: session.trace.stopCause }),
             reason: session.reason,
             screenshots: outcome.screenshots.length
           }
@@ -4589,6 +4604,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
           session: {
             status: firstOutcome.session.status,
             completionReason: firstOutcome.session.completionReason,
+            ...(firstOutcome.session.trace.stopCause === undefined ? {} : { stopCause: firstOutcome.session.trace.stopCause }),
             reason: firstOutcome.session.reason,
             screenshots: firstOutcome.screenshots.length
           }
@@ -4600,6 +4616,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     subject: aggregateSubject,
     plan,
     lanes: laneResults,
+    diagnostics: summarizeCuaDiagnostics({ dryRun, evidenceInvalid: !observer.ok, lanes: laneResults }),
     laneSummary,
     ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
     observer,
@@ -6328,6 +6345,10 @@ export function buildCuaFanoutBundle(args: {
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
   const studyTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
+  const participantEndings = terminalOutcomes.map((outcome) => {
+    const ending = actorEnding(outcome.session.trace);
+    return { status: outcome.session.status, ...(ending === undefined ? {} : { label: ending.label }) };
+  });
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
@@ -6337,7 +6358,7 @@ export function buildCuaFanoutBundle(args: {
       ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
       : args.dryRun
       ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
+      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
     gaps: args.inProgress === true
       ? ["Live fan-out session is still running."]
       : args.dryRun

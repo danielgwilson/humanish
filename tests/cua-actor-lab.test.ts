@@ -42,7 +42,7 @@ import type {
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms-sandbox-catch.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
-import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
+import { renderObserver, serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
 import type {
   BrowserLabScoringContext,
@@ -471,6 +471,21 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
 });
 
 describe("runCuaActorLab", () => {
+  it.each(["missing-artifact", "missing-run"] as const)("classifies the real Observer's %s refusal as invalid evidence", async (kind) => {
+    const result = await runCuaActorLab({ cwd, config: cuaConfig(), dryRun: true, hooks: {
+      renderObserverFn: async (project, runId, options) => {
+        const runDir = path.join(project, ".humanish", "runs", runId);
+        if (kind === "missing-artifact") await rm(path.join(runDir, "review.json"));
+        else await rm(runDir, { recursive: true });
+        return renderObserver(project, runId, options);
+      }
+    } });
+    expect(result.ok).toBe(false);
+    expect(result.observer?.ok).toBe(false);
+    expect(result.observer?.error?.code).toBe(kind === "missing-artifact" ? "HUMANISH_INVALID_RUN_BUNDLE" : "HUMANISH_RUN_NOT_FOUND");
+    expect(result.diagnostics).toEqual({ category: "evidence_invalid" });
+  });
+
   it("forwards the public output limit into the real provider and retained incomplete trace", async () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 16;
@@ -490,6 +505,10 @@ describe("runCuaActorLab", () => {
     expect(killed).toHaveLength(1);
     expect(requests).toBe(1);
     expect(result.session?.status).toBe("incomplete");
+    expect(result.session?.stopCause).toBe("provider_output_limit");
+    expect(result.lanes?.[0]?.session?.stopCause).toBe("provider_output_limit");
+    expect(result.diagnostics).toEqual({ category: "session_interrupted", stopCause: "provider_output_limit" });
+    expect(result.lanes?.[0]?.diagnostics).toEqual(result.diagnostics);
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.modelSettings.maxOutputTokens).toBe(16);
     expect(sandbox.calls.some(([name]) => name === "leftClick")).toBe(false);

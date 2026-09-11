@@ -1,3 +1,4 @@
+import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { readFile } from "node:fs/promises";
@@ -704,7 +705,7 @@ function registerTelemetryCommand(parent: Command, io: CliIo): void {
         event: "cli_command",
         anonymousId: state.anonymousId,
         version: CLI_VERSION,
-        properties: { command: "run", lab: "try-live", mode: "live", outcome: "passed", brain: "provider-key", durationBucket: "1-5m", ok: true }
+        properties: { command: "lab run", lab: "try-live", mode: "live", outcome: "incomplete", brain: "provider-key", durationBucket: "1-5m", ok: false, diagnosticCategory: "session_interrupted", stopCause: "spend_limit" }
       });
       const result = {
         schema: "humanish.telemetry-status.v1" as const,
@@ -3428,7 +3429,7 @@ function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
   ].join("\n") + "\n";
 }
 
-function formatCuaLabHuman(result: CuaActorLabResult): string {
+export function formatCuaLabHuman(result: CuaActorLabResult): string {
   return [
     `humanish lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
     ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
@@ -3442,8 +3443,12 @@ function formatCuaLabHuman(result: CuaActorLabResult): string {
     ...(result.rerun
       ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
       : []),
-    ...(result.session
-      ? [`session: ${result.session.status} (${result.session.completionReason}) · ${result.session.reason}`,
+    ...(result.diagnostics ? [`diagnostic: ${formatCuaDiagnostics(result.diagnostics)}`] : []),
+    ...((result.lanes?.length ?? 0) > 1
+      ? result.lanes!.map(lane => `lane ${lane.id}: ${lane.status}${lane.session ? ` (${lane.session.completionReason})` : ""}${lane.diagnostics ? ` · ${formatCuaDiagnostics(lane.diagnostics)}` : ""}${lane.session ? ` · ${lane.session.reason}` : ""}`)
+      : []),
+    ...(result.session && (result.lanes?.length ?? 0) <= 1
+      ? [`session: ${result.session.status} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
          `screenshots: ${result.session.screenshots}`]
       : []),
     ...(result.sandbox

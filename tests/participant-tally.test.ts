@@ -72,6 +72,15 @@ describe("tallyParticipantOutcomes", () => {
 });
 
 describe("formatParticipantOutcomes", () => {
+  it("preserves old outcome counts and falls back when recorded cause details cannot explain the whole tally", () => {
+    const recorded = tallyParticipantOutcomes(["abandoned", "incomplete", "timed_out"]);
+    const before = structuredClone(recorded);
+    expect(formatParticipantOutcomes(recorded, [
+      { status: "abandoned", label: "provider token limit" },
+      { status: "incomplete", label: "adapter admission limit" }
+    ])).toBe("0/3 reached the goal, 1 interrupted (provider token limit), 2 interrupted (stop details unavailable)");
+    expect(recorded).toEqual(before);
+  });
   it("always leads with the denominator", () => {
     expect(formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed", "abandoned"]))).toContain(
       "2/3 reached the goal"
