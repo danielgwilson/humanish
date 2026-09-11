@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { CuaAdmissionLimitError } from "../src/index.js";
 import { runComputerUseLoop, type CuaProvider, type CuaTurn } from "../src/computer-use.js";
 import { createOpenAiResponsesProvider, OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/openai-responses-cu.js";
-import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
+import { buildCuaCostSummary, participantFeedbackCandidates } from "../src/cua-actor-lab.js";
+import { estimateActorCost } from "../src/pricing.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 
@@ -14,6 +16,9 @@ const actionTurn: CuaTurn = {
   actions: [{ kind: "keypress", keys: ["ENTER"] }], pendingSafetyChecks: [], done: false,
   usage: { input: 10, output: 5, cachedInput: 0, cacheWriteInput: 0 }
 };
+// Captured response excerpts, reused only to stage known turns around local retry controls.
+const pendingResponse = JSON.parse(readFileSync(new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url), "utf8"));
+const closingResponse = JSON.parse(readFileSync(new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url), "utf8"));
 
 // All refusals are local events, not provider-response fixtures. No transport dispatch occurs.
 function admission(error: unknown = new CuaAdmissionLimitError()) {
@@ -80,6 +85,7 @@ describe("explicit adapter admission limits", () => {
       const debrief = vi.fn<CuaProvider["nextTurn"]>();
       const { result, execute } = await run({ id: "synthetic", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn, debrief });
       expect(result.trace).toMatchObject({ status: "incomplete", completionReason: "budget_reached", stopCause: "adapter_limit" });
+      expect(result.trace.interactionUsageIncomplete).toBeUndefined();
       expect(result.trace.counts.turns).toBe(precedingActions);
       expect(execute).toHaveBeenCalledTimes(precedingActions);
       expect(nextTurn).toHaveBeenCalledTimes(precedingActions + 1);
@@ -92,6 +98,8 @@ describe("explicit adapter admission limits", () => {
       if (precedingActions) {
         expect(result.trace.tokenUsage).toMatchObject({ input: 10, output: 5, total: 15, turns: [actionTurn.usage] });
         expect(result.trace.taskFunnel?.completed).toBe(1);
+        result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
+        expect(buildCuaCostSummary({ lanes: [{ trace: result.trace }] })?.fullyEstimated).toBe(true);
       } else {
         expect(result.trace.tokenUsage).toBeUndefined();
         expect(result.trace.taskFunnel?.completed).toBe(0);
@@ -114,6 +122,55 @@ describe("explicit adapter admission limits", () => {
     expect(execute).not.toHaveBeenCalled();
     expect(result.trace.counts.turns).toBe(0);
     expect(result.trace.tokenUsage).toBeUndefined();
+    expect(result.trace.interactionUsageIncomplete).toBe(true);
+  });
+
+  it.each(["refused", "successful"] as const)("retains unknown stalled-request usage with earlier known tokens when the retry is %s", async ending => {
+    const nextTurn = vi.fn<CuaProvider["nextTurn"]>()
+      .mockResolvedValueOnce(actionTurn)
+      .mockImplementationOnce(async () => new Promise<CuaTurn>(() => {}));
+    if (ending === "refused") nextTurn.mockRejectedValueOnce(new CuaAdmissionLimitError());
+    else nextTurn.mockResolvedValueOnce({ actions: [], pendingSafetyChecks: [], done: true, usage: actionTurn.usage! });
+    const { result, execute } = await run({ id: "synthetic", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn }, { turnTimeoutMs: 5 });
+    expect(nextTurn).toHaveBeenCalledTimes(3);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(result.trace.interactionUsageIncomplete).toBe(true);
+    expect(result.trace.status).toBe(ending === "refused" ? "incomplete" : "passed");
+    expect(result.trace.tokenUsage?.turns).toHaveLength(ending === "refused" ? 1 : 2);
+    result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
+    const cost = buildCuaCostSummary({ lanes: [{ trace: result.trace }] });
+    expect(cost?.fullyEstimated).toBe(false);
+    expect(cost?.breakdown).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reason: "interaction_usage_unreported", estimatedCostUsd: null }),
+      expect.objectContaining({ estimatedCostUsd: result.trace.estimatedCost.estimatedCostUsd })
+    ]));
+    expect(cost?.estimatedTotalUsd).toBeGreaterThan(0);
+  });
+
+  it.each(["refused", "successful"] as const)("retains hidden OpenAI transport uncertainty after a %s retry", async ending => {
+    const delayFn = vi.fn(async () => {});
+    let requests = 0;
+    const provider = createOpenAiResponsesProvider({ apiKey: "synthetic-unused-key", model: "gpt-5.6-sol", delayFn, env: {},
+      fetchFn: async () => {
+        requests++;
+        if (requests === 2) throw new Error("synthetic ambiguous transport failure");
+        if (requests === 3 && ending === "refused") throw new CuaAdmissionLimitError();
+        const raw = requests === 1 ? pendingResponse : closingResponse;
+        return { ok: true, status: 200, json: async () => raw, text: async () => JSON.stringify(raw) };
+      }
+    });
+    const { result } = await run(provider);
+    expect(requests).toBe(3);
+    expect(delayFn).toHaveBeenCalledTimes(1);
+    expect(provider.interactionUsageIncomplete).toBe(true);
+    expect(result.trace.interactionUsageIncomplete).toBe(true);
+    expect(result.trace.status).toBe(ending === "refused" ? "incomplete" : "passed");
+    expect(result.trace.tokenUsage?.turns).toHaveLength(ending === "refused" ? 1 : 2);
+    result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
+    const cost = buildCuaCostSummary({ lanes: [{ trace: result.trace }] });
+    expect(cost?.fullyEstimated).toBe(false);
+    expect(cost?.breakdown[0]).toMatchObject({ reason: "interaction_usage_unreported", estimatedCostUsd: null });
+    expect(cost?.estimatedTotalUsd).toBe(result.trace.estimatedCost.estimatedCostUsd);
   });
 
   it("does not classify an executor exception as a provider admission declaration", async () => {

@@ -26,6 +26,14 @@ does not activate the contract. Do not use it for invalid configuration, a
 provider rejection, or an already dispatched request with unknown outcome or
 usage. An unknown prior request stays unknown even if a later call is refused.
 
+A stalled interaction or an OpenAI transport retry may have consumed additional
+tokens without reporting usage. The trace then retains
+`interactionUsageIncomplete: true`; its cost summary keeps the known token
+estimate and adds an unmeasured `interaction_usage_unreported` line. A later
+successful retry or local refusal does not remove that uncertainty. Custom
+providers can expose a latched `interactionUsageIncomplete` boolean for hidden
+interactive attempts. Absence of the field does not attest complete billing.
+
 The OpenAI provider does not retry this explicit refusal. The CUA loop records
 `incomplete`, `budget_reached` and `stopCause: adapter_limit`, with a fixed
 notice. It does not record another successful turn, usage, action or closing

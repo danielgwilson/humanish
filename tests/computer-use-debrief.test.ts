@@ -48,6 +48,7 @@ describe("read-only participant debrief", () => {
     const result = await s.run();
     expect(result.status).toBe("passed");
     expect(result.trace.stopCause).toBeUndefined();
+    expect(result.trace.interactionUsageIncomplete).toBeUndefined();
     expect(result.trace.debrief).toMatchObject({ status: "skipped" });
     expect(result.trace.debrief?.usageReported).toBeUndefined();
     expect(result.trace.debrief?.report).toBeUndefined();
@@ -61,6 +62,16 @@ describe("read-only participant debrief", () => {
     expect(cost?.fullyEstimated).toBe(true);
     expect(cost?.breakdown).toHaveLength(1);
     expect(cost?.breakdown[0]?.estimatedCostUsd).toBe(0.02);
+  });
+
+  it("skips optional paid debrief after a provider reports an ambiguous interactive retry", async () => {
+    const s = setup({ maxUsd: 1, estimateTurnCostUsd: () => 0.01 });
+    Object.defineProperty(s.provider, "interactionUsageIncomplete", { get: () => true });
+    const result = await s.run();
+    expect(result.status).toBe("passed");
+    expect(result.trace.interactionUsageIncomplete).toBe(true);
+    expect(result.trace.debrief).toMatchObject({ status: "skipped" });
+    expect(s.debrief).not.toHaveBeenCalled();
   });
 
   it("recovers a previously unspoken report without further actions or changed completion", async () => {

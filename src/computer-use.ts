@@ -187,6 +187,9 @@ export interface CuaProvider {
    * docs/architecture/state-driven-executor.md.
    */
   readonly requiresFrame?: boolean;
+  /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
+   *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete. */
+  readonly interactionUsageIncomplete?: boolean;
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
@@ -768,6 +771,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let usageOutput = 0;
   let sawUsage = false;
   let incompleteInteractionUsage = false;
+  let unreportedInteractionUsage = false;
+  const hasUnreportedInteractionUsage = (): boolean => unreportedInteractionUsage || provider.interactionUsageIncomplete === true;
   let lastResponseId: string | undefined;
   let currentPhase = "initializing computer-use loop";
   let lastActionTitle: string | undefined;
@@ -1061,6 +1066,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       } catch (error) {
         if (isCuaAdmissionLimitError(error)) { stopForAdmissionLimit(); break; }
         if (!(error instanceof CuaStallError)) throw error;
+        unreportedInteractionUsage = true;
         record({
           id: nextId("notice"),
           kind: "notice",
@@ -1074,6 +1080,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         } catch (retryError) {
           if (isCuaAdmissionLimitError(retryError)) { stopForAdmissionLimit(); break; }
           if (!(retryError instanceof CuaStallError)) throw retryError;
+          unreportedInteractionUsage = true;
           completionReason = "harness_error";
           reason = `provider turn ${turnNumber} stalled twice (${retryError.afterMs}ms each); the model produced no turn and the lane was ended rather than left to run out its budget`;
           record({
@@ -1547,7 +1554,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     else if (signal?.aborted) skip = "the study was cancelled";
     else if (remaining() <= 0) skip = "the session deadline was reached";
     else if (provider.requiresFrame && closingObservation.screenshot === undefined) skip = "the final observation has no required frame";
-    if (skip === undefined && (maxUsd !== undefined || overRunBudget !== undefined) && incompleteInteractionUsage) {
+    if (skip === undefined && (maxUsd !== undefined || overRunBudget !== undefined) && (incompleteInteractionUsage || hasUnreportedInteractionUsage())) {
       skip = "remaining model budget is unknown because an earlier participant turn did not report complete usage";
     }
     if (skip === undefined && maxUsd !== undefined) {
@@ -1676,6 +1683,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
     ...(declaredOutcome === undefined ? {} : { declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),
+    ...(hasUnreportedInteractionUsage() ? { interactionUsageIncomplete: true as const } : {}),
     // The funnel is present exactly when a protocol was declared — including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),

@@ -261,6 +261,9 @@ export interface ActorTrace {
   };
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
+  /** A stalled or adapter-reported ambiguous interaction may have additional unreported usage.
+   *  Known tokenUsage remains usable as a partial total. Absence is not proof of completeness. */
+  interactionUsageIncomplete?: true;
   /**
    * ADDITIVE + OPTIONAL token-derived cost ESTIMATE for this lane (humanish.actor-estimated-cost.v1).
    * Distinct from `tokenUsage.costUsd`, which is RESERVED for a real provider-returned charge: a
