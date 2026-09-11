@@ -1,5 +1,6 @@
 import { validClosingReport } from "./computer-use.js";
 import type { ActorCapabilities } from "./actor-contract.js";
+import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./cua-admission-limit.js";
 import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { redactText } from "./redaction.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
@@ -659,6 +660,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   };
 
   let lastResponseId: string | undefined;
+  let interactionUsageIncomplete = false;
   let pendingCallIds: string[] = [];
   let lastOutputItems: unknown[] = [];
   let mode: "previous_response_id" | "explicit_context" = options.zeroDataRetention ? "explicit_context" : "previous_response_id";
@@ -680,7 +682,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   // transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
   // ZdrError; any other non-ok status throws with the STATUS ONLY (never the
   // body, which can echo the input/screenshot).
-  const post = async (body: Record<string, unknown>, signal: AbortSignal | undefined, retries = maxRetries): Promise<unknown> => {
+  const post = async (body: Record<string, unknown>, signal: AbortSignal | undefined, retries = maxRetries, interaction = true): Promise<unknown> => {
     // Preflight the deterministic next capture leaf before any network side
     // effect. A hostile generated path must fail with zero provider calls.
     await prepareNextCapture();
@@ -701,6 +703,12 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
           ...(signal === undefined ? {} : { signal })
         });
       } catch (error) {
+        // An explicit local pre-dispatch limit is terminal. Recreate the fixed safe payload
+        // rather than propagating caller-added message/context through the transport seam.
+        if (isCuaAdmissionLimitError(error)) throw new CuaAdmissionLimitError();
+        // Dispatch may have reached the provider. Preserve this uncertainty even when a later
+        // retry succeeds or is refused locally; only that later refusal is known not to dispatch.
+        if (interaction) interactionUsageIncomplete = true;
         if (signal?.aborted === true || isAbortError(error)) {
           throw error;
         }
@@ -772,7 +780,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
             schema: { type: "object", additionalProperties: false, required: ["summary", "frictionReports"],
               properties: { summary: { type: "string" }, frictionReports: { type: "array", items: { type: "string" } } } }
           } }
-        }, signal, 0);
+        }, signal, 0, false);
       }
       for (;;) {
         try {
@@ -837,6 +845,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     // it cannot reason over a screenshot-less observation. The loop reads this to fail closed
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,
+    get interactionUsageIncomplete() { return interactionUsageIncomplete; },
     nextTurn: (req, signal) => requestTurn(req, signal),
     // Stateless mode retains only the latest output packet, not the whole session needed for
     // retrospective claims. This getter follows both configured ZDR and a runtime policy latch.

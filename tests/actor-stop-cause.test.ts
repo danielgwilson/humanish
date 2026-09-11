@@ -14,7 +14,7 @@ const cases: [ActorStopCause, string][] = [
   ["provider_output_limit", "provider output limit"], ["provider_token_limit", "provider token limit"],
   ["time_limit", "time limit"], ["spend_limit", "estimated spend limit"], ["study_spend_limit", "study spend limit"],
   ["provider_incomplete", "provider response incomplete"], ["provider_status", "unexpected provider status"],
-  ["harness_aborted", "stopped by harness"]
+  ["harness_aborted", "stopped by harness"], ["adapter_limit", "adapter admission limit"]
 ];
 
 describe("recorded stop causes", () => {
@@ -40,6 +40,11 @@ describe("recorded stop causes", () => {
 
   it("does not use a token notice to override a different terminal reason", () => {
     expect(actorEnding(actor({ completionReason: "goal_satisfied", items: [{ id: "notice", kind: "notice", lifecycle: "completed", title: "provider token limit reached" }] }))).toBeUndefined();
+  });
+
+  it("does not infer an adapter limit from a historical generic error", () => {
+    expect(actorEnding(actor({ status: "failed", completionReason: "actor_error", reason: "OpenAI Responses network error",
+      items: [{ id: "notice", kind: "notice", lifecycle: "completed", title: "adapter admission limit reached" }] }))).toBeUndefined();
   });
 
   it.each(["__proto__", "constructor", "future_cause"])("ignores an unknown cause %s", (stopCause) => {

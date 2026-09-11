@@ -5307,8 +5307,19 @@ export function buildCuaCostSummary(args: {
       sumInput += usage.input ?? 0;
       sumOutput += usage.output ?? 0;
     }
-    // An attempted closing request can fail after provider work without reporting usage.
-    // Keep the known interaction estimate and make the additional unknown explicit.
+    // A stalled/ambiguous interaction can remain unreported after a later successful retry.
+    // Keep known token estimates and make the additional unknown explicit.
+    if (lane.trace.interactionUsageIncomplete === true) {
+      breakdown.push({
+        kind: "model-tokens",
+        ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
+        ...(lane.trace.providerVersion === undefined ? {} : { modelId: lane.trace.providerVersion }),
+        estimatedCostUsd: null,
+        reason: "interaction_usage_unreported",
+        ratesAsOf: null
+      });
+    }
+    // An attempted closing request has its own accounting boundary.
     if (lane.trace.debrief?.usageReported === false) {
       breakdown.push({
         kind: "model-tokens",

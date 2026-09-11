@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { CuaTurnRequest } from "../src/computer-use.js";
 import { createOpenAiResponsesProvider, type FetchLike } from "../src/openai-responses-cu.js";
+import { CuaAdmissionLimitError } from "../src/cua-admission-limit.js";
 
 // See the adjacent provenance note. Both positive response shapes are excerpts
 // of a captured live run; negative cases deliberately mutate that real response.
@@ -28,6 +29,25 @@ function harness(second: unknown = closing, status = 200) {
 }
 
 describe("captured OpenAI closing-report contract", () => {
+  it("preserves a local closing-request refusal after a captured interaction without dispatch or retry", async () => {
+    const transport = vi.fn(async () => ({ ok: true, status: 200, text: async () => "", json: async () => pending }));
+    const admission = vi.fn(async () => {
+      if (transport.mock.calls.length > 0) {
+        const error = new CuaAdmissionLimitError();
+        error.message = "synthetic-private-payload";
+        throw error;
+      }
+      return transport();
+    });
+    const delayFn = vi.fn(async () => {});
+    const provider = createOpenAiResponsesProvider({ apiKey: "synthetic-key", fetchFn: admission, delayFn, env: {} });
+    await provider.nextTurn(request, signal);
+    await expect(provider.debrief!(request, signal)).rejects.toThrow(new CuaAdmissionLimitError().message);
+    expect(admission).toHaveBeenCalledTimes(2);
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(delayFn).not.toHaveBeenCalled();
+  });
+
   it("continues the actual pending computer call once, disables tools, and preserves typed report and usage", async () => {
     const h = harness();
     expect(h.provider.debrief).toBeUndefined();

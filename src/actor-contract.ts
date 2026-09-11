@@ -49,7 +49,7 @@ export const PARTICIPANT_OUTCOME_STATUSES: readonly ActorStatus[] = ["abandoned"
 
 /** Optional precise interruption cause; completionReason and status retain their original meaning. */
 export type ActorStopCause = "provider_output_limit" | "provider_token_limit" | "time_limit" | "spend_limit"
-  | "study_spend_limit" | "provider_incomplete" | "provider_status" | "harness_aborted";
+  | "study_spend_limit" | "adapter_limit" | "provider_incomplete" | "provider_status" | "harness_aborted";
 
 export type ActorCompletionReason =
   | "goal_satisfied"
@@ -261,6 +261,9 @@ export interface ActorTrace {
   };
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
+  /** A stalled or adapter-reported ambiguous interaction may have additional unreported usage.
+   *  Known tokenUsage remains usable as a partial total. Absence is not proof of completeness. */
+  interactionUsageIncomplete?: true;
   /**
    * ADDITIVE + OPTIONAL token-derived cost ESTIMATE for this lane (humanish.actor-estimated-cost.v1).
    * Distinct from `tokenUsage.costUsd`, which is RESERVED for a real provider-returned charge: a
