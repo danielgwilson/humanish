@@ -280,10 +280,11 @@ describe("finite CUA diagnostics", () => {
   });
 
   it("reads only the finite summary, never a first-lane cause or raw failure text", () => {
-    expect(deriveStudyFacts({ diagnostics: { category: "mixed", stopCause: "mixed" },
+    expect(deriveStudyFacts({ schema: "humanish.cua-lab-result.v2", diagnostics: { category: "mixed", stopCause: "mixed" },
       session: { stopCause: "provider_output_limit" }, reason: "private.example", lanes: [{ id: "secret" }] }))
       .toEqual({ diagnosticCategory: "mixed", stopCause: "mixed" });
-    expect(deriveStudyFacts({ diagnostics: { category: "private.example", stopCause: "secret reason" } })).toEqual({});
+    expect(deriveStudyFacts({ schema: "humanish.cua-lab-result.v2", diagnostics: { category: "private.example", stopCause: "secret reason" } })).toEqual({});
+    expect(deriveStudyFacts({ schema: "another-result", diagnostics: { category: "mixed", stopCause: "mixed" } })).toEqual({});
   });
 
   it("rejects injected values again at the final payload boundary", () => {

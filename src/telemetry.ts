@@ -302,14 +302,15 @@ export function deriveStudyFacts(result: unknown): TelemetryProperties {
   const error = asRecord(r.error);
   if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code)) facts.errorCode = error.code;
 
-  const diagnostics = asRecord(r.diagnostics);
+  const cuaResult = r.schema === "humanish.cua-lab-result.v2";
+  const diagnostics = cuaResult ? asRecord(r.diagnostics) : undefined;
   if (isCuaDiagnosticCategory(diagnostics?.category)) facts.diagnosticCategory = diagnostics.category;
   if (isCuaDiagnosticStopCause(diagnostics?.stopCause)) facts.stopCause = diagnostics.stopCause;
 
   const session = asRecord(r.session);
   const laneSummary = asRecord(r.laneSummary);
   let outcome: string | undefined;
-  if (r.schema === "humanish.cua-lab-result.v2" && facts.mode === "dry-run") {
+  if (cuaResult && facts.mode === "dry-run") {
     outcome = r.ok === true ? "contract_proof_only" : "error";
   } else if (laneSummary && typeof laneSummary.total === "number" && typeof laneSummary.passed === "number" && laneSummary.total > 1) {
     outcome = laneSummary.passed === laneSummary.total ? "all_passed"

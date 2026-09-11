@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "../src/actor-contract.js";
-import { cuaLaneDiagnostics, summarizeCuaDiagnostics, type CuaDiagnostics } from "../src/cua-diagnostics.js";
+import { cuaLaneDiagnostics, formatCuaStopCause, summarizeCuaDiagnostics, type CuaDiagnostics } from "../src/cua-diagnostics.js";
 
 describe("CUA diagnostic control evidence", () => {
+  it("uses the same precise cause labels as recorded Observer endings", () => {
+    expect(formatCuaStopCause("spend_limit")).toBe("estimated spend limit");
+    expect(formatCuaStopCause("provider_incomplete")).toBe("provider response incomplete");
+    expect(formatCuaStopCause("provider_status")).toBe("unexpected provider status");
+    expect(formatCuaStopCause("adapter_limit")).toBe("adapter admission limit");
+  });
   it.each(["provider_output_limit", "provider_token_limit", "time_limit", "spend_limit", "study_spend_limit",
     "provider_incomplete", "provider_status", "harness_aborted", "adapter_limit"])("preserves recorded %s", (cause) => {
     expect(cuaLaneDiagnostics({ dryRun: false, session: { status: "incomplete", completionReason: "budget_reached", stopCause: cause as ActorStopCause } }))

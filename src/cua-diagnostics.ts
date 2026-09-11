@@ -1,3 +1,4 @@
+import { actorStopCauseLabel } from "./actor-stop-cause.js";
 import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "./actor-contract.js";
 
 /** Diagnostic categories describe the instrument's result, never prove a target-app defect. */
@@ -65,12 +66,12 @@ export function summarizeCuaDiagnostics(input: {
   if (input.dryRun) return { category: "preview" };
   if (input.lanes.length === 0) return { category: "unknown" };
   const diagnostics = input.lanes.map(lane => lane.diagnostics ?? { category: "unknown" as const });
-  const signatures = input.lanes.map((lane, index) => JSON.stringify([diagnostics[index], lane.status, lane.ok]));
-  const categories = new Set(signatures);
+  const signatures = input.lanes.map((lane, index) => JSON.stringify([diagnostics[index]!.category, diagnostics[index]!.stopCause, lane.status, lane.ok]));
+  const endings = new Set(signatures);
   const causes = new Set(diagnostics.map(item => item.stopCause ?? "unknown"));
   const hasCause = diagnostics.some(item => item.stopCause !== undefined);
   return {
-    category: categories.size === 1 ? diagnostics[0]!.category : "mixed",
+    category: endings.size === 1 ? diagnostics[0]!.category : "mixed",
     ...(hasCause ? { stopCause: causes.size === 1 ? diagnostics[0]!.stopCause! : "mixed" } : {})
   };
 }
@@ -80,6 +81,10 @@ const categoryLabels: Record<CuaDiagnosticCategory, string> = {
   execution_error: "execution error", evidence_invalid: "invalid evidence", mixed: "mixed endings", unknown: "unknown ending"
 };
 
+export function formatCuaStopCause(cause: CuaDiagnosticStopCause): string {
+  return cause === "mixed" || cause === "unknown" ? cause : actorStopCauseLabel(cause);
+}
+
 export function formatCuaDiagnostics(diagnostics: CuaDiagnostics): string {
-  return `${categoryLabels[diagnostics.category]}${diagnostics.stopCause ? ` (${diagnostics.stopCause.replaceAll("_", " ")})` : ""}`;
+  return `${categoryLabels[diagnostics.category]}${diagnostics.stopCause ? ` (${formatCuaStopCause(diagnostics.stopCause)})` : ""}`;
 }

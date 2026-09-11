@@ -1,4 +1,4 @@
-import { formatCuaDiagnostics } from "./cua-diagnostics.js";
+import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { readFile } from "node:fs/promises";
@@ -3448,7 +3448,7 @@ export function formatCuaLabHuman(result: CuaActorLabResult): string {
       ? result.lanes!.map(lane => `lane ${lane.id}: ${lane.status}${lane.session ? ` (${lane.session.completionReason})` : ""}${lane.diagnostics ? ` · ${formatCuaDiagnostics(lane.diagnostics)}` : ""}${lane.session ? ` · ${lane.session.reason}` : ""}`)
       : []),
     ...(result.session && (result.lanes?.length ?? 0) <= 1
-      ? [`session: ${result.session.status} (${result.session.completionReason})${result.session.stopCause ? ` · ${result.session.stopCause.replaceAll("_", " ")}` : ""} · ${result.session.reason}`,
+      ? [`session: ${result.session.status} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
          `screenshots: ${result.session.screenshots}`]
       : []),
     ...(result.sandbox
