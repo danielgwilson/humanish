@@ -24,6 +24,7 @@ import {
   runDryRun,
   verifyRun,
   type RunCostSummary,
+  type RunBundle,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord
 } from "../src/run.js";
@@ -3045,6 +3046,22 @@ async function writeCuaRunFixture(
 }
 
 describe("verify hardening (no-engagement + screenshot posture)", () => {
+  it("accepts a retained zero-action adapter-limit interruption without inventing a participant success", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const trace = cuaActorTrace({ status: "incomplete", completionReason: "budget_reached",
+        reason: "The adapter reported a local admission limit before provider dispatch.",
+        counts: { turns: 0, actions: 0, screenshots: 0, messages: 0 },
+        items: [{ id: "notice-001", kind: "notice", lifecycle: "completed", status: "warn", title: "adapter admission limit reached" }] });
+      trace.stopCause = "adapter_limit";
+      await writeCuaRunFixture(cwd, "adapter-limit", { dryRun: false, trace });
+      const result = await verifyRun(cwd, "adapter-limit");
+      expect(result.ok).toBe(true);
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs/adapter-limit/run.json"), "utf8")) as RunBundle;
+      expect(bundle.streams[0]?.actor?.stopCause).toBe("adapter_limit");
+      expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, ranOut: 1, harnessFailed: 0 });
+    });
+  });
+
   it("FAILS a live goal_satisfied bundle whose actor trace has zero actions and zero messages (hollow run)", async () => {
     await withFixtureCopy(async (cwd) => {
       // Shape mirrors the preserved pre-0.6.1 hollow-run bundles: mode live, status passed,

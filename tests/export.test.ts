@@ -122,6 +122,35 @@ describe("humanish export", () => {
     expect(await readFile(index, "utf8")).toBe(oldHtml);
   });
 
+  it("exports an adapter-limit ending with the original mixed-outcome denominator and evidence", async () => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    const stopped = bundle.streams[0]!;
+    stopped.status = "incomplete";
+    Object.assign(stopped.actor!, { status: "incomplete", completionReason: "budget_reached", stopCause: "adapter_limit" });
+    const legacy = structuredClone(stopped);
+    legacy.id = "legacy-error";
+    legacy.status = "failed";
+    Object.assign(legacy.actor!, { status: "failed", completionReason: "actor_error", reason: "OpenAI Responses network error" });
+    delete legacy.actor!.stopCause;
+    bundle.streams = [stopped, legacy];
+    bundle.review.participants = tallyParticipantOutcomes(["incomplete", "failed"]);
+    const data = buildObserverData(bundle);
+    const original = structuredClone(data);
+    const index = path.join(runDir, "observer", "index.html");
+    await writeFile(index, `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`);
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = await readFile(path.join(cwd, result.path), "utf8");
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    const refreshed = JSON.parse(slot![1]!) as ObserverData;
+    expect(refreshed.streams[0]?.ending).toEqual({ cause: "adapter_limit", label: "adapter admission limit" });
+    expect(refreshed.streams[0]?.statusLabel).toBe("Interrupted");
+    expect(refreshed.streams[1]?.ending).toBeUndefined();
+    expect(refreshed.run.participants).toEqual(original.run.participants);
+    expect(refreshed.run.participants?.total).toBe(2);
+    expect(refreshed.streams.map(stream => stream.actor)).toEqual(original.streams.map(stream => stream.actor));
+  });
+
   it("removes saved runtime grants and liveness from portable HTML", async () => {
     const index = path.join(runDir, "observer", "index.html");
     const html = await readFile(index, "utf8");

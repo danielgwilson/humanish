@@ -55,6 +55,7 @@ export {
   createOpenAiResponsesProvider
 } from "./openai-responses-cu.js";
 export type { FetchLike, OpenAiResponsesProviderOptions } from "./openai-responses-cu.js";
+export { CuaAdmissionLimitError } from "./cua-admission-limit.js";
 export {
   adapterScoreFailureMessage,
   applyAdapterScoreFailureToReview,

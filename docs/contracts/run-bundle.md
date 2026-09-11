@@ -88,7 +88,7 @@ responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 An actor trace may include `stopCause` alongside its unchanged `status`,
 `completionReason` and verbatim `reason`. Computer-use sessions distinguish
 `provider_output_limit`, `provider_token_limit`, `time_limit`, `spend_limit`,
-`study_spend_limit`, `provider_incomplete`, `provider_status`, and
+`study_spend_limit`, `adapter_limit`, `provider_incomplete`, `provider_status`, and
 `harness_aborted`. Absence means the route or recording did not retain this
 precise field; it does not mean the participant finished.
 
@@ -99,6 +99,13 @@ establish a token limit, but cannot distinguish output from context exhaustion.
 Participant prose is never used to infer the cause. Study summaries retain the
 recorded outcome counts while explaining a cause only when the matching traces
 cover that outcome's count.
+
+`adapter_limit` records a library adapter's explicit declaration that a configured
+local control limit refused the next request before provider dispatch. It ends
+the interactive session as `incomplete` / `budget_reached`; earlier actions,
+usage and task observations remain intact. It is not independent transport or
+billing attestation, and generic historical errors are not reclassified. See
+[the adapter admission contract](adapter-admission.md).
 
 ## Participant Assignment
 

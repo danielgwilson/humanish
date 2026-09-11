@@ -1,5 +1,6 @@
 import { validClosingReport } from "./computer-use.js";
 import type { ActorCapabilities } from "./actor-contract.js";
+import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./cua-admission-limit.js";
 import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { redactText } from "./redaction.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
@@ -701,6 +702,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
           ...(signal === undefined ? {} : { signal })
         });
       } catch (error) {
+        // An explicit local pre-dispatch limit is terminal. Recreate the fixed safe payload
+        // rather than propagating caller-added message/context through the transport seam.
+        if (isCuaAdmissionLimitError(error)) throw new CuaAdmissionLimitError();
         if (signal?.aborted === true || isAbortError(error)) {
           throw error;
         }

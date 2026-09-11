@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runComputerUseLoop, type CuaLoopOptions, type CuaProvider, type CuaTurn } from "../src/computer-use.js";
 import { buildCuaCostSummary, resolveSelfReportedBlocker, resolveSelfReportedFriction } from "../src/cua-actor-lab.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
+import { CuaAdmissionLimitError } from "../src/cua-admission-limit.js";
 
 const report = "The Save button did nothing. I used Enter and finished the task.";
 const closing = (overrides: Partial<CuaTurn> = {}): CuaTurn => ({
@@ -39,6 +40,29 @@ function setup(overrides: Partial<CuaLoopOptions> = {}) {
 }
 
 describe("read-only participant debrief", () => {
+  it("keeps observed success and known usage when admission refuses the closing request before dispatch", async () => {
+    const s = setup();
+    const error = new CuaAdmissionLimitError();
+    error.message = "synthetic-private-payload";
+    s.debrief.mockRejectedValue(error);
+    const result = await s.run();
+    expect(result.status).toBe("passed");
+    expect(result.trace.stopCause).toBeUndefined();
+    expect(result.trace.debrief).toMatchObject({ status: "skipped" });
+    expect(result.trace.debrief?.usageReported).toBeUndefined();
+    expect(result.trace.debrief?.report).toBeUndefined();
+    expect(result.trace.tokenUsage).toMatchObject({ input: 10, output: 5, turns: [{ input: 10, output: 5 }] });
+    expect(result.trace.taskFunnel?.completed).toBe(1);
+    expect(s.debrief).toHaveBeenCalledTimes(1);
+    expect(s.execute).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(result.trace)).not.toContain("synthetic-private-payload");
+    result.trace.estimatedCost = { schema: "humanish.actor-estimated-cost.v1", estimatedCostUsd: 0.02, ratesAsOf: "2026-09-03", modelId: "internal-fixture" };
+    const cost = buildCuaCostSummary({ lanes: [{ trace: result.trace }] });
+    expect(cost?.fullyEstimated).toBe(true);
+    expect(cost?.breakdown).toHaveLength(1);
+    expect(cost?.breakdown[0]?.estimatedCostUsd).toBe(0.02);
+  });
+
   it("recovers a previously unspoken report without further actions or changed completion", async () => {
     const s = setup();
     const result = await s.run();

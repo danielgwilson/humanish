@@ -23,6 +23,7 @@ import {
 } from "./stop-conditions.js";
 import { TaskTracker, type LabTask } from "./tasks.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
+import { isCuaAdmissionLimitError } from "./cua-admission-limit.js";
 
 // The computer-use (CUA) loop engine.
 //
@@ -867,6 +868,14 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let reason = "computer-use loop completed";
   let stopConditionMatch: StopConditionMatch | undefined;
 
+  const stopForAdmissionLimit = (): void => {
+    completionReason = "budget_reached";
+    stopCause = "adapter_limit";
+    reason = "the adapter reported a local admission limit before provider dispatch; the participant did not report completion. No actions or closing request followed the refusal.";
+    record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "warn",
+      title: "adapter admission limit reached", text: reason });
+  };
+
   // A vision provider against a screenshot-less observation is a fail-closed harness error, not
   // a silent crash: record it and break. Returns true when the run must stop. (The provider sets
   // requiresFrame; a state-reasoning provider omits it.)
@@ -1050,6 +1059,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       try {
         turn = await raceBounded(`provider turn ${turnNumber}`, provider.nextTurn(request, signal ?? neverAbort), remaining(), turnTimeoutMs, signal);
       } catch (error) {
+        if (isCuaAdmissionLimitError(error)) { stopForAdmissionLimit(); break; }
         if (!(error instanceof CuaStallError)) throw error;
         record({
           id: nextId("notice"),
@@ -1062,6 +1072,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         try {
           turn = await raceBounded(`provider turn ${turnNumber} (retry)`, provider.nextTurn(request, signal ?? neverAbort), remaining(), turnTimeoutMs, signal);
         } catch (retryError) {
+          if (isCuaAdmissionLimitError(retryError)) { stopForAdmissionLimit(); break; }
           if (!(retryError instanceof CuaStallError)) throw retryError;
           completionReason = "harness_error";
           reason = `provider turn ${turnNumber} stalled twice (${retryError.afterMs}ms each); the model produced no turn and the lane was ended rather than left to run out its budget`;
@@ -1595,9 +1606,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           }
         } catch (error) {
           // A failed optional report cannot rewrite the already observed structured completion.
-          const detail = signal?.aborted ? "cancelled" : controller.signal.aborted || error instanceof CuaDeadlineError || error instanceof CuaStallError
-            ? "closing report deadline reached" : error instanceof Error ? error.message : String(error);
-          note("failed", `${detail}; closing request usage is unreported`, false);
+          if (isCuaAdmissionLimitError(error)) {
+            note("skipped", "the adapter reported a local admission limit before provider dispatch; no closing request was sent");
+          } else {
+            const detail = signal?.aborted ? "cancelled" : controller.signal.aborted || error instanceof CuaDeadlineError || error instanceof CuaStallError
+              ? "closing report deadline reached" : error instanceof Error ? error.message : String(error);
+            note("failed", `${detail}; closing request usage is unreported`, false);
+          }
         } finally {
           clearTimeout(timer);
           signal?.removeEventListener("abort", onAbort);
