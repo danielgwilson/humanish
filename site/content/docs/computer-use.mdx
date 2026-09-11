@@ -58,6 +58,15 @@ you own (a Vercel preview, staging), use an `app-url` subject with
 only declared subject env names do. `humanish init` scaffolds an example at
 `humanish/labs/cua-browser.yaml`.
 
+## Custom desktop templates
+
+Set `execution.desktop.template` to your E2B desktop image name or ID when the
+subject needs additional runtimes. Keep the Desktop SDK's `xdotool` input support
+and install `xclip` or `xsel` on the image's `PATH` for clipboard recovery when
+direct typing fails. Without either clipboard utility, a failed typing action
+ends with `clipboard-utility-missing`. A dry-run validates the lab configuration;
+it does not inspect the tools installed in your image.
+
 ## Off-app email/SMS verification (`comms`)
 
 When a flow is gated behind an email or

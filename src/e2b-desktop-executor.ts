@@ -274,9 +274,11 @@ async function pasteTextViaClipboard(
     // Try xclip, then fall back to xsel if xclip is absent OR fails; distinguish a
     // missing utility (exit 127) from a utility that ran but failed (exit 1) so the
     // caller can name the phase.
-    "if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard < \"$text_path\"; then",
+    // Selection owners fork and keep serving the clipboard. Their inherited output pipes
+    // must not keep the sandbox command runner waiting after the write command exits.
+    "if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard < \"$text_path\" >/dev/null 2>&1; then",
     "  :",
-    "elif command -v xsel >/dev/null 2>&1 && xsel --clipboard --input < \"$text_path\"; then",
+    "elif command -v xsel >/dev/null 2>&1 && xsel --clipboard --input < \"$text_path\" >/dev/null 2>&1; then",
     "  :",
     "elif command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1; then",
     "  echo 'clipboard utility present but failed to set the clipboard' >&2",
