@@ -201,9 +201,19 @@ Mobile viewport and touch flags do not certify gesture equivalence. The
 qualifies the historical phone-lane results: they describe Humanish's measured input path,
 not established physical-device app behavior.
 
-#### Adapters: drive a local app via its JS state contract (no E2B, no vision)
+#### Drive an already-running local app
 
-See [state-driven local adapters](https://humanish.dev/docs/computer-use#state-driven-local-adapters).
+Use a custom executor and non-vision provider to drive your app's state contract
+without E2B. The [runnable npm example](docs/architecture/examples/state-driven-local-app/README.md)
+includes a synthetic loopback app, deterministic provider, verification and cleanup:
+
+```bash
+node node_modules/humanish/docs/architecture/examples/state-driven-local-app/runner.mjs
+```
+
+Run it after installing `humanish`. It makes no model calls; it proves the
+integration, not persona behavior. See [state-driven local adapters](https://humanish.dev/docs/computer-use#state-driven-local-adapters)
+for the supported library seam.
 
 ## Browser Scenario Manifests
 

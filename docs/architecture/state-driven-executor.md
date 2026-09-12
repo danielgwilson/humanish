@@ -52,8 +52,9 @@ wait and does not cache a previous action's position.
   `redaction.screenshots` resolves to `"n/a"`. No fabricated `Buffer.alloc(0)`
   ever reaches disk. (A vision executor still returns a frame, exactly as before.)
 - **`stateSignature` is still required.** Derive it from your own state — e.g.
-  `JSON.stringify({ route, turn, modal })`. It is the canonical fallback progress
-  key when `appState` is absent. It is never written to the trace as text.
+  `stableProgressKey({ route, turn, modal })` (exported from `humanish`). It is the
+  canonical fallback progress key when `appState` is absent. It is never written
+  to the trace as text.
 - **`appState` is the preferred progress input.** When present, the loop's
   friction / no-progress detection keys off a deterministic, sorted-key,
   depth/length-capped projection of it (`stableProgressKey`) rather than the
@@ -168,32 +169,24 @@ from your own state, pair it with a non-vision `CuaProvider`, and call
 
 ### 2. `runLab` + `buildExecutor` / `buildProvider` (keeps the composition)
 
-The supported library path. It keeps personas, the Observer, the evidence
-bundle, redaction, and the friction loop, while skipping E2B entirely:
+The supported library path keeps personas, the Observer, the evidence bundle,
+redaction, and the friction loop, while skipping E2B entirely. Start with the
+[complete runnable example](examples/state-driven-local-app/README.md), which
+ships in the npm package:
 
-```ts
-import { runLab, parseLabConfig, type CuaExecutor, type CuaProvider } from "humanish";
-
-// local-app YAML (shareable; fails closed without hooks):
-//   schema: humanish.lab.v2
-//   id: downstream-local-app-state
-//   subject: { source: local-app, appUrl: http://localhost:5173 }
-//   actors: [{ type: openai-computer-use, persona: curious-tester, mission: "…" }]
-//   scenario: { mode: live }
-const parsed = parseLabConfig(yaml);
-if (!parsed.ok) throw new Error(parsed.error.message);
-
-const outcome = await runLab(parsed.config, {
-  cwd: process.cwd(),
-  dryRun: false,
-  cuaHooks: {
-    buildExecutor: async ({ appUrl }) => createAppContractExecutor(bridge, appUrl),
-    buildProvider: async () => createStateBrain(),
-  },
-});
-// outcome.backend === "cua"; outcome.result.sandbox === undefined (NO E2B); the
-// trace's provider id is the injected brain's id.
+```bash
+npm install humanish
+node node_modules/humanish/docs/architecture/examples/state-driven-local-app/runner.mjs
 ```
+
+The example includes a real loopback app, HTTP state/action bridge, full config
+object (`schema: LAB_CONFIG_SCHEMA`), deterministic non-vision provider,
+`stableProgressKey`, `runLab`, verification, a printed report and `finally`
+cleanup. It makes no model calls and does not demonstrate persona efficacy.
+`parseLabConfig` accepts a decoded object, not a YAML string; narrow its result
+on `.ok`, then narrow `runLab`'s result on `backend === "cua"` before accessing
+the CUA result. The example defines all helpers rather than requiring a consumer
+to reconstruct them.
 
 When `cuaHooks.buildExecutor` is set, `runCuaActorLab` takes a branch that NEVER
 loads the E2B module, creates a sandbox, runs `prepareDesktop`, provisions a
