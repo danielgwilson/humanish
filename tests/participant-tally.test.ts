@@ -78,7 +78,7 @@ describe("formatParticipantOutcomes", () => {
     expect(formatParticipantOutcomes(recorded, [
       { status: "abandoned", label: "provider token limit" },
       { status: "incomplete", label: "adapter admission limit" }
-    ])).toBe("0/3 reached the goal, 1 interrupted (provider token limit), 2 interrupted (stop details unavailable)");
+    ])).toBe("0/3 recorded completions, 1 interrupted (provider token limit), 2 interrupted (stop details unavailable)");
     expect(recorded).toEqual(before);
   });
   it("always leads with the denominator", () => {

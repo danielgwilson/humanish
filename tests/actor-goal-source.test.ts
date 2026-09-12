@@ -127,6 +127,23 @@ describe("computer-use completion provenance", () => {
     expect(buildObserverData(run).streams[0]!.statusLabel).toBe("Passed");
   });
 
+  it("uses neutral zero counts for generic output and historical CUA reviews without a success caveat", () => {
+    const run = bundle();
+    run.streams[0]!.status = "incomplete";
+    run.streams[0]!.actor!.status = "incomplete";
+    run.streams[0]!.actor!.completionReason = "budget_reached";
+    run.review.participants = tallyParticipantOutcomes(["incomplete"]);
+    run.review.summary = "0/1 reached the goal, 1 interrupted (limit reached)";
+    const original = structuredClone(run);
+    expect(formatParticipantOutcomes(run.review.participants)).toBe("0/1 recorded completions, 1 interrupted (stop details unavailable)");
+    const projected = withCuaReviewProvenance(run.review, run.streams);
+    expect(projected.summary).toContain("0/1 recorded completions, 1 interrupted (limit reached)");
+    expect(projected.summary).not.toContain("reached the goal");
+    expect(projected.gaps).toEqual(run.review.gaps);
+    expect(buildObserverData(run).run.participantsLine).toBe("0/1 recorded completions, 1 interrupted (limit reached)");
+    expect(run).toEqual(original);
+  });
+
   it("re-reads legacy review provenance without modifying either original file, including incomplete actor detail", async () => {
     const temp = await mkdtemp(path.join(os.tmpdir(), "humanish-outcome-review-"));
     const cwd = path.join(temp, "app");

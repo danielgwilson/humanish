@@ -73,6 +73,6 @@ describe("recorded stop causes", () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     bundle.streams[0]!.actor = actor({ stopCause: "provider_output_limit" });
     bundle.review.participants = tallyParticipantOutcomes(["incomplete", "incomplete"]);
-    expect(buildObserverData(bundle).run.participantsLine).toBe("0/2 reached the goal, 2 interrupted (stop details unavailable)");
+    expect(buildObserverData(bundle).run.participantsLine).toBe("0/2 recorded completions, 2 interrupted (stop details unavailable)");
   });
 });

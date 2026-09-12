@@ -57,7 +57,7 @@ describe("observer data: participants", () => {
     expect(data.streams[0]!.status).toBe("blocked");
     expect(data.streams[0]!.statusLabel).toBe("Blocked");
     expect(data.summary.blocked).toBe(1);
-    expect(data.run.participantsLine).toBe("0/1 reached the goal, 1 blocked");
+    expect(data.run.participantsLine).toBe("0/1 recorded completions, 1 blocked");
     expect(data.streams[0]!.actor).toEqual(original.streams[0]!.actor);
     expect(data.streams[0]!.sim).toEqual(original.simulations[0]);
     expect(bundle).toEqual(original);

@@ -1,10 +1,15 @@
 /** Presentation provenance for computer-use completion; never reclassifies the stored outcome. */
 export type CuaGoalSource = "participant_report" | "condition_matched" | "unavailable";
 
-export function cuaGoalSource(value: unknown, recordedStatus?: unknown): CuaGoalSource | undefined {
-  if (typeof value !== "object" || value === null) return undefined;
+export function isCuaTrace(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
   const trace = value as Record<string, unknown>;
-  if (trace.lane !== "computer-use" && trace.protocol !== "cua-loop") return undefined;
+  return trace.lane === "computer-use" || trace.protocol === "cua-loop";
+}
+
+export function cuaGoalSource(value: unknown, recordedStatus?: unknown): CuaGoalSource | undefined {
+  if (!isCuaTrace(value)) return undefined;
+  const trace = value as Record<string, unknown>;
   if (trace.status !== "passed") return recordedStatus === "passed" || recordedStatus === "complete" ? "unavailable" : undefined;
   if (trace.lane !== "computer-use" || trace.protocol !== "cua-loop"
     || trace.completionReason !== "goal_satisfied") return "unavailable";

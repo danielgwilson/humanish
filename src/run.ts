@@ -29,7 +29,7 @@ import {
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
 import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace, type ActorTraceItem } from "./actor-contract.js";
-import { cuaGoalSource, CUA_COMPLETION_NOTE, type CuaGoalSource } from "./actor-goal-source.js";
+import { cuaGoalSource, isCuaTrace, CUA_COMPLETION_NOTE, type CuaGoalSource } from "./actor-goal-source.js";
 import { actorEnding } from "./actor-stop-cause.js";
 import type { TaskFunnel } from "./tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
@@ -1196,7 +1196,9 @@ function participantCompletionLine(outcomes: ParticipantOutcomes, terminalCauses
   const completions = terminalCauses.filter((entry) => entry.status === "passed");
   const reported = completions.filter((entry) => entry.goalSource === "participant_report").length;
   const matched = completions.filter((entry) => entry.goalSource === "condition_matched").length;
-  let goalLine = `${outcomes.reachedGoal}/${outcomes.total} reached the goal`;
+  let goalLine = outcomes.reachedGoal === 0
+    ? `0/${outcomes.total} recorded completions`
+    : `${outcomes.reachedGoal}/${outcomes.total} reached the goal`;
   if (outcomes.reachedGoal > 0 && terminalCauses.some((entry) => entry.goalSource !== undefined)) {
     const count = `${outcomes.reachedGoal}/${outcomes.total}`;
     goalLine = completions.length !== outcomes.reachedGoal
@@ -1267,8 +1269,9 @@ export function withCuaReviewProvenance(review: ReviewSummary, streams: readonly
   const details = participantOutcomeDetails(streams);
   if (!isRecord(review.participants)
     || !["total", "reachedGoal", "abandoned", "ranOut", "blocked", "harnessFailed", "reportedFriction"].every((key) => isNonNegativeSafeInteger((review.participants as unknown as Record<string, unknown>)[key]))
-    || review.participants.reachedGoal === 0
-    || !details.some((entry) => entry.goalSource !== undefined)) return review;
+    || (review.participants.reachedGoal === 0
+      ? !streams.some((stream) => isCuaTrace(stream.actor))
+      : !details.some((entry) => entry.goalSource !== undefined))) return review;
   const outcomes = formatParticipantOutcomes(review.participants, details);
   // Preserve rerun context, participant narration and adapter-specific findings. Refreshing a
   // historical summary qualifies its old tally instead of silently discarding that context.
@@ -1280,7 +1283,8 @@ export function withCuaReviewProvenance(review: ReviewSummary, streams: readonly
   return {
     ...review,
     summary: `${prefix}${qualified}`,
-    gaps: [...review.gaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE]
+    gaps: review.participants.reachedGoal === 0 ? review.gaps
+      : [...review.gaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE]
   };
 }
 
