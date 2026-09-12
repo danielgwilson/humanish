@@ -562,7 +562,7 @@ describe("recorded interruption labels across the review surfaces", () => {
     const snapshot = buildObserverData(bundle);
     await mount(<App data={snapshot} />);
     expect(container.querySelector(".card-outcome")?.textContent).toBe(label);
-    expect(container.textContent).toContain(`0/1 reached the goal, 1 interrupted (${label})`);
+    expect(container.textContent).toContain(`0/1 recorded completions, 1 interrupted (${label})`);
     expect(container.textContent).not.toContain("ran out of session");
     await click(container.querySelector(".open-overlay") as Element);
     const reportTab = [...container.querySelectorAll('[role="tab"]')].find(el => el.textContent === "report");
