@@ -210,7 +210,11 @@ A lab is a composition over code primitives, not a hardcoded kind:
   template actually used is recorded in the run bundle as `desktopTemplate`
   (public-safe — a template name is not a secret). Inert (warned) on every route
   that creates no desktop, incl. the in-process `local-app` cua route and the
-  meta route — never silently ignored (invariant 6);
+  meta route — never silently ignored (invariant 6). Custom images need the
+  Desktop SDK's `xdotool` input support and `xclip` or `xsel` on `PATH` for
+  clipboard recovery when direct typing fails. If both clipboard utilities are
+  absent, recovery fails with `clipboard-utility-missing`; a dry-run does not
+  inspect the image's installed tools;
 - `execution.desktop.browser` (e2b-desktop computer-use/fan-out routes, plus
   sequential and concurrent shared-world actor seats): optional browser family
   preference: `default`, `chrome`, `chromium`, or `firefox`. Absent/default
