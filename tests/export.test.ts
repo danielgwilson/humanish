@@ -116,7 +116,7 @@ describe("humanish export", () => {
     const refreshed = JSON.parse(slot![1]!) as ObserverData;
     expect(refreshed.streams[0]!.ending?.label).toBe("provider token limit");
     expect(refreshed.streams[0]!.statusLabel).toBe("Interrupted");
-    expect(refreshed.run.participantsLine).toBe("0/1 reached the goal, 1 interrupted (provider token limit)");
+    expect(refreshed.run.participantsLine).toBe("0/1 recorded completions, 1 interrupted (provider token limit)");
     expect(refreshed.streams[0]!.actor).toEqual(oldData.streams[0]!.actor);
     expect(refreshed.run.participants).toEqual(oldData.run.participants);
     expect(await readFile(index, "utf8")).toBe(oldHtml);

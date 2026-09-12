@@ -832,7 +832,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).not.toContain("stop details unavailable");
     expect(bundle.review.summary).toContain(count === 1 ? "local admission limit before provider dispatch"
-      : "0/2 reached the goal, 2 interrupted (adapter admission limit)");
+      : "0/2 recorded completions, 2 interrupted (adapter admission limit)");
     for (const stream of bundle.streams) {
       expect(stream.actor).toMatchObject({ status: "incomplete", completionReason: "budget_reached",
         stopCause: "adapter_limit", counts: { turns: 4, actions: 4 }, tokenUsage: { input: 1000, output: 40 } });
@@ -841,7 +841,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const original = await readFile(path.join(runDir, "run.json"), "utf8");
     const drafted = await draftFeedback(cwd, result.runId);
     expect(drafted.ok).toBe(true);
-    expect(drafted.draft?.actual).toContain(`Participants: 0/${count} reached the goal, ${count} interrupted (adapter admission limit).`);
+    expect(drafted.draft?.actual).toContain(`Participants: 0/${count} recorded completions, ${count} interrupted (adapter admission limit).`);
     expect(await readFile(path.join(runDir, "run.json"), "utf8")).toBe(original);
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     expect(handle.killed.sort()).toEqual(handle.createdIds.sort());

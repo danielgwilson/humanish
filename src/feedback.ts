@@ -2,9 +2,8 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./feedback-proof.js";
-import { actorEnding } from "./actor-stop-cause.js";
 
-import { formatParticipantOutcomes, formatStudyTaskFunnel, loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
+import { formatParticipantOutcomes, formatStudyTaskFunnel, loadRunBundlePrepared, verifyRunPrepared, participantOutcomeDetails, withCuaReviewProvenance } from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
 import {
   bindExistingRunArtifactPaths,
@@ -429,16 +428,10 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
   // bundle now gets a draft that describes the run that happened, built from the same review lines
   // the stakeholder surfaces show (participants and tasks keep their denominators).
   if (bundle.mode === "live") {
-    const participantEndings = bundle.streams.flatMap((stream) => {
-      // The bundle reader accepts older optional actor payloads. Missing/malformed diagnostic
-      // detail must keep the recorded tally readable, not throw or change bundle acceptance.
-      if (!isRecord(stream.actor) || !Array.isArray(stream.actor.items)
-        || !stream.actor.items.every(isRecord)) return [];
-      const ending = actorEnding(stream.actor);
-      return [{ status: stream.actor.status, ...(ending === undefined ? {} : { label: ending.label }) }];
-    });
+    const participantEndings = participantOutcomeDetails(bundle.streams);
+    const review = withCuaReviewProvenance(bundle.review, bundle.streams);
     const actualLines = [
-      bundle.review.summary,
+      review.summary,
       ...(bundle.review.participants === undefined
         ? []
         : [`Participants: ${formatParticipantOutcomes(bundle.review.participants, participantEndings)}.`]),

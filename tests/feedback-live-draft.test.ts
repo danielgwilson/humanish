@@ -173,7 +173,7 @@ describe("the live fallback draft describes the run that happened (#392)", () =>
       await writeFile(runJsonPath, original);
       const drafted = await draftFeedback(cwd, "legacy-draft-test");
       expect(drafted.ok).toBe(true);
-      expect(drafted.draft?.actual).toContain("Participants: 0/1 reached the goal, 1 interrupted (stop details unavailable).");
+      expect(drafted.draft?.actual).toContain("Participants: 0/1 recorded completions, 1 interrupted (stop details unavailable).");
       expect(await readFile(runJsonPath, "utf8")).toBe(original);
     } finally {
       await rm(tempRoot, { force: true, recursive: true });
@@ -205,7 +205,7 @@ describe("the live fallback draft describes the run that happened (#392)", () =>
       expect(draft.actor).not.toBe("synthetic-dry-run");
       expect(draft.idempotency_key).toBe("humanish:live-draft-test:live-run-summary");
       // The participants line rides the draft with its denominator intact.
-      expect(draft.actual).toContain("0/1 reached the goal");
+      expect(draft.actual).toContain("0/1 recorded completions");
       expect(draft.actual).toContain("1 gave up");
     } finally {
       await rm(tempRoot, { force: true, recursive: true });

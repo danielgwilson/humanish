@@ -1348,7 +1348,7 @@ describe("runCuaActorLab", () => {
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("pass");
-    expect(bundle.review.gaps).toEqual([]);
+    expect(bundle.review.gaps).toEqual(["Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."]);
   });
 
   const fakeBlockerSession = (
@@ -2119,8 +2119,8 @@ describe("runCuaActorLab", () => {
     // The durable evidence now says the same thing the lane said.
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("blocked");
-    expect(bundle.review.summary).toMatch(/^Not counted as a pass: the participant's final message described a blocker\./);
-    // 0/1 reached the goal, 1 blocked, 1 reported friction — the honest reading of that run.
+    expect(bundle.review.summary).toContain("Recorded summary: Not counted as a pass: the participant's final message described a blocker.");
+    // Zero recorded completions, 1 blocked, 1 reported friction — the honest reading of that run.
     expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, blocked: 1, reportedFriction: 1 });
     // The trace keeps the claim: what the actor SAID is evidence, what the harness COUNTED is the review.
     expect(bundle.streams[0].actor.completionReason).toBe("goal_satisfied");

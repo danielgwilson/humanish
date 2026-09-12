@@ -1655,7 +1655,7 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
     expect(outcomes).toEqual({
       total: 1, reachedGoal: 0, abandoned: 0, ranOut: 1, blocked: 0, harnessFailed: 0, reportedFriction: 0
     });
-    expect(formatParticipantOutcomes(outcomes)).toBe("0/1 reached the goal, 1 interrupted (stop details unavailable)");
+    expect(formatParticipantOutcomes(outcomes)).toBe("0/1 recorded completions, 1 interrupted (stop details unavailable)");
     expect(participantFeedbackCandidates({
       runId: "zero-action-spend-fixture",
       scenarioId: "click-once",

@@ -34,7 +34,9 @@
         "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
       }
     ],
-    "knownGaps": [],
+    "knownGaps": [
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ],
     "participants": {
       "total": 1,
       "reachedGoal": 1,
@@ -44,7 +46,7 @@
       "harnessFailed": 0,
       "reportedFriction": 0
     },
-    "participantsLine": "1/1 reached the goal"
+    "participantsLine": "1/1 reported reaching the goal"
   },
   "summary": {
     "streams": 1,
@@ -2117,7 +2119,7 @@
         "updatedAt": "2026-08-17T18:17:25.394Z"
       },
       "kindLabel": "Browser",
-      "statusLabel": "Passed",
+      "statusLabel": "Reported complete",
       "terminalPlain": "",
       "timeline": [
         {

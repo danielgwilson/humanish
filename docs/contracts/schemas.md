@@ -1232,6 +1232,16 @@ the stream shape, the meaningful-use rubric, and hard-failure rules.
 Review summarizes whether evidence supports the claim. It does not replace
 verification or maintainer acceptance.
 
+`verdict` is the run gate result. `participants.reachedGoal` retains the count of
+recorded successful sessions; it is not an independent adjudication of their
+claims. Computer-use review and Observer labels distinguish a participant's
+reported completion from a recorded `stopWhen` or dwell condition match. A
+condition match establishes that condition, not every aspect of the mission.
+Missing or malformed completion evidence is labeled unavailable. Other actor
+routes retain their own completion semantics. Re-reading a historical review
+refreshes these labels without rewriting the original bundle or actor trace.
+Share-safety verification does not establish task success.
+
 Core-owned fields:
 
 - `schema`

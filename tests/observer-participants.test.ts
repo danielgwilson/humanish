@@ -57,7 +57,7 @@ describe("observer data: participants", () => {
     expect(data.streams[0]!.status).toBe("blocked");
     expect(data.streams[0]!.statusLabel).toBe("Blocked");
     expect(data.summary.blocked).toBe(1);
-    expect(data.run.participantsLine).toBe("0/1 reached the goal, 1 blocked");
+    expect(data.run.participantsLine).toBe("0/1 recorded completions, 1 blocked");
     expect(data.streams[0]!.actor).toEqual(original.streams[0]!.actor);
     expect(data.streams[0]!.sim).toEqual(original.simulations[0]);
     expect(bundle).toEqual(original);
@@ -79,7 +79,8 @@ describe("observer data: participants", () => {
     if (declaredOutcome === undefined) delete stream.actor!.declaredOutcome;
     else stream.actor!.declaredOutcome = declaredOutcome;
     stream.actor!.reason = "BLOCKED";
-    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Passed");
+    expect(buildObserverData(bundle).streams[0]!.status).toBe("passed");
+    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Reported complete");
   });
 
   it("does not override a different completion reason", () => {
