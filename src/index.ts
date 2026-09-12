@@ -30,7 +30,8 @@ export {
 export type { TerminalAgentSessionOptions, TerminalAgentSessionResult } from "./terminal-agent-actor.js";
 export {
   describeCuaAction,
-  runComputerUseLoop
+  runComputerUseLoop,
+  stableProgressKey
 } from "./computer-use.js";
 export type {
   CuaAction,

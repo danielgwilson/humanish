@@ -287,3 +287,14 @@ Observer, the evidence bundle, redaction, and the friction loop, with **no E2B
 desktop and no clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
 `runLab` (a config-only run with no hooks fails closed with a structured error). See
 [State-driven executor](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/state-driven-executor.md).
+
+The [complete npm example](https://github.com/danielgwilson/humanish/tree/main/docs/architecture/examples/state-driven-local-app)
+includes a synthetic loopback app, HTTP bridge, full config, provider,
+verification and cleanup. After installing `humanish`, run:
+
+```bash
+node node_modules/humanish/docs/architecture/examples/state-driven-local-app/runner.mjs
+```
+
+It uses a deterministic provider with no model calls or credentials. This checks
+the local-app integration; it does not measure persona behavior or app usability.
