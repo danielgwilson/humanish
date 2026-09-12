@@ -47,9 +47,11 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
 
-The [0.88.1 release note](../release/0.88.1-local-app-and-clipboard.md) describes
-the complete npm local-app example, the public `stableProgressKey` export, and
-the clipboard fallback correction for inherited output pipes.
+The [0.88.1 release note](../release/0.88.1-completion-evidence-and-local-app.md)
+describes computer-use labels that distinguish participant reports from
+recorded condition matches. It also covers the complete npm local-app example
+and public `stableProgressKey` export, plus the clipboard fallback correction
+for inherited output pipes.
 
 The [0.88.0 release note](../release/0.88.0-study-diagnostics.md) describes
 computer-use CLI diagnostics, explicit local admission limits and retained

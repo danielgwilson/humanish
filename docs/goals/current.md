@@ -3,7 +3,7 @@
 Status date: 2026-09-12. Published baseline: `0.88.1`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.88.1-local-app-and-clipboard.md).
+in the [release notes](../release/0.88.1-completion-evidence-and-local-app.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -98,7 +98,7 @@ substitute for it.
 | Task protocol | Hidden criteria and per-task outcomes on supported per-lane CUA paths, including local-agent and desktop-cli | Shared-world, terminal-product, scripted and synthetic routes reject `tasks` before execution |
 | Shared state | Sequential and concurrent single-origin shared-world studies with retained evidence | Multi-origin implementation remains gated; concurrent state change does not establish per-action causation |
 | Observer | Live/recorded views, participant assignments, action-specific links, saved moments, zoom, comparison and phone-width review | Sparse captures cannot prove every action's effect; visual comparison alone is not a controlled experiment |
-| Review and feedback | Verification grades, feedback drafts, portable HTML and redacted bundle derivatives | Sharing requires the appropriate grade; generated findings still need adjudication |
+| Review and feedback | Verification grades, feedback drafts, portable HTML, redacted bundle derivatives and computer-use completion-source labels | Sharing requires the appropriate grade; participant reports and condition matches still need task adjudication |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving and run library | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | In-sandbox email/SMS catch and digest-only thread evidence | This does not establish real-provider delivery |
 | Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed | Physical-device and touch fidelity remain unproven; unsupported microphone declarations are rejected |
