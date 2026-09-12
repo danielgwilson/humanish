@@ -1,5 +1,6 @@
 import { actorEnding, type ActorEnding } from "./actor-stop-cause.js";
-import { formatParticipantOutcomes, formatStudyTaskFunnel } from "./run.js";
+import { formatParticipantOutcomes, formatStudyTaskFunnel, participantOutcomeDetails, withCuaReviewProvenance } from "./run.js";
+import { cuaGoalSource, CUA_COMPLETION_NOTE } from "./actor-goal-source.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
@@ -167,7 +168,7 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       packageName: bundle.source.packageName,
       redaction: bundle.redaction,
       lifecycle: bundle.lifecycle,
-      knownGaps: bundle.review.gaps,
+      knownGaps: withCuaReviewProvenance(bundle.review, bundle.streams).gaps,
       ...(bundle.review.participants === undefined
         ? {}
         : {
@@ -218,21 +219,27 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
 export function withObserverEndings(data: ObserverData): ObserverData {
   const streams = (data.streams ?? []).map(({ ending: _previousEnding, ...stream }) => {
     const ending = actorEnding(stream.actor);
+    const source = cuaGoalSource(stream.actor, stream.status);
     return {
       ...stream,
       ...(ending === undefined ? {} : { ending }),
+      ...((stream.status === "passed" || stream.status === "complete") && source !== undefined
+        ? { statusLabel: source === "participant_report" ? "Reported complete" : source === "condition_matched" ? "Condition matched" : "Completion source unavailable" } : {}),
       ...(stream.status === "incomplete" || (ending !== undefined && stream.status === "abandoned")
         ? { statusLabel: "Interrupted" } : {})
     };
   });
+  const details = participantOutcomeDetails(streams);
   return {
     ...data,
     streams,
     run: {
       ...data.run,
+      ...(data.run.participants !== undefined && data.run.participants.reachedGoal > 0
+        && details.some((entry) => entry.goalSource !== undefined)
+        ? { knownGaps: [...data.run.knownGaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE] } : {}),
       ...(data.run.participants === undefined ? {} : {
-        participantsLine: formatParticipantOutcomes(data.run.participants, streams.flatMap((stream) => stream.actor === undefined ? []
-          : [{ status: stream.actor.status, ...(stream.ending === undefined ? {} : { label: stream.ending.label }) }]))
+        participantsLine: formatParticipantOutcomes(data.run.participants, details)
       })
     }
   };

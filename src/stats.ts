@@ -244,7 +244,7 @@ export function formatStatsHuman(result: StatsResult | StatsFailure): string {
     `humanish stats${scope.length === 0 ? "" : ` (${scope.join(", ")})`}`,
     `runs: ${t.runs} (${t.live} live, ${t.dryRun} dry-run${t.running > 0 ? `, ${t.running} running` : ""})`,
     `estimated spend: ${money(t.estimatedSpendUsd)} over ${t.runs - t.unpricedRuns} priced run(s); ${t.unpricedRuns} unpriced (counted, not $0)`,
-    `participants: ${t.participants.reachedGoal}/${t.participants.total} reached the goal, ${t.participants.reportedFriction} reported friction`,
+    `participants: ${t.participants.reachedGoal}/${t.participants.total} recorded goal completions, ${t.participants.reportedFriction} reported friction`,
     `verdicts: ${Object.entries(t.verdicts).map(([verdict, count]) => `${verdict} ${count}`).join(", ") || "none recorded"}`
   ];
   if (result.labs.length > 0) {

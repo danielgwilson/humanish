@@ -138,6 +138,7 @@ import {
   formatParticipantOutcomes,
   formatStudyTaskFunnel,
   tallyParticipantOutcomes,
+  withCuaReviewProvenance,
   type ReviewSummary,
   type RunBundle,
   type RunDesktopGeometry,
@@ -5846,7 +5847,7 @@ export function buildCuaBundle(args: {
     : args.credibility?.noEngagement === true
       ? "Not counted as a pass: the participant took no actions and said nothing."
       : "Not counted as a pass: the participant's final message described a blocker.";
-  const review: ReviewSummary = {
+  const review: ReviewSummary = withCuaReviewProvenance({
     schema: REVIEW_SCHEMA,
     verdict: args.inProgress === true
       ? "contract_proof_only"
@@ -5867,7 +5868,7 @@ export function buildCuaBundle(args: {
       : args.inProgress === true
         ? ["Live desktop session is still running."]
         : ["Live desktop session not yet run (dry-run contract only)."]
-  };
+  }, [stream]);
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
@@ -6349,7 +6350,7 @@ export function buildCuaFanoutBundle(args: {
     const ending = actorEnding(outcome.session.trace);
     return { status: outcome.session.status, ...(ending === undefined ? {} : { label: ending.label }) };
   });
-  const review: ReviewSummary = {
+  const review: ReviewSummary = withCuaReviewProvenance({
     schema: REVIEW_SCHEMA,
     verdict,
     ...(participants === undefined ? {} : { participants }),
@@ -6374,7 +6375,7 @@ export function buildCuaFanoutBundle(args: {
             || outcome.session === undefined
             || outcome.session.status !== "passed")
           .map(({ spec, outcome }) => `${spec.laneId}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`)
-  };
+  }, streams);
 
   const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
   const ranLive = (outcomes ?? []).some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
@@ -6573,7 +6574,7 @@ function renderCuaReviewMarkdown(bundle: RunBundle): string {
     "",
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
-    `- verdict: ${bundle.review.verdict}`,
+    `- run gate: ${bundle.review.verdict}`,
     `- summary: ${bundle.review.summary}`,
     ...(provenance ? [`- subject: ${provenance.message}`] : []),
     ...(trace

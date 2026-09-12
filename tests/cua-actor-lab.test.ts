@@ -1348,7 +1348,7 @@ describe("runCuaActorLab", () => {
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.review.verdict).toBe("pass");
-    expect(bundle.review.gaps).toEqual([]);
+    expect(bundle.review.gaps).toEqual(["Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."]);
   });
 
   const fakeBlockerSession = (

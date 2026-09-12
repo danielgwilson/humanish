@@ -29,6 +29,8 @@ import {
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
 import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace, type ActorTraceItem } from "./actor-contract.js";
+import { cuaGoalSource, CUA_COMPLETION_NOTE, type CuaGoalSource } from "./actor-goal-source.js";
+import { actorEnding } from "./actor-stop-cause.js";
 import type { TaskFunnel } from "./tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
 import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
@@ -1036,7 +1038,7 @@ export interface RunRerunLineage {
 export interface ParticipantOutcomes {
   /** Participants whose sessions reached a terminal state — the denominator for every count below. */
   total: number;
-  /** Reached the goal. */
+  /** Recorded successful sessions; completion provenance depends on the actor and its evidence. */
   reachedGoal: number;
   /** Stopped trying. A finding about the product. */
   abandoned: number;
@@ -1188,12 +1190,36 @@ export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
     .join(" · ");
 }
 
+type ParticipantOutcomeDetail = { status: ActorStatus; label?: string; goalSource?: CuaGoalSource };
+
+function participantCompletionLine(outcomes: ParticipantOutcomes, terminalCauses: readonly ParticipantOutcomeDetail[]): string {
+  const completions = terminalCauses.filter((entry) => entry.status === "passed");
+  const reported = completions.filter((entry) => entry.goalSource === "participant_report").length;
+  const matched = completions.filter((entry) => entry.goalSource === "condition_matched").length;
+  let goalLine = `${outcomes.reachedGoal}/${outcomes.total} reached the goal`;
+  if (outcomes.reachedGoal > 0 && terminalCauses.some((entry) => entry.goalSource !== undefined)) {
+    const count = `${outcomes.reachedGoal}/${outcomes.total}`;
+    goalLine = completions.length !== outcomes.reachedGoal
+      ? `${count} recorded completions (completion source unavailable)`
+      : reported === outcomes.reachedGoal
+        ? `${count} reported reaching the goal`
+        : matched === outcomes.reachedGoal
+          ? `${count} met a recorded completion condition`
+          : `${count} recorded completions (${[
+              reported > 0 ? `${reported} participant-reported` : undefined,
+              matched > 0 ? `${matched} condition-matched` : undefined,
+              outcomes.reachedGoal - reported - matched > 0 ? `${outcomes.reachedGoal - reported - matched} other or unavailable source` : undefined
+            ].filter(Boolean).join(", ")})`;
+  }
+  return goalLine;
+}
+
 /** One line a stakeholder can read, with the denominator attached to every number. */
 export function formatParticipantOutcomes(outcomes: ParticipantOutcomes,
-  terminalCauses: readonly { status: ActorStatus; label?: string }[] = []
+  terminalCauses: readonly ParticipantOutcomeDetail[] = []
 ): string {
   if (outcomes.total === 0) return "no participants reached a terminal state";
-  const parts: string[] = [`${outcomes.reachedGoal}/${outcomes.total} reached the goal`];
+  const parts: string[] = [participantCompletionLine(outcomes, terminalCauses)];
   // Detail may explain a recorded outcome, but must never change its count or invent a match
   // between a tally and an incomplete set of traces.
   const append = (count: number, statuses: readonly ActorStatus[], fallback: string) => {
@@ -1218,6 +1244,44 @@ export function formatParticipantOutcomes(outcomes: ParticipantOutcomes,
   // can reach the goal and still have found the road there broken.
   if (outcomes.reportedFriction > 0) parts.push(`${outcomes.reportedFriction} reported friction`);
   return parts.join(", ");
+}
+
+/** Presentation details tolerate optional legacy actor payloads without changing their tallies. */
+export function participantOutcomeDetails(streams: readonly { actor?: unknown; status?: unknown }[]): ParticipantOutcomeDetail[] {
+  return streams.flatMap((stream) => {
+    if (!isRecord(stream.actor)) return [];
+    const actor = stream.actor;
+    const goalSource = cuaGoalSource(actor, stream.status);
+    if (!["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"].includes(String(actor.status))) {
+      return goalSource === "unavailable" ? [{ status: "passed" as const, goalSource }] : [];
+    }
+    const ending = Array.isArray(actor.items) && actor.items.every(isRecord) ? actorEnding(actor as unknown as ActorTrace) : undefined;
+    return [{ status: actor.status as ActorStatus,
+      ...(ending === undefined ? {} : { label: ending.label }),
+      ...(goalSource === undefined ? {} : { goalSource }) }];
+  });
+}
+
+/** Refresh a CUA completion claim from recorded traces, leaving original evidence and enums intact. */
+export function withCuaReviewProvenance(review: ReviewSummary, streams: readonly { actor?: unknown; status?: unknown }[]): ReviewSummary {
+  const details = participantOutcomeDetails(streams);
+  if (!isRecord(review.participants)
+    || !["total", "reachedGoal", "abandoned", "ranOut", "blocked", "harnessFailed", "reportedFriction"].every((key) => isNonNegativeSafeInteger((review.participants as unknown as Record<string, unknown>)[key]))
+    || review.participants.reachedGoal === 0
+    || !details.some((entry) => entry.goalSource !== undefined)) return review;
+  const outcomes = formatParticipantOutcomes(review.participants, details);
+  // Preserve rerun context, participant narration and adapter-specific findings. Refreshing a
+  // historical summary qualifies its old tally instead of silently discarding that context.
+  const header = `Run gate: ${review.verdict}. Participants: ${outcomes}.${review.tasks ? ` Tasks: ${formatStudyTaskFunnel(review.tasks)}.` : ""}`;
+  const prefix = `${header} Recorded summary: `;
+  const recorded = review.summary.startsWith(prefix) ? review.summary.slice(prefix.length) : review.summary;
+  const oldGoal = `${review.participants.reachedGoal}/${review.participants.total} reached the goal`;
+  const qualified = recorded.split(oldGoal).join(participantCompletionLine(review.participants, details));
+  return {
+    ...review,
+    summary: `${prefix}${qualified}`,
+    gaps: [...review.gaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE]
+  };
 }
 
 export async function buildRunSource(args: {
@@ -4772,8 +4836,11 @@ export async function readReview(cwdInput: string, runInput: string): Promise<Ve
     };
   }
 
+  const bundle = runPaths ? await readRunJsonIfExists(runPaths, "run.json") : null;
+  const projected = isRecord(bundle) && Array.isArray(bundle.streams)
+    ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord)) : review;
   return {
-    ...review,
+    ...projected,
     path: path.relative(cwd, path.join(runPaths!.absoluteRunRoot, "review.json")),
     runId: path.basename(runPaths!.absoluteRunRoot)
   };

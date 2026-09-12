@@ -88,7 +88,7 @@ describe("humanish stats", () => {
     const text = formatStatsHuman(result);
     expect(text).toContain("runs: 5 (4 live, 1 dry-run, 1 running)");
     expect(text).toContain("estimated spend: $0.33 over 3 priced run(s); 2 unpriced (counted, not $0)");
-    expect(text).toContain("participants: 2/3 reached the goal, 2 reported friction");
+    expect(text).toContain("participants: 2/3 recorded goal completions, 2 reported friction");
     expect(text).toContain("- try-live: 4 run(s), 4 live; 2/3 pass; median 1.9m over 3; median $0.16 over 2; 2 unpriced");
   });
 

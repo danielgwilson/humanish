@@ -79,7 +79,8 @@ describe("observer data: participants", () => {
     if (declaredOutcome === undefined) delete stream.actor!.declaredOutcome;
     else stream.actor!.declaredOutcome = declaredOutcome;
     stream.actor!.reason = "BLOCKED";
-    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Passed");
+    expect(buildObserverData(bundle).streams[0]!.status).toBe("passed");
+    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Reported complete");
   });
 
   it("does not override a different completion reason", () => {
