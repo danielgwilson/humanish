@@ -513,6 +513,16 @@ shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v
 
   SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1):
   - `sequence: [roleId, …]` — the role ids that actually took a turn, in declared order.
+  - `skippedTail` (optional, live sequential only) — `{ afterRoleId, roles,
+    cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
+    `{ roleId, simId, streamId }` for an unstarted participant. Together with the
+    executed prefix it must account for the full declared denominator. The
+    predecessor must have a matching `harness_error`, explicit `session_error`,
+    `usage_unreported`, or measured `study_spend_limit`. Only the last cause
+    carries budget figures, using the same per-participant estimates as the
+    tracker. Blocked seats need matching simulation, stream and blocked-event
+    evidence, with no actor, trace, screenshot or invented timeline turn.
+    Historical bundles without this field still require every role in the timeline.
   - `timeline: (checkpoint | turn)[]` — a harness-clocked, strictly alternating
     timeline that starts `cp-baseline`, alternates checkpoint → turn → checkpoint,
     and ends on a checkpoint:
@@ -1095,7 +1105,10 @@ On this sequential route, an otherwise completed capped interaction that returns
 missing or partial usage stops with `harness_error`, `stopCause: usage_unreported`, and the label
 “provider usage unavailable.” It is not recorded as a crossed threshold. A
 stalled or failed request with unknown spend is not retried by the CUA loop.
-Provider-internal transport retries are unchanged. Known usage remains in the
+The default OpenAI adapter also disables HTTP and policy-negotiation retries for
+these strict capped sessions. The loop cancels its owned request signal when a
+request ends or its timeout wins; injected providers must honor cancellation
+and remain responsible for their own internal dispatch. Known usage remains in the
 trace alongside an explicit unknown; subsequent participants do not start when
 the shared budget cannot be established. Reported zero input and output counts
 remain valid zero usage. This stricter unknown-usage policy is specific to

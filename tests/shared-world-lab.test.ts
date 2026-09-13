@@ -323,7 +323,7 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     return parseOpenAiResponse(raw).turn;
   }
   const finish = (turn: CuaTurn): CuaTurn => ({ ...turn, actions: [], done: true, message: "Finished the synthetic task." });
-  async function exercise(config: LabConfig, turns: CuaTurn[][], closing?: CuaTurn) {
+  async function exercise(config: LabConfig, turns: Array<Array<CuaTurn | Error>>, closing?: CuaTurn) {
     const state = { worldVersion: 0 };
     const setup = baseHooks(state);
     const calls: number[] = [];
@@ -340,6 +340,7 @@ describe("sequential shared-world model-spend caps (#766)", () => {
             const next = turns[seat]?.[calls[seat]!];
             calls[seat]! += 1;
             if (!next) throw new Error("Unexpected extra provider dispatch");
+            if (next instanceof Error) throw next;
             return structuredClone(next);
           },
           debrief: async () => {
@@ -401,6 +402,7 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     expect(proof.bundle.streams[2]?.actor).toBeUndefined();
     expect(proof.bundle.sharedWorld?.timeline?.filter(item => item.kind === "checkpoint")).toHaveLength(3);
     expect(proof.killed).toHaveLength(1);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
 
   it("reconciles a per-seat stop into the aggregate before admitting another participant", async () => {
@@ -412,6 +414,7 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     expect(proof.calls).toEqual([2]);
     expect(proof.bundle.streams[0]?.actor?.stopCause).toBe("spend_limit");
     expect(proof.result.roles[1]?.skippedReason).toContain("study budget reached");
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
 
   it.each([true, false])("reconciles closing-request spend before another seat (usage reported: %s)", async reported => {
@@ -432,6 +435,85 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     expect(proof.result.roles[1]?.skippedReason).toContain(reported ? "study budget reached" : "budget is unknown");
     if (!reported) expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ reason: "closing_usage_unreported", estimatedCostUsd: null }));
     expect(proof.killed).toHaveLength(1);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("verifies the live timeout cohort's synthesized passed/error/blocked shape without changing its outcome", async () => {
+    const turn = await capturedTurn();
+    turn.actions = Array.from({ length: 5 }, () => structuredClone(turn.actions[0]!));
+    const config = sharedWorldConfig();
+    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.execution!.caps = { maxUsd: 2, maxTotalUsd: 0.15 };
+    const proof = await exercise(config, [[turn, finish(turn)], [new Error("Synthetic unreported provider timeout")]]);
+    expect(proof.actions).toEqual([5, 0]);
+    expect(proof.calls).toEqual([2, 1]);
+    expect(proof.result.ok).toBe(false);
+    expect(proof.bundle.streams.map(stream => stream.status)).toEqual(["passed", "failed", "blocked"]);
+    expect(proof.bundle.streams[1]?.actor?.stopCause).toBe("usage_unreported");
+    expect(proof.bundle.simulations[1]?.summary).toContain("session ended with harness_error");
+    expect(proof.bundle.simulations[1]?.summary).not.toContain("drove the shared app");
+    expect(proof.bundle.sharedWorld?.skippedTail).toMatchObject({
+      afterRoleId: "role-reviewer", cause: "usage_unreported",
+      roles: [{ roleId: "role-later", simId: "sim-003", streamId: "stream-003" }]
+    });
+    const verified = await verifyRun(cwd, proof.result.runId);
+    expect(verified.ok).toBe(true);
+    expect(proof.bundle.review.verdict).toBe("fail");
+  });
+
+  it("verifies a tiny strict aggregate crossing using the same estimate precision as enforcement", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxTotalUsd: unit - 0.00000001 };
+    const proof = await exercise(config, [[turn]]);
+    expect(proof.calls).toEqual([1]);
+    expect(proof.bundle.sharedWorld?.skippedTail).toMatchObject({
+      cause: "study_spend_limit", maxTotalUsd: unit - 0.00000001, estimatedTotalUsd: unit
+    });
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("rejects malformed or missing role evidence even with a declared blocked tail", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.execution!.caps = { maxTotalUsd: unit * 2.5 };
+    const proof = await exercise(config, [[turn, finish(turn)], [turn]]);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+    const mutations: Array<[string, (bundle: RunBundle) => void]> = [
+      ["no explicit tail", b => { delete b.sharedWorld!.skippedTail; }],
+      ["empty tail", b => { b.sharedWorld!.skippedTail!.roles = []; }],
+      ["wrong blocker", b => { b.sharedWorld!.skippedTail!.afterRoleId = "role-author"; }],
+      ["unknown cause", b => { Object.assign(b.sharedWorld!.skippedTail!, { cause: "because it stopped" }); }],
+      ["unsupported usage cause", b => { b.sharedWorld!.skippedTail!.cause = "usage_unreported"; }],
+      ["invented threshold crossing", b => { b.sharedWorld!.skippedTail!.maxTotalUsd = 100; }],
+      ["invented cost", b => { b.sharedWorld!.skippedTail!.estimatedTotalUsd = 100; }],
+      ["dropped simulation", b => { b.simulations.splice(1, 1); }],
+      ["dropped stream", b => { b.streams.splice(1, 1); }],
+      ["duplicate role", b => { b.sharedWorld!.skippedTail!.roles[0]!.roleId = "role-reviewer"; }],
+      ["duplicate sim", b => { b.sharedWorld!.skippedTail!.roles[0]!.simId = "sim-002"; }],
+      ["duplicate stream", b => { b.sharedWorld!.skippedTail!.roles[0]!.streamId = "stream-002"; }],
+      ["wrong stream mapping", b => { b.streams[1]!.simId = "sim-001"; }],
+      ["wrong simulation mapping", b => { b.simulations[1]!.streamIds = ["stream-001"]; }],
+      ["missing executed actor", b => { delete b.streams[1]!.actor; }],
+      ["blocked middle", b => { [b.streams[1], b.streams[2]] = [b.streams[2]!, b.streams[1]!]; }],
+      ["fabricated blocked actor", b => { b.streams[2]!.actor = b.streams[0]!.actor!; }],
+      ["fabricated live actor", b => { Object.assign(b.streams[2]!, { liveActor: { items: [] } }); }],
+      ["fabricated blocked trace", b => { b.streams[2]!.artifacts.push({ kind: "trace", path: "actors/stream-001.json", label: "invented" }); }],
+      ["fabricated blocked screenshot", b => { b.streams[2]!.embed = { kind: "screenshot", url: "invented.png" }; }],
+      ["fabricated skipped checkpoint", b => { Object.assign(b.sharedWorld!.timeline![4]!, { name: "cp-after-role-later" }); }],
+      ["missing blocked event", b => { b.events = b.events.filter(event => event.type !== "shared-world.session.blocked"); }],
+      ["passed review", b => { b.review.verdict = "pass"; }],
+      ["concurrent tail", b => { b.sharedWorld!.topologyMode = "concurrent"; }],
+      ["dry-run tail", b => { b.mode = "dry-run"; }]
+    ];
+    for (const [name, mutate] of mutations) {
+      const bundle = structuredClone(proof.bundle); mutate(bundle);
+      await writeFile(path.join(cwd, ".humanish/runs", proof.result.runId, "run.json"), JSON.stringify(bundle));
+      expect((await verifyRun(cwd, proof.result.runId)).ok, name).toBe(false);
+    }
   });
 
   it("zero thresholds interrupt after the first measured request without claiming abandonment", async () => {
@@ -504,6 +586,8 @@ describe("sequential shared-world model-spend caps (#766)", () => {
       ids: { model: "gpt-5.6-terra" }, estimatedCost: { estimatedCostUsd: 0.0032, modelId: "gpt-5.6-terra" } });
     expect(bundle.review?.verdict).toBe("fail");
     expect(created).toHaveLength(1); expect(killed).toHaveLength(1);
+    expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 
   it("retains known partial usage and stops before more requests when later usage is absent", async () => {
@@ -518,6 +602,7 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ reason: "interaction_usage_unreported", estimatedCostUsd: null }));
     expect(proof.result.roles[1]?.status).toBe("blocked");
     expect(actorEnding(proof.bundle.streams[0]?.actor)?.label).toBe("provider usage unavailable");
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
 
   it("distinguishes genuinely reported zero usage from no usage", async () => {
@@ -1070,6 +1155,20 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.events.some((e: { type: string }) => e.type === "shared-world.fail-fast")).toBe(true);
+    expect(bundle.sharedWorld.skippedTail.cause).toBe("harness_error");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it("verifies an attempted session error separately from the unstarted tail", async () => {
+    const { hooks } = baseHooks({ worldVersion: 0 });
+    hooks.runSession = async () => { throw new Error("Synthetic session setup failed before an actor trace"); };
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.streams[0]?.actor).toBeUndefined();
+    expect(bundle.streams[0]?.status).toBe("failed");
+    expect(bundle.sharedWorld?.sequence).toEqual(["role-author"]);
+    expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 
   it("MISSION failure (non-harness) is DATA, never trips fail-fast: every role still runs", async () => {

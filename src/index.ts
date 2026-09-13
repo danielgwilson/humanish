@@ -205,6 +205,7 @@ export type {
   SharedWorldLaneWindow,
   SharedWorldOutcome,
   SharedWorldPlane,
+  SharedWorldSkippedTail,
   SharedWorldStateSnapshot,
   SharedWorldTimelineEntry,
   SharedWorldTurn,

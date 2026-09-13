@@ -1075,8 +1075,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // and cost the lane its whole remaining budget. One retry with a notice; then the lane ends
       // as harness_error, named, instead of thirty silent minutes.
       let turn: CuaTurn;
+      // A timeout race alone does not cancel its losing provider promise. Strict accounting
+      // owns this signal so a delayed transport failure cannot retry after the loop has ended.
+      const requestController = requiresUsage ? new AbortController() : undefined;
+      const onRequestAbort = (): void => requestController?.abort();
+      if (requestController) {
+        if (signal?.aborted) requestController.abort();
+        else signal?.addEventListener("abort", onRequestAbort, { once: true });
+      }
+      const requestSignal = requestController?.signal ?? signal ?? neverAbort;
       try {
-        turn = await raceBounded(`provider turn ${turnNumber}`, provider.nextTurn(request, signal ?? neverAbort), remaining(), turnTimeoutMs, signal);
+        turn = await raceBounded(`provider turn ${turnNumber}`, provider.nextTurn(request, requestSignal), remaining(), turnTimeoutMs, signal);
       } catch (error) {
         if (isCuaAdmissionLimitError(error)) { stopForAdmissionLimit(); break; }
         // A thrown request may have been billed without returning usage. Admission refusal is
@@ -1110,6 +1119,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           });
           break;
         }
+      } finally {
+        if (requestController) signal?.removeEventListener("abort", onRequestAbort);
+        requestController?.abort();
       }
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;

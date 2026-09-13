@@ -1429,7 +1429,7 @@ export function buildSharedWorldBundle(args: {
       progress: 100,
       currentStep: reason,
       summary: session
-        ? `Role ${spec.roleId} (${spec.persona.id}): drove the shared app; ${session.completionReason}.`
+        ? `Role ${spec.roleId} (${spec.persona.id}): session ended with ${session.completionReason}.`
         : outcome?.skippedReason !== undefined
           ? `Role ${spec.roleId} ${outcome.skippedReason}.`
           : outcome?.sessionError
@@ -1528,6 +1528,15 @@ export function buildSharedWorldBundle(args: {
         streamId: spec.streamId
       });
     }
+    // A custom session can return a valid actor trace while orchestration fails (for example,
+    // a capped model mismatch). Preserve the actor and record the wrapper failure separately.
+    if (session && outcome?.sessionError) {
+      events.push({
+        id: nextEventId(`session-error-${spec.roleId}`), at: createdAt, level: "error",
+        type: "shared-world.session.error", message: outcome.sessionError,
+        simId: spec.simId, streamId: spec.streamId
+      });
+    }
 
     for (const warning of desktopGeometry.warnings ?? []) {
       events.push({
@@ -1593,6 +1602,27 @@ export function buildSharedWorldBundle(args: {
     timeline,
     attributionLimits: ["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"]
   };
+  const firstSkipped = roleOutcomes.findIndex(outcome => outcome.skippedReason !== undefined);
+  const blocker = roleOutcomes[firstSkipped - 1];
+  if (!dryRun && firstSkipped > 0 && blocker?.afterCheckpoint) {
+    const actor = blocker.session?.trace;
+    const cause = blocker.sessionError !== undefined ? "session_error"
+      : actor?.interactionUsageIncomplete === true || actor?.debrief?.usageReported === false ? "usage_unreported"
+      : blocker.harnessError ? "harness_error"
+      : actor?.estimatedCost?.estimatedCostUsd === null ? "usage_unreported" : "study_spend_limit";
+    sharedWorld.skippedTail = {
+      afterRoleId: blocker.spec.roleId,
+      roles: roleOutcomes.slice(firstSkipped).map(({ spec }) => ({
+        roleId: spec.roleId, simId: spec.simId, streamId: spec.streamId
+      })),
+      cause,
+      ...(cause === "study_spend_limit" ? {
+        maxTotalUsd: config.execution!.caps!.maxTotalUsd!,
+        estimatedTotalUsd: roleOutcomes.slice(0, firstSkipped)
+          .reduce((total, outcome) => total + (outcome.session?.trace.estimatedCost?.estimatedCostUsd ?? 0), 0)
+      } : {})
+    };
+  }
 
   events.push({
     id: nextEventId("timeline"),

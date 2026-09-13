@@ -105,7 +105,9 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
   if (options.provider && options.openai?.maxOutputTokens !== undefined) {
     throw new Error("openai.maxOutputTokens cannot be enforced by an injected provider.");
   }
-  const provider = options.provider ?? buildProvider(options.openai);
+  const strictSpend = options.requireReportedUsageForSpendCap === true
+    && (options.maxUsd !== undefined || options.overRunBudget !== undefined);
+  const provider = options.provider ?? buildProvider(options.openai, strictSpend);
   const executor = options.executor ?? buildExecutor(options.desktop, options.executorOptions);
 
   const loopOptions: CuaLoopOptions = {
@@ -139,11 +141,11 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
   return runComputerUseLoop(loopOptions);
 }
 
-function buildProvider(openai: OpenAiResponsesProviderOptions | undefined): CuaProvider {
+function buildProvider(openai: OpenAiResponsesProviderOptions | undefined, strictSpend = false): CuaProvider {
   if (!openai) {
     throw new Error("runCuaActorSession requires either `provider` (injected) or `openai` provider options.");
   }
-  return createOpenAiResponsesProvider(openai);
+  return createOpenAiResponsesProvider({ ...openai, ...(strictSpend ? { singleDispatch: true } : {}) });
 }
 
 function buildExecutor(desktop: E2BDesktopLike | undefined, executorOptions: E2BDesktopExecutorOptions | undefined): CuaExecutor {
