@@ -12,6 +12,7 @@ const labels: Record<ActorEnding["cause"], string> = {
   spend_limit: "estimated spend limit",
   study_spend_limit: "study spend limit",
   adapter_limit: "adapter admission limit",
+  usage_unreported: "provider usage unavailable",
   provider_incomplete: "provider response incomplete",
   provider_status: "unexpected provider status",
   harness_aborted: "stopped by harness",

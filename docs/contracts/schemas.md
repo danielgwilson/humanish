@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.88.1`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.88.2`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -1067,8 +1067,9 @@ request's worst-case cost. In-flight requests, retries, concurrent lanes, and
 unreported usage can exceed or escape these estimates. These thresholds are
 not hard provider billing caps and exclude desktop and target-app charges.
 
-A lane with material progress that crosses `maxUsd` ends `budget_reached` /
-`incomplete`; the existing zero-action guard ends `gave_up` / `abandoned`.
+Crossing `maxUsd` ends `budget_reached` / `incomplete`, including when no
+material action has executed. The recorded reason distinguishes prior progress
+from no material progress; a harness budget stop is not participant abandonment.
 Crossing the shared study threshold ends `budget_reached` / `incomplete`, with
 sibling lanes stopping when their next post-response check sees it. Reaching a
 threshold is not proof of task completion.
@@ -1080,6 +1081,38 @@ mode. Use the keyless `humanish run first-run` preview or an explicit
 threshold on a model `src/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
+
+Sequential shared-world studies (`subject.topology: shared-world` with
+`execution.concurrency: 1`, using clone or local-tree subjects) enforce these
+same per-participant and shared model thresholds. Final reported usage,
+including a closing request, is reconciled before admitting the next participant.
+After the aggregate threshold is crossed, later participants are `blocked` with
+a recorded skip reason; they make no model requests and add no executed turn to
+the checkpoint timeline. An unpriced model with a declared threshold fails
+before allocation with `HUMANISH_SHARED_WORLD_LAB_INVALID`.
+
+On this sequential route, an otherwise completed capped interaction that returns
+missing or partial usage stops with `harness_error`, `stopCause: usage_unreported`, and the label
+“provider usage unavailable.” It is not recorded as a crossed threshold. A
+stalled or failed request with unknown spend is not retried by the CUA loop.
+Provider-internal transport retries are unchanged. Known usage remains in the
+trace alongside an explicit unknown; subsequent participants do not start when
+the shared budget cannot be established. Reported zero input and output counts
+remain valid zero usage. This stricter unknown-usage policy is specific to
+sequential capped studies; other routes retain their existing behavior. An
+explicitly incomplete provider response retains its original interruption cause
+first, with any missing usage still recorded as unknown.
+
+Sequential traces persist dated model estimates. Their run cost summary marks
+desktop compute as unmeasured, so the displayed model subtotal is a lower bound.
+The sequential route does not provide a running Observer usage stream; its final
+CLI and Observer projections read these persisted estimates.
+
+A capped custom session must return the declared model identity on its trace.
+A mismatch fails orchestration and blocks later participants while preserving
+the participant's original outcome and the estimate for its returned model.
+This check does not establish which model an arbitrary custom runner actually
+called or retrospectively enforce a runner that ignored its cap options.
 
 These computer-use rules do not replace the terminal route's separate
 `scenario.caps` cost-ledger and product-spend rules described above.

@@ -88,6 +88,8 @@ export interface CuaActorSessionOptions {
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /** RUN-LEVEL spend guard threaded to the loop (#299). See CuaLoopOptions.overRunBudget. */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
+  /** Sequential capped studies stop if a request's usage is unavailable; library-only policy. */
+  requireReportedUsageForSpendCap?: boolean;
   /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;
@@ -127,6 +129,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
     ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
     ...(options.overRunBudget === undefined ? {} : { overRunBudget: options.overRunBudget }),
+    ...(options.requireReportedUsageForSpendCap === undefined ? {} : { requireReportedUsageForSpendCap: options.requireReportedUsageForSpendCap }),
     ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl }),
     ...(options.onMessage === undefined ? {} : { onMessage: options.onMessage }),
     ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot }),

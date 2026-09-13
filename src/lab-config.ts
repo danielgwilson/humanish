@@ -614,7 +614,7 @@ export interface LabExecution {
    * an N-lane fan-out can spend up to N × maxUsd before any lane aborts (the run warns with the
    * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared STUDY budget (#299): one ledger
    * across every lane, the knob a researcher actually reasons with. Absent = UNCAPPED (the
-   * historical CUA behavior); maxUsd: 0 = no-spend (any measurable estimate > 0 aborts). Inert
+   * historical CUA behavior); maxUsd: 0 still permits a request before reported usage trips it. Inert
    * (warned) on non-CUA routes. Reuses the same LabScenarioCaps shape as the terminal lane's
    * `scenario.caps` (not a fork).
    */
