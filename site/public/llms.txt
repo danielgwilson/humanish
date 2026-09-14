@@ -97,7 +97,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish lab oss`: Alias: run the bundled OSS meta-lab dry-run contract.
 - `humanish lab oss-smoke`: Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.
 - `humanish feedback`: Create public-safe feedback drafts, no GitHub API.
-- `humanish feedback list`: List feedback draft state for a run.
+- `humanish feedback list`: List recorded feedback candidates and any saved draft.
 - `humanish feedback draft`: Generate a public-safe feedback draft from verified evidence.
 - `humanish feedback verify`: Verify the feedback draft for public issue eligibility.
 - `humanish feedback issue`: Print Markdown for a public GitHub issue. Does not mutate GitHub.

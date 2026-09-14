@@ -50,6 +50,44 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stderr: strin
 }
 
 describe("feedback issue drafts", () => {
+  it.each(["dry-run", "live"] as const)("explains a candidate-free %s without changing JSON or creating a draft on list", async (mode) => {
+    await withFixtureCopy(async (cwd) => {
+      const runId = "feedback-empty";
+      await runDryRun({ cwd, dryRun: true, runId });
+      if (mode === "live") {
+        // A local contract fixture for the existing live-summary fallback; no provider runs.
+        const runPath = path.join(cwd, ".humanish", "runs", runId, "run.json");
+        const bundle = JSON.parse(await readFile(runPath, "utf8"));
+        bundle.mode = "live";
+        await writeFile(runPath, JSON.stringify(bundle), "utf8");
+      }
+      const args = ["feedback", "list", "--run", runId, "--cwd", cwd];
+      const listed = await runCli(args);
+      expect(listed.exitCode).toBe(0);
+      expect(listed.stdout).toContain("humanish feedback: no recorded candidates");
+      expect(listed.stdout).toContain("run-summary follow-up after share_ready verification");
+      const before = await runCli([...args, "--json"]);
+      expect(JSON.parse(before.stdout)).toEqual(await listFeedback(cwd, runId));
+      expect(JSON.parse(before.stdout).candidates).toEqual([]);
+      expect(JSON.parse(before.stdout)).not.toHaveProperty("draft");
+      await expect(stat(path.join(cwd, ".humanish", "runs", runId, "feedback", "draft.json"))).rejects.toMatchObject({ code: "ENOENT" });
+
+      const issue = await runCli(["feedback", "issue", "--run", runId, "--cwd", cwd, "--repo", "example/app"]);
+      expect(issue.exitCode).toBe(0);
+      const summary = mode === "live"
+        ? "Live study completed without a participant-reported finding"
+        : "Dry-run contract proof needs product-evidence follow-up";
+      expect(issue.stdout).toContain(summary);
+      const after = await runCli(args);
+      expect(after.stdout).toContain("candidates: none recorded");
+      expect(after.stdout).toContain(`summary: ${summary}`);
+      const afterJson = await runCli([...args, "--json"]);
+      expect(JSON.parse(afterJson.stdout)).toEqual(await listFeedback(cwd, runId));
+      expect(JSON.parse(afterJson.stdout).candidates).toEqual([]);
+      expect(JSON.parse(afterJson.stdout).draft).not.toHaveProperty("source_candidate_id");
+    });
+  });
+
   it("writes and verifies public-safe feedback draft artifacts", async () => {
     await withFixtureCopy(async (cwd) => {
       await runDryRun({
@@ -166,6 +204,10 @@ describe("feedback issue drafts", () => {
       expect(drafted.shareSafety?.status).toBe("local_only");
       expect(drafted.shareSafety?.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
 
+      const listed = await runCli(["feedback", "list", "--cwd", cwd]);
+      expect(listed.exitCode).toBe(0);
+      expect(listed.stdout).toContain("after share_ready verification");
+
       const issue = await runCli([
         "feedback",
         "issue",
@@ -268,6 +310,9 @@ describe("feedback issue drafts", () => {
       expect(drafted.ok).toBe(true);
       expect(drafted.draft?.summary).toBe("Fixture setup needs review");
       expect(drafted.draft?.source_candidate_id).toBe("setup-quality-oss-01");
+      const listed = await runCli(["feedback", "list", "--cwd", cwd]);
+      expect(listed.stdout).toContain("candidate: setup-quality-oss-01");
+      expect(listed.stdout).not.toContain("run-summary follow-up");
       expect(drafted.draft?.substrate).toBe("e2b-desktop");
       expect(drafted.draft?.evidence).toContainEqual({
         path: ".humanish/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json",
