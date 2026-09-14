@@ -114,6 +114,43 @@ describe("ordinary study analysis flow", () => {
     expect(await readdir(runRoot)).not.toContain(".analysis-lock");
   });
 
+  it("refuses a new paid attempt when history is unreadable or lacks publication capacity, while preserving valid reuse", async () => {
+    const fetch = await transport();
+    const first = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });
+    expect(first.ok).toBe(true);
+    await Promise.all(Array.from({ length: 255 }, (_, index) => mkdir(path.join(runRoot, "analysis", `interrupted-${index}`))));
+    const reused = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });
+    expect(reused).toMatchObject({ ok: true, reused: true, analysisId: first.analysisId });
+    const atCapacity = await analyzeStudy(cwd, "analysis-flow", { config, rerun: true }, { apiKey: "synthetic-key", fetch });
+    expect(atCapacity).toMatchObject({ ok: false, error: { code: "ANALYSIS_HISTORY_UNAVAILABLE" } });
+    await mkdir(path.join(runRoot, "analysis", "one-over-limit"));
+    const unreadable = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });
+    expect(unreadable).toMatchObject({ ok: false, error: { code: "ANALYSIS_HISTORY_UNAVAILABLE" } });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await readdir(path.join(runRoot, "analysis-attempts"))).toHaveLength(1);
+  });
+
+  it("refuses sensitive decoded recording text even when JSON escapes pass the raw-byte pattern check", async () => {
+    const marker = "sk-" + "syntheticvalue1234567890abcdef";
+    const escaped = [...marker].map((character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`).join("");
+    const bundle = JSON.parse(original.toString()) as RunBundle;
+    bundle.streams[0]!.label = marker;
+    const serialized = JSON.stringify(bundle).replace(marker, escaped);
+    expect(serialized.includes(marker)).toBe(false);
+    await writeFile(path.join(runRoot, "run.json"), serialized);
+    const verified = await verifyRun(cwd, "analysis-flow");
+    expect(verified).toMatchObject({ ok: false, shareSafety: { status: "blocked" } });
+    expect(verified.recordingOk).toBeUndefined();
+    expect((await renderObserver(cwd, "analysis-flow")).ok).toBe(false);
+    const fetch = await transport();
+    const onProgress = vi.fn();
+    const result = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch, onProgress });
+    expect(result).toMatchObject({ ok: false, error: { code: "ANALYSIS_VERIFY_FAILED" } });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(onProgress).not.toHaveBeenCalled();
+    expect(await readdir(runRoot)).not.toContain("analysis");
+  });
+
   it("retains an overrun as a nonzero result on fresh dispatch and CLI reuse, with inspectable usage", async () => {
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
@@ -205,6 +242,65 @@ describe("ordinary study analysis flow", () => {
     expect((await exportRun(cwd, "analysis-flow")).ok).toBe(false);
     expect((await draftFeedback(cwd, "analysis-flow", { analysis: artifact.id, finding: "finding-1" })).ok).toBe(false);
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
+  });
+
+  it.each(["none", "run", "nested"])("keeps source verification independent of saturated derived findings (unsafe source: %s)", async (sourceLocation) => {
+    const unsafeSource = sourceLocation !== "none";
+    const marker = "sk-" + "syntheticvalue1234567890abcdef";
+    if (sourceLocation === "run") {
+      const bundle = JSON.parse(original.toString()) as RunBundle;
+      bundle.scenario.goal += marker;
+      await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
+    }
+    await mkdir(path.join(runRoot, "analysis"));
+    if (sourceLocation === "nested") {
+      const nested = path.join(runRoot, "analysis", "zz-nested", "analysis.json");
+      await mkdir(nested, { recursive: true });
+      await writeFile(path.join(nested, "legacy-notes.txt"), marker);
+    }
+    await Promise.all(Array.from({ length: 50 }, async (_, index) => {
+      const directory = path.join(runRoot, "analysis", `aa-synthetic-${index}`);
+      await mkdir(directory);
+      await writeFile(path.join(directory, "analysis.json"), marker);
+    }));
+    const verified = await verifyRun(cwd, "analysis-flow");
+    expect(verified.ok).toBe(false);
+    expect(verified.shareSafety.status).toBe("blocked");
+    expect(verified.checks.find((check) => check.name === "public-safety scan")?.ok).toBe(!unsafeSource);
+    expect(verified.recordingOk === true).toBe(!unsafeSource);
+    expect((await renderObserver(cwd, "analysis-flow")).ok).toBe(!unsafeSource);
+    const fetch = await transport();
+    const result = await analyzeStudy(cwd, "analysis-flow", { config, dryRun: true }, { fetch });
+    expect(result.ok).toBe(!unsafeSource);
+    if (unsafeSource) expect(result.error?.code).toBe("ANALYSIS_VERIFY_FAILED");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps legacy analysis-directory evidence inside the original recording safety scan", async () => {
+    await mkdir(path.join(runRoot, "analysis"));
+    await writeFile(path.join(runRoot, "analysis", "legacy-notes.txt"), "sk-" + "syntheticvalue1234567890abcdef");
+    const verified = await verifyRun(cwd, "analysis-flow");
+    expect(verified.ok).toBe(false);
+    expect(verified.recordingOk).toBeUndefined();
+    expect(verified.checks.find((check) => check.name === "public-safety scan")?.ok).toBe(false);
+    expect((await renderObserver(cwd, "analysis-flow")).ok).toBe(false);
+  });
+
+  it("refuses sharing and feedback when a saved dismissal becomes unreadable", async () => {
+    const artifact = syntheticArtifact(input);
+    await writeStudyAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    const correction = await correctStudyAnalysis(cwd, "analysis-flow", { analysisId: artifact.id, findingId: "finding-1",
+      status: "dismissed", reason: "The fixture does not prove a product issue." });
+    const options = { analysis: artifact.id, finding: "finding-1" };
+    expect((await draftFeedback(cwd, "analysis-flow", options)).ok).toBe(false);
+    const correctionPath = path.join(runRoot, "analysis", artifact.id, "corrections", correction.id, "correction.json");
+    await writeFile(correctionPath, JSON.stringify(correction) + " ".repeat(33_000));
+    const loaded = await showStudyAnalysis(cwd, "analysis-flow");
+    expect(loaded.warnings.length).toBeGreaterThan(0);
+    const verified = await verifyRun(cwd, "analysis-flow");
+    expect(verified.shareSafety.status).toBe("local_only");
+    expect(verified.shareSafety.reasons.some((reason) => reason.code === "ANALYSIS_UNVERIFIED")).toBe(true);
+    expect((await draftFeedback(cwd, "analysis-flow", options)).ok).toBe(false);
   });
 
   it("checks the exact report exported even when it arrives after source verification", async () => {

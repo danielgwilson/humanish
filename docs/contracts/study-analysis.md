@@ -34,6 +34,10 @@ hide earlier valid findings. Ctrl-C cancels the request; usage remains unknown
 when the provider did not report it. Cancellation cannot undo an already accepted
 provider request.
 
+Decoded participant context, evidence text, and the reviewer question are checked
+for known sensitive-text patterns before dispatch. JSON escaping cannot bypass
+that check. Image bytes are not treated as text for pattern matching.
+
 Only one analysis command can own a run's `.analysis-lock` directory. Interrupted
 locks are not stolen using stored PIDs. After confirming the owning command has
 stopped, an operator can remove the empty lock directory and retry.
@@ -43,8 +47,10 @@ stopped, an operator can remove the empty lock directory and retry.
 The packet currently admits up to 16 participants, 800 evidence items, 40 PNG
 captures, 160 KiB of text and 20 MiB of images. Individual source files, image
 dimensions and result sizes have separate limits. Selection follows retained
-source order; it is not a statistically representative sample. Omitted or
-unreadable evidence makes coverage incomplete and remains visible.
+source order; it is not a statistically representative sample. Selection
+omissions and unreadable or invalid capture files make declared coverage
+incomplete. Coverage records file availability and selection; it does not
+certify visual legibility, correct interpretation, or exhaustive issue discovery.
 
 The standard review covers session summary, apparent intent, observed outcome,
 friction, dead ends, recovery, and participant feedback. Findings are ordered by
@@ -83,6 +89,13 @@ model, budget, status and known usage even if source changes prevent report
 publication. They contain no question, participant text, images, or findings.
 `analyze list --json` includes these receipts.
 
+Analysis and execution-history directories each admit 256 entries, including
+interrupted writes; correction history admits 256 entries per analysis. A new
+attempt requires readable inventories with room for its records before dispatch.
+Valid reuse remains available at capacity. The command does not remove old
+versions automatically. A present correction that cannot be read or validated
+blocks sharing and feedback promotion until the history can be checked.
+
 States distinguish no analysis, complete with no findings, complete with
 findings, partial, failed, cancelled, stale and invalid. A copied or modified
 source cannot silently inherit a current analysis. Saved HTML and the HTTP
@@ -115,4 +128,6 @@ sharing.
 
 Redacted bundle export omits analysis, corrections and execution receipts and
 records that omission in derivation provenance. Changed source bytes require
-new analysis; old hashes and review approvals cannot survive redaction.
+new analysis; old hashes and review approvals cannot survive redaction. Ordinary
+legacy evidence under `analysis/` remains part of the recording and follows the
+normal redaction and sharing checks.

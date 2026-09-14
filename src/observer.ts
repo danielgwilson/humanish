@@ -24,7 +24,7 @@ import { buildArtifactSecurityHeaders, buildServeSecurityHeaders, hostAllowed, p
 import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
 import { loadStudyAnalysis } from "./study-analysis-store.js";
 import type { LoadedStudyAnalysis } from "./study-analysis.js";
-import { projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
+import { isStudyAnalysisRecordPath, projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -626,8 +626,7 @@ export async function serveRunPath(
   const derivedLeaf = path.posix.basename(cleanedRelativePath);
   if (derivedRoot === ".analysis-lock"
     || derivedLeaf.startsWith(".humanish-write-")
-    || (derivedRoot === "analysis" && ["analysis.json", "correction.json"].includes(derivedLeaf))
-    || (derivedRoot === "analysis-attempts" && derivedLeaf === "receipt.json")) {
+    || isStudyAnalysisRecordPath(cleanedRelativePath)) {
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;
   }

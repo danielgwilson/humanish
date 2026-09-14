@@ -9,7 +9,7 @@ import { isRunStatusRecord, RUN_STATUS_FILE } from "./run-status.js";
 import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./study-analysis-evidence.js";
 import { estimateStudyAnalysisAdmission, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION,
   type StudyAnalysisAdmission, type StudyAnalysisProgress } from "./study-analysis-engine.js";
-import { appendStudyAnalysisCorrection, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
+import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { STUDY_ANALYSIS_CORRECTION_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig,
   type StudyAnalysisCorrection, type LoadedStudyAnalysis } from "./study-analysis.js";
@@ -52,6 +52,7 @@ const messages: Record<string, string> = {
   ANALYSIS_SOURCE_UNAVAILABLE: "The source recording is missing, unsafe, or exceeds the input limit.",
   ANALYSIS_SOURCE_CHANGED: "The source recording changed during analysis. The result cannot be published against different evidence.",
   ANALYSIS_BUSY: "Another analysis holds this run's .analysis-lock directory. If it was interrupted, confirm it has stopped before removing that empty directory.",
+  ANALYSIS_HISTORY_UNAVAILABLE: "Analysis history is unavailable or full. No request was sent. Inspect this run's analysis and analysis-attempts storage before retrying.",
   ANALYSIS_CONFIG_INVALID: "Use a supported analysis model, a positive cost ceiling up to 1000 USD, a timeout of 1–600000 ms, and 256–32768 output tokens.",
   ANALYSIS_QUESTION_UNSAFE: "The reviewer question matched a sensitive-text pattern. Remove sensitive details before retrying.",
   ANALYSIS_API_KEY_MISSING: "Set OPENAI_API_KEY to run analysis. --dry-run checks admission without a key or provider request.",
@@ -147,6 +148,9 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
           ...(prior.error === null ? {} : { error: { code: prior.error, message: "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent." } }),
           artifactPath: path.join(prepared.relativeRunRoot, "analysis", prior.id, "analysis.json") };
       }
+      // An unreadable inventory is not evidence of an absent prior result.
+      // Check readable history capacity before any new paid attempt.
+      await assertStudyAnalysisPublicationCapacity(prepared);
       const apiKey = deps.apiKey ?? process.env.OPENAI_API_KEY ?? "";
       if (!apiKey.trim()) return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
       const analysis = await runStudyAnalysis(input, config, { apiKey,

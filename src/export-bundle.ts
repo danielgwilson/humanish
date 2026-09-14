@@ -13,6 +13,7 @@ import { buildObserverData } from "./observer-data.js";
 import { containsSensitive, redactScreenshot, redactText } from "./redaction.js";
 import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared, type RunBundle } from "./run.js";
 import { isPathInside, prepareRunArtifactPaths, validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./run-paths.js";
+import { isStudyAnalysisRecordPath } from "./study-analysis-sharing.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
@@ -58,8 +59,7 @@ function jsonBytes(value: unknown): Buffer {
 }
 
 function omittedReason(relative: string): string | undefined {
-  if (relative.startsWith("analysis/")) return "analysis and corrections bind original evidence hashes; reanalyze the derivative";
-  if (relative.startsWith("analysis-attempts/")) return "analysis execution receipts refer to the original evidence";
+  if (isStudyAnalysisRecordPath(relative)) return "analysis records bind original evidence hashes; reanalyze the derivative";
   if (relative.startsWith(".analysis-lock/")) return "local analysis execution lock";
   return OMITTED.get(relative)
     ?? (["feedback/draft.json", "feedback/issue.md"].includes(relative) ? "regenerate feedback from derivative evidence" : undefined);

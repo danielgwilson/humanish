@@ -88,7 +88,7 @@ export interface ExportDeps {
 /** The banner a --local-only export carries. Plain HTML, before the app root, so it renders with JS off. */
 export function localOnlyBanner(reasons: string[]): string {
   const why = reasons.length === 0 ? "" : ` (${reasons.join(", ")})`;
-  return `<div id="humanish-local-only" role="alert" style="position:sticky;top:0;z-index:2147483647;background:#7a1f1f;color:#fff;font:600 14px/1.4 system-ui,sans-serif;padding:10px 16px;text-align:center">`
+  return `<div id="humanish-local-only" role="alert" tabindex="0" style="position:sticky;top:0;z-index:2147483647;max-height:40vh;overflow:auto;background:#7a1f1f;color:#fff;font:600 14px/1.4 system-ui,sans-serif;padding:10px 16px;text-align:center">`
     + `LOCAL ONLY. This export was made from a bundle that is not share-safe${why}. Do not forward it outside the team that owns the run.`
     + `</div>`;
 }
@@ -268,7 +268,12 @@ export async function exportRun(
   const watermarked = !shareReady;
   if (watermarked) {
     const banner = localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code));
-    output = output.includes("<body>") ? output.replace("<body>", `<body>${banner}`) : `${banner}${output}`;
+    // The warning and app share the viewport. A full-height app beneath an
+    // extra banner would scroll the document when recording controls focus.
+    const layout = `<style id="humanish-export-layout">body[data-humanish-local-export]{display:grid;grid-template-rows:auto minmax(0,1fr);height:100dvh;overflow:hidden}body[data-humanish-local-export]>#root{min-height:0;overflow:hidden}</style>`;
+    output = output.includes("<body>")
+      ? output.replace("</head>", `${layout}</head>`).replace("<body>", `<body data-humanish-local-export>${banner}`)
+      : `${banner}${output}`;
   }
   const bytes = Buffer.byteLength(output, "utf8");
   const maxBytes = options.maxBytes ?? DEFAULT_EXPORT_MAX_BYTES;

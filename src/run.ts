@@ -40,7 +40,7 @@ import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { round6 } from "./pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./study-analysis-store.js";
-import { studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
+import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
 import { containsSensitive, digestText, redactText, redactToSecretLabel, tailText } from "./redaction.js";
 import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
 import {
@@ -4387,6 +4387,11 @@ async function verifyPreparedRun(
   });
   const derivedPublicSafetyFindings: string[] = [];
   const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths, derivedPublicSafetyFindings);
+  // JSON escapes can hide a sensitive value from the byte scan while the
+  // decoded recording exposes it to Observer, feedback, or analysis input.
+  if (publicSafetyFindings.length < 50 && bundle !== null && containsSensitivePattern(JSON.stringify(bundle))) {
+    publicSafetyFindings.push("sensitive decoded run.json");
+  }
   checks.push({
     name: "public-safety scan",
     ok: publicSafetyFindings.length === 0,
@@ -7060,7 +7065,9 @@ async function scanRunPublicSafetyDirectory(
   findings: string[],
   derivedFindings: string[]
 ): Promise<void> {
-  if (findings.length + derivedFindings.length >= 50) {
+  // Each authority has its own finding budget. Derived files must never consume
+  // the source scan's budget and make an unscanned recording appear verified.
+  if (findings.length >= 50 && derivedFindings.length >= 50) {
     return;
   }
 
@@ -7070,26 +7077,26 @@ async function scanRunPublicSafetyDirectory(
   const entries = await readdir(current).catch(() => []);
   for (const entryName of entries) {
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
-    const selectedFindings = relativePath === "analysis" || relativePath === "analysis-attempts"
-      || relativePath.startsWith("analysis/") || relativePath.startsWith("analysis-attempts/")
-      || relativePath === "observer/study-analysis.json" ? derivedFindings : findings;
+    const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
+    const selectedFindings = !stats?.isDirectory()
+      && (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath)) ? derivedFindings : findings;
     if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
-      selectedFindings.push(`risky artifact path ${relativePath}`);
-      if (findings.length + derivedFindings.length >= 50) return;
+      if (selectedFindings.length < 50) selectedFindings.push(`risky artifact path ${relativePath}`);
     }
 
-    const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
     if (!stats || stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile()) || (stats.isFile() && stats.nlink > 1n)) {
-      selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
-      if (findings.length + derivedFindings.length >= 50) return;
+      if (selectedFindings.length < 50) selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
       continue;
     }
 
     if (stats.isDirectory()) {
+      // A directory named analysis.json is not an owned record. Its children
+      // can contain source evidence even after derived findings are saturated.
       await scanRunPublicSafetyDirectory(runPaths, relativePath, findings, derivedFindings);
-      if (findings.length + derivedFindings.length >= 50) return;
       continue;
     }
+
+    if (selectedFindings.length >= 50) continue;
 
     if (!shouldScanTextArtifact(relativePath)) {
       continue;
@@ -7099,7 +7106,6 @@ async function scanRunPublicSafetyDirectory(
     const text = bytes?.toString("utf8") ?? null;
     if (text !== null && containsSensitivePattern(text)) {
       selectedFindings.push(`sensitive text ${relativePath}`);
-      if (findings.length + derivedFindings.length >= 50) return;
     }
   }
 }
