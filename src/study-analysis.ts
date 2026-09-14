@@ -1,3 +1,6 @@
+import type { ActorStatus, ActorCompletionReason, ActorStopCause, ParticipantDeclaredOutcome } from "./actor-contract.js";
+import type { CuaGoalSource } from "./actor-goal-source.js";
+
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
 export const STUDY_ANALYSIS_CORRECTION_SCHEMA = "humanish.study-analysis-correction.v1" as const;
@@ -33,6 +36,14 @@ export interface AnalysisParticipantInput {
   assignment: string | null;
   recordedStatus: string;
   recordedReason: string | null;
+  provenance: {
+    actorStatus: ActorStatus | null;
+    completionReason: ActorCompletionReason | null;
+    stopCause: ActorStopCause | null;
+    goalSource: CuaGoalSource | null;
+    declaredOutcome: ParticipantDeclaredOutcome | null;
+    taskOutcomes: Array<{ taskId: string; completed: boolean; observable: boolean; inputsObserved: boolean | null; turn: number | null }> | null;
+  };
 }
 export interface StudyAnalysisInput {
   runId: string;
