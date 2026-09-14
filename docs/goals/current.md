@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-13. Published baseline: `0.88.2`.
+Status date: 2026-09-14. Release baseline: `0.89.0`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.88.2-sequential-study-budgets.md).
+in the [release notes](../release/0.89.0-study-findings.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.88.2`)
+## Current Program Truth (source `0.89.0`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
@@ -99,6 +99,7 @@ substitute for it.
 | Shared state | Sequential and concurrent single-origin shared-world studies with retained evidence | Multi-origin implementation remains gated; concurrent state change does not establish per-action causation |
 | Observer | Live/recorded views, participant assignments, action-specific links, saved moments, zoom, comparison and phone-width review | Sparse captures cannot prove every action's effect; visual comparison alone is not a controlled experiment |
 | Review and feedback | Verification grades, feedback drafts, portable HTML, redacted bundle derivatives and computer-use completion-source labels | Sharing requires the appropriate grade; participant reports and condition matches still need task adjudication |
+| Study findings | Explicit `analyze`, bounded evidence selection, versioned findings, exact source links and append-only corrections within the Observer study shell | Model interpretation needs review; bounded selection and source truncation limit coverage; opening Observer never dispatches analysis |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving and run library | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | In-sandbox email/SMS catch and digest-only thread evidence | This does not establish real-provider delivery |
 | Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed | Physical-device and touch fidelity remain unproven; unsupported microphone declarations are rejected |
