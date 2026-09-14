@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -29,6 +29,11 @@ describe("analysis sharing through a warmed serving cache", () => {
       artifact.result!.summary = marker;
       await writeStudyAnalysisExecutionReceipt(prepared, artifact);
       await writeStudyAnalysis(prepared, artifact);
+      // Atomic writer files are private even during publication. Older ordinary
+      // files under analysis/ retain the generic contained-file serving contract.
+      await writeFile(path.join(prepared.physicalRunRoot, "analysis", artifact.id, ".humanish-write-synthetic.tmp"), marker);
+      await writeFile(path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, ".humanish-write-synthetic.tmp"), marker);
+      await writeFile(path.join(prepared.physicalRunRoot, "analysis", "legacy-notes.txt"), "Synthetic legacy evidence");
       expect((await verifyRun(cwd, "synthetic-study")).shareSafety.status).toBe("blocked");
       // run.json has not changed, so the old admission is deliberately still warm.
       expect(await admission.admit("synthetic-study")).toBe(true);
@@ -48,7 +53,9 @@ describe("analysis sharing through a warmed serving cache", () => {
         `anal%79sis/${artifact.id}/analysis.json`,
         `analysis//${artifact.id}/analysis.json`,
         `observer/../analysis/${artifact.id}/analysis.json`,
-        `analysis-attempts/${artifact.id}/receipt.json`
+        `analysis-attempts/${artifact.id}/receipt.json`,
+        `analysis/${artifact.id}/.humanish-write-synthetic.tmp`,
+        `analysis-attempts/${artifact.id}/.humanish-write-synthetic.tmp`
       ]) {
         const response = await fetch(new URL(route, base));
         expect(response.status, route).toBe(404);
@@ -60,6 +67,9 @@ describe("analysis sharing through a warmed serving cache", () => {
       expect(text.includes(marker)).toBe(false);
       expect(JSON.parse(text)).toMatchObject({ state: "invalid", analysis: null,
         warnings: ["ANALYSIS_SENSITIVE_TEXT_QUARANTINED"] });
+      const legacy = await fetch(new URL("analysis/legacy-notes.txt", base));
+      expect(legacy.status).toBe(200);
+      expect(await legacy.text()).toBe("Synthetic legacy evidence");
     } finally {
       if (server) {
         server.closeAllConnections();
