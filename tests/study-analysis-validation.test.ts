@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   checkAnalysisResult, digestStudyAnalysisInput, hashStudyAnalysisValue, studyAnalysisResultJsonSchema,
-  validateAnalysisResult, validateStudyAnalysisArtifact, validateStudyAnalysisCorrection
+  validateAnalysisResult, validateStudyAnalysisArtifact, validateStudyAnalysisCorrection,
+  validateStudyAnalysisInputMetadata, validateStudyAnalysisExecutionReceipt
 } from "../src/study-analysis-validation.js";
 import { syntheticArtifact, syntheticInput, syntheticResult } from "./study-analysis-fixtures.js";
 
@@ -82,4 +83,32 @@ describe("study analysis validation", () => {
     expect(() => validateStudyAnalysisCorrection(correction)).toThrow("ANALYSIS_CORRECTION_INVALID");
     expect(validateStudyAnalysisCorrection({ ...correction, replacementClaim: "An obstacle was observed." }).status).toBe("amended");
   });
+  it("rejects malformed input metadata before a paid request", () => {
+    const input = syntheticInput();
+    expect(() => validateStudyAnalysisInputMetadata(input)).not.toThrow();
+    input.evidence[0]!.kind = "x".repeat(129);
+    input.inputDigest = digestStudyAnalysisInput(input);
+    expect(() => validateStudyAnalysisInputMetadata(input)).toThrow("ANALYSIS_INPUT_INVALID");
+    const duplicate = syntheticInput();
+    duplicate.evidence.push({ ...duplicate.evidence[0]!, id: "e000003" });
+    duplicate.coverage.evidenceCount++;
+    duplicate.inputDigest = digestStudyAnalysisInput(duplicate);
+    expect(() => validateStudyAnalysisInputMetadata(duplicate)).toThrow("ANALYSIS_INPUT_INVALID");
+  });
+
+  it("requires an action source for observations labeled as actions", () => {
+    const result = syntheticResult();
+    result.findings[0]!.observations[0]!.basis = "action";
+    expect(checkAnalysisResult(syntheticInput(), result)).toMatchObject({ ok: false, errors: ["ANALYSIS_ACTION_SOURCE_INVALID"] });
+  });
+
+  it("does not accept invented complete usage in a standalone accounting receipt", () => {
+    const artifact = syntheticArtifact();
+    const { config: _config, participants: _participants, evidence: _evidence, coverage: _coverage,
+      result: _result, ...metadata } = artifact;
+    const receipt = { ...metadata, schema: "humanish.analysis-execution.v1", model: artifact.config.model,
+      maxCostUsd: artifact.config.maxCostUsd, usage: { ...artifact.usage, inputTokens: null } };
+    expect(() => validateStudyAnalysisExecutionReceipt(receipt)).toThrow("ANALYSIS_USAGE_INVALID");
+  });
+
 });

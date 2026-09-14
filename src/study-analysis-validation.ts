@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   STUDY_ANALYSIS_SCHEMA,
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
+  type AnalysisUsage,
   type StudyAnalysisArtifact,
   type StudyAnalysisCorrection,
   type StudyAnalysisInput,
@@ -200,6 +201,7 @@ export function checkAnalysisResult(input: StudyAnalysisInput, value: unknown):
       if (!distinct(observation.evidenceIds) || refs.some((ref) => !ref || !included.has(ref.streamId))) errors.add("ANALYSIS_OBSERVATION_REFERENCE_INVALID");
       for (const ref of refs) if (ref) citedStreams.add(ref.streamId);
       if (observation.basis === "visual" && !refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined)) errors.add("ANALYSIS_VISUAL_WITHOUT_CAPTURE");
+      if (observation.basis === "action" && !refs.some((ref) => ref && ["ui_action", "command", "tool_call", "file_change", "approval"].includes(ref.kind))) errors.add("ANALYSIS_ACTION_SOURCE_INVALID");
       if (observation.basis === "participant_statement" && refs.some((ref) => !ref?.quoteEligible)) errors.add("ANALYSIS_STATEMENT_SOURCE_INVALID");
     }
     if (finding.affectedStreamIds.some((stream) => !citedStreams.has(stream))) errors.add("ANALYSIS_AFFECTED_WITHOUT_EVIDENCE");
@@ -237,14 +239,7 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
   if (!distinct(artifact.participants.map((participant) => participant.streamId))
     || artifact.participants.length !== included.size
     || artifact.participants.some((participant) => !included.has(participant.streamId))) throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
-  const usage = artifact.usage;
-  if ((usage.usageComplete && (usage.inputTokens === null || usage.outputTokens === null))
-    || (!usage.dispatched && (usage.inputTokens !== null || usage.outputTokens !== null || usage.cachedInputTokens !== null
-      || usage.cacheWriteInputTokens !== null || usage.estimatedCostUsd !== null || usage.usageComplete))
-    || ((usage.cachedInputTokens !== null || usage.cacheWriteInputTokens !== null) && (usage.inputTokens === null
-      || (usage.cachedInputTokens ?? 0) + (usage.cacheWriteInputTokens ?? 0) > usage.inputTokens))) {
-    throw new Error("ANALYSIS_USAGE_INVALID");
-  }
+  assertAnalysisUsage(artifact.usage);
   const hasResult = artifact.status === "complete" || artifact.status === "partial";
   if (hasResult !== (artifact.result !== null)
     || (hasResult && artifact.error !== null && !(artifact.status === "partial" && artifact.error === "analysis_admission_estimate_exceeded"))
@@ -276,6 +271,52 @@ export const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema.p
   provider: true,
   usage: true,
   error: true
-}).extend({ schema: z.literal("humanish.analysis-execution.v1") }).strict();
+}).extend({
+  schema: z.literal("humanish.analysis-execution.v1"),
+  model: studyAnalysisArtifactSchema.shape.config.shape.model,
+  maxCostUsd: studyAnalysisArtifactSchema.shape.config.shape.maxCostUsd
+}).strict();
 
 export type StudyAnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
+
+function assertAnalysisUsage(usage: AnalysisUsage): void {
+  if ((usage.usageComplete && (usage.inputTokens === null || usage.outputTokens === null))
+    || (!usage.dispatched && (usage.inputTokens !== null || usage.outputTokens !== null || usage.cachedInputTokens !== null
+      || usage.cacheWriteInputTokens !== null || usage.estimatedCostUsd !== null || usage.usageComplete))
+    || ((usage.cachedInputTokens !== null || usage.cacheWriteInputTokens !== null) && (usage.inputTokens === null
+      || (usage.cachedInputTokens ?? 0) + (usage.cacheWriteInputTokens ?? 0) > usage.inputTokens))) {
+    throw new Error("ANALYSIS_USAGE_INVALID");
+  }
+}
+
+export function validateStudyAnalysisExecutionReceipt(value: unknown): StudyAnalysisExecutionReceipt {
+  const parsed = studyAnalysisExecutionReceiptSchema.safeParse(value);
+  if (!parsed.success || Date.parse(parsed.data.completedAt) < Date.parse(parsed.data.createdAt)) throw new Error("ANALYSIS_RECEIPT_INVALID");
+  assertAnalysisUsage(parsed.data.usage);
+  return parsed.data;
+}
+
+const inputMetadataSchema = studyAnalysisArtifactSchema.pick({
+  runId: true, sourceRunSha256: true, inputDigest: true, participants: true, coverage: true, evidence: true
+});
+
+/** Validate the packet before any paid request, including typed-library callers. */
+export function validateStudyAnalysisInputMetadata(input: StudyAnalysisInput): void {
+  const parsed = inputMetadataSchema.safeParse({ runId: input.runId, sourceRunSha256: input.sourceRunSha256,
+    inputDigest: input.inputDigest, participants: input.participants, coverage: input.coverage, evidence: input.evidence });
+  if (!parsed.success || digestStudyAnalysisInput(parsed.data) !== input.inputDigest) throw new Error("ANALYSIS_INPUT_INVALID");
+  const { coverage, evidence, participants } = parsed.data;
+  const included = new Set(coverage.includedStreamIds);
+  const captures = new Set(evidence.filter((entry) => entry.capture !== null).map((entry) => JSON.stringify([entry.streamId, entry.capture!.eventId])));
+  if (!distinct(coverage.includedStreamIds) || !distinct(coverage.omittedStreamIds)
+    || coverage.omittedStreamIds.some((stream) => included.has(stream))
+    || !distinct(participants.map((participant) => participant.streamId)) || participants.length !== included.size
+    || participants.some((participant) => !included.has(participant.streamId))
+    || !distinct(evidence.map((entry) => entry.id))
+    || !distinct(evidence.map((entry) => JSON.stringify([entry.streamId, entry.kind, entry.eventId])))
+    || coverage.evidenceCount !== evidence.length || coverage.captureCount !== captures.size
+    || evidence.some((entry) => !included.has(entry.streamId)
+      || (entry.quoteEligible && !["message", "reasoning"].includes(entry.kind))
+      || (entry.capture !== null && (entry.frame === null || entry.capture.eventId !== entry.eventId)))
+    || (coverage.complete && (coverage.omissions.length > 0 || coverage.omittedStreamIds.length > 0))) throw new Error("ANALYSIS_INPUT_INVALID");
+}

@@ -4,7 +4,7 @@ import type { PreparedRunArtifactPaths } from "./run-paths.js";
 import type { ActorTraceItem } from "./actor-contract.js";
 import type { RunBundle, RunStream } from "./run.js";
 import type { AnalysisEvidence, StudyAnalysisArtifact, StudyAnalysisInput } from "./study-analysis.js";
-import { digestStudyAnalysisInput } from "./study-analysis-validation.js";
+import { digestStudyAnalysisInput, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -298,6 +298,7 @@ export async function captureStudyEvidence(
     complete: omittedStreamIds.length === 0 && omissions.size === 0, omissions: [...omissions] };
   const result = { runId: bundle.runId, sourceRunSha256: sha256(bundleBytes), inputDigest: "", participants, coverage, evidence, images };
   result.inputDigest = digestStudyAnalysisInput(result);
+  validateStudyAnalysisInputMetadata(result);
   const after = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
   if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   return result;

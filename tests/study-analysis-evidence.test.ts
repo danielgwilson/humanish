@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { link, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -25,7 +27,7 @@ describe("bounded study evidence reads", () => {
 
   it.each(["../outside.txt", "/outside.txt", "C:\\outside.txt", "evidence\\sample.txt",
     "https://example.test/evidence.txt", "data:text/plain,example", "file:evidence.txt",
-    "evidence/../sample.txt", "evidence//sample.txt", "evidence/./sample.txt", "bad\0name", "bad\nname"])(
+    "evidence/../sample.txt", "evidence//sample.txt", "evidence/./sample.txt", "bad\0name", "bad\nname", "captures/%2e%2e/frame.png", "captures/a%2fb.png", "captures/%252e%252e/frame.png"])(
     "rejects path-shaped or nonlocal evidence %j", async (input) => {
       expect(isStudyEvidencePath(input)).toBe(false);
       expect(await readBoundedStudyFile(root, input, 100)).toBeNull();
@@ -59,4 +61,11 @@ describe("bounded study evidence reads", () => {
       expect(await readBoundedStudyFile(root, "evidence/sample.txt", limit)).toBeNull();
     }
   });
+
+  it("refuses a FIFO without opening a blocking read", async () => {
+    if (process.platform === "win32") return;
+    await promisify(execFile)("mkfifo", [path.join(root.physicalRunRoot, "evidence", "pipe")]);
+    expect(await readBoundedStudyFile(root, "evidence/pipe", 100)).toBeNull();
+  });
+
 });

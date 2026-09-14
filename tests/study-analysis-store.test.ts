@@ -193,7 +193,8 @@ describe("immutable study analysis store", () => {
     const execution = await listStudyAnalysisExecutions(prepared);
     expect(execution.warnings).toEqual([]);
     expect(execution.receipts).toHaveLength(1);
-    expect(execution.receipts[0]).toMatchObject({ id: artifact.id, sourceRunSha256: artifact.sourceRunSha256, usage: artifact.usage });
+    expect(execution.receipts[0]).toMatchObject({ id: artifact.id, sourceRunSha256: artifact.sourceRunSha256,
+      model: artifact.config.model, maxCostUsd: artifact.config.maxCostUsd, usage: artifact.usage });
     const saved = await readFile(path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, "receipt.json"), "utf8");
     for (const text of ["participant-a", "Create an item", "I could not", "data:image", '"result"', '"config"', '"participants"', '"evidence"']) {
       expect(saved).not.toContain(text);
@@ -221,6 +222,20 @@ describe("immutable study analysis store", () => {
     await rm(target);
     await symlink(outside, target);
     expect(await listStudyAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: ["ANALYSIS_RECEIPT_UNREADABLE"] });
+  });
+
+
+  it("retains Observer frame ordinals when an inline legacy capture is intentionally omitted", async () => {
+    const changed = JSON.parse(source.toString());
+    changed.streams[0].actor.items.unshift({ id: "inline-legacy", kind: "screenshot", title: "Legacy inline capture",
+      screenshotRef: { path: `data:image/png;base64,${png.toString("base64")}`, redaction: "none" } });
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    const captured = await captureStudyEvidence(prepared, source);
+    expect(captured.coverage.complete).toBe(false);
+    expect(captured.evidence[0]).toMatchObject({ frame: 0, capture: null });
+    expect(captured.evidence[1]).toMatchObject({ frame: 1, capture: { eventId: "capture-1" } });
+    expect(captured.images).toHaveLength(1);
   });
 
 });

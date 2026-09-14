@@ -19,7 +19,7 @@ import {
 } from "./study-analysis-evidence.js";
 import {
   hashStudyAnalysisValue,
-  studyAnalysisExecutionReceiptSchema,
+  validateStudyAnalysisExecutionReceipt,
   type StudyAnalysisExecutionReceipt,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisCorrection
@@ -243,6 +243,8 @@ export async function writeStudyAnalysisExecutionReceipt(
   if (artifact.runId !== path.basename(prepared.physicalRunRoot)) throw new Error("ANALYSIS_ID_MISMATCH");
   const receipt: StudyAnalysisExecutionReceipt = {
     schema: "humanish.analysis-execution.v1",
+    model: artifact.config.model,
+    maxCostUsd: artifact.config.maxCostUsd,
     id: artifact.id,
     runId: artifact.runId,
     status: artifact.status,
@@ -284,12 +286,12 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
         continue;
       }
       try {
-        const parsed = studyAnalysisExecutionReceiptSchema.safeParse(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
-        if (!parsed.success || parsed.data.id !== id || parsed.data.runId !== path.basename(prepared.physicalRunRoot)) {
+        const receipt = validateStudyAnalysisExecutionReceipt(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
+        if (receipt.id !== id || receipt.runId !== path.basename(prepared.physicalRunRoot)) {
           warnings.push("ANALYSIS_RECEIPT_INVALID");
           continue;
         }
-        receipts.push(parsed.data);
+        receipts.push(receipt);
       } catch { warnings.push("ANALYSIS_RECEIPT_INVALID"); }
     }
     receipts.sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt) || b.id.localeCompare(a.id));
