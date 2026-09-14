@@ -114,6 +114,7 @@ export interface StudyAnalysisArtifact {
   promptVersion: string;
   provider: "openai";
   usage: AnalysisUsage;
+  participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;
   evidence: AnalysisEvidence[];
   result: StudyAnalysisResult | null;
