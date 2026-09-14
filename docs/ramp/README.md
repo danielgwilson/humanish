@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.88.2` (2026-09-13). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
+Package/source version in this tree: `0.89.0` (2026-09-14). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority. The bundled OSS meta-lab is dry-run only until
@@ -47,6 +47,11 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
 
+The [0.89.0 release note](../release/0.89.0-study-findings.md) describes explicit
+analysis of completed studies, versioned findings and review corrections, exact
+evidence links, and Participants / Findings within one Observer shell. Analysis
+remains separate from participant feedback and recorded outcomes.
+
 The [0.88.2 release note](../release/0.88.2-sequential-study-budgets.md)
 describes model-spend thresholds on sequential shared-world studies, blocked
 later participants, and explicit unknown-usage accounting.
@@ -86,7 +91,9 @@ pnpm humanish -- verify --run latest --json
 Implemented:
 
 - `commander` CLI with stable command help;
-- `init`, `doctor`, `run`, `watch`, `verify`, `review`, `runs`, and `feedback`;
+- `init`, `doctor`, `run`, `watch`, `verify`, `review`, `runs`, `analyze`, and `feedback`;
+- opt-in study analysis with bounded provider admission, immutable findings,
+  source-bound corrections and evidence-linked Observer review;
 - synthetic run bundles;
 - public-safety verification with machine-readable `shareSafety.status`
   (`share_ready`, `local_only`, or `blocked`);
