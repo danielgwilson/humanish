@@ -24,7 +24,7 @@ export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
   return <section className="study-report" aria-label="Study findings">
     {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}</p> : null}
     {report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary>{report.messages.map((message, index) => <p key={index}>{message}</p>)}</details> : null}
-    <div className="findings-summary"><p>{report.summary}</p><span>{report.scope} · {report.findings.length} {report.findings.length === 1 ? "finding" : "findings"}</span></div>
+    <div className="findings-summary"><p>{report.summary}</p><span>Independent analysis · {report.scope} · {report.findings.length} {report.findings.length === 1 ? "finding" : "findings"}</span></div>
     {!report.findings.length ? <div className="study-report-empty"><h2>{state === "complete" ? "No findings in the reviewed evidence" : "No findings available"}</h2><p>{state === "complete" ? "This analysis did not identify an issue in its declared coverage. It does not establish that every task or interaction was problem-free." : "The original participant recordings and feedback are still available in Participants."}</p></div> : null}
     <Accordion.Root className="findings-list" value={findingId ? [findingId] : []} multiple={false} onValueChange={(value) => onFinding(typeof value[0] === "string" ? value[0] : "")}>
       {report.findings.map((finding, index) => {
@@ -49,9 +49,9 @@ export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
                 <p className="report-scope"><Info size={14} aria-hidden="true" />{finding.limitation}</p>
                 {finding.observations?.length ? <details className="report-observations"><summary>Observation details ({finding.observations.length})</summary>{finding.observations.map((observation, index) => <div key={index}><span className="observation-basis">{basisLabel[observation.basis]}</span><p>{observation.claim}</p>{observation.limitation ? <p className="observation-limit">{observation.limitation}</p> : null}</div>)}</details> : null}
               </div>
-              <button type="button" className="report-evidence" disabled={!lead.resolved} onClick={() => open(lead)} data-report-evidence={lead.eventId} aria-label={`Inspect ${lead.label} in participant recording`}>
+              <button type="button" className="report-evidence" disabled={!lead.resolved} onClick={() => open(lead)} data-report-evidence={lead.eventId} aria-label={`Open recording: ${labels.get(lead.streamId) ?? lead.streamId} · ${time(lead)}`}>
                 <span className="report-evidence-heading"><span>{labels.get(lead.streamId) ?? lead.streamId}</span><span>{time(lead)}</span></span>
-                {lead.resolved?.frame ? <img src={lead.resolved.frame.href} alt={lead.note} /> : <span className="report-text-evidence">{lead.resolved?.text ?? "This evidence is no longer available in the current recording."}</span>}
+                {lead.resolved?.frame ? <img src={lead.resolved.frame.href} alt="" /> : <span className="report-text-evidence">{lead.resolved?.text ?? "This evidence is no longer available in the current recording."}</span>}
                 <span className="report-evidence-caption">{basis(lead) ? <span className="observation-basis">{basis(lead)}{lead.resolved?.frame && !lead.bases?.includes("visual") ? " · Capture shown for context" : ""}</span> : null}<span>{lead.note}</span><strong>Open recording <ArrowRight size={14} aria-hidden="true" /></strong></span>
               </button>
               <div className="finding-followup">
@@ -60,7 +60,7 @@ export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
                 {finding.corrections?.map((correction, index) => <section key={index} className="finding-correction" aria-label="Reviewer annotation"><h3>{correction.status === "confirmed" ? "Confirmed by reviewer" : correction.status === "dismissed" ? "Dismissed by reviewer" : "Amended by reviewer"}</h3><p>{correction.reason}</p>{correction.replacementClaim ? <p>{correction.replacementClaim}</p> : null}<span>{correction.createdAt} · Original finding retained</span></section>)}
                 <details className="report-priority"><summary>Why this priority</summary><p>{finding.priorityReason}</p></details>
               </div>
-              <section className="report-moments" aria-label="Supporting moments"><h3>Evidence</h3><div>{moments.map((moment) => <button type="button" key={`${moment.streamId}/${moment.eventId}`} disabled={!moment.resolved} data-report-moment={moment.eventId} onClick={() => open(moment)}><span>{time(moment)}</span><span className="moment-source"><strong>{labels.get(moment.streamId) ?? moment.streamId}</strong><span>{basis(moment) ? `${basis(moment)} · ` : ""}{moment.label}</span></span><ArrowRight size={14} aria-hidden="true" /></button>)}</div><p>Elapsed times start at the first retained capture. Entries without a capture show their recorded clock time.</p></section>
+              <section className="report-moments" aria-label="Supporting moments"><h3>Evidence</h3><div>{moments.map((moment) => <button type="button" key={`${moment.streamId}/${moment.eventId}`} disabled={!moment.resolved} aria-current={moment === lead ? "true" : undefined} data-report-moment={moment.eventId} onClick={() => open(moment)}><span>{time(moment)}</span><span className="moment-source"><strong>{labels.get(moment.streamId) ?? moment.streamId}</strong><span>{basis(moment) ? `${basis(moment)} · ` : ""}{moment.label}</span></span><ArrowRight size={14} aria-hidden="true" /></button>)}</div><p>Elapsed times start at the first retained capture. Entries without a capture show their recorded clock time.</p></section>
             </div>
           </Accordion.Panel>
         </Accordion.Item>;

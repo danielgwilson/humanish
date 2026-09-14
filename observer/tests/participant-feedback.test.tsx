@@ -36,3 +36,14 @@ it("retains the structured closing account without duplicating its readable mess
     expect(container.querySelector("a")?.getAttribute("href")).toBe("#/lane/lane-1/f/4/e/lane-1-final");
   } finally { await act(async () => root.unmount()); container.remove(); }
 });
+
+it("does not crash or hide original statements when an older optional closing account is malformed", async () => {
+  const data = fixtures.fixture(), stream = data.streams[0]!;
+  stream.actor!.debrief = { report: { summary: "Malformed optional closing account", frictionReports: 17 } } as unknown as NonNullable<NonNullable<typeof stream.actor>["debrief"]>;
+  const container = document.createElement("div"); document.body.append(container); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ParticipantFeedback data={data} stream={stream} />));
+    expect(container.querySelector('[role="status"]')?.textContent).toContain("could not be read");
+    expect(container.textContent).toContain("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE");
+  } finally { await act(async () => root.unmount()); container.remove(); }
+});

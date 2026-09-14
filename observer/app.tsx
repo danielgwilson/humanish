@@ -9,7 +9,7 @@ import { SavedMoments } from "./components/saved-moments";
 import { Sidebar, type StudyLibrary } from "./components/sidebar";
 import { Drawer } from "./components/ui/drawer";
 import { StudyReport } from "./components/study-report";
-import { reportFindingId, reportHash, type StudyReport as ReportData } from "./lib/study-report";
+import { reportFindingId, reportHash, resolveReportMoment, type StudyReport as ReportData } from "./lib/study-report";
 import "./styles/study-report.css";
 import { StudyGrid } from "./components/study-grid";
 import { ParticipantPager, Topbar } from "./components/topbar";
@@ -116,7 +116,10 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     if (!streams.length) return;
     const index = selected ? streams.findIndex((s) => s.id === selected.id) : 0;
     const next = streams[(index + delta + streams.length) % streams.length];
-    if (next) openParticipant(next.id, null, undefined, source);
+    if (!next) return;
+    const cited = source.kind === "finding" ? report?.findings.find((finding) => finding.id === source.findingId)?.moments.filter((moment) => moment.streamId === next.id) : undefined;
+    const moment = data ? cited?.map((entry) => resolveReportMoment(data, next.id, entry.eventId)).find(Boolean) : undefined;
+    openParticipant(next.id, moment?.frameIndex ?? null, moment?.eventId, source);
   };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -185,7 +188,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     {selected || (!comparison && compareIds.length > 0) ? <div className="study-context-actions">
       {selected ? <button className="recording-return" type="button" data-return-kind={source.kind} aria-label={source.kind === "finding" ? `Back to finding: ${report?.findings.find((finding) => finding.id === source.findingId)?.title ?? source.findingId}` : source.kind === "comparison" ? "Back to comparison" : "Back to participants"} onClick={returnToSource}>← {source.kind === "finding" ? report?.findings.find((finding) => finding.id === source.findingId)?.title ?? "Back to finding" : source.kind === "comparison" ? "Back to comparison" : "Back to participants"}</button> : null}
       {selected ? <ParticipantPager data={data} selected={selected} onStep={stepParticipant} /> : null}
-      {selectedReview && selected ? <span className="report-outcome-context">Reviewed: <strong>{selectedReview.label}</strong></span> : null}
+      {selectedReview && selected ? <span className="report-outcome-context">Analysis: <strong>{selectedReview.label}</strong></span> : null}
       {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
     </div> : null}
     {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={(id, frame) => openParticipant(id, frame, undefined, { runId: data.run.runId, kind: "comparison", hash: comparisonLocation.current || window.location.hash })} onLocationChange={rememberComparison} />

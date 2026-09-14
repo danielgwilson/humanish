@@ -357,7 +357,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       <div className="player-review-tools">
         <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>
         <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seekEntry(nextAction); }}>Next action</button>
-        <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next finding</button>
+        <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next flagged frame</button>
         <label className="zoom-control">View <select aria-label="Image zoom" value={String(zoom)} disabled={live !== null} onChange={(event) => setZoom(event.target.value === "fit" || event.target.value === "actual" ? event.target.value : Number(event.target.value))}>
           <option value="fit">Fit</option><option value="actual">Actual size</option><option value="0.5">50%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
         </select></label>
@@ -366,7 +366,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
-      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} actions{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} thoughts` : ""} · {timing}</span>
+      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
         {stream.liveEnded === true ? <span>Desktop stream ended · recorded evidence</span> : null}

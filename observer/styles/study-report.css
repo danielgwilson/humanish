@@ -41,8 +41,8 @@
 .study-context-actions { display: flex; align-items: center; flex-wrap: wrap; flex: none; gap: 8px 20px; min-height: 48px; padding: 6px 16px; border-bottom: 1px solid var(--line-soft); }
 .recording-return { display: flex; align-items: center; min-height: 32px; font-size: 12px; color: var(--accent-ink); text-align: left; }
 .report-outcome-context { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
-.report-outcome-context strong { color: var(--accent-ink); font-weight: 500; }
-.reviewed-outcome { color: var(--accent-ink) !important; }
+.report-outcome-context strong { color: var(--body-c); font-weight: 500; }
+.reviewed-outcome { color: var(--body-c) !important; white-space: normal; overflow: visible; text-overflow: clip; }
 .monitoring .study-viewbar { display: none; }
 
 /* Findings use the same pane gutter and object scale as participant evidence. */
@@ -59,7 +59,7 @@
 .finding-row-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; }
 .finding-row-title strong { font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--ink); }
 .finding-row-title > span { font-size: 12px; line-height: 1.5; color: var(--muted); }
-.report-finding[aria-expanded="true"] .finding-row-title strong { color: var(--accent-ink); }
+.report-finding[aria-expanded="true"] .finding-row-title strong { color: var(--ink); }
 .report-impact { font-size: 12px; line-height: 1.5; color: var(--muted); }
 .report-finding > svg { color: var(--muted); transition: transform 180ms ease; }
 .report-finding[aria-expanded="true"] > svg { transform: rotate(180deg); }
@@ -81,7 +81,7 @@
 .report-evidence { grid-area: evidence; display: block; width: 100%; align-self: start; text-align: left; overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
 .report-evidence-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; font-size: 11px; }
 .report-evidence-heading > span:last-child { font: 11px var(--mono); color: var(--muted); }
-.report-evidence img { display: block; aspect-ratio: 1440 / 950; object-fit: contain; width: 100%; height: auto; background: var(--mineral); }
+.report-evidence img { display: block; object-fit: contain; width: 100%; height: auto; max-height: 320px; background: var(--mineral); }
 .report-evidence-caption { display: flex; flex-direction: column; gap: 8px; padding: 9px 10px; font-size: 12px; line-height: 1.5; }
 .report-evidence-caption strong { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--accent-ink); }
 .report-moments { grid-area: moments; display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 3px 12px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
@@ -158,10 +158,16 @@
 .participant-analysis p, .participant-analysis dl, .participant-analysis ul, .participant-analysis-evidence { margin-top: 10px; }
 .participant-analysis dt { color: var(--muted); margin-top: 8px; }
 .participant-analysis dd { margin: 0; overflow-wrap: anywhere; }
-.participant-analysis ul, .participant-feedback ul { padding-left: 18px; }
-.participant-analysis-evidence { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.participant-analysis ul, .participant-feedback ul { padding-left: 18px; list-style: disc; }
+.participant-analysis-evidence { display: flex; flex-direction: column; gap: 10px; }
+.participant-analysis-evidence a { display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
+.analysis-entry-time { font-size: 11px; color: var(--muted); }
 .participant-analysis a, .participant-feedback a { color: var(--accent-ink); font-size: 12px; }
 .analysis-source-note { color: var(--muted); font-size: 11px; }
 .participant-feedback { margin-block: 16px; }
 .participant-feedback .verbatim { overflow-wrap: anywhere; }
 .participant-feedback nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.statement-time { white-space: nowrap; }
+@media (max-width: 880px) {
+  .study-report details > summary, .participant-analysis > summary { min-height: 44px; padding-block: 12px; box-sizing: border-box; }
+}

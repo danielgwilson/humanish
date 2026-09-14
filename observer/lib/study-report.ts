@@ -20,7 +20,7 @@ export type ObservationBasis = "visual" | "action" | "participant_statement" | "
 export const basisLabel: Record<ObservationBasis, string> = { visual: "Visual observation", action: "Recorded action", participant_statement: "Participant statement", inference: "Inference" };
 export interface ParticipantAnalysis {
   streamId: string; summary: string; intent: string; outcome: string; outcomeReason: string;
-  limitations: string[]; stale: boolean; moments: { eventId: string; label: string }[];
+  limitations: string[]; stale: boolean; moments: { eventId: string; label: string; elapsedMs: number | null; at: string | null; text: string }[];
 }
 
 export interface StudyFinding {

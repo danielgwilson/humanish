@@ -21,6 +21,8 @@ describe("independent analysis admission and projection", () => {
     expect(report.findings[0]?.moments[0]).toMatchObject({ streamId: "lane-1", eventId: "lane-1-action-2" });
     expect(report.outcomes[0]).toEqual({ streamId: "lane-1", label: "Blocked" });
     expect(report.participants?.[0]).toMatchObject({ summary: "Recorded synthetic activity.", intent: "Inspect the fictional interface.", outcomeReason: "Synthetic interpretation kept separate from actor status.", stale: false });
+    expect(report.participants?.[0]?.outcome).toBe("Blocked");
+    expect(report.participants?.[0]?.moments[0]).toMatchObject({ eventId: "lane-1-frame-1", elapsedMs: 0, text: "Synthetic portrait capture 1" });
   });
   it("associates only cited quotes with their own speaker and preserves each observation basis", () => {
     const saved = fixture(), finding = saved.analysis!.result!.findings[0]!;

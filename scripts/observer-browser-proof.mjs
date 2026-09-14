@@ -827,7 +827,7 @@ try {
     await openLane(page); await page.getByRole("button", { name: "Next action", exact: true }).click();
     assert((await displayedFrame(page)).endsWith("portrait-1.png"));
     assert(page.url().includes("/e/lane-1-action-1"));
-    await page.getByRole("button", { name: "Next finding", exact: true }).click();
+    await page.getByRole("button", { name: "Next flagged frame", exact: true }).click();
     await page.getByLabel("Filter activity").selectOption("findings");
     await page.locator(".acts").getByText(/SYNTHETIC EXPLICIT FINDING/).waitFor(); await snap("recorded-finding-filter");
     await page.getByLabel("Filter activity").selectOption("thoughts"); await page.locator(".acts").getByText("SYNTHETIC THOUGHT FOR REVIEW", { exact: true }).first().waitFor();
@@ -1022,7 +1022,19 @@ try {
     await page.locator('.report-observations summary').click();
     assert.equal(await page.locator('.report-observations .observation-basis').count(), 4);
     await snap("attributed-findings");
+    const accessibleName = await page.locator('.report-evidence').getAttribute('aria-label');
+    assert(accessibleName.startsWith('Open recording: ') && accessibleName.includes('00:'), 'Evidence name lost the visible action or recorded time');
+    assert.equal(await page.locator('.report-moments [aria-current="true"]').count(), 1);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const targetHeights = await page.locator('.study-report details > summary').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+    assert(targetHeights.every(height => height >= 44), 'Phone disclosure targets are shorter than44px');
     await page.locator('.report-evidence').click();
+    await page.locator('.stage-box img').waitFor(); await page.locator('.content').evaluate(node => { node.scrollTop = 0; });
+    await snap('phone-recording-stage');
+    await page.getByRole('button', { name: 'Next participant', exact: true }).click();
+    assert(new URL(page.url()).hash.endsWith('/lane/lane-2/f/4/e/lane-2-final'), 'Participant pager lost the next cited finding moment');
+    await page.getByRole('button', { name: 'Previous participant', exact: true }).click();
+    assert(new URL(page.url()).hash.endsWith('/lane/lane-1/f/2/e/lane-1-action-2'));
     await page.getByRole('tab', { name: 'details', exact: true }).click();
     await page.locator('.participant-analysis summary').click();
     await page.getByText('Synthetic interpretation kept separate from actor status.', { exact: true }).waitFor();
@@ -1034,7 +1046,7 @@ try {
     assert(new URL(page.url()).hash.endsWith('/e/lane-1-final'));
     await page.getByRole('button', { name: /^Back to finding:/ }).waitFor();
     await page.setViewportSize({ width: 390, height: 844 }); await snap("phone-original-feedback");
-    record.checks = { citedSpeakers: speakers, uncitedQuoteExcluded: true, basisPreserved: true, dispositionVisible: true, independentOutcomeExplained: true, originalStatementSourceLinked: true };
+    record.checks = { citedSpeakers: speakers, uncitedQuoteExcluded: true, basisPreserved: true, dispositionVisible: true, independentOutcomeExplained: true, originalStatementSourceLinked: true, accessibleName, phoneDisclosureHeights: targetHeights, pagerCitedMoment: true };
   });
   await runCase("analysis-states", { prepare() { analysis = analysisFixture(data, { empty: true }); } }, async ({ page, record, snap }) => {
     await page.getByRole("link", { name: /^Findings/ }).click();

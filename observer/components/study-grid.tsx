@@ -56,7 +56,7 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
   const liveThumbIds = new Set(updating && isServedOrigin(window.location.protocol)
     ? [...visibleIds].sort((a, b) => Number(b === priorityId) - Number(a === priorityId)).filter((id) => shown.some((s) => s.id === id && liveEmbedUrl(s) !== null)).slice(0, 4) : []);
   return <section aria-label="Study grid"><h2 className="sr-only">Study participants</h2>
-    <div className="grid-summary"><p className="countline">{reviewOutcomes ? `Independent review: ${[...new Set(reviewOutcomes.map((outcome) => outcome.label))].map((label) => `${reviewOutcomes.filter((outcome) => outcome.label === label).length}/${data.streams.length} ${label.toLowerCase()}`).join(" · ")}` : buildTally(data)}</p>{tools}</div>
+    <div className="grid-summary"><p className="countline">{reviewOutcomes ? `Analysis: ${[...new Set(reviewOutcomes.map((outcome) => outcome.label))].map((label) => `${reviewOutcomes.filter((outcome) => outcome.label === label).length}/${data.streams.length} ${label}`).join(" · ")}` : buildTally(data)}</p>{tools}</div>
     {streams.length === 0 ? <p className="countline">No participants match the current filters.</p>
       : <div className={`gallery density-${density}`} ref={grid}
         onPointerOver={(event) => { const id = (event.target as Element).closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}

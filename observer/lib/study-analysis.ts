@@ -132,6 +132,7 @@ export async function fetchStudyAnalysis(fetchImpl: typeof fetch, data: Observer
 }
 
 const impact = { blocked_task: "Task blocked", friction: "Friction", recovery: "Recovered", uncertain: "Uncertain" };
+const outcomeLabel = (outcome: string) => outcome.charAt(0).toUpperCase() + outcome.slice(1);
 export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: ObserverData): StudyReport | undefined {
   if (loaded.state === "none") return undefined;
   const a = loaded.analysis, result = a?.result;
@@ -154,9 +155,9 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
         nextStep: f.nextStep, priorityReason: f.priorityReason, account: "", accountSource: "", accounts, observations: f.observations.map(({ claim, basis, limitation }) => ({ claim, basis, limitation })), moments,
         corrections: loaded.corrections.filter((c) => c.findingId === f.id).map((c) => ({ status: c.status, reason: c.reason, replacementClaim: c.replacementClaim, createdAt: c.createdAt })) };
     }) ?? [],
-    outcomes: loaded.state === "ready" ? result?.participants.map((p) => ({ streamId: p.streamId, label: p.outcome.charAt(0).toUpperCase() + p.outcome.slice(1) })) ?? [] : [],
-    participants: result?.participants.map((p) => ({ streamId: p.streamId, summary: p.summary, intent: p.intent, outcome: p.outcome, outcomeReason: p.outcomeReason,
-      limitations: p.limitations, stale: loaded.state === "stale", moments: p.evidenceIds.flatMap((key) => { const e = evidence.get(key); return e ? [{ eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence" }] : []; }) })) ?? [],
+    outcomes: loaded.state === "ready" ? result?.participants.map((p) => ({ streamId: p.streamId, label: outcomeLabel(p.outcome) })) ?? [] : [],
+    participants: result?.participants.map((p) => ({ streamId: p.streamId, summary: p.summary, intent: p.intent, outcome: outcomeLabel(p.outcome), outcomeReason: p.outcomeReason,
+      limitations: p.limitations, stale: loaded.state === "stale", moments: p.evidenceIds.flatMap((key) => { const e = evidence.get(key); return e ? [{ eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", elapsedMs: e.elapsedMs, at: e.at, text: e.text }] : []; }) })) ?? [],
     methodology: a ? [`Analysis ${a.id} · ${a.status} · ${a.completedAt}`, `Model ${a.config.model} · ${a.promptVersion}`, `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
       "This independent interpretation does not change the participant account or recorded completion evidence.", ...(a.config.question ? [`Additional review question: ${a.config.question}`] : [])] : [] };
 }
