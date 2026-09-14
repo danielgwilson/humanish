@@ -1,11 +1,11 @@
-import { link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { access, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
 import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
-import { appendStudyAnalysisCorrection, listStudyAnalyses, listStudyAnalysisExecutions, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "../src/study-analysis-store.js";
+import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, listStudyAnalyses, listStudyAnalysisExecutions, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "../src/study-analysis-store.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
 import type { StudyAnalysisArtifact, StudyAnalysisCorrection, StudyAnalysisInput } from "../src/study-analysis.js";
 import { syntheticArtifact } from "./study-analysis-fixtures.js";
@@ -70,6 +70,44 @@ describe("immutable study analysis store", () => {
 
   it("returns no analysis for an ordinary retained run", async () => {
     expect(await loadStudyAnalysis(prepared)).toEqual({ state: "none", analysis: null, corrections: [], warnings: [] });
+  });
+
+  it("checks publication capacity without creating either history directory", async () => {
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
+    for (const directory of ["analysis", "analysis-attempts"]) {
+      await expect(access(path.join(prepared.physicalRunRoot, directory))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+  });
+
+  it.each(["analysis", "analysis-attempts"])("reserves one inventory slot in %s before dispatch", async (directory) => {
+    const root = path.join(prepared.physicalRunRoot, directory);
+    await mkdir(root);
+    await Promise.all(Array.from({ length: 255 }, (_, index) => mkdir(path.join(root, `history-${index}`))));
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
+    await mkdir(path.join(root, "history-255"));
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow("ANALYSIS_HISTORY_UNAVAILABLE");
+    expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
+  });
+
+  it.each(["analysis", "analysis-attempts"])("refuses unsafe %s inventory before dispatch", async (directory) => {
+    const root = path.join(prepared.physicalRunRoot, directory);
+    await mkdir(root);
+    const outside = path.join(cwd, "outside-history");
+    await mkdir(outside);
+    await symlink(outside, path.join(root, "unsafe-entry"));
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow("ANALYSIS_HISTORY_UNAVAILABLE");
+    await rm(path.join(root, "unsafe-entry"));
+    await writeFile(path.join(root, "analysis.json"), "{}");
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow("ANALYSIS_HISTORY_UNAVAILABLE");
+  });
+
+  it("counts safe legacy files against the same inventory capacity as listing", async () => {
+    const root = path.join(prepared.physicalRunRoot, "analysis");
+    await mkdir(root);
+    await Promise.all(Array.from({ length: 255 }, (_, index) => writeFile(path.join(root, `legacy-${index}.txt`), "Synthetic evidence.")));
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
+    await writeFile(path.join(root, "legacy-255.txt"), "Synthetic evidence.");
+    await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow("ANALYSIS_HISTORY_UNAVAILABLE");
   });
 
   it("marks changed run bytes stale and refuses publication against the earlier digest", async () => {

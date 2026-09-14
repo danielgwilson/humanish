@@ -43,6 +43,21 @@ export interface StudyAnalysisListEntry {
   warnings: string[];
 }
 
+/** Check room for both immutable publications before a new provider dispatch.
+ * This is read-only; the service's dispatch lock protects ordinary concurrent writers. */
+export async function assertStudyAnalysisPublicationCapacity(prepared: PreparedRunArtifactPaths): Promise<void> {
+  try {
+    for (const directory of [STUDY_ANALYSIS_DIRECTORY, STUDY_ANALYSIS_EXECUTION_DIRECTORY]) {
+      const root = await existingRoot(prepared, directory);
+      if (!root) continue;
+      const inventory = await directoryIds(root, MAX_VERSIONS - 1, directory === STUDY_ANALYSIS_DIRECTORY);
+      if (inventory.warnings.length > 0) throw new Error("Unsafe analysis inventory.");
+    }
+  } catch {
+    throw new Error("ANALYSIS_HISTORY_UNAVAILABLE");
+  }
+}
+
 async function existingRoot(prepared: PreparedRunArtifactPaths, directory = STUDY_ANALYSIS_DIRECTORY): Promise<PreparedSelectedOutputDirectory | null> {
   await validatePreparedRunRootIdentity(prepared);
   const cwd = path.dirname(path.dirname(path.dirname(prepared.absoluteRunRoot)));
