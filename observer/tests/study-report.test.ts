@@ -16,12 +16,12 @@ const report: StudyReport = { id: "review-1", runId: data.run.runId, summary: "A
 describe("study report evidence navigation", () => {
   it("opens an action on its preceding capture through the existing Observer grammar", () => {
     const moment = resolveReportMoment(data, stream.id, "click")!;
-    expect(moment.frame.itemId).toBe("first");
+    expect(moment.frame?.itemId).toBe("first");
     expect(moment.elapsedMs).toBe(3000);
     const hash = formatHash(stream.id, moment.frameIndex, null, moment.eventId);
     expect(hash).toBe("#/lane/participant/f/1/e/click");
     expect(parseHash(hash)).toEqual({ laneId: "participant", frame: 0, eventId: "click" });
-    expect(resolveReportMoment(data, stream.id, "second")?.frame.itemId).toBe("second");
+    expect(resolveReportMoment(data, stream.id, "second")?.frame?.itemId).toBe("second");
   });
   it("refuses missing evidence instead of selecting another frame or participant", () => {
     expect(resolveReportMoment(data, "missing", "click")).toBeNull();

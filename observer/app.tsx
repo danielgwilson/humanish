@@ -24,6 +24,7 @@ import { participantLabels } from "./lib/participant-label";
 import { isDensity, isMoments, isStringList, usePreference, type SavedMoment } from "./lib/preferences";
 import { formatHash, parseHash, pushHash } from "./lib/route";
 import { savedEntryLabels } from "./lib/saved-entry-labels";
+import { projectStudyAnalysis, type LoadedStudyAnalysis } from "./lib/study-analysis";
 import { useObserverFeed } from "./lib/use-observer-feed";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
@@ -31,10 +32,12 @@ const isFilters = (v: unknown): v is GridFilters => !!v && typeof v === "object"
 const compareRoute = () => window.location.hash.startsWith("#/compare");
 const routeCompareIds = () => new URLSearchParams(window.location.hash.split("?")[1]).getAll("lane").slice(0, 3);
 
-export function App({ data: initialData, snapshot = false, report, library }: { data: ObserverData | null; snapshot?: boolean; report?: ReportData; library?: StudyLibrary }) {
-  const { data, history, connection, retry } = useObserverFeed(initialData, snapshot);
+export function App({ data: initialData, snapshot = false, report: suppliedReport, library, analysis: initialAnalysis }: { data: ObserverData | null; snapshot?: boolean; report?: ReportData; library?: StudyLibrary; analysis?: LoadedStudyAnalysis }) {
+  const { data, history, connection, retry, analysis } = useObserverFeed(initialData, snapshot, initialAnalysis);
+  const report = useMemo(() => suppliedReport ?? (data ? projectStudyAnalysis(analysis, data) : undefined), [suppliedReport, analysis, data]);
   const [reportRoute, setReportRoute] = useState(() => reportFindingId(window.location.hash));
-  const readSource = () => recordingSource(window.history.state, initialData?.run.runId ?? "", report?.findings.map((finding) => finding.id));
+  const reportIds = useRef<string[]>([]); reportIds.current = report?.findings.map((finding) => finding.id) ?? [];
+  const readSource = () => recordingSource(window.history.state, initialData?.run.runId ?? "", reportIds.current);
   const [source, setSource] = useState<RecordingSource>(readSource);
   const reportActive = !!report && reportRoute !== null;
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
@@ -128,7 +131,7 @@ export function App({ data: initialData, snapshot = false, report, library }: { 
     };
     window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
   }, [selected, comparison, monitoring, source]);
-  const model = useMemo(() => selected ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected]);
+  const model = useMemo(() => selected && !(route.eventId && route.frame === null) ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected, route.eventId, route.frame]);
   const viewChanged = useCallback((view: PlayerView) => { if (selected) setPlayerView({ ...view, streamId: selected.id }); }, [selected?.id]);
   if (!data) return <EmptyState />;
   const selectedReview = report?.outcomes.find((outcome) => outcome.streamId === selected?.id);
@@ -185,9 +188,9 @@ export function App({ data: initialData, snapshot = false, report, library }: { 
       {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
     </div> : null}
     {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={(id, frame) => openParticipant(id, frame, undefined, { runId: data.run.runId, kind: "comparison", hash: comparisonLocation.current || window.location.hash })} onLocationChange={rememberComparison} />
-          : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} updating={connection.state !== "offline"} />
+          : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
             : <StudyGrid tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
-                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
+                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
   </>;
   const needsAttention = connection.state === "retrying" || data.runtime?.state === "unknown" || data.runtime?.state === "interrupted";
   const studyLabel = library?.entries.find((entry) => entry.runId === data.run.runId)?.title;

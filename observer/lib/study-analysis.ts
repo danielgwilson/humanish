@@ -1,0 +1,134 @@
+import type { LoadedStudyAnalysis, StudyAnalysisArtifact, StudyAnalysisCorrection } from "../../src/study-analysis";
+import { traceItems } from "./artifact-href";
+import type { ObserverData } from "./observer-data";
+import { participantLabels } from "./participant-label";
+import { type StudyReport } from "./study-report";
+
+export type { LoadedStudyAnalysis } from "../../src/study-analysis";
+export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
+export const STUDY_ANALYSIS_PLACEHOLDER = ["__HUMANISH", "STUDY_ANALYSIS__"].join("_");
+export const NO_ANALYSIS: LoadedStudyAnalysis = { state: "none", analysis: null, corrections: [], warnings: [] };
+const invalid = (): LoadedStudyAnalysis => ({ state: "invalid", analysis: null, corrections: [], warnings: ["The saved analysis could not be read. Participant evidence is still available."] });
+const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const text = (v: unknown): v is string => typeof v === "string" && v.length <= 32_000;
+const id = (v: unknown): v is string => text(v) && v.length > 0 && v.length <= 256;
+const list = (v: unknown, check: (x: unknown) => boolean, max = 1000): boolean => Array.isArray(v) && v.length <= max && v.every(check);
+const strings = (v: Record<string, unknown>, keys: string[]) => keys.every((key) => text(v[key]));
+const enumeration = (v: unknown, values: string[]) => typeof v === "string" && values.includes(v);
+const ids = (v: unknown) => list(v, id) && new Set(v as string[]).size === (v as string[]).length;
+const nullableText = (v: unknown) => v === null || text(v);
+const number = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+const nullableNumber = (v: unknown) => v === null || number(v);
+const hash = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
+const quote = (v: unknown) => object(v) && id(v.evidenceId) && text(v.text);
+const observation = (v: unknown) => object(v) && strings(v, ["claim", "limitation"])
+  && enumeration(v.basis, ["visual", "action", "participant_statement", "inference"]) && ids(v.evidenceIds);
+const participant = (v: unknown) => object(v) && id(v.streamId) && strings(v, ["summary", "intent", "outcomeReason"])
+  && enumeration(v.outcome, ["completed", "blocked", "abandoned", "interrupted", "unknown"])
+  && ids(v.evidenceIds) && list(v.feedback, quote) && list(v.limitations, text);
+const finding = (v: unknown) => object(v) && id(v.id) && strings(v, ["title", "summary", "exposureReason", "nextStep", "priorityReason"])
+  && enumeration(v.impact, ["blocked_task", "friction", "recovery", "uncertain"])
+  && enumeration(v.recovery, ["recovered", "not_observed", "unknown"]) && enumeration(v.confidence, ["low", "medium", "high"])
+  && ids(v.affectedStreamIds) && ids(v.exposedStreamIds) && list(v.observations, observation);
+const correction = (v: unknown): v is StudyAnalysisCorrection => object(v) && v.schema === "humanish.study-analysis-correction.v1"
+  && id(v.id) && id(v.analysisId) && id(v.findingId) && hash(v.analysisSha256) && hash(v.findingSha256)
+  && strings(v, ["createdAt", "reason"]) && nullableText(v.replacementClaim) && enumeration(v.status, ["confirmed", "dismissed", "amended"]);
+
+/** Browser admission protects rendering; the producer owns filesystem/hash verification.
+ * Do not reclassify a stale report as current just because its shape is readable. */
+export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
+  if (!object(value) || !enumeration(value.state, ["none", "ready", "stale", "invalid"])
+    || !list(value.warnings, text) || !list(value.corrections, correction)) return invalid();
+  if (value.analysis === null) return value.state === "none" || value.state === "invalid"
+    ? { state: value.state, analysis: null, corrections: [], warnings: value.warnings as string[] } : invalid();
+  if (value.state === "none" || value.state === "invalid") return invalid();
+  const a = value.analysis;
+  if (!object(a) || a.schema !== STUDY_ANALYSIS_SCHEMA || !id(a.id) || a.runId !== data.run.runId
+    || !enumeration(a.status, ["complete", "partial", "failed", "cancelled"])
+    || !strings(a, ["createdAt", "completedAt", "promptVersion"]) || a.provider !== "openai"
+    || ![a.sourceRunSha256, a.inputDigest, a.configDigest].every(hash) || !nullableText(a.error)
+    || !object(a.config) || !text(a.config.model) || !nullableText(a.config.question)
+    || ![a.config.maxCostUsd, a.config.timeoutMs, a.config.maxOutputTokens].every(number)
+    || !object(a.usage) || ![a.usage.inputTokens, a.usage.outputTokens, a.usage.estimatedCostUsd, a.usage.estimatedAdmissionUsd].every(nullableNumber)
+    || typeof a.usage.usageComplete !== "boolean" || typeof a.usage.dispatched !== "boolean" || !nullableText(a.usage.ratesAsOf)
+    || !object(a.coverage) || !ids(a.coverage.includedStreamIds) || !ids(a.coverage.omittedStreamIds)
+    || ![a.coverage.evidenceCount, a.coverage.captureCount].every(number) || typeof a.coverage.complete !== "boolean" || !list(a.coverage.omissions, text)
+    || !list(a.evidence, (e) => object(e) && id(e.id) && id(e.streamId) && id(e.eventId) && strings(e, ["kind", "text"])
+      && typeof e.quoteEligible === "boolean" && nullableText(e.at) && nullableNumber(e.elapsedMs)
+      && (e.frame === null || (number(e.frame) && Number.isInteger(e.frame)))
+      && (e.capture === null || (object(e.capture) && id(e.capture.eventId) && text(e.capture.path) && hash(e.capture.sha256)
+        && enumeration(e.capture.mimeType, ["image/png", "image/jpeg", "image/webp"]))), 10_000)
+    || !(a.result === null || (object(a.result) && text(a.result.summary) && list(a.result.participants, participant)
+      && list(a.result.findings, finding, 100) && list(a.result.limitations, text)))) return invalid();
+  if ((a.status === "complete" || a.status === "partial") && a.result === null) return invalid();
+  const analysis = a as unknown as StudyAnalysisArtifact;
+  const streams = new Set(data.streams.map((s) => s.id));
+  const evidence = new Map(analysis.evidence.map((e) => [e.id, e]));
+  const included = analysis.coverage.includedStreamIds;
+  const omitted = analysis.coverage.omittedStreamIds;
+  if (evidence.size !== analysis.evidence.length || included.some((s) => !streams.has(s) || omitted.includes(s)) || omitted.some((s) => !streams.has(s))) return invalid();
+  if (analysis.evidence.some((e) => !streams.has(e.streamId) || !included.includes(e.streamId))) return invalid();
+  // Link addresses come from the current evidence, never the manifest's stored path.
+  // Stale reports remain readable, but missing references render as unavailable.
+  const recordedIds = new Map(data.streams.map((stream) => [stream.id, new Set([...traceItems(stream).map((item) => item.id), ...stream.timeline.map((event) => event.id)])]));
+  if (value.state === "ready" && analysis.evidence.some((e) => !recordedIds.get(e.streamId)?.has(e.eventId))) return invalid();
+  const result = analysis.result;
+  if (result) {
+    if (new Set(result.findings.map((f) => f.id)).size !== result.findings.length
+      || new Set(result.participants.map((p) => p.streamId)).size !== result.participants.length) return invalid();
+    for (const p of result.participants) {
+      if (!included.includes(p.streamId) || p.evidenceIds.some((key) => evidence.get(key)?.streamId !== p.streamId)
+        || p.feedback.some((q) => { const e = evidence.get(q.evidenceId); return !e?.quoteEligible || e.streamId !== p.streamId || !q.text || !e.text.includes(q.text); })) return invalid();
+    }
+    for (const f of result.findings) {
+      if (!f.observations.length || !f.affectedStreamIds.length || f.exposedStreamIds.some((s) => !included.includes(s))
+        || f.affectedStreamIds.some((s) => !f.exposedStreamIds.includes(s))
+        || f.observations.some((o) => !o.evidenceIds.length || o.evidenceIds.some((key) => !evidence.has(key)))) return invalid();
+    }
+  }
+  const corrections = (value.corrections as StudyAnalysisCorrection[]).filter((c) => c.analysisId === analysis.id && result?.findings.some((f) => f.id === c.findingId));
+  return { state: value.state as LoadedStudyAnalysis["state"], analysis, corrections, warnings: value.warnings as string[] };
+}
+
+export function readInlineStudyAnalysis(doc: Document, data: ObserverData | null): LoadedStudyAnalysis {
+  if (!data) return NO_ANALYSIS;
+  const value = doc.getElementById("study-analysis")?.textContent?.trim();
+  if (!value || value === "null" || value === STUDY_ANALYSIS_PLACEHOLDER) return NO_ANALYSIS;
+  if (value.length > 8_000_000) return invalid();
+  try { return parseStudyAnalysis(JSON.parse(value), data); } catch { return invalid(); }
+}
+
+export async function fetchStudyAnalysis(fetchImpl: typeof fetch, data: ObserverData, signal: AbortSignal): Promise<LoadedStudyAnalysis | null> {
+  try {
+    const response = await fetchImpl("study-analysis.json", { signal, cache: "no-store" });
+    if (response.status === 404) return NO_ANALYSIS;
+    if (!response.ok) return null;
+    const value = await response.text();
+    return value.length > 8_000_000 ? invalid() : parseStudyAnalysis(JSON.parse(value), data);
+  } catch { return null; }
+}
+
+const impact = { blocked_task: "Task blocked", friction: "Friction", recovery: "Recovered", uncertain: "Uncertain" };
+export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: ObserverData): StudyReport | undefined {
+  if (loaded.state === "none") return undefined;
+  const a = loaded.analysis, result = a?.result;
+  const labels = participantLabels(data.streams);
+  const evidence = new Map(a?.evidence.map((e) => [e.id, e]) ?? []);
+  return { id: a?.id ?? "unavailable", runId: data.run.runId, state: loaded.state === "ready" ? a?.status ?? "invalid" : loaded.state,
+    summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
+    messages: [...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])],
+    findings: result?.findings.map((f) => {
+      const moments = [...new Set(f.observations.flatMap((o) => o.evidenceIds))].flatMap((key) => {
+        const e = evidence.get(key); return e ? [{ streamId: e.streamId, eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", note: f.observations.find((o) => o.evidenceIds.includes(key))?.claim ?? e.kind }] : [];
+      });
+      const accounts = result.participants.filter((p) => f.affectedStreamIds.includes(p.streamId)).flatMap((p) => p.feedback.map((q) => ({ text: q.text, label: labels.get(p.streamId) ?? p.streamId })));
+      return { id: f.id, title: f.title, impact: impact[f.impact], summary: f.summary,
+        scope: `${f.affectedStreamIds.length} of ${f.exposedStreamIds.length} exposed participants affected`,
+        limitation: [...new Set(f.observations.map((o) => o.limitation).filter(Boolean)), `Exposure: ${f.exposureReason}`, `Recovery: ${f.recovery === "not_observed" ? "not observed" : f.recovery}. Confidence: ${f.confidence}.`].join(" "),
+        nextStep: f.nextStep, priorityReason: f.priorityReason, account: accounts.map((q) => q.text).join("\n\n"), accountSource: accounts.map((q) => q.label).join(" · "), moments,
+        corrections: loaded.corrections.filter((c) => c.findingId === f.id).map((c) => ({ status: c.status, reason: c.reason, replacementClaim: c.replacementClaim, createdAt: c.createdAt })) };
+    }) ?? [],
+    outcomes: loaded.state === "ready" ? result?.participants.map((p) => ({ streamId: p.streamId, label: p.outcome.charAt(0).toUpperCase() + p.outcome.slice(1) })) ?? [] : [],
+    methodology: a ? [`Analysis ${a.id} · ${a.status} · ${a.completedAt}`, `Model ${a.config.model} · ${a.promptVersion}`, `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
+      "This independent interpretation does not change the participant account or recorded completion evidence.", ...(a.config.question ? [`Additional review question: ${a.config.question}`] : [])] : [] };
+}

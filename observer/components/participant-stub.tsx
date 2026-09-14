@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { formatDuration, keyframeHref } from "@/lib/artifact-href";
+import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { completionLabel } from "@/lib/signal";
 import { participantLabels } from "@/lib/participant-label";
@@ -19,7 +19,9 @@ function evidenceLines(plain: string): TerminalLine[] {
 }
 
 // Frame-free lanes retain readable terminal output and their recorded events.
-export function ParticipantStub({ data, stream, updating = true }: { data: ObserverData; stream: ObserverStream; updating?: boolean }) {
+export function ParticipantStub({ data, stream, updating = true, selectedEventId }: { data: ObserverData; stream: ObserverStream; updating?: boolean; selectedEventId?: string | undefined }) {
+  const selectedItem = traceItems(stream).find((item) => item.id === selectedEventId);
+  const selectedEvent = stream.timeline.find((item) => item.id === selectedEventId);
   const terminal = evidenceLines(stream.terminalPlain);
   const [terminalPage, setTerminalPage] = useState<number | null>(null);
   const [eventPage, setEventPage] = useState(0);
@@ -32,9 +34,16 @@ export function ParticipantStub({ data, stream, updating = true }: { data: Obser
   return (
     <div className="stub">
       <ParticipantAssignment stream={stream} />
+      {selectedEventId ? <section className="blk selected-recorded-entry" aria-label="Selected evidence" data-selected-entry={selectedEventId}>
+        <h3 className="o-label">Recorded entry</h3>
+        {selectedItem || selectedEvent ? <>
+          <p className="o-mono">{selectedItem?.at ?? selectedEvent?.at ?? "Time unavailable"}</p>
+          <p className="verbatim">{selectedItem?.title ?? selectedEvent?.type}</p>
+          <pre className="verbatim">{selectedItem?.text ?? selectedEvent?.message ?? ""}</pre>
+        </> : <p role="alert">This recorded entry is unavailable. Other participant evidence remains below.</p>}
+      </section> : null}
       <p className="stub-note o-mono">
-        This lane recorded no screenshot frames, so the review player has no timeline to run. Below is
-        the recorded evidence it carries.
+        {selectedEventId ? "This entry has no preceding retained capture. Its recorded text is shown without a fabricated frame." : "This lane recorded no screenshot frames, so the review player has no timeline to run. Below is the recorded evidence it carries."}
       </p>
       {keyframe !== null ? (
         <div className="blk">

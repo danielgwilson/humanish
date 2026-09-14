@@ -6,7 +6,9 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { chromium } from "playwright-core";
-import { appendFrame, fixture, screenshot, START } from "./observer-browser-fixtures.mjs";
+import { analysisFixture, appendFrame, fixture, screenshot, START } from "./observer-browser-fixtures.mjs";
+
+import { assertScrubberAligned, scrubberPixels } from "./observer-browser-components.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -16,10 +18,12 @@ function option(name, fallback) {
   if (!args[index + 1] || args[index + 1].startsWith("--")) throw new Error(`${name} requires a value`);
   return args[index + 1];
 }
-const known = new Set(["--artifact", "--output", "--case"]);
+const known = new Set(["--artifact", "--output", "--case", "--axe"]);
 for (let i = 0; i < args.length; i += 2) if (!known.has(args[i])) throw new Error(`Unknown argument: ${args[i]}`);
 const artifactPath = path.resolve(option("--artifact", path.join(root, "observer/dist/index.html")));
 const selectedCase = option("--case", null);
+const axePath = option("--axe", null);
+const axeSource = axePath ? await readFile(path.resolve(axePath), "utf8") : null;
 const output = path.resolve(option("--output", path.join(root, ".humanish/observer-browser-proof",
   new Date().toISOString().replace(/[:.]/g, "-"))));
 // Refuse to overwrite prior evidence, even when a caller supplies --output.
@@ -36,6 +40,10 @@ assert(!selectedCase || coverage.cases.some((entry) => entry.id === selectedCase
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const inject = (data) => html.replace(slot, `<script id="observer-data" type="application/json">${JSON.stringify(data)
   .replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026")}</script>`);
+const analysisSlot = `<script id="study-analysis" type="application/json">__HUMANISH_STUDY_ANALYSIS__</script>`;
+let analysis = null;
+let analysisMode = "ok";
+const withAnalysis = (body) => body.replace(analysisSlot, `<script id="study-analysis" type="application/json">${JSON.stringify(analysis).replace(/</g, "\\u003c")}</script>`);
 let data = fixture();
 let otherData = null;
 let responseMode = "ok";
@@ -53,10 +61,15 @@ const server = createServer((request, response) => {
   if (url.pathname === "/restricted-browser") {
     response.setHeader("content-type", "text/html; charset=utf-8");
     response.setHeader("permissions-policy", "fullscreen=(), clipboard-write=()");
-    response.end('<!doctype html><html><body style="margin:0"><iframe title="Observer with browser permissions denied" src="/observer/index.html#/lane/lane-1/f/2" allow="fullscreen \'none\'; clipboard-write \'none\'" style="border:0;width:100vw;height:100vh"></iframe></body></html>');
+    response.end('<!doctype html><html lang="en"><head><title>Observer permissions fixture</title></head><body style="margin:0"><main><h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Observer permissions fixture</h1><iframe title="Observer with browser permissions denied" src="/observer/index.html#/lane/lane-1/f/2" allow="fullscreen \'none\'; clipboard-write \'none\'" style="border:0;width:100vw;height:100vh"></iframe></main></body></html>');
   } else if (url.pathname === "/observer/index.html") {
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.end(inject(data));
+    response.end(withAnalysis(inject(data)));
+  } else if (url.pathname === "/observer/study-analysis.json") {
+    if (analysisMode === "held") { response.once("close", () => { entry.closed = true; }); return; }
+    if (analysisMode === "failed") { response.writeHead(503); response.end("Unavailable"); return; }
+    if (analysis === null) { response.writeHead(404); response.end("No analysis"); return; }
+    response.setHeader("content-type", "application/json"); response.end(JSON.stringify(analysis));
   } else if (url.pathname === "/observer/observer-data.json") {
     pollCount += 1;
     entry.mode = responseMode;
@@ -196,11 +209,11 @@ async function stateProof(page) {
 }
 async function runCase(id, options, action) {
   if (selectedCase && selectedCase !== id) return;
-  data = fixture({ ...options, origin }); otherData = null; imageModes.clear(); responseMode = "ok"; pollCount = 0; exerciseDesktopIsolation = false;
+  data = fixture({ ...options, origin }); otherData = null; analysis = null; analysisMode = "ok"; imageModes.clear(); responseMode = "ok"; pollCount = 0; exerciseDesktopIsolation = false;
   if (options.prepare) options.prepare();
   const requestStart = requests.length;
   const directory = path.join(output, id); await mkdir(directory);
-  const context = await browser.newContext({ viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 }, ...(options.touch ? { hasTouch: true, isMobile: true } : {}) });
+  const context = await browser.newContext({ viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 }, deviceScaleFactor: options.dpr ?? 1, ...(options.touch ? { hasTouch: true, isMobile: true } : {}) });
   const unexpectedNetwork = [];
   await context.route("**/*", (route) => {
     const target = new URL(route.request().url());
@@ -222,6 +235,28 @@ async function runCase(id, options, action) {
     await page.getByRole("region", { name: "Study grid" }).waitFor();
     await snap("grid-before");
     await action({ page, context, directory, record, snap });
+    if (axeSource && page.url() === "about:blank") record.checks.accessibility = { status: "not-applicable", reason: "This scenario ends after leaving Observer to prove request teardown." };
+    else if (axeSource) {
+      await page.addScriptTag({ content: axeSource });
+      record.checks.accessibility = await page.evaluate(async () => {
+        const result = await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"] } });
+        const describe = (v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.map((n) => ({ target: n.target, html: typeof n.target[0] === "string" ? document.querySelector(n.target[0])?.outerHTML.slice(0, 4000) ?? n.html : n.html, failureSummary: n.failureSummary })) });
+        // The optional landmark rule treats a body-portal tooltip as page content.
+        // Retain that advisory only when the entire portal is a properly associated
+        // transient tooltip. Any other outside-landmark content still fails.
+        const tooltipAdvisory = (v) => v.id === "region" && v.nodes.every((n) => {
+          const portal = typeof n.target[0] === "string" ? document.querySelector(n.target[0]) : null;
+          if (!portal?.matches("[data-base-ui-portal]")) return false;
+          const hints = [...portal.querySelectorAll('[role="tooltip"]')];
+          return hints.length > 0 && hints.map((hint) => hint.textContent.trim()).join("") === portal.textContent.trim()
+            && hints.every((hint) => hint.id && document.querySelector(`[aria-describedby~="${CSS.escape(hint.id)}"]`));
+        });
+        return { violations: result.violations.filter((v) => !tooltipAdvisory(v)).map(describe),
+          reviewedAdvisories: result.violations.filter(tooltipAdvisory).map((v) => ({ ...describe(v), reason: "A transient WAI-ARIA tooltip is associated with its trigger and rendered in Base UI's body portal; it does not need a separate page landmark." })),
+          incomplete: result.incomplete.map((v) => v.id), passes: result.passes.length };
+      });
+      assert.equal(record.checks.accessibility.violations.length, 0, "Automated accessibility violations remain; inspect the recorded targets");
+    }
     assert.equal(errors.length, 0, `Browser errors: ${errors.join("; ")}`);
     assert.equal(unexpectedNetwork.length, 0, "Self-contained Observer attempted external network access");
     record.status = "passed";
@@ -269,10 +304,10 @@ try {
       await page.getByRole("button", { name: "Clear filters", exact: true }).click();
       await snap("view-menu");
       await page.getByRole("button", { name: "Monitor", exact: true }).click();
-      await page.locator(".frame.monitoring").waitFor();
+      await page.locator(".observer-shell.monitoring").waitFor();
       await page.locator(".pop-panel").waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "Exit monitor", exact: true }).click();
-      assert.equal(await page.locator(".frame.monitoring").count(), 0, "Monitor exit is unreachable");
+      assert.equal(await page.locator(".observer-shell.monitoring").count(), 0, "Monitor exit is unreachable");
       if (!phone) {
         record.checks.rows = [];
         for (const [density, expectedHeight] of [["compact", 200], ["comfortable", 280], ["large", 360]]) {
@@ -584,7 +619,7 @@ try {
     await page.reload(); assert.equal(await page.locator(".card").first().getAttribute("data-stream-id"), "lane-40");
     await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
     await page.getByRole("button", { name: "Monitor", exact: true }).click();
-    await page.locator(".frame.monitoring").waitFor(); await snap("pinned-monitor");
+    await page.locator(".observer-shell.monitoring").waitFor(); await snap("pinned-monitor");
     await page.getByRole("button", { name: "Exit monitor", exact: true }).click();
     record.checks.pinned = await page.locator(".card").first().getAttribute("data-stream-id");
     assert.equal(record.checks.pinned, "lane-40");
@@ -631,17 +666,20 @@ try {
     await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/2`);
     const selectedFrame = await displayedFrame(page);
     const library = page.getByRole("button", { name: "Toggle run library", exact: true });
+    // Desktop library preference is stable across study views; phones use a drawer.
+    if (!phone && await library.getAttribute("aria-expanded") === "true") await library.click();
     assert.equal(await library.getAttribute("aria-expanded"), "false");
     if (phone) await library.tap(); else await library.click();
-    const drawer = page.getByRole("dialog", { name: "Run library", exact: true });
-    await drawer.getByRole("searchbox", { name: "Find a run" }).waitFor();
+    const drawer = phone ? page.getByRole("dialog", { name: "Study library", exact: true }) : page.locator(".frame > .side");
+    await drawer.getByRole("navigation", { name: "Run library", exact: true }).waitFor();
     await snap("library-from-player");
-    await page.keyboard.press("Escape"); await drawer.waitFor({ state: "hidden" });
+    if (phone) await page.keyboard.press("Escape"); else await library.click();
+    await drawer.waitFor({ state: "hidden" });
     assert.equal(await displayedFrame(page), selectedFrame);
     await page.goto(`${origin}/observer/index.html#/compare?lane=lane-1&lane=lane-2&clock=elapsed&at=9000`);
     await page.locator(".compare-participant").nth(1).waitFor();
     assert.equal(await page.getByRole("button", { name: "View and filter participants", exact: true }).count(), 0);
-    assert.equal(await page.locator(".crumbs .here").innerText(), "comparison");
+    await page.getByRole("heading", { name: "Compare participants", exact: true }).waitFor();
     if (phone) {
       const preview = await page.locator(".compare-stage").first().boundingBox();
       const open = await page.locator(".compare-open").first().boundingBox();
@@ -649,8 +687,9 @@ try {
       assert(open && open.height >= 44, "Comparison frame links need a 44px touch target");
     }
     if (phone) await library.tap(); else await library.click();
-    await drawer.getByRole("searchbox", { name: "Find a run" }).waitFor(); await snap("library-from-comparison");
-    await page.keyboard.press("Escape"); await drawer.waitFor({ state: "hidden" });
+    await drawer.getByRole("navigation", { name: "Run library", exact: true }).waitFor(); await snap("library-from-comparison");
+    if (phone) await page.keyboard.press("Escape"); else await library.click();
+    await drawer.waitFor({ state: "hidden" });
     assert.equal(await page.getByLabel("Seek comparison").inputValue(), "9000");
     record.checks.width = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: innerWidth }));
     assert(record.checks.width.page <= record.checks.width.viewport);
@@ -704,10 +743,13 @@ try {
     }
     assert.equal(await page.getByRole("button", { name: /^Compare selected/ }).count(), 0);
     await page.getByRole("button", { name: "Open participant Synthetic new user", exact: true }).click();
-    await page.getByRole("button", { name: "Back to comparison", exact: true }).click();
-    await panels.nth(1).waitFor();
-    assert.equal(new URL(page.url()).hash, comparisonHash);
-    await snap("return-restores-cleared-selection");
+    // Clearing the comparison and opening from Participants must not resurrect
+    // an unrelated previous comparison as the recording's return destination.
+    assert.equal(await page.getByRole("button", { name: "Back to comparison", exact: true }).count(), 0);
+    await page.getByRole("button", { name: "Back to participants", exact: true }).click();
+    await page.getByRole("region", { name: "Study grid", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: /^Compare selected/ }).count(), 0);
+    await snap("return-respects-cleared-selection");
   });
   await runCase("comparison-capacity", { laneCount: 3, prepare: () => {
     otherData = fixture({ laneCount: 1, origin }); otherData.run.runId = "synthetic-other-study";
@@ -760,7 +802,7 @@ try {
   });
   await runCase("keyboard-phone", { phone: true }, async ({ page, record, snap }) => {
     const library = page.getByRole("button", { name: "Toggle run library", exact: true }); await library.click();
-    await page.getByRole("dialog", { name: "Run library", exact: true }).waitFor(); await snap("phone-library");
+    await page.getByRole("dialog", { name: "Study library", exact: true }).waitFor(); await snap("phone-library");
     await page.keyboard.press("Escape"); await until(async () => await page.getByRole("dialog").count() === 0, "Escape did not close library drawer");
     await page.getByRole("button", { name: /^Open participant/ }).first().click();
     const slider = page.getByRole("slider", { name: /Seek recording/ }); await slider.focus(); await slider.press("End");
@@ -816,7 +858,7 @@ try {
     assert.equal(await displayedFrame(page), captured);
     assert.equal(await page.locator(".pins .spin").count(), 1);
     assert.equal(await page.locator('.pins .tip').innerText(), "click (240, 480)");
-    assert.equal(await page.locator('[aria-current="true"]').count(), 1);
+    assert.equal(await page.locator('.acts [aria-current="true"]').count(), 1);
     assert((await page.getByLabel("Selected evidence").innerText()).includes("1s before entry"));
     assert(page.url().endsWith("/f/1/e/second-click"));
     await page.getByLabel("Selected evidence").scrollIntoViewIfNeeded();
@@ -856,6 +898,7 @@ try {
     assert((await page.locator('.assignment-body').innerText()).includes("Use the visible pointer controls."));
     assert(!(await page.locator('main').innerText()).includes("Use the keyboard throughout."));
     await page.getByRole("button", { name: "Next participant", exact: true }).click();
+    await page.getByRole("tab", { name: "details", exact: true }).click();
     assert((await page.locator('.assignment-missing').innerText()).includes("not recorded"));
     assert(!(await page.locator('main').innerText()).includes("FIRST PARTICIPANT COMPILED PROMPT"));
     const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
@@ -914,6 +957,143 @@ try {
     assert.equal(record.checks.iframe.tabIndex, -1); assert(!/clipboard/.test(record.checks.iframe.allow ?? ""));
     await snap("isolated-desktop");
   });
+  for (const phone of [false, true]) await runCase(`analysis-ready-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() { analysis = analysisFixture(data); } }, async ({ page, record, snap, context }) => {
+    const shell = () => page.locator(".observer-shell > .topbar, .frame > .side, .frame > .main, .study-viewbar").evaluateAll((nodes) => nodes.map((node) => {
+      const rect = node.getBoundingClientRect(); return { role: node.className, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }));
+    const before = await shell();
+    const findings = page.getByRole("link", { name: /^Findings/ });
+    await findings.click(); await page.getByRole("region", { name: "Study findings" }).waitFor();
+    assert.deepEqual(await shell(), before, "Study branch changed the surrounding shell");
+    assert.equal(await page.locator('.report-finding[aria-expanded="true"]').count(), 0);
+    const rows = await page.locator(".report-finding").evaluateAll((nodes) => nodes.map((node) => ({ bottom: node.getBoundingClientRect().bottom, text: node.textContent })));
+    assert(rows.length === 2 && rows.every((row) => row.bottom <= (phone ? 844 : 1000)), "Both initial priorities must be visible without scrolling");
+    assert(rows[0].text.includes("1 of 3 exposed participants affected"));
+    await snap("ranked-findings");
+    const trigger = page.locator('[data-finding="F1"]'); await trigger.focus(); await page.keyboard.press("Enter");
+    await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
+    const preview = page.locator(".report-evidence").first(); await preview.waitFor();
+    await until(async () => page.locator(".finding-panel").first().evaluate((element) => element.clientHeight >= element.scrollHeight - 1), "Finding expansion did not settle");
+    assertFullFrames(await inspectImages(preview.locator("img")));
+    const evidenceWidth = (await preview.boundingBox()).width;
+    assert(evidenceWidth <= 361, "Evidence preview escaped its bounded composition");
+    await snap("expanded-finding");
+    const expected = analysis.analysis.evidence.find((e) => e.id === analysis.analysis.result.findings[0].observations[0].evidenceIds[0]);
+    await preview.click(); await page.locator(".player").waitFor();
+    assert.equal(new URL(page.url()).hash, `#/lane/${expected.streamId}/f/${expected.frame + 1}/e/${expected.eventId}`);
+    assert.equal(await findings.getAttribute("aria-current"), "page");
+    assert.deepEqual(await shell(), before, "Evidence entry changed the surrounding shell");
+    await page.getByRole("tab", { name: "Feedback", exact: true }).waitFor();
+    await page.reload(); await page.getByRole("button", { name: /^Back to finding:/ }).waitFor();
+    await page.getByRole("button", { name: "Next frame", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-finding")), "F1");
+    await page.getByRole("link", { name: "All participants", exact: true }).click();
+    await page.getByRole("button", { name: /^Open participant/ }).first().click();
+    assert.equal(await page.getByRole("button", { name: /^Back to finding:/ }).count(), 0, "An unrelated previous finding became the recording origin");
+    await page.getByRole("button", { name: "Back to participants", exact: true }).waitFor();
+    // A copied address has no history-state origin and must use Participants.
+    const direct = await context.newPage(); await direct.goto(page.url());
+    await direct.getByRole("button", { name: "Back to participants", exact: true }).waitFor(); await direct.close();
+    record.checks = { shell: before, bothPriorityRowsVisible: true, exactReference: expected.eventId, evidenceWidth };
+    await snap("source-aware-recording");
+  });
+  await runCase("analysis-states", { prepare() { analysis = analysisFixture(data, { empty: true }); } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    await page.getByRole("heading", { name: "No findings in the reviewed evidence", exact: true }).waitFor(); await snap("complete-empty");
+    record.checks.states = ["complete-empty"];
+    for (const status of ["partial", "failed", "cancelled"]) {
+      analysis = analysisFixture(data, { status });
+      await page.reload(); await page.locator(`[data-analysis-state="${status}"]`).waitFor();
+      await snap(status); record.checks.states.push(status);
+    }
+    analysis = analysisFixture(data, { state: "stale" });
+    analysis.analysis.result.findings[0].observations[0].evidenceIds = ["lane-1/removed-entry"];
+    analysis.analysis.evidence.push({ ...analysis.analysis.evidence[0], id: "lane-1/removed-entry", eventId: "removed-entry" });
+    await page.reload(); await page.locator('[data-analysis-state="stale"]').waitFor();
+    await page.locator('[data-finding="F1"]').click(); await page.locator('.report-evidence:disabled').waitFor();
+    await snap("stale-evidence-unavailable"); record.checks.states.push("stale");
+    analysis = { ...analysis, state: "ready", analysis: { ...analysis.analysis, runId: "another-study" } };
+    await page.reload(); await page.locator('[data-analysis-state="invalid"]').waitFor();
+    await page.getByRole("link", { name: "All participants", exact: true }).click();
+    await page.getByRole("button", { name: /^Open participant/ }).first().click();
+    await page.locator(".stage-box img").waitFor(); await snap("invalid-analysis-keeps-recording"); record.checks.states.push("invalid");
+  });
+  await runCase("analysis-nonvisual", { frames: 0, laneCount: 1, prepare() {
+    const stream = data.streams[0]; stream.kind = "terminal"; stream.kindLabel = "Terminal";
+    stream.terminalPlain = "$ fictional-tool check\nSYNTHETIC TERMINAL END"; analysis = analysisFixture(data);
+  } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click(); await page.locator('[data-finding="F1"]').click();
+    const preview = page.locator(".report-evidence"); await preview.waitFor(); assert.equal(await preview.locator("img").count(), 0);
+    await preview.click(); await page.locator('[data-selected-entry="lane-1-final"]').waitFor();
+    assert.equal(new URL(page.url()).hash, "#/lane/lane-1/e/lane-1-final");
+    assert.equal(await page.getByRole("slider", { name: /Seek recording/ }).count(), 0);
+    assert((await page.getByLabel("Selected evidence").innerText()).includes("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE"));
+    await page.reload(); await page.locator('[data-selected-entry="lane-1-final"]').waitFor();
+    record.checks.exactNonvisualEntry = true; await snap("exact-terminal-entry");
+    await page.getByRole("button", { name: /^Back to finding:/ }).click(); await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
+  });
+  await runCase("analysis-feed-isolation", { running: true, live: true, prepare() { analysisMode = "held"; } }, async ({ page, record, snap }) => {
+    await openLane(page); const before = pollCount;
+    appendFrame(data, 5); await until(async () => pollCount >= before + 2, "Analysis latency stalled the ordinary recording feed", 12_000);
+    assert.equal(await page.getByText(/Updates interrupted/).count(), 0);
+    await page.getByRole("slider", { name: "Seek recording time", exact: true }).press("End");
+    await until(async () => (await displayedFrame(page))?.endsWith("portrait-5.png"), "Latest evidence failed to arrive while analysis was stalled");
+    record.checks = { recordingPollsDuringStall: pollCount - before }; await snap("recording-updates-during-analysis-stall");
+  });
+  await runCase("analysis-large", { prepare() {
+    analysis = analysisFixture(data, { count: 30 });
+    analysis.analysis.result.findings[29].title = "A deliberately long finding title retains readable wrapping while reviewing the final observation in a larger synthetic study";
+    analysis.corrections = [{ schema: "humanish.study-analysis-correction.v1", id: "correction-1", analysisId: analysis.analysis.id, analysisSha256: "b".repeat(64), findingId: "F30", findingSha256: "c".repeat(64), createdAt: new Date(START).toISOString(), status: "dismissed", reason: "Reviewer found the synthetic observation unhelpful.", replacementClaim: null }];
+  } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    for (const phone of [false, true]) for (const theme of ["light", "dark"]) {
+      await page.setViewportSize(phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+      await page.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
+      const final = page.locator('[data-finding="F30"]'); await final.scrollIntoViewIfNeeded();
+      if (await final.getAttribute("aria-expanded") !== "true") await final.click();
+      await page.getByRole("heading", { name: "Dismissed by reviewer", exact: true }).waitFor();
+      const width = await pageWidth(page); assert(width.page <= width.viewport + 1, "Long findings overflow the page");
+      await snap(`${phone ? "phone" : "desktop"}-${theme}-annotation`);
+    }
+    assert.equal(await page.locator(".report-finding").count(), 30, "A reviewer annotation removed the original claim");
+    record.checks = { findings: 30, originalClaimRetained: true };
+  });
+  for (const phone of [false, true]) for (const dpr of [1, 2]) await runCase(`scrubber-${phone ? "phone" : "desktop"}-${dpr}x`, { phone, dpr, touch: phone }, async ({ page, record, snap }) => {
+    await openLane(page, 2);
+    const slider = page.getByRole("slider", { name: "Seek recording time", exact: true });
+    record.checks.paintedStates = [];
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
+      for (const position of ["start", "middle", "end"]) {
+        await slider.press(position === "start" ? "Home" : "End");
+        if (position === "middle") await slider.press("ArrowLeft");
+        await page.evaluate(() => document.activeElement?.blur());
+        const measurement = await scrubberPixels(page); assertScrubberAligned(measurement);
+        record.checks.paintedStates.push({ theme, position, ...measurement });
+      }
+      await snap(`${theme}-aligned`);
+    }
+    await slider.press("ArrowLeft");
+    const broken = await page.addStyleTag({ content: `.evidence-player .scrubwrap { height:26px !important } .evidence-player .scrub { height:${phone ? 44 : 36}px !important } .scrub-track { top:11px !important; transform:none !important; left:0 !important; right:0 !important }` });
+    const negative = await scrubberPixels(page); let rejected = false;
+    try { assertScrubberAligned(negative); } catch { rejected = true; }
+    assert(rejected, "Paint guard accepted the known broken thumb/track geometry");
+    record.checks.knownBrokenControl = { rejected, measurement: negative }; await snap("known-broken-control");
+    await broken.evaluate((element) => element.remove()); assertScrubberAligned(await scrubberPixels(page));
+    await slider.press("Home"); await slider.press("ArrowRight"); assert.equal(await slider.inputValue(), "7000");
+    const bounds = await slider.boundingBox();
+    if (phone) { assert(bounds.height >= 44); await slider.tap({ position: { x: bounds.width * .8, y: bounds.height / 2 } }); }
+    else await slider.click({ position: { x: bounds.width * .8, y: bounds.height / 2 } });
+    assert.equal(await slider.inputValue(), "14000", "Pointer seeking did not select the prior retained capture");
+    await slider.focus(); assert.equal(await slider.evaluate((element) => getComputedStyle(element).outlineStyle), "solid");
+    record.checks.pointerAndKeyboard = true; await snap("restored-interactive-control");
+    data = fixture({ frames: 1, origin }); await page.reload(); await slider.waitFor();
+    assert(await slider.isDisabled(), "One retained capture must not offer a seekable timeline");
+    assertScrubberAligned(await scrubberPixels(page)); record.checks.disabledSingleCapture = true;
+    await snap("disabled-single-capture");
+  });
 } finally {
   await browser.close();
   await new Promise((resolve) => server.close(resolve));
@@ -924,6 +1104,10 @@ const summary = { schema: "humanish.observer-browser-proof.v1", scope: coverage.
   artifactSha256: createHash("sha256").update(html).digest("hex"), browser: executablePath,
   selectedCase, localCasesPass: results.length > 0 && results.every((result) => result.status === "passed"),
   localCoverageComplete: results.length === coverage.cases.length && results.every((result) => result.status === "passed"),
+  accessibility: { requested: !!axeSource, auditedCases: results.filter((r) => Array.isArray(r.checks.accessibility?.violations)).length,
+    violations: results.reduce((n, r) => n + (r.checks.accessibility?.violations?.length ?? 0), 0),
+    reviewedTooltipAdvisories: results.reduce((n, r) => n + (r.checks.accessibility?.reviewedAdvisories?.length ?? 0), 0),
+    manualChecks: results.filter((r) => r.checks.accessibility?.incomplete?.length).map((r) => ({ case: r.id, checks: r.checks.accessibility.incomplete })) },
   coverageComplete: false, cases: completeCases, externalAcceptance: coverage.externalAcceptance,
   note: "Controlled renderer proof is not provider, CLI entrypoint, or complete Observer release acceptance." };
 assert.equal(results.length, selectedCase ? 1 : coverage.cases.length, "Every declared local case must produce a result");
@@ -933,6 +1117,6 @@ await mkdir(path.join(output, "assets"));
 await Promise.all([...images].map(([name, bytes]) => writeFile(path.join(output, "assets", path.basename(name)), bytes)));
 const rows = [...completeCases, ...coverage.externalAcceptance].map((entry) => `<tr><td>${escape(entry.id)}</td><td class="${entry.status}">${escape(entry.status)}</td><td>${escape(entry.goal ?? entry.reason)}</td></tr>`).join("");
 const panels = results.map((result) => `<article id="${escape(result.id)}"><h2>${escape(result.id)} · ${escape(result.status)}</h2>${result.error ? `<pre>${escape(result.error.split("\n").slice(0, 4).join("\n"))}</pre>` : ""}<p><a href="${escape(result.id)}/proof.json">Measured state and HTTP receipts</a></p><div class="screens">${result.screenshots.map((src) => `<a href="${escape(src)}"><img src="${escape(src)}" alt="${escape(src)}" loading="lazy"></a>`).join("")}</div></article>`).join("");
-await writeFile(path.join(output, "index.html"), `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Observer browser proof</title><style>body{font:16px system-ui;background:#edf1f3;color:#182b35;margin:0;padding:32px;max-width:1500px;margin-inline:auto}h1{font-size:36px;margin-bottom:8px}p{max-width:850px;line-height:1.5}table{border-collapse:collapse;width:100%;background:#fff}td,th{border-bottom:1px solid #cbd5da;padding:10px;text-align:left;vertical-align:top}.passed{color:#166344}.failed{color:#a32235}.external,.uncovered,.not-run{color:#74521a}article{padding-block:24px;border-bottom:1px solid #9aabb4}.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}img{max-width:100%;height:auto;border:1px solid #cbd5da}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#174e75}</style><h1>Observer browser proof</h1><p>${escape(coverage.scope)}. Local cases: ${results.filter((result) => result.status === "passed").length}/${results.length} passed. Uncovered and external acceptance remain visible below; this report does not certify a complete release.</p><p><a href="summary.json">Coverage manifest</a></p><table><thead><tr><th>Surface/state</th><th>Result</th><th>Proof target or remaining gap</th></tr></thead><tbody>${rows}</tbody></table>${panels}</html>`);
+await writeFile(path.join(output, "index.html"), `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Observer browser proof</title><style>body{font:16px system-ui;background:#edf1f3;color:#182b35;margin:0;padding:32px;max-width:1500px;margin-inline:auto}h1{font-size:36px;margin-bottom:8px}p{max-width:850px;line-height:1.5}table{border-collapse:collapse;width:100%;background:#fff}td,th{border-bottom:1px solid #cbd5da;padding:10px;text-align:left;vertical-align:top}.passed{color:#166344}.failed{color:#a32235}.external,.uncovered,.not-run{color:#74521a}article{padding-block:24px;border-bottom:1px solid #9aabb4}.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}img{max-width:100%;height:auto;border:1px solid #cbd5da}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#174e75}</style><h1>Observer browser proof</h1><p>${escape(coverage.scope)}. Local cases: ${results.filter((result) => result.status === "passed").length}/${results.length} passed. Uncovered and external acceptance remain visible below; this report does not certify a complete release.</p><p><a href="summary.json">Coverage manifest</a></p><p>Automated accessibility scans: ${summary.accessibility.auditedCases}. Unresolved violations: ${summary.accessibility.violations}. Reviewed tooltip-portal advisories: ${summary.accessibility.reviewedTooltipAdvisories}. The manifest retains checks requiring manual review.</p><table><thead><tr><th>Surface/state</th><th>Result</th><th>Proof target or remaining gap</th></tr></thead><tbody>${rows}</tbody></table>${panels}</html>`);
 process.stdout.write(`Observer browser evidence: ${output}\n`);
 process.exitCode = summary.localCasesPass ? 0 : 1;

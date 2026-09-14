@@ -90,3 +90,38 @@ export function appendFrame(data) {
   }
   data.generatedAt = new Date().toISOString();
 }
+
+/** Synthetic analysis projection; this exercises rendering, not model quality or
+ * provider responses. All claims describe the generated fixture pixels/text. */
+export function analysisFixture(data, { status = "complete", state = "ready", empty = false, count = 2 } = {}) {
+  const digest = "a".repeat(64);
+  const evidence = data.streams.flatMap((stream) => {
+    let frame = -1, capture = null;
+    const items = stream.actor?.items ?? stream.liveActor?.items ?? [];
+    return items.map((item) => {
+      if (item.screenshotRef) { frame += 1; capture = { eventId: item.id, path: item.screenshotRef.path, sha256: digest, mimeType: "image/png" }; }
+      return { id: `${stream.id}/${item.id}`, streamId: stream.id, eventId: item.id, kind: item.kind,
+        text: item.text ?? item.title, quoteEligible: item.kind === "message", at: item.at ?? null,
+        elapsedMs: frame < 0 ? null : Math.max(0, Date.parse(item.at) - Date.parse(items[0].at)), frame: frame < 0 ? null : frame, capture };
+    });
+  });
+  const participants = data.streams.map((stream) => ({ streamId: stream.id, label: stream.label, assignment: null, recordedStatus: stream.status, recordedReason: stream.actor?.reason ?? null }));
+  const result = { summary: "Independent review of generated synthetic participant evidence.", limitations: ["Synthetic renderer fixture; this is not a model-quality evaluation."],
+    participants: participants.map((p, i) => ({ streamId: p.streamId, summary: "Recorded synthetic activity.", intent: "Inspect the fictional interface.",
+      outcome: i ? "completed" : "blocked", outcomeReason: "Synthetic interpretation kept separate from actor status.", evidenceIds: evidence.filter((e) => e.streamId === p.streamId).slice(0, 1).map((e) => e.id),
+      feedback: evidence.filter((e) => e.streamId === p.streamId && e.quoteEligible).slice(0, 1).map((e) => ({ evidenceId: e.id, text: e.text })), limitations: [] })),
+    findings: empty ? [] : Array.from({ length: count }, (_, i) => {
+      const e = evidence.filter((e) => e.streamId === participants[i % participants.length].streamId && e.kind !== "screenshot")[1]
+        ?? evidence.find((e) => e.streamId === participants[i % participants.length].streamId);
+      return { id: `F${i + 1}`, title: i === 0 ? "A recorded action needs investigation" : `Review generated evidence ${i + 1}`, summary: "A synthetic observation for testing the evidence review workflow.",
+        impact: i === 0 ? "blocked_task" : "friction", affectedStreamIds: [e.streamId], exposedStreamIds: participants.map((p) => p.streamId), exposureReason: "All fixture participants received the same declared task.",
+        recovery: "unknown", confidence: "medium", observations: [{ claim: "Inspect this exact retained entry.", basis: e.capture ? "action" : "participant_statement", evidenceIds: [e.id], limitation: "The fixture does not establish real participant behavior." }],
+        nextStep: "Review the addressed evidence before deciding on a change.", priorityReason: "The first observation represents the larger synthetic task impact." };
+    }) };
+  return { state, corrections: [], warnings: [], analysis: { schema: "humanish.study-analysis.v1", id: "synthetic-analysis-1", runId: data.run.runId, status,
+    createdAt: new Date(START).toISOString(), completedAt: new Date(START + 40_000).toISOString(), sourceRunSha256: digest, inputDigest: digest, configDigest: digest,
+    config: { model: "synthetic-renderer-fixture", question: null, maxCostUsd: 0, timeoutMs: 1000, maxOutputTokens: 1000 }, promptVersion: "synthetic-v1", provider: "openai",
+    usage: { inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0, estimatedAdmissionUsd: 0, usageComplete: true, dispatched: false, ratesAsOf: null }, participants,
+    coverage: { includedStreamIds: participants.map((p) => p.streamId), omittedStreamIds: [], evidenceCount: evidence.length, captureCount: evidence.filter((e) => e.kind === "screenshot").length, complete: status === "complete", omissions: [] },
+    evidence, result: status === "failed" || status === "cancelled" ? null : result, error: status === "failed" ? "synthetic_failure" : null } };
+}

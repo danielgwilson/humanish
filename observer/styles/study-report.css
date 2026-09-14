@@ -132,3 +132,13 @@
 @media (prefers-reduced-motion: reduce) {
   .finding-panel, .report-finding > svg { transition: none; }
 }
+.analysis-notice { border-left: 2px solid var(--accent); padding: 8px 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; }
+.analysis-messages { margin-bottom: 14px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.analysis-messages p { margin-top: 8px; }
+.study-report > .study-report-empty { padding: 14px 0; }
+.report-text-evidence { display: block; padding: 12px; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--mono); }
+.report-evidence:disabled, .report-moments button:disabled { cursor: default; opacity: .7; }
+.finding-correction { border-left: 2px solid var(--line); padding-left: 12px; margin-top: 16px; font-size: 12px; line-height: 1.6; }
+.finding-correction span { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.selected-recorded-entry { border-left: 2px solid var(--accent); padding-left: 12px; }
+.selected-recorded-entry pre { overflow-wrap: anywhere; white-space: pre-wrap; }

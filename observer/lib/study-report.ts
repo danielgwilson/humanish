@@ -1,10 +1,13 @@
 import type { ObserverData } from "./observer-data";
-import { buildPlayerModel, rowElapsedMs } from "./player-model";
+import { traceItems } from "./artifact-href";
+import { buildPlayerModel, rowElapsedMs, type PlayerFrame } from "./player-model";
 
 /** An optional review projection. It does not change the recorded Observer contract. */
 export interface StudyReport {
   id: string;
   runId: string;
+  state?: "complete" | "partial" | "failed" | "cancelled" | "stale" | "invalid";
+  messages?: string[];
   summary: string;
   scope: string;
   findings: StudyFinding[];
@@ -25,26 +28,34 @@ export interface StudyFinding {
   account: string;
   accountSource: string;
   leadEventId?: string;
+  corrections?: { status: "confirmed" | "dismissed" | "amended"; reason: string; replacementClaim: string | null; createdAt: string }[];
   moments: { streamId: string; eventId: string; label: string; note: string }[];
 }
 
 export function resolveReportMoment(data: ObserverData, streamId: string, eventId: string) {
   const stream = data.streams.find((item) => item.id === streamId);
-  const model = stream ? buildPlayerModel(stream) : null;
+  if (!stream) return null;
+  const model = buildPlayerModel(stream);
   const row = model?.rows.find((item) => item.id === eventId);
-  const frame = row ? model?.frames[row.frameIndex] : undefined;
-  if (!stream || !model || !row || !frame) return null;
-  return { stream, frame, frameIndex: frame.index, eventId: row.isFrame ? undefined : row.id, elapsedMs: rowElapsedMs(model, row) };
+  const candidate = row ? model?.frames[row.frameIndex] : undefined;
+  // Events before the first retained capture do not acquire a future screenshot.
+  const frame: PlayerFrame | null = candidate && !(row?.atMs !== undefined && candidate.atMs !== undefined && row.atMs < candidate.atMs) ? candidate : null;
+  const item = traceItems(stream).find((item) => item.id === eventId);
+  const event = stream.timeline.find((item) => item.id === eventId);
+  if (!row && !item && !event) return null;
+  return { stream, frame, frameIndex: frame?.index ?? null, eventId: row?.isFrame && frame ? undefined : eventId,
+    elapsedMs: frame && model?.paced === "recorded" && row ? rowElapsedMs(model, row) : null,
+    at: item?.at ?? event?.at ?? null, text: item?.text ?? item?.title ?? event?.message ?? row?.text ?? row?.title ?? "",
+    kind: item?.kind ?? event?.type ?? row?.kind ?? "event" };
 }
 
 export function reportProblem(data: ObserverData, report: StudyReport): string | null {
   if (report.runId !== data.run.runId) return "This report belongs to a different study.";
-  if (!report.findings.length) return "This report has no findings to review.";
   if (new Set(report.findings.map((finding) => finding.id)).size !== report.findings.length) return "Finding identifiers are duplicated.";
   for (const finding of report.findings) {
     if (!finding.id || !finding.moments.length) return "A finding has no supporting evidence.";
     if (finding.leadEventId && !finding.moments.some((moment) => moment.eventId === finding.leadEventId)) return "The selected evidence is unavailable.";
-    if (finding.moments.some((moment) => !resolveReportMoment(data, moment.streamId, moment.eventId))) return "Some report evidence is unavailable in this study.";
+    if (report.state !== "stale" && finding.moments.some((moment) => !resolveReportMoment(data, moment.streamId, moment.eventId))) return "Some report evidence is unavailable in this study.";
   }
   if (new Set(report.outcomes.map((outcome) => outcome.streamId)).size !== report.outcomes.length) return "Reviewed participants are duplicated.";
   if (report.outcomes.some((outcome) => !data.streams.some((stream) => stream.id === outcome.streamId))) return "A reviewed participant is unavailable.";

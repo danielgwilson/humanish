@@ -70,10 +70,15 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
   const fitDimensions = liveDimensions ?? { width: 1280, height: 800 };
   const fitHeight = available.width * fitDimensions.height / fitDimensions.width + 24;
   const liveSize = fittedSize(liveDimensions ?? { width: 1280, height: 800 }, available, "fit");
-  return <div className="stage evidence-stage" ref={stageRef}
+  return <div className="stage evidence-stage" role="region" ref={stageRef}
     data-fit-recording={!live && zoom === "fit" && frame ? "" : undefined}
-    style={{ "--fit-stage-height": `${fitHeight}px` } as CSSProperties} tabIndex={zoom === "fit" || live ? -1 : 0}
+    style={{ "--fit-stage-height": `${fitHeight}px` } as CSSProperties} tabIndex={live ? -1 : 0}
     aria-label={zoom === "fit" || live ? "Evidence stage" : "Zoomed evidence; scroll or drag to pan"}
+    onKeyDown={(event) => {
+      // A focused zoomed stage owns native scrolling; global playback shortcuts
+      // continue to work when focus is elsewhere in the recording.
+      if (!live && zoom !== "fit" && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) event.stopPropagation();
+    }}
     onPointerDown={(event) => {
       if (zoom === "fit" || live || event.pointerType !== "mouse" || event.button !== 0) return;
       const node = event.currentTarget;
