@@ -93,6 +93,12 @@ export interface AnalysisUsage {
   inputTokens: number | null;
   outputTokens: number | null;
   estimatedCostUsd: number | null;
+  cachedInputTokens: number | null;
+  cacheWriteInputTokens: number | null;
+  usageComplete: boolean;
+  dispatched: boolean;
+  ratesAsOf: string | null;
+  estimatedAdmissionUsd: number | null;
 }
 export interface StudyAnalysisArtifact {
   schema: typeof STUDY_ANALYSIS_SCHEMA;
