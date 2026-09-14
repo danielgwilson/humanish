@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { StudyReport as StudyReportView } from "../components/study-report";
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { formatHash, parseHash } from "../lib/route";
@@ -14,6 +17,16 @@ const data = { ...base, streams: [stream] };
 const report: StudyReport = { id: "review-1", runId: data.run.runId, summary: "A task was blocked.", scope: "1 participant", methodology: [], outcomes: [{ streamId: stream.id, label: "Blocked" }], findings: [{ id: "F1", title: "Task blocked", impact: "Blocked", summary: "A control did not respond.", scope: "1 of 1", limitation: "One attempt", nextStep: "Check the control", priorityReason: "Task impact", account: "I stopped", accountSource: "Closing account", moments: [{ streamId: stream.id, eventId: "click", label: "Attempt", note: "Recorded action" }] }] };
 
 describe("study report evidence navigation", () => {
+  it.each(["click", "first"])("qualifies an inherited preview for %s independently of the observation basis", (eventId) => {
+    const value = structuredClone(report);
+    value.findings[0]!.moments[0]!.eventId = eventId;
+    value.findings[0]!.moments[0]!.bases = ["visual"];
+    const html = renderToStaticMarkup(createElement(StudyReportView, {
+      data, report: value, findingId: "F1", onFinding: () => undefined, onOpen: () => undefined
+    }));
+    expect(html).toContain("Visual observation");
+    expect(html.includes("Capture shown for context")).toBe(eventId === "click");
+  });
   it("opens an action on its preceding capture through the existing Observer grammar", () => {
     const moment = resolveReportMoment(data, stream.id, "click")!;
     expect(moment.frame?.itemId).toBe("first");

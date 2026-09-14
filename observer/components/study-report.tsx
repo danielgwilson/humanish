@@ -52,7 +52,7 @@ export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
               <button type="button" className="report-evidence" disabled={!lead.resolved} onClick={() => open(lead)} data-report-evidence={lead.eventId} aria-label={`Open recording: ${labels.get(lead.streamId) ?? lead.streamId} · ${time(lead)}`}>
                 <span className="report-evidence-heading"><span>{labels.get(lead.streamId) ?? lead.streamId}</span><span>{time(lead)}</span></span>
                 {lead.resolved?.frame ? <img src={lead.resolved.frame.href} alt="" /> : <span className="report-text-evidence">{lead.resolved?.text ?? "This evidence is no longer available in the current recording."}</span>}
-                <span className="report-evidence-caption">{basis(lead) ? <span className="observation-basis">{basis(lead)}{lead.resolved?.frame && !lead.bases?.includes("visual") ? " · Capture shown for context" : ""}</span> : null}<span>{lead.note}</span><strong>Open recording <ArrowRight size={14} aria-hidden="true" /></strong></span>
+                <span className="report-evidence-caption">{basis(lead) ? <span className="observation-basis">{basis(lead)}{lead.resolved?.frame && (lead.resolved.frame.itemId !== lead.eventId || !lead.bases?.includes("visual")) ? " · Capture shown for context" : ""}</span> : null}<span>{lead.note}</span><strong>Open recording <ArrowRight size={14} aria-hidden="true" /></strong></span>
               </button>
               <div className="finding-followup">
                 <section className="report-next"><h3>What to check</h3><p>{finding.nextStep}</p></section>
