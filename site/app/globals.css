@@ -396,6 +396,37 @@ h2 em { font-style: italic; font-weight: 400 }
 .band-dark .sec-sub { color: var(--dz-body) }
 .sec-sub code { font-size: .9em; background: var(--accent-wash); padding: 1px 6px; border-radius: 5px }
 
+/* ---------- repair comparison ---------- */
+.repair-study {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px 64px; padding-bottom: 64px; margin-bottom: 64px;
+  border-bottom: 1px solid var(--line);
+}
+.repair-kicker {
+  font-family: var(--mono); font-size: 11px; line-height: 1.6;
+  letter-spacing: .04em; color: var(--body-c); margin-bottom: 20px;
+}
+.repair-quote { margin: 28px 0 20px; color: var(--body-c); font-size: 16px; line-height: 1.65 }
+.repair-quote footer { font-family: var(--mono); font-size: 11px; margin-top: 10px; color: var(--body-c) }
+.repair-copy { font-size: 16px; line-height: 1.65; color: var(--body-c); max-width: 60ch }
+.repair-results table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 22px }
+.repair-results caption { text-align: left; font-size: 16px; font-weight: 500; padding-bottom: 18px; color: var(--ink) }
+.repair-results th { font-size: 13px; line-height: 1.5; font-weight: 500; color: var(--body-c) }
+.repair-results thead th { padding: 0 12px 12px 0; border-bottom: 1px solid var(--line) }
+.repair-results tbody th { padding: 20px 12px 20px 0 }
+.repair-results td {
+  padding: 14px 12px 14px 0; font-family: var(--mono);
+  font-size: 28px; line-height: 1.4; letter-spacing: -.04em; color: var(--ink);
+}
+.repair-results td span { font-size: 16px; letter-spacing: 0; color: var(--body-c) }
+.repair-results tbody tr { border-bottom: 1px solid var(--line-soft) }
+.repair-results .repair-copy + .repair-copy { margin-top: 12px }
+.repair-links { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 22px }
+.repair-links a { font-size: 15px; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 4px }
+@media (max-width: 900px) {
+  .repair-study { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-bottom: 48px; margin-bottom: 48px }
+}
+
 /* ---------- facts strip ---------- */
 .manifest {
   margin: 44px 0 36px;
